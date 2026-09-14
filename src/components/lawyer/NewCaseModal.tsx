@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG, CrmStatus, CRM_STATUS_CONFIG, CASE_TYPES, JOB_TYPES, HOUSING_TYPES, HOUSING_DETAILS, ASSET_TYPES, ASSET_OWNERS } from '../../types';
 import type { CaseType } from '../../types';
 import { formatPhone, checkDuplicatePhone, normalizeBirthYear } from '../../services/crmService';
+import ModalPortal from '../common/ModalPortal';
 
 export interface NewCaseData {
   clientName: string;
@@ -212,8 +213,9 @@ export default function NewCaseModal({ isOpen, onClose, onRegister, existingRequ
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/50 backdrop-blur-sm">
+        <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[calc(100vh-2.5rem)] flex flex-col shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
@@ -700,5 +702,6 @@ export default function NewCaseModal({ isOpen, onClose, onRegister, existingRequ
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

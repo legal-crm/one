@@ -6,6 +6,7 @@ import {
   ArrowRight, RefreshCw, FileText, Info, HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { 
   PropertyListD5102Data, 
@@ -122,8 +123,9 @@ export default function PropertyValuationModal({
   const isLiquidationGuaranteed = currentPlanTotalRepayment >= data.totalLiquidationValue;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-5 overflow-y-auto animate-fadeIn text-left">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[92vh] max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden border border-slate-200">
         
         {/* ── 헤더 바 ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
@@ -1702,6 +1704,7 @@ export default function PropertyValuationModal({
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
       />
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

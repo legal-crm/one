@@ -6,6 +6,7 @@ import {
   Coins, Landmark, CheckCheck, FolderArchive
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import { 
   CourtBatchFilingService, 
   REHAB_14_STANDARD_ORDER, 
@@ -257,8 +258,9 @@ export default function BatchFilingPackagingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] max-h-[calc(100vh-2.5rem)]">
         
         {/* 상단 모달 헤더 */}
         <div className="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
@@ -525,5 +527,6 @@ export default function BatchFilingPackagingModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

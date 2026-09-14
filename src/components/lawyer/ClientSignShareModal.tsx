@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Copy, Check, Share2, Smartphone, ShieldCheck, Clock, Send, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   contract: ElectronicContract;
@@ -52,8 +53,9 @@ ${signUrl}
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden max-h-[calc(100vh-2.5rem)] overflow-y-auto">
         
         {/* 헤더 */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
@@ -153,8 +155,8 @@ ${signUrl}
             <span>안내 문구 복사하고 닫기</span>
           </button>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

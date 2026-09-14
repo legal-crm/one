@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, ShieldCheck, Check, FileText } from 'lucide-react';
+import ModalPortal from './ModalPortal';
 
 export type TermKey = 'privacy' | 'thirdParty' | 'procedure' | 'legalEffect';
 
@@ -150,8 +151,9 @@ export default function LegalContractTermsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[85vh] animate-scaleUp">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] animate-scaleUp">
         
         {/* 헤더 */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -207,8 +209,8 @@ export default function LegalContractTermsModal({
             <span>내용을 확인하였으며 동의합니다</span>
           </button>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

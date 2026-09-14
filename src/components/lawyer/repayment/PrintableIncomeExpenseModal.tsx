@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IncomeExpenseD5103Data } from '../../../types/incomeExpenseTypes';
+import ModalPortal from '../../common/ModalPortal';
 
 interface PrintableIncomeExpenseModalProps {
   data: IncomeExpenseD5103Data;
@@ -39,8 +40,9 @@ export default function PrintableIncomeExpenseModal({
   const disp = data.disposableIncome;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto animate-fadeIn text-left">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden border border-slate-200">
         
         {/* 상단 컨트롤 바 (화면 전용, 인쇄 시 숨김) */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white print:hidden shrink-0">
@@ -498,8 +500,8 @@ export default function PrintableIncomeExpenseModal({
 
           </div>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -165,8 +166,9 @@ ${firm} 드림`
   const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
         
         {/* ── 1. 헤더 ── */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
@@ -404,8 +406,8 @@ ${firm} 드림`
             )}
           </button>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

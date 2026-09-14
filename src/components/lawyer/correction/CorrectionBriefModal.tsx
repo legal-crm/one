@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Printer, Download, Scale, FileText, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CorrectionBriefData } from '../../../types/correctionTypes';
+import ModalPortal from '../../common/ModalPortal';
 
 interface CorrectionBriefModalProps {
   isOpen: boolean;
@@ -26,8 +27,9 @@ export default function CorrectionBriefModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
         {/* 상단 툴바 (인쇄 시 숨김) */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2.5">
@@ -179,5 +181,6 @@ export default function CorrectionBriefModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

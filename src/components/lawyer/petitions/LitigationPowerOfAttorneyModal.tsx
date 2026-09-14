@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import ModalPortal from '../../common/ModalPortal';
 
 interface LitigationPowerOfAttorneyModalProps {
   isOpen: boolean;
@@ -70,8 +71,9 @@ export default function LitigationPowerOfAttorneyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] animate-fadeIn">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-5 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -279,5 +281,6 @@ export default function LitigationPowerOfAttorneyModal({
         </div>
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 }

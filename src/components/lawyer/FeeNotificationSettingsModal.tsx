@@ -3,6 +3,7 @@ import { X, Settings, Check, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { FeeNotificationSettings } from '../../types';
 import { loadFeeNotificationSettings, saveFeeNotificationSettings } from '../../services/alimtokService';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -37,8 +38,9 @@ export default function FeeNotificationSettingsModal({ isOpen, onClose }: Props)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-5 backdrop-blur-sm">
+        <div className="w-full max-w-2xl max-h-[calc(100vh-2.5rem)] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl animate-fadeIn">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 sticky top-0 bg-white z-10 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
@@ -178,5 +180,6 @@ export default function FeeNotificationSettingsModal({ isOpen, onClose }: Props)
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

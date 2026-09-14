@@ -6,6 +6,7 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepealDefensePetitionType } from '../../../types/courtPetitionTypes';
+import ModalPortal from '../../common/ModalPortal';
 
 interface RepealDefensePetitionModalProps {
   isOpen: boolean;
@@ -218,8 +219,9 @@ ${courtName} 귀중`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-left">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden text-left">
         
         {/* 상단 툴바 */}
         <div className="p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
@@ -300,8 +302,8 @@ ${courtName} 귀중`;
             창 닫기
           </button>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

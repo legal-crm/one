@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { verifyContractBlockchainAnchor, verifyTxOnChain } from '../../services/blockchainAnchorService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+import ModalPortal from './ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -87,11 +88,12 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div 
-        className="bg-white border-2 border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
-        onClick={e => e.stopPropagation()}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
+        <div 
+          className="bg-white border-2 border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)]"
+          onClick={e => e.stopPropagation()}
+        >
         
         {/* ── 모달 상단 헤더 ── */}
         <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between border-b border-slate-800">
@@ -357,8 +359,8 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
             </button>
           </div>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

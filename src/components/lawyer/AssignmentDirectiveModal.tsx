@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Send, SkipForward } from 'lucide-react';
 import type { DirectivePriority, StaffRole } from '../../types';
 import { DIRECTIVE_PRIORITY_CONFIG } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface AssignmentDirectiveModalProps {
   isOpen: boolean;
@@ -52,11 +53,12 @@ export default function AssignmentDirectiveModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fadeIn"
-        onClick={e => e.stopPropagation()}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-5" onClick={onClose}>
+        <div
+          className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fadeIn max-h-[calc(100vh-2.5rem)] overflow-y-auto"
+          onClick={e => e.stopPropagation()}
+        >
         {/* 헤더 */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -148,5 +150,6 @@ export default function AssignmentDirectiveModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

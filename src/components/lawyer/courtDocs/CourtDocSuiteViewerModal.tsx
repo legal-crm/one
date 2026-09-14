@@ -17,6 +17,7 @@ import {
   PanelRightClose, PanelRightOpen, ArrowRight, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   buildCourtFilingMasterData, 
@@ -153,7 +154,8 @@ export default function CourtDocSuiteViewerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/95 backdrop-blur-md text-slate-100 animate-in fade-in duration-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/95 backdrop-blur-md text-slate-100 animate-in fade-in duration-200">
       {/* ── 1. 최상단 헤더 네비게이션 ── */}
       <header className="flex items-center justify-between px-6 py-2.5 bg-slate-950 border-b border-slate-800 shadow-md shrink-0">
         <div className="flex items-center gap-3">
@@ -480,5 +482,6 @@ export default function CourtDocSuiteViewerModal({
         )}
       </div>
     </div>
+  </ModalPortal>
   );
 }

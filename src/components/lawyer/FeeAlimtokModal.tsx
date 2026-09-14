@@ -3,6 +3,7 @@ import { X, MessageCircle, Send, RotateCcw, Edit3, Sparkles } from 'lucide-react
 import { toast } from 'sonner';
 import { FeeInstallment, AlimtokMilestone, ALIMTOK_MILESTONE_CONFIG } from '../../types';
 import { sendFeeAlimtok, loadFeeNotificationSettings, renderTemplate } from '../../services/alimtokService';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -124,8 +125,9 @@ export default function FeeAlimtokModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl animate-fadeIn flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-5 backdrop-blur-sm">
+        <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl animate-fadeIn flex flex-col max-h-[calc(100vh-2.5rem)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -257,5 +259,6 @@ export default function FeeAlimtokModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

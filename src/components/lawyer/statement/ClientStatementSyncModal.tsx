@@ -13,6 +13,7 @@ import {
   ArrowRight, ShieldCheck, History, AlertCircle, FileText, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { CourtStatementData } from '../../../types/statementTypes';
 import { StatementService } from '../../../services/statementService';
@@ -76,8 +77,9 @@ export default function ClientStatementSyncModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] max-h-[calc(100vh-2.5rem)] animate-fadeIn">
         {/* 상단 헤더 */}
         <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
           <div className="flex items-center gap-2.5">
@@ -217,5 +219,6 @@ export default function ClientStatementSyncModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

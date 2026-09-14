@@ -14,6 +14,7 @@ import {
   Briefcase, Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension, CourtPetitionData } from '../../../types';
 
 interface CourtPetitionEditModalProps {
@@ -132,8 +133,9 @@ export default function CourtPetitionEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] max-h-[calc(100vh-2.5rem)] animate-fadeIn">
         {/* 모달 상단 헤더 */}
         <div className="p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -741,5 +743,6 @@ export default function CourtPetitionEditModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

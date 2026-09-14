@@ -20,6 +20,7 @@ import {
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
 import { MIN_LIVING_EXPENSE_60_2026 } from '../../../services/repayment/repaymentConstants2026';
 import PrintableIncomeExpenseModal from './PrintableIncomeExpenseModal';
+import ModalPortal from '../../common/ModalPortal';
 
 interface IncomeExpenseModalProps {
   isOpen: boolean;
@@ -189,8 +190,9 @@ export default function IncomeExpenseModal({
   const disp = formData.disposableIncome;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm animate-fadeIn text-left">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
         
         {/* 모달 상단 헤더 */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
@@ -1296,6 +1298,7 @@ export default function IncomeExpenseModal({
           onAttachToPackage={handleAttachToFiling}
         />
       )}
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

@@ -13,6 +13,7 @@ import {
   loadIntervalTiers, saveIntervalTiers,
   loadTelegramRooms, saveTelegramRooms
 } from '../../../services/settingsService';
+import ModalPortal from '../../common/ModalPortal';
 
 interface SalesSettingsModalProps {
   isOpen: boolean;
@@ -189,8 +190,9 @@ export default function SalesSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -546,7 +548,7 @@ export default function SalesSettingsModal({
 
       {/* 마이그레이션 확인 팝업 */}
       {itemToDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white p-5 rounded-2xl shadow-xl max-w-sm w-full space-y-4 border border-slate-200">
             <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
               <AlertTriangle className="text-amber-500 w-5 h-5" />
@@ -587,6 +589,7 @@ export default function SalesSettingsModal({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

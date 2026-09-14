@@ -6,6 +6,7 @@ import { createContract, saveContract, calculateCourtCosts } from '../../service
 import { sendAlimtok } from '../../services/alimtokService';
 import { saveCrmClient, createDefaultCrmExtension, loadCrmData } from '../../services/crmService';
 import { addClientNotification } from '../../services/clientNotificationService';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   request: ConsultRequest;
@@ -291,8 +292,9 @@ export default function ContractConversionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)]">
         
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
@@ -517,8 +519,8 @@ export default function ContractConversionModal({
             <span>{contractMethod === 'electronic' ? '전자계약 발송 & 서류준비 착수' : '대면계약 체결 & 서류준비 착수'}</span>
           </button>
         </div>
-
       </div>
     </div>
+  </ModalPortal>
   );
 }

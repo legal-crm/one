@@ -18,6 +18,7 @@ import {
   applyTemplatePlaceholders
 } from '../../services/contractTemplateService';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -167,8 +168,9 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[calc(100vh-2.5rem)] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
         
         {/* 헤더 */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
@@ -482,7 +484,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
 
       {/* 맞춤 서식 신규 등록/수정 서브 모달 */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <h3 className="text-sm font-black text-slate-900">
@@ -573,7 +575,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
           </div>
         </div>
       )}
-
-    </div>
+      </div>
+    </ModalPortal>
   );
 };

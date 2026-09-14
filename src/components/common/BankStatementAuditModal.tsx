@@ -15,6 +15,7 @@ import {
   parseRawBankStatementText,
   exportAuditStatementToExcel
 } from '../../services/bankAuditService';
+import ModalPortal from './ModalPortal';
 
 interface BankStatementAuditModalProps {
   isOpen: boolean;
@@ -211,8 +212,9 @@ export default function BankStatementAuditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs animate-fadeIn text-left">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden text-slate-800 dark:text-slate-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-xs animate-fadeIn text-left">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden text-slate-800 dark:text-slate-200">
         
         {/* ═══ 1. 헤더 & 사건 정보 ═══ */}
         <div className="p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
@@ -776,5 +778,6 @@ export default function BankStatementAuditModal({
 
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 }

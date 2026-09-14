@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { LawyerSealInfo } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface LawyerSealManagerModalProps {
   isOpen: boolean;
@@ -74,8 +75,9 @@ export default function LawyerSealManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-slate-800">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-slate-800 max-h-[calc(100vh-2.5rem)] overflow-y-auto">
         {/* 모달 헤더 */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-6 py-4.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -259,5 +261,6 @@ export default function LawyerSealManagerModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

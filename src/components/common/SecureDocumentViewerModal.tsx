@@ -10,6 +10,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X, ShieldAlert, Printer, AlertTriangle, Lock } from 'lucide-react';
 import { writeAuditLog } from '../../services/auditService';
+import ModalPortal from './ModalPortal';
 
 interface SecureDocumentViewerModalProps {
   isOpen: boolean;
@@ -143,11 +144,12 @@ export default function SecureDocumentViewerModal({
   const isPdf = mimeType === 'application/pdf' || documentName.toLowerCase().endsWith('.pdf');
 
   return (
-    <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-fadeIn"
-      onContextMenu={e => e.preventDefault()}
-    >
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div 
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-5 animate-fadeIn"
+        onContextMenu={e => e.preventDefault()}
+      >
+        <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)]">
         {/* 상단 보안 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
           <div className="flex items-center gap-2.5">
@@ -226,5 +228,6 @@ export default function SecureDocumentViewerModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

@@ -3,6 +3,7 @@ import { X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DROP_OFF_REASONS } from '../../types';
 import type { DropOffReason } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -34,8 +35,9 @@ export default function DropOffReasonModal({ isOpen, onClose, clientName, onConf
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-5 backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl animate-fadeIn max-h-[calc(100vh-2.5rem)] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -101,5 +103,6 @@ export default function DropOffReasonModal({ isOpen, onClose, clientName, onConf
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

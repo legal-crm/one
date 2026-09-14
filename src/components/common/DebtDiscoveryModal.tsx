@@ -20,6 +20,7 @@ import {
   type CourtLawsuitItem
 } from '../../services/court/debtDiscoveryService';
 import type { RepaymentCreditor, DebtCertificateItem, RepaymentAsset } from '../../services/repayment/repaymentTypes';
+import ModalPortal from './ModalPortal';
 
 interface DebtDiscoveryModalProps {
   isOpen: boolean;
@@ -216,8 +217,9 @@ export default function DebtDiscoveryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)]">
         
         {/* ── 1. 모달 상단 헤더 ── */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white">
@@ -850,5 +852,6 @@ export default function DebtDiscoveryModal({
 
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 }

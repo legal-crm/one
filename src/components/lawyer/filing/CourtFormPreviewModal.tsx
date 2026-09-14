@@ -17,6 +17,7 @@ import {
   FileText, CheckCircle2, ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   buildCourtCoverHtml,
@@ -168,8 +169,9 @@ export default function CourtFormPreviewModal({
   const handleZoomReset = () => setZoomLevel(0.9);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-slate-900 w-full max-w-6xl h-[94vh] rounded-3xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col animate-fadeIn">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-slate-900 w-full max-w-6xl h-[92vh] max-h-[calc(100vh-2.5rem)] rounded-3xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col animate-fadeIn">
         {/* 모달 상단 툴바 */}
         <div className="p-4 bg-slate-950 border-b border-slate-800 text-white flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -288,5 +290,6 @@ export default function CourtFormPreviewModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

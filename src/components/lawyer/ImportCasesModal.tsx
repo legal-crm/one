@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype pollution CVE-2023-30533 대응
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG } from '../../types';
 import { formatPhone } from '../../services/crmService';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -231,8 +232,9 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+    <ModalPortal>
+      <div className="fixed inset-0 bg-slate-900/50 z-[9999] flex items-center justify-center p-3 sm:p-5">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[calc(100vh-2.5rem)] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
           <h2 className="text-xl font-bold text-slate-800 flex items-center">
@@ -502,5 +504,6 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

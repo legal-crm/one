@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, User, Scale, X } from 'lucide-react';
 import { ConsultRequest, User as UserType } from '../../types';
+import ModalPortal from '../common/ModalPortal';
 
 interface Props {
   isOpen: boolean;
@@ -63,11 +64,12 @@ export default function GlobalSearchPalette({ isOpen, onClose, requests, lawyers
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/40 pt-[20vh] backdrop-blur-sm px-4" onClick={onClose}>
-      <div 
-        className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/40 pt-[15vh] backdrop-blur-sm px-4" onClick={onClose}>
+        <div 
+          className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[calc(100vh-18vh)] flex flex-col"
+          onClick={e => e.stopPropagation()}
+        >
         <div className="flex items-center border-b border-gray-200 px-4 py-3">
           <Search className="mr-3 h-5 w-5 text-gray-400" />
           <input
@@ -156,5 +158,6 @@ export default function GlobalSearchPalette({ isOpen, onClose, requests, lawyers
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 };

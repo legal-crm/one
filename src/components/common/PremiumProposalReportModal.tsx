@@ -26,6 +26,7 @@ import {
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../rehab-chatbot-package/config/rehabStatistics2025';
 import PrintableReportTemplate from '../client/PrintableReportTemplate';
 import PrintableLawyerOpinionTemplate from '../client/PrintableLawyerOpinionTemplate';
+import ModalPortal from './ModalPortal';
 
 export interface PremiumReportData {
   lawyerInfo?: {
@@ -633,8 +634,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+  const modalContent = (
+    <div className={embedded ? "w-full" : "fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"}>
       {/* 
         OFF-SCREEN PRINTABLE CONTAINER FOR PDF GENERATION
         Rendered at left: -9999px to ensure clean html2canvas capture without visible backdrop bleed.
@@ -685,7 +686,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
       {/* Main Modal Container */}
       <div 
-        className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200"
+        className={`relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col ${embedded ? '' : 'max-h-[calc(100vh-2.5rem)]'} animate-in fade-in zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="report-modal-title"
@@ -1646,6 +1647,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       </div>
     </div>
   );
+
+  return embedded ? modalContent : <ModalPortal>{modalContent}</ModalPortal>;
 };
 
 export default PremiumProposalReportModal;

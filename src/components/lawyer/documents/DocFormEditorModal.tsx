@@ -15,6 +15,7 @@ import {
 } from '../../../services/documents/documentTemplateEngine';
 import { ClientMobileDocService } from '../../../services/documents/clientMobileDocService';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import ModalPortal from '../../common/ModalPortal';
 
 interface DocFormEditorModalProps {
   isOpen: boolean;
@@ -101,8 +102,9 @@ export default function DocFormEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
         
         {/* 모달 상단 헤더 */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -334,7 +336,7 @@ export default function DocFormEditorModal({
 
       {/* 과거 유사 선례 모범 기재례 팝업 모달 */}
       {showPrecedentModal && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -390,7 +392,8 @@ export default function DocFormEditorModal({
           </div>
         </div>
       )}
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

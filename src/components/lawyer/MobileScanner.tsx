@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Camera, X, RotateCcw, Check, FileText, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
+import ModalPortal from '../common/ModalPortal';
 
 interface MobileScannerProps {
   isOpen: boolean;
@@ -123,7 +124,8 @@ export default function MobileScanner({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/80">
         <h3 className="text-white font-bold text-sm flex items-center gap-2">
@@ -195,5 +197,6 @@ export default function MobileScanner({
         )}
       </div>
     </div>
+    </ModalPortal>
   );
 }

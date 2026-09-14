@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Printer, Download, Scale, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BankruptcyFullCaseData } from '../../../types/bankruptcyTypes';
+import ModalPortal from '../../common/ModalPortal';
 
 interface PrintableBankruptcyPetitionModalProps {
   isOpen: boolean;
@@ -37,8 +38,9 @@ export default function PrintableBankruptcyPetitionModal({
   const docs = data.requiredDocs || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
         
         {/* 상단 툴바 */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -720,5 +722,6 @@ export default function PrintableBankruptcyPetitionModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }
