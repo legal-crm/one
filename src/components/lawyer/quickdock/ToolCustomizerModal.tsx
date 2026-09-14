@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   X, Check, RotateCcw, Settings2, Calculator, Percent, Coins, 
   TrendingDown, Users, Scale, ShieldAlert, Landmark, BookOpen, 
-  CreditCard, FileText, Send, Sparkles 
+  CreditCard, FileText, Send, Sparkles, Building2 
 } from 'lucide-react';
 import { QuickToolId, ToolCategory } from './types';
 import { ALL_QUICK_TOOLS, DEFAULT_ENABLED_TOOL_IDS, CATEGORY_LABELS } from './defaultTools';
@@ -29,6 +29,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CreditCard,
   FileText,
   Send,
+  Building2,
 };
 
 export default function ToolCustomizerModal({

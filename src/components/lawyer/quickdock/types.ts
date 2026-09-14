@@ -12,7 +12,8 @@ export type QuickToolId =
   | 'seizureLimits'    // 압류금지 채권 & 최우선변제금
   | 'quickMemo'        // 상담 퀵 스크래치패드
   | 'interestCompare'  // 대출이자 vs 회생변제 비교
-  | 'legalArticles';   // 도산법 핵심 조문
+  | 'legalArticles'    // 도산법 핵심 조문
+  | 'assetValuation';  // 토지·주택·차량가액 즉시 조회
 
 export interface QuickToolMeta {
   id: QuickToolId;

@@ -134,6 +134,21 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
     },
     defaultEnabled: false,
   },
+  {
+    id: 'assetValuation',
+    title: '토지·주택·차량가액 조회',
+    subtitle: 'KB시세·토지이음·공시가130%·보험개발원',
+    category: 'standards',
+    badge: '조회/산정',
+    iconName: 'Building2',
+    colorClass: {
+      bg: 'bg-emerald-500/20',
+      text: 'text-emerald-400',
+      hoverBg: 'group-hover:bg-emerald-500',
+      border: 'border-emerald-500/30'
+    },
+    defaultEnabled: true,
+  },
 
   // ── 업무 지원 & 소통 도구군 ──
   {

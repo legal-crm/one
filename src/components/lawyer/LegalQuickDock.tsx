@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, X, Settings2, RotateCcw, Move,
   Calculator, Percent, Coins, TrendingDown, Users, Scale, 
-  ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send 
+  ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ interface LegalQuickDockProps {
   onOpenAlimtok?: () => void;
 }
 
-const STORAGE_TOOLS_KEY = 'legal_dock_enabled_tools_v2';
+const STORAGE_TOOLS_KEY = 'legal_dock_enabled_tools_v3';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Calculator,
@@ -31,6 +31,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CreditCard,
   FileText,
   Send,
+  Building2,
 };
 
 export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {

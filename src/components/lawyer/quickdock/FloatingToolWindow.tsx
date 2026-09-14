@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   X, Minus, Square, Move, 
   Calculator, Percent, Coins, TrendingDown, Users, 
-  Scale, ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send 
+  Scale, ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2 
 } from 'lucide-react';
 import { QuickToolId, Position } from './types';
 import { ALL_QUICK_TOOLS } from './defaultTools';
@@ -19,6 +19,7 @@ import SeizureLimitsTool from './tools/SeizureLimitsTool';
 import QuickMemoTool from './tools/QuickMemoTool';
 import InterestCompareTool from './tools/InterestCompareTool';
 import LegalArticlesTool from './tools/LegalArticlesTool';
+import AssetValuationTool from './tools/AssetValuationTool';
 
 interface FloatingToolWindowProps {
   activeToolId: QuickToolId | null;
@@ -41,6 +42,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CreditCard,
   FileText,
   Send,
+  Building2,
 };
 
 const WINDOW_STORAGE_KEY = 'legal_quick_window_pos_v2';
@@ -272,6 +274,7 @@ export default function FloatingToolWindow({
             {activeToolId === 'quickMemo' && <QuickMemoTool />}
             {activeToolId === 'interestCompare' && <InterestCompareTool />}
             {activeToolId === 'legalArticles' && <LegalArticlesTool />}
+            {activeToolId === 'assetValuation' && <AssetValuationTool />}
           </div>
         </>
       )}
