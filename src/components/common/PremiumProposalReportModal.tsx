@@ -85,6 +85,14 @@ export interface PremiumProposalReportModalProps {
   isClientViewer?: boolean;
   isAppointed?: boolean;
   embedded?: boolean;
+  isLawyerEditor?: boolean;
+  onApplyChanges?: (updatedData: {
+    monthlyPayment: number;
+    repaymentMonths: number;
+    debtReductionRate: number;
+    lawyerOpinion: string;
+    specialNotes?: string[];
+  }) => void;
 }
 
 export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProps> = ({
@@ -100,7 +108,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   onRejectProposal,
   onContactLawyer,
   onAppointLawyer,
-  embedded = false
+  embedded = false,
+  isLawyerEditor = false,
+  onApplyChanges
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'statistics' | 'roadmap'>('overview');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -262,6 +272,45 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     proposalProp?.opinion || 
     proposalProp?.remark || 
     '의뢰인님의 소득 대비 부양가족 생계비와 채무 구조를 면밀히 분석한 결과, 개인회생 개시 요건을 충분히 갖추고 계십니다. 신청서 접수 즉시 금지·중지명령을 통해 빚 독촉과 압류를 원천 차단하고, 최적화된 변제계획안으로 인가 결정을 이끌어내겠습니다.';
+
+  // Lawyer Editing State (isLawyerEditor mode)
+  const [editMonthlyPayment, setEditMonthlyPayment] = useState(monthlyPayment);
+  const [editRepaymentMonths, setEditRepaymentMonths] = useState(repaymentMonths);
+  const [editLawyerComment, setEditLawyerComment] = useState(lawyerComment);
+  const [isEditingOpen, setIsEditingOpen] = useState(false);
+
+  useEffect(() => {
+    setEditMonthlyPayment(monthlyPayment);
+  }, [monthlyPayment]);
+
+  useEffect(() => {
+    setEditRepaymentMonths(repaymentMonths);
+  }, [repaymentMonths]);
+
+  useEffect(() => {
+    setEditLawyerComment(lawyerComment);
+  }, [lawyerComment]);
+
+  // 계산된 수정 탕감률
+  const editTotalRepayment = editMonthlyPayment * editRepaymentMonths;
+  const editEstimatedReduction = Math.max(0, totalDebt - editTotalRepayment);
+  const editDebtReductionRate = totalDebt > 0 
+    ? Math.min(100, Math.max(0, Math.round((editEstimatedReduction / totalDebt) * 100))) 
+    : 0;
+
+  const handleApplyChangesToDraft = () => {
+    if (onApplyChanges) {
+      onApplyChanges({
+        monthlyPayment: editMonthlyPayment,
+        repaymentMonths: editRepaymentMonths,
+        debtReductionRate: editDebtReductionRate,
+        lawyerOpinion: editLawyerComment,
+        specialNotes
+      });
+      toast.success('수정된 AI 분석 및 변제 조건이 제안서에 반영되었습니다.');
+      onClose();
+    }
+  };
 
   const specialNotes: string[] = 
     reportData?.specialNotes || 
@@ -728,9 +777,24 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 <span>{isGeneratingPdf ? 'PDF 생성 중...' : isAIPremium ? 'AI 7p 리포트 PDF 저장' : '변호사 의견서 PDF 저장 (2p)'}</span>
               </button>
 
+              {isLawyerEditor && (
+                <button
+                  onClick={() => setIsEditingOpen(!isEditingOpen)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition border active:scale-[0.98] cursor-pointer whitespace-nowrap ${
+                    isEditingOpen
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                      : 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40 hover:bg-indigo-500/30'
+                  }`}
+                  title="변호사 직접 수정"
+                >
+                  <Sparkles className="w-4 h-4 text-indigo-300" />
+                  <span>{isEditingOpen ? '수정창 닫기' : '변호사 직접 수정'}</span>
+                </button>
+              )}
+
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition active:scale-[0.98]"
+                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition active:scale-[0.98] cursor-pointer"
                 aria-label="닫기"
               >
                 <X className="w-5 h-5" />
@@ -765,6 +829,98 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               </span>
             </div>
           </div>
+
+          {/* Lawyer Direct Edit Panel (Collapsible) */}
+          {isLawyerEditor && isEditingOpen && (
+            <div className="mt-4 pt-4 border-t border-slate-800 bg-slate-900/90 rounded-2xl p-4 sm:p-5 border border-indigo-500/40 space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-black text-white">
+                    담당 변호사 AI 분석 보고서 직접 수정 및 제안서 연동
+                  </h4>
+                </div>
+                <span className="text-[11px] text-indigo-300 font-mono font-bold bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">
+                  실시간 탕감률 계산: 약 {editDebtReductionRate}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300">추천 월 변제금 (원)</label>
+                  <input
+                    type="number"
+                    step="10000"
+                    value={editMonthlyPayment}
+                    onChange={(e) => setEditMonthlyPayment(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white focus:border-indigo-400 focus:outline-none"
+                  />
+                  <div className="text-[10px] text-slate-400">
+                    현재: {editMonthlyPayment.toLocaleString()}원 / 월
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300">변제 기간 (개월)</label>
+                  <select
+                    value={editRepaymentMonths}
+                    onChange={(e) => setEditRepaymentMonths(parseInt(e.target.value, 10))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:border-indigo-400 focus:outline-none cursor-pointer"
+                  >
+                    <option value={24}>24개월 (청년/취약계층 특례)</option>
+                    <option value={36}>36개월 (표준 변제기간)</option>
+                    <option value={48}>48개월 (연장 변제)</option>
+                    <option value={60}>60개월 (최대 변제기간)</option>
+                  </select>
+                  <div className="text-[10px] text-slate-400">
+                    총 변제액: {(editTotalRepayment).toLocaleString()}원
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300">예상 원금 감면액</label>
+                  <div className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 flex items-center justify-between">
+                    <span>{editEstimatedReduction.toLocaleString()}원</span>
+                    <span className="text-[11px] text-slate-400 font-sans font-normal">감면</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400">
+                    탕감률: 약 {editDebtReductionRate}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">변호사 종합 검토 소견 및 전략 (의뢰인 제안서 연동)</label>
+                <textarea
+                  rows={2}
+                  value={editLawyerComment}
+                  onChange={(e) => setEditLawyerComment(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 leading-relaxed focus:border-indigo-400 focus:outline-none font-sans"
+                  placeholder="의뢰인의 상황에 맞춘 변호사 종합의견을 입력하세요."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingOpen(false)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold transition cursor-pointer"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyChangesToDraft}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>수정 내용 제안서에 즉시 반영하기</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation Tabs (Distinct for AI Premium vs Standard) */}
@@ -1440,7 +1596,18 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {lawyerPhone && (
+            {isLawyerEditor && onApplyChanges && (
+              <button
+                type="button"
+                onClick={handleApplyChangesToDraft}
+                className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>수정 내용 제안서에 반영하기</span>
+              </button>
+            )}
+
+            {lawyerPhone && !isLawyerEditor && (
               <a
                 href={`tel:${lawyerPhone}`}
                 className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto"

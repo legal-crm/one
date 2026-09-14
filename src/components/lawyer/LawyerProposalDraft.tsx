@@ -329,17 +329,24 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // 2. AI 변제금 플랜 적용 이벤트 (proposal-apply-plan)
   useEffect(() => {
     const handleApplyPlan = (e: any) => {
-      const { monthlyPayment, months, reductionRate, name } = e.detail || {};
-      if (!monthlyPayment) return;
+      const { monthlyPayment, months, reductionRate, name, opinion, specialNotes: incomingNotes } = e.detail || {};
+      if (!monthlyPayment && !opinion) return;
 
-      const planSummary = `\n[적용 플랜: ${name || 'AI 추천안'}] 월 변제금 ${formatCurrency(monthlyPayment)}, 변제기간 ${months}개월 (예상 탕감률 약 ${reductionRate}%)`;
-      
-      setLawyerOpinion(prev => {
-        if (prev.includes(planSummary.trim())) return prev;
-        return prev + '\n' + planSummary;
-      });
+      if (opinion) {
+        setLawyerOpinion(opinion);
+      } else if (monthlyPayment) {
+        const planSummary = `\n[적용 플랜: ${name || 'AI 추천안'}] 월 변제금 ${formatCurrency(monthlyPayment)}, 변제기간 ${months}개월 (예상 탕감률 약 ${reductionRate}%)`;
+        setLawyerOpinion(prev => {
+          if (prev.includes(planSummary.trim())) return prev;
+          return prev + '\n' + planSummary;
+        });
+      }
 
-      toast.success(`${name || 'AI 추천안'} 플랜이 제안서 소견에 반영되었습니다.`);
+      if (incomingNotes && Array.isArray(incomingNotes) && incomingNotes.length > 0) {
+        setSpecialNotes(prev => Array.from(new Set([...prev, ...incomingNotes])));
+      }
+
+      toast.success(`${name || '수정된 AI 분석 결과'}가 제안서에 성공적으로 반영되었습니다.`);
     };
 
     document.addEventListener('proposal-apply-plan', handleApplyPlan);
@@ -430,8 +437,15 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // External Submit listener
   useEffect(() => {
     if (!isEmbedded) return;
-    const handleExternalSubmit = () => {
-      onSendProposal(getProposalData());
+    const handleExternalSubmit = (e: any) => {
+      const data = getProposalData();
+      if (e?.detail?.attorneyReview) {
+        data.attorneyReview = {
+          ...data.attorneyReview,
+          ...e.detail.attorneyReview
+        };
+      }
+      onSendProposal(data);
     };
     document.addEventListener('proposal-workspace-submit', handleExternalSubmit);
     return () => document.removeEventListener('proposal-workspace-submit', handleExternalSubmit);

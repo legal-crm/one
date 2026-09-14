@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ArrowLeft, FileText, Send, Clock, Edit3, CheckCircle2, 
-  Microscope, Eye, Sparkles, Settings, User, X, ShieldCheck
+  Microscope, Eye, Sparkles, Settings, User, X, ShieldCheck,
+  Scale, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -11,6 +12,8 @@ import { ClientReferencePanel } from './ClientReferencePanel';
 import LawyerProposalDraft from './LawyerProposalDraft';
 import { useProposalDraft, ProposalDraftState } from '../../hooks/useProposalDraft';
 import { TemplateManageModal } from './TemplateManageModal';
+import { LawyerAttestationModal, AttorneyReviewData } from './LawyerAttestationModal';
+import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 
 interface ProposalWorkspaceProps {
   rehabCalcResult: RehabCalculationResult;
@@ -57,6 +60,12 @@ export default function ProposalWorkspace({
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   
+  // 유료 고객 전용 AI 분석 보고서 모달 상태
+  const [isAIReportOpen, setIsAIReportOpen] = useState(false);
+
+  // 변호사법 준수 AI 분석 보고서 직접 확인/승인 팝업 상태
+  const [isAttestationOpen, setIsAttestationOpen] = useState(false);
+
   const clientId = consultRequest?.id || 'unknown';
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
   const { savedDraft, scheduleAutoSave, clearDraft, lastSavedAt, isDirty } = useProposalDraft(clientId);
@@ -91,18 +100,67 @@ export default function ProposalWorkspace({
 
   const dialog = useDialog();
 
+  // 유료 고객 여부 판별 (유료 플랜 결제자 또는 AI 프리미엄 활성화 건)
+  const isPaidClient = Boolean(
+    consultRequest?.isPaid || 
+    consultRequest?.tier === 'premium' || 
+    isAIPremiumEnabled || 
+    consultRequest?.isAIPremiumEnabled ||
+    consultRequest?.proposalData?.aiInsights?.isAIPremium ||
+    !!aiAnalysis
+  );
+
+  const isAIPremium = isPaidClient;
+
   // 변호사 직접 검수 확인 후 발송
   const handleConfirmAndSendProposal = async () => {
-    const confirmed = await dialog.confirm({
-      title: '변호사 직접 검수 및 법률의견서 발송',
-      message: `본 제안서는 의뢰인(${clientName}님)의 기초 채무 정보 및 법원 실무 기준을 담당 변호사가 직접 검토·확정한 정식 법률 의견서입니다.\n\n변호사법 제109조 및 변협 광고규정을 준수하여, 담당 변호사님의 명의와 책임으로 의뢰인에게 정식 전송하시겠습니까?`,
-      confirmText: '검수 완료 및 발송',
-      cancelText: '더 검토하기',
-      variant: 'primary'
-    });
-    if (confirmed) {
-      document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+    if (isAIPremium) {
+      // ⚖️ 변호사법 준수: AI 정밀분석 보고서가 포함된 유료 제안서는 전용 확인 팝업 호출
+      setIsAttestationOpen(true);
+    } else {
+      // 일반 제안서: 기본 2단계 확인 다이얼로그
+      const confirmed = await dialog.confirm({
+        title: '변호사 직접 검수 및 법률의견서 발송',
+        message: `본 제안서는 의뢰인(${clientName}님)의 기초 채무 정보 및 법원 실무 기준을 담당 변호사가 직접 검토·확정한 정식 법률 의견서입니다.\n\n변호사법 제109조 및 변협 광고규정을 준수하여, 담당 변호사님의 명의와 책임으로 의뢰인에게 정식 전송하시겠습니까?`,
+        confirmText: '검수 완료 및 발송',
+        cancelText: '더 검토하기',
+        variant: 'primary'
+      });
+      if (confirmed) {
+        document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+      }
     }
+  };
+
+  // AI 정밀분석 변호사법 검수 승인 완료 시 발송 실행
+  const handleAttestationConfirm = (reviewData: AttorneyReviewData) => {
+    setIsAttestationOpen(false);
+    toast.success('변호사 직접 검수가 공식 인증되었습니다. 제안서를 고객에게 전송합니다.');
+    document.dispatchEvent(new CustomEvent('proposal-workspace-submit', {
+      detail: { attorneyReview: reviewData }
+    }));
+  };
+
+  // AI 분석 보고서에서 변호사가 수정한 데이터 양방향 동기화
+  const handleApplyAIReportChanges = (data: {
+    monthlyPayment: number;
+    repaymentMonths: number;
+    debtReductionRate: number;
+    lawyerOpinion: string;
+    specialNotes?: string[];
+  }) => {
+    document.dispatchEvent(new CustomEvent('proposal-apply-plan', {
+      detail: {
+        monthlyPayment: data.monthlyPayment,
+        months: data.repaymentMonths,
+        reductionRate: data.debtReductionRate,
+        opinion: data.lawyerOpinion,
+        specialNotes: data.specialNotes,
+        name: '변호사 검토 수정안'
+      }
+    }));
+    setMobileTab('editor');
+    toast.success('AI 보고서 수정 사항이 제안서 에디터에 즉시 반영되었습니다.');
   };
 
   const handleSendProposal = useCallback((data: ProposalData) => {
@@ -117,13 +175,6 @@ export default function ProposalWorkspace({
     }
   }, [onRequestConfirm, clearDraft]);
 
-  const formatTime = (isoString: string) => {
-    const d = new Date(isoString);
-    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  };
-
-  const isAIPremium = !!aiAnalysis || isAIPremiumEnabled;
-
   const handleQuoteQuestion = useCallback((question: string, defaultAnswer?: string) => {
     document.dispatchEvent(new CustomEvent('proposal-quote-question', {
       detail: { question, defaultAnswer }
@@ -137,6 +188,8 @@ export default function ProposalWorkspace({
     }));
     setMobileTab('editor');
   }, []);
+
+  const courtName = (rehabCalcResult as any)?.court || '서울회생법원';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden font-sans animate-fadeIn">
@@ -159,10 +212,14 @@ export default function ProposalWorkspace({
             <h1 className="font-extrabold text-sm sm:text-[15px] text-white truncate flex items-center gap-1.5">
               <span>{clientName}님 맞춤 제안서 스튜디오</span>
             </h1>
-            {isAIPremium && (
-              <span className="hidden sm:inline-flex items-center gap-1 bg-[#1E3A5F] text-blue-200 text-[11px] font-extrabold px-2 py-0.5 rounded-lg border border-blue-400/30">
-                <Microscope className="w-3 h-3 text-blue-300" />
-                AI 실무분석 연동
+            {isAIPremium ? (
+              <span className="hidden sm:inline-flex items-center gap-1 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-indigo-200 text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg border border-indigo-400/40">
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                AI 정밀분석 연동 (PRO)
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-1 bg-slate-800 text-slate-300 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-slate-700">
+                기본 제안서 모드
               </span>
             )}
           </div>
@@ -252,12 +309,12 @@ export default function ProposalWorkspace({
         </button>
       </div>
 
-      {/* ── Main Split-Pane Content (독립 듀얼 스크롤 / 미리보기 시 전폭) ── */}
+      {/* ── Main Split-Pane Content (좌: 45% 브리핑 / 우: 55% 에디터) ── */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 bg-slate-100">
         
         {/* 좌측: 고객 상황 360° 인텔리전스 패널 (에디터 모드 시 표시, 미리보기 모드 시 숨김) */}
         <div className={`
-          ${viewMode === 'preview' ? 'hidden' : 'lg:w-[42%] lg:block'} h-full min-h-0 lg:border-r border-slate-200 overflow-hidden flex flex-col bg-slate-50
+          ${viewMode === 'preview' ? 'hidden' : 'lg:w-[45%] lg:block'} h-full min-h-0 lg:border-r border-slate-200 overflow-hidden flex flex-col bg-slate-50
           ${mobileTab === 'info' && viewMode !== 'preview' ? 'block' : 'hidden'}
         `}>
           <ClientReferencePanel 
@@ -271,12 +328,13 @@ export default function ProposalWorkspace({
             ruleOutput={ruleOutput}
             onQuoteQuestion={handleQuoteQuestion}
             onApplyPlan={handleApplyPlan}
+            onOpenAIReport={() => setIsAIReportOpen(true)}
           />
         </div>
 
         {/* 우측: 초고속 제안서 빌더 & Live Preview (미리보기 모드 시 전폭 100%) */}
         <div className={`
-          ${viewMode === 'preview' ? 'w-full' : 'lg:w-[58%]'} h-full min-h-0 overflow-hidden flex flex-col bg-white
+          ${viewMode === 'preview' ? 'w-full' : 'lg:w-[55%]'} h-full min-h-0 overflow-hidden flex flex-col bg-white
           ${mobileTab === 'editor' || viewMode === 'preview' ? 'block' : 'hidden lg:block'}
         `}>
           <LawyerProposalDraft 
@@ -339,7 +397,7 @@ export default function ProposalWorkspace({
               className="px-6 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 min-h-[44px] whitespace-nowrap cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              검수 완료 및 제안서 발송
+              <span>검수 완료 및 제안서 발송</span>
             </button>
           ) : viewerRole === 'reviewer' ? (
             <div className="flex items-center gap-2">
@@ -354,7 +412,7 @@ export default function ProposalWorkspace({
                 className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap min-h-[44px] cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                승인 및 고객 발송
+                <span>승인 및 고객 발송</span>
               </button>
             </div>
           ) : (
@@ -365,7 +423,7 @@ export default function ProposalWorkspace({
               className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-amber-500 hover:bg-amber-600 shadow-md flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap min-h-[44px] cursor-pointer"
             >
               <FileText className="w-4 h-4" />
-              변호사 컨펌 요청
+              <span>변호사 컨펌 요청</span>
             </button>
           )}
         </div>
@@ -377,6 +435,44 @@ export default function ProposalWorkspace({
         isOpen={isTemplateModalOpen}
         onClose={() => setIsTemplateModalOpen(false)}
       />
+
+      {/* 유료 고객 전용 AI 정밀분석 보고서 모달 (변호사 직접 수정 모드 탑재) */}
+      <PremiumProposalReportModal
+        isOpen={isAIReportOpen}
+        onClose={() => setIsAIReportOpen(false)}
+        userInput={rehabUserInput}
+        calcResult={rehabCalcResult}
+        clientInfo={{
+          clientName,
+          court: courtName,
+          totalDebt: rehabUserInput.totalDebt || (rehabCalcResult as any)?.totalDebt
+        }}
+        proposal={{
+          aiInsights: { isAIPremium: true, ...(aiAnalysis as any) },
+          monthlyPayment: rehabCalcResult.monthlyPayment,
+          repaymentMonths: (rehabCalcResult as any).repaymentMonths || 36,
+          debtReductionRate: rehabCalcResult.debtReductionRate,
+          lawyer: lawyerInfo,
+          lawyerName: lawyerInfo?.name || '김회생 변호사',
+          firmName: lawyerInfo?.firmName || '법무법인 케어'
+        }}
+        isLawyerEditor={true}
+        onApplyChanges={handleApplyAIReportChanges}
+      />
+
+      {/* ⚖️ 변호사법 준수 AI 정밀분석 변호사 직접 확인/승인 팝업 */}
+      <LawyerAttestationModal
+        isOpen={isAttestationOpen}
+        onClose={() => setIsAttestationOpen(false)}
+        onConfirm={handleAttestationConfirm}
+        clientName={clientName}
+        monthlyPayment={rehabCalcResult.monthlyPayment || 400000}
+        totalDebt={rehabUserInput.totalDebt || 50000000}
+        courtName={courtName}
+        lawyerName={lawyerInfo?.name || '김회생 변호사'}
+        firmName={lawyerInfo?.firmName || '법무법인 케어'}
+      />
+
     </div>
   );
 }
