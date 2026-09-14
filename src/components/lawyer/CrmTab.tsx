@@ -36,7 +36,7 @@ import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
-import CourtDocSuiteViewerModal from './courtDocs/CourtDocSuiteViewerModal';
+import CourtDocSuiteViewerModal, { type DocTabId, formCodeToDocTabId } from './courtDocs/CourtDocSuiteViewerModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
 import CourtDocumentExportModal from './filing/CourtDocumentExportModal';
@@ -234,6 +234,7 @@ export default function CrmTab({
   const [showPostCareModal, setShowPostCareModal] = useState(false);
   const [showDocHubModal, setShowDocHubModal] = useState(false);
   const [showCourtDocSuite, setShowCourtDocSuite] = useState(false);
+  const [courtDocSuiteInitialTab, setCourtDocSuiteInitialTab] = useState<DocTabId>('PETITION_BODY');
   const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
   const [showPropertyValuationModal, setShowPropertyValuationModal] = useState(false);
   const [showCourtDocExportModal, setShowCourtDocExportModal] = useState(false);
@@ -2776,20 +2777,42 @@ export default function CrmTab({
                           onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
                           onOpenAncillaryModal={() => setShowAncillaryModal(true)}
                           onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
-                          onOpenPropertyValuationModal={() => setShowPropertyValuationModal(true)}
-                          onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
-                          onOpenPetitionEditModal={() => setShowPetitionEditModal(true)}
-                          onOpenCreditorEditModal={() => setShowCreditorEditModal(true)}
-                          onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
-                          onOpenRepaymentPlanEditor={() => {
-                            setPipelineViewMode('subtabs');
-                            setDetailTab('repayment');
+                          onOpenCourtDocSuite={(formCode) => {
+                            setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
+                            setShowCourtDocSuite(true);
                           }}
-                          onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
+                          onOpenPropertyValuationModal={() => {
+                            setCourtDocSuiteInitialTab('ASSET_LIST');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenIncomeExpenseModal={() => {
+                            setCourtDocSuiteInitialTab('INCOME_EXPENSE');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenPetitionEditModal={() => {
+                            setCourtDocSuiteInitialTab('PETITION_BODY');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenCreditorEditModal={() => {
+                            setCourtDocSuiteInitialTab('CREDITOR_LIST');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenStatementSyncModal={() => {
+                            setCourtDocSuiteInitialTab('STATEMENT');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenRepaymentPlanEditor={() => {
+                            setCourtDocSuiteInitialTab('REPAYMENT_PLAN');
+                            setShowCourtDocSuite(true);
+                          }}
+                          onOpenPowerOfAttorneyModal={() => {
+                            setCourtDocSuiteInitialTab('POWER_OF_ATTORNEY');
+                            setShowCourtDocSuite(true);
+                          }}
                           onOpenDocScannerModal={() => setShowDocScanner(true)}
                           onOpenCourtFormPreviewModal={(formCode) => {
-                            setCourtFormPreviewCode(formCode);
-                            setShowCourtFormPreviewModal(true);
+                            setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
+                            setShowCourtDocSuite(true);
                           }}
                         />
                       )}
@@ -4981,13 +5004,14 @@ export default function CrmTab({
         />
       )}
 
-      {/* ── 4-1. 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 (오토로 규격) ── */}
+      {/* ── 4-1. 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 (로패스 2025 규격) ── */}
       {showCourtDocSuite && selectedClient && (
         <CourtDocSuiteViewerModal
           isOpen={showCourtDocSuite}
           onClose={() => setShowCourtDocSuite(false)}
           clientRequest={selectedClient}
           crmExt={selectedExt}
+          initialTab={courtDocSuiteInitialTab}
           activeLawyerName={activeLawyer.name}
           onUpdateCrmExt={async (updates) => {
             await updateCrmExt(selectedId, updates);
@@ -5121,17 +5145,8 @@ export default function CrmTab({
           activeLawyerName={activeLawyer.name}
           onOpenEditModal={(code) => {
             setShowCourtFormPreviewModal(false);
-            if (code === 'R01') setShowPetitionEditModal(true);
-            else if (code === 'R02') setShowCreditorEditModal(true);
-            else if (code === 'R06') setShowPropertyValuationModal(true);
-            else if (code === 'R08') setShowIncomeExpenseModal(true);
-            else if (code === 'R10') setShowStatementSyncModal(true);
-            else if (code === 'R04') {
-              setPipelineViewMode('subtabs');
-              setDetailTab('repayment');
-            }
-            else if (code === 'R03') setShowPowerOfAttorneyModal(true);
-            else if (code === 'R07') setShowDocScanner(true);
+            setCourtDocSuiteInitialTab(formCodeToDocTabId(code));
+            setShowCourtDocSuite(true);
           }}
         />
       )}

@@ -26,6 +26,7 @@ interface Stage4FilingBundleViewProps {
   onOpenPowerOfAttorneyModal?: () => void;
   onOpenDocScannerModal?: () => void;
   onOpenCourtFormPreviewModal?: (formCode: string) => void;
+  onOpenCourtDocSuite?: (formCode?: string) => void;
 }
 
 export default function Stage4FilingBundleView({
@@ -45,6 +46,7 @@ export default function Stage4FilingBundleView({
   onOpenPowerOfAttorneyModal,
   onOpenDocScannerModal,
   onOpenCourtFormPreviewModal,
+  onOpenCourtDocSuite,
 }: Stage4FilingBundleViewProps) {
   const dialog = useDialog();
   const [includeProhibition, setIncludeProhibition] = useState(true);
@@ -131,8 +133,12 @@ export default function Stage4FilingBundleView({
     },
   ];
 
-  // 서식별 수정·편집 핸들러
+  // 서식별 수정·편집 핸들러 (로패스 양방향 실시간 에디터 우선 연결)
   const handleEditForm = (code: string) => {
+    if (onOpenCourtDocSuite) {
+      onOpenCourtDocSuite(code);
+      return;
+    }
     switch (code) {
       case 'R01':
         if (onOpenPetitionEditModal) onOpenPetitionEditModal();
@@ -171,8 +177,12 @@ export default function Stage4FilingBundleView({
     }
   };
 
-  // 서식별 A4 미리보기 핸들러
+  // 서식별 A4 미리보기 핸들러 (로패스 실시간 뷰어 우선 연결)
   const handlePreviewForm = (code: string) => {
+    if (onOpenCourtDocSuite) {
+      onOpenCourtDocSuite(code);
+      return;
+    }
     if (onOpenCourtFormPreviewModal) {
       onOpenCourtFormPreviewModal(code);
     } else {
@@ -287,6 +297,18 @@ export default function Stage4FilingBundleView({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {onOpenCourtDocSuite && (
+              <button
+                type="button"
+                onClick={() => onOpenCourtDocSuite('R01')}
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs rounded-xl shadow-md shadow-indigo-500/25 transition-all flex items-center gap-2 press-scale cursor-pointer"
+                title="왼쪽 실시간 A4 미리보기와 오른쪽 입력 패널이 결합된 로패스 2025 규격 에디터를 엽니다."
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                <span>로패스(LawPass) 실시간 양방향 서식 작성기 열기</span>
+              </button>
+            )}
+
             {!isFilingSubmitted ? (
               <>
                 {onOpenBatchFilingModal && (

@@ -47,6 +47,8 @@ interface CourtDocSuiteViewerModalProps {
   clientRequest: ConsultRequest;
   crmExt?: CrmClientExtension;
   activeLawyerName?: string;
+  initialTab?: DocTabId;
+  initialFormCode?: string;
   onUpdateCrmExt?: (updates: Partial<CrmClientExtension>) => Promise<void>;
 }
 
@@ -67,22 +69,48 @@ export type DocTabId =
   | 'STAY_ORDER'         // 중지명령
   | 'ALL';               // 전체 일괄
 
+export function formCodeToDocTabId(code: string): DocTabId {
+  switch (code) {
+    case 'R01': return 'PETITION_BODY';
+    case 'R02': return 'CREDITOR_LIST';
+    case 'R06': return 'ASSET_LIST';
+    case 'R08': return 'INCOME_EXPENSE';
+    case 'R10': return 'STATEMENT';
+    case 'R04': return 'REPAYMENT_PLAN';
+    case 'R03': return 'POWER_OF_ATTORNEY';
+    case 'R07': return 'EVIDENCE_LIST';
+    case 'PROHIBITION': return 'PROHIBITION_ORDER';
+    case 'STAY': return 'STAY_ORDER';
+    case 'COVER': return 'PETITION_COVER';
+    case 'ALL': return 'ALL';
+    default: return 'PETITION_BODY';
+  }
+}
+
 export default function CourtDocSuiteViewerModal({
   isOpen,
   onClose,
   clientRequest,
   crmExt,
   activeLawyerName = '변호사 정충원',
+  initialTab,
+  initialFormCode,
   onUpdateCrmExt
 }: CourtDocSuiteViewerModalProps) {
   if (!isOpen) return null;
+
+  const resolveInitialTab = (): DocTabId => {
+    if (initialTab) return initialTab;
+    if (initialFormCode) return formCodeToDocTabId(initialFormCode);
+    return 'PETITION_BODY';
+  };
 
   // 데이터 바인딩
   const [masterData, setMasterData] = useState<CourtFilingMasterData>(() => {
     return buildCourtFilingMasterData(clientRequest, crmExt, activeLawyerName);
   });
 
-  const [activeTab, setActiveTab] = useState<DocTabId>('PETITION_COVER');
+  const [activeTab, setActiveTab] = useState<DocTabId>(resolveInitialTab);
   const [isEditMode, setIsEditMode] = useState<boolean>(true);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
   const [selectedFont, setSelectedFont] = useState<'font-serif' | 'font-sans'>('font-serif');
@@ -90,6 +118,15 @@ export default function CourtDocSuiteViewerModal({
   const [zoomLevel, setZoomLevel] = useState<number>(95);
   const [isBundling, setIsBundling] = useState<boolean>(false);
   const printAreaRef = useRef<HTMLDivElement | null>(null);
+
+  // initialTab 또는 initialFormCode 변경 시 동기화
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    } else if (initialFormCode) {
+      setActiveTab(formCodeToDocTabId(initialFormCode));
+    }
+  }, [initialTab, initialFormCode, isOpen]);
 
   // 로패스(LawPass 2025) 표준 12개 가로 탭 목록
   const horizontalTabs: { id: DocTabId; label: string; badge?: string }[] = [
@@ -111,8 +148,38 @@ export default function CourtDocSuiteViewerModal({
   ];
 
   // 수정사항 저장 핸들러
-  const handleSave = () => {
-    toast.success('로패스형 위지윅 입력 데이터가 사건 및 CRM 데이터베이스에 안전하게 저장되었습니다.');
+  const handleSave = async () => {
+    try {
+      if (onUpdateCrmExt) {
+        await onUpdateCrmExt({
+          courtCase: {
+            courtName: masterData.court.courtName,
+            caseNumber: masterData.court.caseNumber,
+            applicantName: masterData.debtor.name,
+            serviceRecipient: masterData.debtor.serviceRecipient,
+            serviceAddress: masterData.debtor.serviceAddress,
+            refundBank: masterData.debtor.refundBank,
+            refundAccount: masterData.debtor.refundAccount,
+            refundDepositor: masterData.debtor.refundDepositor,
+          },
+          repaymentPlan: {
+            ...(crmExt?.repaymentPlan || {}),
+            creditors: masterData.creditors,
+            monthlyIncome: masterData.repaymentSummary.monthlyIncome,
+            livingCost: masterData.repaymentSummary.monthlyLivingCost,
+            monthlyAvailableIncome: masterData.repaymentSummary.monthlyRepaymentAmount,
+            repaymentMonths: masterData.repaymentSummary.repaymentPeriodMonths,
+            totalPrincipal: masterData.repaymentSummary.totalPrincipal,
+            totalRepaymentAmount: masterData.repaymentSummary.totalRepaymentAmount,
+            repaymentRatio: masterData.repaymentSummary.repaymentRatio,
+            clearingValue: masterData.repaymentSummary.clearingValue,
+          }
+        });
+      }
+      toast.success('로패스형 위지윅 입력 데이터가 사건 및 CRM 데이터베이스에 안전하게 저장되었습니다.');
+    } catch (err: any) {
+      toast.error(`저장 중 오류: ${err.message || '저장 실패'}`);
+    }
   };
 
   // 인쇄 핸들러

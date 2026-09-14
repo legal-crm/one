@@ -9,7 +9,7 @@
  * - 서울회생법원 실무기준 자동차 감가율 & 250만원 압류금지 공제한도 검증 가이드
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, FileText, ListOrdered, Paperclip, Coins, 
   Calculator, Calendar, Shield, Send, Layers, 
@@ -44,6 +44,29 @@ export default function LawPassCourtFilingSidebar({
   // 열려있는 아코디언 섹션 관리
   const [openSection, setOpenSection] = useState<string>('basic');
   const [annexSubTab, setAnnexSubTab] = useState<'secured' | 'disputed' | 'assignment' | 'etc'>('secured');
+
+  // 활성 탭 전환 시 매칭되는 아코디언 섹션 자동 확장
+  useEffect(() => {
+    if (activeDocTab === 'PETITION_COVER' || activeDocTab === 'PETITION_BODY' || activeDocTab === 'SERVICE_REPORT') {
+      setOpenSection('basic');
+    } else if (activeDocTab === 'STATEMENT') {
+      setOpenSection('statement');
+    } else if (activeDocTab === 'CREDITOR_LIST') {
+      setOpenSection('creditor');
+    } else if (activeDocTab === 'ANNEX_DOCS') {
+      setOpenSection('annex');
+    } else if (activeDocTab === 'ASSET_LIST') {
+      setOpenSection('assets');
+    } else if (activeDocTab === 'INCOME_EXPENSE') {
+      setOpenSection('income');
+    } else if (activeDocTab === 'REPAYMENT_PLAN' || activeDocTab === 'REPAYMENT_SCHEDULE') {
+      setOpenSection('plan');
+    } else if (activeDocTab === 'POWER_OF_ATTORNEY') {
+      setOpenSection('lawyer');
+    } else if (activeDocTab === 'EVIDENCE_LIST') {
+      setOpenSection('evidence');
+    }
+  }, [activeDocTab]);
 
   const updateMaster = (updater: (prev: CourtFilingMasterData) => CourtFilingMasterData) => {
     const updated = updater(data);
@@ -565,7 +588,7 @@ export default function LawPassCourtFilingSidebar({
                 <button
                   onClick={() => {
                     setOpenSection('annex');
-                    onSelectDocTab('부속서류');
+                    onSelectDocTab('ANNEX_DOCS');
                   }}
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-sm transition"
                 >
@@ -581,7 +604,7 @@ export default function LawPassCourtFilingSidebar({
           <button
             onClick={() => {
               setOpenSection(openSection === 'annex' ? '' : 'annex');
-              onSelectDocTab('부속서류');
+              onSelectDocTab('ANNEX_DOCS');
             }}
             className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-800/50 transition"
           >
