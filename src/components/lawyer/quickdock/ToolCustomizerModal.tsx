@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   X, Check, RotateCcw, Settings2, Calculator, Percent, Coins, 
   TrendingDown, Users, Scale, ShieldAlert, Landmark, BookOpen, 
-  CreditCard, FileText, Send, Sparkles, Building2 
+  CreditCard, FileText, Send, Sparkles, Building2, Eye, EyeOff, Minimize2 
 } from 'lucide-react';
 import { QuickToolId, ToolCategory } from './types';
 import { ALL_QUICK_TOOLS, DEFAULT_ENABLED_TOOL_IDS, CATEGORY_LABELS } from './defaultTools';
@@ -13,6 +13,8 @@ interface ToolCustomizerModalProps {
   enabledToolIds: QuickToolId[];
   onToggleTool: (id: QuickToolId) => void;
   onResetToDefault: () => void;
+  visibilityMode?: 'normal' | 'minimized' | 'hidden';
+  onSetVisibility?: (mode: 'normal' | 'minimized' | 'hidden') => void;
 }
 
 // 아이콘 맵
@@ -38,6 +40,8 @@ export default function ToolCustomizerModal({
   enabledToolIds,
   onToggleTool,
   onResetToDefault,
+  visibilityMode = 'normal',
+  onSetVisibility,
 }: ToolCustomizerModalProps) {
   if (!isOpen) return null;
 
@@ -70,8 +74,68 @@ export default function ToolCustomizerModal({
           </button>
         </div>
 
-        {/* 본문 도구 목록 */}
+        {/* 본문 */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* 1. 화면 표시 모드 제어 */}
+          {onSetVisibility && (
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  퀵툴 화면 표시 설정
+                </span>
+                <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 font-mono">
+                  단축키: Alt + Q
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => onSetVisibility('normal')}
+                  className={`py-2 px-2 rounded-xl font-bold transition-all text-center flex flex-col items-center gap-1 cursor-pointer border ${
+                    visibilityMode === 'normal'
+                      ? 'bg-white text-blue-700 shadow-xs border-blue-500'
+                      : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <Eye className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs">일반 표시</span>
+                  <span className="text-[9px] text-slate-400 font-normal">버튼 상시 노출</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSetVisibility('minimized')}
+                  className={`py-2 px-2 rounded-xl font-bold transition-all text-center flex flex-col items-center gap-1 cursor-pointer border ${
+                    visibilityMode === 'minimized'
+                      ? 'bg-white text-blue-700 shadow-xs border-blue-500'
+                      : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <Minimize2 className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs">가장자리 접기</span>
+                  <span className="text-[9px] text-slate-400 font-normal">미니 탭으로 축소</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSetVisibility('hidden')}
+                  className={`py-2 px-2 rounded-xl font-bold transition-all text-center flex flex-col items-center gap-1 cursor-pointer border ${
+                    visibilityMode === 'hidden'
+                      ? 'bg-white text-blue-700 shadow-xs border-blue-500'
+                      : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <EyeOff className="w-4 h-4 text-rose-500" />
+                  <span className="text-xs">완전 숨김</span>
+                  <span className="text-[9px] text-slate-400 font-normal">Alt+Q 로 복원</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. 도구 추가/삭제 체크박스 목록 */}
           {categories.map(cat => {
             const tools = ALL_QUICK_TOOLS.filter(t => t.category === cat);
             return (
