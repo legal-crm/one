@@ -246,7 +246,7 @@ export default function ClientCommunicationSidePanel({
         ) : (
           <>
             <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <span>스텔스 익명 보호: 제안서 발송 전에는 직접 소통이 제한됩니다.</span>
+            <span>제안서 발송 전에는 직접 소통이 제한됩니다.</span>
           </>
         )}
       </div>

@@ -291,7 +291,7 @@ export default function Stage4FilingBundleView({
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
               {isFilingSubmitted 
                 ? '법원 사건번호가 발번되면 나의사건 연동 및 보정센터가 즉시 활성화됩니다.' 
-                : 'D5102 재산목록과 D5103 수입지출목록의 청산가치 보장의 원칙을 최종 점검한 뒤 일괄 접수합니다.'}
+                : '재산목록과 수입지출목록의 청산가치 보장의 원칙을 최종 점검한 뒤 일괄 접수합니다.'}
             </p>
           </div>
         </div>
@@ -307,7 +307,7 @@ export default function Stage4FilingBundleView({
                 title="왼쪽 실시간 A4 미리보기와 오른쪽 입력 패널이 결합된 로패스 2025 규격 에디터를 엽니다."
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>로패스(LawPass) 실시간 양방향 서식 작성기</span>
+                <span>실시간 서식 작성기</span>
               </button>
             )}
 
@@ -323,7 +323,7 @@ export default function Stage4FilingBundleView({
                   }`}
                 >
                   {!isContracted ? <Lock className="w-3.5 h-3.5 text-amber-300" /> : <Send className="w-3.5 h-3.5 text-emerald-400" />}
-                  <span>전자소송 일괄 패키징 & 접수 (Major)</span>
+                  <span>전자소송 일괄 패키징 & 접수</span>
                 </button>
               )
             ) : (
