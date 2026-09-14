@@ -265,88 +265,92 @@ export default function Stage4FilingBundleView({
       </div>
 
       {/* ── 2. Next Action Hero Card ── */}
-      <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
+      <div className={`p-5 rounded-2xl border transition-all shadow-xs space-y-4 ${
         isFilingSubmitted 
           ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950' 
           : 'bg-white border-slate-200 text-slate-900'
       }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
-              isFilingSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
-            }`}>
-              {isFilingSubmitted ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                  {isFilingSubmitted ? 'Gate 4 통과 완료' : '지금 해야 할 핵심 작업'}
-                </span>
-                <span className="text-sm font-black tracking-tight">
-                  {isFilingSubmitted 
-                    ? '법원 정식 접수가 완료되었습니다. Stage 5(법원대응·보정)로 이동하세요.' 
-                    : '8대 법원 서식과 금지·중지명령을 결합하여 전자소송 패키징을 생성하세요.'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                {isFilingSubmitted 
-                  ? '법원 사건번호가 발번되면 나의사건 연동 및 보정센터가 즉시 활성화됩니다.' 
-                  : 'D5102 재산목록과 D5103 수입지출목록의 청산가치 보장의 원칙을 최종 점검한 뒤 일괄 접수합니다.'}
-              </p>
-            </div>
+        {/* 상단: 안내 메시지 영역 (100% 폭을 확보하여 텍스트 줄바꿈 방지) */}
+        <div className="flex items-start gap-3.5">
+          <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
+            isFilingSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
+          }`}>
+            {isFilingSubmitted ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5" />}
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                {isFilingSubmitted ? 'Gate 4 통과 완료' : '지금 해야 할 핵심 작업'}
+              </span>
+              <span className="text-sm font-black tracking-tight text-slate-900">
+                {isFilingSubmitted 
+                  ? '법원 정식 접수가 완료되었습니다. Stage 5(법원대응·보정)로 이동하세요.' 
+                  : '8대 법원 서식과 금지·중지명령을 결합하여 전자소송 패키징을 생성하세요.'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              {isFilingSubmitted 
+                ? '법원 사건번호가 발번되면 나의사건 연동 및 보정센터가 즉시 활성화됩니다.' 
+                : 'D5102 재산목록과 D5103 수입지출목록의 청산가치 보장의 원칙을 최종 점검한 뒤 일괄 접수합니다.'}
+            </p>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* 하단: 액션 툴바 (보더 구분선으로 깔끔하게 정렬, 버튼 줄바꿈 및 크기 균형 최적화) */}
+        <div className="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
             {onOpenCourtDocSuite && (
               <button
                 type="button"
                 onClick={() => onOpenCourtDocSuite('R01')}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs rounded-xl shadow-md shadow-indigo-500/25 transition-all flex items-center gap-2 press-scale cursor-pointer"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs rounded-xl shadow-sm shadow-indigo-500/25 transition-all flex items-center gap-1.5 press-scale cursor-pointer whitespace-nowrap"
                 title="왼쪽 실시간 A4 미리보기와 오른쪽 입력 패널이 결합된 로패스 2025 규격 에디터를 엽니다."
               >
-                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                <span>로패스(LawPass) 실시간 양방향 서식 작성기 열기</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>로패스(LawPass) 실시간 양방향 서식 작성기</span>
               </button>
             )}
 
             {!isFilingSubmitted ? (
-              <>
-                {onOpenBatchFilingModal && (
-                  <button
-                    type="button"
-                    onClick={handleBatchFilingClick}
-                    className={`px-5 py-2.5 font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer ${
-                      !isContracted
-                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        : 'bg-[#1E3A5F] hover:bg-slate-800 text-white'
-                    }`}
-                  >
-                    {!isContracted ? <Lock className="w-4 h-4 text-amber-300" /> : <Send className="w-4 h-4 text-emerald-400" />}
-                    <span>전자소송 일괄 패키징 & 접수 (Major)</span>
-                  </button>
-                )}
-
+              onOpenBatchFilingModal && (
                 <button
                   type="button"
-                  onClick={handleCompleteFiling}
-                  className={`px-3.5 py-2.5 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
-                    !isContracted 
-                      ? 'bg-slate-100 text-slate-400 hover:bg-slate-200' 
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                  onClick={handleBatchFilingClick}
+                  className={`px-4 py-2 font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer whitespace-nowrap ${
+                    !isContracted
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-[#1E3A5F] hover:bg-slate-800 text-white'
                   }`}
                 >
-                  {!isContracted ? <Lock className="w-3.5 h-3.5 text-slate-400" /> : <Check className="w-3.5 h-3.5 text-slate-600" />}
-                  <span>접수 완료 처리</span>
+                  {!isContracted ? <Lock className="w-3.5 h-3.5 text-amber-300" /> : <Send className="w-3.5 h-3.5 text-emerald-400" />}
+                  <span>전자소송 일괄 패키징 & 접수 (Major)</span>
                 </button>
-              </>
+              )
             ) : (
               <button
                 type="button"
                 onClick={onAdvanceToNextStage}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer whitespace-nowrap"
               >
                 <span>Stage 5 (법원대응·보정)로 진행</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {!isFilingSubmitted && (
+              <button
+                type="button"
+                onClick={handleCompleteFiling}
+                className={`px-3.5 py-2 font-bold text-xs rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap ${
+                  !isContracted 
+                    ? 'bg-slate-50 border-slate-200 text-slate-400' 
+                    : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                {!isContracted ? <Lock className="w-3.5 h-3.5 text-slate-400" /> : <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                <span>접수 완료 처리</span>
               </button>
             )}
 
@@ -354,7 +358,7 @@ export default function Stage4FilingBundleView({
               <button
                 type="button"
                 onClick={onOpenCourtDocExportModal}
-                className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
               >
                 <FileText className="w-3.5 h-3.5 text-[#1E3A5F]" />
                 <span>법원서식 8종 출력</span>
