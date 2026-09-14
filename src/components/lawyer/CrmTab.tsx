@@ -36,9 +36,13 @@ import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
+import CourtDocSuiteViewerModal from './courtDocs/CourtDocSuiteViewerModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
 import CourtDocumentExportModal from './filing/CourtDocumentExportModal';
+import CourtPetitionEditModal from './filing/CourtPetitionEditModal';
+import CreditorManagementModal from './filing/CreditorManagementModal';
+import CourtFormPreviewModal from './filing/CourtFormPreviewModal';
 import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
@@ -229,11 +233,16 @@ export default function CrmTab({
   const [showAncillaryModal, setShowAncillaryModal] = useState(false);
   const [showPostCareModal, setShowPostCareModal] = useState(false);
   const [showDocHubModal, setShowDocHubModal] = useState(false);
+  const [showCourtDocSuite, setShowCourtDocSuite] = useState(false);
   const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
   const [showPropertyValuationModal, setShowPropertyValuationModal] = useState(false);
   const [showCourtDocExportModal, setShowCourtDocExportModal] = useState(false);
   const [showStatementSyncModal, setShowStatementSyncModal] = useState(false);
   const [showPowerOfAttorneyModal, setShowPowerOfAttorneyModal] = useState(false);
+  const [showPetitionEditModal, setShowPetitionEditModal] = useState(false);
+  const [showCreditorEditModal, setShowCreditorEditModal] = useState(false);
+  const [showCourtFormPreviewModal, setShowCourtFormPreviewModal] = useState(false);
+  const [courtFormPreviewCode, setCourtFormPreviewCode] = useState('R01');
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   const [showCommPanel, setShowCommPanel] = useState(true);
   const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
@@ -2769,6 +2778,19 @@ export default function CrmTab({
                           onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
                           onOpenPropertyValuationModal={() => setShowPropertyValuationModal(true)}
                           onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
+                          onOpenPetitionEditModal={() => setShowPetitionEditModal(true)}
+                          onOpenCreditorEditModal={() => setShowCreditorEditModal(true)}
+                          onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
+                          onOpenRepaymentPlanEditor={() => {
+                            setPipelineViewMode('subtabs');
+                            setDetailTab('repayment');
+                          }}
+                          onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
+                          onOpenDocScannerModal={() => setShowDocScanner(true)}
+                          onOpenCourtFormPreviewModal={(formCode) => {
+                            setCourtFormPreviewCode(formCode);
+                            setShowCourtFormPreviewModal(true);
+                          }}
                         />
                       )}
                       {pipelineStage === 5 && (
@@ -3971,6 +3993,14 @@ export default function CrmTab({
                           </h4>
                           <div className="flex items-center gap-2">
                             <button 
+                              onClick={() => setShowCourtDocSuite(true)} 
+                              className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
+                              title="13종 법원 표준 서식(35p)을 브라우저에서 직접 수기 수정(WYSIWYG)하고 인쇄 및 PDF로 내보냅니다."
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              13종 법원서식 에디터
+                            </button>
+                            <button 
                               onClick={() => setShowDocHubModal(true)} 
                               className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
                             >
@@ -4951,6 +4981,20 @@ export default function CrmTab({
         />
       )}
 
+      {/* ── 4-1. 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 (오토로 규격) ── */}
+      {showCourtDocSuite && selectedClient && (
+        <CourtDocSuiteViewerModal
+          isOpen={showCourtDocSuite}
+          onClose={() => setShowCourtDocSuite(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+        />
+      )}
+
       {/* ── 5. 대법원 전산양식 D5103 수입 및 지출에 관한 목록 모달 ── */}
       {showIncomeExpenseModal && selectedClient && (
         <IncomeExpenseModal
@@ -5034,6 +5078,61 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           activeLawyerName={activeLawyer.name}
+        />
+      )}
+
+      {/* ── 10. 개인회생절차 개시신청서 본안(D5101) 전용 4탭 편집 모달 ── */}
+      {showPetitionEditModal && selectedClient && (
+        <CourtPetitionEditModal
+          isOpen={showPetitionEditModal}
+          onClose={() => setShowPetitionEditModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+        />
+      )}
+
+      {/* ── 11. 개인회생 채권자목록(R02) 추가·수정·삭제 및 대법원 CSV 모달 ── */}
+      {showCreditorEditModal && selectedClient && (
+        <CreditorManagementModal
+          isOpen={showCreditorEditModal}
+          onClose={() => setShowCreditorEditModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+        />
+      )}
+
+      {/* ── 12. 8대 법원 전산서식 고해상도 A4 미리보기 & 인쇄 & 즉시편집 통합 모달 ── */}
+      {showCourtFormPreviewModal && selectedClient && (
+        <CourtFormPreviewModal
+          isOpen={showCourtFormPreviewModal}
+          onClose={() => setShowCourtFormPreviewModal(false)}
+          initialFormCode={courtFormPreviewCode}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
+          onOpenEditModal={(code) => {
+            setShowCourtFormPreviewModal(false);
+            if (code === 'R01') setShowPetitionEditModal(true);
+            else if (code === 'R02') setShowCreditorEditModal(true);
+            else if (code === 'R06') setShowPropertyValuationModal(true);
+            else if (code === 'R08') setShowIncomeExpenseModal(true);
+            else if (code === 'R10') setShowStatementSyncModal(true);
+            else if (code === 'R04') {
+              setPipelineViewMode('subtabs');
+              setDetailTab('repayment');
+            }
+            else if (code === 'R03') setShowPowerOfAttorneyModal(true);
+            else if (code === 'R07') setShowDocScanner(true);
+          }}
         />
       )}
     </div>

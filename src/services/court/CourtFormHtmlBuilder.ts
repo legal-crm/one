@@ -49,10 +49,11 @@ const TABLE_BORDER_STYLE = `
 
 /** 1. 개시신청서 표지 (Cover) */
 export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
-  const clientName = ctx.clientRequest.clientName || '신청인';
-  const lawyerName = ctx.lawyerName || '정충원';
-  const firmName = ctx.firmName || '법률사무소 보광';
-  const courtName = ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
+  const p = ctx.crmExt.petitionInfo;
+  const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
+  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const courtName = p?.courtName || ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
   const creditorCount = Math.max(1, ctx.creditors.length);
 
   // 법정 인지액: 32,000원 (신청 30,000원 + 금지명령 2,000원)
@@ -155,19 +156,36 @@ export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
 
 /** 2. 개시신청서 본문 1쪽 (D5101 1/2) */
 export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): string {
-  const clientName = ctx.clientRequest.clientName || '신청인';
-  const lawyerName = ctx.lawyerName || '정충원';
-  const firmName = ctx.firmName || '법률사무소 보광';
-  const clientRrn = (ctx.clientRequest as any).rrnFront 
-    ? `${(ctx.clientRequest as any).rrnFront}-*******` 
-    : '710812-*******';
-  const residentAddress = (ctx.clientRequest as any).address || '서울특별시 구로구 개봉로11길 46-25, 201호';
-  const currentAddress = residentAddress;
-  const companyAddress = (ctx.clientRequest as any).companyName 
+  const p = ctx.crmExt.petitionInfo;
+  const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
+  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const clientRrn = p?.rrnFront 
+    ? `${p.rrnFront}-${p.rrnBack || '*******'}`
+    : ((ctx.clientRequest as any).rrnFront 
+      ? `${(ctx.clientRequest as any).rrnFront}-*******` 
+      : '710812-*******');
+  const residentAddress = p?.residentAddress || (ctx.clientRequest as any).address || '서울특별시 구로구 개봉로11길 46-25, 201호';
+  const residentPostcode = p?.residentPostcode || '08349';
+  const currentAddress = p?.currentAddress || residentAddress;
+  const currentPostcode = p?.currentPostcode || residentPostcode;
+  const companyAddress = p?.companyAddress || ((ctx.clientRequest as any).companyName 
     ? `서울특별시 마포구 마포대로 20, 7층 (${(ctx.clientRequest as any).companyName})` 
-    : '서울특별시 마포구 마포대로 20, 7층 (마포동)';
-  const firmAddress = '서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호';
-  const clientPhone = ctx.clientRequest.phone || '010-3107-3310';
+    : '서울특별시 마포구 마포대로 20, 7층 (마포동)');
+  const companyPostcode = p?.companyPostcode || '04175';
+  const firmAddress = p?.firmAddress || '서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호';
+  const firmPostcode = p?.servicePlacePostcode || '01323';
+  const firmPhone = p?.firmPhone || '02-955-8488';
+  const firmFax = p?.firmFax || 'FAX 02-2179-8487';
+  const firmEmail = p?.firmEmail || 'lawyer@lawfirm.co.kr';
+
+  const serviceAddress = p?.servicePlaceType === 'client' ? currentAddress : (p?.servicePlaceAddress || firmAddress);
+  const servicePostcode = p?.servicePlaceType === 'client' ? currentPostcode : firmPostcode;
+  const serviceRecipient = p?.serviceRecipient || `변호사 ${lawyerName}`;
+  const clientPhone = p?.phone || ctx.clientRequest.phone || '010-3107-3310';
+  const clientTel = p?.tel || '-';
+  const incomeType = p?.incomeType || 'salary';
+  const petitionReason = p?.petitionReasonDetail || '1. 신청인은, 첨부한 개인회생채권자목록 기재와 같은 채무를 부담하고 있으나, 수입 및 재산이 별지 수입 및 지출에 관한 목록과 재산목록에 기재된 바와 같으므로, 파산의 원인사실이 발생하였습니다(파산의 원인사실이 생길 염려가 있습니다).';
 
   return `
   <div style="${A4_PAGE_STYLE}">
@@ -190,32 +208,32 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">주민등록상주소</td>
           <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${residentAddress}</td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
-          <td style="padding: 5px 12px; font-family: monospace;">08349</td>
+          <td style="padding: 5px 12px; font-family: monospace;">${residentPostcode}</td>
         </tr>
         <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">현 &nbsp; 주 &nbsp; 소</td>
           <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${currentAddress}</td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
-          <td style="padding: 5px 12px; font-family: monospace;">08349</td>
+          <td style="padding: 5px 12px; font-family: monospace;">${currentPostcode}</td>
         </tr>
         <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">직 장 &nbsp;주 소</td>
           <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${companyAddress}</td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
-          <td style="padding: 5px 12px; font-family: monospace;">04175</td>
+          <td style="padding: 5px 12px; font-family: monospace;">${companyPostcode}</td>
         </tr>
         <tr style="border-bottom: 1px solid #cbd5e1; height: 36px;">
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">송 달 &nbsp;장 소</td>
           <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">
-            ${firmAddress}<br>
-            <span style="font-size: 11px; color: #475569;">송달영수인: &nbsp;변호사 ${lawyerName}</span>
+            ${serviceAddress}<br>
+            <span style="font-size: 11px; color: #475569;">송달영수인: &nbsp;${serviceRecipient}</span>
           </td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
-          <td style="padding: 5px 12px; font-family: monospace;">01323</td>
+          <td style="padding: 5px 12px; font-family: monospace;">${servicePostcode}</td>
         </tr>
         <tr style="height: 32px;">
           <td colspan="2" style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전화번호(집·직장)</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">-</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${clientTel}</td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">휴대전화</td>
           <td style="padding: 5px 12px; font-family: monospace; font-weight: bold;">${clientPhone}</td>
         </tr>
@@ -235,13 +253,13 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">사무실 주소</td>
           <td style="width: 320px; padding: 5px 12px; border-right: 1px solid #cbd5e1;">${firmAddress}</td>
           <td style="width: 80px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
-          <td style="padding: 5px 12px; font-family: monospace;">01323</td>
+          <td style="padding: 5px 12px; font-family: monospace;">${firmPostcode}</td>
         </tr>
         <tr style="height: 32px;">
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전화 / 팩스</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">02-955-8488 &nbsp;/&nbsp; FAX 02-2179-8487</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${firmPhone} &nbsp;/&nbsp; ${firmFax}</td>
           <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전자우편</td>
-          <td style="padding: 5px 12px; font-size: 11px;">lawyer@lawfirm.co.kr</td>
+          <td style="padding: 5px 12px; font-size: 11px;">${firmEmail}</td>
         </tr>
       </tbody>
     </table>
@@ -260,14 +278,14 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
         신 &nbsp;청 &nbsp;이 &nbsp;유
       </h3>
       <p style="font-size: 12px; line-height: 1.9; margin: 0 0 12px 0; text-align: justify;">
-        1. 신청인은, 첨부한 개인회생채권자목록 기재와 같은 채무를 부담하고 있으나, 수입 및 재산이 별지 수입 및 지출에 관한 목록과 재산목록에 기재된 바와 같으므로, 파산의 원인사실이 발생하였습니다(파산의 원인사실이 생길 염려가 있습니다).
+        ${petitionReason}
       </p>
       <div style="font-size: 12px; line-height: 1.8; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
-        <div style="font-weight: bold; color: #0f172a;">
-          ■ 신청인은 정기적이고 확실한 수입을 얻을 것으로 예상되고, 또한 채무자 회생 및 파산에 관한 법률 제595조에 해당하는 개시신청 기각사유는 없습니다(급여소득자).
+        <div style="font-weight: ${incomeType === 'salary' ? 'bold' : 'normal'}; color: ${incomeType === 'salary' ? '#0f172a' : '#64748b'};">
+          ${incomeType === 'salary' ? '■' : '□'} 신청인은 정기적이고 확실한 수입을 얻을 것으로 예상되고, 또한 채무자 회생 및 파산에 관한 법률 제595조에 해당하는 개시신청 기각사유는 없습니다(급여소득자).
         </div>
-        <div style="color: #64748b; margin-top: 4px;">
-          □ 신청인은 부동산임대소득, 사업소득, 농업소득, 임업소득 그 밖에 이와 유사한 수입을 장래에 계속적으로 또는 반복하여 얻을 것으로 예상되고, 또한 법률 제595조에 해당하는 개시신청 기각사유는 없습니다(영업소득자).
+        <div style="font-weight: ${incomeType === 'business' ? 'bold' : 'normal'}; color: ${incomeType === 'business' ? '#0f172a' : '#64748b'}; margin-top: 4px;">
+          ${incomeType === 'business' ? '■' : '□'} 신청인은 부동산임대소득, 사업소득, 농업소득, 임업소득 그 밖에 이와 유사한 수입을 장래에 계속적으로 또는 반복하여 얻을 것으로 예상되고, 또한 법률 제595조에 해당하는 개시신청 기각사유는 없습니다(영업소득자).
         </div>
       </div>
     </div>
@@ -277,16 +295,19 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
 
 /** 3. 개시신청서 본문 2쪽 (D5101 2/2) */
 export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): string {
-  const clientName = ctx.clientRequest.clientName || '신청인';
-  const lawyerName = ctx.lawyerName || '정충원';
-  const firmName = ctx.firmName || '법률사무소 보광';
-  const courtName = ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
-  const clientPhone = ctx.clientRequest.phone || '010-3107-3310';
+  const p = ctx.crmExt.petitionInfo;
+  const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
+  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const courtName = p?.courtName || ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
+  const clientPhone = p?.phone || ctx.clientRequest.phone || '010-3107-3310';
+  const smsPhone = p?.smsNotificationPhone || clientPhone;
 
   const monthlyRepayment = (ctx.crmExt.repaymentPlan as any)?.monthlyRepaymentTotal || (ctx.crmExt.repaymentPlan as any)?.monthlyRepayment || 314801;
   const totalRepayment = (ctx.crmExt.repaymentPlan as any)?.totalRepaymentAmount || (ctx.crmExt.repaymentPlan as any)?.totalRepayment || monthlyRepayment * 36;
-  const refundBank = (ctx.crmExt.repaymentPlan as any)?.bankName || '우체국';
-  const refundAccount = (ctx.crmExt.repaymentPlan as any)?.accountNumber || '110-0122-33536';
+  const refundBank = p?.refundBank || (ctx.crmExt.repaymentPlan as any)?.bankName || '우체국';
+  const refundAccount = p?.refundAccount || (ctx.crmExt.repaymentPlan as any)?.accountNumber || '110-0122-33536';
+  const refundHolder = p?.refundAccountHolder || clientName;
 
   const today = new Date();
   const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
@@ -299,7 +320,7 @@ export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): strin
         즉 현시점에서 계획하고 있는 총 변제예정액은 <strong>[ ${Math.round(totalRepayment).toLocaleString()} ]원</strong>이고, 제1회부터 제36회까지 월 <strong>[ ${Math.round(monthlyRepayment).toLocaleString()} ]원</strong>으로 예정하고 있으며, 이 변제의 준비 및 절차비용지급의 준비를 위하여, 개시결정이 내려지는 경우 익월 10일을 제1회로 하여, 이후 매월 10일에 개시결정시 통지되는 개인회생위원의 은행계좌에 동액의 금전을 입금하겠습니다.
       </p>
       <p style="margin: 0 0 10px 0;">
-        3. 이 사건 개인회생절차에서 적립금을 반환받을 신청인의 예금계좌는 <strong>${refundBank} ${refundAccount}</strong>이며, 신청인의 계좌가 변경되거나 어떤 사유로든 사용할 수 없게 된 경우에는 신청인은 사건담당 회생위원에게 즉시 변경된 예금계좌를 신청인의 통장사본을 첨부하여 신고하겠습니다.
+        3. 이 사건 개인회생절차에서 적립금을 반환받을 신청인의 예금계좌는 <strong>${refundBank} ${refundAccount} (예금주: ${refundHolder})</strong>이며, 신청인의 계좌가 변경되거나 어떤 사유로든 사용할 수 없게 된 경우에는 신청인은 사건담당 회생위원에게 즉시 변경된 예금계좌를 신청인의 통장사본을 첨부하여 신고하겠습니다.
       </p>
       <p style="margin: 0;">
         4. 개인회생채권자목록 부본(개인회생채권자목록상의 채권자수 + 2통)은 개시결정 전 회생위원의 지시에 따라 지정하는 일자까지 반드시 제출하겠습니다.
@@ -331,7 +352,7 @@ export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): strin
         위 사건에 관한 개인회생절차 개시결정, 폐지결정, 면책결정, 월 변제액 3개월분 연체의 정보를 예납의무자가 납부한 송달료 잔액 범위 내에서 휴대전화를 통하여 알려주실 것을 신청합니다.
       </p>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
-        <div><strong>▣ 휴대전화 번호:</strong> &nbsp; <span style="font-family: monospace; font-size: 13px;">${clientPhone}</span></div>
+        <div><strong>▣ 휴대전화 번호:</strong> &nbsp; <span style="font-family: monospace; font-size: 13px;">${smsPhone}</span></div>
         <div>신청인 채무자 &nbsp; <strong>${clientName}</strong> &nbsp; (날인 또는 서명)</div>
       </div>
       <div style="font-size: 10px; color: #64748b; line-height: 1.5; border-top: 1px dashed #cbd5e1; padding-top: 8px;">

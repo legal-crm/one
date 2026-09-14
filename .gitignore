@@ -11,6 +11,7 @@ coverage/
 .env*
 scratch/
 실제서류/
+오토로/
 references/
 
 .vercel

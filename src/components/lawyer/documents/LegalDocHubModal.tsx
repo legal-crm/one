@@ -21,6 +21,8 @@ import DocFormEditorModal from './DocFormEditorModal';
 import MobileDocFillView from '../../client/MobileDocFillView';
 import IncomeExpenseModal from '../repayment/IncomeExpenseModal';
 import PropertyValuationModal from '../assets/PropertyValuationModal';
+import CourtDocSuiteViewerModal from '../courtDocs/CourtDocSuiteViewerModal';
+import { Printer } from 'lucide-react';
 
 interface LegalDocHubModalProps {
   isOpen: boolean;
@@ -58,6 +60,9 @@ export default function LegalDocHubModal({
 
   // 모바일 작성 뷰 시뮬레이션 토큰 모달 상태
   const [mobilePreviewToken, setMobilePreviewToken] = useState<string | null>(null);
+
+  // 13종 법원 표준 서식 통합 웹 에디터/인쇄 모달 상태 (오토로 규격)
+  const [showCourtDocSuite, setShowCourtDocSuite] = useState(false);
 
   // 스마트 추천 서식 계산
   const recommendations = useMemo(() => {
@@ -149,6 +154,14 @@ export default function LegalDocHubModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCourtDocSuite(true)}
+              className="px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center gap-1.5 press-scale cursor-pointer shadow-xs"
+              title="13종 법원표준서식(35p)을 브라우저에서 직접 수기 수정(WYSIWYG)하고 인쇄 및 PDF로 내보냅니다."
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>13종 법원서식 에디터 (오토로 규격)</span>
+            </button>
             {onOpenBatchFiling && (
               <button
                 onClick={() => {
@@ -591,6 +604,18 @@ export default function LegalDocHubModal({
           onComplete={() => {
             refreshMobileRequests();
           }}
+        />
+      )}
+
+      {/* 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 (오토로 규격) */}
+      {showCourtDocSuite && (
+        <CourtDocSuiteViewerModal
+          isOpen={showCourtDocSuite}
+          onClose={() => setShowCourtDocSuite(false)}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          activeLawyerName={activeLawyerName}
+          onUpdateCrmExt={onUpdateCrmExt}
         />
       )}
 

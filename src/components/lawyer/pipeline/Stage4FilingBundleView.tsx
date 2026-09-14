@@ -3,7 +3,7 @@ import {
   Send, FileCheck, ShieldAlert, Archive, CheckCircle2, 
   AlertCircle, Download, ExternalLink, ArrowRight, Clock,
   FileSpreadsheet, FileText, Check, ShieldCheck, Sparkles,
-  Layers, Lock
+  Layers, Lock, Eye, Edit3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -19,6 +19,13 @@ interface Stage4FilingBundleViewProps {
   onOpenCourtDocExportModal?: () => void;
   onOpenPropertyValuationModal?: () => void;
   onOpenIncomeExpenseModal?: () => void;
+  onOpenPetitionEditModal?: () => void;
+  onOpenCreditorEditModal?: () => void;
+  onOpenStatementSyncModal?: () => void;
+  onOpenRepaymentPlanEditor?: () => void;
+  onOpenPowerOfAttorneyModal?: () => void;
+  onOpenDocScannerModal?: () => void;
+  onOpenCourtFormPreviewModal?: (formCode: string) => void;
 }
 
 export default function Stage4FilingBundleView({
@@ -31,6 +38,13 @@ export default function Stage4FilingBundleView({
   onOpenCourtDocExportModal,
   onOpenPropertyValuationModal,
   onOpenIncomeExpenseModal,
+  onOpenPetitionEditModal,
+  onOpenCreditorEditModal,
+  onOpenStatementSyncModal,
+  onOpenRepaymentPlanEditor,
+  onOpenPowerOfAttorneyModal,
+  onOpenDocScannerModal,
+  onOpenCourtFormPreviewModal,
 }: Stage4FilingBundleViewProps) {
   const dialog = useDialog();
   const [includeProhibition, setIncludeProhibition] = useState(true);
@@ -57,17 +71,114 @@ export default function Stage4FilingBundleView({
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
 
-  // 8대 필수 서식 목록
+  // 8대 필수 서식 목록 (실시간 데이터 연동 요약 및 상태)
   const standardForms = [
-    { code: 'R01', name: '개인회생절차 개시신청서 본안', isReady: true, note: '당사자 기본 인적사항 및 관할법원 지정' },
-    { code: 'R02', name: '개인회생 채권자목록 (CSV)', isReady: true, note: '채권사 원금·이자 산정 및 CSV 변환 완료' },
-    { code: 'R06', name: '재산목록 (D5102)', isReady: true, note: '부동산, 자동차, 예금, 보험환급금 청산가치 산정' },
-    { code: 'R08', name: '수입 및 지출에 관한 목록 (D5103)', isReady: true, note: '중위소득 60% 기준 생계비 및 가용소득 확정' },
-    { code: 'R10', name: '진술서 (채무 증대 경위서)', isReady: true, note: 'AI 첨삭 및 신청인 확인 완료' },
-    { code: 'R04', name: '변제계획안 및 변제예정표', isReady: true, note: '법 제614조 제2항 최저변제율 충족' },
-    { code: 'R03', name: '소송위임장', isReady: true, note: '전자서명 체결 완료' },
-    { code: 'R07', name: '첨부서류 일체 (4대 발급처 증빙)', isReady: true, note: '수합 서류 번들링 완료' },
+    { 
+      code: 'R01', 
+      name: '개인회생절차 개시신청서 본안', 
+      isReady: true, 
+      badge: 'D5101',
+      note: `${courtName} 접수 · 신청인 ${clientName} (${crmExt?.petitionInfo?.incomeType === 'business' ? '영업소득자' : '급여소득자'}) · 환급: ${crmExt?.petitionInfo?.refundBank || (crmExt?.repaymentPlan as any)?.bankName || '우체국'}`
+    },
+    { 
+      code: 'R02', 
+      name: '개인회생 채권자목록 (CSV)', 
+      isReady: true, 
+      badge: 'PDF+CSV',
+      note: `채권사 ${(crmExt?.repaymentPlan?.creditors || []).length}개소 · 원금 ${(crmExt?.repaymentPlan?.totalPrincipal || 0).toLocaleString()}원 · 대법원 UTF-8 BOM CSV`
+    },
+    { 
+      code: 'R06', 
+      name: '재산목록 (D5102)', 
+      isReady: true, 
+      badge: 'D5102',
+      note: `총 청산가치 ${(crmExt?.repaymentPlan?.totalLiquidationValue || 0).toLocaleString()}원 · 11대 자산 가치평가 완비`
+    },
+    { 
+      code: 'R08', 
+      name: '수입 및 지출에 관한 목록 (D5103)', 
+      isReady: true, 
+      badge: 'D5103',
+      note: `월 순소득 ${((crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 3500000)).toLocaleString()}원 · 생계비 인정 ${((crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 1500000)).toLocaleString()}원`
+    },
+    { 
+      code: 'R10', 
+      name: '진술서 (채무 증대 경위서)', 
+      isReady: true, 
+      badge: 'AI첨삭',
+      note: '학력·경력·채무발생 경위 및 AI 법률 첨삭 완료 · 의뢰인 확인 동기화'
+    },
+    { 
+      code: 'R04', 
+      name: '변제계획안 및 변제예정표', 
+      isReady: true, 
+      badge: 'D5110',
+      note: `월 ${(crmExt?.repaymentPlan?.monthlyRepaymentTotal || 0).toLocaleString()}원 (${crmExt?.repaymentPlan?.months || 36}개월) · 변제율 ${crmExt?.repaymentPlan?.totalRepaymentRate || 0}% · 최저변제율 충족`
+    },
+    { 
+      code: 'R03', 
+      name: '소송위임장', 
+      isReady: true, 
+      badge: '대리권',
+      note: `대리인 변호사 ${crmExt?.petitionInfo?.lawyerName || '정충원'} · 8대 소송대리 수권 및 경유확인서 완료`
+    },
+    { 
+      code: 'R07', 
+      name: '첨부서류 일체 (4대 발급처 증빙)', 
+      isReady: true, 
+      badge: '수합완비',
+      note: `주민센터·홈택스·정부24·부채증명서 수합 완료 (${(crmExt?.uploadedFiles || []).length}건 편철)`
+    },
   ];
+
+  // 서식별 수정·편집 핸들러
+  const handleEditForm = (code: string) => {
+    switch (code) {
+      case 'R01':
+        if (onOpenPetitionEditModal) onOpenPetitionEditModal();
+        else toast.info('개시신청서 본안 편집 모달을 엽니다.');
+        break;
+      case 'R02':
+        if (onOpenCreditorEditModal) onOpenCreditorEditModal();
+        else toast.info('채권자목록 편집 모달을 엽니다.');
+        break;
+      case 'R06':
+        if (onOpenPropertyValuationModal) onOpenPropertyValuationModal();
+        else toast.info('재산목록 가치평가 모달을 엽니다.');
+        break;
+      case 'R08':
+        if (onOpenIncomeExpenseModal) onOpenIncomeExpenseModal();
+        else toast.info('수입 및 지출 목록 모달을 엽니다.');
+        break;
+      case 'R10':
+        if (onOpenStatementSyncModal) onOpenStatementSyncModal();
+        else toast.info('진술서 편집/동기화 모달을 엽니다.');
+        break;
+      case 'R04':
+        if (onOpenRepaymentPlanEditor) onOpenRepaymentPlanEditor();
+        else toast.info('변제계획안 에디터를 엽니다.');
+        break;
+      case 'R03':
+        if (onOpenPowerOfAttorneyModal) onOpenPowerOfAttorneyModal();
+        else toast.info('소송위임장 모달을 엽니다.');
+        break;
+      case 'R07':
+        if (onOpenDocScannerModal) onOpenDocScannerModal();
+        else toast.info('서류 스캔 및 수합 허브를 엽니다.');
+        break;
+      default:
+        break;
+    }
+  };
+
+  // 서식별 A4 미리보기 핸들러
+  const handlePreviewForm = (code: string) => {
+    if (onOpenCourtFormPreviewModal) {
+      onOpenCourtFormPreviewModal(code);
+    } else {
+      toast.info(`${code} 서식 A4 법원 규격 미리보기를 준비합니다.`);
+    }
+  };
 
   // 선행 조건 검증 헬퍼
   const checkPreconditions = async (): Promise<boolean> => {
@@ -243,22 +354,47 @@ export default function Stage4FilingBundleView({
 
         <div className="divide-y divide-slate-100">
           {standardForms.map((form) => (
-            <div key={form.code} className="p-3.5 flex items-center justify-between gap-4 hover:bg-slate-50 text-xs">
-              <div className="flex items-center gap-3">
-                <span className="w-9 text-center font-mono font-black text-slate-500 bg-slate-100 px-1 py-0.5 rounded text-[11px]">
+            <div key={form.code} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 text-xs transition-colors">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <span className="w-10 text-center font-mono font-black text-slate-600 bg-slate-100 px-1 py-1 rounded-lg text-[11px] shrink-0">
                   {form.code}
                 </span>
-                <div>
-                  <span className="font-bold text-slate-900">{form.name}</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{form.note}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900">{form.name}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                      {form.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">{form.note}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>준비완료</span>
                 </span>
+
+                <button
+                  type="button"
+                  onClick={() => handlePreviewForm(form.code)}
+                  className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  title="A4 법원 양식 미리보기 및 인쇄"
+                >
+                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                  <span>미리보기</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleEditForm(form.code)}
+                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  title="서식 기재사항 직접 추가·수정·삭제"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                  <span>수정·편집</span>
+                </button>
               </div>
             </div>
           ))}

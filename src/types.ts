@@ -825,6 +825,43 @@ export interface CrmClientExtension {
   decisionSummary?: DecisionSummaryData; // 개시결정 요약본 데이터
   // ── 의뢰인 공동인증서(NPKI) 및 금융인증서 안전 금고 ──
   certificateVault?: CertificateVaultData;
+  // ── 대법원 전산양식 D5101 개인회생절차 개시신청서 본안 편집 데이터 ──
+  petitionInfo?: CourtPetitionData;
+}
+
+// ── 2026 대한민국 법원 개인회생절차 개시신청서 본안(D5101) 데이터 ──
+export interface CourtPetitionData {
+  courtName?: string;               // 관할법원 (예: 서울회생법원)
+  clientName?: string;              // 신청인 성명
+  rrnFront?: string;                // 주민등록번호 앞자리
+  rrnBack?: string;                 // 주민등록번호 뒷자리
+  phone?: string;                   // 휴대전화
+  tel?: string;                     // 집/직장 유선전화
+  residentAddress?: string;         // 주민등록상 주소
+  residentPostcode?: string;        // 주민등록상 우편번호
+  currentAddress?: string;          // 현주소(실거주지)
+  currentPostcode?: string;         // 현주소 우편번호
+  companyName?: string;             // 직장명
+  companyAddress?: string;          // 직장 주소
+  companyPostcode?: string;         // 직장 우편번호
+  incomeType?: 'salary' | 'business'; // 소득 유형 (급여소득자 vs 영업소득자)
+  servicePlaceType?: 'firm' | 'client'; // 송달장소 구분 (대리인 사무소 vs 채무자 주소지)
+  servicePlaceAddress?: string;     // 송달장소 주소
+  servicePlacePostcode?: string;    // 송달장소 우편번호
+  serviceRecipient?: string;        // 송달영수인 성명 (예: 변호사 김변호)
+  lawyerName?: string;              // 대리인 변호사 성명
+  firmName?: string;                // 법무법인/법률사무소 명칭
+  firmAddress?: string;             // 대리인 사무실 주소
+  firmPhone?: string;               // 대리인 사무실 전화번호
+  firmFax?: string;                 // 대리인 사무실 팩스
+  firmEmail?: string;               // 대리인 이메일
+  refundBank?: string;              // 환급계좌 은행명
+  refundAccount?: string;           // 환급계좌 번호
+  refundAccountHolder?: string;     // 환급계좌 예금주
+  smsNotificationConsent?: boolean; // 휴대전화 정보수신 신청 여부
+  smsNotificationPhone?: string;    // SMS 수신 휴대전화 번호
+  petitionReasonDetail?: string;    // 파산원인 및 신청이유 상세 서술문
+  updatedAt?: string;               // 최종 수정일시
 }
 
 export interface RepaymentEntry {
