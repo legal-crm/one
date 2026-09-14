@@ -129,7 +129,7 @@ export default function ToolCustomizerModal({
                 >
                   <EyeOff className="w-4 h-4 text-rose-500" />
                   <span className="text-xs">완전 숨김</span>
-                  <span className="text-[9px] text-slate-400 font-normal">Alt+Q 로 복원</span>
+                  <span className="text-[9px] text-slate-400 font-normal">우측하단 버튼 복원</span>
                 </button>
               </div>
             </div>

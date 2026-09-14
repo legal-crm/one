@@ -76,7 +76,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
     }
   }, []);
 
-  // 전역 단축키 Alt + Q 리스너 (퀵툴 토글)
+  // 전역 단축키 Alt + Q 리스너 (기능 유지)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === 'q' || e.key === 'Q' || e.code === 'KeyQ')) {
@@ -89,7 +89,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             // ignore
           }
           if (next === 'hidden') {
-            toast.info('퀵툴이 숨겨졌습니다. (Alt+Q 또는 우측하단 아이콘으로 복원)');
+            toast.info('퀵툴이 숨겨졌습니다.');
           } else {
             toast.success('퀵툴이 다시 표시되었습니다.');
           }
@@ -112,7 +112,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
       // ignore
     }
     if (mode === 'hidden') {
-      toast.info('퀵툴이 숨겨졌습니다. (단축키 Alt+Q 로 언제든 켤 수 있습니다)');
+      toast.info('퀵툴이 숨겨졌습니다. (우측 하단 아이콘으로 언제든 켤 수 있습니다)');
     } else if (mode === 'minimized') {
       toast.info('퀵툴이 화면 가장자리로 접혔습니다. 탭을 클릭하여 펼치세요.');
     } else {
@@ -196,12 +196,11 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
       {visibilityMode === 'hidden' && (
         <button
           onClick={() => handleSetVisibility('normal')}
-          className="fixed bottom-4 right-4 z-40 px-2.5 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
-          title="실무 퀵툴 다시 켜기 (단축키: Alt + Q)"
+          className="fixed bottom-4 right-4 z-40 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
+          title="실무 퀵툴 다시 켜기"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
           <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">퀵툴 켜기</span>
-          <span className="text-[9px] bg-slate-800 text-slate-400 px-1 py-0.2 rounded font-mono">Alt+Q</span>
         </button>
       )}
 
@@ -275,7 +274,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   <button
                     onClick={() => handleSetVisibility('hidden')}
                     className="p-1 hover:text-amber-300 rounded hover:bg-slate-800 transition-colors cursor-pointer text-slate-400"
-                    title="퀵툴 끄기 / 숨기기 (단축키 Alt+Q)"
+                    title="퀵툴 끄기 / 숨기기"
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                   </button>
@@ -351,7 +350,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   <button
                     onClick={() => handleSetVisibility('hidden')}
                     className="flex items-center gap-1 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
-                    title="퀵툴 끄기 (Alt+Q)"
+                    title="퀵툴 끄기"
                   >
                     <EyeOff className="w-3 h-3" />
                     <span>숨기기</span>
@@ -383,7 +382,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                 ? 'bg-slate-800 text-white border border-slate-700'
                 : 'bg-gradient-to-r from-[#1E3A5F] to-[#2563EB] text-white hover:shadow-blue-500/30 shadow-lg'
             }`}
-            title="드래그하여 원하는 위치로 이동하세요 (클릭 시 메뉴 열기 / Alt+Q 로 숨기기)"
+            title="드래그하여 원하는 위치로 이동하세요 (클릭 시 메뉴 열기)"
           >
             {/* 드래그 힌트 아이콘 */}
             <Move className="w-3 h-3 text-slate-400/80 shrink-0" />
