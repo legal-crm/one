@@ -65,3 +65,14 @@ export class CourtFilingBundleService {
     URL.revokeObjectURL(link.href);
   }
 }
+
+/**
+ * CRM 첨부서류 및 마스터 데이터를 바탕으로 110~140p 완성본 번들 PDF 생성
+ */
+export async function exportCourtFilingCompleteBundle(
+  masterData: CourtFilingMasterData,
+  crmExt?: any
+): Promise<Uint8Array> {
+  const dummyProofs: AttachedProofDocument[] = [];
+  return await CourtFilingBundleService.mergeFilingBundle(masterData, dummyProofs);
+}

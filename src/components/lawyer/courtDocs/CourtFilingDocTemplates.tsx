@@ -4,8 +4,8 @@
  * (실제 법원 접수본 110~140p 및 오토로 표준 규격 준용)
  */
 
-import React from 'react';
 import type { CourtFilingMasterData } from '../../../services/documents/courtFilingEngine';
+import { COURT_JURISDICTIONS } from '../../../services/documents/courtFilingEngine';
 
 interface DocTemplateProps {
   data: CourtFilingMasterData;
@@ -760,10 +760,22 @@ export const RepaymentPlanStandardDoc: React.FC<DocTemplateProps> = ({ data, isE
         </div>
 
         <div className="border-t border-slate-300 pt-2">
-          <strong>10. 기타사항 (법원 표준 특약사항)</strong>
-          <div className="bg-slate-50 p-2 border border-slate-200 text-[10px] space-y-1 mt-1">
-            <div><strong>&lt;개인회생재단의 관리처분권 제한&gt;</strong> 채무자의 급여 가압류 적립금 및 공탁금은 회생재단에 속하고 처분권한은 회생위원이 갖는다.</div>
-            <div><strong>&lt;전부명령의 실효&gt;</strong> 인가결정 시 전부명령은 법률상 효력을 상실하며 확정채권으로 정산한다.</div>
+          <strong>10. 기타사항 (법원 표준 및 사건별 특약사항)</strong>
+          <div className="bg-slate-50 p-2 border border-slate-200 text-[10px] space-y-1.5 mt-1">
+            {data.specialClauses && data.specialClauses.filter(c => c.isSelected).length > 0 ? (
+              data.specialClauses.filter(c => c.isSelected).map((clause) => (
+                <div key={clause.id} className="leading-relaxed">
+                  <strong>&lt;{clause.title}&gt;</strong> {clause.content}
+                </div>
+              ))
+            ) : (
+              <div><strong>&lt;개인회생재단의 관리처분권 제한&gt;</strong> 채무자의 급여 가압류 적립금 및 공탁금은 회생재단에 속하고 처분권한은 회생위원이 갖는다.</div>
+            )}
+            {data.trusteeAccount && (
+              <div className="pt-1.5 border-t border-slate-200 text-[10px] text-slate-700">
+                <strong>&lt;회생위원 임치계좌&gt;</strong> {data.trusteeAccount.bank} {data.trusteeAccount.accountNumber}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -869,17 +881,42 @@ export const StayOrderDoc: React.FC<DocTemplateProps & { caseItem: any; caseInde
   );
 };
 
-// ── 12. 대법원 표준 자료제출목록 (30~33p) ──
+// ── 12. 대법원 및 4대 관할법원별 자료제출목록 (30~33p) ──
 export const EvidenceSubmissionListDoc: React.FC<DocTemplateProps> = ({ data, isEditable }) => {
-  const { evidenceList, debtor } = data;
+  const { evidenceList, debtor, courtJurisdiction } = data;
+  const jurisdictionMeta = COURT_JURISDICTIONS[courtJurisdiction || 'NATIONWIDE'] || COURT_JURISDICTIONS.NATIONWIDE;
+
   return (
     <div className="court-page bg-white p-8 max-w-[210mm] mx-auto text-black font-serif text-[10px] leading-normal border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-6 space-y-3">
       <div className="text-center border-b border-black pb-2">
-        <h2 className="text-xl font-bold tracking-wider">【별지 서식】 자 료 제 출 목 록</h2>
-        <div className="flex justify-between items-center text-[10px] pt-1 text-slate-600">
-          <span>채무자: {debtor.name} (인)</span>
-          <span>※ 아래 표의 해당란에 체크하고 순서대로 첨부하여 제출합니다.</span>
+        <div className="flex justify-between items-center text-[9px] text-slate-500 mb-1 font-sans">
+          <span>{jurisdictionMeta.appliedDate}</span>
+          <span className="font-semibold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+            {jurisdictionMeta.title}
+          </span>
         </div>
+        <h2 className="text-xl font-bold tracking-wider">
+          {courtJurisdiction === 'DAEJEON'
+            ? '대전지방법원 자료제출목록'
+            : courtJurisdiction === 'GANGNEUNG'
+            ? '【별지 서식】 자료제출목록 (춘천지방법원 강릉지원)'
+            : courtJurisdiction === 'CHEONGJU'
+            ? '청주지방법원 자료제출목록'
+            : '【별지 제7호】 자 료 제 출 목 록'}
+        </h2>
+        <p className="text-[9px] text-slate-600 mt-0.5">{jurisdictionMeta.subTitle}</p>
+        <div className="flex justify-between items-center text-[10px] pt-1.5 text-slate-700">
+          <span>채무자: <strong>{debtor.name}</strong> (인)</span>
+          <span className="text-[9px] text-slate-500">※ 아래 표의 해당란에 체크하고 뒷면에 제출하는 서류를 순서대로 첨부합니다.</span>
+        </div>
+      </div>
+
+      {/* 법원별 필수 지침 안내 배너 */}
+      <div className="p-2.5 border border-amber-300 bg-amber-50/70 text-[9px] text-amber-950 rounded font-sans leading-relaxed">
+        <div className="font-bold text-amber-900 flex items-center gap-1 mb-0.5">
+          <span>⚖️ {jurisdictionMeta.title} 제출 유의사항</span>
+        </div>
+        <div>{jurisdictionMeta.specialNotice}</div>
       </div>
 
       <table className="w-full border-collapse border border-black text-[10px]">
@@ -893,12 +930,20 @@ export const EvidenceSubmissionListDoc: React.FC<DocTemplateProps> = ({ data, is
         </thead>
         <tbody>
           {evidenceList.map((ev) => (
-            <tr key={ev.id}>
+            <tr key={ev.id} className={ev.isRequired ? 'bg-indigo-50/20' : ''}>
               <td className="border border-black p-1">
-                <div className="font-semibold text-slate-900">{ev.name}</div>
+                <div className="font-semibold text-slate-900 flex items-center gap-1">
+                  {ev.isRequired && <span className="text-red-600 font-bold">*</span>}
+                  <span>{ev.name}</span>
+                </div>
                 <div className="text-[8px] text-slate-400">{ev.categoryTitle}</div>
+                {ev.noticeText && (
+                  <div className="text-[8px] text-indigo-700 font-sans mt-0.5 font-medium">
+                    {ev.noticeText}
+                  </div>
+                )}
               </td>
-              <td className="border border-black p-1 text-center font-bold text-blue-800">
+              <td className="border border-black p-1 text-center font-bold text-blue-800 text-xs">
                 {ev.isSubmitted ? '☑' : '☐'}
               </td>
               <td className="border border-black p-1 text-slate-700 text-[9px]">
