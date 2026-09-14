@@ -90,6 +90,7 @@ interface CrmTabProps {
   activeLawyer: User;
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   getDisplayPhoneNumber: (r: ConsultRequest) => string;
+  getDisplayClientName?: (r: ConsultRequest) => string;
   handleOpenProposalDraft?: (requestId: string) => void;
   setActiveTab?: (tab: string) => void;
   setCopilotPreselectedReqId?: (id: string) => void;
@@ -149,6 +150,7 @@ export default function CrmTab({
   activeLawyer, 
   setRequests, 
   getDisplayPhoneNumber, 
+  getDisplayClientName,
   handleOpenProposalDraft, 
   setActiveTab, 
   setCopilotPreselectedReqId, 
@@ -2045,7 +2047,21 @@ export default function CrmTab({
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-black text-white tracking-tight truncate">{selectedClient.clientName}</h3>
+                          <h3 className="text-xl font-black text-white tracking-tight truncate">
+                            {getDisplayClientName ? getDisplayClientName(selectedClient) : selectedClient.clientName}
+                          </h3>
+                          {!(Boolean(
+                            selectedClient.phoneConsultationRequested || 
+                            selectedClient.contactDisclosureStatus === 'contact_shared' ||
+                            (selectedClient.proposals || []).some((p: any) => p.phoneConsultRequestedAt) ||
+                            selectedClient.status === 'contracted' ||
+                            selectedExt.thirteenStage === 'contract_done'
+                          )) && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-bold flex items-center gap-1 shrink-0">
+                              <Lock className="w-2.5 h-2.5" />
+                              스텔스 익명 보호
+                            </span>
+                          )}
                           {currentPermissions.editClientInfo && (
                             <button 
                               onClick={() => setIsEditingName(true)}
@@ -2087,16 +2103,31 @@ export default function CrmTab({
                       <div className="flex items-center gap-1.5 font-mono">
                         <Phone className="w-3.5 h-3.5 text-slate-400" />
                         <span className="font-semibold">{getDisplayPhoneNumber(selectedClient)}</span>
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedClient.phone);
-                            toast.success('전화번호가 클립보드에 복사되었습니다.');
-                          }}
-                          className="text-slate-400 hover:text-white transition-colors cursor-pointer ml-1 p-0.5 rounded hover:bg-white/10"
-                          title="전화번호 복사"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
+                        {(() => {
+                          const isShared = Boolean(
+                            selectedClient.phoneConsultationRequested || 
+                            selectedClient.contactDisclosureStatus === 'contact_shared' ||
+                            (selectedClient.proposals || []).some((p: any) => p.phoneConsultRequestedAt) ||
+                            selectedClient.status === 'contracted' ||
+                            selectedExt.thirteenStage === 'contract_done'
+                          );
+                          return (
+                            <button 
+                              onClick={() => {
+                                if (isShared && selectedClient.phone) {
+                                  navigator.clipboard.writeText(selectedClient.phone);
+                                  toast.success('전화번호가 클립보드에 복사되었습니다.');
+                                } else {
+                                  toast.info('고객이 제안서를 확인하고 전화 상담을 요청한 후 복사할 수 있습니다.');
+                                }
+                              }}
+                              className="text-slate-400 hover:text-white transition-colors cursor-pointer ml-1 p-0.5 rounded hover:bg-white/10"
+                              title={isShared ? "전화번호 복사" : "연락처 미공개"}
+                            >
+                              {isShared ? <Copy className="w-3 h-3" /> : <Lock className="w-3 h-3 text-slate-500" />}
+                            </button>
+                          );
+                        })()}
                       </div>
                       <span className="text-slate-600">|</span>
                       <span className="text-slate-400 text-[11px]">
@@ -2553,6 +2584,19 @@ export default function CrmTab({
                           onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
                           onNavigateToChat={() => {
                             if (setActiveTab) setActiveTab('chat');
+                          }}
+                          onSimulateContactShare={() => {
+                            setRequests(prev => prev.map(r => {
+                              if (r.id === selectedId) {
+                                return {
+                                  ...r,
+                                  contactDisclosureStatus: 'contact_shared',
+                                  phoneConsultationRequested: true,
+                                  contactSharedAt: new Date().toISOString(),
+                                };
+                              }
+                              return r;
+                            }));
                           }}
                         />
                       )}

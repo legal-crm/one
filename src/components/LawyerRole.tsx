@@ -60,7 +60,38 @@ import LegalQuickDock from './lawyer/LegalQuickDock';
 import LawyerSealManagerModal from './lawyer/LawyerSealManagerModal';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
-  return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
+  const isContracted = req.status === 'contracted';
+  const hasPhoneConsultRequested = Boolean(
+    req.phoneConsultationRequested || 
+    req.contactDisclosureStatus === 'contact_shared' ||
+    (req.proposals || []).some((p: any) => p.phoneConsultRequestedAt)
+  );
+
+  if (isContracted || hasPhoneConsultRequested) {
+    return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
+  }
+
+  return "010-****-**** (미공개)";
+};
+
+const getDisplayClientName = (req: ConsultRequest): string => {
+  const isContracted = req.status === 'contracted';
+  const isContactShared = Boolean(
+    req.phoneConsultationRequested || 
+    req.contactDisclosureStatus === 'contact_shared' ||
+    (req.proposals || []).some((p: any) => p.phoneConsultRequestedAt)
+  );
+
+  const rawName = req.clientName || '고객';
+  const parts = rawName.split('_');
+  const stealthNickname = req.stealthNickname || (parts.length > 1 ? parts[1] : rawName);
+  const realName = req.realClientName || (parts.length > 1 ? parts[0] : rawName);
+
+  if (isContracted || isContactShared) {
+    return parts.length > 1 ? `${realName} (${stealthNickname})` : realName;
+  }
+
+  return stealthNickname;
 };
 
 interface LawyerRoleProps {
@@ -5256,6 +5287,7 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
+            getDisplayClientName={getDisplayClientName}
             handleOpenProposalDraft={handleOpenProposalDraft}
             setActiveTab={(tab: any) => setActiveTab(tab)}
             setCopilotPreselectedReqId={setCopilotPreselectedReqId}

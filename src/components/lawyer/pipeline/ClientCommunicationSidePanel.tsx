@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Send, Phone, MessageSquare, Clock, FileText, CheckCircle2, 
   Sparkles, X, ChevronRight, AlertCircle, Copy, AlertTriangle,
-  Inbox, ListChecks, History, PhoneCall
+  Inbox, ListChecks, History, PhoneCall, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User, AlimtokMilestone } from '../../../types';
@@ -41,8 +41,29 @@ export default function ClientCommunicationSidePanel({
     milestone?: AlimtokMilestone;
   } | null>(null);
 
-  const clientName = clientRequest.clientName || '고객';
-  const cleanPhone = clientRequest.phone ? clientRequest.phone.replace(/[^0-9]/g, '') : '';
+  // 제안서 발송 상태 및 고객 연락처 공개 여부 판별
+  const proposals = clientRequest.proposals || [];
+  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
+  const hasProposalSent = Boolean(myProposal);
+  const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
+
+  const isContactShared = Boolean(
+    clientRequest.phoneConsultationRequested || 
+    clientRequest.contactDisclosureStatus === 'contact_shared' ||
+    myProposal?.phoneConsultRequestedAt ||
+    isContracted
+  );
+
+  // 스텔스 가명 및 실명 분리
+  const rawClientName = clientRequest.clientName || '고객';
+  const nameParts = rawClientName.split('_');
+  const stealthName = clientRequest.stealthNickname || (nameParts.length > 1 ? nameParts[1] : rawClientName);
+  const realName = clientRequest.realClientName || (nameParts.length > 1 ? nameParts[0] : rawClientName);
+
+  const displayClientName = isContactShared ? `${realName} (${stealthName})` : `${stealthName} (스텔스 가명)`;
+  const displayPhone = isContactShared && clientRequest.phone ? clientRequest.phone : '010-****-****';
+  const cleanPhone = isContactShared && clientRequest.phone ? clientRequest.phone.replace(/[^0-9]/g, '') : '';
+  const clientName = isContactShared ? realName : stealthName;
 
   // 6단계별 추천 알림톡 템플릿
   const stageTemplates: Record<number, Array<{ title: string; desc: string; emoji: string; message: string }>> = {
@@ -181,8 +202,13 @@ export default function ClientCommunicationSidePanel({
             <span className="font-extrabold text-xs block text-slate-100">
               사건 실행형 고객 소통창
             </span>
-            <span className="text-[11px] text-blue-200">
-              {clientName} 고객 ({clientRequest.phone ? clientRequest.phone.slice(-4) : ''})
+            <span className="text-[11px] text-blue-200 flex items-center gap-1.5">
+              <span>{displayClientName}</span>
+              {!isContactShared && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                  익명 보호
+                </span>
+              )}
             </span>
           </div>
         </div>
@@ -199,33 +225,83 @@ export default function ClientCommunicationSidePanel({
         )}
       </div>
 
+      {/* ── 소통 상태 게이트 배너 (Gate Banner) ── */}
+      <div className={`px-3.5 py-2 text-[11px] font-bold flex items-center gap-2 border-b transition-all ${
+        isContactShared 
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+          : hasProposalSent 
+            ? 'bg-amber-50 text-amber-800 border-amber-200' 
+            : 'bg-slate-100 text-slate-700 border-slate-200'
+      }`}>
+        {isContactShared ? (
+          <>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>소통 해금: 고객이 전화상담을 요청했습니다. (연락처 제공 완료)</span>
+          </>
+        ) : hasProposalSent ? (
+          <>
+            <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
+            <span>고객 확인 대기: 제안서 확인 후 전화상담 요청 시 연락처가 공개됩니다.</span>
+          </>
+        ) : (
+          <>
+            <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span>스텔스 익명 보호: 제안서 발송 전에는 직접 소통이 제한됩니다.</span>
+          </>
+        )}
+      </div>
+
       {/* 고객 연락처 및 빠른 전화걸기 바 */}
       <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <Phone className="w-3.5 h-3.5 text-slate-500" />
-          <span className="font-mono font-bold text-slate-800">{clientRequest.phone || '연락처 없음'}</span>
+          <span className="font-mono font-bold text-slate-800">{displayPhone}</span>
+          {isContactShared ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (clientRequest.phone) {
+                  navigator.clipboard.writeText(clientRequest.phone);
+                  toast.success('전화번호가 복사되었습니다.');
+                }
+              }}
+              className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+              title="전화번호 복사"
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+          ) : (
+            <span className="text-[10px] text-slate-400 flex items-center gap-0.5" title="제안서 확인 후 고객 동의 시 공개">
+              <Lock className="w-2.5 h-2.5" />
+              미공개
+            </span>
+          )}
+        </div>
+
+        {isContactShared ? (
+          <a
+            href={`tel:${cleanPhone}`}
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+          >
+            <Phone className="w-3 h-3" />
+            <span>전화 걸기</span>
+          </a>
+        ) : (
           <button
             type="button"
             onClick={() => {
-              if (clientRequest.phone) {
-                navigator.clipboard.writeText(clientRequest.phone);
-                toast.success('전화번호가 복사되었습니다.');
-              }
+              toast.info(hasProposalSent 
+                ? '의뢰인이 제안서를 확인하고 전화 상담을 요청하면 전화 걸기가 활성화됩니다.'
+                : '의뢰인에게 맞춤 제안서를 먼저 작성하여 발송해주세요.'
+              );
             }}
-            className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
-            title="복사"
+            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+            title="고객 제안서 확인 후 통화 가능"
           >
-            <Copy className="w-3 h-3" />
+            <Lock className="w-3 h-3 text-slate-400" />
+            <span>전화 걸기</span>
           </button>
-        </div>
-
-        <a
-          href={`tel:${cleanPhone}`}
-          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-colors flex items-center gap-1 shadow-2xs"
-        >
-          <Phone className="w-3 h-3" />
-          <span>전화 걸기</span>
-        </a>
+        )}
       </div>
 
       {/* 4대 탭 바 (처리 필요 / 요청 현황 / 전체 타임라인 / 통화 메모) */}
@@ -297,6 +373,13 @@ export default function ClientCommunicationSidePanel({
               <button
                 type="button"
                 onClick={() => {
+                  if (!isContactShared) {
+                    toast.info(hasProposalSent 
+                      ? '고객이 제안서를 확인하고 상담을 요청한 후 답변할 수 있습니다.'
+                      : '스텔스 익명 보호 상태에서는 직접 답변이 제한됩니다. 맞춤 제안서에 검토 의견을 담아 먼저 발송해주세요.'
+                    );
+                    return;
+                  }
                   handleOpenSendModal({
                     title: '고객 질문 답변 안내',
                     desc: '급여명세서 준비 범위 및 대체 서류 안내',
@@ -304,9 +387,14 @@ export default function ClientCommunicationSidePanel({
                     message: `[답변 안내] ${clientName}님, 문의해주신 급여명세서 서류 관련 안내드립니다.\n\n급여명세서는 최근 1년(12개월)분을 준비해 주시면 되며, 회사 직인 날인이 어렵거나 발급이 어려우신 경우 급여 입금 통장 거래내역서로 대체 가능합니다. 스마트폰 마이페이지 서류함에서 촬영하여 업로드해 주시기 바랍니다.`,
                   });
                 }}
-                className="mt-1 text-[11px] font-bold text-[#1E3A5F] hover:underline flex items-center gap-1 cursor-pointer"
+                className={`mt-1 text-[11px] font-bold flex items-center gap-1 ${
+                  isContactShared 
+                    ? 'text-[#1E3A5F] hover:underline cursor-pointer' 
+                    : 'text-slate-400 cursor-not-allowed'
+                }`}
               >
-                <span>답변하기 ➔</span>
+                {!isContactShared && <Lock className="w-3 h-3 text-slate-400" />}
+                <span>{isContactShared ? '답변하기 ➔' : '답변 대기 (제안서 확인 필요)'}</span>
               </button>
             </div>
 
@@ -446,7 +534,9 @@ export default function ClientCommunicationSidePanel({
               <Sparkles className="w-3.5 h-3.5 text-[#1E3A5F]" />
               Stage 0{pipelineStage} 추천 알림톡
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">원클릭 발송</span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              {isContactShared ? '원클릭 발송' : '🔒 제안서 확인 후 발송'}
+            </span>
           </div>
 
           <div className="space-y-2">
@@ -454,15 +544,34 @@ export default function ClientCommunicationSidePanel({
               <button
                 key={idx}
                 type="button"
-                onClick={() => handleOpenSendModal(tpl)}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-[#1E3A5F] bg-white hover:bg-slate-50 transition-all shadow-2xs group cursor-pointer press-scale space-y-0.5"
+                onClick={() => {
+                  if (!isContactShared) {
+                    toast.info(hasProposalSent 
+                      ? '고객이 제안서를 확인하고 전화 상담을 요청한 후 알림톡을 발송할 수 있습니다.'
+                      : '의뢰인 연락처가 미공개 상태입니다. 맞춤 제안서를 먼저 작성하여 발송해주세요.'
+                    );
+                    return;
+                  }
+                  handleOpenSendModal(tpl);
+                }}
+                className={`w-full text-left p-2.5 rounded-xl border transition-all shadow-2xs group space-y-0.5 ${
+                  isContactShared 
+                    ? 'border-slate-200 hover:border-[#1E3A5F] bg-white hover:bg-slate-50 cursor-pointer press-scale' 
+                    : 'border-slate-200 bg-slate-50/70 opacity-60 cursor-not-allowed'
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                     <span>{tpl.emoji}</span>
-                    <span className="group-hover:text-[#1E3A5F] transition-colors">{tpl.title}</span>
+                    <span className={isContactShared ? 'group-hover:text-[#1E3A5F] transition-colors' : 'text-slate-600'}>
+                      {tpl.title}
+                    </span>
                   </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] transition-all" />
+                  {isContactShared ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] transition-all" />
+                  ) : (
+                    <Lock className="w-3 h-3 text-slate-400" />
+                  )}
                 </div>
                 <p className="text-[10px] text-slate-500 line-clamp-1">{tpl.desc}</p>
               </button>

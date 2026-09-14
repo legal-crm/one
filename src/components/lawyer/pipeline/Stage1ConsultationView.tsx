@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   UserCheck, CheckCircle2, AlertTriangle, ShieldCheck, 
   Sparkles, ArrowRight, Scale, Calculator, Phone, FileText,
-  ChevronDown, ChevronUp, AlertCircle, HelpCircle, Send
+  ChevronDown, ChevronUp, AlertCircle, HelpCircle, Send,
+  Lock, PhoneCall, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
@@ -17,6 +18,7 @@ interface Stage1ConsultationViewProps {
   onSwitchCaseType?: (type: 'individual_rehab' | 'bankruptcy') => void;
   onOpenProposalDraft?: () => void;
   onNavigateToChat?: () => void;
+  onSimulateContactShare?: () => void;
 }
 
 export default function Stage1ConsultationView({
@@ -28,6 +30,7 @@ export default function Stage1ConsultationView({
   onSwitchCaseType,
   onOpenProposalDraft,
   onNavigateToChat,
+  onSimulateContactShare,
 }: Stage1ConsultationViewProps) {
   const fp = clientRequest.financialProfile || {};
   const debtTotal = fp.debtTotal || 0; // 만원
@@ -39,6 +42,26 @@ export default function Stage1ConsultationView({
   const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
   const hasProposalSent = Boolean(myProposal);
   const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
+
+  // ── 고객 연락처 공개 및 제안서 소통 게이팅 상태 판별 ──
+  const [isSimulatedShared, setIsSimulatedShared] = useState(false);
+  const isContactShared = Boolean(
+    isSimulatedShared ||
+    clientRequest.phoneConsultationRequested || 
+    clientRequest.contactDisclosureStatus === 'contact_shared' ||
+    myProposal?.phoneConsultRequestedAt ||
+    isContracted
+  );
+
+  const isProposalSentPhase = hasProposalSent && !isContactShared && !isContracted;
+  const isAnonymousPhase = !hasProposalSent && !isContactShared && !isContracted;
+
+  // 스텔스 가명 및 실명 분리
+  const rawClientName = clientRequest.clientName || '고객';
+  const nameParts = rawClientName.split('_');
+  const stealthName = clientRequest.stealthNickname || (nameParts.length > 1 ? nameParts[1] : rawClientName);
+  const realName = clientRequest.realClientName || (nameParts.length > 1 ? nameParts[0] : rawClientName);
+  const displayClientName = isContactShared ? `${realName} (${stealthName})` : stealthName;
 
   // 체크리스트 상태
   const [debtCheckPassed, setDebtCheckPassed] = useState(() => debtTotal > 0 && debtTotal <= 150000); // 15억 이하
@@ -103,29 +126,33 @@ export default function Stage1ConsultationView({
         </div>
       </div>
 
-      {/* ── 2. Next Action Hero Card (제안서 상태에 따른 3단계 동적 카드) ── */}
-      {!hasProposalSent && !isContracted ? (
-        // [상황 A: 제안서 미발송 상태 - 최우선 핵심 작업]
+      {/* ── 2. Next Action Hero Card (스텔스 익명 & 제안서 게이팅 3단계 동적 카드) ── */}
+      {isAnonymousPhase ? (
+        // [Phase 1: 제안서 미발송 상태 - 100% 스텔스 익명 보호 중 & 제안서 작성 단독 강제]
         <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
                 <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950">
-                    ⚡ 최우선 실행 작업
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">
+                    ⚡ 최우선 필수 작업
+                  </span>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    100% 스텔스 익명 보호 중
                   </span>
                   <span className="text-xs text-blue-200">
-                    신규 상담 신청 접수됨
+                    가명: <strong className="text-white font-mono">{stealthName}</strong>
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
                   신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-                  의뢰인은 변호사님의 검토 제안서를 기다리고 있습니다. 탕감률, 예상 월 변제금, 분납 수임료가 담긴 제안서가 전달되어야 의뢰인의 1:1 심층 상담 및 정식 수임계약 체결이 가능합니다.
+                  현재 의뢰인은 스텔스 가명으로 보호 중이며, 실명과 연락처는 <strong>비공개 상태</strong>입니다. 변호사 사무실에서는 임의로 전화나 알림톡을 보낼 수 없으며, <strong>맞춤 제안서(탕감률·변제금·수임료)</strong>를 먼저 발송해야 의뢰인이 확인 후 전화 상담을 요청(연락처 공개)할 수 있습니다.
                 </p>
               </div>
             </div>
@@ -142,60 +169,123 @@ export default function Stage1ConsultationView({
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleSendEligibilityAlimtok}
-                className="px-3.5 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-                title="의뢰인에게 적격 진단 결과 및 필요 서류 알림톡 발송"
-              >
-                <Send className="w-3.5 h-3.5 text-blue-300" />
-                <span>적격 안내톡</span>
-              </button>
             </div>
           </div>
         </div>
-      ) : hasProposalSent && !isContracted ? (
-        // [상황 B: 제안서 발송 완료 상태 - 고객 검토 및 상담 대기]
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/40 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md space-y-4">
+      ) : isProposalSentPhase ? (
+        // [Phase 2: 제안서 발송 완료 상태 - 고객 검토 및 전화상담 요청(연락처 제공) 대기]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-slate-900 via-amber-950/30 to-slate-900 text-white shadow-lg space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300/40 shadow-xs">
-                <CheckCircle2 className="w-6 h-6" />
+              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-amber-500/20 text-amber-400 border border-amber-400/30 shadow-xs">
+                <Lock className="w-6 h-6 animate-pulse" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                    ✅ 제안서 발송 완료 (고객 검토 대기 중)
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">
+                    ⏳ 제안서 발송 완료 (고객 검토 & 전화상담 대기 중)
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-amber-200/80 font-mono">
                     {myProposal?.createdAt ? new Date(myProposal.createdAt).toLocaleString('ko-KR') : '발송 완료'}
                   </span>
                 </div>
-                <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                  {myProposal?.lawyerName || activeLawyer.name} 변호사님의 제안서가 고객에게 성공적으로 전달되었습니다
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  {myProposal?.lawyerName || activeLawyer.name} 변호사님의 맞춤 제안서가 고객에게 전달되었습니다
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  고객이 마이페이지에서 제안서를 확인하고 1:1 추가 상담을 요청하거나 정식 수임계약을 체결할 수 있습니다.
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  제안서가 의뢰인 모바일로 안전하게 전달되었습니다. 의뢰인이 제안서를 열람하고 <strong>[전화 상담 요청(연락처 제공 동의)]</strong>을 누르면 실명과 연락처가 변호사 사무실에 공개되며 통화가 가능해집니다.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap shrink-0">
-              {onNavigateToChat && (
-                <button
-                  type="button"
-                  onClick={onNavigateToChat}
-                  className="px-5 py-3 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>고객과 1:1 상담 진행</span>
-                </button>
-              )}
               {onOpenProposalDraft && (
                 <button
                   type="button"
                   onClick={onOpenProposalDraft}
-                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                  className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                >
+                  <span>제안서 조건 수정 / 재발송</span>
+                </button>
+              )}
+              {/* 시연 및 실무 편의를 위한 고객 열람 시뮬레이션 버튼 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSimulatedShared(true);
+                  if (onSimulateContactShare) onSimulateContactShare();
+                  toast.success(`[시뮬레이션] 의뢰인(${realName})이 제안서를 확인하고 전화 상담을 요청했습니다! 실명과 전화번호가 공개되었습니다.`);
+                }}
+                className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                title="고객이 모바일에서 제안서를 확인하고 전화 상담을 요청한 상태를 시뮬레이션합니다."
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>🧪 [시뮬레이션] 고객 제안서 확인 & 전화상담 요청</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">예상 채무 탕감률</span>
+              <span className="text-base font-black text-emerald-400 mt-0.5 block">
+                최대 {myProposal?.reductionRate || 0}%
+              </span>
+            </div>
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">예상 월 변제금</span>
+              <span className="text-base font-black text-blue-400 mt-0.5 block">
+                월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
+              </span>
+            </div>
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">제안 수임료 및 분납</span>
+              <span className="text-base font-black text-slate-200 mt-0.5 block truncate">
+                {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : isContactShared && !isContracted ? (
+        // [Phase 3: 고객 제안서 확인 & 전화상담 요청 완료 상태 - 연락처 공개 및 소통 전면 해금!]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 text-white shadow-lg space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 shadow-xs">
+                <PhoneCall className="w-6 h-6 animate-bounce" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 shadow-xs">
+                    🎉 고객 제안서 확인 & 전화 상담 요청 완료!
+                  </span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-500/40">
+                    연락처 공개 완료: {clientRequest.phone || '010-6623-7195'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  의뢰인({realName}님)이 제안서를 확인하고 1:1 전화 상담을 요청했습니다
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  고객이 변호사님의 제안서를 확인하고 본인의 실명(<strong>{realName}</strong>)과 연락처(<strong>{clientRequest.phone || '010-6623-7195'}</strong>)를 제공하였습니다. 이제 우측 소통창의 전화 걸기 또는 상담을 통해 정식 수임계약을 체결하세요.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <a
+                href={`tel:${(clientRequest.phone || '01066237195').replace(/[^0-9]/g, '')}`}
+                className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-emerald-500/30 transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+              >
+                <Phone className="w-4 h-4 text-slate-950" />
+                <span>고객에게 전화 상담 진행</span>
+              </a>
+              {onOpenProposalDraft && (
+                <button
+                  type="button"
+                  onClick={onOpenProposalDraft}
+                  className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 press-scale cursor-pointer"
                 >
                   <span>제안서 조건 수정 / 재발송</span>
                 </button>
@@ -203,7 +293,7 @@ export default function Stage1ConsultationView({
               <button
                 type="button"
                 onClick={handleConfirmEligibility}
-                className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                className="px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>적격 확정 (수임 준비)</span>
@@ -212,29 +302,29 @@ export default function Stage1ConsultationView({
           </div>
 
           {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
               <span className="text-slate-400 block text-[11px]">예상 채무 탕감률</span>
-              <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+              <span className="text-base font-black text-emerald-400 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
             </div>
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
               <span className="text-slate-400 block text-[11px]">예상 월 변제금</span>
-              <span className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5 block">
+              <span className="text-base font-black text-blue-400 mt-0.5 block">
                 월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
               </span>
             </div>
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
               <span className="text-slate-400 block text-[11px]">제안 수임료 및 분납</span>
-              <span className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5 block truncate">
+              <span className="text-base font-black text-slate-200 mt-0.5 block truncate">
                 {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
               </span>
             </div>
           </div>
         </div>
       ) : (
-        // [상황 C: 수임계약 체결 완료 상태]
+        // [상황 D: 수임계약 체결 완료 상태]
         <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/80 text-emerald-950 shadow-md">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
@@ -477,14 +567,22 @@ export default function Stage1ConsultationView({
       {/* ── 4. 단계 완료 조건 (Gatekeeper Bar) ── */}
       <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs text-xs">
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className={`w-2 h-2 rounded-full ${allConditionsMet && isContactShared ? 'bg-emerald-400' : 'bg-amber-400'}`} />
           <span className="font-bold">Stage 1 완료 조건:</span>
           <span className="text-slate-300">
-            채무/소득 요건 확인 · 제595조 결격사유 통과 · 사건유형 확정 ({allConditionsMet ? '충족' : '대기'})
+            채무/소득 검토 · 제595조 통과 · 맞춤 제안서 발송 & 고객 확인 (
+            {allConditionsMet && isContactShared 
+              ? '전 요건 충족' 
+              : !hasProposalSent 
+                ? '제안서 작성 필요' 
+                : !isContactShared 
+                  ? '고객 제안서 확인 대기' 
+                  : '적격 요건 미확정'}
+            )
           </span>
         </div>
 
-        {allConditionsMet ? (
+        {allConditionsMet && isContactShared ? (
           <button
             type="button"
             onClick={onAdvanceToNextStage}
@@ -493,6 +591,22 @@ export default function Stage1ConsultationView({
             <span>Stage 2 (계약·착수)로 이동</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
+        ) : !hasProposalSent ? (
+          <button
+            type="button"
+            onClick={onOpenProposalDraft}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>맞춤 제안서 작성하기 (필수)</span>
+          </button>
+        ) : !isContactShared ? (
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1.5 bg-slate-800 text-amber-300 border border-amber-500/30 rounded-xl font-bold flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" />
+              고객 제안서 확인 대기 중
+            </span>
+          </div>
         ) : (
           <button
             type="button"

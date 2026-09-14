@@ -839,10 +839,21 @@ export const APPOINTMENT_CANCEL_REASONS = [
 ] as const;
 
 
+// ── 고객 연락처 공개 및 제안서 소통 게이팅 상태 ──
+export type ContactDisclosureStatus = 
+  | 'anonymous'        // Phase 1: 100% 스텔스 익명 (이름: 가명, 전화번호: 미공개)
+  | 'proposal_sent'    // Phase 2: 제안서 발송됨, 고객 열람/연락처 제공 대기
+  | 'contact_shared';  // Phase 3: 고객이 제안서 확인 후 연락처 제공 및 전화상담 요청
+
 export interface ConsultRequest {
   id: string;
   clientId: string;
   clientName: string;
+  stealthNickname?: string;               // 스텔스 가명 (예: "다시한번44", "은빛수달_59")
+  realClientName?: string;                // 실제 고객 실명 (고객 동의 시 공개)
+  contactDisclosureStatus?: ContactDisclosureStatus; // 연락처 공개 상태
+  contactSharedAt?: string;               // 연락처 제공 동의 일시
+  phoneMasked?: boolean;                  // 전화번호 마스킹 여부
   name?: string;
   court?: string;
   region?: string;
@@ -903,6 +914,8 @@ export interface ConsultProposal {
   approvedAt?: string;           // 승인 일시
   rejectionReason?: string;      // 반려 사유
   proposalData?: any;            // 원본 ProposalData (검토용 전체 데이터)
+  viewedAt?: string;             // 고객 제안서 열람 시각
+  phoneConsultRequestedAt?: string; // 고객 전화상담 요청 시각
 }
 
 export interface ConsultParticipant {
