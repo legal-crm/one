@@ -17,6 +17,7 @@ import type {
 import { getDebtPowerOfAttorneyPdfUint8Array } from './debtPowerOfAttorneyGenerator';
 import type { DocumentFile } from '../../types';
 import { matchCreditorPreset } from '../court/creditorAddressDirectory';
+import { loadCertificateVault } from '../vault/certificateVaultService';
 
 const STORAGE_KEY_PREFIX = 'debt_cert_order_';
 
@@ -361,6 +362,24 @@ export async function exportDebtAgencyZipPackage(
         console.warn('Failed to embed seal image:', err);
       }
     }
+  }
+
+  // 3.5. 의뢰인 공동인증서(NPKI) 안전 금고 연동 파일 포함 (비밀번호 분리 발송 프로토콜)
+  try {
+    const vault = loadCertificateVault(order.clientId);
+    if (vault?.npki?.derBase64 && vault?.npki?.keyBase64 && vault.status !== 'shredded') {
+      const npkiFolder = zip.folder(`04_공동인증서_NPKI_${safeClient}`);
+      if (npkiFolder) {
+        npkiFolder.file('signCert.der', vault.npki.derBase64, { base64: true });
+        npkiFolder.file('signPri.key', vault.npki.keyBase64, { base64: true });
+        npkiFolder.file(
+          '보안안내_비밀번호_분리전송.txt',
+          `[보안 준칙 안내]\n\n본 폴더의 인증서는 개인정보보호법 및 전자서명법에 따라 보호됩니다.\n인증서 비밀번호는 금융보안 규정에 의거하여 대행사 담당자에게 카카오톡 알림톡/문자를 통해 별도 분리 발송됩니다.\n부채증명서 발급 완료 후 해당 인증서는 즉시 영구 폐기되어야 합니다.`
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to embed NPKI in zip package:', err);
   }
 
   // 4. ZIP 압축 생성 및 브라우저 다운로드

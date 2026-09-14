@@ -24,6 +24,7 @@ import {
 import { downloadDebtPowerOfAttorneyPdf } from '../../../services/repayment/debtPowerOfAttorneyGenerator';
 import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY } from '../../../services/court/creditorAddressDirectory';
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
+import CertificateVaultCard from '../vault/CertificateVaultCard';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -477,6 +478,16 @@ export default function DebtCertificateTab({
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+
+        {/* ── 의뢰인 공동인증서 / 금융인증서 안전 금고 위젯 ── */}
+        <div className="pt-5">
+          <CertificateVaultCard
+            clientId={clientId}
+            clientRequest={clientRequest}
+            crmExt={crmExt}
+            onUpdateCrmExt={onUpdateCrmExt}
+          />
         </div>
 
         {/* 메트릭 카드 4종 */}

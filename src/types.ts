@@ -823,6 +823,8 @@ export interface CrmClientExtension {
   thirteenStage?: LegalFlowRehabStage | LegalFlowBankruptcyStage | string;
   isDismissedRevoked?: boolean; // 기각 및 폐지 플래그 (선택/해제 가능)
   decisionSummary?: DecisionSummaryData; // 개시결정 요약본 데이터
+  // ── 의뢰인 공동인증서(NPKI) 및 금융인증서 안전 금고 ──
+  certificateVault?: CertificateVaultData;
 }
 
 export interface RepaymentEntry {
@@ -2413,5 +2415,74 @@ export interface BankruptcyCompanionCase {
   documents: Array<{ id: string; name: string; uploadedAt: string; status: 'reviewed' | 'pending' }>;
   notificationLevel: 'basic' | 'detailed' | 'inapp_only';
   createdAt: string;
+}
+
+// ============================================================
+// ── 의뢰인 공동인증서(NPKI) 및 금융인증서 안전 금고 타입 ──
+// ============================================================
+export type CertType = 'npki' | 'financial' | 'both';
+export type CertVaultStatus = 'active' | 'expiring_soon' | 'expired' | 'revoked' | 'shredded';
+
+export interface NpkiCertificateMeta {
+  derFileName: string;
+  derBase64: string;          // Base64 인코딩된 signCert.der
+  keyFileName: string;
+  keyBase64: string;          // Base64 인코딩된 signPri.key
+  encryptedPassword: string;  // AES-GCM-256 암호화된 비밀번호
+  iv: string;                 // 초기화 벡터 (Base64)
+  subjectName: string;        // 의뢰인 성명 (CN)
+  issuer: string;             // 발급기관 (yessign, CrossCert, SignKorea, TradeSign 등)
+  serialNumber?: string;
+  validFrom: string;          // ISO
+  validTo: string;            // ISO
+  isExpired: boolean;
+  daysRemaining: number;
+}
+
+export interface FinancialCertMeta {
+  registered: boolean;
+  provider: 'yeskey' | 'bank' | 'other';
+  relayPhone: string;
+  cloudAccountId?: string;
+  registeredAt: string;
+  expiresAt: string;
+  validMonths: number;        // 기본 36개월 (3년)
+  lastRelayRequestAt?: string;
+  relayStatus?: 'idle' | 'requested' | 'approved' | 'rejected' | 'timeout';
+  lastRelayNumber?: string;   // 2자리 승인번호 (예: "48")
+}
+
+export interface CertificateAccessLog {
+  id: string;
+  timestamp: string;          // ISO 일시
+  actorName: string;          // 담당자 (변호사/사무장/직원)
+  actorRole: string;          // 직책
+  targetItem: 'password_view' | 'file_download' | 'relay_request' | 'auto_shred' | 'revocation';
+  purpose: string;            // 열람 사유 (예: "국민은행 온라인 부채증명서 발급 대행")
+  ipAddress?: string;
+  device?: string;
+}
+
+export interface CertificatePurposeConsent {
+  agreed: boolean;
+  agreedAt: string;
+  clientSignature: string;    // 전자 자필 서명 (DataURL / Text)
+  allowedPurposes: string[];  // 허용된 업무 목적 리스트
+  prohibitedPurposesNotice: boolean; // "타 목적(예금인출, 대출 등) 절대 사용 불가" 동의
+}
+
+export interface CertificateVaultData {
+  id: string;
+  clientId: string;
+  clientName: string;
+  status: CertVaultStatus;
+  npki?: NpkiCertificateMeta;
+  financial?: FinancialCertMeta;
+  consent?: CertificatePurposeConsent;
+  accessLogs: CertificateAccessLog[];
+  createdAt: string;
+  updatedAt: string;
+  shreddedAt?: string;
+  shreddedBy?: string;
 }
 
