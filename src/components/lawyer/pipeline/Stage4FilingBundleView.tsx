@@ -7,10 +7,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import { useDialog } from '../../common/DialogProvider';
 
 interface Stage4FilingBundleViewProps {
   clientRequest: ConsultRequest;
   crmExt?: CrmClientExtension;
+  onUpdateStatus?: (newStatus: any) => void;
   onAdvanceToNextStage: () => void;
   onOpenBatchFilingModal?: () => void;
   onOpenAncillaryModal?: () => void;
@@ -22,6 +24,7 @@ interface Stage4FilingBundleViewProps {
 export default function Stage4FilingBundleView({
   clientRequest,
   crmExt,
+  onUpdateStatus,
   onAdvanceToNextStage,
   onOpenBatchFilingModal,
   onOpenAncillaryModal,
@@ -29,36 +32,85 @@ export default function Stage4FilingBundleView({
   onOpenPropertyValuationModal,
   onOpenIncomeExpenseModal,
 }: Stage4FilingBundleViewProps) {
+  const dialog = useDialog();
   const [includeProhibition, setIncludeProhibition] = useState(true);
   const [includeStayOrder, setIncludeStayOrder] = useState(true);
   const [stayExecutionCaseNo, setStayExecutionCaseNo] = useState('2025타채 54321호 (급여압류)');
   const [isClientConsented, setIsClientConsented] = useState(true);
-  const [isFilingSubmitted, setIsFilingSubmitted] = useState(false);
+
+  // 선행 충족 조건 산출
+  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+    crmExt?.crmStatus || clientRequest.status || ''
+  );
+  const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
+  const isContactShared = Boolean(
+    isContracted || 
+    clientRequest.isContactShared || 
+    crmExt?.isContactShared || 
+    (clientRequest.phone && !clientRequest.phone.includes('*'))
+  );
+
+  const [isFilingSubmitted, setIsFilingSubmitted] = useState(() => {
+    return ['filed', 'commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || clientRequest.status || '');
+  });
 
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
 
-  // 8대 필수 서식 목록
-  const standardForms = [
-    { code: 'R01', name: '개인회생절차 개시신청서 본안', isReady: true, note: '당사자 기본 인적사항 및 관할법원 지정' },
-    { code: 'R02', name: '개인회생 채권자목록 (CSV)', isReady: true, note: '8개 채권사 원금·이자 산정 및 CSV 변환 완료' },
-    { code: 'R06', name: '재산목록 (D5102)', isReady: true, note: '부동산, 자동차, 예금, 보험환급금 청산가치 산정' },
-    { code: 'R08', name: '수입 및 지출에 관한 목록 (D5103)', isReady: true, note: '중위소득 60% 기준 생계비 및 가용소득 확정' },
-    { code: 'R10', name: '진술서 (채무 증대 경위서)', isReady: true, note: 'AI 첨삭 및 신청인 확인 완료' },
-    { code: 'R04', name: '변제계획안 및 변제예정표', isReady: true, note: '제614조 제2항 최저변제율(28.4% > 5%) 충족' },
-    { code: 'R03', name: '소송위임장', isReady: true, note: '전자서명 체결 완료' },
-    { code: 'R07', name: '첨부서류 일체 (4대 발급처 증빙)', isReady: true, note: 'Stage 3 수합 20종 서류 번들링 완료' },
-  ];
+  // 선행 조건 검증 헬퍼
+  const checkPreconditions = async (): Promise<boolean> => {
+    if (!hasProposalSent || !isContactShared) {
+      await dialog.alert({
+        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        message: '의뢰인에게 맞춤 제안서가 아직 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해야 법원 정식 접수가 가능합니다.',
+        variant: 'warning',
+      });
+      return false;
+    }
+    if (!isContracted) {
+      await dialog.alert({
+        title: '🔒 선행 단계 미완료 (수임계약 미체결)',
+        message: '의뢰인과의 사건 위임계약(전자계약 또는 서면계약) 체결이 완료되지 않았습니다.\n\n[Stage 02 계약·착수] 단계를 먼저 완료해 주세요.',
+        variant: 'warning',
+      });
+      return false;
+    }
+    return true;
+  };
 
   // 원클릭 번들 다운로드
   const handleDownloadBundle = () => {
     toast.success('대법원 전자소송 제출용 ZIP 패키지(8대 서식 + 금지/중지명령)가 다운로드되었습니다.');
   };
 
-  // 법원 접수 완료 처리
-  const handleCompleteFiling = () => {
+  // 법원 접수 완료 처리 (2단계 확인 팝업 적용)
+  const handleCompleteFiling = async () => {
+    const passed = await checkPreconditions();
+    if (!passed) return;
+
+    const confirmed = await dialog.confirm({
+      title: '🏛️ 대법원 전자소송 접수 완료 처리',
+      message: '8대 법원 서식 및 금지·중지명령신청서의 전자소송 정식 접수를 완료 처리하시겠습니까?\n\n※ 접수 완료 처리 시 사건이 Stage 5(법원대응·보정) 단계로 전환되며 법원 사건번호 관리가 시작됩니다.',
+      confirmText: '접수 완료 승인',
+      cancelText: '취소',
+      variant: 'primary',
+    });
+    if (!confirmed) return;
+
     setIsFilingSubmitted(true);
+    if (onUpdateStatus) {
+      onUpdateStatus('filed');
+    }
     toast.success('대법원 전자소송 정식 접수가 완료되었습니다. [Gate 4 통과]');
+  };
+
+  // 전자소송 일괄 패키징 & 접수 클릭 시 선행 조건 검증
+  const handleBatchFilingClick = async () => {
+    const passed = await checkPreconditions();
+    if (!passed) return;
+    if (onOpenBatchFilingModal) {
+      onOpenBatchFilingModal();
+    }
   };
 
   return (
@@ -117,10 +169,14 @@ export default function Stage4FilingBundleView({
                 {onOpenBatchFilingModal && (
                   <button
                     type="button"
-                    onClick={onOpenBatchFilingModal}
-                    className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+                    onClick={handleBatchFilingClick}
+                    className={`px-5 py-2.5 font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer ${
+                      !isContracted
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        : 'bg-[#1E3A5F] hover:bg-slate-800 text-white'
+                    }`}
                   >
-                    <Send className="w-4 h-4 text-emerald-400" />
+                    {!isContracted ? <Lock className="w-4 h-4 text-amber-300" /> : <Send className="w-4 h-4 text-emerald-400" />}
                     <span>전자소송 일괄 패키징 & 접수 (Major)</span>
                   </button>
                 )}
@@ -128,9 +184,13 @@ export default function Stage4FilingBundleView({
                 <button
                   type="button"
                   onClick={handleCompleteFiling}
-                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  className={`px-3.5 py-2.5 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
+                    !isContracted 
+                      ? 'bg-slate-100 text-slate-400 hover:bg-slate-200' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                  }`}
                 >
-                  <Check className="w-3.5 h-3.5 text-slate-600" />
+                  {!isContracted ? <Lock className="w-3.5 h-3.5 text-slate-400" /> : <Check className="w-3.5 h-3.5 text-slate-600" />}
                   <span>접수 완료 처리</span>
                 </button>
               </>
@@ -216,8 +276,13 @@ export default function Stage4FilingBundleView({
           <button
             type="button"
             onClick={handleCompleteFiling}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
+            className={`px-4 py-2 font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs ${
+              !isContracted 
+                ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' 
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
           >
+            {!isContracted && <Lock className="w-3.5 h-3.5 text-amber-300" />}
             <span>전자소송 접수완료 처리</span>
           </button>
         )}

@@ -5,6 +5,7 @@ import {
   Layers, AlertCircle, UserCheck, FileText, Check
 } from 'lucide-react';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import { useDialog } from '../../common/DialogProvider';
 
 export type PipelineStage = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -27,13 +28,34 @@ export default function WorkflowPipelineStepper({
   viewMode,
   onToggleViewMode,
 }: WorkflowPipelineStepperProps) {
+  const dialog = useDialog();
+
+  // 제안서 발송 및 의뢰인 연락처 공개 여부
+  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+    crmExt?.crmStatus || clientRequest.status || ''
+  );
+  const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
+  const isContactShared = Boolean(
+    isContracted || 
+    clientRequest.isContactShared || 
+    crmExt?.isContactShared || 
+    (clientRequest.phone && !clientRequest.phone.includes('*'))
+  );
+
   // 선후행 상태 산출
-  const isConsultCompleted = !!crmExt?.crmStatus && crmExt.crmStatus !== 'requested';
-  const isContractCompleted = isConsultCompleted && !['requested', 'consulting'].includes(crmExt?.crmStatus || '');
+  const isConsultCompleted = (!!crmExt?.crmStatus && crmExt.crmStatus !== 'requested') || isContracted;
+  const isContractCompleted = isContracted || (isConsultCompleted && !['requested', 'consulting'].includes(crmExt?.crmStatus || ''));
   const isDocCompleted = isContractCompleted && (crmExt?.uploadedFiles?.length || 0) >= 3;
   const isFilingCompleted = ['filed', 'commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || '');
   const isCommenced = ['commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || '');
   const isDischarged = crmExt?.crmStatus === 'discharged';
+
+  // 단계별 락(Lock) 조건
+  const isStage2Locked = !isContracted && (!hasProposalSent || !isContactShared);
+  const isStage3Locked = !isContractCompleted;
+  const isStage4Locked = !isContractCompleted;
+  const isStage5Locked = !isFilingCompleted && !crmExt?.courtCase?.caseNumber;
+  const isStage6Locked = !isCommenced;
 
   const stages = [
     {
@@ -51,58 +73,90 @@ export default function WorkflowPipelineStepper({
       stage: 2 as PipelineStage,
       number: '02',
       title: '계약·착수',
-      desc: '실비·수임료 산출 & 모바일 전자계약',
+      desc: isStage2Locked 
+        ? (!hasProposalSent ? '🔒 제안서 발송 필요' : '🔒 고객 확인 대기') 
+        : '실비·수임료 산출 & 모바일 전자계약',
       icon: FileCheck2,
       isCompleted: isContractCompleted,
-      isLocked: false,
-      badgeText: isContractCompleted ? '체결 완료' : '계약 대기',
+      isLocked: isStage2Locked,
+      badgeText: isContractCompleted ? '체결 완료' : isStage2Locked ? '잠김' : '계약 대기',
       badgeColor: isContractCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
     },
     {
       stage: 3 as PipelineStage,
       number: '03',
       title: '고객정보·서류수집',
-      desc: '4대 발급처 서류 & 진술서 동기화',
+      desc: isStage3Locked ? '🔒 수임계약 체결 필요' : '4대 발급처 서류 & 진술서 동기화',
       icon: FolderArchive,
       isCompleted: isDocCompleted,
-      isLocked: false,
-      badgeText: isDocCompleted ? '서류 완비' : `${(crmExt?.uploadedFiles || []).length}건 수합중`,
+      isLocked: isStage3Locked,
+      badgeText: isDocCompleted ? '서류 완비' : isStage3Locked ? '잠김' : `${(crmExt?.uploadedFiles || []).length}건 수합중`,
       badgeColor: isDocCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
     },
     {
       stage: 4 as PipelineStage,
       number: '04',
       title: '신청서 작성·접수',
-      desc: '8대 서식 + 금지명령 일괄 패키징',
+      desc: isStage4Locked ? '🔒 수임계약 체결 필요' : '8대 서식 + 금지명령 일괄 패키징',
       icon: Send,
       isCompleted: isFilingCompleted,
-      isLocked: !isContractCompleted,
-      badgeText: isFilingCompleted ? '접수 완료' : '작성 대기',
+      isLocked: isStage4Locked,
+      badgeText: isFilingCompleted ? '접수 완료' : isStage4Locked ? '잠김' : '작성 대기',
       badgeColor: isFilingCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
     },
     {
       stage: 5 as PipelineStage,
       number: '05',
       title: '법원대응·보정',
-      desc: '나의사건 크롤링 & 7대 표 소명서',
+      desc: isStage5Locked ? '🔒 법원 정식접수 필요' : '나의사건 크롤링 & 7대 표 소명서',
       icon: Scale,
       isCompleted: isCommenced,
-      isLocked: !isFilingCompleted && !crmExt?.courtCase?.caseNumber,
-      badgeText: (crmExt?.corrections?.length || 0) > 0 ? `보정 ${crmExt?.corrections?.length}건` : '심리 중',
+      isLocked: isStage5Locked,
+      badgeText: (crmExt?.corrections?.length || 0) > 0 ? `보정 ${crmExt?.corrections?.length}건` : isStage5Locked ? '잠김' : '심리 중',
       badgeColor: (crmExt?.corrections?.length || 0) > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'
     },
     {
       stage: 6 as PipelineStage,
       number: '06',
       title: '사후관리·면책',
-      desc: '가상계좌 적립금 & 채권자집회·면책',
+      desc: isStage6Locked ? '🔒 법원 개시결정 필요' : '가상계좌 적립금 & 채권자집회·면책',
       icon: ShieldCheck,
       isCompleted: isDischarged,
-      isLocked: !isCommenced,
-      badgeText: isDischarged ? '면책 확정' : isCommenced ? '인가 관리' : '개시 대기',
+      isLocked: isStage6Locked,
+      badgeText: isDischarged ? '면책 확정' : isCommenced ? '인가 관리' : isStage6Locked ? '잠김' : '개시 대기',
       badgeColor: isDischarged ? 'bg-purple-50 text-purple-700 border-purple-200' : isCommenced ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
     }
   ];
+
+  // 잠긴 단계 클릭 시 경고 안내 팝업
+  const handleStageClick = async (targetStage: PipelineStage, isLocked: boolean) => {
+    if (isLocked) {
+      let lockReason = '선행 절차가 아직 완료되지 않았습니다.';
+      if (targetStage >= 2 && (!hasProposalSent || !isContactShared)) {
+        lockReason = !hasProposalSent
+          ? '[Stage 01 맞춤 제안서 발송]이 필요합니다.\n의뢰인에게 제안서를 먼저 작성·발송하고, 의뢰인이 제안서를 확인해야 다음 단계로 이동할 수 있습니다.'
+          : '의뢰인이 발송된 제안서를 확인하고 상담 요청(연락처 공개)을 진행해야 다음 단계로 이동할 수 있습니다.';
+      } else if (targetStage >= 3 && !isContractCompleted) {
+        lockReason = '[Stage 02 계약·착수] 단계에서 수임계약 체결이 완료되어야 서류 수합 및 신청서 작성 단계로 진행할 수 있습니다.';
+      } else if (targetStage >= 4 && !isContractCompleted) {
+        lockReason = '[Stage 02 수임계약 체결]이 완료되어야 법원 전자소송 접수 단계로 진행할 수 있습니다.';
+      } else if (targetStage >= 5 && !isFilingCompleted) {
+        lockReason = '[Stage 04 신청서 작성·접수] 단계에서 대법원 전자소송 정식 접수가 완료되어야 법원 대응 및 보정 단계로 진행할 수 있습니다.';
+      } else if (targetStage === 6 && !isCommenced) {
+        lockReason = '[Stage 05 법원대응·보정] 단계에서 법원의 개시결정이 내려져야 사후관리 및 면책 단계로 진행할 수 있습니다.';
+      }
+
+      await dialog.alert({
+        title: `🔒 Stage 0${targetStage} 잠김 안내`,
+        message: lockReason,
+        variant: 'warning'
+      });
+      return;
+    }
+
+    onToggleViewMode('pipeline');
+    onSelectStage(targetStage);
+  };
 
   // 전체 파이프라인 진척도 (%)
   const completedCount = stages.filter(s => s.isCompleted).length;
@@ -151,7 +205,17 @@ export default function WorkflowPipelineStepper({
           </button>
           <button
             type="button"
-            onClick={() => onToggleViewMode('subtabs')}
+            onClick={async () => {
+              if (!isContracted && (!hasProposalSent || !isContactShared)) {
+                await dialog.alert({
+                  title: '🔒 전체 서브탭 접근 제한',
+                  message: '맞춤 제안서 발송 및 고객 확인이 완료되기 전에는 사건의 비밀 보호 및 순차 진행을 위해 전체 서브탭 뷰가 제한됩니다.\n\n먼저 [맞춤 제안서 작성 및 발송]을 진행해 주세요.',
+                  variant: 'warning'
+                });
+                return;
+              }
+              onToggleViewMode('subtabs');
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
               viewMode === 'subtabs'
                 ? 'bg-white text-slate-900 shadow-xs'
@@ -175,10 +239,7 @@ export default function WorkflowPipelineStepper({
               <button
                 key={st.stage}
                 type="button"
-                onClick={() => {
-                  onToggleViewMode('pipeline');
-                  onSelectStage(st.stage);
-                }}
+                onClick={() => handleStageClick(st.stage, st.isLocked)}
                 className={`p-2.5 sm:p-3 text-left transition-all relative flex flex-col justify-between rounded-xl cursor-pointer press-scale min-h-[82px] group ${
                   isActive 
                     ? 'bg-[#1E3A5F] text-white shadow-md border-2 border-[#1E3A5F] ring-2 ring-blue-500/25 z-10' 

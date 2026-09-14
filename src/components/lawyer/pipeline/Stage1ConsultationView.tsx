@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
 import { addClientNotification } from '../../../services/clientNotificationService';
+import { useDialog } from '../../common/DialogProvider';
 
 interface Stage1ConsultationViewProps {
   clientRequest: ConsultRequest;
@@ -72,10 +73,20 @@ export default function Stage1ConsultationView({
   // 아코디언 섹션 토글
   const [openSection, setOpenSection] = useState<'qualification' | 'article595' | 'casetype'>('qualification');
 
+  const dialog = useDialog();
   const allConditionsMet = debtCheckPassed && incomeCheckPassed && article595Passed && caseTypeConfirmed;
 
-  // 1 Major Action: 적격 확정 및 Gate 1 통과
-  const handleConfirmEligibility = () => {
+  // 1 Major Action: 적격 확정 및 Gate 1 통과 (2단계 확인 팝업 적용)
+  const handleConfirmEligibility = async () => {
+    const confirmed = await dialog.confirm({
+      title: '⚖️ 신청 적격 요건 확정',
+      message: `채무 한도, 소득 요건 및 제595조 결격사유 점검을 완료하고 의뢰인을 [수임 계약 준비] 상태로 전환하시겠습니까?`,
+      confirmText: '적격 확정',
+      cancelText: '취소',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     setCaseTypeConfirmed(true);
     if (crmExt?.crmStatus === 'requested') {
       onUpdateStatus('consulting');

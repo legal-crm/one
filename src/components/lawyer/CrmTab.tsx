@@ -687,6 +687,40 @@ export default function CrmTab({
     if (!selectedId) return;
     const ext = getCrmExt(selectedId);
     const currentAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || '';
+
+    // 상태 변경 시 2단계 확인 및 선행 조건 검증
+    if (editStatus !== ext.crmStatus) {
+      const clientReq = requests.find(r => r.id === selectedId);
+      const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+        ext.crmStatus || clientReq?.status || ''
+      );
+      const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
+      const isContactShared = Boolean(
+        isContracted || 
+        clientReq?.isContactShared || 
+        ext.isContactShared || 
+        (clientReq?.phone && !clientReq.phone.includes('*'))
+      );
+
+      if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(editStatus)) {
+        await dialog.alert({
+          title: '🔒 선행 단계(제안서 발송) 미완료',
+          message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
+          variant: 'warning'
+        });
+        return;
+      }
+
+      const clientName = clientReq?.clientName || '고객';
+      const confirmed = await dialog.confirm({
+        title: '사건 진행 상태 변경 확인',
+        message: `[${clientName}] 의뢰인의 사건 상태를\n"${CRM_STATUS_CONFIG[ext.crmStatus].label}" ➔ "${CRM_STATUS_CONFIG[editStatus].label}"\n(으)로 변경하시겠습니까?\n\n※ 상태 변경 시 파이프라인 단계 및 업무 관리가 즉시 갱신됩니다.`,
+        confirmText: '상태 변경 실행',
+        cancelText: '취소',
+        variant: 'primary'
+      });
+      if (!confirmed) return;
+    }
     
     // 담당자가 변경되었는지 확인
     const assigneeChanged = editAssigneeId !== currentAssignee;
@@ -1008,6 +1042,16 @@ export default function CrmTab({
   const handleBulkStatusChange = async () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
+
+    const confirmed = await dialog.confirm({
+      title: '일괄 상태 변경 확인',
+      message: `선택하신 ${count}건의 사건 상태를\n"${CRM_STATUS_CONFIG[bulkStatus].label}"(으)로 일괄 변경하시겠습니까?`,
+      confirmText: '일괄 변경 실행',
+      cancelText: '취소',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     for (const id of selectedIds) {
       const ext = getCrmExt(id);
@@ -1042,6 +1086,38 @@ export default function CrmTab({
   const handleKanbanDrop = async (clientId: string, newStatus: CrmStatus) => {
     const ext = getCrmExt(clientId);
     if (ext.crmStatus === newStatus) return;
+
+    const clientReq = requests.find(r => r.id === clientId);
+    const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+      ext.crmStatus || clientReq?.status || ''
+    );
+    const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
+    const isContactShared = Boolean(
+      isContracted || 
+      clientReq?.isContactShared || 
+      ext.isContactShared || 
+      (clientReq?.phone && !clientReq.phone.includes('*'))
+    );
+
+    if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
+      await dialog.alert({
+        title: '🔒 선행 단계(제안서 발송) 미완료',
+        message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    const clientName = clientReq?.clientName || '고객';
+    const confirmed = await dialog.confirm({
+      title: '칸반 상태 변경 확인',
+      message: `[${clientName}] 의뢰인의 사건 상태를\n"${CRM_STATUS_CONFIG[ext.crmStatus].label}" ➔ "${CRM_STATUS_CONFIG[newStatus].label}"\n(으)로 이동하시겠습니까?`,
+      confirmText: '이동 실행',
+      cancelText: '취소',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const activities = [...ext.activities, createActivityLog(
       clientId, actor.id, actor.name, actor.role, 'status_change',
@@ -1256,21 +1332,56 @@ export default function CrmTab({
   }, [crmData]);
 
   /** 상태 변경 시 cancelled이면 이탈 사유 모달 표시 */
-  const handleStatusChangeWithDropOff = useCallback((clientId: string, newStatus: CrmStatus) => {
+  const handleStatusChangeWithDropOff = useCallback(async (clientId: string, newStatus: CrmStatus) => {
     if (newStatus === 'cancelled') {
       setDropOffTargetId(clientId);
       setIsDropOffModalOpen(true);
       return;
     }
-    // 일반 상태 변경
     const ext = getCrmExt(clientId);
+    if (ext.crmStatus === newStatus) return;
+
+    // 선행 제안서 발송 검증
+    const clientReq = requests.find(r => r.id === clientId);
+    const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+      ext.crmStatus || clientReq?.status || ''
+    );
+    const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
+    const isContactShared = Boolean(
+      isContracted || 
+      clientReq?.isContactShared || 
+      ext.isContactShared || 
+      (clientReq?.phone && !clientReq.phone.includes('*'))
+    );
+
+    if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
+      await dialog.alert({
+        title: '🔒 선행 단계(제안서 발송) 미완료',
+        message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    const clientName = clientReq?.clientName || '고객';
+    const confirmed = await dialog.confirm({
+      title: '사건 진행 상태 변경 확인',
+      message: `[${clientName}] 의뢰인의 사건 상태를\n"${CRM_STATUS_CONFIG[ext.crmStatus].label}" ➔ "${CRM_STATUS_CONFIG[newStatus].label}"\n(으)로 변경하시겠습니까?\n\n※ 상태 변경 시 파이프라인 단계 및 업무 관리가 즉시 갱신됩니다.`,
+      confirmText: '상태 변경 실행',
+      cancelText: '취소',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
+    // 일반 상태 변경
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const activities = [...ext.activities, createActivityLog(
       clientId, actor.id, actor.name, actor.role, 'status_change',
       `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[newStatus].label}`
     )];
-    updateCrmExt(clientId, { crmStatus: newStatus, activities });
-  }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt]);
+    await updateCrmExt(clientId, { crmStatus: newStatus, activities });
+    toast.success(`사건 상태가 [${CRM_STATUS_CONFIG[newStatus].label}](으)로 변경되었습니다.`);
+  }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt, requests, dialog]);
 
   // ══════════════════════════════════════
   //  RENDER
@@ -2631,6 +2742,7 @@ export default function CrmTab({
                         <Stage4FilingBundleView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
+                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                           onAdvanceToNextStage={() => setPipelineStage(5)}
                           onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
                           onOpenAncillaryModal={() => setShowAncillaryModal(true)}

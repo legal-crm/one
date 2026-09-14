@@ -22,6 +22,7 @@ import ContractWizard from '../ContractWizard';
 import { ContractDocEditModal } from '../ContractDocEditModal';
 import ClientSignShareModal from '../ClientSignShareModal';
 import { HighlightedDocumentViewer } from '../../common/HighlightedDocumentViewer';
+import { useDialog } from '../../common/DialogProvider';
 
 interface Stage2ContractRetainerViewProps {
   clientRequest: ConsultRequest;
@@ -55,6 +56,18 @@ export default function Stage2ContractRetainerView({
   onOpenPowerOfAttorneyModal,
   onUpdateCrmExt,
 }: Stage2ContractRetainerViewProps) {
+  const dialog = useDialog();
+
+  // 선행 조건: 제안서 발송 및 의뢰인 확인 여부
+  const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
+  const isContactShared = Boolean(
+    clientRequest.status === 'contracted' ||
+    crmExt?.crmStatus === 'contracted' ||
+    clientRequest.phoneConsultationRequested || 
+    clientRequest.contactDisclosureStatus === 'contact_shared' ||
+    crmExt?.isContactShared ||
+    (clientRequest.phone && !clientRequest.phone.includes('*'))
+  );
   // ── 1. 수임료·실비 파라미터 상태 ──
   const [creditorCount, setCreditorCount] = useState<number>(() => {
     return (crmExt?.debtCertificateOrders?.[0]?.items || []).length || (clientRequest as any)?.creditorCount || 5;
@@ -246,7 +259,16 @@ export default function Stage2ContractRetainerView({
   };
 
   // ── 4. 전자계약서 모바일 발송 핸들러 (ClientSignShareModal 연동) ──
-  const handleSendElectronicContract = () => {
+  const handleSendElectronicContract = async () => {
+    if (!hasProposalSent || !isContactShared) {
+      await dialog.alert({
+        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
+        variant: 'warning'
+      });
+      return;
+    }
+
     const current = syncContractState() || contract;
     if (!current) {
       toast.error('계약서 데이터를 준비 중입니다. 잠시 후 다시 시도해주세요.');
@@ -330,8 +352,26 @@ ${d.content}
     printWindow.document.close();
   };
 
-  // ── 6. 서면계약 수동 완료 처리 ──
+  // ── 6. 서면계약 수동 완료 처리 (2단계 확인 팝업 적용) ──
   const handleConfirmInPersonContract = async () => {
+    if (!hasProposalSent || !isContactShared) {
+      await dialog.alert({
+        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    const confirmed = await dialog.confirm({
+      title: '📝 수임계약 체결 완료 처리',
+      message: '의뢰인과의 사건 위임계약 및 착수금 약정을 완료 처리하시겠습니까?\n\n※ 체결 완료 시 사건이 [Stage 03 고객정보·서류수집] 단계로 전환됩니다.',
+      confirmText: '계약 체결 완료',
+      cancelText: '취소',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     setIsContractSigned(true);
     onUpdateStatus('contracted');
 
