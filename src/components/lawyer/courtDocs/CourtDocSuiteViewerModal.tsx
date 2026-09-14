@@ -9,7 +9,7 @@
  * - 110~140p 첨부 직결(Interleaved) 완성본 번들 PDF 머징 연동
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, Printer, Download, Save, Edit3, CheckCircle2, 
   AlertTriangle, FileText, Layers, RefreshCw, ZoomIn, 
