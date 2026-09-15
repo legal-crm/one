@@ -20,7 +20,6 @@ import BatchDocRequestModal, { type BatchDocItem } from './BatchDocRequestModal'
 import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
 import { sendAlimtok } from '../../../services/alimtokService';
 import { addClientNotification } from '../../../services/clientNotificationService';
-import CertificateVaultCard from '../vault/CertificateVaultCard';
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
@@ -390,13 +389,6 @@ export default function Stage3DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 의뢰인 공동인증서·금융인증서 안전 금고 ── */}
-      <CertificateVaultCard
-        clientId={clientRequest.id}
-        clientRequest={clientRequest}
-        crmExt={crmExt}
-      />
-
       {/* ── 2. [실무 핵심] 2-트랙 병렬 진행 대시보드 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Track 1: 1차 실물 등기 & 부채증명서 대행 (약 7일) */}

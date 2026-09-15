@@ -13,7 +13,6 @@ import {
 } from '../../../services/documents/applicationDocTemplateService';
 import ApplicationDocSettingsModal from '../documents/ApplicationDocSettingsModal';
 import MobileApplicationDocHubModal from '../../client/MobileApplicationDocHubModal';
-import CertificateVaultCard from '../vault/CertificateVaultCard';
 
 interface Stage2DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -195,13 +194,6 @@ export default function Stage2DocumentsHubView({
           <span className="font-bold text-slate-800 text-xs">제3자 마스킹 검증 완료</span>
         </label>
       </div>
-
-      {/* ── 의뢰인 공동인증서·금융인증서 안전 금고 ── */}
-      <CertificateVaultCard
-        clientId={clientRequest.id}
-        clientRequest={clientRequest}
-        crmExt={crmExt}
-      />
 
       {/* 4대 발급처별 탭 네비게이션 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
