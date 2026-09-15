@@ -357,115 +357,344 @@ export default function Stage1ConsultationView({
         </div>
       )}
 
-      {/* ── 3. 고객 사전진단 계기판 (초슬림 HUD) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
-        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-          <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
-            <BarChart3 className="w-3.5 h-3.5" />
-          </span>
-          <span className="font-black text-xs text-slate-900">
-            사전 진단 요건 검토 계기판
-          </span>
-          <span className="text-[11px] font-mono text-slate-400">
-            ({stealthName})
+      {/* ── 3. 고객 사전진단 계기판 (원형 도넛 링 게이지 & 스마트 막대 HUD) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
+              <BarChart3 className="w-3.5 h-3.5" />
+            </span>
+            <span className="font-black text-xs text-slate-900">
+              사전 진단 요건 검토 계기판
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">
+              ({stealthName})
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400 hidden sm:inline-block">
+            Gate 1 신청 적격 인포그래픽 HUD
           </span>
         </div>
 
-        {/* 4대 계기판 타일 (한 줄 배치) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* 4대 계기판 타일 (원형 게이지 + 스마트 막대 결합형) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* 타일 1: 채무 vs 자산 */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3 hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">1. 채무 vs 자산</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+              <span className="text-[11px] font-bold text-slate-600">1. 채무 vs 자산</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
                 isDebtExceedingAssets ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
                 {isDebtExceedingAssets ? '🟢 충족' : '🔴 미달'}
               </span>
             </div>
-            <div>
-              <div className="text-lg font-black font-mono text-slate-900 leading-tight">
-                {assetRatio}% <span className="text-xs font-normal text-slate-500">자산비율</span>
+
+            {/* 원형 도넛 게이지 + 상세 수치 */}
+            <div className="flex items-center gap-3">
+              {/* 원형 게이지 SVG */}
+              <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                <svg width="56" height="56" className="transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    fill="transparent"
+                    className="text-slate-200"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    strokeDasharray={2 * Math.PI * 22}
+                    strokeDashoffset={(2 * Math.PI * 22) * (1 - Math.min(100, assetRatio) / 100)}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className={`${isDebtExceedingAssets ? 'text-emerald-500' : 'text-rose-500'} transition-all duration-500`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="font-mono font-black text-xs text-slate-800 leading-none">
+                    {assetRatio}%
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                    자산비
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
-                자산 {assetsTotal.toLocaleString()}만 / 채무 {debtTotal.toLocaleString()}만
-              </span>
+
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] text-slate-400 block font-medium">채무초과 판정</span>
+                <div className="text-xs font-black text-slate-800 truncate">
+                  {isDebtExceedingAssets ? '채무초과 충족' : '자산초과 (기각위험)'}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate">
+                  자산 {assetsTotal.toLocaleString()}만 / 채무 {debtTotal.toLocaleString()}만
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
-              <div className="bg-blue-600 h-full" style={{ width: `${Math.min(100, Math.max(5, assetRatio))}%` }} />
-              <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(0, 100 - Math.min(100, Math.max(5, assetRatio)))}%` }} />
+
+            {/* 하단 듀얼 컬러 트랙 막대 */}
+            <div className="space-y-1 pt-1 border-t border-slate-200/60">
+              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+                <div 
+                  className="bg-blue-500 h-full rounded-l-full" 
+                  style={{ width: `${Math.min(100, Math.max(8, assetRatio))}%` }} 
+                  title={`자산 ${assetsTotal}만`}
+                />
+                <div 
+                  className="bg-emerald-500 h-full rounded-r-full" 
+                  style={{ width: `${Math.max(0, 100 - Math.min(100, Math.max(8, assetRatio)))}%` }} 
+                  title={`순채무 ${(debtTotal - assetsTotal)}만`}
+                />
+              </div>
+              <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                <span>자산 {assetsTotal.toLocaleString()}만</span>
+                <span className="text-emerald-600 font-bold">순채무 {(debtTotal - assetsTotal).toLocaleString()}만</span>
+              </div>
             </div>
           </div>
 
           {/* 타일 2: 월 가용소득 */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3 hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">2. 월 가용소득</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+              <span className="text-[11px] font-bold text-slate-600">2. 월 가용소득</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
                 isAvailableIncomeSufficient ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'
               }`}>
                 {isAvailableIncomeSufficient ? '🟢 회생적합' : '🟣 파산권장'}
               </span>
             </div>
-            <div>
-              <div className={`text-lg font-black font-mono leading-tight ${isAvailableIncomeSufficient ? 'text-emerald-600' : 'text-purple-600'}`}>
-                {availableIncome.toLocaleString()} <span className="text-xs font-normal text-slate-500">만원 / 월</span>
+
+            {/* 원형 도넛 게이지 + 상세 수치 */}
+            <div className="flex items-center gap-3">
+              {/* 원형 게이지 SVG (생계비 커버리지) */}
+              <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                <svg width="56" height="56" className="transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    fill="transparent"
+                    className="text-slate-200"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    strokeDasharray={2 * Math.PI * 22}
+                    strokeDashoffset={(2 * Math.PI * 22) * (1 - (income > 0 ? Math.min(100, Math.round((availableIncome / income) * 100)) : 0) / 100)}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className={`${isAvailableIncomeSufficient ? 'text-emerald-500' : 'text-purple-500'} transition-all duration-500`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className={`font-mono font-black text-xs leading-none ${isAvailableIncomeSufficient ? 'text-emerald-600' : 'text-purple-600'}`}>
+                    {availableIncome > 0 ? `${availableIncome}만` : '0원'}
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                    가용
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
-                소득 {income.toLocaleString()}만 - 생계비 {minLivingCost.toLocaleString()}만
-              </span>
+
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] text-slate-400 block font-medium">월 납입 가능액</span>
+                <div className={`text-xs font-black truncate ${isAvailableIncomeSufficient ? 'text-emerald-700' : 'text-purple-700'}`}>
+                  {isAvailableIncomeSufficient ? `월 ${availableIncome.toLocaleString()}만원 적합` : '생계비 미달 (파산 권장)'}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate">
+                  소득 {income.toLocaleString()}만 - 생계비 {minLivingCost.toLocaleString()}만
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
-              <div className="bg-indigo-400 h-full" style={{ width: `${income > 0 ? Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100)) : 100}%` }} />
-              <div className="bg-emerald-500 h-full" style={{ width: `${income > 0 ? Math.max(0, 100 - Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100))) : 0}%` }} />
+
+            {/* 하단 스마트 슬라이더 막대 (소득 vs 생계비 마커) */}
+            <div className="space-y-1 pt-1 border-t border-slate-200/60">
+              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+                <div 
+                  className="bg-indigo-400 h-full rounded-l-full" 
+                  style={{ width: `${income > 0 ? Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100)) : 100}%` }} 
+                  title={`생계비 ${minLivingCost}만`}
+                />
+                <div 
+                  className="bg-emerald-500 h-full rounded-r-full" 
+                  style={{ width: `${income > 0 ? Math.max(0, 100 - Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100))) : 0}%` }} 
+                  title={`가용소득 ${availableIncome}만`}
+                />
+              </div>
+              <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                <span>생계비 {minLivingCost.toLocaleString()}만 ({householdSize}인)</span>
+                <span className={isAvailableIncomeSufficient ? 'text-emerald-600 font-bold' : 'text-purple-600 font-bold'}>
+                  {isAvailableIncomeSufficient ? `+${availableIncome}만 잉여` : '소득부족'}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 타일 3: 법정 채무한도 */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3 hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">3. 법정 채무한도</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+              <span className="text-[11px] font-bold text-slate-600">3. 법정 채무한도</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
                 isDebtUnderLimit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
                 {isDebtUnderLimit ? '🟢 한도 내' : '🔴 초과'}
               </span>
             </div>
-            <div>
-              <div className="text-lg font-black font-mono text-slate-900 leading-tight">
-                {debtLimitPercentage}% <span className="text-xs font-normal text-slate-500">한도점유</span>
+
+            {/* 원형 도넛 게이지 + 상세 수치 */}
+            <div className="flex items-center gap-3">
+              {/* 원형 게이지 SVG (10억 대비 점유율) */}
+              <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                <svg width="56" height="56" className="transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    fill="transparent"
+                    className="text-slate-200"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    strokeDasharray={2 * Math.PI * 22}
+                    strokeDashoffset={(2 * Math.PI * 22) * (1 - Math.min(100, debtLimitPercentage) / 100)}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className={`${isDebtUnderLimit ? 'text-blue-600' : 'text-rose-500'} transition-all duration-500`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="font-mono font-black text-xs text-slate-800 leading-none">
+                    {debtLimitPercentage}%
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                    점유율
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
-                총 {debtTotal.toLocaleString()}만원 / 상한 10억
-              </span>
+
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] text-slate-400 block font-medium">무담보 10억 상한</span>
+                <div className="text-xs font-black text-slate-800 truncate">
+                  {isDebtUnderLimit ? '신청 한도 안전' : '법정 한도 초과'}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate">
+                  총 {debtTotal.toLocaleString()}만원 / 상한 10억
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(5, debtLimitPercentage))}%` }} />
+
+            {/* 하단 단일 범위 슬라이더 막대 */}
+            <div className="space-y-1 pt-1 border-t border-slate-200/60">
+              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden relative">
+                <div 
+                  className="bg-blue-600 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, Math.max(5, debtLimitPercentage))}%` }} 
+                />
+              </div>
+              <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                <span>0억</span>
+                <span className="text-blue-600 font-bold">{debtTotal.toLocaleString()}만</span>
+                <span>10억 상한</span>
+              </div>
             </div>
           </div>
 
-          {/* 타일 4: 결격사유 & 긴급도 */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+          {/* 타일 4: 결격 & 긴급도 */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3 hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">4. 결격 & 긴급도</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+              <span className="text-[11px] font-bold text-slate-600">4. 결격 & 긴급도</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
                 hasUrgentSeizure ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
               }`}>
                 {hasUrgentSeizure ? '⚡ 금지명령' : '🟢 일반'}
               </span>
             </div>
-            <div>
-              <div className={`text-lg font-black font-mono leading-tight ${hasUrgentSeizure ? 'text-amber-600' : 'text-slate-900'}`}>
-                {hasUrgentSeizure ? '독촉 진행' : '양호'} <span className="text-xs font-normal text-slate-500">{speculativeDebtRatio > 0 ? `(사행성 ${speculativeDebtRatio}%)` : ''}</span>
+
+            {/* 원형 아이콘 게이지 + 상세 수치 */}
+            <div className="flex items-center gap-3">
+              {/* 원형 리스크 링 SVG */}
+              <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                <svg width="56" height="56" className="transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    fill="transparent"
+                    className="text-slate-200"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="22"
+                    stroke="currentColor"
+                    strokeWidth="5.5"
+                    strokeDasharray={2 * Math.PI * 22}
+                    strokeDashoffset={(2 * Math.PI * 22) * (1 - (hasUrgentSeizure ? 85 : 20) / 100)}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className={`${hasUrgentSeizure ? 'text-amber-500' : 'text-emerald-500'} transition-all duration-500`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className={`font-mono font-black text-sm leading-none ${hasUrgentSeizure ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {hasUrgentSeizure ? '⚡' : 'OK'}
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">
+                    {hasUrgentSeizure ? '긴급' : '안정'}
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block truncate">
-                {!hasRecentDischarge ? '면책이력 없음' : '최근 면책'} | {fp.harassmentLevel === 'SEIZURE' ? '압류' : '유선독촉'}
-              </span>
+
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] text-slate-400 block font-medium">독촉 및 결격 여부</span>
+                <div className={`text-xs font-black truncate ${hasUrgentSeizure ? 'text-amber-600' : 'text-slate-800'}`}>
+                  {hasUrgentSeizure ? '독촉 진행 (금지명령 필요)' : '독촉 없음 (안정)'}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate">
+                  {!hasRecentDischarge ? '면책이력 통과' : '최근 면책'} | {speculativeDebtRatio > 0 ? `사행성 ${speculativeDebtRatio}%` : '일반채무'}
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-1">
-              <div className={`h-1.5 rounded-full ${!hasRecentDischarge ? 'bg-emerald-500' : 'bg-rose-500'}`} title="면책이력 통과" />
-              <div className={`h-1.5 rounded-full ${speculativeDebtRatio <= 20 ? 'bg-emerald-500' : 'bg-amber-500'}`} title="사행성 비율" />
-              <div className={`h-1.5 rounded-full ${!hasUrgentSeizure ? 'bg-emerald-500' : 'bg-amber-500'}`} title="독촉 단계" />
+
+            {/* 하단 3단 스마트 스텝 막대 (Step 1 ── Step 2 ── Step 3) */}
+            <div className="space-y-1 pt-1 border-t border-slate-200/60">
+              <div className="grid grid-cols-3 gap-1.5">
+                <div 
+                  className={`h-2 rounded-full ${!hasRecentDischarge ? 'bg-emerald-500' : 'bg-rose-500'} transition-colors`} 
+                  title="Step 1: 면책이력 통과" 
+                />
+                <div 
+                  className={`h-2 rounded-full ${speculativeDebtRatio <= 20 ? 'bg-emerald-500' : 'bg-amber-500'} transition-colors`} 
+                  title={`Step 2: 사행성 채무 (${speculativeDebtRatio}%)`} 
+                />
+                <div 
+                  className={`h-2 rounded-full ${!hasUrgentSeizure ? 'bg-emerald-500' : 'bg-amber-500'} transition-colors`} 
+                  title="Step 3: 독촉·압류 대응" 
+                />
+              </div>
+              <div className="flex justify-between text-[8px] font-mono text-slate-400 text-center">
+                <span className="truncate">1.면책이력</span>
+                <span className="truncate">2.사행성({speculativeDebtRatio}%)</span>
+                <span className="truncate">3.독촉대응</span>
+              </div>
             </div>
           </div>
         </div>
