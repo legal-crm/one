@@ -372,33 +372,14 @@ export default function Stage1ConsultationView({
             </span>
           </div>
 
-          {/* 초간결 트랙 전환 스위처 */}
-          <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
-            <button
-              type="button"
-              onClick={() => onSwitchCaseType && onSwitchCaseType('individual_rehab')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 press-scale ${
-                !isBankruptcy
-                  ? 'bg-white text-blue-700 shadow-xs border border-blue-200 font-black'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>⚖️ 개인회생</span>
-              {!isBankruptcy && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => onSwitchCaseType && onSwitchCaseType('bankruptcy')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 press-scale ${
-                isBankruptcy
-                  ? 'bg-white text-purple-700 shadow-xs border border-purple-200 font-black'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>🏛️ 개인파산</span>
-              {isBankruptcy && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
-            </button>
-          </div>
+          {/* 현재 사건 유형 뱃지 */}
+          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+            isBankruptcy 
+              ? 'bg-purple-50 text-purple-700 border-purple-200' 
+              : 'bg-blue-50 text-blue-700 border-blue-200'
+          }`}>
+            {isBankruptcy ? '🏛️ 개인파산 트랙' : '⚖️ 개인회생 트랙'}
+          </span>
         </div>
 
         {/* 4대 계기판 타일 (한 줄 배치) */}
