@@ -158,78 +158,10 @@ export default function WorkflowPipelineStepper({
     onSelectStage(targetStage);
   };
 
-  // 전체 파이프라인 진척도 (%)
-  const completedCount = stages.filter(s => s.isCompleted).length;
-  const progressPercent = Math.round((completedCount / stages.length) * 100);
-
   return (
     <div className="bg-white border-b border-slate-200 shadow-xs">
-      {/* 상단 컨트롤 바: 파이프라인 진척도 & 뷰 모드 토글 */}
-      <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#1E3A5F] animate-pulse" />
-            <span className="font-black text-slate-900 text-sm tracking-tight">
-              사건 처리 6단계 실무 파이프라인
-            </span>
-          </div>
-          <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold font-mono">
-            {isBankruptcy ? '개인파산·면책' : '개인회생'}
-          </span>
-          <div className="hidden sm:flex items-center gap-2.5 text-slate-500 text-[11px] pl-2 border-l border-slate-200">
-            <span>누적 진척도</span>
-            <div className="w-28 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[#1E3A5F] rounded-full transition-all duration-500" 
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-mono font-bold text-slate-800">{progressPercent}%</span>
-            <span className="text-[10px] text-slate-400 font-medium">({completedCount}/6단계 완료)</span>
-          </div>
-        </div>
-
-        {/* 뷰 모드 전환 버튼 (단색화) */}
-        <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-xl">
-          <button
-            type="button"
-            onClick={() => onToggleViewMode('pipeline')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
-              viewMode === 'pipeline'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-[#1E3A5F]" />
-            <span>순차 파이프라인 뷰</span>
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              if (!isContracted && (!hasProposalSent || !isContactShared)) {
-                await dialog.alert({
-                  title: '🔒 전체 서브탭 접근 제한',
-                  message: '맞춤 제안서 발송 및 고객 확인이 완료되기 전에는 사건의 비밀 보호 및 순차 진행을 위해 전체 서브탭 뷰가 제한됩니다.\n\n먼저 [맞춤 제안서 작성 및 발송]을 진행해 주세요.',
-                  variant: 'warning'
-                });
-                return;
-              }
-              onToggleViewMode('subtabs');
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
-              viewMode === 'subtabs'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <LayoutList className="w-3.5 h-3.5 text-slate-500" />
-            <span>전체 서브탭 뷰</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 6단계 가로형 스텝 바 (눈에 띄는 백그라운드 쉘프 + 카드 타일 + 고대비 상태별 배경색) */}
-      <div className="p-2 sm:p-2.5 bg-slate-100/90 border-t border-slate-200">
+      {/* 6단계 가로형 스텝 바 (각 버튼에 단계 및 진척도 완결 노출) */}
+      <div className="p-2 sm:p-2.5 bg-slate-100/90">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5">
           {stages.map((st) => {
             const isActive = currentStage === st.stage && viewMode === 'pipeline';
