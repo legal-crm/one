@@ -3,7 +3,7 @@ import {
   FileSpreadsheet, Upload, Download, Eye, Plus, Trash2, CheckCircle2, 
   Clock, AlertCircle, RefreshCw, FileText, Image as ImageIcon, ExternalLink,
   ShieldCheck, Calculator, ArrowRight, RotateCw, ZoomIn, ZoomOut, Sparkles, Building2,
-  MapPin, Search, Check, CornerDownRight, AlertOctagon, Minus
+  MapPin, Search, Check, CornerDownRight, AlertOctagon, Minus, Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -25,6 +25,7 @@ import { downloadDebtPowerOfAttorneyPdf } from '../../../services/repayment/debt
 import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY } from '../../../services/court/creditorAddressDirectory';
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
+import DebtAgencyApplicationModal from './DebtAgencyApplicationModal';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -124,6 +125,7 @@ export default function DebtCertificateTab({
   );
   const [isZipping, setIsZipping] = useState(false);
   const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
+  const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -445,6 +447,15 @@ export default function DebtCertificateTab({
             >
               <FileText className="w-4 h-4 text-indigo-600" />
               <span>위임장 PDF</span>
+            </button>
+
+            <button
+              onClick={() => setIsAgencyAppModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
+              title="대행업체 엑셀 신청서 양식(A4 인쇄 / 엑셀 다운로드 / 커스텀 폼 업로드)"
+            >
+              <Printer className="w-4 h-4 text-indigo-600" />
+              <span>대행 신청서 인쇄</span>
             </button>
 
             <button
@@ -1115,6 +1126,19 @@ export default function DebtCertificateTab({
         clientPhone={order.clientPhone || clientRequest.phone || '010-0000-0000'}
         onImportToDebtCertificates={handleImportFromDiscovery}
       />
+
+      {/* 부채증명서 서류대행 신청서 인쇄 및 엑셀 관리 모달 */}
+      {isAgencyAppModalOpen && (
+        <DebtAgencyApplicationModal
+          isOpen={isAgencyAppModalOpen}
+          onClose={() => setIsAgencyAppModalOpen(false)}
+          clientId={clientId}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          order={order}
+          onSaveOrder={handleSaveOrder}
+        />
+      )}
     </div>
   );
 }

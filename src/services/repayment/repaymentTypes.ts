@@ -57,6 +57,70 @@ export interface DebtCertificateItem {
   borrowedDate?: string;           // 차용일자 (YYYY-MM-DD)
 }
 
+export interface DebtAgencyBasicDocRequests {
+  niceCredit: { requested: boolean; extraCreditorsAfterIssue: boolean };
+  bankUnion: { requested: boolean; extraCreditorsAfterIssue: boolean };
+  lifeInsuranceAssoc: { requested: boolean; expectedRefundDoc: boolean };
+  healthInsurance: {
+    all: boolean;
+    unpaidPaymentHistory: boolean;
+    eligibilityConfirm: boolean;
+    assessmentNotice: boolean;
+    other: string;
+  };
+  nationalPension: {
+    all: boolean;
+    subscriberConfirm: boolean;
+    pensionCalcHistory: boolean;
+    rehabApplicationConfirm: boolean;
+    other: string;
+  };
+  nationalTax: {
+    all: boolean;
+    taxPaymentCert: boolean;
+    incomeAmountCert: boolean;
+    closedBizCert: boolean;
+    other: string;
+  };
+  localDistrict: {
+    localTaxCert: boolean;
+    localTaxJurisdiction: string;
+    residentAbstract: boolean;
+    residentHead: string;
+    vehicleRegister: boolean;
+    vehiclePlate: string;
+    cadastreLandRecord: boolean;
+    other: string;
+  };
+}
+
+export interface DebtAgencyCreditorRow {
+  id: string;
+  creditorName: string;
+  requestDebtCert: boolean;       // 부채증명 체크
+  requestCardHistory: boolean;     // 카드거래 체크
+  requestBankHistory: boolean;     // 통장거래 체크
+  note?: string;                   // 비고사항
+}
+
+export interface DebtAgencyApplicationData {
+  caseType: 'rehab' | 'bankruptcy' | 'other';
+  officeName: string;              // 사무소 (예: 법률사무소 보광)
+  caseManager: string;             // 사건담당자
+  billingManager: string;          // 결제담당자
+  tel: string;                     // TEL
+  fax: string;                     // FAX
+  directPhone?: string;            // 직통번호
+  hp: string;                      // H P
+  clientName: string;              // 고객명
+  clientPhone: string;             // 고객 연락처
+  cautions?: string[];             // 주의사항 3종
+  basicDocs: DebtAgencyBasicDocRequests;
+  creditors: DebtAgencyCreditorRow[];
+  customTemplateName?: string;     // 사용자 업로드 엑셀 폼 파일명
+  updatedAt?: string;
+}
+
 export interface DebtCertificateOrder {
   orderId: string;
   clientId: string;
@@ -66,6 +130,7 @@ export interface DebtCertificateOrder {
   clientAddress?: string;          // 의뢰인 주소
   agencyName: string;              // 발급 대행업체명 (예: 윈행정사, 원클릭대행 등)
   agencyPreset?: 'standard' | 'oneclick' | 'winadmin' | 'koreacredit'; // 대행사별 양식 프리셋
+  agencyApplication?: DebtAgencyApplicationData; // 대행업체 신청서 (그림 1 양식)
   orderStatus: 'draft' | 'requested' | 'in_progress' | 'completed' | 'partial';
   items: DebtCertificateItem[];
   createdAt: string;

@@ -12,10 +12,13 @@ import JSZip from 'jszip';
 import type { 
   DebtCertificateOrder, 
   DebtCertificateItem, 
-  RepaymentCreditor 
+  RepaymentCreditor,
+  DebtAgencyApplicationData,
+  DebtAgencyCreditorRow,
+  DebtAgencyBasicDocRequests
 } from './repaymentTypes';
 import { getDebtPowerOfAttorneyPdfUint8Array } from './debtPowerOfAttorneyGenerator';
-import type { DocumentFile } from '../../types';
+import type { DocumentFile, ConsultRequest } from '../../types';
 import { matchCreditorPreset } from '../court/creditorAddressDirectory';
 import { loadCertificateVault } from '../vault/certificateVaultService';
 
@@ -458,3 +461,506 @@ export function convertDebtItemsToRepaymentCreditors(
     };
   });
 }
+
+/**
+ * 대행업체 엑셀 신청서(그림 1 양식) 초기 기본값 생성
+ */
+export function createDefaultAgencyApplicationData(
+  order: DebtCertificateOrder,
+  clientRequest?: ConsultRequest,
+  activeLawyerName?: string
+): DebtAgencyApplicationData {
+  const creditors: DebtAgencyCreditorRow[] = order.items.map((it) => ({
+    id: it.id,
+    creditorName: it.creditorName,
+    requestDebtCert: true, // 기본적으로 부채증명은 필수 신청
+    requestCardHistory: it.creditorName.includes('카드'),
+    requestBankHistory: it.creditorName.includes('은행'),
+    note: it.memo || it.accountOrContractNo || '',
+  }));
+
+  // 최소 10행 보장을 위해 빈 행 추가
+  while (creditors.length < 10) {
+    creditors.push({
+      id: `empty_${creditors.length + 1}`,
+      creditorName: '',
+      requestDebtCert: false,
+      requestCardHistory: false,
+      requestBankHistory: false,
+      note: '',
+    });
+  }
+
+  return {
+    caseType: 'rehab',
+    officeName: '법률사무소 보광',
+    caseManager: activeLawyerName || '박명국',
+    billingManager: '박명국',
+    tel: '02-3492-4246',
+    fax: '02-2179-8487',
+    directPhone: '',
+    hp: '010-4064-4246',
+    clientName: order.clientName || clientRequest?.clientName || '',
+    clientPhone: order.clientPhone || clientRequest?.phone || '',
+    cautions: [
+      '* 은행, 카드사 개별부채 의뢰시 본사에서 추가로 교차확인 후 발급진행.',
+      '* 부채발급진행 시 신용카드 및 은행계좌정지됩니다. 이 점 고객님에게 고지부탁드립니다.',
+      '* 서류발급 시 본인통화가 필요할 수 있으니 고객님에게 안내 부탁드립니다.'
+    ],
+    basicDocs: {
+      niceCredit: { requested: true, extraCreditorsAfterIssue: true },
+      bankUnion: { requested: true, extraCreditorsAfterIssue: true },
+      lifeInsuranceAssoc: { requested: true, expectedRefundDoc: true },
+      healthInsurance: {
+        all: true,
+        unpaidPaymentHistory: true,
+        eligibilityConfirm: true,
+        assessmentNotice: true,
+        other: '',
+      },
+      nationalPension: {
+        all: true,
+        subscriberConfirm: true,
+        pensionCalcHistory: true,
+        rehabApplicationConfirm: true,
+        other: '',
+      },
+      nationalTax: {
+        all: true,
+        taxPaymentCert: true,
+        incomeAmountCert: true,
+        closedBizCert: true,
+        other: '',
+      },
+      localDistrict: {
+        localTaxCert: true,
+        localTaxJurisdiction: '관할구청 전지역',
+        residentAbstract: true,
+        residentHead: '본인',
+        vehicleRegister: false,
+        vehiclePlate: '',
+        cadastreLandRecord: true,
+        other: '',
+      },
+    },
+    creditors,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 📊 대행업체 제출용 엑셀 신청서 워크북 생성 (그림 1 실무 엑셀 서식 100% 매칭)
+ */
+export function generateAgencyApplicationExcelWorkbook(
+  appData: DebtAgencyApplicationData
+): any {
+  const wb = XLSX.utils.book_new();
+
+  // 스타일 정의
+  const titleStyle = {
+    font: { name: '맑은 고딕', sz: 16, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  };
+
+  const caseTypeHeaderStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'D9E1F2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const caseTypeValStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const headerLabelStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'F2F2F2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const headerValStyle = {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const noticeStyle = {
+    font: { name: '맑은 고딕', sz: 8, color: { rgb: 'C00000' } },
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const sectionHeaderStyle = {
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'D9E1F2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'medium', color: { rgb: '000000' } },
+      bottom: { style: 'medium', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const subHeaderStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'E9EEF4' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const cellBoxStyle = {
+    font: { name: '맑은 고딕', sz: 8, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const tableHeaderStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'F2F2F2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'medium', color: { rgb: '000000' } },
+      bottom: { style: 'medium', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const tableCenterStyle = {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      right: { style: 'thin', color: { rgb: 'D9D9D9' } },
+    },
+  };
+
+  const tableLeftStyle = {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      right: { style: 'thin', color: { rgb: 'D9D9D9' } },
+    },
+  };
+
+  const wsData: any[][] = [];
+
+  // Row 1: Title & Case Type
+  const isRehab = appData.caseType === 'rehab' ? '■' : '□';
+  const isBankrupt = appData.caseType === 'bankruptcy' ? '■' : '□';
+  const isOther = appData.caseType === 'other' ? '■' : '□';
+
+  wsData.push([
+    '부채증명서 서류대행 신청서', '', '', '', '', '',
+    '개인회생', '개인파산', '기타'
+  ]);
+  wsData.push([
+    '', '', '', '', '', '',
+    isRehab, isBankrupt, isOther
+  ]);
+
+  // Row 3: 사무소 / 사건담당자 / 결제담당자
+  wsData.push([
+    '사무소', appData.officeName, '', '',
+    '사 건\n담당자', appData.caseManager,
+    '결 제\n담당자', appData.billingManager, ''
+  ]);
+
+  // Row 4: TEL / FAX / 직통번호 / H P
+  wsData.push([
+    'TEL', appData.tel,
+    'FAX', appData.fax,
+    '직 통\n번 호', appData.directPhone || '',
+    'H P', appData.hp, ''
+  ]);
+
+  // Row 5: 고객명 / 고객연락처 / 주의사항
+  const cautionsStr = (appData.cautions || [
+    '* 은행, 카드사 개별부채 의뢰시 본사에서 추가로 교차확인 후 발급진행.',
+    '* 부채발급진행 시 신용카드 및 은행계좌정지됩니다. 이 점 고객님에게 고지부탁드립니다.',
+    '* 서류발급 시 본인통화가 필요할 수 있으니 고객님에게 안내 부탁드립니다.'
+  ]).join('\n');
+
+  wsData.push([
+    '고객명', appData.clientName,
+    '고 객\n연락처', appData.clientPhone,
+    '주 의\n사 항', cautionsStr, '', '', ''
+  ]);
+
+  // Row 6: Section Header: 기본서류 발급신청 ( V )
+  wsData.push([
+    '기본서류 발급신청 ( V )', '', '', '', '', '', '', '', ''
+  ]);
+
+  // Row 7~8: 7개 기관별 발급 옵션 서술
+  const b = appData.basicDocs;
+  const cb = (v: boolean) => (v ? '☑' : '□');
+
+  const niceText = `${cb(b.niceCredit.requested)} 신청\n${cb(b.niceCredit.extraCreditorsAfterIssue)} 발급 후 신청건 외\n채권사 추가발급진행`;
+  const bankUnionText = `${cb(b.bankUnion.requested)} 신청\n${cb(b.bankUnion.extraCreditorsAfterIssue)} 발급 후 신청건 외\n채권사 추가발급진행`;
+  const insText = `${cb(b.lifeInsuranceAssoc.requested)} 신청\n${cb(b.lifeInsuranceAssoc.expectedRefundDoc)} 보험 예상해지\n환급금증명서 진행`;
+
+  const healthText = `${cb(b.healthInsurance.all)} 전체내역발급\n${cb(b.healthInsurance.unpaidPaymentHistory)} 건강보험 미납(납부)내역서\n${cb(b.healthInsurance.eligibilityConfirm)} 자격득실 확인서\n${cb(b.healthInsurance.assessmentNotice)} 산정(부과)내역서\n${cb(!!b.healthInsurance.other)} 기타 : ${b.healthInsurance.other || ''}`;
+  const pensionText = `${cb(b.nationalPension.all)} 전체내역발급\n${cb(b.nationalPension.subscriberConfirm)} 가입자 가입증명서\n${cb(b.nationalPension.pensionCalcHistory)} 연금산정가입내역확인서\n${cb(b.nationalPension.rehabApplicationConfirm)} 개인회생신청용확인서\n${cb(!!b.nationalPension.other)} 기타 : ${b.nationalPension.other || ''}`;
+  const taxText = `${cb(b.nationalTax.all)} 전체내역발급\n${cb(b.nationalTax.taxPaymentCert)} 납세증명,체납증명\n${cb(b.nationalTax.incomeAmountCert)} 소득금액증명\n${cb(b.nationalTax.closedBizCert)} 휴,폐업사실증명\n${cb(!!b.nationalTax.other)} 기타 : ${b.nationalTax.other || ''}`;
+  const localText = `${cb(b.localDistrict.localTaxCert)} 지방세세목별과세증명: 관할(${b.localDistrict.localTaxJurisdiction || ' '})\n${cb(b.localDistrict.residentAbstract)} 주민등록 등초본: 세대주(${b.localDistrict.residentHead || ' '})\n${cb(b.localDistrict.vehicleRegister)} 자동차등록원부: 차량번호(${b.localDistrict.vehiclePlate || ' '})\n${cb(b.localDistrict.cadastreLandRecord)} 지적전산자료조회결과서(토지소유현황)\n${cb(!!b.localDistrict.other)} 기타 : ${b.localDistrict.other || ''}`;
+
+  // 1열 라벨 + 내용
+  wsData.push([
+    '신용\n조회\n(나이스)', niceText,
+    '국민\n건강\n보험', healthText, '',
+    '국세\n(세무서)', taxText, '', ''
+  ]);
+  wsData.push([
+    '은행\n연합회', bankUnionText,
+    '국민\n연금', pensionText, '',
+    '구청\n및\n동사무소', localText, '', ''
+  ]);
+  wsData.push([
+    '생명(손해)\n보험협회', insText,
+    '', '', '', '', '', '', ''
+  ]);
+
+  // Row 10: 채권사 테이블 헤더
+  wsData.push([
+    '번호', '채 권 사', '', '',
+    '부채\n증명', '카드\n거래', '통장\n거래',
+    '비 고 사 항', ''
+  ]);
+
+  // 채권사 행 (최소 10개)
+  appData.creditors.forEach((c, idx) => {
+    wsData.push([
+      idx + 1,
+      c.creditorName, '', '',
+      c.requestDebtCert ? 'V' : '',
+      c.requestCardHistory ? 'V' : '',
+      c.requestBankHistory ? 'V' : '',
+      c.note || '', ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // 셀 병합 (Merges) 설정
+  ws['!merges'] = [
+    // Title A1:F2
+    { s: { r: 0, c: 0 }, e: { r: 1, c: 5 } },
+    // Row 3: 사무소 B3:D3, 결제담당자 H3:I3
+    { s: { r: 2, c: 1 }, e: { r: 2, c: 3 } },
+    { s: { r: 2, c: 7 }, e: { r: 2, c: 8 } },
+    // Row 4: H P H4:I4
+    { s: { r: 3, c: 7 }, e: { r: 3, c: 8 } },
+    // Row 5: 고객명 B5:C5, 주의사항 F5:I5
+    { s: { r: 4, c: 1 }, e: { r: 4, c: 2 } },
+    { s: { r: 4, c: 5 }, e: { r: 4, c: 8 } },
+    // Row 6: 기본서류 발급신청 전체 A6:I6
+    { s: { r: 5, c: 0 }, e: { r: 5, c: 8 } },
+    // Row 7 (기관 박스 병합)
+    { s: { r: 6, c: 3 }, e: { r: 6, c: 4 } }, // 건보내용
+    { s: { r: 6, c: 6 }, e: { r: 6, c: 8 } }, // 국세내용
+    // Row 8
+    { s: { r: 7, c: 3 }, e: { r: 7, c: 4 } }, // 국민연금내용
+    { s: { r: 7, c: 6 }, e: { r: 7, c: 8 } }, // 구청내용
+    // Row 9
+    { s: { r: 8, c: 1 }, e: { r: 8, c: 8 } }, // 보험내용
+    // Row 10 (채권자 헤더)
+    { s: { r: 9, c: 1 }, e: { r: 9, c: 3 } }, // 채권사 B~D
+    { s: { r: 9, c: 7 }, e: { r: 9, c: 8 } }, // 비고사항 H~I
+  ];
+
+  // 채권자 데이터 행 병합 (B~D, H~I)
+  const credStartRow = 10;
+  for (let i = 0; i < appData.creditors.length; i++) {
+    const r = credStartRow + i;
+    ws['!merges'].push(
+      { s: { r, c: 1 }, e: { r, c: 3 } },
+      { s: { r, c: 7 }, e: { r, c: 8 } }
+    );
+  }
+
+  // 열 너비
+  ws['!cols'] = [
+    { wch: 6 },  // A: 번호
+    { wch: 16 }, // B: 채권사 1
+    { wch: 10 }, // C: 채권사 2
+    { wch: 10 }, // D: 채권사 3
+    { wch: 7 },  // E: 부채증명
+    { wch: 7 },  // F: 카드거래
+    { wch: 7 },  // G: 통장거래
+    { wch: 16 }, // H: 비고사항 1
+    { wch: 16 }, // I: 비고사항 2
+  ];
+
+  // 행 높이 (가독성 향상)
+  ws['!rows'] = [
+    { hpt: 26 }, { hpt: 20 }, // 1, 2
+    { hpt: 22 }, { hpt: 22 }, { hpt: 36 }, // 3, 4, 5
+    { hpt: 24 }, // 6: 기본서류 헤더
+    { hpt: 55 }, { hpt: 55 }, { hpt: 30 }, // 7, 8, 9
+    { hpt: 24 }, // 10: 채권자 헤더
+  ];
+
+  // 스타일 주입
+  if (ws['A1']) ws['A1'].s = titleStyle;
+  if (ws['G1']) ws['G1'].s = caseTypeHeaderStyle;
+  if (ws['H1']) ws['H1'].s = caseTypeHeaderStyle;
+  if (ws['I1']) ws['I1'].s = caseTypeHeaderStyle;
+  if (ws['G2']) ws['G2'].s = caseTypeValStyle;
+  if (ws['H2']) ws['H2'].s = caseTypeValStyle;
+  if (ws['I2']) ws['I2'].s = caseTypeValStyle;
+
+  // 헤더 레이블들
+  ['A3', 'E3', 'G3', 'A4', 'C4', 'E4', 'G4', 'A5', 'C5', 'E5'].forEach((k) => {
+    if (ws[k]) ws[k].s = headerLabelStyle;
+  });
+
+  // 값들
+  ['B3', 'F3', 'H3', 'B4', 'D4', 'F4', 'H4', 'B5', 'D5'].forEach((k) => {
+    if (ws[k]) ws[k].s = headerValStyle;
+  });
+
+  if (ws['F5']) ws['F5'].s = noticeStyle;
+  if (ws['A6']) ws['A6'].s = sectionHeaderStyle;
+
+  // 서류 항목 라벨 및 내용 스타일
+  ['A7', 'C7', 'F7', 'A8', 'C8', 'F8', 'A9'].forEach((k) => {
+    if (ws[k]) ws[k].s = subHeaderStyle;
+  });
+  ['B7', 'D7', 'G7', 'B8', 'D8', 'G8', 'B9'].forEach((k) => {
+    if (ws[k]) ws[k].s = cellBoxStyle;
+  });
+
+  // 채권자 테이블 헤더
+  ['A10', 'B10', 'E10', 'F10', 'G10', 'H10'].forEach((k) => {
+    if (ws[k]) ws[k].s = tableHeaderStyle;
+  });
+
+  // 채권자 데이터 스타일
+  for (let i = 0; i < appData.creditors.length; i++) {
+    const rowNum = 11 + i;
+    const a = ws[`A${rowNum}`];
+    const bCell = ws[`B${rowNum}`];
+    const e = ws[`E${rowNum}`];
+    const f = ws[`F${rowNum}`];
+    const g = ws[`G${rowNum}`];
+    const h = ws[`H${rowNum}`];
+
+    if (a) a.s = tableCenterStyle;
+    if (bCell) bCell.s = tableLeftStyle;
+    if (e) e.s = tableCenterStyle;
+    if (f) f.s = tableCenterStyle;
+    if (g) g.s = tableCenterStyle;
+    if (h) h.s = tableLeftStyle;
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, '대행신청서');
+  return wb;
+}
+
+/**
+ * 📥 대행업체 엑셀 신청서 (.xlsx) 다운로드 실행
+ */
+export function exportAgencyApplicationExcel(
+  appData: DebtAgencyApplicationData
+): void {
+  const wb = generateAgencyApplicationExcelWorkbook(appData);
+  const safeClient = (appData.clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣]/g, '');
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const fileName = `부채증명서_서류대행신청서_${safeClient}_${dateStr}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+const CUSTOM_TEMPLATE_PREFIX = 'agency_custom_excel_';
+
+/**
+ * 사용자 업로드 커스텀 엑셀 폼 저장
+ */
+export async function saveAgencyCustomExcelTemplate(
+  clientId: string,
+  file: File
+): Promise<{ fileName: string; dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const meta = { fileName: file.name, dataUrl };
+      try {
+        localStorage.setItem(`${CUSTOM_TEMPLATE_PREFIX}${clientId}`, JSON.stringify(meta));
+        resolve(meta);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * 사용자 업로드 커스텀 엑셀 폼 불러오기
+ */
+export function getAgencyCustomExcelTemplate(
+  clientId: string
+): { fileName: string; dataUrl: string } | null {
+  try {
+    const raw = localStorage.getItem(`${CUSTOM_TEMPLATE_PREFIX}${clientId}`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 사용자 업로드 커스텀 엑셀 폼 삭제
+ */
+export function removeAgencyCustomExcelTemplate(clientId: string): void {
+  localStorage.removeItem(`${CUSTOM_TEMPLATE_PREFIX}${clientId}`);
+}
+

@@ -4,7 +4,8 @@ import {
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
   ArrowRight, Camera, RefreshCw, AlertTriangle, Send, 
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
-  RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy
+  RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
@@ -20,6 +21,9 @@ import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
 import { sendAlimtok } from '../../../services/alimtokService';
 import { addClientNotification } from '../../../services/clientNotificationService';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
+import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
+import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
+import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
 
 interface Stage3DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -87,6 +91,49 @@ export default function Stage3DocumentsHubView({
   const [batchPresetPhase, setBatchPresetPhase] = useState<DocPhase | undefined>(undefined);
   const [showSpeedReviewModal, setShowSpeedReviewModal] = useState(false);
   const [showMobileHubModal, setShowMobileHubModal] = useState(false);
+  const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
+
+  // 부채증명서 대행 주문 상태
+  const [debtOrder, setDebtOrder] = useState<DebtCertificateOrder>(() => {
+    const loaded = loadDebtCertificateOrder(clientRequest.id);
+    if (loaded) return loaded;
+    return {
+      orderId: `order_${clientRequest.id}`,
+      clientId: clientRequest.id,
+      clientName: clientRequest.clientName || '의뢰인',
+      clientPhone: clientRequest.phone || '',
+      agencyName: '원클릭부채대행',
+      orderStatus: 'draft',
+      items: [
+        {
+          id: 'item_1',
+          creditorName: '국민은행',
+          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.4),
+          issueStatus: 'pending',
+          agencyFee: 15000,
+          issuanceFee: 2000,
+        },
+        {
+          id: 'item_2',
+          creditorName: '신한카드',
+          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.35),
+          issueStatus: 'pending',
+          agencyFee: 15000,
+          issuanceFee: 2000,
+        },
+        {
+          id: 'item_3',
+          creditorName: 'OK저축은행',
+          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.25),
+          issueStatus: 'pending',
+          agencyFee: 15000,
+          issuanceFee: 2000,
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      totalAgencyCost: 51000,
+    };
+  });
 
   // 로펌 실무 기준 서류 목록 초기화 (1차 실물 9종 + 2차 디지털 17종)
   const [docList, setDocList] = useState<DocItemModel[]>(() => {
@@ -420,6 +467,15 @@ export default function Stage3DocumentsHubView({
           </div>
 
           <div className="mt-4 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsAgencyAppModalOpen(true)}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+              title="대행업체 엑셀 신청서 작성, A4 인쇄 및 엑셀 다운로드"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>대행 신청서 작성 및 인쇄</span>
+            </button>
             <button
               type="button"
               onClick={handleApproveAllPhase1}
@@ -1058,6 +1114,22 @@ export default function Stage3DocumentsHubView({
           isOpen={showMobileHubModal}
           onClose={() => setShowMobileHubModal(false)}
           clientRequest={clientRequest}
+        />
+      )}
+
+      {isAgencyAppModalOpen && (
+        <DebtAgencyApplicationModal
+          isOpen={isAgencyAppModalOpen}
+          onClose={() => setIsAgencyAppModalOpen(false)}
+          clientId={clientRequest.id}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          order={debtOrder}
+          onSaveOrder={(newOrder) => {
+            setDebtOrder(newOrder);
+            saveDebtCertificateOrder(newOrder);
+          }}
+          activeLawyerName={clientRequest.assignedLawyerName}
         />
       )}
     </div>
