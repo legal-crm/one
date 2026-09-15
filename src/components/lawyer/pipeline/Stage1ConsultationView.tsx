@@ -138,35 +138,18 @@ export default function Stage1ConsultationView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── Next Action Hero Card (스텔스 익명 & 제안서 게이팅 3단계 동적 카드) ── */}
+      {/* ── Next Action Hero Card (제안서 게이팅 동적 카드) ── */}
       {isAnonymousPhase ? (
-        // [Phase 1: 제안서 미발송 상태 - 100% 스텔스 익명 보호 중 & 제안서 작성 단독 강제]
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg space-y-4">
+        // [Phase 1: 제안서 미발송 상태 - 제안서 작성 단독 강제]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="p-3 rounded-xl shrink-0 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
                 <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">
-                    ⚡ 최우선 필수 작업
-                  </span>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    100% 스텔스 익명 보호 중
-                  </span>
-                  <span className="text-xs text-blue-200">
-                    가명: <strong className="text-white font-mono">{stealthName}</strong>
-                  </span>
-                </div>
-                <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-                  현재 의뢰인은 스텔스 가명으로 보호 중이며, 실명과 연락처는 <strong>비공개 상태</strong>입니다. 변호사 사무실에서는 임의로 전화나 알림톡을 보낼 수 없으며, <strong>맞춤 제안서(탕감률·변제금·수임료)</strong>를 먼저 발송해야 의뢰인이 확인 후 전화 상담을 요청(연락처 공개)할 수 있습니다.
-                </p>
-              </div>
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
+              </h3>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -174,10 +157,10 @@ export default function Stage1ConsultationView({
                 <button
                   type="button"
                   onClick={onOpenProposalDraft}
-                  className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 press-scale cursor-pointer"
+                  className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 press-scale cursor-pointer whitespace-nowrap"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>고객 맞춤 제안서 작성 및 발송하기 (Major)</span>
+                  <span>제안서 작성 및 발송하기</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
