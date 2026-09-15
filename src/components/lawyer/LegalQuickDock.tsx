@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, X, Settings2, RotateCcw, Move, Eye, EyeOff, Minimize2,
   Calculator, Percent, Coins, TrendingDown, Users, Scale, 
-  ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2 
+  ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2,
+  CalendarCheck, Contact, CheckSquare, Pin
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,7 +19,7 @@ interface LegalQuickDockProps {
 
 export type DockVisibilityMode = 'normal' | 'minimized' | 'hidden';
 
-const STORAGE_TOOLS_KEY = 'legal_dock_enabled_tools_v3';
+const STORAGE_TOOLS_KEY = 'legal_dock_enabled_tools_v4';
 const STORAGE_VISIBILITY_KEY = 'legal_dock_visibility_v1';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -35,6 +36,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   Send,
   Building2,
+  CalendarCheck,
+  Contact,
+  CheckSquare,
+  Pin,
 };
 
 export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {

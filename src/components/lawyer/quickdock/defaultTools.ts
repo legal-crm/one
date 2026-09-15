@@ -60,6 +60,21 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
     },
     defaultEnabled: false,
   },
+  {
+    id: 'koreanAge',
+    title: '만나이 & 부양자격 판정',
+    subtitle: '미성년부양·청년24개월단축특례',
+    category: 'calculator',
+    badge: '도산특례',
+    iconName: 'CalendarCheck',
+    colorClass: {
+      bg: 'bg-rose-500/20',
+      text: 'text-rose-400',
+      hoverBg: 'group-hover:bg-rose-500',
+      border: 'border-rose-500/30'
+    },
+    defaultEnabled: true,
+  },
 
   // ── 법률 실무 기준 & 고시 정보군 ──
   {
@@ -149,8 +164,53 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
     },
     defaultEnabled: true,
   },
+  {
+    id: 'creditorSearch',
+    title: '채권자 송달주소록 검색',
+    subtitle: '은행/카드/캐피탈/대부 100선',
+    category: 'standards',
+    badge: '서류필수',
+    iconName: 'Contact',
+    colorClass: {
+      bg: 'bg-indigo-600/20',
+      text: 'text-indigo-400',
+      hoverBg: 'group-hover:bg-indigo-600',
+      border: 'border-indigo-600/30'
+    },
+    defaultEnabled: true,
+  },
 
   // ── 업무 지원 & 소통 도구군 ──
+  {
+    id: 'pinMemo',
+    title: '사진 & 텍스트 핀 메모',
+    subtitle: 'Ctrl+V 캡처이미지 띄우기 & 줌',
+    category: 'workflow',
+    badge: '강력추천',
+    iconName: 'Pin',
+    colorClass: {
+      bg: 'bg-amber-500/20',
+      text: 'text-amber-400',
+      hoverBg: 'group-hover:bg-amber-500',
+      border: 'border-amber-500/30'
+    },
+    defaultEnabled: true,
+  },
+  {
+    id: 'docChecklist',
+    title: '맞춤 서류 체크리스트',
+    subtitle: '직업·주거별 발급안내 카톡복사',
+    category: 'workflow',
+    badge: '상담필수',
+    iconName: 'CheckSquare',
+    colorClass: {
+      bg: 'bg-teal-600/20',
+      text: 'text-teal-300',
+      hoverBg: 'group-hover:bg-teal-600',
+      border: 'border-teal-600/30'
+    },
+    defaultEnabled: true,
+  },
   {
     id: 'virtualAccount',
     title: '변제금 납입계좌 뷰어',

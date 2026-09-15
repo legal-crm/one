@@ -13,7 +13,11 @@ export type QuickToolId =
   | 'quickMemo'        // 상담 퀵 스크래치패드
   | 'interestCompare'  // 대출이자 vs 회생변제 비교
   | 'legalArticles'    // 도산법 핵심 조문
-  | 'assetValuation';  // 토지·주택·차량가액 즉시 조회
+  | 'assetValuation'   // 토지·주택·차량가액 즉시 조회
+  | 'koreanAge'        // 만나이 & 도산 실무 자격 판정기
+  | 'creditorSearch'   // 전국 채권자 공식 송달주소록
+  | 'docChecklist'     // 필수서류 발급 체크리스트 생성기
+  | 'pinMemo';         // 사진 & 텍스트 자유 핀 메모 보드
 
 export interface QuickToolMeta {
   id: QuickToolId;

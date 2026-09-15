@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   X, Check, RotateCcw, Settings2, Calculator, Percent, Coins, 
   TrendingDown, Users, Scale, ShieldAlert, Landmark, BookOpen, 
-  CreditCard, FileText, Send, Sparkles, Building2, Eye, EyeOff, Minimize2 
+  CreditCard, FileText, Send, Sparkles, Building2, Eye, EyeOff, Minimize2,
+  CalendarCheck, Contact, CheckSquare, Pin
 } from 'lucide-react';
 import { QuickToolId, ToolCategory } from './types';
 import { ALL_QUICK_TOOLS, DEFAULT_ENABLED_TOOL_IDS, CATEGORY_LABELS } from './defaultTools';
@@ -32,6 +33,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   Send,
   Building2,
+  CalendarCheck,
+  Contact,
+  CheckSquare,
+  Pin,
 };
 
 export default function ToolCustomizerModal({

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   X, Minus, Square, Move, 
   Calculator, Percent, Coins, TrendingDown, Users, 
-  Scale, ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2 
+  Scale, ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2,
+  CalendarCheck, Contact, CheckSquare, Pin
 } from 'lucide-react';
 import { QuickToolId, Position } from './types';
 import { ALL_QUICK_TOOLS } from './defaultTools';
@@ -20,6 +21,10 @@ import QuickMemoTool from './tools/QuickMemoTool';
 import InterestCompareTool from './tools/InterestCompareTool';
 import LegalArticlesTool from './tools/LegalArticlesTool';
 import AssetValuationTool from './tools/AssetValuationTool';
+import KoreanAgeCalcTool from './tools/KoreanAgeCalcTool';
+import CreditorSearchTool from './tools/CreditorSearchTool';
+import DocumentChecklistTool from './tools/DocumentChecklistTool';
+import FloatingPinMemoTool from './tools/FloatingPinMemoTool';
 
 interface FloatingToolWindowProps {
   activeToolId: QuickToolId | null;
@@ -43,6 +48,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   Send,
   Building2,
+  CalendarCheck,
+  Contact,
+  CheckSquare,
+  Pin,
 };
 
 const WINDOW_STORAGE_KEY = 'legal_quick_window_pos_v2';
@@ -275,6 +284,10 @@ export default function FloatingToolWindow({
             {activeToolId === 'interestCompare' && <InterestCompareTool />}
             {activeToolId === 'legalArticles' && <LegalArticlesTool />}
             {activeToolId === 'assetValuation' && <AssetValuationTool />}
+            {activeToolId === 'koreanAge' && <KoreanAgeCalcTool />}
+            {activeToolId === 'creditorSearch' && <CreditorSearchTool />}
+            {activeToolId === 'docChecklist' && <DocumentChecklistTool />}
+            {activeToolId === 'pinMemo' && <FloatingPinMemoTool />}
           </div>
         </>
       )}
