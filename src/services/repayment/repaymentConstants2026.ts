@@ -4,7 +4,7 @@
  */
 
 // ==============================================================================
-// 1. 2026년 가구원 수별 기준 중위소득 및 기초생계비 (중위소득 60%)
+// 1. 2026년 / 2025년 가구원 수별 기준 중위소득 및 기초생계비 (중위소득 60%)
 // ==============================================================================
 export const MEDIAN_INCOME_100_2026: Record<number, number> = {
   1: 2564238,
@@ -17,7 +17,7 @@ export const MEDIAN_INCOME_100_2026: Record<number, number> = {
   8: 10474348,
 };
 
-// 법원 공시 원 단위 절사 기초생계비 (60%)
+// 법원 공시 원 단위 절사 기초생계비 (60%) - 2026년
 export const MIN_LIVING_EXPENSE_60_2026: Record<number, number> = {
   1: 1538542,
   2: 2519575,
@@ -29,30 +29,53 @@ export const MIN_LIVING_EXPENSE_60_2026: Record<number, number> = {
   8: 6284608,
 };
 
-// 8인 초과 1인당 추가분
+// 8인 초과 1인당 추가분 - 2026년
 export const ADDITIONAL_PER_PERSON_100_2026 = 959198;
 export const ADDITIONAL_PER_PERSON_60_2026 = 575518;
 
+// 2025년 기준 중위소득 60% (보정권고 및 2025년 접수 사건 대조용)
+export const MIN_LIVING_EXPENSE_60_2025: Record<number, number> = {
+  1: 1438432,
+  2: 2384874,
+  3: 3043908,
+  4: 3697422,
+  5: 4307842,
+  6: 4882604,
+  7: 5437363,
+  8: 5992122,
+};
+export const ADDITIONAL_PER_PERSON_60_2025 = 554759;
+
 /**
- * 부양가족 수(0.5인 맞벌이 공동부양 등 소수점 포함)에 따른 2026년 기초생계비 산출
+ * 부양가족 수(0.5인 맞벌이 공동부양 등 소수점 포함) 및 적용 연도에 따른 기초생계비 산출
  */
-export function get2026LivingExpense(householdSize: number): number {
+export function getLivingExpense(householdSize: number, year: 2025 | 2026 = 2026): number {
   if (householdSize <= 0) return 0;
-  if (Number.isInteger(householdSize) && MIN_LIVING_EXPENSE_60_2026[householdSize]) {
-    return MIN_LIVING_EXPENSE_60_2026[householdSize];
+  const expenseMap = year === 2025 ? MIN_LIVING_EXPENSE_60_2025 : MIN_LIVING_EXPENSE_60_2026;
+  const additionalPerPerson = year === 2025 ? ADDITIONAL_PER_PERSON_60_2025 : ADDITIONAL_PER_PERSON_60_2026;
+
+  if (Number.isInteger(householdSize) && expenseMap[householdSize]) {
+    return expenseMap[householdSize];
   }
   if (householdSize > 8) {
     const extra = householdSize - 8;
-    return MIN_LIVING_EXPENSE_60_2026[8] + Math.round(extra * ADDITIONAL_PER_PERSON_60_2026);
+    return expenseMap[8] + Math.round(extra * additionalPerPerson);
   }
 
   // 소수점(0.5인) 보간
   const floor = Math.floor(householdSize);
   const ceil = Math.ceil(householdSize);
-  const baseLow = MIN_LIVING_EXPENSE_60_2026[floor] || MIN_LIVING_EXPENSE_60_2026[1];
-  const baseHigh = MIN_LIVING_EXPENSE_60_2026[ceil] || MIN_LIVING_EXPENSE_60_2026[2];
+  const baseLow = expenseMap[floor] || expenseMap[1];
+  const baseHigh = expenseMap[ceil] || expenseMap[2];
   const weight = householdSize - floor;
   return Math.round(baseLow + (baseHigh - baseLow) * weight);
+}
+
+/**
+ * 2026년 기초생계비 산출 (기존 호환성 유지)
+ */
+export function get2026LivingExpense(householdSize: number): number {
+  return getLivingExpense(householdSize, 2026);
 }
 
 // ==============================================================================
@@ -141,9 +164,28 @@ export const LEIBNIZ_FACTOR_60 = 53.6433;
  * 임의 개월수(24개월 ~ 60개월)의 라이프니쯔 현가 계수 맵 (특례 및 연장 지원)
  */
 export const LEIBNIZ_FACTORS: Record<number, number> = {
+  12: 11.7788,
+  18: 17.3826,
   24: 22.8421,
-  30: 28.3615,
+  30: 28.1610,
   36: 33.7719,
   48: 44.0321,
   60: 53.6433,
 };
+
+/**
+ * 임의 개월수(12~60개월)에 대한 법원 표준 라이프니쯔 연 5% 복리할인 현가 계수 산출
+ * (선적립 3개월 3.0 + 잔여 (M-3)개월 복리현가)
+ */
+export function getLeibnizFactor(months: number): number {
+  if (months <= 0) return 0;
+  if (months <= 3) return months;
+  if (LEIBNIZ_FACTORS[months]) {
+    return LEIBNIZ_FACTORS[months];
+  }
+  const monthlyRate = 0.05 / 12;
+  const discountMonths = months - 3;
+  const discountedFactor = (1 - Math.pow(1 + monthlyRate, -discountMonths)) / monthlyRate;
+  const totalFactor = 3 + discountedFactor;
+  return Math.round(totalFactor * 10000) / 10000;
+}

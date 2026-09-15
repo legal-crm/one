@@ -302,6 +302,17 @@ export default function RepaymentPlanEditor({
     };
   });
 
+  // ── 투더코어 벤치마킹 서울회생법원 준칙 & 보정권고 튜닝 상태 ──
+  const [isSeoulPrincipalOnly, setIsSeoulPrincipalOnly] = useState<boolean>(() => {
+    return crmExt.repaymentPlan?.isSeoulPrincipalOnly || false;
+  });
+  const [decimalRepaymentRate, setDecimalRepaymentRate] = useState<boolean>(() => {
+    return crmExt.repaymentPlan?.decimalRepaymentRate || false;
+  });
+  const [garnishmentDepositFirstRound, setGarnishmentDepositFirstRound] = useState<number>(() => {
+    return crmExt.repaymentPlan?.garnishmentDepositFirstRound || 0;
+  });
+
   // 모달 제어
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isD5103ModalOpen, setIsD5103ModalOpen] = useState(false);
@@ -337,6 +348,9 @@ export default function RepaymentPlanEditor({
         interestRepaymentMode: interestMode,
         childSupport,
         adultChildTransition: adultChild,
+        isSeoulPrincipalOnly,
+        garnishmentDepositFirstRound,
+        decimalRepaymentRate,
       },
     });
 
@@ -371,6 +385,9 @@ export default function RepaymentPlanEditor({
     interestMode,
     childSupport,
     adultChild,
+    isSeoulPrincipalOnly,
+    garnishmentDepositFirstRound,
+    decimalRepaymentRate,
   ]);
 
   // 채권자별 인라인 월 변제금 개별 수정 핸들러
@@ -1472,7 +1489,7 @@ export default function RepaymentPlanEditor({
               )}
             </div>
 
-            {/* ── [리걸플로 STEP 4~5 벤치마킹] 7대 실무 튜닝 박스 ── */}
+            {/* ── [리걸플로 & 투더코어 벤치마킹] 실무 튜닝 박스 ── */}
             <RepaymentTuningBox
               plan={plan}
               creditors={creditors}
@@ -1495,22 +1512,41 @@ export default function RepaymentPlanEditor({
               onUpdateChildSupport={(c) => setChildSupport(c)}
               adultChild={adultChild}
               onUpdateAdultChild={(a) => setAdultChild(a)}
+              isSeoulPrincipalOnly={isSeoulPrincipalOnly}
+              onToggleSeoulPrincipalOnly={(val) => setIsSeoulPrincipalOnly(val)}
+              garnishmentDepositFirstRound={garnishmentDepositFirstRound}
+              onUpdateGarnishmentDepositFirstRound={(amt) => setGarnishmentDepositFirstRound(amt)}
+              decimalRepaymentRate={decimalRepaymentRate}
+              onToggleDecimalRepaymentRate={(val) => setDecimalRepaymentRate(val)}
+              overrideMonthlyRepayment={manualMonthlyRepayment}
+              onUpdateOverrideMonthlyRepayment={(amt) => {
+                setIsManualMode(amt !== undefined);
+                setManualMonthlyRepayment(amt);
+              }}
+              adjusterMemo={adjusterMemo}
+              onUpdateAdjusterMemo={(memo) => setAdjusterMemo(memo)}
             />
 
             {/* 채권자별 안분표 (인라인 셀 직접 편집) */}
             <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200/80 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-slate-900">
-                      개인회생채권 변제예정액표 (채권자별 안분 상세)
-                    </h3>
-                    {plan.isTwoStageRepayment && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        2단계 분할 배분 적용됨 (1단계 1~{plan.stage1Months}회 / 2단계 {plan.stage1Months + 1}~{plan.months}회)
-                      </span>
-                    )}
-                  </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-black text-slate-900">
+                        개인회생채권 변제예정액표 (채권자별 안분 상세)
+                      </h3>
+                      {plan.isSeoulPrincipalOnly && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                          서울회생법원 2021 실무준칙 '원금형' 적용 (이자 면제 · {plan.months}회 조기단축)
+                        </span>
+                      )}
+                      {plan.isTwoStageRepayment && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          2단계 분할 배분 적용됨 (1단계 1~{plan.stage1Months}회 / 2단계 {plan.stage1Months + 1}~{plan.months}회)
+                        </span>
+                      )}
+                    </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     서울회생법원 규칙에 따라 원 미만은 올림(Math.ceil) 처리되었습니다. 개별 채권자의 월 변제금과 우선권/공탁유보 여부를 직접 설정할 수 있습니다.
                   </p>
@@ -1871,7 +1907,7 @@ export default function RepaymentPlanEditor({
                           {/* 9. 변제율 */}
                           <td className="py-3 px-2 text-center font-mono font-bold">
                             <span className={c.repaymentRate >= 50 ? 'text-emerald-600' : 'text-slate-700'}>
-                              {c.repaymentRate}%
+                              {decimalRepaymentRate ? c.repaymentRate.toFixed(1) : Math.round(c.repaymentRate)}%
                             </span>
                           </td>
 

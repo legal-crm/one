@@ -143,6 +143,40 @@ export interface RepaymentCreditor {
   // 대법원 개인회생 채권자목록 부속서류 1~4 규격 (매뉴얼 7-3 준용)
   annexDocType?: CreditorAnnexDocType;
   annexDetail?: string;            // 부속서류 기재 사유 (예: 5년 시효완성 의심, OO지법 전부명령 등)
+
+  // ── 투더코어 벤치마킹 7대 실무 옵션 및 부속서류 1~4 연계 필드 ──
+  isGuarantorClaim?: boolean;      // 구상권 채권 (보증기관/지인 장래구상권 ➔ 부속서류 4 연계)
+  isGuaranteedDebt?: boolean;      // 보증채무 (신청인이 제3자 보증선 채무 ➔ 부속서류 4 연계)
+  isDisputed?: boolean;            // 다툼 채권 (원금/이자 분쟁 ➔ 부속서류 2 연계)
+  isGarnished?: boolean;           // 전부명령 채권 (급여 전부명령 ➔ 부속서류 3 연계)
+  isTrustUnconfirmed?: boolean;    // 담보신탁 미확정채권
+
+  // 부속서류 1 (별제권부 채권 및 예정부족액 산정)
+  securedCollateralType?: 'REAL_ESTATE' | 'VEHICLE' | 'LEASE_DEPOSIT' | 'OTHER';
+  collateralAppraisalValue?: number; // 담보물 평가액 (환가예상액: 부동산 70%, 차량 50~70%)
+  securedMaxAmount?: number;         // 채권최고액 또는 보증금액
+  priorSecuredAmount?: number;       // 선순위 담보최고액
+  unsecuredExpectedShortage?: number;// 별제권 행사 등으로 변제받을 수 없는 금액 (부속서류 1 예정부족액)
+
+  // 부속서류 2 (다툼이 있는 채권)
+  disputeCreditorClaim?: number;     // 채권자 주장액
+  disputeDebtorClaim?: number;       // 신청인 주장액
+  disputeReason?: string;            // 다툼 원인 및 내용
+
+  // 부속서류 3 (전부명령이 있는 채권)
+  garnishmentAmount?: number;        // 전부금액
+  garnishmentCourtCase?: string;     // 전부명령 법원 및 사건번호
+
+  // 부속서류 4 (보증인 또는 주채무자)
+  principalDebtorName?: string;      // 주채무자 (신청인이 보증선 경우)
+  guarantorName?: string;            // 보증인 / 구상권자 (신청인을 위해 보증선 경우)
+  subrogationStatus?: 'BEFORE' | 'AFTER'; // 대위변제 전 vs 대위변제 후
+
+  // 파산 채권자목록 전자소송 필수 필드
+  initialPrincipal?: number;         // 최초 차용 원금
+  debtUsage?: string;                // 차용금 사용처 (생활비, 사업자금, 병원비 등)
+  phone?: string;                    // 채권자 대표전화 (02 국번 자동 보정 대상)
+  fax?: string;                      // 팩스번호
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -208,6 +242,10 @@ export interface RepaymentAsset {
   liquidationValue: number;        // 청산가치 = max(0, 시가 - 담보액 - 공제액)
   isRetirementPension?: boolean;   // 퇴직연금(DB/DC/IRP) 여부 (true시 0원)
   note?: string;
+
+  // ── 투더코어 벤치마킹 재산 실무 룰 ──
+  ownerType?: 'DEBTOR' | 'SPOUSE'; // 소유자 구분 (신청인 본인 vs 배우자)
+  spouseContributionRatio?: number;// 배우자 자산 기여도 (기본 0.5 = 50%, 실무상 10%~50% 조정 가능)
 }
 
 export interface IncomeSourceItem {
@@ -238,6 +276,11 @@ export interface IncomeAndExpenseInput {
   
   // 회생위원 선임 형태
   trusteeType: TrusteeType;
+
+  // ── 투더코어 벤치마킹 수입지출 실무 룰 ──
+  medianIncomeYear?: 2025 | 2026;     // 기준중위소득 적용년도 선택 (작성연도 vs 신청연도 상이할 때)
+  isChildSupportEstateClaim?: boolean;// 양육비를 재단채권으로 변제계획안에 기재 (외부회생위원 보정 대응)
+  isAdjustedLivingCost?: boolean;     // 60% 이하 수동 조정생계비 적용 여부
 }
 
 export interface CalculatedLivingExpense {
@@ -335,6 +378,13 @@ export interface RepaymentPlanData {
   overrideMonthlyRepayment?: number; // 수동 오버라이드한 월 변제금
   overrideMonths?: number;           // 수동 오버라이드한 개월수
   adjusterMemo?: string;             // 담당자 조정 사유 메모 (보정권고 대응 등)
+
+  // ── 투더코어 벤치마킹 보정 및 서울회생법원 실무준칙 플래그 ──
+  isSeoulPrincipalOnly?: boolean;    // 서울회생법원 2021 실무준칙 '원금형' (이자 삭제 및 변제기간 단축)
+  requiresPostCommencementInterest?: boolean; // 총변제액이 원리금 초과 시 개시후이자 입력 경고 상태
+  decimalRepaymentRate?: boolean;    // 변제율 소수점 첫째자리 표기 여부 (보정권고 대응)
+  garnishmentDepositFirstRound?: number; // 인가 후 1회차에 일시 투입되는 압류적립금
+
   lastSavedAt: string;
 }
 

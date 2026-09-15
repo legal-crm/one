@@ -330,6 +330,7 @@ export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): Repaym
 
   // 부동산
   d5102.realEstates.forEach((re) => {
+    const isSpouse = re.ownerType === 'spouse';
     result.push({
       id: re.id,
       category: 'REAL_ESTATE',
@@ -338,12 +339,15 @@ export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): Repaym
       encumbrance: re.mortgageBalance,
       statutoryDeduction: 0,
       liquidationValue: re.liquidationValue,
+      ownerType: isSpouse ? 'SPOUSE' : 'DEBTOR',
+      spouseContributionRatio: isSpouse ? (re.shareRatio || 0.5) : undefined,
       note: re.valuationMethod === 'public_price_130' ? '공시가격 130% 적용' : 'KB시세 일반가',
     });
   });
 
   // 자동차
   d5102.vehicles.forEach((v) => {
+    const isSpouse = v.ownerType === 'spouse';
     result.push({
       id: v.id,
       category: 'CAR',
@@ -352,6 +356,8 @@ export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): Repaym
       encumbrance: v.loanBalance,
       statutoryDeduction: 0,
       liquidationValue: v.liquidationValue,
+      ownerType: isSpouse ? 'SPOUSE' : 'DEBTOR',
+      spouseContributionRatio: isSpouse ? 0.5 : undefined,
       note: `연식: ${v.year}년`,
     });
   });

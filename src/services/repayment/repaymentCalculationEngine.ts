@@ -8,7 +8,9 @@
  */
 
 import {
+  getLivingExpense,
   get2026LivingExpense,
+  getLeibnizFactor,
   REGION_CONFIG_2026,
   BASE_HOUSING_INCLUDED_2026,
   BASE_MEDICAL_EXPENSE_2026,
@@ -58,10 +60,12 @@ export function calculateLivingExpenseAndDisposableIncome(
     isSpecialEducation = false,
     otherApprovedExpense = 0,
     trusteeType = 'INTERNAL',
+    medianIncomeYear = 2026,
+    isAdjustedLivingCost = false,
   } = input;
 
-  // 1. 2026 기초생계비 (중위소득 60%)
-  const baseLivingExpense = get2026LivingExpense(householdSize);
+  // 1. 기준연도(2025 or 2026) 기초생계비 (중위소득 60%)
+  const baseLivingExpense = getLivingExpense(householdSize, medianIncomeYear);
 
   // 2. 추가 주거비 계산 (공식: Min(실제주거비, 지역한도) - 기초포함분)
   const regionConfig = REGION_CONFIG_2026[region] || REGION_CONFIG_2026.SEOUL;
@@ -130,7 +134,23 @@ export function calculateAssetLiquidationValue(
   asset: RepaymentAsset,
   region: 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS' = 'SEOUL'
 ): number {
-  const { category, marketValue, encumbrance = 0, isRetirementPension } = asset;
+  const { 
+    category, 
+    marketValue, 
+    encumbrance = 0, 
+    isRetirementPension,
+    ownerType = 'DEBTOR',
+    spouseContributionRatio = 0.5,
+  } = asset;
+
+  // [투더코어 벤치마킹 & 법원 도산 실무준칙]
+  // 배우자 명의 재산인 경우: 민사집행법상 압류금지 채권 공제(185만/150만 등)가 미공제(0원)되며,
+  // (시가 - 선순위담보)에 부부공유 기여도(기본 50%, 실무상 10~50% 소명치)를 곱해 청산가치 반영
+  if (ownerType === 'SPOUSE') {
+    const netSpouseEquity = Math.max(0, marketValue - encumbrance);
+    const ratio = Math.min(1.0, Math.max(0.05, spouseContributionRatio));
+    return Math.round(netSpouseEquity * ratio);
+  }
 
   let statutoryDeduction = 0;
 
@@ -462,7 +482,7 @@ export function verifyLiquidationGuaranteeAndMinRepayment(
   repaymentRate: number;
   liquidationShortage: number;
 } {
-  const factor = LEIBNIZ_FACTORS[months] || (months === 60 ? LEIBNIZ_FACTOR_60 : LEIBNIZ_FACTOR_36);
+  const factor = getLeibnizFactor(months);
   // 현가 계산 시 원 미만은 버림 처리
   const presentValue = Math.floor(monthlyRepaymentTotal * factor);
   const satisfiesLiquidationGuarantee = presentValue >= totalLiquidationValue;
@@ -528,6 +548,10 @@ export interface BuildPlanOptions {
     childSupport?: ChildSupportInfo;
     adultChildTransition?: AdultChildTransitionInfo;
     clientSubmissionConsent?: ClientSubmissionConsent;
+    // ── 투더코어 벤치마킹 서울회생법원 준칙 및 실무 튜닝 옵션 ──
+    isSeoulPrincipalOnly?: boolean;      // 서울회생법원 2021 실무준칙 '원금형' (이자 삭제 및 변제기간 단축)
+    garnishmentDepositFirstRound?: number; // 1회차 일시 투입 압류적립금
+    decimalRepaymentRate?: boolean;       // 변제율 소수점 첫째자리 정밀 표기
   };
 }
 
@@ -610,6 +634,10 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   let requiredDisposalAmount = 0;
   let isManuallyOverridden = false;
 
+  const isSeoulPrincipalOnly = manualOverride?.isSeoulPrincipalOnly || false;
+  const garnishmentDepositFirstRound = manualOverride?.garnishmentDepositFirstRound || 0;
+  const decimalRepaymentRate = manualOverride?.decimalRepaymentRate || false;
+
   if (manualOverride && (manualOverride.months || manualOverride.monthlyRepayment !== undefined)) {
     isManuallyOverridden = true;
     months = manualOverride.months || 36;
@@ -674,6 +702,16 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     }
   }
 
+  // [서울회생법원 2021 실무준칙 '원금형' 준용]
+  // 36개월 이내 가용소득으로 원금 100% 완제 가능 시:
+  // 이자는 전액 면제하고, 변제기간을 원금 완제 회차로 조기 단축 (-이자변제기간 음수 지원)
+  if (isSeoulPrincipalOnly && monthlyRepaymentTarget > 0 && totalPrincipal > 0) {
+    const monthsToPayoff = Math.ceil(totalPrincipal / monthlyRepaymentTarget);
+    if (monthsToPayoff <= 36) {
+      months = Math.max(12, monthsToPayoff);
+    }
+  }
+
   // 5. 총 우선권 채무 사전 집계 및 1단계 인가 타당성 자동 평가 (Priority Claim Algorithm)
   const totalPriorityDebt = creditors
     .filter((c) => c.isPriority && !c.isSecured)
@@ -705,7 +743,10 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   let stage1MonthlyTotal = 0;
   let stage2MonthlyTotal = 0;
 
-  const interestRepaymentMode = manualOverride?.interestRepaymentMode || 'principal_only';
+  // 서울회생법원 원금형 활성화 시 기본 이자 변제 모드는 principal_only(이자 면제)
+  const interestRepaymentMode = isSeoulPrincipalOnly
+    ? 'principal_only'
+    : (manualOverride?.interestRepaymentMode || 'principal_only');
   const garnishmentDeposit = manualOverride?.garnishmentDeposit;
   const propertyDisposal = manualOverride?.propertyDisposal;
   const childSupport = manualOverride?.childSupport;
@@ -774,8 +815,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   let totalCalculatedPresentValue = 0;
 
   if (isTwoStage && hasPriority) {
-    const factorStage1 = LEIBNIZ_FACTORS[stage1Months] || 17.3826;
-    const factorTotal = LEIBNIZ_FACTORS[months] || (months === 60 ? LEIBNIZ_FACTOR_60 : LEIBNIZ_FACTOR_36);
+    const factorStage1 = getLeibnizFactor(stage1Months);
+    const factorTotal = getLeibnizFactor(months);
     const factorStage2Delta = Math.max(0, factorTotal - factorStage1);
 
     const pv1 = Math.floor(stage1MonthlyTotal * factorStage1);
@@ -794,7 +835,7 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
       totalPresentValue: totalCalculatedPresentValue,
     };
   } else {
-    const factorTotal = LEIBNIZ_FACTORS[months] || (months === 60 ? LEIBNIZ_FACTOR_60 : LEIBNIZ_FACTOR_36);
+    const factorTotal = getLeibnizFactor(months);
     totalCalculatedPresentValue = Math.floor(monthlyTotal * factorTotal);
     presentValueBreakdown = {
       stage1Months: months,
@@ -830,7 +871,18 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   const endMonthDate = new Date(startYear, startM - 1 + months - 1, 1);
   const endYearMonth = `${endMonthDate.getFullYear()}-${String(endMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-  const totalForgivenAmount = Math.max(0, totalPrincipal - verification.totalRepayment);
+  // 압류적립금 1회차 일시 투입액 가산
+  const finalTotalRepaymentAmount = verification.totalRepayment + garnishmentDepositFirstRound;
+  const finalRepaymentRate = totalPrincipal > 0
+    ? (decimalRepaymentRate
+        ? Math.round((finalTotalRepaymentAmount / totalPrincipal) * 1000) / 10
+        : Math.round((finalTotalRepaymentAmount / totalPrincipal) * 100))
+    : 0;
+
+  // 총변제액이 원리금(총채무)을 초과할 경우 법원 실무상 개시후이자 발생 경고
+  const requiresPostCommencementInterest = finalTotalRepaymentAmount > totalDebt;
+
+  const totalForgivenAmount = Math.max(0, totalPrincipal - finalTotalRepaymentAmount);
   const forgivenessRate =
     totalPrincipal > 0
       ? Math.round((totalForgivenAmount / totalPrincipal) * 1000) / 10
@@ -861,8 +913,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     presentValue: verification.presentValue,
     satisfiesLiquidationGuarantee: verification.satisfiesLiquidationGuarantee,
     monthlyRepaymentTotal: monthlyTotal,
-    totalRepaymentAmount: verification.totalRepayment,
-    totalRepaymentRate: verification.repaymentRate,
+    totalRepaymentAmount: finalTotalRepaymentAmount,
+    totalRepaymentRate: finalRepaymentRate,
     totalForgivenAmount,
     forgivenessRate,
     isTwoStageRepayment: isTwoStage,
@@ -888,6 +940,11 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     overrideMonthlyRepayment: manualOverride?.monthlyRepayment,
     overrideMonths: manualOverride?.months,
     adjusterMemo: manualOverride?.adjusterMemo,
+    // ── 투더코어 벤치마킹 고도화 실무 필드 ──
+    isSeoulPrincipalOnly,
+    requiresPostCommencementInterest,
+    decimalRepaymentRate,
+    garnishmentDepositFirstRound,
     lastSavedAt: new Date().toISOString(),
   };
 }

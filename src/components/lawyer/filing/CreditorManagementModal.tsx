@@ -11,7 +11,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   X, Plus, Trash2, Edit3, Save, FileSpreadsheet, Download, 
   Search, ShieldAlert, CheckCircle2, AlertCircle, Building2,
-  DollarSign, MapPin, ArrowUpDown, ChevronDown
+  DollarSign, MapPin, ArrowUpDown, ChevronDown, ArrowUp, ArrowDown,
+  Copy, Info, Sparkles, HelpCircle, Shield, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../../common/ModalPortal';
@@ -99,6 +100,20 @@ export default function CreditorManagementModal({
       isSecured: false,
       isPriority: false,
       isUnconfirmed: false,
+      isGuarantorClaim: false,
+      isGuaranteedDebt: false,
+      isDisputed: false,
+      isGarnished: false,
+      isTrustUnconfirmed: false,
+      securedCollateralType: 'REAL_ESTATE',
+      collateralAppraisalValue: 0,
+      securedMaxAmount: 0,
+      priorSecuredAmount: 0,
+      unsecuredExpectedShortage: 0,
+      initialPrincipal: 10000000,
+      debtUsage: '생계비 및 생활비',
+      phone: '',
+      fax: '',
       debtCauseDetail: '신용대출',
       borrowedDate: new Date().toISOString().split('T')[0],
       address: '',
@@ -120,18 +135,64 @@ export default function CreditorManagementModal({
     setShowDirDropdown(false);
   };
 
-  // 프리셋 선택 시 채권자 정보 자동 입력
+  // 프리셋 선택 시 채권자 정보 자동 입력 (전화번호 및 대표번호 정규화 포함)
   const handleSelectPreset = (item: CreditorDirectoryItem) => {
     setEditingCreditor(prev => ({
       ...prev,
       name: item.officialName,
       representative: item.representative,
+      bizNumber: item.bizNumber,
+      zipCode: item.zipCode,
       address: item.address,
       serviceAddress: item.serviceAddress,
+      phone: item.phone,
       isPriority: item.isPriorityDefault || false,
     }));
     setDirSearch(item.officialName);
     setShowDirDropdown(false);
+  };
+
+  // 법원 규격 자동 정렬 (투더코어 벤치마킹: 담보부 ➔ 우선변제 ➔ 차용일자순)
+  const handleAutoSort = () => {
+    setCreditors(prev => {
+      const sorted = [...prev].sort((a, b) => {
+        // 1. 담보부 채권 1순위
+        if (a.isSecured && !b.isSecured) return -1;
+        if (!a.isSecured && b.isSecured) return 1;
+        // 2. 조세/4대보험 우선권 채권 2순위
+        if (a.isPriority && !b.isPriority) return -1;
+        if (!a.isPriority && b.isPriority) return 1;
+        // 3. 차용일자 오름차순 (부채 발생일 기준)
+        const dateA = a.borrowedDate || '9999-99-99';
+        const dateB = b.borrowedDate || '9999-99-99';
+        return dateA.localeCompare(dateB);
+      });
+      return sorted.map((c, i) => ({ ...c, creditorNumber: i + 1 }));
+    });
+    toast.success('법원 규격 순서(담보부 ➔ 우선변제 ➔ 차용일자순)로 채권 순번이 자동 정렬되었습니다.');
+  };
+
+  // 수동 순서 위/아래 이동
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    setCreditors(prev => {
+      const next = [...prev];
+      const temp = next[index - 1];
+      next[index - 1] = next[index];
+      next[index] = temp;
+      return next.map((c, i) => ({ ...c, creditorNumber: i + 1 }));
+    });
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= creditors.length - 1) return;
+    setCreditors(prev => {
+      const next = [...prev];
+      const temp = next[index + 1];
+      next[index + 1] = next[index];
+      next[index] = temp;
+      return next.map((c, i) => ({ ...c, creditorNumber: i + 1 }));
+    });
   };
 
   // 편집 중인 채권자 저장 (목록에 반영)
@@ -144,6 +205,18 @@ export default function CreditorManagementModal({
     const principalNum = Number(editingCreditor.principal) || 0;
     const interestNum = Number(editingCreditor.interest) || 0;
 
+    // 담보 예정부족액 자동 산출 (부동산 70%, 차량 50~70% 등)
+    let calculatedShortage = Number(editingCreditor.unsecuredExpectedShortage) || 0;
+    if (editingCreditor.isSecured) {
+      const appraisal = Number(editingCreditor.collateralAppraisalValue) || 0;
+      const prior = Number(editingCreditor.priorSecuredAmount) || 0;
+      const rate = editingCreditor.securedCollateralType === 'REAL_ESTATE' ? 0.7 
+        : editingCreditor.securedCollateralType === 'VEHICLE' ? 0.5 
+        : 1.0;
+      const netCollateral = Math.max(0, Math.round(appraisal * rate) - prior);
+      calculatedShortage = Math.max(0, principalNum - netCollateral);
+    }
+
     const finalizedCreditor: RepaymentCreditor = {
       id: editingCreditor.id || `creditor-${Date.now()}`,
       creditorNumber: editingCreditor.creditorNumber || creditors.length + 1,
@@ -154,11 +227,43 @@ export default function CreditorManagementModal({
       securedValue: editingCreditor.isSecured ? (Number(editingCreditor.securedValue) || 0) : undefined,
       isPriority: Boolean(editingCreditor.isPriority),
       isUnconfirmed: Boolean(editingCreditor.isUnconfirmed),
+      
+      // 투더코어 7대 옵션 및 부속서류 필드
+      isGuarantorClaim: Boolean(editingCreditor.isGuarantorClaim),
+      isGuaranteedDebt: Boolean(editingCreditor.isGuaranteedDebt),
+      isDisputed: Boolean(editingCreditor.isDisputed),
+      isGarnished: Boolean(editingCreditor.isGarnished),
+      isTrustUnconfirmed: Boolean(editingCreditor.isTrustUnconfirmed),
+
+      securedCollateralType: editingCreditor.securedCollateralType,
+      collateralAppraisalValue: editingCreditor.collateralAppraisalValue,
+      securedMaxAmount: editingCreditor.securedMaxAmount,
+      priorSecuredAmount: editingCreditor.priorSecuredAmount,
+      unsecuredExpectedShortage: calculatedShortage,
+
+      disputeCreditorClaim: editingCreditor.disputeCreditorClaim,
+      disputeDebtorClaim: editingCreditor.disputeDebtorClaim,
+      disputeReason: editingCreditor.disputeReason,
+
+      garnishmentAmount: editingCreditor.garnishmentAmount,
+      garnishmentCourtCase: editingCreditor.garnishmentCourtCase,
+
+      principalDebtorName: editingCreditor.principalDebtorName,
+      guarantorName: editingCreditor.guarantorName,
+      subrogationStatus: editingCreditor.subrogationStatus || 'BEFORE',
+
+      initialPrincipal: editingCreditor.initialPrincipal || principalNum,
+      debtUsage: editingCreditor.debtUsage || '생계비 및 생활비',
+      phone: editingCreditor.phone || '',
+      fax: editingCreditor.fax || '',
+
       debtCauseDetail: editingCreditor.debtCauseDetail || '신용대출',
       borrowedDate: editingCreditor.borrowedDate || new Date().toISOString().split('T')[0],
       address: editingCreditor.address || '',
       serviceAddress: editingCreditor.serviceAddress || editingCreditor.address || '',
       representative: editingCreditor.representative || '',
+      bizNumber: editingCreditor.bizNumber || '',
+      zipCode: editingCreditor.zipCode || '',
       allocationRatio: editingCreditor.allocationRatio || 0,
       monthlyRepayment: editingCreditor.monthlyRepayment || 0,
       totalRepayment: editingCreditor.totalRepayment || 0,
@@ -191,15 +296,37 @@ export default function CreditorManagementModal({
     toast.info(`'${name}' 채권사가 삭제되었습니다.`);
   };
 
-  // 대법원 전자소송 규격 CSV 다운로드
+  // 대법원 전자소송 규격 회생 CSV 다운로드
   const handleDownloadCsv = () => {
     if (creditors.length === 0) {
       toast.warning('등록된 채권자가 없습니다.');
       return;
     }
     const csv = CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
-    CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송]_${clientName}_채권자목록_등록양식.csv`);
+    CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송_회생]_${clientName}_채권자목록.csv`);
     toast.success('대법원 전자소송 UTF-8 BOM CSV 파일이 다운로드되었습니다.');
+  };
+
+  // 대법원 전자소송 규격 파산 CSV 다운로드
+  const handleDownloadBankruptcyCsv = () => {
+    if (creditors.length === 0) {
+      toast.warning('등록된 채권자가 없습니다.');
+      return;
+    }
+    const csv = CourtBatchFilingService.generateBankruptcyCourtCreditorCsv(creditors, clientName);
+    CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송_파산]_${clientName}_채권자목록.csv`);
+    toast.success('대법원 전자소송 파산용 CSV 파일이 다운로드되었습니다.');
+  };
+
+  // 클립보드 복사
+  const handleCopyCsv = () => {
+    if (creditors.length === 0) {
+      toast.warning('등록된 채권자가 없습니다.');
+      return;
+    }
+    const csv = CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
+    navigator.clipboard.writeText(csv);
+    toast.success('대법원 전자소송 규격 CSV가 클립보드에 복사되었습니다.');
   };
 
   // 전체 변경사항 최종 서버/CRM 저장
@@ -282,9 +409,19 @@ export default function CreditorManagementModal({
 
         {/* 메인 콘텐츠 영역 */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {/* 전자소송 업로드 실무 주의 배너 (투더코어 벤치마킹) */}
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-amber-900">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-relaxed">
+              <span className="font-extrabold text-amber-950">대법원 전자소송 업로드 실무 주의사항:</span>{' '}
+              다운로드받은 CSV 파일을 엑셀(Excel)에서 열어 '저장'하시면 인코딩(ANSI 변조) 및 따옴표 서식이 훼손되어 전자소송 업로드 시 오류가 발생합니다. 
+              <strong>반드시 다운로드된 원본 CSV 파일을 그대로 전자소송에 첨부</strong>하시거나, [CSV 복사]를 활용해 주세요. (전국대표번호 1588 등은 업로드 규격인 02 국번으로 자동 정규화됩니다.)
+            </div>
+          </div>
+
           {/* 상단 툴바 */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full sm:w-64">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -295,20 +432,51 @@ export default function CreditorManagementModal({
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleAutoSort}
+                title="담보부 ➔ 우선변제 ➔ 차용일자순으로 정렬"
+                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer press-scale"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>법원규격 자동정렬</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyCsv}
+                title="전자소송 직접 붙여넣기용 CSV 복사"
+                className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer press-scale"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>CSV 복사</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadBankruptcyCsv}
+                title="파산 전자소송 필수 규격(최초원금, 사용처 포함) CSV 다운로드"
+                className="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer press-scale"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>파산용 CSV</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleDownloadCsv}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer press-scale"
+                title="회생 전자소송 채권자목록 UTF-8 BOM CSV"
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer press-scale"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>대법원 CSV 다운로드</span>
+                <span>회생용 CSV</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleOpenAddCreditor}
-                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer press-scale"
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer press-scale"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>채권자 추가</span>
@@ -447,6 +615,43 @@ export default function CreditorManagementModal({
                 </div>
               </div>
 
+              {/* 연락처 및 파산 필수 항목 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-700 font-bold">대표 전화번호</label>
+                    <span className="text-[10px] text-emerald-600 font-medium">※ 1588은 02 자동부여</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={editingCreditor.phone || ''}
+                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="예: 02-1588-9999 또는 1588-9999"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">최초 차용원금 (파산 필수)</label>
+                  <input
+                    type="number"
+                    value={editingCreditor.initialPrincipal ?? ''}
+                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, initialPrincipal: Number(e.target.value) }))}
+                    placeholder="미입력 시 원금잔액과 동일"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">차용금 사용처 (파산 필수)</label>
+                  <input
+                    type="text"
+                    value={editingCreditor.debtUsage || ''}
+                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, debtUsage: e.target.value }))}
+                    placeholder="예: 생활비, 사업자금, 병원비"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-700 font-bold mb-1">법원 우편물 송달장소 주소 *</label>
                 <input
@@ -458,50 +663,293 @@ export default function CreditorManagementModal({
                 />
               </div>
 
-              {/* 채권 성격 체크박스 */}
-              <div className="flex flex-wrap items-center gap-4 pt-1">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editingCreditor.isSecured)}
-                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, isSecured: e.target.checked }))}
-                    className="rounded text-blue-600"
-                  />
-                  <span className="font-bold text-slate-800 text-xs">별제권부(담보부) 채권</span>
-                </label>
+              {/* ── 투더코어 7대 실무 옵션 ── */}
+              <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-blue-600" />
+                    <span>채권 특수 성격 옵션 (부속서류 1~4 자동 생성)</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400">해당하는 항목을 체크하시면 부속서류가 자동 작성됩니다.</span>
+                </div>
 
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editingCreditor.isPriority)}
-                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, isPriority: e.target.checked }))}
-                    className="rounded text-amber-600"
-                  />
-                  <span className="font-bold text-slate-800 text-xs">일반 우선권 채권 (국세/지방세/4대보험)</span>
-                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-amber-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isPriority)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isPriority: e.target.checked }))}
+                      className="rounded text-amber-600"
+                    />
+                    <div>
+                      <span className="font-bold text-amber-900 block">우선변제 채권</span>
+                      <span className="text-[10px] text-slate-400">체납세금, 4대보험료</span>
+                    </div>
+                  </label>
 
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editingCreditor.isUnconfirmed)}
-                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, isUnconfirmed: e.target.checked }))}
-                    className="rounded text-slate-600"
-                  />
-                  <span className="font-bold text-slate-800 text-xs">미확정 채권 (보증채무 등)</span>
-                </label>
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-blue-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isSecured)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isSecured: e.target.checked }))}
+                      className="rounded text-blue-600"
+                    />
+                    <div>
+                      <span className="font-bold text-blue-900 block">담보 (별제권)</span>
+                      <span className="text-[10px] text-slate-400">부동산, 차량 근저당</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-purple-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isGuarantorClaim)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isGuarantorClaim: e.target.checked }))}
+                      className="rounded text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-purple-900 block">구상권 채권</span>
+                      <span className="text-[10px] text-slate-400">보증기관 장래구상</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-indigo-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isGuaranteedDebt)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isGuaranteedDebt: e.target.checked }))}
+                      className="rounded text-indigo-600"
+                    />
+                    <div>
+                      <span className="font-bold text-indigo-900 block">보증 채무</span>
+                      <span className="text-[10px] text-slate-400">타인 채무 보증</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-rose-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isDisputed)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isDisputed: e.target.checked }))}
+                      className="rounded text-rose-600"
+                    />
+                    <div>
+                      <span className="font-bold text-rose-900 block">다툼 채권 (부속2호)</span>
+                      <span className="text-[10px] text-slate-400">원금·이자 다툼</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-red-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isGarnished)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isGarnished: e.target.checked }))}
+                      className="rounded text-red-600"
+                    />
+                    <div>
+                      <span className="font-bold text-red-900 block">전부명령 (부속3호)</span>
+                      <span className="text-[10px] text-slate-400">급여 전부명령</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isTrustUnconfirmed)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isTrustUnconfirmed: e.target.checked }))}
+                      className="rounded text-slate-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block">미확정 (담보신탁)</span>
+                      <span className="text-[10px] text-slate-400">신탁재산 담보</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingCreditor.isUnconfirmed)}
+                      onChange={(e) => setEditingCreditor(prev => ({ ...prev, isUnconfirmed: e.target.checked }))}
+                      className="rounded text-slate-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block">일반 미확정 채권</span>
+                      <span className="text-[10px] text-slate-400">변제유보금 공탁</span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
+              {/* 1. 담보 선택 시 세부 입력 및 예정부족액 자동 계산 (부속서류 1) */}
               {editingCreditor.isSecured && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-                  <span className="text-xs font-bold text-amber-900 shrink-0">담보물 예상 환가액:</span>
-                  <input
-                    type="number"
-                    value={editingCreditor.securedValue ?? ''}
-                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedValue: Number(e.target.value) }))}
-                    placeholder="담보물 가액"
-                    className="w-48 px-3 py-1.5 bg-white border border-amber-300 rounded-lg font-mono text-xs"
-                  />
-                  <span className="text-[11px] text-amber-700">※ 별제권 행사 후 부족액만 일반회생채권으로 안분됩니다.</span>
+                <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 text-xs">【부속서류 1】 담보물 및 별제권 예정부족액 산정</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 font-bold">
+                      실무 환가율: {editingCreditor.securedCollateralType === 'REAL_ESTATE' ? '부동산 70%' : editingCreditor.securedCollateralType === 'VEHICLE' ? '차량 50%' : '100%'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">담보물 종류</label>
+                      <select
+                        value={editingCreditor.securedCollateralType || 'REAL_ESTATE'}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedCollateralType: e.target.value as any }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                      >
+                        <option value="REAL_ESTATE">부동산 (환가율 70%)</option>
+                        <option value="VEHICLE">자동차 (환가율 50%)</option>
+                        <option value="LEASE_DEPOSIT">임차보증금 (우선변제)</option>
+                        <option value="OTHER">기타 동산</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">담보물 시가/평가액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.collateralAppraisalValue ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, collateralAppraisalValue: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">선순위 담보액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.priorSecuredAmount ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, priorSecuredAmount: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">채권최고액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.securedMaxAmount ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedMaxAmount: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg border border-blue-200 text-[11px] flex justify-between items-center">
+                    <span className="text-slate-600">
+                      담보물 환가 후 <strong>별제권 행사 등으로 변제받을 수 없는 채권액 (부속서류 1 예정부족액)</strong>:
+                    </span>
+                    <strong className="text-blue-700 font-mono text-xs">
+                      {Math.max(0, (Number(editingCreditor.principal) || 0) - Math.max(0, Math.round((Number(editingCreditor.collateralAppraisalValue) || 0) * (editingCreditor.securedCollateralType === 'REAL_ESTATE' ? 0.7 : editingCreditor.securedCollateralType === 'VEHICLE' ? 0.5 : 1.0)) - (Number(editingCreditor.priorSecuredAmount) || 0))).toLocaleString()}원
+                    </strong>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. 구상권 / 보증채무 세부 입력 (부속서류 4) */}
+              {(editingCreditor.isGuarantorClaim || editingCreditor.isGuaranteedDebt) && (
+                <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
+                  <span className="font-bold text-purple-900 text-xs block">【부속서류 4】 보증인 및 주채무자 정보</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {editingCreditor.isGuarantorClaim && (
+                      <>
+                        <div>
+                          <label className="block text-[11px] text-slate-600 mb-1">장래 구상권자 (보증기관/지인)</label>
+                          <input
+                            type="text"
+                            value={editingCreditor.guarantorName || ''}
+                            onChange={(e) => setEditingCreditor(prev => ({ ...prev, guarantorName: e.target.value }))}
+                            placeholder="예: 신용보증기금, 서울보증보험"
+                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-600 mb-1">대위변제 여부</label>
+                          <select
+                            value={editingCreditor.subrogationStatus || 'BEFORE'}
+                            onChange={(e) => setEditingCreditor(prev => ({ ...prev, subrogationStatus: e.target.value as any }))}
+                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                          >
+                            <option value="BEFORE">대위변제 전 (장래구상채권)</option>
+                            <option value="AFTER">대위변제 완료 (원채권자 사용처 승계)</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+                    {editingCreditor.isGuaranteedDebt && (
+                      <div>
+                        <label className="block text-[11px] text-slate-600 mb-1">주채무자 성명 (피보증인)</label>
+                        <input
+                          type="text"
+                          value={editingCreditor.principalDebtorName || ''}
+                          onChange={(e) => setEditingCreditor(prev => ({ ...prev, principalDebtorName: e.target.value }))}
+                          placeholder="예: 홍길동 (신청인이 보증선 대상)"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. 다툼채권 세부 입력 (부속서류 2) */}
+              {editingCreditor.isDisputed && (
+                <div className="p-3 bg-rose-50/80 border border-rose-200 rounded-xl space-y-2">
+                  <span className="font-bold text-rose-900 text-xs block">【부속서류 2】 다툼이 있는 채권 상세</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">채권자 주장액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.disputeCreditorClaim ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, disputeCreditorClaim: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">신청인 주장액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.disputeDebtorClaim ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, disputeDebtorClaim: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">다툼의 사유 및 경위</label>
+                      <input
+                        type="text"
+                        value={editingCreditor.disputeReason || ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, disputeReason: e.target.value }))}
+                        placeholder="예: 원금 변제 완료, 소멸시효 완성 등"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. 전부명령 세부 입력 (부속서류 3) */}
+              {editingCreditor.isGarnished && (
+                <div className="p-3 bg-red-50/80 border border-red-200 rounded-xl space-y-2">
+                  <span className="font-bold text-red-900 text-xs block">【부속서류 3】 급여 전부명령 상세</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">전부 청구금액</label>
+                      <input
+                        type="number"
+                        value={editingCreditor.garnishmentAmount ?? ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, garnishmentAmount: Number(e.target.value) }))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">전부명령 법원 및 사건번호</label>
+                      <input
+                        type="text"
+                        value={editingCreditor.garnishmentCourtCase || ''}
+                        onChange={(e) => setEditingCreditor(prev => ({ ...prev, garnishmentCourtCase: e.target.value }))}
+                        placeholder="예: 서울중앙지방법원 2024타채12345"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -530,9 +978,9 @@ export default function CreditorManagementModal({
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                 <tr>
-                  <th className="p-3 w-12 text-center">No</th>
-                  <th className="p-3">채권자명 / 차용원인</th>
-                  <th className="p-3 w-24 text-center">구분</th>
+                  <th className="p-3 w-16 text-center">No / 이동</th>
+                  <th className="p-3">채권자명 / 차용원인 / 사용처</th>
+                  <th className="p-3 w-28 text-center">옵션 및 부속서류</th>
                   <th className="p-3 text-right">채무원금</th>
                   <th className="p-3 text-right">개시전이자</th>
                   <th className="p-3">법원 송달장소</th>
@@ -549,29 +997,83 @@ export default function CreditorManagementModal({
                 ) : (
                   displayedCreditors.map((creditor, idx) => (
                     <tr key={creditor.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 text-center font-mono font-bold text-slate-400">
-                        {creditor.creditorNumber || idx + 1}
+                      <td className="p-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="font-mono font-bold text-slate-500 w-4">
+                            {creditor.creditorNumber || idx + 1}
+                          </span>
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveUp(idx)}
+                              disabled={idx === 0}
+                              className="p-0.5 text-slate-400 hover:text-blue-600 disabled:opacity-20 cursor-pointer"
+                              title="순서 위로"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveDown(idx)}
+                              disabled={idx === displayedCreditors.length - 1}
+                              className="p-0.5 text-slate-400 hover:text-blue-600 disabled:opacity-20 cursor-pointer"
+                              title="순서 아래로"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3">
                         <div className="font-bold text-slate-900">{creditor.name}</div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
                           {creditor.debtCauseDetail || '신용대출'} · {creditor.borrowedDate || '일자 미상'}
+                          {creditor.debtUsage && <span className="text-slate-400"> · 사용처: {creditor.debtUsage}</span>}
                         </div>
                       </td>
                       <td className="p-3 text-center">
-                        {creditor.isPriority ? (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
-                            우선권
-                          </span>
-                        ) : creditor.isSecured ? (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
-                            담보부
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[10px]">
-                            신용
-                          </span>
-                        )}
+                        <div className="flex flex-wrap items-center justify-center gap-1">
+                          {creditor.isPriority && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+                              우선변제
+                            </span>
+                          )}
+                          {creditor.isSecured && (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]" title={`예정부족액: ${creditor.unsecuredExpectedShortage?.toLocaleString()}원`}>
+                              담보(부속1)
+                            </span>
+                          )}
+                          {creditor.isGuarantorClaim && (
+                            <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[10px]">
+                              구상(부속4)
+                            </span>
+                          )}
+                          {creditor.isGuaranteedDebt && (
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px]">
+                              보증(부속4)
+                            </span>
+                          )}
+                          {creditor.isDisputed && (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
+                              다툼(부속2)
+                            </span>
+                          )}
+                          {creditor.isGarnished && (
+                            <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 font-bold text-[10px]">
+                              전부(부속3)
+                            </span>
+                          )}
+                          {creditor.isTrustUnconfirmed && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[10px]">
+                              신탁미확정
+                            </span>
+                          )}
+                          {!creditor.isPriority && !creditor.isSecured && !creditor.isGuarantorClaim && !creditor.isGuaranteedDebt && !creditor.isDisputed && !creditor.isGarnished && !creditor.isTrustUnconfirmed && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium text-[10px]">
+                              일반신용
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-right font-mono font-bold text-slate-900">
                         {Number(creditor.principal).toLocaleString()}원

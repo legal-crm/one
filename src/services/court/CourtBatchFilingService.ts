@@ -430,7 +430,33 @@ export class CourtBatchFilingService {
   }
 
   /**
+   * 대법원 전자소송 전화번호 정규화 헬퍼
+   * - 1588, 1544, 1566, 1600, 1644, 1688, 1577, 1599, 1800, 1899 등 전국대표번호는
+   *   대법원 전자소송 시스템 검증상 '02' 국번을 붙여야 업로드 오류(반려)가 발생하지 않음.
+   */
+  static normalizeCourtPhoneNumber(phone?: string): string {
+    if (!phone) return '';
+    const clean = phone.trim().replace(/\s+/g, '');
+    if (!clean) return '';
+
+    // 이미 지역번호(02, 031, 051 등)로 시작하는 경우 그대로 반환
+    if (/^0[2-6][0-9]?-\d+/.test(clean) || /^0[1-7][0-9]-\d+/.test(clean)) {
+      return clean;
+    }
+
+    // 전국대표번호 패턴 감지 (예: 1588-9999, 1544-0000, 15889999 등)
+    const repMatch = clean.match(/^(15[4789][0-9]|16[0478][0-9]|18[09][0-9])-?(\d{4})$/);
+    if (repMatch) {
+      return `02-${repMatch[1]}-${repMatch[2]}`;
+    }
+
+    return clean;
+  }
+
+  /**
    * 3. 대법원 전자소송 채권자목록 엑셀/CSV 일괄등록 변환 (UTF-8 BOM 지원)
+   * - 전국대표번호(1588 등)는 자동으로 '02-' 국번을 붙여 전자소송 업로드 오류 방지
+   * - 부속서류 1~4 플래그 비고 자동 반영
    */
   static generateCourtCreditorCsv(
     creditors: RepaymentCreditor[],
@@ -444,6 +470,7 @@ export class CourtBatchFilingService {
       '우편번호',
       '주소',
       '송달장소',
+      '전화번호',
       '차용원인',
       '차용일자',
       '원금(원)',
@@ -462,6 +489,7 @@ export class CourtBatchFilingService {
       const zip = `"${(c.zipCode || '').replace(/"/g, '""')}"`;
       const addr = `"${(c.address || '').replace(/"/g, '""')}"`;
       const serviceAddr = `"${(c.serviceAddress || c.address || '').replace(/"/g, '""')}"`;
+      const normalizedPhone = `"${this.normalizeCourtPhoneNumber(c.phone)}"`;
       const cause = `"${(c.debtCauseDetail || '생활비 및 대여금').replace(/"/g, '""')}"`;
       const borrowedDate = `"${c.borrowedDate || '2023-01-01'}"`;
       const principal = Math.round(c.principal || 0);
@@ -469,7 +497,19 @@ export class CourtBatchFilingService {
       const total = principal + interest;
       const priority = c.isPriority ? 'Y' : 'N';
       const secured = c.isSecured ? 'Y' : 'N';
-      const notes = `"${c.isUnconfirmed ? '미확정채권' : ''}"`;
+
+      // 투더코어 벤치마킹: 부속서류 및 특약 비고 상세화
+      const noteParts: string[] = [];
+      if (c.isUnconfirmed) noteParts.push('미확정채권');
+      if (c.isTrustUnconfirmed) noteParts.push('담보신탁');
+      if (c.isGuarantorClaim) noteParts.push('장래구상권');
+      if (c.isGuaranteedDebt) noteParts.push(`보증채무(주채무자:${c.principalDebtorName || '외'})`);
+      if (c.isDisputed) noteParts.push('다툼채권(부속2호)');
+      if (c.isGarnished) noteParts.push('전부명령(부속3호)');
+      if (c.unsecuredExpectedShortage && c.unsecuredExpectedShortage > 0) {
+        noteParts.push(`예정부족액:${Math.round(c.unsecuredExpectedShortage).toLocaleString()}원`);
+      }
+      const notes = `"${noteParts.join(', ')}"`;
 
       return [
         seq,
@@ -479,6 +519,7 @@ export class CourtBatchFilingService {
         zip,
         addr,
         serviceAddr,
+        normalizedPhone,
         cause,
         borrowedDate,
         principal,
@@ -486,6 +527,87 @@ export class CourtBatchFilingService {
         total,
         priority,
         secured,
+        notes
+      ].join(',');
+    });
+
+    const bom = '\uFEFF';
+    return bom + [headers.join(','), ...rows].join('\r\n');
+  }
+
+  /**
+   * 3-1. 대법원 전자소송 개인파산 채권자목록 엑셀/CSV 일괄등록 변환 (UTF-8 BOM)
+   * - 파산 필수 기재사항: 최초원금, 잔존원금, 차용원인, 차용일자, 사용처, 보증인
+   */
+  static generateBankruptcyCourtCreditorCsv(
+    creditors: RepaymentCreditor[],
+    debtorName: string
+  ): string {
+    const headers = [
+      '순번',
+      '채권자명',
+      '사업자/주민번호',
+      '대표자',
+      '우편번호',
+      '주소',
+      '송달장소',
+      '전화번호',
+      '최초원금(원)',
+      '잔존원금(원)',
+      '개시전이자(원)',
+      '합계(원)',
+      '차용일자',
+      '발생원인',
+      '사용처',
+      '보증인_구상권자',
+      '비고'
+    ];
+
+    const rows = creditors.map((c, idx) => {
+      const seq = idx + 1;
+      const name = `"${(c.name || '').replace(/"/g, '""')}"`;
+      const bizNo = `"${(c.bizNumber || '').replace(/"/g, '""')}"`;
+      const rep = `"${(c.representative || '').replace(/"/g, '""')}"`;
+      const zip = `"${(c.zipCode || '').replace(/"/g, '""')}"`;
+      const addr = `"${(c.address || '').replace(/"/g, '""')}"`;
+      const serviceAddr = `"${(c.serviceAddress || c.address || '').replace(/"/g, '""')}"`;
+      const phone = `"${this.normalizeCourtPhoneNumber(c.phone)}"`;
+      const initialPrincipal = Math.round(c.initialPrincipal || c.principal || 0);
+      const remainingPrincipal = Math.round(c.principal || 0);
+      const interest = Math.round(c.interest || 0);
+      const total = remainingPrincipal + interest;
+      const borrowedDate = `"${c.borrowedDate || '2023-01-01'}"`;
+      const cause = `"${(c.debtCauseDetail || '대출금').replace(/"/g, '""')}"`;
+      
+      // 사용처: 파산 필수항목
+      // 보증채무인 경우 피보증인명, 대위변제 후인 경우 원채권자 사용처 승계
+      let usage = c.debtUsage || '생계비 및 생활비';
+      if (c.isGuaranteedDebt && c.principalDebtorName) {
+        usage = `피보증인(${c.principalDebtorName}) 채무보증`;
+      }
+      const usageFormatted = `"${usage.replace(/"/g, '""')}"`;
+
+      // 보증인 / 구상권자
+      const guarantor = `"${(c.guarantorName || c.principalDebtorName || (c.isGuarantorClaim ? '보증기관' : '')).replace(/"/g, '""')}"`;
+      const notes = `"${c.isSecured ? '담보부' : c.isPriority ? '우선권' : '일반채권'}"`;
+
+      return [
+        seq,
+        name,
+        bizNo,
+        rep,
+        zip,
+        addr,
+        serviceAddr,
+        phone,
+        initialPrincipal,
+        remainingPrincipal,
+        interest,
+        total,
+        borrowedDate,
+        cause,
+        usageFormatted,
+        guarantor,
         notes
       ].join(',');
     });
