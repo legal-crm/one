@@ -168,7 +168,7 @@ export default function DebtAgencyApplicationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex justify-center items-start sm:items-center p-2 sm:p-4 md:p-6">
       {/* ── 인쇄 전용 CSS (A4 1매 최적화) ── */}
       <style>{`
         @media print {
@@ -199,54 +199,54 @@ export default function DebtAgencyApplicationModal({
         }
       `}</style>
 
-      {/* 모달 컨테이너 */}
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[96vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      {/* 모달 컨테이너 (my-auto로 상단 잘림 원천 방지) */}
+      <div className="my-auto relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        {/* ── 상단 툴바 (인쇄 제외) ── */}
-        <div className="no-print p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
-                <FileSpreadsheet className="w-5 h-5" />
+        {/* ── 상단 툴바 (인쇄 제외, shrink-0 및 컴팩트 버튼) ── */}
+        <div className="no-print shrink-0 px-4 py-3 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-2.5 border-b border-slate-800">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold shrink-0">
+                <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
-              <h3 className="font-extrabold text-base sm:text-lg text-white">
+              <h3 className="font-extrabold text-sm sm:text-base text-white truncate">
                 부채증명서 서류대행 신청서
               </h3>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-bold">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-bold shrink-0">
                 실무 엑셀 서식 100% 매칭
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block truncate">
               대행업체 전달용 공식 신청서 작성 ➔ A4 인쇄 / 엑셀 다운로드 / 대행사 맞춤 폼 연동
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0 justify-end">
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale"
+              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale whitespace-nowrap"
               title="A4 1매 고해상도 인쇄 (인감증명서/위임장과 함께 우편 발송)"
             >
-              <Printer className="w-4 h-4" />
-              <span>A4 인쇄 / PDF 출력</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>A4 인쇄 / PDF</span>
             </button>
 
             <button
               onClick={handleExportExcel}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
               title="그림 1 양식의 완성된 엑셀(.xlsx) 파일 다운로드"
             >
-              <FileSpreadsheet className="w-4 h-4" />
+              <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>엑셀 다운로드</span>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
               title="거래 중인 대행업체 엑셀 서식 파일 업로드"
             >
               <Upload className="w-3.5 h-3.5 text-amber-400" />
-              <span>대행사 폼 업로드</span>
+              <span>대행사 폼</span>
             </button>
             <input 
               ref={fileInputRef} 
@@ -259,7 +259,7 @@ export default function DebtAgencyApplicationModal({
             <button
               onClick={handleExportZip}
               disabled={isZipping}
-              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
               title="신청서 + 위임장 + 신분증 + 인감증명서 + NPKI 일괄 압축"
             >
               {isZipping ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
@@ -268,38 +268,39 @@ export default function DebtAgencyApplicationModal({
 
             <button
               onClick={handleSave}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition-all cursor-pointer"
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition-all cursor-pointer whitespace-nowrap"
             >
               <span>저장</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer shrink-0"
+              title="닫기"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* ── 안내 바 (인쇄 제외) ── */}
-        <div className="no-print px-6 py-2.5 bg-indigo-50/80 border-b border-indigo-100 flex items-center justify-between text-xs text-indigo-900">
-          <div className="flex items-center gap-2">
+        {/* ── 안내 바 (인쇄 제외, shrink-0) ── */}
+        <div className="no-print shrink-0 px-4 py-2 bg-indigo-50/80 border-b border-indigo-100 flex items-center justify-between text-xs text-indigo-900 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>
-              <strong>실무 팁:</strong> 하단의 엑셀 신청서를 작성 후 <strong>[A4 인쇄]</strong>를 누르면 
-              인감증명서, 위임장과 함께 우편 동봉할 수 있는 인쇄본이 A4 규격으로 자동 정렬됩니다.
+            <span className="truncate">
+              <strong>실무 팁:</strong> <strong>[A4 인쇄 / PDF]</strong> 클릭 시 A4 규격으로 자동 최적화되어 인감증명서/위임장과 함께 즉시 출력됩니다.
             </span>
           </div>
           {customTemplate && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-white text-indigo-700 border border-indigo-200">
-              커스텀 양식 적용: {customTemplate.fileName}
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-white text-indigo-700 border border-indigo-200 shrink-0 whitespace-nowrap">
+              커스텀: {customTemplate.fileName}
             </span>
           )}
         </div>
 
         {/* ── 메인 문서 뷰 (인쇄 대상 컨테이너: 그림 1 실무 엑셀 서식 100% 매칭) ── */}
-        <div className="flex-1 p-4 sm:p-8 overflow-y-auto bg-slate-100/50 flex justify-center">
+        <div className="flex-1 p-2 sm:p-6 overflow-y-auto bg-slate-100/60">
+          <div className="min-w-fit max-w-[850px] mx-auto">
           
           <div 
             id="printable-agency-app"
@@ -1074,6 +1075,7 @@ export default function DebtAgencyApplicationModal({
               [ 1 페이지 ] - 부채증명서 서류대행 신청서
             </div>
 
+          </div>
           </div>
         </div>
 
