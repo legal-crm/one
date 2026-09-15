@@ -132,6 +132,11 @@ export default function SealStudioModal({
   const [genBorder, setGenBorder] = useState<BorderStyle>('double');
   const [genLayoutOrder, setGenLayoutOrder] = useState<'traditional' | 'modern'>('traditional');
   const [genInkTexture, setGenInkTexture] = useState<boolean>(true); // 실제 인주 질감 효과
+  const [fontSizeScale, setFontSizeScale] = useState<number>(100); // 70 ~ 130%
+  const [charSpacingScale, setCharSpacingScale] = useState<number>(100); // 70 ~ 130%
+  const [offsetX, setOffsetX] = useState<number>(0); // -40 ~ +40
+  const [offsetY, setOffsetY] = useState<number>(0); // -40 ~ +40
+  const [partitionMode, setPartitionMode] = useState<string>('auto'); // 열 분할 방식
 
   const genCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -266,101 +271,204 @@ export default function SealStudioModal({
     }
 
     // 2. 글자 렌더링
-    const cleanText = genText.trim() || '홍길동인';
+    // 띄어쓰기(공백)는 도장 내에서 빈칸 에러를 유발하므로 모두 제거하여 정돈
+    const cleanText = genText.replace(/\s+/g, '').trim() || '홍길동인';
     const chars = cleanText.split('');
     const charCount = chars.length;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    if (charCount === 4) {
-      // 4글자 인장
-      // traditional: 1열 우측 상단(0), 1열 우측 하단(1), 2열 좌측 상단(2), 2열 좌측 하단(3) - 한국 정통 인장 순서!
-      // modern: 1열 좌측 상단(0), 1열 우측 상단(1), 2열 좌측 하단(2), 2열 우측 하단(3)
-      let slot0 = chars[0];
-      let slot1 = chars[1];
-      let slot2 = chars[2];
-      let slot3 = chars[3];
+    // 열(Column) 분할 계산 (우측열부터 좌측열 순서)
+    let columns: string[][] = [];
 
-      let pos0 = { x: 0, y: 0 };
-      let pos1 = { x: 0, y: 0 };
-      let pos2 = { x: 0, y: 0 };
-      let pos3 = { x: 0, y: 0 };
-
-      const offset = size * 0.19;
-      if (genLayoutOrder === 'traditional') {
-        // [좌상: slot2] [우상: slot0]
-        // [좌하: slot3] [우하: slot1]
-        pos0 = { x: center + offset, y: center - offset }; // 우상
-        pos1 = { x: center + offset, y: center + offset }; // 우하
-        pos2 = { x: center - offset, y: center - offset }; // 좌상
-        pos3 = { x: center - offset, y: center + offset }; // 좌하
-      } else {
-        pos0 = { x: center - offset, y: center - offset }; // 좌상
-        pos1 = { x: center + offset, y: center - offset }; // 우상
-        pos2 = { x: center - offset, y: center + offset }; // 좌하
-        pos3 = { x: center + offset, y: center + offset }; // 우하
-      }
-
-      const fontSize = size * 0.32;
-      ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-
-      ctx.fillText(slot0, pos0.x, pos0.y);
-      ctx.fillText(slot1, pos1.x, pos1.y);
-      ctx.fillText(slot2, pos2.x, pos2.y);
-      ctx.fillText(slot3, pos3.x, pos3.y);
-
-    } else if (charCount === 3) {
-      // 3글자 세로 일렬 배치
-      const fontSize = size * 0.26;
-      ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-      const gap = size * 0.25;
-      ctx.fillText(chars[0], center, center - gap);
-      ctx.fillText(chars[1], center, center);
-      ctx.fillText(chars[2], center, center + gap);
-
+    if (charCount === 1) {
+      columns = [[chars[0]]];
     } else if (charCount === 2) {
-      // 2글자 세로 배치
-      const fontSize = size * 0.34;
-      ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-      const gap = size * 0.20;
-      ctx.fillText(chars[0], center, center - gap);
-      ctx.fillText(chars[1], center, center + gap);
-
-    } else if (charCount <= 9) {
-      // 5~9글자 법인 직인 (격자 배열)
-      const cols = charCount <= 6 ? 2 : 3;
-      const rows = Math.ceil(charCount / cols);
-      const fontSize = (size * 0.65) / Math.max(rows, cols);
-      ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-
-      const xStep = (size * 0.55) / cols;
-      const yStep = (size * 0.55) / rows;
-      const startX = center - ((cols - 1) * xStep) / 2;
-      const startY = center - ((rows - 1) * yStep) / 2;
-
-      for (let i = 0; i < charCount; i++) {
-        let col = 0;
-        let row = 0;
-        if (genLayoutOrder === 'traditional') {
-          // 우측 세로열부터 위에서 아래로
-          col = cols - 1 - Math.floor(i / rows);
-          row = i % rows;
-        } else {
-          // 가로 좌에서 우로
-          col = i % cols;
-          row = Math.floor(i / cols);
-        }
-        const px = startX + col * xStep;
-        const py = startY + row * yStep;
-        ctx.fillText(chars[i], px, py);
+      columns = [[chars[0], chars[1]]];
+    } else if (charCount === 3) {
+      columns = [[chars[0], chars[1], chars[2]]];
+    } else if (charCount === 4) {
+      // 4글자 인장 (2x2)
+      if (genLayoutOrder === 'traditional') {
+        // 우상(0), 우하(1), 좌상(2), 좌하(3) - 한국 정통 인장 읽는 순서
+        columns = [
+          [chars[0], chars[1]], // 우측열 (김, 무)
+          [chars[2], chars[3]], // 좌측열 (진, 인)
+        ];
+      } else {
+        // 현대 순서: 좌상(0), 우상(1), 좌하(2), 우하(3)
+        columns = [
+          [chars[0], chars[2]], // 좌측열
+          [chars[1], chars[3]], // 우측열
+        ];
       }
+    } else if (charCount === 5) {
+      if (partitionMode === '2-1-2' || (partitionMode === 'auto' && genShape === 'round')) {
+        columns = [
+          [chars[0], chars[1]],
+          [chars[2]],
+          [chars[3], chars[4]],
+        ];
+      } else {
+        columns = [
+          [chars[0], chars[1], chars[2]],
+          [chars[3], chars[4]],
+        ];
+      }
+    } else if (charCount === 6) {
+      if (partitionMode === '2-2-2') {
+        columns = [
+          [chars[0], chars[1]],
+          [chars[2], chars[3]],
+          [chars[4], chars[5]],
+        ];
+      } else {
+        // 2열 3행 대칭 (우측 3자, 좌측 3자) - 가장 안정적
+        columns = [
+          [chars[0], chars[1], chars[2]],
+          [chars[3], chars[4], chars[5]],
+        ];
+      }
+    } else if (charCount === 7) {
+      // 7글자 (예: 김무진변호사인 or 변호사김무진인)
+      if (partitionMode === '3-2-2') {
+        columns = [
+          [chars[0], chars[1], chars[2]],
+          [chars[3], chars[4]],
+          [chars[5], chars[6]],
+        ];
+      } else if (partitionMode === '2-2-3') {
+        columns = [
+          [chars[0], chars[1]],
+          [chars[2], chars[3]],
+          [chars[4], chars[5], chars[6]],
+        ];
+      } else {
+        // 원형 황금 분할 (2 + 3 + 2 = 7)
+        // 원의 양쪽 짧은 현에 2자씩, 가장 긴 중심 지름에 3자 배치!
+        columns = [
+          [chars[0], chars[1]],           // 우측 2자 (김, 무)
+          [chars[2], chars[3], chars[4]], // 중앙 3자 (진, 변, 호)
+          [chars[5], chars[6]],           // 좌측 2자 (사, 인)
+        ];
+      }
+    } else if (charCount === 8) {
+      // 8글자 (예: 김무진변호사의인)
+      if (partitionMode === '4-4') {
+        columns = [
+          [chars[0], chars[1], chars[2], chars[3]], // 우측 4자
+          [chars[4], chars[5], chars[6], chars[7]], // 좌측 4자
+        ];
+      } else {
+        // 3-2-3 분할 (우측 3자, 중앙 2자, 좌측 3자)
+        columns = [
+          [chars[0], chars[1], chars[2]], // 우측 3자 (김, 무, 진)
+          [chars[3], chars[4]],           // 중앙 2자 (변, 호) -> center.y 중심 완벽 수직 대칭
+          [chars[5], chars[6], chars[7]], // 좌측 3자 (사, 의, 인)
+        ];
+      }
+    } else if (charCount === 9) {
+      // 9글자 3x3 정통 격자
+      columns = [
+        [chars[0], chars[1], chars[2]],
+        [chars[3], chars[4], chars[5]],
+        [chars[6], chars[7], chars[8]],
+      ];
     } else {
       // 10자 이상
-      const fontSize = size * 0.12;
-      ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-      ctx.fillText(cleanText.slice(0, 8), center, center - 40);
-      ctx.fillText(cleanText.slice(8, 16), center, center + 40);
+      const numCols = Math.min(4, Math.ceil(charCount / 3));
+      const rows = Math.ceil(charCount / numCols);
+      columns = [];
+      for (let c = 0; c < numCols; c++) {
+        const colList: string[] = [];
+        for (let r = 0; r < rows; r++) {
+          const idx = c * rows + r;
+          if (idx < charCount) colList.push(chars[idx]);
+        }
+        if (colList.length > 0) columns.push(colList);
+      }
+    }
+
+    // 현대 순서(좌→우) 선택 시 열 순서 반전 (4글자 제외)
+    if (genLayoutOrder === 'modern' && charCount !== 4) {
+      columns = [...columns].reverse();
+    }
+
+    const numCols = columns.length;
+    const maxInCol = Math.max(...columns.map(c => c.length));
+
+    // 폰트 크기 계산 (마진 고려한 안전 크기)
+    let baseFontSize = size * 0.17;
+    if (numCols === 1) {
+      if (maxInCol === 1) baseFontSize = size * 0.42;
+      else if (maxInCol === 2) baseFontSize = size * 0.32;
+      else baseFontSize = size * 0.25;
+    } else if (numCols === 2) {
+      if (maxInCol === 2) baseFontSize = size * 0.28; // 4자 (2x2)
+      else if (maxInCol === 3) baseFontSize = size * 0.21; // 6자 (2x3)
+      else baseFontSize = size * 0.16; // 8자 (2x4)
+    } else if (numCols === 3) {
+      if (maxInCol === 2) baseFontSize = size * 0.19;
+      else if (maxInCol === 3) baseFontSize = size * 0.165; // 7~9자 (약 99px)
+      else baseFontSize = size * 0.13;
+    } else {
+      baseFontSize = size * 0.11;
+    }
+
+    const finalFontSize = baseFontSize * (fontSizeScale / 100);
+    ctx.font = `${preset.fontWeight} ${finalFontSize}px ${preset.fontFamily}`;
+
+    // 열 간격 계산
+    let colSpacing = size * 0.22;
+    if (numCols === 2) {
+      colSpacing = (genShape === 'round' ? size * 0.28 : size * 0.32) * (charSpacingScale / 100);
+    } else if (numCols === 3) {
+      colSpacing = (genShape === 'round' ? size * 0.22 : size * 0.25) * (charSpacingScale / 100);
+    } else if (numCols >= 4) {
+      colSpacing = size * 0.18 * (charSpacingScale / 100);
+    }
+
+    // 각 열별 X 좌표 계산 (오프셋 반영)
+    const colXList: number[] = [];
+    if (numCols === 1) {
+      colXList.push(center + offsetX);
+    } else if (numCols === 2) {
+      colXList.push(center + colSpacing / 2 + offsetX); // 우측열 (col 0)
+      colXList.push(center - colSpacing / 2 + offsetX); // 좌측열 (col 1)
+    } else if (numCols === 3) {
+      colXList.push(center + colSpacing + offsetX);     // 우측열 (col 0)
+      colXList.push(center + offsetX);                  // 중앙열 (col 1)
+      colXList.push(center - colSpacing + offsetX);     // 좌측열 (col 2)
+    } else {
+      const startX = center + ((numCols - 1) * colSpacing) / 2 + offsetX;
+      for (let c = 0; c < numCols; c++) {
+        colXList.push(startX - c * colSpacing);
+      }
+    }
+
+    // 각 열 및 각 글자 렌더링 (★ 각 열별 수직 중앙 정렬 적용 ★)
+    for (let c = 0; c < numCols; c++) {
+      const colChars = columns[c];
+      const numInCol = colChars.length;
+      const colX = colXList[c];
+
+      // 열 내 글자 간 수직 간격
+      let baseStep = size * 0.22;
+      if (numInCol === 2) baseStep = size * 0.24;
+      else if (numInCol === 3) baseStep = size * 0.21;
+      else if (numInCol === 4) baseStep = size * 0.16;
+      else if (numInCol >= 5) baseStep = size * 0.13;
+      const yStep = baseStep * (charSpacingScale / 100);
+
+      // ★ 해당 열의 중심(center.y + offsetY)을 기준으로 완벽 수직 대칭 배치!
+      const totalColHeight = (numInCol - 1) * yStep;
+      const topY = (center + offsetY) - totalColHeight / 2;
+
+      for (let r = 0; r < numInCol; r++) {
+        const charY = topY + r * yStep;
+        ctx.fillText(colChars[r], colX, charY);
+      }
     }
 
     // 3. 실제 인주 질감 효과 (Realistic Ink Texture)
@@ -386,7 +494,7 @@ export default function SealStudioModal({
     }
 
     ctx.restore();
-  }, [genText, genShape, genFont, genColor, genBorder, genLayoutOrder, genInkTexture]);
+  }, [genText, genShape, genFont, genColor, genBorder, genLayoutOrder, genInkTexture, fontSizeScale, charSpacingScale, offsetX, offsetY, partitionMode]);
 
   useEffect(() => {
     if (activeTab === 'generator') {
@@ -862,6 +970,104 @@ export default function SealStudioModal({
                       </button>
                     ))}
                   </div>
+
+                  {/* 글자 분할 옵션 (6~8자일 때 자동 노출) */}
+                  {(() => {
+                    const cLen = genText.replace(/\s+/g, '').length;
+                    if (cLen === 7) {
+                      return (
+                        <div className="pt-2.5 border-t border-slate-200/80 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-indigo-950 flex items-center gap-1">
+                              📐 7글자 열 분할 배치 방식
+                            </span>
+                            <span className="text-[10px] text-slate-400">원형은 가운데 3자가 최적</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { id: 'auto', label: '✨ 원형 황금 분할 (우2 · 중3 · 좌2)' },
+                              { id: '3-2-2', label: '우3 · 중2 · 좌2' },
+                              { id: '2-2-3', label: '우2 · 중2 · 좌3' },
+                            ].map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setPartitionMode(opt.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                  partitionMode === opt.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (cLen === 8) {
+                      return (
+                        <div className="pt-2.5 border-t border-slate-200/80 space-y-1.5">
+                          <span className="text-[11px] font-bold text-indigo-950 block">
+                            📐 8글자 열 분할 배치 방식
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { id: 'auto', label: '✨ 3열 분할 (우3 · 중2 · 좌3)' },
+                              { id: '4-4', label: '좌우 2열 대칭 (우4 · 좌4)' },
+                            ].map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setPartitionMode(opt.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                  partitionMode === opt.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (cLen === 6) {
+                      return (
+                        <div className="pt-2.5 border-t border-slate-200/80 space-y-1.5">
+                          <span className="text-[11px] font-bold text-indigo-950 block">
+                            📐 6글자 열 분할 배치 방식
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { id: 'auto', label: '✨ 좌우 2열 대칭 (우3 · 좌3)' },
+                              { id: '2-2-2', label: '3열 분할 (우2 · 중2 · 좌2)' },
+                            ].map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setPartitionMode(opt.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                  partitionMode === opt.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <p className="text-[10px] text-slate-400 pt-1">
+                        💡 띄어쓰기는 도장 규격에 맞춰 자동으로 정돈됩니다.
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. 서체(폰트) 디자인 선택 - 5대 서체 */}
@@ -1030,6 +1236,104 @@ export default function SealStudioModal({
                     </label>
                   </div>
 
+                </div>
+
+                {/* 4. 글자 크기 · 간격 · 위치 미세 튜닝 */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                      글자 크기 · 간격 · 위치 미세 튜닝
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFontSizeScale(100);
+                        setCharSpacingScale(100);
+                        setOffsetX(0);
+                        setOffsetY(0);
+                      }}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-medium"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      기본값 복원
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* 글자 크기 */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-600 font-bold">글자 크기 배율</span>
+                        <span className="text-indigo-600 font-bold">{fontSizeScale}%</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="75"
+                        max="125"
+                        value={fontSizeScale}
+                        onChange={e => setFontSizeScale(Number(e.target.value))}
+                        className="w-full accent-indigo-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* 자간/행간 */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-600 font-bold">글자 간격 (자간·행간)</span>
+                        <span className="text-indigo-600 font-bold">{charSpacingScale}%</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="75"
+                        max="125"
+                        value={charSpacingScale}
+                        onChange={e => setCharSpacingScale(Number(e.target.value))}
+                        className="w-full accent-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 위치 미세 이동 (상하좌우) */}
+                  <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-600">
+                      위치 미세 조정 (X: {offsetX > 0 ? `+${offsetX}` : offsetX}px, Y: {offsetY > 0 ? `+${offsetY}` : offsetY}px)
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setOffsetX(prev => Math.max(-40, prev - 3))}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 cursor-pointer"
+                        title="좌로 3px 이동"
+                      >
+                        ← 좌
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOffsetX(prev => Math.min(40, prev + 3))}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 cursor-pointer"
+                        title="우로 3px 이동"
+                      >
+                        우 →
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOffsetY(prev => Math.max(-40, prev - 3))}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 cursor-pointer"
+                        title="위로 3px 이동"
+                      >
+                        ↑ 상
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOffsetY(prev => Math.min(40, prev + 3))}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 cursor-pointer"
+                        title="아래로 3px 이동"
+                      >
+                        하 ↓
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
               </div>
