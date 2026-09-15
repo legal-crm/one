@@ -159,6 +159,9 @@ export default function SealStudioModal({
   // =============================================================
   // CANVAS 렌더링 엔진: 1. 일반 도장 (8종 디자인)
   // =============================================================
+  // =============================================================
+  // CANVAS 렌더링 엔진: 1. 일반 도장 (8종 디자인) - 선 굵기 & 폰트 극대화 (여백 최소화)
+  // =============================================================
   const renderPersonalSealOnCanvas = useCallback((
     canvas: HTMLCanvasElement,
     designIdx: number,
@@ -187,56 +190,56 @@ export default function SealStudioModal({
     }
 
     if (designIdx === 0) {
-      // 0. 슬림 세로 타원형 성씨 인장 (성 1자, 해서/궁서 붓글씨)
-      const rX = 75;
-      const rY = 160;
-      ctx.lineWidth = 11;
+      // 0. 슬림 세로 타원형 성씨 인장 (성 1자, 해서/궁서 붓글씨 - 타원 및 글자 대폭 확대)
+      const rX = 110;
+      const rY = 220;
+      ctx.lineWidth = 20;
       ctx.beginPath();
       ctx.ellipse(center, center, rX, rY, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       const char = clean[0] || '홍';
-      ctx.font = 'bold 125px "Gungsuh", "GungsuhChe", "Batang", serif';
+      ctx.font = 'bold 210px "Gungsuh", "GungsuhChe", "Batang", serif';
       ctx.fillText(char, center, center);
 
     } else if (designIdx === 1) {
-      // 1. 세로 타원형 3글자 전서체 (고전 전각체)
-      const rX = 88;
-      const rY = 175;
-      ctx.lineWidth = 12;
+      // 1. 세로 타원형 3글자 전서체 (고전 전각체 - 3글자가 타원을 꽉 채움)
+      const rX = 118;
+      const rY = 220;
+      ctx.lineWidth = 20;
       ctx.beginPath();
       ctx.ellipse(center, center, rX, rY, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       const chars = clean.slice(0, 3).split('');
-      ctx.font = '900 68px "Nanum Myeongjo", "Batang", serif';
-      const gap = 88;
+      ctx.font = '900 110px "Nanum Myeongjo", "Batang", "BatangChe", serif';
+      const gap = 125;
       const startY = center - ((chars.length - 1) * gap) / 2;
       for (let i = 0; i < chars.length; i++) {
         ctx.fillText(chars[i], center, startY + i * gap);
       }
 
     } else if (designIdx === 2) {
-      // 2. 세로 타원형 3글자 궁서체 (유려한 붓글씨)
-      const rX = 88;
-      const rY = 175;
-      ctx.lineWidth = 12;
+      // 2. 세로 타원형 3글자 궁서체 (유려한 붓글씨 - 꽉 찬 레이아웃)
+      const rX = 118;
+      const rY = 220;
+      ctx.lineWidth = 20;
       ctx.beginPath();
       ctx.ellipse(center, center, rX, rY, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       const chars = clean.slice(0, 3).split('');
-      ctx.font = 'bold 70px "Gungsuh", "GungsuhChe", serif';
-      const gap = 88;
+      ctx.font = 'bold 112px "Gungsuh", "GungsuhChe", serif';
+      const gap = 125;
       const startY = center - ((chars.length - 1) * gap) / 2;
       for (let i = 0; i < chars.length; i++) {
         ctx.fillText(chars[i], center, startY + i * gap);
       }
 
     } else if (designIdx === 3) {
-      // 3. 정통 원형 4글자 전서체 인장 (2x2 전통 순서)
-      const radius = 170;
-      ctx.lineWidth = 15;
+      // 3. 정통 원형 4글자 전각체 인장 (외곽선 굵기 22px, 반경 228px로 꽉 채움)
+      const radius = 228;
+      ctx.lineWidth = 22;
       ctx.beginPath();
       ctx.arc(center, center, radius, 0, Math.PI * 2);
       ctx.stroke();
@@ -250,40 +253,41 @@ export default function SealStudioModal({
       }
       const c = fourText.split('');
 
-      // 전통 인장 순서: 우상(0), 우하(1), 좌상(2), 좌하(3)
-      const offset = 68;
-      ctx.font = '900 92px "Nanum Myeongjo", "Batang", "Gungsuh", serif';
+      // 전통 인장 순서: 우상(0), 우하(1), 좌상(2), 좌하(3) - 142px 폰트로 원형 내부 꽉 채움
+      const offset = 96;
+      ctx.font = '900 142px "Nanum Myeongjo", "Batang", "Gungsuh", serif';
       ctx.fillText(c[0] || '', center + offset, center - offset); // 우상
       ctx.fillText(c[1] || '', center + offset, center + offset); // 우하
       ctx.fillText(c[2] || '', center - offset, center - offset); // 좌상
       ctx.fillText(c[3] || '', center - offset, center + offset); // 좌하
 
     } else if (designIdx === 4) {
-      // 4. 정사각형 4글자 볼드 고딕 직인 (2x2 현대 직인)
-      const bSize = 310;
+      // 4. 정사각형 4글자 볼드 고딕 직인 (430px 정사각형, 선 두께 22px, 글자 155px 극대화)
+      const bSize = 430;
       const bx = center - bSize / 2;
       const by = center - bSize / 2;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 22;
       ctx.strokeRect(bx, by, bSize, bSize);
 
       let fourText = clean;
       if (fourText.length === 3) fourText += (lang === 'hanja' ? '印' : '인');
+      else if (fourText.length === 2) fourText += (lang === 'hanja' ? '之印' : '직인');
       const c = fourText.split('');
 
       // 현대 순서: 좌상, 우상, 좌하, 우하
-      const offset = 68;
-      ctx.font = '900 92px "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+      const offset = 100;
+      ctx.font = '900 155px "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
       ctx.fillText(c[0] || '', center - offset, center - offset);
       ctx.fillText(c[1] || '', center + offset, center - offset);
       ctx.fillText(c[2] || '', center - offset, center + offset);
       ctx.fillText(c[3] || '', center + offset, center + offset);
 
     } else if (designIdx === 5) {
-      // 5. 정사각형 6글자 직인 (2열 3행 궁서체)
-      const bSize = 310;
+      // 5. 정사각형 6글자 직인 (2열 3행 궁서체 - 112px 글자로 빈틈없이 꽉 채움)
+      const bSize = 430;
       const bx = center - bSize / 2;
       const by = center - bSize / 2;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 22;
       ctx.strokeRect(bx, by, bSize, bSize);
 
       let sixText = clean;
@@ -292,10 +296,10 @@ export default function SealStudioModal({
       }
       const c = sixText.split('');
 
-      ctx.font = 'bold 62px "Gungsuh", "Batang", serif';
-      const colX1 = center + 65; // 우측열
-      const colX2 = center - 65; // 좌측열
-      const yStep = 80;
+      ctx.font = 'bold 112px "Gungsuh", "Batang", serif';
+      const colX1 = center + 102; // 우측열
+      const colX2 = center - 102; // 좌측열
+      const yStep = 128;
 
       // 우측열: 0, 1, 2
       ctx.fillText(c[0] || '', colX1, center - yStep);
@@ -308,12 +312,12 @@ export default function SealStudioModal({
       ctx.fillText(c[5] || '', colX2, center + yStep);
 
     } else if (designIdx === 6) {
-      // 6. 세로 직사각형 2열 다자 직인 (명조체)
-      const w = 240;
-      const h = 330;
+      // 6. 세로 직사각형 2열 다자 직인 (명조체 - 높이 430px, 폭 380px 꽉 채움)
+      const w = 380;
+      const h = 430;
       const bx = center - w / 2;
       const by = center - h / 2;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 22;
       ctx.strokeRect(bx, by, w, h);
 
       let multiText = clean;
@@ -325,36 +329,37 @@ export default function SealStudioModal({
       const leftCol = multiText.slice(half).split('');
 
       const maxLen = Math.max(rightCol.length, leftCol.length);
-      const fontSize = Math.min(56, (h * 0.8) / maxLen);
-      ctx.font = `bold ${fontSize}px "Nanum Myeongjo", "Batang", serif`;
+      const fontSize = Math.min(96, Math.floor((h * 0.82) / maxLen));
+      ctx.font = `900 ${fontSize}px "Nanum Myeongjo", "Batang", serif`;
 
-      const gapR = (h * 0.72) / Math.max(1, rightCol.length - 1);
+      const gapR = (h * 0.74) / Math.max(1, rightCol.length - 1);
       const startYR = center - ((rightCol.length - 1) * gapR) / 2;
       for (let i = 0; i < rightCol.length; i++) {
-        ctx.fillText(rightCol[i], center + 50, startYR + i * gapR);
+        ctx.fillText(rightCol[i], center + 88, startYR + i * gapR);
       }
 
-      const gapL = (h * 0.72) / Math.max(1, leftCol.length - 1);
+      const gapL = (h * 0.74) / Math.max(1, leftCol.length - 1);
       const startYL = center - ((leftCol.length - 1) * gapL) / 2;
       for (let i = 0; i < leftCol.length; i++) {
-        ctx.fillText(leftCol[i], center - 50, startYL + i * gapL);
+        ctx.fillText(leftCol[i], center - 88, startYL + i * gapL);
       }
 
     } else if (designIdx === 7) {
-      // 7. 정사각형 꽉 찬 전각 인장 (고전 전서체)
-      const bSize = 310;
+      // 7. 정사각형 꽉 찬 전각 인장 (고전 전서체 - 여백 없는 석각 인장 스타일)
+      const bSize = 430;
       const bx = center - bSize / 2;
       const by = center - bSize / 2;
-      ctx.lineWidth = 16;
+      ctx.lineWidth = 24;
       ctx.strokeRect(bx, by, bSize, bSize);
 
       let fourText = clean;
       if (fourText.length === 3) fourText += (lang === 'hanja' ? '印' : '인');
+      else if (fourText.length === 2) fourText += (lang === 'hanja' ? '之印' : '인장');
       const c = fourText.split('');
 
-      // 고전 전각 배치 (우상, 우하, 좌상, 좌하)
-      const offset = 66;
-      ctx.font = '900 96px "Nanum Myeongjo", "Batang", serif';
+      // 고전 전각 배치 (우상, 우하, 좌상, 좌하) - 148px 초대형 전각
+      const offset = 96;
+      ctx.font = '900 148px "Nanum Myeongjo", "Batang", serif';
       ctx.fillText(c[0] || '', center + offset, center - offset);
       ctx.fillText(c[1] || '', center + offset, center + offset);
       ctx.fillText(c[2] || '', center - offset, center - offset);
@@ -382,7 +387,7 @@ export default function SealStudioModal({
   }, []);
 
   // =============================================================
-  // CANVAS 렌더링 엔진: 2. 법인 도장 (8종 디자인) - 외경 회전 원형 텍스트
+  // CANVAS 렌더링 엔진: 2. 법인 도장 (8종 디자인) - 외경 회전 원형 텍스트 극대화
   // =============================================================
   const renderCorporateSealOnCanvas = useCallback((
     canvas: HTMLCanvasElement,
@@ -423,7 +428,7 @@ export default function SealStudioModal({
       fontWeight = 'bold';
     } else if (designIdx === 6) {
       fontFamily = '"Nanum Myeongjo", serif';
-      fontWeight = '700';
+      fontWeight = '900';
     }
 
     // 텍스트 한글/한자 변환
@@ -439,32 +444,32 @@ export default function SealStudioModal({
       innerStr = convertToHanja(innerStr);
     }
 
-    // 1. 외곽 원 테두리
-    const outerR = 190;
-    ctx.lineWidth = isHeavy ? 18 : (isDouble ? 11 : 13);
+    // 1. 외곽 원 테두리 (outerR = 230px로 500px 캔버스의 92%를 꽉 채움)
+    const outerR = 230;
+    ctx.lineWidth = isHeavy ? 24 : (isDouble ? 14 : 18);
     ctx.beginPath();
     ctx.arc(center, center, outerR, 0, Math.PI * 2);
     ctx.stroke();
 
     if (isDouble) {
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(center, center, outerR - 13, 0, Math.PI * 2);
+      ctx.arc(center, center, outerR - 16, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // 2. 내경 원 테두리
-    const innerR = 98;
-    ctx.lineWidth = isHeavy ? 7 : 5;
+    // 2. 내경 원 테두리 (innerR = 126px로 외경과 내경 비율을 모두사인과 1:1 일치)
+    const innerR = 126;
+    ctx.lineWidth = isHeavy ? 14 : 9;
     ctx.beginPath();
     ctx.arc(center, center, innerR, 0, Math.PI * 2);
     ctx.stroke();
 
     // 3. 외경과 내경 사이의 중심 궤도 (텍스트 & 심볼이 배치될 원호)
-    const orbitR = (outerR + innerR) / 2;
+    const orbitR = (outerR + innerR) / 2; // ~178px
 
-    // 4. 12시 방향 구분 기호 (★ 또는 ●)
-    ctx.font = `${isHeavy ? 'bold 26px' : 'bold 22px'} sans-serif`;
+    // 4. 12시 방향 구분 기호 (★ 또는 ● - 큼직하고 선명하게 배치)
+    ctx.font = `${isHeavy ? 'bold 44px' : 'bold 38px'} sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.save();
@@ -473,13 +478,12 @@ export default function SealStudioModal({
     ctx.fillText(finalSymbol, orbitR, 0);
     ctx.restore();
 
-    // 5. 외경 시계방향 원형 호(Arc) 텍스트 렌더링
+    // 5. 외경 시계방향 원형 호(Arc) 텍스트 렌더링 (원형 트랙 폭 104px을 꽉 채우는 60~68px 대형 폰트)
     const chars = outerStr.split('');
     const n = chars.length;
     if (n > 0) {
-      // 글자 수에 따른 폰트 크기 자동 최적화
-      const maxArcFont = isHeavy ? 38 : 34;
-      const arcFont = Math.min(maxArcFont, (Math.PI * 2 * orbitR * 0.72) / (n * 1.25));
+      // 트랙 높이에 딱 맞춰 여백 없이 큼직하게 설정
+      const arcFont = Math.min(68, Math.max(36, Math.floor(920 / (n * 1.25))));
       ctx.font = `${fontWeight} ${arcFont}px ${fontFamily}`;
 
       // 1시 부근에서 출발하여 시계방향으로 11시 부근까지 회전
@@ -499,29 +503,52 @@ export default function SealStudioModal({
       }
     }
 
-    // 6. 내경 중앙 직함 텍스트 (2행 완벽 수직 대칭)
+    // 6. 내경 중앙 직함 텍스트 (내경 원을 꽉 채우는 대형 볼드 서체, 여백 제거)
     let row1 = '';
     let row2 = '';
+    let fSize1 = 88;
+    let fSize2 = 88;
+    let rowOffset = 44;
+
     if (innerStr.length <= 2) {
       row1 = innerStr[0] || '';
       row2 = innerStr[1] || '';
+      fSize1 = 105;
+      fSize2 = 105;
+      rowOffset = 48;
     } else if (innerStr.length === 3) {
       row1 = innerStr.slice(0, 2);
       row2 = innerStr.slice(2);
+      fSize1 = 82;
+      fSize2 = 82;
+      rowOffset = 42;
     } else if (innerStr.length === 4) {
+      // 예: 代表理事, 대표이사
       row1 = innerStr.slice(0, 2);
       row2 = innerStr.slice(2, 4);
+      fSize1 = 88;
+      fSize2 = 88;
+      rowOffset = 44;
+    } else if (innerStr.length === 5) {
+      // 예: 대표변호사 (3자 / 2자 분할)
+      row1 = innerStr.slice(0, 3);
+      row2 = innerStr.slice(3);
+      fSize1 = 66;
+      fSize2 = 72;
+      rowOffset = 40;
     } else {
       const half = Math.ceil(innerStr.length / 2);
       row1 = innerStr.slice(0, half);
       row2 = innerStr.slice(half);
+      fSize1 = 62;
+      fSize2 = 62;
+      rowOffset = 40;
     }
 
-    const innerFont = Math.min(innerR * 0.60, 52);
-    ctx.font = `${fontWeight} ${innerFont}px ${fontFamily}`;
-    const rowOffset = innerR * 0.40;
-
+    ctx.font = `${fontWeight} ${fSize1}px ${fontFamily}`;
     ctx.fillText(row1, center, center - rowOffset);
+
+    ctx.font = `${fontWeight} ${fSize2}px ${fontFamily}`;
     ctx.fillText(row2, center, center + rowOffset);
 
     // 7. 인주 질감 효과
@@ -1038,11 +1065,11 @@ export default function SealStudioModal({
                       </div>
                     )}
 
-                    {/* 도장 캔버스 이미지 미리보기 */}
-                    <div className="w-full h-36 flex items-center justify-center p-2 relative overflow-hidden">
+                    {/* 도장 캔버스 이미지 미리보기 (1:1 정사각 & 꽉 찬 뷰포트) */}
+                    <div className="w-full aspect-square flex items-center justify-center p-2 relative overflow-hidden rounded-xl bg-slate-50/50">
                       {/* 투명 체커보드 패턴 */}
                       <div 
-                        className="absolute inset-2 opacity-35 pointer-events-none rounded-xl" 
+                        className="absolute inset-1 opacity-25 pointer-events-none rounded-lg" 
                         style={{
                           backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)',
                           backgroundSize: '10px 10px',
@@ -1052,7 +1079,7 @@ export default function SealStudioModal({
                         <img 
                           src={dataUrl} 
                           alt={preset.name} 
-                          className="max-h-32 max-w-full object-contain relative z-10 drop-shadow-xs transition-transform group-hover:scale-105"
+                          className="w-full h-full object-contain relative z-10 drop-shadow-xs transition-transform group-hover:scale-105"
                         />
                       ) : (
                         <div className="text-slate-300 flex flex-col items-center">
@@ -1216,9 +1243,10 @@ export default function SealStudioModal({
                       </div>
                     )}
 
-                    <div className="w-full h-36 flex items-center justify-center p-2 relative overflow-hidden">
+                    {/* 도장 캔버스 이미지 미리보기 (1:1 정사각 & 꽉 찬 뷰포트) */}
+                    <div className="w-full aspect-square flex items-center justify-center p-2 relative overflow-hidden rounded-xl bg-slate-50/50">
                       <div 
-                        className="absolute inset-2 opacity-35 pointer-events-none rounded-xl" 
+                        className="absolute inset-1 opacity-25 pointer-events-none rounded-lg" 
                         style={{
                           backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)',
                           backgroundSize: '10px 10px',
@@ -1228,7 +1256,7 @@ export default function SealStudioModal({
                         <img 
                           src={dataUrl} 
                           alt={preset.name} 
-                          className="max-h-32 max-w-full object-contain relative z-10 drop-shadow-xs transition-transform group-hover:scale-105"
+                          className="w-full h-full object-contain relative z-10 drop-shadow-xs transition-transform group-hover:scale-105"
                         />
                       ) : (
                         <div className="text-slate-300 flex flex-col items-center">
