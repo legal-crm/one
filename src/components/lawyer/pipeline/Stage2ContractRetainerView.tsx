@@ -482,7 +482,7 @@ ${d.content}
               </div>
               <p className="text-xs text-slate-600 mt-0.5 leading-normal truncate">
                 {isContractSigned 
-                  ? '체결된 계약서와 소송위임장이 보관되었습니다. 3단계(고객정보·서류수집)로 진행하세요.' 
+                  ? '체결된 위임계약서 패키지(위임장 포함)가 안전하게 보관되었습니다. 3단계(고객정보·서류수집)로 진행하세요.' 
                   : '계약 조항과 특약사항 검토 후 의뢰인에게 모바일 전자계약서를 발송하세요.'}
               </p>
             </div>
@@ -566,27 +566,17 @@ ${d.content}
                   type="button"
                   onClick={() => setIsPreviewAllOpen(true)}
                   className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
+                  title="전자서명 완료된 위임계약서 및 위임장 전체 패키지 열람"
                 >
                   <Eye className="w-3.5 h-3.5 text-[#1E3A5F]" />
                   <span>계약서 열람</span>
                 </button>
 
-                {onOpenPowerOfAttorneyModal && (
-                  <button
-                    type="button"
-                    onClick={onOpenPowerOfAttorneyModal}
-                    className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-[#1E3A5F]" />
-                    <span>소송위임장</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={handlePrintContract}
                   className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
-                  title="계약서 재인쇄"
+                  title="계약서 패키지 재인쇄"
                 >
                   <Printer className="w-3.5 h-3.5 text-slate-600" />
                   <span>인쇄</span>
