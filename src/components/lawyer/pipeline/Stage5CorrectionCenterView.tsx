@@ -54,23 +54,7 @@ export default function Stage5CorrectionCenterView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            Stage 05 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            회생위원 보정권고 7대 표 소명서 작성 및 전자소송 제출
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">소명서 준비:</span>
-          <span className="font-mono font-bold text-[#1E3A5F]">6 / 7종 완성</span>
-        </div>
-      </div>
-
-      {/* ── 2. Next Action Hero Card ── */}
+      {/* ── Next Action Hero Card ── */}
       <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">

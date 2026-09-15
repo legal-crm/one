@@ -451,29 +451,7 @@ ${d.content}
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            Stage 02 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            법원 실비·수임료 산출, 계약서 조항·특약 검토 및 모바일 전자계약 체결
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">계약 상태:</span>
-          <span className={`font-bold px-2.5 py-0.5 rounded-lg border ${
-            isContractSigned 
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-              : 'bg-amber-50 text-amber-700 border-amber-200'
-          }`}>
-            {isContractSigned ? '✓ 정식 수임 체결 완료' : '서명 대기중'}
-          </span>
-        </div>
-      </div>
-
-      {/* ── 2. Next Action Hero Card (슬림 & 컴팩트 레이아웃) ── */}
+      {/* ── Next Action Hero Card (슬림 & 컴팩트 레이아웃) ── */}
       <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all shadow-2xs ${
         isContractSigned 
           ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 

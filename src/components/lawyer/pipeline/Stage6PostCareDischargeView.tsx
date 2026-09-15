@@ -38,23 +38,7 @@ export default function Stage6PostCareDischargeView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200">
-            Stage 06 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            법원 가상계좌 적립금 납부 지도, 채권자집회 출석 및 36회 완납 면책
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">변제 진척도:</span>
-          <span className="font-mono font-bold text-purple-600">{paidMonths} / {totalMonths}회차 완납 (33%)</span>
-        </div>
-      </div>
-
-      {/* ── 2. Next Action Hero Card ── */}
+      {/* ── Next Action Hero Card ── */}
       <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">

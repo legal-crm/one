@@ -343,30 +343,6 @@ export default function Stage3DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 종합 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            Stage 03 실무 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            1차 실물 등기 접수 & 부채증명서 7일 발급 대행 ∥ 2차 소득·재산 디지털 수합 병렬 완비
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-slate-500 font-medium">전체 진척도:</span>
-          <span className="font-mono font-bold text-[#1E3A5F]">
-            {stats.approvedCount} / {stats.requiredCount}건 완료 ({stats.progressRate}%)
-          </span>
-          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-[#1E3A5F] rounded-full transition-all duration-500" 
-              style={{ width: `${stats.progressRate}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
       {/* ── 의뢰인 공동인증서·금융인증서 안전 금고 ── */}
       <CertificateVaultCard
         clientId={clientRequest.id}

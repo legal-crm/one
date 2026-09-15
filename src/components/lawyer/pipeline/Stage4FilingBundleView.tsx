@@ -248,23 +248,7 @@ export default function Stage4FilingBundleView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            Stage 04 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            8대 법원 서식 검증 및 대법원 전자소송 정식 접수
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">서식 완비율:</span>
-          <span className="font-mono font-bold text-emerald-600">8 / 8건 완료 (100%)</span>
-        </div>
-      </div>
-
-      {/* ── 2. Next Action Hero Card ── */}
+      {/* ── Next Action Hero Card ── */}
       <div className={`p-5 rounded-2xl border transition-all shadow-xs space-y-4 ${
         isFilingSubmitted 
           ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950' 

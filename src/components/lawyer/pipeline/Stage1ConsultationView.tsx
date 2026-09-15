@@ -138,31 +138,7 @@ export default function Stage1ConsultationView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. 단계 목표 & 진행률 바 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            Stage 01 목표
-          </span>
-          <span className="text-xs font-bold text-slate-800">
-            맞춤 제안서 발송 및 의뢰인 상담·수임 결정
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">실무 진행도:</span>
-          <span className="font-mono font-bold text-[#1E3A5F]">
-            {isContracted ? '4/4 (수임계약 완료)' : hasProposalSent ? '3/4 (제안서 발송 완료)' : '1/4 (제안서 작성 필요)'}
-          </span>
-          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden ml-1">
-            <div 
-              className={`h-full rounded-full transition-all ${isContracted ? 'bg-emerald-500' : hasProposalSent ? 'bg-blue-600' : 'bg-amber-500'}`} 
-              style={{ width: `${isContracted ? 100 : hasProposalSent ? 75 : 25}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. Next Action Hero Card (스텔스 익명 & 제안서 게이팅 3단계 동적 카드) ── */}
+      {/* ── Next Action Hero Card (스텔스 익명 & 제안서 게이팅 3단계 동적 카드) ── */}
       {isAnonymousPhase ? (
         // [Phase 1: 제안서 미발송 상태 - 100% 스텔스 익명 보호 중 & 제안서 작성 단독 강제]
         <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg space-y-4">

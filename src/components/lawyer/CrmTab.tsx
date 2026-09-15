@@ -2519,25 +2519,82 @@ export default function CrmTab({
                 {/* ══════════ 리걸플로 벤치마킹: 정제된 실무 가이드 툴바 & 서식 보관함 ══════════ */}
                 {selectedClient && (() => {
                   const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                  const stageGuides: Record<number, string> = {
-                    1: '💡 채무·소득 요건 및 제595조 결격사유를 검토하고 사건 유형을 확정하세요.',
-                    2: '💡 모바일 전자계약서를 전송하여 정식 위임 계약을 체결하세요.',
-                    3: '💡 4대 발급처 서류를 일괄 요청하고 도착 서류 및 진술서를 검토하세요.',
-                    4: '💡 8대 법원 서식을 검증하고 전자소송 패키징을 생성하세요.',
-                    5: '💡 법원 보정권고 기한을 준수하고 7대 표 소명서를 제출하세요.',
-                    6: '💡 법원 가상계좌 적립금 납부 현황과 채권자집회 일정을 관리하세요.'
+                  
+                  // 실시간 선후행 및 진행 상태 산출
+                  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+                    selectedExt.crmStatus || selectedClient.status || ''
+                  );
+                  const hasProposalSent = Boolean(selectedClient.hasProposalSent || selectedExt.hasProposalSent);
+                  const isContactShared = Boolean(
+                    isContracted || 
+                    selectedClient.isContactShared || 
+                    selectedExt.isContactShared || 
+                    (selectedClient.phone && !selectedClient.phone.includes('*'))
+                  );
+                  const docCount = (selectedExt.uploadedFiles || []).length;
+
+                  const stageMeta: Record<number, { title: string; progressText: string; badgeCls: string; progressPercent: number }> = {
+                    1: {
+                      title: '맞춤 제안서 발송 및 의뢰인 상담·수임 결정',
+                      progressText: isContracted ? '4/4 (수임계약 완료)' : isContactShared ? '3/4 (전화상담 요청 완료)' : hasProposalSent ? '2/4 (고객 검토 대기)' : '1/4 (제안서 작성 필요)',
+                      badgeCls: isContracted ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : hasProposalSent ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                      progressPercent: isContracted ? 100 : isContactShared ? 75 : hasProposalSent ? 50 : 25
+                    },
+                    2: {
+                      title: '법원 실비·수임료 산출 및 모바일 전자계약 체결',
+                      progressText: isContracted ? '수임계약 체결 완료' : '전자서명 대기중',
+                      badgeCls: isContracted ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                      progressPercent: isContracted ? 100 : 40
+                    },
+                    3: {
+                      title: '4대 발급처 서류 일괄 수합 및 진술서 동기화',
+                      progressText: `${docCount}건 서류 수합중`,
+                      badgeCls: docCount >= 3 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+                      progressPercent: Math.min(100, Math.round((docCount / 12) * 100))
+                    },
+                    4: {
+                      title: '8대 법원 서식 검증 및 대법원 전자소송 정식 접수',
+                      progressText: ['filed', 'commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus || '') ? '전자소송 접수 완료' : '8대 서식 완비 (100%)',
+                      badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                      progressPercent: ['filed', 'commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus || '') ? 100 : 80
+                    },
+                    5: {
+                      title: '회생위원 보정권고 7대 표 소명서 작성 및 전자소송 제출',
+                      progressText: '소명서 6/7종 완성',
+                      badgeCls: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+                      progressPercent: 85
+                    },
+                    6: {
+                      title: '법원 가상계좌 적립금 납부 지도 및 채권자집회·면책 관리',
+                      progressText: selectedExt.crmStatus === 'discharged' ? '면책 확정' : '변제 적립금 관리',
+                      badgeCls: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+                      progressPercent: selectedExt.crmStatus === 'discharged' ? 100 : 45
+                    }
                   };
+
+                  const currentMeta = stageMeta[pipelineStage] || stageMeta[1];
 
                   return (
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800 relative z-30">
-                      {/* 좌측: 현재 단계 칩 & 신입 사무장용 원라인 가이드 */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="px-2.5 py-1 rounded-lg bg-blue-600/90 text-white text-xs font-black shrink-0 tracking-tight shadow-2xs">
-                          Stage 0{pipelineStage}
+                      {/* 좌측: 현재 단계 칩 & 통합 실무 목표 + 진행도 단일화 */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-black shrink-0 tracking-tight shadow-2xs">
+                          Stage 0{pipelineStage} 목표
                         </span>
-                        <span className="text-xs text-slate-300 truncate font-medium">
-                          {stageGuides[pipelineStage] || stageGuides[1]}
+                        <span className="text-xs text-white font-bold truncate">
+                          {currentMeta.title}
                         </span>
+                        <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-700/80 shrink-0">
+                          <span className={`text-[11px] px-2 py-0.5 rounded-md font-mono font-bold border ${currentMeta.badgeCls}`}>
+                            실무 진행: {currentMeta.progressText}
+                          </span>
+                          <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-400 rounded-full transition-all duration-300" 
+                              style={{ width: `${currentMeta.progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       {/* 우측: 사건 유형 스위처 + 실무 서식 보관함 드롭다운 + 소통창 토글 */}
