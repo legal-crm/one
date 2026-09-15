@@ -58,6 +58,7 @@ import ContractConversionModal from './lawyer/ContractConversionModal';
 import { loadAdOrders, saveNewAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 import LegalQuickDock from './lawyer/LegalQuickDock';
 import LawyerSealManagerModal from './lawyer/LawyerSealManagerModal';
+import SealStudioModal from './lawyer/branding/SealStudioModal';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   const isContracted = req.status === 'contracted';
@@ -2482,15 +2483,6 @@ export default function LawyerRole({
               <span className="font-semibold text-slate-200">검색</span>
             </button>
 
-            {/* 법무법인 로고 및 변호사 직인(인장) 관리 버튼 */}
-            <button
-              onClick={() => setIsSealModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-xl text-amber-300 hover:text-white transition-all cursor-pointer text-xs active:scale-95 shadow-xs"
-              title="법무법인 로고 및 변호사 직인(인장) 관리"
-            >
-              <Stamp className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-bold">직인/도장</span>
-            </button>
 
             <NotificationBell
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
@@ -5445,6 +5437,7 @@ export default function LawyerRole({
                 {[
                   { key: 'profile-edit', label: '✏️ 내 프로필 편집' },
                   { key: 'consult-style', label: '💬 AI 및 상담 스타일 프로필' },
+                  { key: 'seals', label: '🏷️ 직인·도장 & 브랜딩 스튜디오' },
                 ].map(s => (
                   <button
                     key={s.key}
@@ -5535,6 +5528,22 @@ export default function LawyerRole({
                   tenantId={activeLawyer.lawFirmId || activeLawyer.id}
                   actorId={activeLawyer.id}
                   actorName={activeLawyer.name}
+                />
+              </div>
+            )}
+
+            {/* 직인·도장 & 브랜딩 스튜디오 */}
+            {settingsSub === 'seals' && (
+              <div>
+                <SealStudioModal
+                  isInline={true}
+                  lawyerId={activeLawyer.id}
+                  lawyerName={activeLawyer.name}
+                  firmName={activeLawyer.firmName || '법무법인'}
+                  initialSealInfo={activeLawyer.sealInfo}
+                  onSaveSealInfo={(newInfo) => {
+                    setActiveLawyer(prev => ({ ...prev, sealInfo: newInfo }));
+                  }}
                 />
               </div>
             )}
@@ -6559,13 +6568,14 @@ export default function LawyerRole({
       {/* ── 리걸플로 벤치마킹: 상시 법률 실무 퀵툴 독 (Legal Quick Dock) ── */}
       <LegalQuickDock onOpenAlimtok={() => setActiveTab('client-crm')} />
 
-      {/* ── 법무법인 로고 및 변호사 직인(인장) 관리 모달 ── */}
+      {/* ── 법무법인 로고 및 변호사 직인(인장) 관리 스튜디오 모달 ── */}
       {isSealModalOpen && (
-        <LawyerSealManagerModal
+        <SealStudioModal
           isOpen={isSealModalOpen}
           onClose={() => setIsSealModalOpen(false)}
           lawyerId={activeLawyer.id}
           lawyerName={activeLawyer.name}
+          firmName={activeLawyer.firmName || '법무법인'}
           initialSealInfo={activeLawyer.sealInfo}
           onSaveSealInfo={(newInfo) => {
             setActiveLawyer(prev => ({ ...prev, sealInfo: newInfo }));
