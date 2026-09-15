@@ -303,11 +303,17 @@ export default function Stage1ConsultationView({
               )}
               <button
                 type="button"
-                onClick={handleConfirmEligibility}
-                className="px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                onClick={() => {
+                  if (!caseTypeConfirmed) {
+                    setCaseTypeConfirmed(true);
+                  }
+                  onAdvanceToNextStage();
+                }}
+                className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-md shadow-blue-500/30 transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                title="의뢰인과의 유선 상담을 완료하고 정식 위임계약서 작성 및 착수금 단계(Stage 02)로 이동합니다."
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>적격 확정 (수임 준비)</span>
+                <span>수임계약 체결 진행 (Stage 02)</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -573,60 +579,6 @@ export default function Stage1ConsultationView({
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── 4. 단계 완료 조건 (Gatekeeper Bar) ── */}
-      <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs text-xs">
-        <div className="flex items-center gap-2.5">
-          <span className={`w-2 h-2 rounded-full ${allConditionsMet && isContactShared ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-          <span className="font-bold">Stage 1 완료 조건:</span>
-          <span className="text-slate-300">
-            채무/소득 검토 · 제595조 통과 · 맞춤 제안서 발송 & 고객 확인 (
-            {allConditionsMet && isContactShared 
-              ? '전 요건 충족' 
-              : !hasProposalSent 
-                ? '제안서 작성 필요' 
-                : !isContactShared 
-                  ? '고객 제안서 확인 대기' 
-                  : '적격 요건 미확정'}
-            )
-          </span>
-        </div>
-
-        {allConditionsMet && isContactShared ? (
-          <button
-            type="button"
-            onClick={onAdvanceToNextStage}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
-          >
-            <span>Stage 2 (계약·착수)로 이동</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        ) : !hasProposalSent ? (
-          <button
-            type="button"
-            onClick={onOpenProposalDraft}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>맞춤 제안서 작성하기 (필수)</span>
-          </button>
-        ) : !isContactShared ? (
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 bg-slate-800 text-amber-300 border border-amber-500/30 rounded-xl font-bold flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" />
-              고객 제안서 확인 대기 중
-            </span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleConfirmEligibility}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
-          >
-            <span>남은 미완료 요건 확정하기</span>
-          </button>
-        )}
       </div>
     </div>
   );
