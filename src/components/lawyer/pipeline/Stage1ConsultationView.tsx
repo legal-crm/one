@@ -398,344 +398,146 @@ export default function Stage1ConsultationView({
         </div>
       )}
 
-      {/* ── 3. 고객 사전 진단 기반 비주얼 요건 검토 & 결격사유 스크리닝 대시보드 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-6 p-5 sm:p-6">
-        {/* 상단 헤더: 자가진단 데이터 안내 배너 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200 flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5" />
-                의뢰인 온라인 사전 자가진단 분석
-              </span>
-              <span className="text-xs text-slate-400">
-                (가명: <strong className="text-slate-700 font-mono">{stealthName}</strong>)
-              </span>
-            </div>
-            <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-              법적 신청 요건 검토 및 제595조 결격사유 사전 스크리닝
-            </h3>
-          </div>
-          <div className="text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80 max-w-md flex items-start gap-1.5">
-            <Info className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-            <span>
-              의뢰인이 <strong>[나의 채무상황 체크]</strong>에서 입력한 사전 진술 기반이며, 유선 심층상담 및 부채증명서 발급 과정에서 수치가 변경될 수 있습니다.
+      {/* ── 3. 고객 사전진단 계기판 (초슬림 HUD) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
+              <BarChart3 className="w-3.5 h-3.5" />
             </span>
-          </div>
-        </div>
-
-        {/* ── 핵심 2대 요건 비주얼 다이어그램 카드 (자산vs채무, 소득vs생계비) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-          {/* [요건 1] 자산 vs 채무 규모 (청산가치 보장의 원칙) */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
-                  <Scale className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-900 block">요건 1. 자산 vs 채무 규모</span>
-                  <span className="text-[11px] text-slate-500">청산가치 보장의 원칙 (채무초과 여부)</span>
-                </div>
-              </div>
-              <span className={`text-[11px] px-2.5 py-1 rounded-lg font-black border ${
-                isDebtExceedingAssets 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}>
-                {isDebtExceedingAssets ? '✓ 채무초과 충족' : '⚠ 자산 초과 주의'}
-              </span>
-            </div>
-
-            {/* 수치 요약 */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-slate-200/70 text-xs">
-              <div>
-                <span className="text-slate-400 block text-[11px]">총 채무액 (원금 기준)</span>
-                <span className="font-mono font-black text-slate-900 text-base mt-0.5 block">
-                  {debtTotal.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">만원</span>
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[11px]">보유 자산 (청산가치)</span>
-                <span className="font-mono font-black text-slate-900 text-base mt-0.5 block">
-                  {assetsTotal.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">만원</span>
-                  <span className="text-[10px] text-blue-600 font-bold ml-1">({assetRatio}%)</span>
-                </span>
-              </div>
-            </div>
-
-            {/* 저울 게이지 바 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                <span>보유 자산 비중 ({assetRatio}%)</span>
-                <span>채무 탕감 대상 구간 ({Math.max(0, 100 - assetRatio)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden flex">
-                <div 
-                  className="h-full bg-blue-500 transition-all duration-500" 
-                  style={{ width: `${Math.min(100, Math.max(5, assetRatio))}%` }}
-                  title={`보유자산: ${assetsTotal}만원`}
-                />
-                <div 
-                  className="h-full bg-emerald-500 transition-all duration-500" 
-                  style={{ width: `${Math.max(0, 100 - Math.min(100, Math.max(5, assetRatio)))}%` }}
-                  title={`탕감 대상 채무: ${Math.max(0, debtTotal - assetsTotal)}만원`}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>청산가치 하한선 (최소 변제선)</span>
-                <span>법적 면책 기대 구간</span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-600 bg-white/70 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
-              {isDebtExceedingAssets ? (
-                <>
-                  총 자산({assetsTotal.toLocaleString()}만원)보다 채무({debtTotal.toLocaleString()}만원)가 많아 <strong className="text-emerald-700 font-bold">개인회생 신청 요건을 정상 충족</strong>합니다. 36개월간 총 변제액이 청산가치 이상이 되도록 변제계획안을 수립합니다.
-                </>
-              ) : (
-                <>
-                  보유 자산이 총 채무를 초과하여 기각 위험이 있습니다. 배우자 재산 50% 분할 기준 및 압류금지 재산(소액보증금 등) 공제 여부를 유선 상담 시 재산정해야 합니다.
-                </>
-              )}
-            </p>
-          </div>
-
-          {/* [요건 2] 소득 vs 법정 최저생계비 (월 가용소득 산출) */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700">
-                  <Calculator className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-900 block">요건 2. 소득 vs 법정 최저생계비</span>
-                  <span className="text-[11px] text-slate-500">가용소득 요건 ({householdSize}인 가구 기준)</span>
-                </div>
-              </div>
-              <span className={`text-[11px] px-2.5 py-1 rounded-lg font-black border ${
-                isAvailableIncomeSufficient 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                  : 'bg-purple-50 text-purple-700 border-purple-200'
-              }`}>
-                {isAvailableIncomeSufficient ? '✓ 회생 가용소득 확인' : '🏛️ 파산 트랙 권장'}
-              </span>
-            </div>
-
-            {/* 수치 요약 */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-slate-200/70 text-xs">
-              <div>
-                <span className="text-slate-400 block text-[11px]">월 실수령 소득</span>
-                <span className="font-mono font-black text-slate-900 text-base mt-0.5 block">
-                  {income.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">만원</span>
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[11px]">법정 최저생계비 ({householdSize}인)</span>
-                <span className="font-mono font-black text-slate-900 text-base mt-0.5 block">
-                  {minLivingCost.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">만원</span>
-                  <span className="text-[10px] text-emerald-600 font-bold ml-1">
-                    (가용소득: {availableIncome}만)
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            {/* 소득 분할 스택 바 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                <span>법정 보장 생계비 ({minLivingCost}만원)</span>
-                <span className="text-emerald-700">예상 월 변제 가용소득 ({availableIncome}만원)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden flex">
-                <div 
-                  className="h-full bg-indigo-400 transition-all duration-500" 
-                  style={{ width: `${income > 0 ? Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100)) : 100}%` }}
-                  title={`생계비: ${minLivingCost}만원`}
-                />
-                <div 
-                  className="h-full bg-emerald-500 transition-all duration-500" 
-                  style={{ width: `${income > 0 ? Math.max(0, 100 - Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100))) : 0}%` }}
-                  title={`가용소득: ${availableIncome}만원`}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>2026년 기준 중위소득 60% 공제</span>
-                <span>매월 법원 가상계좌 납입 가능액</span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-600 bg-white/70 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
-              {isAvailableIncomeSufficient ? (
-                <>
-                  생계비 공제 후 매월 약 <strong className="text-emerald-700 font-bold">{availableIncome.toLocaleString()}만원</strong>의 가용소득이 발생하여 36개월간 성실 변제가 가능한 <strong className="text-blue-700 font-bold">개인회생 최적 대상자</strong>입니다.
-                </>
-              ) : (
-                <>
-                  현재 소득({income}만원)이 법정 최저생계비({minLivingCost}만원)에 미달합니다. 회생 가용소득이 부족하므로 <strong className="text-purple-700 font-bold">개인파산·면책 트랙</strong>을 우선 검토하거나 추가 소득을 확인하세요.
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* ── 요건 3: 제595조 결격사유 & 4대 리스크 스크리닝 (신호등 카드) ── */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-slate-700" />
-              <span className="text-xs font-black text-slate-900">
-                채무자회생법 제595조 기각사유 & 실무 리스크 4대 스크리닝
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400">자가진단 기반 사전 판정</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* 1. 5년 내 면책 이력 */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500">면책 이력 (제595조 5호)</span>
-                <span className={`w-2 h-2 rounded-full ${!hasRecentDischarge ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              </div>
-              <div>
-                <span className="font-black text-sm text-slate-900 block">
-                  {!hasRecentDischarge ? '결격사유 없음' : '최근 면책 이력'}
-                </span>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">
-                  {!hasRecentDischarge ? '5년 이내 면책 사실 없음' : '면책 후 5년 경과 확인 필요'}
-                </span>
-              </div>
-              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold border border-emerald-200 self-start">
-                법정 결격사유 통과
-              </span>
-            </div>
-
-            {/* 2. 법정 채무한도 */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500">법정 채무한도</span>
-                <span className={`w-2 h-2 rounded-full ${isDebtUnderLimit ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              </div>
-              <div>
-                <span className="font-black text-sm text-slate-900 block">
-                  {isDebtUnderLimit ? '한도 적합 (안전)' : '법정 한도 초과'}
-                </span>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">
-                  {debtTotal.toLocaleString()}만원 / 무담보 10억 ({debtLimitPercentage}%)
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(5, debtLimitPercentage))}%` }} />
-              </div>
-            </div>
-
-            {/* 3. 사행성·최근 채무 비중 */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500">사행성·최근 대출</span>
-                <span className={`w-2 h-2 rounded-full ${speculativeDebtRatio <= 20 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              </div>
-              <div>
-                <span className="font-black text-sm text-slate-900 block">
-                  {speculativeDebtRatio <= 20 ? '정상 채무 구조' : '보정 소명 대비 필요'}
-                </span>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">
-                  {speculativeDebtRatio > 0 
-                    ? `비율 ${speculativeDebtRatio}% (${(coinCryptoLoss + recentLoans).toLocaleString()}만원)` 
-                    : '투자/도박 손실 채무 없음'}
-                </span>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold border self-start ${
-                speculativeDebtRatio <= 20 
-                  ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
-                  : 'text-amber-700 bg-amber-50 border-amber-200'
-              }`}>
-                {speculativeDebtRatio <= 20 ? '인가율 양호' : '청산가치 반영 방어'}
-              </span>
-            </div>
-
-            {/* 4. 독촉 및 압류 긴급도 */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500">추심·독촉 단계</span>
-                <span className={`w-2 h-2 rounded-full ${hasUrgentSeizure ? 'bg-amber-500' : 'bg-blue-500'}`} />
-              </div>
-              <div>
-                <span className="font-black text-sm text-slate-900 block">
-                  {hasUrgentSeizure ? '⚡ 금지명령 긴급 접수' : '정상 상담 진행'}
-                </span>
-                <span className="text-[11px] text-slate-500 mt-0.5 block truncate">
-                  {fp.harassmentLevel === 'SEIZURE' 
-                    ? '급여/통장 압류 상태' 
-                    : fp.harassmentLevel === 'LAWSUIT' 
-                      ? '지급명령·소송 진행 중' 
-                      : fp.harassmentLevel === 'LETTER' 
-                        ? '독촉장 우편 수령' 
-                        : '유선/문자 독촉 수신 중'}
-                </span>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold border self-start ${
-                hasUrgentSeizure 
-                  ? 'text-amber-700 bg-amber-50 border-amber-200' 
-                  : 'text-blue-700 bg-blue-50 border-blue-200'
-              }`}>
-                {hasUrgentSeizure ? '당일 금지명령 권장' : '절차 안정권'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 사건 유형 확정 트랙 (개인회생 vs 개인파산) ── */}
-        <div className="pt-4 border-t border-slate-100 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Scale className="w-4 h-4 text-slate-700" />
-              <span className="text-xs font-black text-slate-900">
-                사건 진행 트랙 선택 (현재: <strong className="text-[#1E3A5F]">{isBankruptcy ? '개인파산·면책' : '개인회생'}</strong>)
-              </span>
-            </div>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
-              AI 추천: {isBankruptcy ? '개인파산·면책 트랙' : '개인회생 트랙'}
+            <span className="font-black text-xs text-slate-900">
+              사전 진단 요건 검토 계기판
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">
+              ({stealthName})
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          {/* 초간결 트랙 전환 스위처 */}
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
             <button
               type="button"
               onClick={() => onSwitchCaseType && onSwitchCaseType('individual_rehab')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                !isBankruptcy 
-                  ? 'bg-blue-50/70 border-blue-300 ring-2 ring-blue-500/20 shadow-xs' 
-                  : 'bg-white border-slate-200 hover:bg-slate-50'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 press-scale ${
+                !isBankruptcy
+                  ? 'bg-white text-blue-700 shadow-xs border border-blue-200 font-black'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-sm text-slate-900">⚖️ 개인회생 트랙</span>
-                {!isBankruptcy && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                정기적인 급여소득 또는 영업소득이 있어 36개월간 가용소득으로 변제 후 잔여 채무 면책
-              </p>
+              <span>⚖️ 개인회생</span>
+              {!isBankruptcy && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
             </button>
-
             <button
               type="button"
               onClick={() => onSwitchCaseType && onSwitchCaseType('bankruptcy')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                isBankruptcy 
-                  ? 'bg-purple-50/70 border-purple-300 ring-2 ring-purple-500/20 shadow-xs' 
-                  : 'bg-white border-slate-200 hover:bg-slate-50'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 press-scale ${
+                isBankruptcy
+                  ? 'bg-white text-purple-700 shadow-xs border border-purple-200 font-black'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-sm text-slate-900">🏛️ 개인파산·면책 트랙</span>
-                {isBankruptcy && <CheckCircle2 className="w-4 h-4 text-purple-600" />}
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                고령, 중증 질환, 실직 등으로 객관적인 근로능력이 결여되어 전액 일괄 면책 도모
-              </p>
+              <span>🏛️ 개인파산</span>
+              {isBankruptcy && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
             </button>
+          </div>
+        </div>
+
+        {/* 4대 계기판 타일 (한 줄 배치) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 타일 1: 채무 vs 자산 */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500">1. 채무 vs 자산</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+                isDebtExceedingAssets ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {isDebtExceedingAssets ? '🟢 충족' : '🔴 미달'}
+              </span>
+            </div>
+            <div>
+              <div className="text-lg font-black font-mono text-slate-900 leading-tight">
+                {assetRatio}% <span className="text-xs font-normal text-slate-500">자산비율</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
+                자산 {assetsTotal.toLocaleString()}만 / 채무 {debtTotal.toLocaleString()}만
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
+              <div className="bg-blue-600 h-full" style={{ width: `${Math.min(100, Math.max(5, assetRatio))}%` }} />
+              <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(0, 100 - Math.min(100, Math.max(5, assetRatio)))}%` }} />
+            </div>
+          </div>
+
+          {/* 타일 2: 월 가용소득 */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500">2. 월 가용소득</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+                isAvailableIncomeSufficient ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'
+              }`}>
+                {isAvailableIncomeSufficient ? '🟢 회생적합' : '🟣 파산권장'}
+              </span>
+            </div>
+            <div>
+              <div className={`text-lg font-black font-mono leading-tight ${isAvailableIncomeSufficient ? 'text-emerald-600' : 'text-purple-600'}`}>
+                {availableIncome.toLocaleString()} <span className="text-xs font-normal text-slate-500">만원 / 월</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
+                소득 {income.toLocaleString()}만 - 생계비 {minLivingCost.toLocaleString()}만
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex">
+              <div className="bg-indigo-400 h-full" style={{ width: `${income > 0 ? Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100)) : 100}%` }} />
+              <div className="bg-emerald-500 h-full" style={{ width: `${income > 0 ? Math.max(0, 100 - Math.min(100, Math.round((minLivingCost / Math.max(income, minLivingCost)) * 100))) : 0}%` }} />
+            </div>
+          </div>
+
+          {/* 타일 3: 법정 채무한도 */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500">3. 법정 채무한도</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+                isDebtUnderLimit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {isDebtUnderLimit ? '🟢 한도 내' : '🔴 초과'}
+              </span>
+            </div>
+            <div>
+              <div className="text-lg font-black font-mono text-slate-900 leading-tight">
+                {debtLimitPercentage}% <span className="text-xs font-normal text-slate-500">한도점유</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block">
+                총 {debtTotal.toLocaleString()}만원 / 상한 10억
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(5, debtLimitPercentage))}%` }} />
+            </div>
+          </div>
+
+          {/* 타일 4: 결격사유 & 긴급도 */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500">4. 결격 & 긴급도</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black border ${
+                hasUrgentSeizure ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+              }`}>
+                {hasUrgentSeizure ? '⚡ 금지명령' : '🟢 일반'}
+              </span>
+            </div>
+            <div>
+              <div className={`text-lg font-black font-mono leading-tight ${hasUrgentSeizure ? 'text-amber-600' : 'text-slate-900'}`}>
+                {hasUrgentSeizure ? '독촉 진행' : '양호'} <span className="text-xs font-normal text-slate-500">{speculativeDebtRatio > 0 ? `(사행성 ${speculativeDebtRatio}%)` : ''}</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 mt-0.5 block truncate">
+                {!hasRecentDischarge ? '면책이력 없음' : '최근 면책'} | {fp.harassmentLevel === 'SEIZURE' ? '압류' : '유선독촉'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              <div className={`h-1.5 rounded-full ${!hasRecentDischarge ? 'bg-emerald-500' : 'bg-rose-500'}`} title="면책이력 통과" />
+              <div className={`h-1.5 rounded-full ${speculativeDebtRatio <= 20 ? 'bg-emerald-500' : 'bg-amber-500'}`} title="사행성 비율" />
+              <div className={`h-1.5 rounded-full ${!hasUrgentSeizure ? 'bg-emerald-500' : 'bg-amber-500'}`} title="독촉 단계" />
+            </div>
           </div>
         </div>
       </div>
