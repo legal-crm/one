@@ -23,6 +23,7 @@ import { ContractDocEditModal } from '../ContractDocEditModal';
 import ClientSignShareModal from '../ClientSignShareModal';
 import { HighlightedDocumentViewer } from '../../common/HighlightedDocumentViewer';
 import { useDialog } from '../../common/DialogProvider';
+import ModalPortal from '../../common/ModalPortal';
 
 interface Stage2ContractRetainerViewProps {
   clientRequest: ConsultRequest;
@@ -159,6 +160,36 @@ export default function Stage2ContractRetainerView({
     loadContract();
     return () => { isMounted = false; };
   }, [clientRequest.id, clientRequest.phone]);
+
+  // 활성 계약서 인스턴스 보장 함수
+  const ensureContract = (): ElectronicContract => {
+    if (contract) return contract;
+    const lawyerName = activeLawyer.name || '담당 변호사';
+    const lawFirmName = activeLawyer.lawFirmName || '법무법인 로앤';
+    const newC = createContract({
+      clientId: clientRequest.id,
+      clientName: clientRequest.clientName,
+      clientPhone: clientRequest.phone,
+      clientAddress: clientRequest.financialProfile?.residenceRegion || '',
+      lawyerName,
+      lawFirmName,
+      assignedLawyerId: crmExt?.assigneeId || activeLawyer.id,
+      totalFee: Math.round(totalLawyerFee / 10000),
+      courtCosts: {
+        creditorCount,
+        deliveryFee,
+        stampFee,
+        miscFee: 0,
+        debtCertFee: 0,
+        debtCertUnitFee: 15000,
+        deliveryUnitFee: 5200,
+        provisionalDeposit: trusteeDeposit,
+        isCustomized: true,
+      },
+    });
+    setContract(newC);
+    return newC;
+  };
 
   // 분납 일정 계산 함수
   const buildFeeSchedule = (): FeeInstallment[] => {
@@ -764,7 +795,10 @@ ${d.content}
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsPreviewAllOpen(true)}
+              onClick={() => {
+                ensureContract();
+                setIsPreviewAllOpen(true);
+              }}
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale"
             >
               <Eye className="w-3.5 h-3.5 text-blue-600" />
@@ -772,7 +806,10 @@ ${d.content}
             </button>
             <button
               type="button"
-              onClick={() => setIsWizardOpen(true)}
+              onClick={() => {
+                ensureContract();
+                setIsWizardOpen(true);
+              }}
               className="px-3.5 py-2 bg-[#1E3A5F] hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale"
             >
               <Edit3 className="w-3.5 h-3.5 text-emerald-300" />
@@ -986,12 +1023,20 @@ ${d.content}
       {/* ── 6. 모달 렌더링 영역 ── */}
 
       {/* 6-1. 6단계 전자계약 전체 위자드 모달 */}
-      {isWizardOpen && contract && (
-        <ContractWizard
-          contract={contract}
-          onClose={() => setIsWizardOpen(false)}
-          onSave={handleWizardSave}
-        />
+      {isWizardOpen && (contract || ensureContract()) && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden animate-fadeIn">
+            <div className="bg-slate-100 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <ContractWizard
+                  contract={contract || ensureContract()}
+                  onClose={() => setIsWizardOpen(false)}
+                  onSave={handleWizardSave}
+                />
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
       )}
 
       {/* 6-2. 개별 서식 조항 및 법률 스니펫 수정 모달 */}
