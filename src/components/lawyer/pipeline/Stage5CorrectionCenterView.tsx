@@ -123,32 +123,56 @@ export default function Stage5CorrectionCenterView({
         </div>
       </div>
 
-      {/* ── 4. 7대 표 소명서 목록 ── */}
+      {/* ── 4. 7대 표 소명서 목록 (2단 그리드 구성) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-            <Table className="w-4 h-4 text-[#1E3A5F]" />
-            회생위원 7대 법원 표준 소명서
+        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
+              <Table className="w-3.5 h-3.5" />
+            </span>
+            <span className="font-black text-xs text-slate-900">
+              회생위원 7대 법원 표준 소명서
+            </span>
+            <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+              6 / 7종 완성
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 font-bold">
+            원클릭 AI 초안 연동
           </span>
-          <span className="text-[11px] text-slate-500 font-bold">원클릭 AI 초안 완성</span>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {sevenTables.map((tbl) => (
-            <div key={tbl.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 text-xs">
-              <div>
-                <span className="font-bold text-slate-900">{tbl.title}</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">{tbl.desc}</p>
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sevenTables.map((tbl) => (
+              <div 
+                key={tbl.id} 
+                onClick={onOpenComprehensiveCorrectionModal}
+                className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 text-xs cursor-pointer ${
+                  tbl.isReady 
+                    ? 'bg-slate-50/70 hover:bg-blue-50/50 hover:border-blue-300 border-slate-200' 
+                    : 'bg-amber-50/60 hover:bg-amber-50 border-amber-300 ring-1 ring-amber-400/20 shadow-xs'
+                }`}
+                title={`${tbl.title} 상세 작성 및 검토`}
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-slate-900 block truncate">
+                    {tbl.title}
+                  </span>
+                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {tbl.desc}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 whitespace-nowrap ${
+                  tbl.isReady 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                    : 'bg-amber-100 text-amber-800 border-amber-300 font-black'
+                }`}>
+                  {tbl.isReady ? '작성 완료' : '자료 보완필요'}
+                </span>
               </div>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
-                tbl.isReady 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
-              }`}>
-                {tbl.isReady ? '작성 완료' : '자료 보완필요'}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
