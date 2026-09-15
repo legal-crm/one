@@ -359,26 +359,15 @@ export default function Stage1ConsultationView({
 
       {/* ── 3. 고객 사전진단 계기판 (초슬림 HUD) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
-              <BarChart3 className="w-3.5 h-3.5" />
-            </span>
-            <span className="font-black text-xs text-slate-900">
-              사전 진단 요건 검토 계기판
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">
-              ({stealthName})
-            </span>
-          </div>
-
-          {/* 현재 사건 유형 뱃지 */}
-          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
-            isBankruptcy 
-              ? 'bg-purple-50 text-purple-700 border-purple-200' 
-              : 'bg-blue-50 text-blue-700 border-blue-200'
-          }`}>
-            {isBankruptcy ? '🏛️ 개인파산 트랙' : '⚖️ 개인회생 트랙'}
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+          <span className="p-1 rounded-md bg-[#1E3A5F] text-white">
+            <BarChart3 className="w-3.5 h-3.5" />
+          </span>
+          <span className="font-black text-xs text-slate-900">
+            사전 진단 요건 검토 계기판
+          </span>
+          <span className="text-[11px] font-mono text-slate-400">
+            ({stealthName})
           </span>
         </div>
 
