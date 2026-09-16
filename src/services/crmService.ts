@@ -31,6 +31,22 @@ function setLocalData<T>(key: string, data: T): void {
   }
 }
 
+/** 전체 CRM 고객 확장 데이터 맵 조회 (동기식 secureGetItem) */
+export function loadCrmExtMap(): Record<string, CrmClientExtension> {
+  return getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+}
+
+/** 동기식으로 특정 고객의 CRM 확장 데이터를 조회 (없으면 기본값 생성) */
+export function getCrmExt(clientId: string): CrmClientExtension {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  return store[clientId] || createDefaultCrmExtension(clientId);
+}
+
+/** 특정 고객의 CRM 데이터 부분 업데이트 (단축 alias) */
+export async function updateCrmExt(clientId: string, updates: Partial<CrmClientExtension>): Promise<void> {
+  return updateCrmClientExtension(clientId, updates);
+}
+
 /** 동기식으로 특정 고객의 CRM 확장 데이터를 조회 (secureGetItem 사용) */
 export function getCrmClientSync(clientId: string): CrmClientExtension | null {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});

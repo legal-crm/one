@@ -4,7 +4,7 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer, Stamp, Scale, PhoneCall
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer, Stamp, Scale, PhoneCall, Coins
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
@@ -19,6 +19,7 @@ import CrmTab from './lawyer/CrmTab';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
 import { loadSalesLeads } from '../services/leadService';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
+const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
@@ -35,7 +36,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
 import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
-import { loadStaffMembers } from '../services/crmService';
+import { loadStaffMembers, loadCrmExtMap, getCrmExt } from '../services/crmService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { createNotification } from '../services/notificationCenterService';
 import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, getTaxInvoicePdfUrl, type LawyerBusinessInfo } from '../services/taxInvoiceService';
@@ -140,7 +141,7 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   const dialog = useDialog();
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts' | 'fee-settlement'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [settingsCategory, setSettingsCategory] = useState<'profile' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
@@ -2672,6 +2673,44 @@ export default function LawyerRole({
                 <FileSignature className="w-5 h-5 shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">전자 계약</span>}
               </button>
+
+              {permissionCtx.canAccessTab('fee-settlement') && (
+                <button 
+                  onClick={() => setActiveTab('fee-settlement')} 
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-3.5 py-3'} rounded-xl text-[15px] transition-all cursor-pointer ${
+                    activeTab === 'fee-settlement' 
+                      ? 'bg-brand text-white font-bold shadow-md shadow-brand/20' 
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white font-medium'
+                  }`}
+                  title={sidebarCollapsed ? '수임료 정산' : undefined}
+                >
+                  <Coins className="w-5 h-5 shrink-0 text-amber-400" />
+                  {!sidebarCollapsed && <span className="truncate">수임료 정산</span>}
+                  {(() => {
+                    const crmMap = loadCrmExtMap();
+                    let alertCount = 0;
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    requests.forEach(r => {
+                      const ext = crmMap[r.id] || getCrmExt(r.id);
+                      (ext.feeSchedule || []).forEach(inst => {
+                        if (inst.status === 'overdue' || (inst.status === 'pending' && inst.dueDate <= todayStr)) {
+                          alertCount++;
+                        }
+                      });
+                    });
+                    if (alertCount === 0) return null;
+                    return sidebarCollapsed ? (
+                      <span className="absolute top-1.5 right-1.5 bg-rose-500 text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-black ring-2 ring-[#111827]">
+                        {alertCount > 9 ? '9+' : alertCount}
+                      </span>
+                    ) : (
+                      <span className="ml-auto text-[11px] text-rose-300 font-bold bg-rose-950/80 px-2 py-0.5 rounded-md border border-rose-500/30">
+                        {alertCount}건
+                      </span>
+                    );
+                  })()}
+                </button>
+              )}
 
               {/* 그룹 2: AI 도구 */}
               <div className="pt-2.5 pb-1"><div className="border-t border-slate-800/80" /></div>
@@ -5375,6 +5414,21 @@ export default function LawyerRole({
               lawyerName={activeLawyer.name} 
               lawFirmName={activeLawyer.firmName || activeLawyer.firm || '법무법인'} 
               onNavigateToCrm={() => setActiveTab('client-crm')}
+            />
+          </React.Suspense>
+        )}
+
+        {/* TAB: 수임료 분납 종합 정산 관리 센터 */}
+        {activeTab === 'fee-settlement' && (
+          <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
+            <FeeSettlementTab
+              requests={requests}
+              activeLawyer={activeLawyer}
+              onNavigateToClientCrm={(clientId, targetDetailTab) => {
+                setCrmTargetClientId(clientId);
+                if (targetDetailTab) setCrmTargetDetailTab(targetDetailTab);
+                setActiveTab('client-crm');
+              }}
             />
           </React.Suspense>
         )}
