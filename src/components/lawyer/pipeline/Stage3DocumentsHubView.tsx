@@ -430,7 +430,7 @@ export default function Stage3DocumentsHubView({
             </h3>
           </div>
           <span className="text-xs text-slate-500 font-medium">
-            1차 실물 확보 ➔ 대행 발주 (약 7일) ➔ 골든타임 2차 병렬 수합 ➔ 법원 접수
+            1차 실물 확보 ➔ 대행 발주 (약 7일) ➔ 2차 서류 수합 ➔ 법원 접수
           </span>
         </div>
 
@@ -514,7 +514,7 @@ export default function Stage3DocumentsHubView({
                 </span>
               </div>
               <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
-                7일 골든타임 모바일 서류 수합
+                모바일 간편 서류 수합
               </p>
             </div>
           </div>
@@ -862,15 +862,7 @@ export default function Stage3DocumentsHubView({
             </div>
 
             {/* 카드 3 메타데이터 박스 */}
-            <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-600">
-                <span className="flex items-center gap-1 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" /> 골든타임 목표:
-                </span>
-                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  부채증명 완료일과 동기화 (D-{Math.max(1, 7 - debtCertElapsedDays)})
-                </span>
-              </div>
+            <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
               <div className="flex items-center justify-between text-slate-600">
                 <span>검토 대기중인 업로드 서류:</span>
                 <span className="font-mono font-bold text-blue-600">{stats.phase2SubmittedCount}건</span>
@@ -878,18 +870,6 @@ export default function Stage3DocumentsHubView({
               <div className="flex items-center justify-between text-slate-600">
                 <span>보완 필요(재업로드 요청) 서류:</span>
                 <span className="font-mono font-bold text-amber-600">{stats.supplementCount}건</span>
-              </div>
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-700">2차 서류 승인률:</span>
-                  <span className="font-mono font-bold text-blue-700">{stats.phase2ProgressRate}%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                    style={{ width: `${stats.phase2ProgressRate}%` }}
-                  />
-                </div>
               </div>
             </div>
           </div>
@@ -920,8 +900,8 @@ export default function Stage3DocumentsHubView({
               onClick={handleSendPhase2Reminder}
               className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
             >
-              <Clock className="w-3.5 h-3.5 text-amber-600" />
-              <span>마감 D-2 리마인더</span>
+              <Send className="w-3.5 h-3.5 text-blue-600" />
+              <span>서류 제출 리마인더</span>
             </button>
           </div>
         </div>
