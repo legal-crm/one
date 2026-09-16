@@ -447,15 +447,12 @@ export default function Stage3DocumentsHubView({
               {stats.isPhase1Done ? <Check className="w-3.5 h-3.5" /> : '1'}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="truncate">1차 실물서류 수령</span>
-                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-white/80 border">
                   {stats.isPhase1Done ? '완료' : '진행중'}
                 </span>
               </div>
-              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
-                인감도장/증명서({requiredSealCount}부) 실물확보
-              </p>
             </div>
           </div>
 
@@ -477,15 +474,12 @@ export default function Stage3DocumentsHubView({
               {isDebtDispatched ? <Check className="w-3.5 h-3.5" /> : '2'}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="truncate">대행신청서 작성·발송</span>
-                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-white/80 border">
                   {!stats.isPhase1Done ? '대기' : isDebtDispatched ? '발주완료' : '작성필요'}
                 </span>
               </div>
-              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
-                채권사 {creditorCount}곳 대행신청서 전달
-              </p>
             </div>
           </div>
 
@@ -507,15 +501,12 @@ export default function Stage3DocumentsHubView({
               3
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="truncate">부채대행 & 2차병렬</span>
-                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-white/80 border">
                   {!isDebtDispatched ? '대기' : `${debtCertElapsedDays}일차/7일`}
                 </span>
               </div>
-              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
-                모바일 간편 서류 수합
-              </p>
             </div>
           </div>
 
@@ -531,17 +522,14 @@ export default function Stage3DocumentsHubView({
               4
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="truncate">법원 접수 준비</span>
-                <span className={`text-[10px] px-1 py-0.2 rounded font-bold border ${
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
                   stats.isReadyForStage4 ? 'bg-emerald-700 text-white border-emerald-500' : 'bg-white text-slate-500'
                 }`}>
                   {stats.isReadyForStage4 ? '준비완료' : '대기'}
                 </span>
               </div>
-              <p className={`text-[10px] truncate mt-0.5 ${stats.isReadyForStage4 ? 'text-emerald-100' : 'text-slate-500'}`}>
-                신청서·변제계획안 패키징
-              </p>
             </div>
           </div>
         </div>
