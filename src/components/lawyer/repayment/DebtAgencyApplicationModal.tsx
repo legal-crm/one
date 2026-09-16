@@ -43,6 +43,9 @@ export default function DebtAgencyApplicationModal({
 }: DebtAgencyApplicationModalProps) {
   const sanitizeAgencyData = (data: DebtAgencyApplicationData): DebtAgencyApplicationData => ({
     ...data,
+    officeName: (data.officeName === '법률사무소 보광' || data.officeName === '법률사무소 명경') ? '' : (data.officeName || ''),
+    caseManager: (data.caseManager === '박명국' || data.caseManager === '남윤국') ? '' : (data.caseManager || ''),
+    billingManager: (data.billingManager === '박명국' || data.billingManager === '남윤국') ? '' : (data.billingManager || ''),
     tel: data.tel === '02-3492-4246' ? '' : (data.tel || ''),
     fax: data.fax === '02-2179-8487' ? '' : (data.fax || ''),
     hp: data.hp === '010-4064-4246' ? '' : (data.hp || ''),
@@ -381,8 +384,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.officeName} 
+                      placeholder="사무소명"
                       onChange={(e) => setAppData({ ...appData, officeName: e.target.value })}
-                      className="w-full bg-transparent font-bold text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500"
+                      className="w-full bg-transparent font-bold text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500 placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 w-20 font-bold text-center leading-tight">
@@ -392,8 +396,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.caseManager} 
+                      placeholder="사건 담당자"
                       onChange={(e) => setAppData({ ...appData, caseManager: e.target.value })}
-                      className="w-full bg-transparent font-bold text-center text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500"
+                      className="w-full bg-transparent font-bold text-center text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500 placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 w-20 font-bold text-center leading-tight">
@@ -403,8 +408,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.billingManager} 
+                      placeholder="결제 담당자"
                       onChange={(e) => setAppData({ ...appData, billingManager: e.target.value })}
-                      className="w-full bg-transparent font-bold text-center text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500"
+                      className="w-full bg-transparent font-bold text-center text-slate-800 outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500 placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                 </tr>

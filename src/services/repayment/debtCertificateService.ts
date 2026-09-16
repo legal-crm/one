@@ -493,9 +493,9 @@ export function createDefaultAgencyApplicationData(
 
   return {
     caseType: 'rehab',
-    officeName: '법률사무소 보광',
-    caseManager: activeLawyerName || '박명국',
-    billingManager: '박명국',
+    officeName: '',
+    caseManager: '',
+    billingManager: '',
     tel: '',
     fax: '',
     directPhone: '',
