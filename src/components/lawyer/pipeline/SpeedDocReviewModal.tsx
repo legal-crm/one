@@ -87,7 +87,7 @@ export default function SpeedDocReviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 md:p-6 animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full h-[85vh] max-h-[740px] overflow-hidden flex flex-col">
         {/* 헤더 바 */}
         <div className="px-6 py-3.5 bg-[#1E3A5F] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -212,8 +212,9 @@ export default function SpeedDocReviewModal({
           </div>
 
           {/* 우측: 필수 검증 체크리스트 및 판정 패널 */}
-          <div className="w-full md:w-96 bg-white border-t md:border-t-0 md:border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto">
-            <div className="space-y-4">
+          <div className="w-full md:w-96 bg-white border-t md:border-t-0 md:border-l border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* 상단 스크롤 가능 체크리스트 본문 */}
+            <div className="flex-1 p-5 overflow-y-auto space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-[#1E3A5F]" />
@@ -328,8 +329,8 @@ export default function SpeedDocReviewModal({
               )}
             </div>
 
-            {/* 하단 2대 액션 버튼: [보완 요청] vs [✓ 승인하고 다음 서류로] */}
-            <div className="space-y-2 pt-4 border-t border-slate-100">
+            {/* 하단 고정 2대 액션 버튼 (항상 100% 온전히 노출되는 Sticky Footer) */}
+            <div className="p-4 bg-slate-50/90 border-t border-slate-200 shrink-0 space-y-2">
               <button
                 type="button"
                 onClick={handleApproveCurrent}
