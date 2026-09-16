@@ -564,14 +564,9 @@ export default function Stage3DocumentsHubView({
                   <Truck className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
-                      Step 1 · 착수 게이트
-                    </span>
-                    <h4 className="font-extrabold text-sm text-slate-900">
-                      1차 기본서류 & 인감 수령
-                    </h4>
-                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    1차 기본서류 & 인감 수령
+                  </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
                     인감도장/증명서({requiredSealCount}부) 실물 수령 필수
                   </p>
@@ -737,14 +732,9 @@ export default function Stage3DocumentsHubView({
                   {!stats.isPhase1Done ? <Lock className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
-                      Step 2 · 대행 관리
-                    </span>
-                    <h4 className="font-extrabold text-sm text-slate-900">
-                      부채증명서 발급 대행
-                    </h4>
-                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    부채증명서 발급 대행
+                  </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
                     {!stats.isPhase1Done
                       ? '1차 서류 수령 후 신청서 작성 가능'
@@ -874,14 +864,9 @@ export default function Stage3DocumentsHubView({
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
-                      Step 3 · 골든타임 병렬
-                    </span>
-                    <h4 className="font-extrabold text-sm text-slate-900">
-                      2차 소득·재산 서류 수합
-                    </h4>
-                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    2차 소득·재산 서류 수합
+                  </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
                     부채증명서 발급 7일 동안 통장·소득 간편 업로드
                   </p>
