@@ -421,11 +421,8 @@ export default function Stage3DocumentsHubView({
       {/* ── 1. [실무 타임라인] 릴레이 파이프라인 리본 (Relay Progress Ribbon) ── */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-900 text-white">
-            실무 프로세스
-          </span>
           <h3 className="font-extrabold text-sm text-slate-900">
-            개인회생 서류 수집 & 부채증명서 릴레이 파이프라인
+            서류 수집 & 부채증명서 발급 신청
           </h3>
         </div>
 
