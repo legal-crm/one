@@ -287,9 +287,21 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     caseType: 'bankruptcy',
     intakeChannel: 'mykim',
     preInfo: '무릎 관절염 수술 후 식당 일용직 근로 중단. 성인 자녀 명의 원룸에 친족 무상거주 중. 파산관재인 15대 필수서류 심사 및 1,110만 원 면제재산 동시폐지 신청 준비 중.',
+    contractDate: '2026-08-16',
+    contractAmount: 2400000,
+    totalFee: 2400000,
+    totalPaid: 1200000,
+    feeSchedule: [
+      { id: 'fee-1-1', round: 1, amount: 600000, dueDate: '2026-08-16', paidDate: '2026-08-16', status: 'paid', memo: '착수금', paymentMethod: '계좌이체' },
+      { id: 'fee-1-2', round: 2, amount: 600000, dueDate: '2026-09-01', paidDate: '2026-09-01', status: 'paid', memo: '1회차 분납', paymentMethod: '계좌이체' },
+      { id: 'fee-1-3', round: 3, amount: 600000, dueDate: '2026-09-16', status: 'pending', memo: '2회차 분납 (당일 마감)', paymentMethod: '가상계좌' },
+      { id: 'fee-1-4', round: 4, amount: 600000, dueDate: '2026-10-16', status: 'pending', memo: '3회차 잔금' }
+    ],
     courtCase: {
       courtName: '서울회생법원',
-      status: '서류 취합 중',
+      caseNumber: '2026하단2019',
+      filedDate: '2026-09-05',
+      status: '파산관재인 서류 검토 중',
     },
     notes: [
       {
@@ -313,25 +325,32 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         type: 'created',
         description: '마이김변 플랫폼을 통해 [개인파산] 무료상담이 접수되었습니다.',
         createdAt: '2026-09-08T10:15:00Z'
-      },
-      {
-        id: 'act-amj-1-2',
-        clientId: 'req-amjone-1',
-        actorId: 'lawyer-1',
-        actorName: '김우진 변호사',
-        actorRole: 'OWNER',
-        type: 'status_change',
-        description: '진행 상태를 [서류 수집]으로 변경하였습니다. (파산관재인 15대 필수서류 리스트 알림톡 발송)',
-        createdAt: '2026-09-08T11:40:00Z'
       }
     ]
   },
   'req-amjone-2': {
-    crmStatus: 'consulting',
+    crmStatus: 'contracted',
     caseType: 'individual_rehab',
     intakeChannel: 'naver_ad',
     intakeChannelDetail: '네이버 검색광고: "코인 손실 개인회생"',
     preInfo: '2024년 해외선물 및 알트코인 투자 손실 9천만 원. IT 개발자(월 310만원). 서울회생법원 주식/가상자산 손실금 청산가치 불반영 및 청년 24개월 변제 특례 검토 중.',
+    contractDate: '2026-07-20',
+    contractAmount: 3000000,
+    totalFee: 3000000,
+    totalPaid: 1000000,
+    feeSchedule: [
+      { id: 'fee-2-1', round: 1, amount: 1000000, dueDate: '2026-07-20', paidDate: '2026-07-20', status: 'paid', memo: '착수금', paymentMethod: '신용카드' },
+      { id: 'fee-2-2', round: 2, amount: 500000, dueDate: '2026-08-20', status: 'overdue', memo: '1회차 분납 (연체 27일)', rescheduledCount: 1, originalDueDate: '2026-08-10', deferralReason: '급여 지연 지급' },
+      { id: 'fee-2-3', round: 3, amount: 500000, dueDate: '2026-09-10', status: 'overdue', memo: '2회차 분납 (연체 6일)', rescheduledCount: 2, originalDueDate: '2026-09-01', deferralReason: '대출 이자 납부 곤란' },
+      { id: 'fee-2-4', round: 4, amount: 500000, dueDate: '2026-10-10', status: 'pending', memo: '3회차 분납' },
+      { id: 'fee-2-5', round: 5, amount: 500000, dueDate: '2026-11-10', status: 'pending', memo: '4회차 잔금' }
+    ],
+    courtCase: {
+      courtName: '서울회생법원',
+      caseNumber: '2026개회89211',
+      filedDate: '2026-08-01',
+      status: '보정권고 송달 / 대응 중',
+    },
     notes: [
       {
         id: 'note-amj-2-1',
@@ -339,7 +358,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
         authorRole: 'OWNER',
-        content: '서울회생법원 준칙 제408호 적용 대상. 해외선물 거래내역서 및 업비트 거래내역 분석 중. 직장 통보 방지 요청 철저 관리 요망.',
+        content: '서울회생법원 준칙 제408호 적용 대상. 해외선물 거래내역서 및 업비트 거래내역 분석 중. 직장 통보 방지 요청 철저 관리 요망. ⚠️ 수임료 2회차 연속 미납 상태로 특별 유선 상담 필요.',
         createdAt: '2026-09-08T16:00:00Z',
         category: 'general'
       }
@@ -368,9 +387,9 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     totalFee: 2500000,
     totalPaid: 1000000,
     feeSchedule: [
-      { id: 'fee-1', round: 1, amount: 1000000, dueDate: '2026-09-09', paidDate: '2026-09-09', status: 'paid', paymentMethod: '계좌이체' },
-      { id: 'fee-2', round: 2, amount: 800000, dueDate: '2026-10-09', status: 'pending' },
-      { id: 'fee-3', round: 3, amount: 700000, dueDate: '2026-11-09', status: 'pending' }
+      { id: 'fee-3-1', round: 1, amount: 1000000, dueDate: '2026-09-09', paidDate: '2026-09-09', status: 'paid', memo: '착수금', paymentMethod: '계좌이체' },
+      { id: 'fee-3-2', round: 2, amount: 800000, dueDate: '2026-10-09', status: 'pending', memo: '1회차 분납' },
+      { id: 'fee-3-3', round: 3, amount: 700000, dueDate: '2026-11-09', status: 'pending', memo: '2회차 잔금' }
     ],
     courtCase: {
       courtName: '수원회생법원',
@@ -411,9 +430,15 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     contractAmount: 2200000,
     totalFee: 2200000,
     totalPaid: 2200000,
+    feeSchedule: [
+      { id: 'fee-4-1', round: 1, amount: 1000000, dueDate: '2026-08-28', paidDate: '2026-08-28', status: 'paid', memo: '착수금', paymentMethod: '계좌이체' },
+      { id: 'fee-4-2', round: 2, amount: 600000, dueDate: '2026-09-02', paidDate: '2026-09-02', status: 'paid', memo: '1회차 분납', paymentMethod: '계좌이체' },
+      { id: 'fee-4-3', round: 3, amount: 600000, dueDate: '2026-09-10', paidDate: '2026-09-10', status: 'paid', memo: '2회차 완납', paymentMethod: '계좌이체' }
+    ],
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2026개회104921',
+      filedDate: '2026-09-02',
       status: '금지명령 인용 / 개시 대기',
     },
     notes: [
@@ -423,7 +448,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
         authorRole: 'OWNER',
-        content: '서울회생법원 2026개회104921 접수 완료. 금지명령 인용 결정문 송달되어 시중은행 독촉 즉시 전면 중단됨. HUG 안심전세대출 구제 특례 적용 진행 중.',
+        content: '서울회생법원 2026개회104921 접수 완료. 금지명령 인용 결정문 송달되어 시중은행 독촉 즉시 전면 중단됨. HUG 안심전세대출 구제 특례 적용 진행 중. 수임료 전액 완납 완료.',
         createdAt: '2026-09-10T09:30:00Z',
         category: 'court'
       }
@@ -442,11 +467,25 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     ]
   },
   'req-amjone-5': {
-    crmStatus: 'requested',
+    crmStatus: 'contracted',
     caseType: 'individual_rehab',
     intakeChannel: 'blog',
     intakeChannelDetail: '네이버 블로그: "급여 압류 막는 법" 칼럼 유입',
-    preInfo: '제조업 생산직(월 260만 원, 4인 가족). 모친 암 수술비로 대부업체 3곳 2,800만 원 등 총 6,200만 원 채무. 연체 직전 추심원 방문 예고 수신. 당일 긴급 전화상담 요청.',
+    preInfo: '제조업 생산직(월 260만 원, 4인 가족). 모친 암 수술비로 대부업체 3곳 2,800만 원 등 총 6,200만 원 채무. 연체 직전 추심원 방문 예고 수신. 긴급 전자계약 체결 완료.',
+    contractDate: '2026-09-12',
+    contractAmount: 2000000,
+    totalFee: 2000000,
+    totalPaid: 500000,
+    feeSchedule: [
+      { id: 'fee-5-1', round: 1, amount: 500000, dueDate: '2026-09-12', paidDate: '2026-09-12', status: 'paid', memo: '착수금', paymentMethod: '계좌이체' },
+      { id: 'fee-5-2', round: 2, amount: 500000, dueDate: '2026-09-18', status: 'pending', memo: '1회차 분납 (D-2 사전안내)' },
+      { id: 'fee-5-3', round: 3, amount: 500000, dueDate: '2026-10-18', status: 'pending', memo: '2회차 분납' },
+      { id: 'fee-5-4', round: 4, amount: 500000, dueDate: '2026-11-18', status: 'pending', memo: '3회차 잔금' }
+    ],
+    courtCase: {
+      courtName: '인천지방법원',
+      status: '부채증명서 발급 및 신청서 작성 중',
+    },
     notes: [],
     activities: [
       {

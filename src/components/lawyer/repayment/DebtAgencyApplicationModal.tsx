@@ -41,9 +41,16 @@ export default function DebtAgencyApplicationModal({
   onSaveOrder,
   activeLawyerName,
 }: DebtAgencyApplicationModalProps) {
+  const sanitizeAgencyData = (data: DebtAgencyApplicationData): DebtAgencyApplicationData => ({
+    ...data,
+    tel: data.tel === '02-3492-4246' ? '' : (data.tel || ''),
+    fax: data.fax === '02-2179-8487' ? '' : (data.fax || ''),
+    hp: data.hp === '010-4064-4246' ? '' : (data.hp || ''),
+  });
+
   const [appData, setAppData] = useState<DebtAgencyApplicationData>(() => {
     if (order.agencyApplication) {
-      return order.agencyApplication;
+      return sanitizeAgencyData(order.agencyApplication);
     }
     return createDefaultAgencyApplicationData(order, clientRequest, activeLawyerName);
   });
@@ -63,7 +70,7 @@ export default function DebtAgencyApplicationModal({
   // 주문 채권자가 바뀌었을 때 appData에 동기화
   useEffect(() => {
     if (order.agencyApplication) {
-      setAppData(order.agencyApplication);
+      setAppData(sanitizeAgencyData(order.agencyApplication));
     } else {
       setAppData(createDefaultAgencyApplicationData(order, clientRequest, activeLawyerName));
     }
@@ -410,8 +417,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.tel} 
+                      placeholder="02-0000-0000"
                       onChange={(e) => setAppData({ ...appData, tel: e.target.value })}
-                      className="w-full bg-transparent text-center font-mono outline-none"
+                      className="w-full bg-transparent text-center font-mono outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 w-14 font-bold text-center">
@@ -421,8 +429,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.fax} 
+                      placeholder="02-0000-0000"
                       onChange={(e) => setAppData({ ...appData, fax: e.target.value })}
-                      className="w-full bg-transparent text-center font-mono outline-none"
+                      className="w-full bg-transparent text-center font-mono outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 font-bold text-center leading-tight">
@@ -434,7 +443,7 @@ export default function DebtAgencyApplicationModal({
                       value={appData.directPhone || ''} 
                       placeholder="직통번호"
                       onChange={(e) => setAppData({ ...appData, directPhone: e.target.value })}
-                      className="w-full bg-transparent text-center font-mono outline-none text-slate-700"
+                      className="w-full bg-transparent text-center font-mono outline-none text-slate-700 placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 font-bold text-center">
@@ -444,8 +453,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.hp} 
+                      placeholder="010-0000-0000"
                       onChange={(e) => setAppData({ ...appData, hp: e.target.value })}
-                      className="w-full bg-transparent text-center font-mono font-bold outline-none"
+                      className="w-full bg-transparent text-center font-mono font-bold outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                 </tr>
@@ -458,8 +468,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.clientName} 
+                      placeholder="고객명"
                       onChange={(e) => setAppData({ ...appData, clientName: e.target.value })}
-                      className="w-full bg-transparent font-bold text-center text-slate-900 outline-none"
+                      className="w-full bg-transparent font-bold text-center text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 font-bold text-center leading-tight">
@@ -469,8 +480,9 @@ export default function DebtAgencyApplicationModal({
                     <input 
                       type="text" 
                       value={appData.clientPhone} 
+                      placeholder="010-0000-0000"
                       onChange={(e) => setAppData({ ...appData, clientPhone: e.target.value })}
-                      className="w-full bg-transparent font-mono text-center outline-none"
+                      className="w-full bg-transparent font-mono text-center outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </td>
                   <th className="bg-slate-100 border-r border-slate-900 p-1.5 font-bold text-center leading-tight">

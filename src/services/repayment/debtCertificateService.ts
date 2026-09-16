@@ -496,10 +496,10 @@ export function createDefaultAgencyApplicationData(
     officeName: '법률사무소 보광',
     caseManager: activeLawyerName || '박명국',
     billingManager: '박명국',
-    tel: '02-3492-4246',
-    fax: '02-2179-8487',
+    tel: '',
+    fax: '',
     directPhone: '',
-    hp: '010-4064-4246',
+    hp: '',
     clientName: order.clientName || clientRequest?.clientName || '',
     clientPhone: order.clientPhone || clientRequest?.phone || '',
     cautions: [

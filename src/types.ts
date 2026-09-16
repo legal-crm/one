@@ -215,6 +215,10 @@ export interface FeeInstallment {
     ratePercent?: number;
     description?: string;
   };
+  paymentMethod?: string;     // 납부 방법 ('계좌이체' | '신용카드' | '가상계좌' | '현금')
+  rescheduledCount?: number;  // 납부 약속 연기/유예 횟수
+  originalDueDate?: string;   // 당초 약정 납부일
+  deferralReason?: string;    // 연기/유예 사유
   // ── 알림 발송 이력 추적 ──
   lastNotifiedAt?: string;
   lastNotifiedType?: AlimtokMilestone;
@@ -224,6 +228,35 @@ export interface FeeInstallment {
     channel: 'kakao' | 'sms';
     status: 'sent' | 'failed';
   }>;
+}
+
+// ── 수임료 분납 종합 정산 요약 타입 ──
+export interface FeeSettlementSummary {
+  clientId: string;
+  clientName: string;
+  realClientName?: string;
+  phone: string;
+  caseType?: string;
+  caseNumber?: string;
+  courtName?: string;
+  contractDate?: string;
+  filingDate?: string;
+  totalFee: number;
+  totalPaid: number;
+  remainingFee: number;
+  totalInstallments: number;
+  completedInstallments: number;
+  remainingInstallments: number;
+  nextDueDate?: string;
+  nextDueAmount?: number;
+  nextDueRound?: number;
+  isOverdue: boolean;
+  overdueDays: number;
+  overdueRoundsCount: number;
+  rescheduledCount: number;
+  isHighRiskTarget: boolean; // 2회 이상 연기 또는 2회차 이상 연체 (🚨 집중 관리 대상)
+  status: 'completed' | 'overdue' | 'due_today' | 'upcoming' | 'normal' | 'no_schedule';
+  feeSchedule: FeeInstallment[];
 }
 
 // ── 수임료 스마트 자동 알림 규칙 및 설정 ──
