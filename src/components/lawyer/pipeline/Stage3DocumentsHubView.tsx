@@ -15,7 +15,6 @@ import {
   type SubmissionMethod 
 } from '../../../services/documents/applicationDocTemplateService';
 import ApplicationDocSettingsModal from '../documents/ApplicationDocSettingsModal';
-import MobileApplicationDocHubModal from '../../client/MobileApplicationDocHubModal';
 import BatchDocRequestModal, { type BatchDocItem } from './BatchDocRequestModal';
 import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
 import { sendAlimtok } from '../../../services/alimtokService';
@@ -74,7 +73,6 @@ export default function Stage3DocumentsHubView({
   const [activePhaseTab, setActivePhaseTab] = useState<PhaseTab>('all');
   const [activeAgency, setActiveAgency] = useState<AgencyTab>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [thirdPartyMaskingConfirmed, setThirdPartyMaskingConfirmed] = useState(true);
 
   // 채권자 수 및 인감증명서 부수
   const creditorCount = Number(clientRequest.creditorCount || crmExt?.creditorCount || 5);
@@ -96,7 +94,6 @@ export default function Stage3DocumentsHubView({
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchPresetPhase, setBatchPresetPhase] = useState<DocPhase | undefined>(undefined);
   const [showSpeedReviewModal, setShowSpeedReviewModal] = useState(false);
-  const [showMobileHubModal, setShowMobileHubModal] = useState(false);
   const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
 
   // 부채증명서 대행 주문 상태
@@ -944,182 +941,6 @@ export default function Stage3DocumentsHubView({
 
       </div>
 
-      {/* ── 3. 상황별 지능형 Next Action 배너 (단 하나의 핵심 행동 유도) ── */}
-      <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
-        !stats.isPhase1Done
-          ? 'bg-amber-50/80 border-amber-200 text-amber-950'
-          : !isDebtDispatched
-          ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
-          : stats.submittedCount > 0
-          ? 'bg-blue-50/80 border-blue-200 text-blue-950'
-          : stats.isReadyForStage4
-          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
-          : 'bg-white border-slate-200 text-slate-900'
-      }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
-              !stats.isPhase1Done
-                ? 'bg-amber-600 text-white'
-                : !isDebtDispatched
-                ? 'bg-indigo-600 text-white'
-                : stats.submittedCount > 0
-                ? 'bg-blue-600 text-white'
-                : stats.isReadyForStage4
-                ? 'bg-emerald-600 text-white'
-                : 'bg-[#1E3A5F] text-white'
-            }`}>
-              {stats.isReadyForStage4 ? (
-                <CheckCircle2 className="w-5 h-5" />
-              ) : !stats.isPhase1Done ? (
-                <Truck className="w-5 h-5" />
-              ) : !isDebtDispatched ? (
-                <FileSpreadsheet className="w-5 h-5" />
-              ) : (
-                <FileCheck2 className="w-5 h-5" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-white/80 text-slate-800 border border-slate-200">
-                  {!stats.isPhase1Done
-                    ? '1차 서류 착수 단계'
-                    : !isDebtDispatched
-                    ? '대행 신청서 발주 단계'
-                    : stats.submittedCount > 0
-                    ? '2차 서류 검토 단계'
-                    : stats.isReadyForStage4
-                    ? '서류 완비 단계'
-                    : '서류 수합 진행'}
-                </span>
-                <span className="text-sm font-black tracking-tight">
-                  {!stats.isPhase1Done
-                    ? `고객이 1차 기본서류 및 인감도장을 아직 발송하지 않았습니다. 빠른등기 요청을 진행하세요.`
-                    : !isDebtDispatched
-                    ? `1차 서류가 도착했습니다! 대행업체에 보낼 부채증명서 대행 신청서를 작성 및 인쇄하여 발주하세요.`
-                    : stats.submittedCount > 0 
-                    ? `부채증명서 발급 진행 중입니다. 제출된 2차 서류 ${stats.submittedCount}건을 연속 검토하세요.`
-                    : stats.isReadyForStage4
-                    ? '1·2차 필수 서류 및 부채증명서 준비가 완료되었습니다. Stage 4(신청서 작성·접수)로 이동하세요.'
-                    : `미제출된 필수서류 ${stats.unsubmittedCount}건을 고객에게 요청하세요.`}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {!stats.isPhase1Done
-                  ? '우체국 빠른등기나 편의점택배로 1차 인적서류와 인감도장을 수령해야 부채증명서 대행에 착수할 수 있습니다.'
-                  : !isDebtDispatched
-                  ? 'A4 신청서 인쇄본과 인감도장을 봉투에 동봉하여 대행사에 전달하면 약 7영업일 카운트다운이 시작됩니다.'
-                  : stats.submittedCount > 0
-                  ? '대행업체에서 부채증명서 실물 서류철이 나오기 전까지 2차 소득·재산 서류 검토를 끝마치면 즉시 접수가 가능합니다.'
-                  : stats.isReadyForStage4
-                  ? '부채증명서철과 8대 서식(D5102, D5103)을 결합하여 전자소송 제출 패키징을 생성할 준비가 완료되었습니다.'
-                  : '원클릭 카카오 알림톡으로 신속히 안내하여 법원 접수 목표일을 사수합니다.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {!stats.isPhase1Done ? (
-              <button
-                type="button"
-                onClick={handleSendPhase1Alimtalk}
-                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <Send className="w-4 h-4 text-white" />
-                <span>1차 빠른등기 요청 카톡 발송 (Major)</span>
-              </button>
-            ) : !isDebtDispatched ? (
-              <button
-                type="button"
-                onClick={() => setIsAgencyAppModalOpen(true)}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
-                <span>대행 신청서 작성 및 인쇄·발송 (Major)</span>
-              </button>
-            ) : stats.submittedCount > 0 ? (
-              <button
-                type="button"
-                onClick={() => setShowSpeedReviewModal(true)}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <FileCheck2 className="w-4 h-4 text-blue-200" />
-                <span>서류 {stats.submittedCount}건 연속 검토 시작 (Major)</span>
-              </button>
-            ) : stats.isReadyForStage4 ? (
-              <button
-                type="button"
-                onClick={onAdvanceToNextStage}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <span>Stage 4 (신청서 작성·접수)로 이동</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setBatchPresetPhase(activePhaseTab === 'all' ? undefined : (activePhaseTab === 'debt' ? undefined : activePhaseTab));
-                  setShowBatchModal(true);
-                }}
-                className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <Send className="w-4 h-4 text-emerald-400" />
-                <span>미제출 서류 {stats.unsubmittedCount}건 한 번에 요청</span>
-              </button>
-            )}
-
-            {onOpenStatementSyncModal && (
-              <button
-                type="button"
-                onClick={onOpenStatementSyncModal}
-                className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-                title="의뢰인이 작성한 채무증대경위서(진술서) 실시간 확인 및 동기화"
-              >
-                <span>✍️ 고객 진술서 동기화</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowMobileHubModal(true)}
-              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-              title="의뢰인 모바일 서류함 화면 미리보기"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-slate-600" />
-              <span>모바일 서류함 확인</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 4. 제3자 주민번호 마스킹 준칙 배너 ── */}
-      <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 flex items-start justify-between gap-4 text-xs shadow-xs">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <div className="font-extrabold text-sm flex items-center gap-2 text-amber-900">
-              <span>개인정보보호 및 법원 제출 기준: 제3자 주민번호 마스킹 준칙</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200/70 text-amber-900 font-bold">
-                보정명령 사전 예방
-              </span>
-            </div>
-            <p className="text-slate-700 leading-relaxed text-[11px]">
-              가족관계증명서, 혼인관계증명서, 주민등록등본 제출 시 <strong>신청인 본인을 제외한 가족(배우자, 부모, 자녀 등)의 주민등록번호 뒷자리는 미표기(******)</strong>된 서류를 제출해야 법원 개인정보 보호 지침에 부합합니다.
-            </p>
-          </div>
-        </div>
-
-        <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-xl border border-amber-300 shadow-2xs shrink-0">
-          <input
-            type="checkbox"
-            checked={thirdPartyMaskingConfirmed}
-            onChange={e => setThirdPartyMaskingConfirmed(e.target.checked)}
-            className="w-4 h-4 rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
-          />
-          <span className="font-bold text-slate-800 text-xs">제3자 마스킹 원칙 준수</span>
-        </label>
-      </div>
 
       {/* ── 4. 서류 작업 테이블 (상태 필터 + 기관별 탭 + 정제된 단일 액션) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1620,13 +1441,6 @@ export default function Stage3DocumentsHubView({
         onRejectDoc={handleRejectDoc}
       />
 
-      {showMobileHubModal && (
-        <MobileApplicationDocHubModal
-          isOpen={showMobileHubModal}
-          onClose={() => setShowMobileHubModal(false)}
-          clientRequest={clientRequest}
-        />
-      )}
 
       {isAgencyAppModalOpen && (
         <DebtAgencyApplicationModal
