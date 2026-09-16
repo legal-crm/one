@@ -5,7 +5,7 @@ import {
   ArrowRight, Camera, RefreshCw, AlertTriangle, Send, 
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
   RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy,
-  FileSpreadsheet
+  FileSpreadsheet, Lock, Unlock, ArrowUpRight, Edit2, Save, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
@@ -23,6 +23,7 @@ import { addClientNotification } from '../../../services/clientNotificationServi
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
+import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
 
 interface Stage3DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -60,7 +61,7 @@ export interface DocItemModel {
 
 type AgencyTab = 'all' | 'gov' | 'tax' | 'work' | 'finance' | 'personal';
 type StatusFilter = 'all' | 'unsubmitted' | 'review' | 'supplement' | 'approved';
-type PhaseTab = 'all' | 1 | 2;
+type PhaseTab = 'all' | 1 | 'debt' | 2;
 
 export default function Stage3DocumentsHubView({
   clientRequest,
@@ -69,7 +70,7 @@ export default function Stage3DocumentsHubView({
   onOpenDocScanner,
   onOpenStatementSyncModal,
 }: Stage3DocumentsHubViewProps) {
-  // 1차/2차 차수별 탭
+  // 1차/2차/부채대행 차수별 탭
   const [activePhaseTab, setActivePhaseTab] = useState<PhaseTab>('all');
   const [activeAgency, setActiveAgency] = useState<AgencyTab>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -79,10 +80,16 @@ export default function Stage3DocumentsHubView({
   const creditorCount = Number(clientRequest.creditorCount || crmExt?.creditorCount || 5);
   const requiredSealCount = ApplicationDocTemplateService.getRequiredSealCertCount(creditorCount);
 
-  // 1차 실물 등기 및 부채증명서 대행 트랙 상태
-  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>('682910385921');
+  // 1차 실물 등기 및 배송추적 상태 (우체국, 편의점 택배 등)
+  const [postalCarrier, setPostalCarrier] = useState<string>(crmExt?.postalCarrier || 'GS25');
+  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>(crmExt?.postalTrackingNumber || '682910385921');
+  const [isEditingPostal, setIsEditingPostal] = useState<boolean>(false);
+  const [inputCarrier, setInputCarrier] = useState<string>(postalCarrier);
+  const [inputTracking, setInputTracking] = useState<string>(postalTrackingNumber);
+
+  // 인감 보관 및 부채증명서 대행 진행 상태
   const [isSealKeptInSafe, setIsSealKeptInSafe] = useState<boolean>(true);
-  const [debtCertTrackStatus, setDebtCertTrackStatus] = useState<'idle' | 'in_progress' | 'completed'>('in_progress');
+  const [isDebtDispatched, setIsDebtDispatched] = useState<boolean>(true); // 대행업체에 신청서/인감 발송 완료 여부
   const [debtCertElapsedDays, setDebtCertElapsedDays] = useState<number>(3); // 3일차/7일
 
   // 모달 상태
@@ -290,20 +297,45 @@ export default function Stage3DocumentsHubView({
     });
   }, [docList, activePhaseTab, activeAgency, statusFilter]);
 
-  // 1차 서류 일괄 수령 완료 처리
+  // 1차 서류 일괄 수령 완료 처리 (게이트 통과)
   const handleApproveAllPhase1 = () => {
     setDocList(prev => prev.map(d => 
       d.phase === 1 
         ? { ...d, status: 'APPROVED', approvedAt: new Date().toLocaleDateString() } 
         : d
     ));
-    setDebtCertTrackStatus('in_progress');
-    toast.success('1차 실물 등기 서류 9종이 모두 수령 확인되었습니다. 부채증명서 대행 발급(약 7일)을 개시합니다.');
+    setIsSealKeptInSafe(true);
+    // 1차 서류 수령 직후 -> 대행 신청서 작성 대기 모드로 진입
+    setIsDebtDispatched(false);
+    toast.success('1차 실물 서류 9종 수령 및 인감 보관이 확인되었습니다! 이제 [대행 신청서 작성]을 진행해 주세요.', {
+      duration: 5000,
+    });
     
     addClientNotification({
       type: 'document_request',
-      title: `[1차 서류 수령완료] ${clientRequest.clientName}님, 보내주신 1차 서류가 도착하여 부채증명서 발급을 시작합니다. 2차 서류를 모바일로 올려주세요.`,
+      title: `[1차 서류 수령완료] ${clientRequest.clientName}님, 보내주신 1차 서류가 잘 도착하여 부채증명서 발급 준비에 들어갑니다.`,
       emoji: '📦',
+      linkTab: 'diagnosis',
+    });
+  };
+
+  // 배송 송장정보 어드민 직접 저장 핸들러
+  const handleSavePostalTracking = () => {
+    setPostalCarrier(inputCarrier);
+    setPostalTrackingNumber(inputTracking.trim());
+    setIsEditingPostal(false);
+    toast.success(`배송 정보가 저장되었습니다: [${getCarrierLabel(inputCarrier)}] ${inputTracking.trim() || '미등록'}`);
+  };
+
+  // 대행업체 발송 완료 마킹 핸들러
+  const handleConfirmDebtDispatched = () => {
+    setIsDebtDispatched(true);
+    setDebtCertElapsedDays(1);
+    toast.success('부채증명서 대행업체 전달 및 발주가 완료되었습니다. (약 7영업일 소요 시작)');
+    addClientNotification({
+      type: 'status_change',
+      title: `[부채증명서 발급 개시] ${clientRequest.clientName}님, 채권사 부채증명서 발급을 정식 개시했습니다. 발급 대기 기간 동안 2차 소득·재산 서류를 올려주세요.`,
+      emoji: '🏛️',
       linkTab: 'diagnosis',
     });
   };
@@ -389,226 +421,638 @@ export default function Stage3DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 2. [실무 핵심] 2-트랙 병렬 진행 대시보드 ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Track 1: 1차 실물 등기 & 부채증명서 대행 (약 7일) */}
-        <div className={`p-5 rounded-2xl border transition-all ${
+      {/* ── 1. [실무 타임라인] 릴레이 파이프라인 리본 (Relay Progress Ribbon) ── */}
+      <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-900 text-white">
+              실무 프로세스
+            </span>
+            <h3 className="font-extrabold text-sm text-slate-900">
+              개인회생 서류 수집 & 부채증명서 릴레이 파이프라인
+            </h3>
+          </div>
+          <span className="text-xs text-slate-500 font-medium">
+            1차 실물 확보 ➔ 대행 발주 (약 7일) ➔ 골든타임 2차 병렬 수합 ➔ 법원 접수
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+          {/* Node 1: 1차 실물 서류 */}
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition-all ${
+            stats.isPhase1Done 
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold' 
+              : 'bg-amber-50/80 border-amber-300 text-amber-950 font-bold'
+          }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${
+              stats.isPhase1Done ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
+            }`}>
+              {stats.isPhase1Done ? <Check className="w-3.5 h-3.5" /> : '1'}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="truncate">1차 실물서류 수령</span>
+                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                  {stats.isPhase1Done ? '완료' : '진행중'}
+                </span>
+              </div>
+              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
+                인감도장/증명서({requiredSealCount}부) 실물확보
+              </p>
+            </div>
+          </div>
+
+          {/* Node 2: 대행 신청서 작성 & 발송 */}
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition-all ${
+            !stats.isPhase1Done
+              ? 'bg-slate-50 border-slate-200 text-slate-400'
+              : isDebtDispatched
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+              : 'bg-indigo-50 border-indigo-300 text-indigo-950 font-bold animate-pulse'
+          }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${
+              !stats.isPhase1Done 
+                ? 'bg-slate-200 text-slate-500' 
+                : isDebtDispatched 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-indigo-600 text-white'
+            }`}>
+              {isDebtDispatched ? <Check className="w-3.5 h-3.5" /> : '2'}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="truncate">대행신청서 작성·발송</span>
+                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                  {!stats.isPhase1Done ? '대기' : isDebtDispatched ? '발주완료' : '작성필요'}
+                </span>
+              </div>
+              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
+                채권사 {creditorCount}곳 대행신청서 전달
+              </p>
+            </div>
+          </div>
+
+          {/* Node 3: 부채증명 발급 & 2차 서류 병렬 */}
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition-all ${
+            !isDebtDispatched
+              ? 'bg-slate-50 border-slate-200 text-slate-400'
+              : stats.phase2ProgressRate >= 80
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+              : 'bg-blue-50 border-blue-300 text-blue-950 font-bold'
+          }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${
+              !isDebtDispatched 
+                ? 'bg-slate-200 text-slate-500' 
+                : stats.phase2ProgressRate >= 80 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-blue-600 text-white'
+            }`}>
+              3
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="truncate">부채대행 & 2차병렬</span>
+                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-white/80 border">
+                  {!isDebtDispatched ? '대기' : `${debtCertElapsedDays}일차/7일`}
+                </span>
+              </div>
+              <p className="text-[10px] font-normal text-slate-600 truncate mt-0.5">
+                7일 골든타임 모바일 서류 수합
+              </p>
+            </div>
+          </div>
+
+          {/* Node 4: 법원 접수 준비 완료 */}
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition-all ${
+            stats.isReadyForStage4
+              ? 'bg-emerald-600 text-white font-bold shadow-xs'
+              : 'bg-slate-50 border-slate-200 text-slate-400'
+          }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${
+              stats.isReadyForStage4 ? 'bg-white text-emerald-700' : 'bg-slate-200 text-slate-500'
+            }`}>
+              4
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="truncate">법원 접수 준비</span>
+                <span className={`text-[10px] px-1 py-0.2 rounded font-bold border ${
+                  stats.isReadyForStage4 ? 'bg-emerald-700 text-white border-emerald-500' : 'bg-white text-slate-500'
+                }`}>
+                  {stats.isReadyForStage4 ? '준비완료' : '대기'}
+                </span>
+              </div>
+              <p className={`text-[10px] truncate mt-0.5 ${stats.isReadyForStage4 ? 'text-emerald-100' : 'text-slate-500'}`}>
+                신청서·변제계획안 패키징
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. [실무 핵심 3-스마트 카드] (인과관계 및 의존성 반영) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4.5">
+        
+        {/* 카드 1: [📮 1차 기본서류 & 인감 수령 (착수 게이트)] */}
+        <div className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
           stats.isPhase1Done ? 'bg-emerald-50/60 border-emerald-200' : 'bg-amber-50/50 border-amber-200'
         }`}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className={`p-2.5 rounded-xl ${stats.isPhase1Done ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'}`}>
-                <Truck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
-                    Track 1 · 실물 착수
-                  </span>
-                  <h4 className="font-extrabold text-sm text-slate-900">
-                    1차 서류 & 부채증명서 발급 대행
-                  </h4>
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2.5 rounded-xl ${stats.isPhase1Done ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'}`}>
+                  <Truck className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  인감도장/인감증명서({requiredSealCount}부) 실물 수령 후 채권 금융기관 일괄 발주
-                </p>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
+                      Step 1 · 착수 게이트
+                    </span>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      1차 기본서류 & 인감 수령
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    인감도장/증명서({requiredSealCount}부) 실물 수령 필수
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[11px] font-black px-2 py-0.8 rounded-full border shrink-0 ${
+                stats.isPhase1Done 
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
+                {stats.isPhase1Done ? '수령 완료 (게이트 오픈)' : `${stats.phase1ApprovedCount}/${stats.phase1RequiredCount}건 준비중`}
+              </span>
+            </div>
+
+            {/* 카드 1 내부 메타데이터 박스 */}
+            <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+              {/* 인감도장 금고 보관 */}
+              <div className="flex items-center justify-between text-slate-600">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Stamp className="w-3.5 h-3.5 text-indigo-600" /> 인감도장 사무소 보관:
+                </span>
+                <button 
+                  type="button" 
+                  onClick={() => setIsSealKeptInSafe(!isSealKeptInSafe)}
+                  className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                    isSealKeptInSafe ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-500'
+                  }`}
+                  title="클릭하여 보관 상태 토글"
+                >
+                  {isSealKeptInSafe ? '보관중 (금고 A-03)' : '미수령'}
+                </button>
+              </div>
+
+              {/* 인감증명서 부수 검증 */}
+              <div className="flex items-center justify-between text-slate-600">
+                <span className="font-medium">인감증명서 필수 부수:</span>
+                <span className="font-mono font-bold text-slate-800">
+                  채권사 {creditorCount}곳 + 5부 = <strong className="text-indigo-600">총 {requiredSealCount}부</strong>
+                </span>
+              </div>
+
+              {/* 등기/택배 배송 송장정보 컴팩트 Row (인라인 수정 지원) */}
+              <div className="pt-2 border-t border-slate-100">
+                {isEditingPostal ? (
+                  <div className="space-y-1.5 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="text-[10px] font-bold text-slate-600 flex items-center justify-between">
+                      <span>배송사 및 송장번호 입력</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setIsEditingPostal(false)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                      <select
+                        value={inputCarrier}
+                        onChange={(e) => setInputCarrier(e.target.value)}
+                        className="col-span-2 text-[11px] bg-white border border-slate-300 rounded p-1"
+                      >
+                        {CARRIER_LIST.map(c => (
+                          <option key={c.code} value={c.code}>{c.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={inputTracking}
+                        onChange={(e) => setInputTracking(e.target.value)}
+                        placeholder="송장번호 숫자"
+                        className="col-span-3 text-[11px] bg-white border border-slate-300 rounded p-1 font-mono"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={handleSavePostalTracking}
+                        className="px-2 py-0.5 bg-slate-800 text-white rounded font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                      >
+                        <Save className="w-2.5 h-2.5" /> 저장
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 font-medium text-slate-600">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span>배송 송장:</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-slate-800">
+                        [{getCarrierLabel(postalCarrier).slice(0, 4)}] {postalTrackingNumber || '미등록'}
+                      </span>
+                      {postalTrackingNumber && getCarrierTrackingUrl(postalCarrier, postalTrackingNumber) && (
+                        <a
+                          href={getCarrierTrackingUrl(postalCarrier, postalTrackingNumber)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[10px] font-bold flex items-center gap-0.5 border border-blue-200 transition-colors"
+                          title="공식 배송조회 페이지 열기"
+                        >
+                          <Truck className="w-2.5 h-2.5" />
+                          <span>조회</span>
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputCarrier(postalCarrier);
+                          setInputTracking(postalTrackingNumber);
+                          setIsEditingPostal(true);
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-slate-700 underline cursor-pointer"
+                      >
+                        수정
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
-              stats.isPhase1Done 
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
-                : 'bg-amber-100 text-amber-800 border-amber-300'
-            }`}>
-              {stats.isPhase1Done ? '수령 완료 (대행 진행)' : `${stats.phase1ApprovedCount}/${stats.phase1RequiredCount}건 준비중`}
-            </span>
           </div>
 
-          <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Stamp className="w-3.5 h-3.5 text-indigo-600" /> 인감도장 사무소 금고 보관:
-              </span>
-              <button 
-                type="button" 
-                onClick={() => setIsSealKeptInSafe(!isSealKeptInSafe)}
-                className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
-                  isSealKeptInSafe ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-500'
-                }`}
-              >
-                {isSealKeptInSafe ? '보관중 (금고 A-03)' : '미수령'}
-              </button>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Mail className="w-3.5 h-3.5 text-slate-500" /> 등기 송장번호:
-              </span>
-              <span className="font-mono font-bold text-slate-800">{postalTrackingNumber || '미등록'}</span>
-            </div>
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-700">부채증명서 발급 경과 (약 7영업일):</span>
-                <span className="font-mono font-bold text-amber-700">{debtCertElapsedDays}일차 / 7일 소요</span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.round((debtCertElapsedDays / 7) * 100))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
+          {/* 카드 1 액션 버튼 */}
           <div className="mt-4 flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => setIsAgencyAppModalOpen(true)}
-              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-              title="대행업체 엑셀 신청서 작성, A4 인쇄 및 엑셀 다운로드"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>대행 신청서 작성 및 인쇄</span>
-            </button>
-            <button
-              type="button"
               onClick={handleApproveAllPhase1}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+              className={`px-3 py-1.5 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
+                stats.isPhase1Done
+                  ? 'bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-50'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
             >
               <Check className="w-3.5 h-3.5" />
-              <span>1차 실물 9종 일괄 수령확인</span>
+              <span>{stats.isPhase1Done ? '1차 9종 수령완료됨' : '1차 실물 9종 일괄 수령확인'}</span>
             </button>
             <button
               type="button"
               onClick={handleSendPhase1Alimtalk}
-              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5 text-amber-600" />
-              <span>1차 빠른등기 요청 카톡</span>
+              <Send className="w-3 h-3 text-amber-600" />
+              <span>등기요청 카톡</span>
             </button>
           </div>
         </div>
 
-        {/* Track 2: 2차 소득·재산 디지털 서류 (모바일 업로드) */}
-        <div className={`p-5 rounded-2xl border transition-all ${
+        {/* 카드 2: [🏛️ 부채증명서 대행 관리 (신청서 작성 ➔ 발송 ➔ 일괄 반환)] */}
+        <div className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+          !stats.isPhase1Done
+            ? 'bg-slate-50/70 border-slate-200 text-slate-400'
+            : !isDebtDispatched
+            ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950 shadow-xs'
+            : 'bg-amber-50/60 border-amber-200'
+        }`}>
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2.5 rounded-xl ${
+                  !stats.isPhase1Done ? 'bg-slate-200 text-slate-500' : isDebtDispatched ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white'
+                }`}>
+                  {!stats.isPhase1Done ? <Lock className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
+                      Step 2 · 대행 관리
+                    </span>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      부채증명서 발급 대행
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {!stats.isPhase1Done
+                      ? '1차 서류 수령 후 신청서 작성 가능'
+                      : !isDebtDispatched
+                      ? '1차 서류 수령완료! 대행 신청서를 작성하세요'
+                      : `원클릭부채대행 접수 완료 (약 7영업일 소요)`}
+                  </p>
+                </div>
+              </div>
+
+              <span className={`text-[11px] font-black px-2 py-0.8 rounded-full border shrink-0 ${
+                !stats.isPhase1Done 
+                  ? 'bg-slate-100 text-slate-400 border-slate-200'
+                  : !isDebtDispatched
+                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
+                {!stats.isPhase1Done ? '1차 대기 (Lock)' : !isDebtDispatched ? '신청서 작성대기' : `진행중 (${debtCertElapsedDays}일차)`}
+              </span>
+            </div>
+
+            {/* 카드 2 메타데이터 박스 */}
+            <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2 text-xs">
+              {!stats.isPhase1Done ? (
+                <div className="py-2 text-center text-slate-500 space-y-1">
+                  <Lock className="w-5 h-5 text-slate-400 mx-auto" />
+                  <p className="font-bold text-slate-700">1차 서류 도착 대기중</p>
+                  <p className="text-[11px] text-slate-500">
+                    인감도장과 인감증명서 실물이 도착해야 금융기관 대행 신청서를 작성할 수 있습니다.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>의뢰 대행업체:</span>
+                    <span className="font-bold text-slate-800">원클릭부채대행</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>의뢰 대상 채권기관:</span>
+                    <span className="font-bold text-indigo-700 font-mono">총 {creditorCount}개 금융기관 (누락없음)</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-slate-700">발급 진행 경과 (약 7영업일):</span>
+                      <span className="font-mono font-bold text-amber-700">
+                        {isDebtDispatched ? `${debtCertElapsedDays}일차 / 7일 소요 (D-${Math.max(1, 7 - debtCertElapsedDays)})` : '발주 대기중'}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                        style={{ width: `${isDebtDispatched ? Math.min(100, Math.round((debtCertElapsedDays / 7) * 100)) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 카드 2 액션 버튼 */}
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            {!stats.isPhase1Done ? (
+              <button
+                type="button"
+                disabled
+                className="w-full py-2 bg-slate-100 text-slate-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>1차 서류 수령 후 신청서 작성 가능</span>
+              </button>
+            ) : !isDebtDispatched ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAgencyAppModalOpen(true)}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  title="대행업체 신청서 작성, A4 인쇄 및 엑셀 다운로드"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>대행 신청서 작성 및 인쇄 (Major)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDebtDispatched}
+                  className="px-2.5 py-1.5 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-3 h-3" />
+                  <span>대행사 발송완료 마킹</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAgencyAppModalOpen(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>신청서 다시보기</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success('대행사로부터 부채증명서 실물 서류철이 도착했습니다! 원리금 검수를 시작합니다.');
+                    setIsAgencyAppModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>서류철 도착확인 & 검수</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 카드 3: [📱 2차 소득·재산 서류 수합 (골든타임 병렬)] */}
+        <div className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
           stats.phase2ProgressRate >= 80 ? 'bg-emerald-50/60 border-emerald-200' : 'bg-blue-50/50 border-blue-200'
         }`}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 rounded-xl bg-blue-600 text-white">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
-                    Track 2 · 병렬 준비
-                  </span>
-                  <h4 className="font-extrabold text-sm text-slate-900">
-                    2차 소득·재산 디지털 서류
-                  </h4>
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-blue-600 text-white">
+                  <Smartphone className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  부채증명서 발급 7일 동안 통장내역, 소득증빙, 진술서 간편 업로드
-                </p>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200">
+                      Step 3 · 골든타임 병렬
+                    </span>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      2차 소득·재산 서류 수합
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    부채증명서 발급 7일 동안 통장·소득 간편 업로드
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-black px-2 py-0.8 rounded-full bg-blue-100 text-blue-800 border border-blue-300 shrink-0">
+                {stats.phase2ApprovedCount} / {stats.phase2RequiredCount}건 ({stats.phase2ProgressRate}%)
+              </span>
+            </div>
+
+            {/* 카드 3 메타데이터 박스 */}
+            <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between text-slate-600">
+                <span className="flex items-center gap-1 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-blue-600" /> 골든타임 목표:
+                </span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  부채증명 완료일과 동기화 (D-{Math.max(1, 7 - debtCertElapsedDays)})
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>검토 대기중인 업로드 서류:</span>
+                <span className="font-mono font-bold text-blue-600">{stats.phase2SubmittedCount}건</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>보완 필요(재업로드 요청) 서류:</span>
+                <span className="font-mono font-bold text-amber-600">{stats.supplementCount}건</span>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-slate-700">2차 서류 승인률:</span>
+                  <span className="font-mono font-bold text-blue-700">{stats.phase2ProgressRate}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                    style={{ width: `${stats.phase2ProgressRate}%` }}
+                  />
+                </div>
               </div>
             </div>
-            <span className="text-xs font-black px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
-              {stats.phase2ApprovedCount} / {stats.phase2RequiredCount}건 승인 ({stats.phase2ProgressRate}%)
-            </span>
           </div>
 
-          <div className="mt-4 p-3 bg-white rounded-xl border border-slate-200/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600">
-              <span>검토 대기중인 업로드 서류:</span>
-              <span className="font-mono font-bold text-blue-600">{stats.phase2SubmittedCount}건</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span>보완 필요(재업로드 요청) 서류:</span>
-              <span className="font-mono font-bold text-amber-600">{stats.supplementCount}건</span>
-            </div>
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-700">2차 서류 수합률:</span>
-                <span className="font-mono font-bold text-blue-700">{stats.phase2ProgressRate}%</span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                  style={{ width: `${stats.phase2ProgressRate}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
+          {/* 카드 3 액션 버튼 */}
           <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handleSendPhase2Alimtalk}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-            >
-              <Send className="w-3.5 h-3.5 text-blue-200" />
-              <span>2차 간편제출 카톡 안내</span>
-            </button>
+            {stats.phase2SubmittedCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowSpeedReviewModal(true)}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+              >
+                <FileCheck2 className="w-3.5 h-3.5 text-blue-200" />
+                <span>서류 {stats.phase2SubmittedCount}건 연속 검토 (Major)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSendPhase2Alimtalk}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+              >
+                <Send className="w-3.5 h-3.5 text-blue-200" />
+                <span>2차 간편제출 카톡 안내</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSendPhase2Reminder}
-              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
             >
               <Clock className="w-3.5 h-3.5 text-amber-600" />
               <span>마감 D-2 리마인더</span>
             </button>
           </div>
         </div>
+
       </div>
 
-      {/* ── 3. Next Action Card & 연속 검토 ── */}
+      {/* ── 3. 상황별 지능형 Next Action 배너 (단 하나의 핵심 행동 유도) ── */}
       <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
-        stats.submittedCount > 0
-          ? 'bg-blue-50/70 border-blue-200/90 text-blue-950'
+        !stats.isPhase1Done
+          ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+          : !isDebtDispatched
+          ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+          : stats.submittedCount > 0
+          ? 'bg-blue-50/80 border-blue-200 text-blue-950'
           : stats.isReadyForStage4
-          ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950'
+          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
           : 'bg-white border-slate-200 text-slate-900'
       }`}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
-              stats.submittedCount > 0
-                ? 'bg-blue-600 text-white shadow-xs'
+              !stats.isPhase1Done
+                ? 'bg-amber-600 text-white'
+                : !isDebtDispatched
+                ? 'bg-indigo-600 text-white'
+                : stats.submittedCount > 0
+                ? 'bg-blue-600 text-white'
                 : stats.isReadyForStage4
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-[#1E3A5F] text-white shadow-xs'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-[#1E3A5F] text-white'
             }`}>
               {stats.isReadyForStage4 ? (
                 <CheckCircle2 className="w-5 h-5" />
-              ) : stats.submittedCount > 0 ? (
-                <FileCheck2 className="w-5 h-5" />
+              ) : !stats.isPhase1Done ? (
+                <Truck className="w-5 h-5" />
+              ) : !isDebtDispatched ? (
+                <FileSpreadsheet className="w-5 h-5" />
               ) : (
-                <FolderArchive className="w-5 h-5" />
+                <FileCheck2 className="w-5 h-5" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black px-2 py-0.5 rounded-md bg-white/80 text-slate-800 border border-slate-200">
-                  {stats.submittedCount > 0 ? '지금 해야 할 핵심 작업' : stats.isReadyForStage4 ? '서류 수합 완비' : '서류 요청 단계'}
+                  {!stats.isPhase1Done
+                    ? '1차 서류 착수 단계'
+                    : !isDebtDispatched
+                    ? '대행 신청서 발주 단계'
+                    : stats.submittedCount > 0
+                    ? '2차 서류 검토 단계'
+                    : stats.isReadyForStage4
+                    ? '서류 완비 단계'
+                    : '서류 수합 진행'}
                 </span>
                 <span className="text-sm font-black tracking-tight">
-                  {stats.submittedCount > 0 
-                    ? `제출된 서류 ${stats.submittedCount}건의 제3자 마스킹 및 유효기간을 검토하세요.`
+                  {!stats.isPhase1Done
+                    ? `고객이 1차 기본서류 및 인감도장을 아직 발송하지 않았습니다. 빠른등기 요청을 진행하세요.`
+                    : !isDebtDispatched
+                    ? `1차 서류가 도착했습니다! 대행업체에 보낼 부채증명서 대행 신청서를 작성 및 인쇄하여 발주하세요.`
+                    : stats.submittedCount > 0 
+                    ? `부채증명서 발급 진행 중입니다. 제출된 2차 서류 ${stats.submittedCount}건을 연속 검토하세요.`
                     : stats.isReadyForStage4
-                    ? '1·2차 필수 서류 검토가 완료되었습니다. Stage 4(신청서 작성·접수)로 진행하세요.'
+                    ? '1·2차 필수 서류 및 부채증명서 준비가 완료되었습니다. Stage 4(신청서 작성·접수)로 이동하세요.'
                     : `미제출된 필수서류 ${stats.unsubmittedCount}건을 고객에게 요청하세요.`}
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {stats.submittedCount > 0 
-                  ? '연속 검토 모드를 통해 승인하거나 보완 사유를 고객에게 원클릭 알림톡으로 전송합니다.'
+                {!stats.isPhase1Done
+                  ? '우체국 빠른등기나 편의점택배로 1차 인적서류와 인감도장을 수령해야 부채증명서 대행에 착수할 수 있습니다.'
+                  : !isDebtDispatched
+                  ? 'A4 신청서 인쇄본과 인감도장을 봉투에 동봉하여 대행사에 전달하면 약 7영업일 카운트다운이 시작됩니다.'
+                  : stats.submittedCount > 0
+                  ? '대행업체에서 부채증명서 실물 서류철이 나오기 전까지 2차 소득·재산 서류 검토를 끝마치면 즉시 접수가 가능합니다.'
                   : stats.isReadyForStage4
                   ? '부채증명서철과 8대 서식(D5102, D5103)을 결합하여 전자소송 제출 패키징을 생성할 준비가 완료되었습니다.'
-                  : '1차 실물 등기 접수 및 2차 디지털 서류 수합을 상황별 원클릭 카카오 알림톡으로 신속히 안내합니다.'}
+                  : '원클릭 카카오 알림톡으로 신속히 안내하여 법원 접수 목표일을 사수합니다.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {stats.submittedCount > 0 ? (
+            {!stats.isPhase1Done ? (
+              <button
+                type="button"
+                onClick={handleSendPhase1Alimtalk}
+                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+              >
+                <Send className="w-4 h-4 text-white" />
+                <span>1차 빠른등기 요청 카톡 발송 (Major)</span>
+              </button>
+            ) : !isDebtDispatched ? (
+              <button
+                type="button"
+                onClick={() => setIsAgencyAppModalOpen(true)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
+                <span>대행 신청서 작성 및 인쇄·발송 (Major)</span>
+              </button>
+            ) : stats.submittedCount > 0 ? (
               <button
                 type="button"
                 onClick={() => setShowSpeedReviewModal(true)}
@@ -630,13 +1074,13 @@ export default function Stage3DocumentsHubView({
               <button
                 type="button"
                 onClick={() => {
-                  setBatchPresetPhase(activePhaseTab === 'all' ? undefined : activePhaseTab);
+                  setBatchPresetPhase(activePhaseTab === 'all' ? undefined : (activePhaseTab === 'debt' ? undefined : activePhaseTab));
                   setShowBatchModal(true);
                 }}
                 className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
               >
                 <Send className="w-4 h-4 text-emerald-400" />
-                <span>미제출 서류 {stats.unsubmittedCount}건 한 번에 요청 (Major)</span>
+                <span>미제출 서류 {stats.unsubmittedCount}건 한 번에 요청</span>
               </button>
             )}
 
@@ -664,7 +1108,7 @@ export default function Stage3DocumentsHubView({
         </div>
       </div>
 
-      {/* ── 3. 제3자 주민번호 마스킹 준칙 배너 ── */}
+      {/* ── 4. 제3자 주민번호 마스킹 준칙 배너 ── */}
       <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 flex items-start justify-between gap-4 text-xs shadow-xs">
         <div className="flex items-start gap-3">
           <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -748,8 +1192,8 @@ export default function Stage3DocumentsHubView({
           </button>
         </div>
 
-        {/* ── 1차 / 2차 실무 단계 분리 상위 탭 ── */}
-        <div className="flex border-b border-slate-200 bg-slate-100/70 p-2 gap-1.5 text-xs font-bold">
+        {/* ── 1차 / 부채대행 / 2차 실무 단계 분리 상위 탭 ── */}
+        <div className="flex border-b border-slate-200 bg-slate-100/70 p-2 gap-1.5 text-xs font-bold overflow-x-auto">
           <button
             type="button"
             onClick={() => { setActivePhaseTab('all'); setActiveAgency('all'); }}
@@ -772,7 +1216,22 @@ export default function Stage3DocumentsHubView({
           >
             <Mail className="w-3.5 h-3.5" />
             <span>📮 1차 실물 등기 서류 ({stats.phase1ApprovedCount}/{stats.phase1Total}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">부채증명서 대행</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">인감·등본</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActivePhaseTab('debt'); setActiveAgency('all'); }}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activePhaseTab === 'debt' 
+                ? 'bg-indigo-600 text-white shadow-xs' 
+                : 'text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>🏛️ 부채증명서 대행 ({debtOrder.items.length}개 기관)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">
+              {isDebtDispatched ? `${debtCertElapsedDays}일차` : '작성대기'}
+            </span>
           </button>
           <button
             type="button"
@@ -812,8 +1271,81 @@ export default function Stage3DocumentsHubView({
           </div>
         )}
 
+        {/* 부채증명서 탭 선택 시 대행 안내 및 채권사 현황 전용 뷰 */}
+        {activePhaseTab === 'debt' && (
+          <div className="p-5 space-y-4 bg-slate-50/50">
+            <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="font-extrabold text-sm text-indigo-950 flex items-center gap-2">
+                  <span>🏛️ 금융기관 부채증명서 대행 일괄 발주 내역</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-200 text-indigo-900 font-bold">
+                    대행사: {debtOrder.agencyName}
+                  </span>
+                </div>
+                <p className="text-slate-600 text-[11px]">
+                  대행업체는 모든 채권사 발급이 완료된 후 실물 서류철 봉투로 일괄 반환합니다. (약 3~7영업일 소요)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAgencyAppModalOpen(true)}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>대행 신청서 작성 / 인쇄 / 엑셀 다운로드</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 의뢰 채권기관 목록 테이블 */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+              <div className="px-4 py-2.5 bg-slate-100/70 border-b border-slate-200 text-xs font-black text-slate-700 grid grid-cols-12 gap-2">
+                <div className="col-span-1">No</div>
+                <div className="col-span-4">금융기관명 (채권사)</div>
+                <div className="col-span-3 text-right">예상 채무원금</div>
+                <div className="col-span-2 text-right">발급 대행비</div>
+                <div className="col-span-2 text-center">발급 상태</div>
+              </div>
+              <div className="divide-y divide-slate-100 text-xs">
+                {debtOrder.items.map((item, idx) => (
+                  <div key={item.id} className="px-4 py-3 grid grid-cols-12 gap-2 items-center hover:bg-slate-50/80">
+                    <div className="col-span-1 font-mono text-slate-400 font-bold">{idx + 1}</div>
+                    <div className="col-span-4 font-extrabold text-slate-900 flex items-center gap-2">
+                      <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>{item.creditorName}</span>
+                    </div>
+                    <div className="col-span-3 text-right font-mono font-bold text-slate-800">
+                      {item.expectedPrincipal ? `${(item.expectedPrincipal / 10000).toLocaleString()}만원` : '-'}
+                    </div>
+                    <div className="col-span-2 text-right font-mono text-slate-600">
+                      {item.agencyFee ? `${item.agencyFee.toLocaleString()}원` : '15,000원'}
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                        isDebtDispatched
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}>
+                        {isDebtDispatched ? '대행발급중' : '발주대기'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                <span>총 {debtOrder.items.length}개 금융기관 의뢰 (인감증명서 {requiredSealCount}부 동봉)</span>
+                <span className="font-mono text-indigo-700">
+                  총 대행비용: {(debtOrder.totalAgencyCost || (debtOrder.items.length * 17000)).toLocaleString()}원
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 4대 발급처 네비게이션 탭 (전체 또는 2차 탭일 때 유용) */}
-        {activePhaseTab !== 1 && (
+        {activePhaseTab !== 1 && activePhaseTab !== 'debt' && (
           <div className="flex border-b border-slate-200 bg-slate-50/40 p-1.5 gap-1 text-xs font-bold overflow-x-auto">
             <button
               type="button"
@@ -867,7 +1399,8 @@ export default function Stage3DocumentsHubView({
           </div>
         )}
 
-        {/* 서류 행 리스트 (산발적 버튼 제거, 상태별 동적 UI 제공) */}
+        {/* 서류 행 리스트 (activePhaseTab !== 'debt' 일 때만 렌더링) */}
+        {activePhaseTab !== 'debt' && (
         <div className="divide-y divide-slate-100">
           {filteredDocs.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs">
@@ -1029,6 +1562,7 @@ export default function Stage3DocumentsHubView({
             })
           )}
         </div>
+        )}
       </div>
 
       {/* ── 5. 단계 완료 조건 바 (Gatekeeper Bar) ── */}

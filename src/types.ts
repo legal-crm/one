@@ -807,8 +807,12 @@ export interface CrmClientExtension {
   reminders?: import('./types/leadTypes').ReminderItem[]; // 리마인더 목록
   // ── 배정 지시 이력 ──
   assignmentDirectives?: AssignmentDirective[];
-  // ── 부채증명서 발급 대행 관리 ──
+  // ── 부채증명서 발급 대행 및 1차 실물 등기 관리 ──
   debtCertificateOrders?: DebtCertificateOrder[];
+  postalCarrier?: string;              // 1차 서류 배송사 (EPOST, GS25, CU, CJ 등)
+  postalTrackingNumber?: string;       // 1차 서류 등기/운송장 번호
+  postalDispatchedAt?: string;         // 고객 발송 등록 일시
+  isSealKeptInSafe?: boolean;          // 인감도장 사무소 금고 보관 여부
   // ── 2026 변제계획안 (D5110/D5111) ──
   repaymentPlan?: RepaymentPlanData;
   // ── 2026 개인파산 및 면책 동시신청 종합 데이터 ──

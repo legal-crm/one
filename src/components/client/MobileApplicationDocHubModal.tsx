@@ -3,14 +3,15 @@ import {
   X, Download, CheckCircle2, ChevronRight, ChevronDown, 
   Upload, Camera, ExternalLink, ShieldCheck, AlertCircle, 
   FileText, Clock, HelpCircle, ArrowLeft, RefreshCw,
-  Mail, Copy, Check, Sparkles, Send, Stamp
+  Mail, Copy, Check, Sparkles, Send, Stamp, Truck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   ApplicationDocTemplateService, 
   type ApplicationDocMasterItem,
-  type DocPhase
+  type DocPhase 
 } from '../../services/documents/applicationDocTemplateService';
+import { CARRIER_LIST } from '../../utils/carrierTracking';
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
 interface MobileApplicationDocHubModalProps {
@@ -65,6 +66,9 @@ export default function MobileApplicationDocHubModal({
   const [copiedAddress, setCopiedAddress] = useState(false);
   // 1차 등기 발송 통보 완료 여부
   const [isMailDispatched, setIsMailDispatched] = useState(false);
+  // 배송사 및 등기/운송장 번호 (선택)
+  const [selectedCarrier, setSelectedCarrier] = useState<string>('EPOST');
+  const [inputTrackingNo, setInputTrackingNo] = useState<string>('');
 
   // 펼쳐진 아코디언 항목 ID
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
@@ -100,8 +104,13 @@ export default function MobileApplicationDocHubModal({
       phase1Docs.forEach(d => next.add(d.id));
       return next;
     });
-    toast.success('우체국 빠른등기 발송이 사무소에 통보되었습니다! 등기 도착 즉시 부채증명서 발급에 착수합니다.', {
-      duration: 4000
+
+    const carrierObj = CARRIER_LIST.find(c => c.code === selectedCarrier);
+    const carrierName = carrierObj ? carrierObj.name : '우체국 빠른등기';
+    const trackingMsg = inputTrackingNo.trim() ? ` (송장: ${inputTrackingNo.trim()})` : '';
+
+    toast.success(`[${carrierName}] 발송이 사무소에 통보되었습니다!${trackingMsg} 실물 도착 즉시 부채증명서 발급에 착수합니다.`, {
+      duration: 4500
     });
   };
 
@@ -273,7 +282,40 @@ export default function MobileApplicationDocHubModal({
                 {lawOfficeAddress}
               </p>
 
-              {/* 빠른등기 발송 통보 버튼 */}
+              {/* 배송사 선택 및 송장번호 입력 (선택 보조 옵션) */}
+              <div className="pt-2 border-t border-white/10 space-y-1.5">
+                <div className="text-[10px] text-slate-400 font-bold flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Truck className="w-3 h-3 text-slate-400" />
+                    <span>발송 방법 & 송장번호 (선택사항)</span>
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-normal">미입력 시에도 발송통보 가능</span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  <select
+                    value={selectedCarrier}
+                    onChange={(e) => setSelectedCarrier(e.target.value)}
+                    disabled={isMailDispatched}
+                    className="col-span-2 text-[11px] bg-white/10 text-white rounded-lg px-2 py-1.5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-brand font-medium truncate"
+                  >
+                    {CARRIER_LIST.map((c) => (
+                      <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={inputTrackingNo}
+                    onChange={(e) => setInputTrackingNo(e.target.value)}
+                    placeholder="등기/운송장 번호 (선택)"
+                    disabled={isMailDispatched}
+                    className="col-span-3 text-[11px] bg-white/10 text-white rounded-lg px-2.5 py-1.5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-brand placeholder:text-slate-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* 빠른등기/택배 발송 통보 버튼 */}
               <button
                 type="button"
                 onClick={handleNotifyDispatch}
@@ -287,12 +329,12 @@ export default function MobileApplicationDocHubModal({
                 {isMailDispatched ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>등기 발송 통보 완료 (사무소 확인 대기중)</span>
+                    <span>발송 통보 완료 (사무소 수령 대기중)</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>우체국 빠른등기 발송 완료 통보</span>
+                    <span>실물 서류 발송 완료 통보</span>
                   </>
                 )}
               </button>
