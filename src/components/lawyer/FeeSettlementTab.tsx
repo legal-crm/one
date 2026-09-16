@@ -15,6 +15,7 @@ import { getCrmExt, updateCrmExt, loadCrmExtMap } from '../../services/crmServic
 import FeeAlimtokModal from './FeeAlimtokModal';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeScheduleCreateModal from './FeeScheduleCreateModal';
+import FeeSettlementCalendarView from './FeeSettlementCalendarView';
 
 interface Props {
   requests: ConsultRequest[];
@@ -30,6 +31,7 @@ export default function FeeSettlementTab({
   onNavigateToClientCrm,
 }: Props) {
   // 상태 관리
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [activeFilterTab, setActiveFilterTab] = useState<FilterTab>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'rehab' | 'bankruptcy'>('all');
@@ -531,6 +533,34 @@ export default function FeeSettlementTab({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* 뷰 모드 전환 토글 (목록 뷰 / 정산 캘린더) */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'list'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>목록 뷰</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'calendar'
+                  ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>정산 캘린더</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
@@ -668,8 +698,40 @@ export default function FeeSettlementTab({
 
       </div>
 
-      {/* ── 3. 스마트 필터 및 퀵 검색 바 ── */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+      {/* ── 3 & 4: 뷰 모드에 따른 렌더링 (캘린더 뷰 vs 목록 뷰) ── */}
+      {viewMode === 'calendar' ? (
+        <FeeSettlementCalendarView
+          settlementList={settlementList}
+          requests={requests}
+          todayStr={todayStr}
+          onMarkAsPaid={handleMarkAsPaid}
+          onOpenAlimtok={(client, inst, totalFee, totalPaid) => {
+            setAlimtokModalConfig({
+              isOpen: true,
+              client,
+              installment: inst,
+              initialMilestone: inst.status === 'overdue' ? 'fee_overdue' : inst.dueDate === todayStr ? 'fee_due' : 'fee_upcoming',
+              totalFee,
+              totalPaid,
+            });
+          }}
+          onOpenDeferModal={(client, inst) => {
+            const d = new Date(inst.dueDate);
+            d.setMonth(d.getMonth() + 1);
+            setDeferModalConfig({
+              isOpen: true,
+              client,
+              installment: inst,
+              newDueDate: d.toISOString().split('T')[0],
+              reason: '의뢰인 급여일 변경 요청',
+            });
+          }}
+          onNavigateToClientCrm={onNavigateToClientCrm}
+        />
+      ) : (
+        <>
+          {/* ── 3. 스마트 필터 및 퀵 검색 바 ── */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
         
         {/* 상태 탭 필터 */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold scrollbar-none">
@@ -1198,6 +1260,8 @@ export default function FeeSettlementTab({
         </div>
 
       </div>
+        </>
+      )}
 
       {/* ── 5. 분납 일정 신규 등록 모달 ── */}
       {isScheduleCreateOpen && (
