@@ -249,6 +249,12 @@ export interface SendFeeAlimtokParams {
   bankInfo?: { bankName: string; accountNumber: string; accountHolder: string };
   trackingUrl?: string;
   customMessage?: string;
+  templateCode?: string;
+  buttons?: Array<{ name: string; type?: string; url?: string; urlMobile?: string; urlPc?: string }>;
+  variableValues?: Record<string, string>;
+  altSubject?: string;
+  altContent?: string;
+  fallbackSms?: boolean;
 }
 
 export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok: boolean; rendered: string; error?: string }> => {
@@ -271,7 +277,7 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   const daysLeft = diffDays > 0 ? String(diffDays) : '0';
 
-  const vars: Record<string, string> = {
+  const baseVars: Record<string, string> = {
     firmName: params.firmName || '법무법인',
     lawyerName: params.lawyerName || '담당 변호사',
     clientName: params.clientName,
@@ -283,9 +289,36 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
     bankAccount: bankAccountStr,
     daysLeft,
     trackingUrl: params.trackingUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/my`,
+    // 한글 파라미터 호환
+    '고객명': params.clientName,
+    '법무법인': params.firmName || '법무법인',
+    '담당변호사': params.lawyerName || '담당 변호사',
+    '납부항목': params.installment.memo || `${params.installment.round}차 분납`,
+    '납부회차': params.installment.memo || `${params.installment.round}차 분납`,
+    '입금금액': `${amountWon.toLocaleString()}원`,
+    '납부금액': `${amountWon.toLocaleString()}원`,
+    '입금계좌': bankAccountStr,
+    '마감기한': `${params.installment.dueDate}${daysLeft !== '0' ? ` (${daysLeft}일 남음)` : ''}`,
+    '납부기한': `${params.installment.dueDate}${daysLeft !== '0' ? ` (${daysLeft}일 남음)` : ''}`,
+    '남은일수': daysLeft,
+    '입금일시': params.installment.paidDate || new Date().toISOString().split('T')[0],
+    '잔여금액': `${remainingWon.toLocaleString()}원`,
+    '남은잔금': `${remainingWon.toLocaleString()}원`,
+    '안내링크': params.trackingUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/my`,
   };
 
-  const res = await sendAlimtok(params.phone, params.milestone, vars, params.customMessage);
+  const finalVars = { ...baseVars, ...(params.variableValues || {}) };
+
+  const sendOptions: SendAlimtokOptions = {
+    receiverName: params.clientName,
+    customText: params.customMessage,
+    templateCode: params.templateCode,
+    altSubject: params.altSubject || `[${params.firmName || '법무법인'}] ${ALIMTOK_MILESTONE_CONFIG[params.milestone]?.label || '수임료 안내'}`,
+    altContent: params.altContent || params.customMessage,
+    buttons: params.buttons as any,
+  };
+
+  const res = await sendAlimtok(params.phone, params.milestone, finalVars, sendOptions);
 
   // 알림 로그 저장
   const log: AlimtokLog = {
@@ -530,12 +563,45 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
   },
   {
     templateCode: 'MYKIM_ATS_12',
-    templateName: '착수금 및 전용 수임료 계좌 안내',
-    template: `[#{법무법인}] 착수금 및 입금 전용 계좌 안내\n\n#{고객명}님, 사건 착수를 위한 전용 계좌를 안내해 드립니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n■ 입금 기한: #{마감기한}\n\n입금 확인 후 법원 제출서류 수합이 즉시 진행됩니다.\n▶ 납부 현황 확인: #{안내링크}`,
+    templateName: '수임료 분납 예정 및 계좌 안내 (D-3)',
+    template: `[#{법무법인}] 수임료 분납 예정 안내\n\n#{고객명}님, 사건 착수 및 수임료 분납 일정을 안내해 드립니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n■ 입금 기한: #{마감기한}\n\n원활한 사건 진행을 위해 기한 내 입금 부탁드립니다.\n▶ 납부 현황 확인: #{안내링크}`,
     state: '승인',
     stage: 2,
-    category: '계약·착수',
+    category: '정산·수임료',
     buttons: [{ name: '계좌 및 영수증 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
+    registeredAt: '2026-08-10',
+    reviewedAt: '2026-08-12',
+  },
+  {
+    templateCode: 'MYKIM_ATS_13',
+    templateName: '수임료 당일 납부 리마인드 (D-Day)',
+    template: `[#{법무법인}] 수임료 당일 납부 안내\n\n#{고객명}님, 오늘은 약정된 수임료 납부일입니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n\n입금 확인 후 마이페이지에서 납부 확인증을 조회하실 수 있습니다.\n▶ 납부 현황 확인: #{안내링크}`,
+    state: '승인',
+    stage: 2,
+    category: '정산·수임료',
+    buttons: [{ name: '납부 현황 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
+    registeredAt: '2026-08-10',
+    reviewedAt: '2026-08-12',
+  },
+  {
+    templateCode: 'MYKIM_ATS_14',
+    templateName: '수임료 연체 미납 안내 및 조율',
+    template: `[#{법무법인}] 수임료 연체 미납 안내\n\n#{고객명}님, 약정된 수임료 납부기한(#{마감기한})이 경과되어 안내드립니다.\n\n■ 미납 항목: #{납부항목}\n■ 미납 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n\n납부 일정 조율이나 상담이 필요하신 경우 사무소로 연락 부탁드립니다.\n▶ 납부 및 문의: #{안내링크}`,
+    state: '승인',
+    stage: 2,
+    category: '정산·수임료',
+    buttons: [{ name: '납부 및 상담 문의', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
+    registeredAt: '2026-08-10',
+    reviewedAt: '2026-08-12',
+  },
+  {
+    templateCode: 'MYKIM_ATS_15',
+    templateName: '수임료 정상 입금 확인 영수증',
+    template: `[#{법무법인}] 수임료 정상 입금 확인\n\n#{고객명}님의 약정 수임료가 정상 입금 확인되었습니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 일시: #{입금일시}\n■ 잔여 미수금: #{잔여금액}\n\n신속하고 성실하게 사건을 진행하겠습니다. 감사합니다.\n▶ 사건 진행상황 확인: #{안내링크}`,
+    state: '승인',
+    stage: 2,
+    category: '정산·수임료',
+    buttons: [{ name: '입금 영수증 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
     registeredAt: '2026-08-10',
     reviewedAt: '2026-08-12',
   },

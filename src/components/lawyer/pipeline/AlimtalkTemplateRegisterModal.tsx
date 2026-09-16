@@ -24,9 +24,14 @@ const COMMON_VARIABLE_CHIPS = [
   { label: '법무법인', tag: '#{법무법인}' },
   { label: '담당변호사', tag: '#{담당변호사}' },
   { label: '사건유형', tag: '#{사건유형}' },
-  { label: '마감기한', tag: '#{마감기한}' },
-  { label: '수임료', tag: '#{수임료}' },
+  { label: '납부항목', tag: '#{납부항목}' },
+  { label: '입금금액', tag: '#{입금금액}' },
   { label: '입금계좌', tag: '#{입금계좌}' },
+  { label: '마감기한', tag: '#{마감기한}' },
+  { label: '남은일수', tag: '#{남은일수}' },
+  { label: '입금일시', tag: '#{입금일시}' },
+  { label: '잔여금액', tag: '#{잔여금액}' },
+  { label: '수임료', tag: '#{수임료}' },
   { label: '사건번호', tag: '#{사건번호}' },
   { label: '관할법원', tag: '#{관할법원}' },
   { label: '안내링크', tag: '#{안내링크}' },
@@ -64,7 +69,12 @@ export default function AlimtalkTemplateRegisterModal({
     '고객명': '홍길동',
     '담당변호사': '김우진 변호사',
     '사건유형': '개인회생',
+    '납부항목': '착수금 (1차 분납)',
+    '입금금액': '500,000원',
     '마감기한': '3일 이내 (9월 16일)',
+    '남은일수': '3',
+    '입금일시': '2026.09.16',
+    '잔여금액': '1,000,000원',
     '수임료': '150만원',
     '입금계좌': '신한은행 110-384-918231',
     '사건번호': '2026개회104291',
@@ -98,7 +108,7 @@ export default function AlimtalkTemplateRegisterModal({
       template: templateText.trim(),
       state: '심사중',
       stage,
-      category: `Stage 0${stage}`,
+      category: stage === 7 ? '정산·수임료' : `Stage 0${stage}`,
       buttons: buttonName ? [{ name: buttonName, type: 'WL', urlMobile: buttonUrl, urlPc: buttonUrl }] : undefined,
       registeredAt: new Date().toISOString().split('T')[0],
       memo: '신규 검수 심사 신청 접수됨',
@@ -187,6 +197,7 @@ export default function AlimtalkTemplateRegisterModal({
                 <option value={4}>Stage 04 법원접수</option>
                 <option value={5}>Stage 05 법원보정</option>
                 <option value={6}>Stage 06 사후관리</option>
+                <option value={7}>Stage 07 정산·수임료 분납</option>
               </select>
             </div>
           </div>
