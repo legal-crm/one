@@ -562,7 +562,7 @@ export default function Stage3DocumentsHubView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm text-slate-900">
-                    1차 기본서류 & 인감 수령
+                    1차 서류 & 인감
                   </h4>
                 </div>
               </div>
@@ -727,7 +727,7 @@ export default function Stage3DocumentsHubView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm text-slate-900">
-                    부채증명서 발급 대행
+                    부채증명서 신청
                   </h4>
                 </div>
               </div>
@@ -852,7 +852,7 @@ export default function Stage3DocumentsHubView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm text-slate-900">
-                    2차 소득·재산 서류 수합
+                    2차 서류
                   </h4>
                 </div>
               </div>
