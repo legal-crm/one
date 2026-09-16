@@ -1,4 +1,4 @@
-import type { SalesLead, LeadStatus, CallLog, ReminderItem, CustomerBriefingData } from '../types/leadTypes';
+import type { SalesLead, LeadStatus, CallLog, ReminderItem, CustomerBriefingData, CommissionRule, Partner } from '../types/leadTypes';
 import type { ConsultRequest, CrmClientExtension, CaseType } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 import { createDefaultCrmExtension, saveCrmClient } from './crmService';
@@ -670,4 +670,244 @@ export function extractBriefingFromClient(
     isAiSource: false,
   };
 }
+
+// ── 만원 단위 금액 한글 포맷터 (억, 만원 단위) ──
+export const formatKoreanMoney = (value: number | undefined | null): string => {
+  if (value === undefined || value === null || isNaN(value)) return '0원';
+  if (value === 0) return '0원';
+
+  const eok = Math.floor(value / 10000);
+  const man = value % 10000;
+
+  if (eok > 0 && man > 0) {
+    return `${eok.toLocaleString()}억 ${man.toLocaleString()}만원`;
+  }
+  if (eok > 0 && man === 0) {
+    return `${eok.toLocaleString()}억원`;
+  }
+  if (eok === 0 && man > 0) {
+    return `${man.toLocaleString()}만원`;
+  }
+
+  return '0원';
+};
+
+// ── 18개 항목 기본 요약문 템플릿 (LeadMaster 100% 호환) ──
+export const DEFAULT_SUMMARY_TEMPLATE = `* 담당자 : {{managerName}}
+* 고객이름 : {{customerName}}
+* 연락처 : {{phone}}
+* 출생년도 : {{birth}}
+* 성별 : {{gender}}
+* 거주지역 : {{region}}
+* 직업 : {{jobTypes}}
+* 4대보험 가입유무 : {{insurance4}}
+* 결혼유무 : {{maritalStatus}}
+* 미성년 자녀 수 : {{childrenCount}}
+* 월 세후소득 (실급여) : {{incomeDetails}}
+* 월 대출납입금 : {{loanMonthlyPay}}
+* 거주 형태 : {{housingType}} ({{housingDetail}})
+* 보증금, 월세 : {{depositRentStr}}
+* 자산 : {{assetsStr}}
+* 신용 대출 : {{creditLoanStr}}
+* 담보 대출 (차량 /집/토지 등) : {{collateralStr}}
+* 신용카드 사용유무 : {{creditCardUse}}
+* 신용카드 사용금액 : {{creditCardAmountStr}}
+* 개인회생 / 파산 / 회복 이력 : {{historyStr}}
+* 특이사항 :
+{{specialMemo}}`;
+
+// ── 영업 리드 기본 요약문 생성 함수 ──
+export const generateSummary = (
+  c: SalesLead,
+  managerName?: string,
+  template: string = DEFAULT_SUMMARY_TEMPLATE
+): string => {
+  let processedTemplate = template;
+
+  if (c.maritalStatus === '미혼') {
+    processedTemplate = processedTemplate.replace(/^\* 미성년 자녀 수 : .*\r?\n?/gm, '');
+  }
+
+  if (c.creditCardUse === '미사용') {
+    processedTemplate = processedTemplate.replace(/^\* 신용카드 사용금액 : .*\r?\n?/gm, '');
+  }
+
+  if (c.jobTypes && c.jobTypes.length === 1 && c.jobTypes[0] === '무직') {
+    processedTemplate = processedTemplate.replace(/^\* 4대보험 가입유무 : .*\r?\n?/gm, '');
+  }
+
+  const depositRentStrParts: string[] = [];
+  if (c.housingType === '자가') {
+    if (c.ownHousePrice) depositRentStrParts.push(`집 시세 ${formatKoreanMoney(c.ownHousePrice)}`);
+    if (c.ownHouseLoan) depositRentStrParts.push(`(집 담보대출 ${formatKoreanMoney(c.ownHouseLoan)})`);
+    if (c.ownHouseOwner) depositRentStrParts.push(`[명의: ${c.ownHouseOwner}]`);
+  } else if (c.housingType === '무상거주') {
+    depositRentStrParts.push(`무상거주`);
+    if (c.freeHousingOwner) depositRentStrParts.push(`[명의: ${c.freeHousingOwner}]`);
+  } else {
+    if (c.deposit) depositRentStrParts.push(`보증금 ${formatKoreanMoney(c.deposit)}`);
+    if (c.rent) depositRentStrParts.push(`월세 ${formatKoreanMoney(c.rent)}`);
+    if (c.depositLoanAmount) depositRentStrParts.push(`(보증금 대출: ${formatKoreanMoney(c.depositLoanAmount)})`);
+    if (c.rentContractor) depositRentStrParts.push(`[계약자: ${c.rentContractor}]`);
+  }
+  const depositRentStr = depositRentStrParts.length > 0 ? depositRentStrParts.join(' ') : '정보 없음';
+
+  const assetsList = c.assets && c.assets.length > 0
+    ? c.assets.map(a => {
+        const descInfo = a.desc ? `(${a.desc})` : '';
+        return `(${a.owner}/${a.type}${descInfo} 시세 ${formatKoreanMoney(a.amount)}${a.loanAmount ? `/담보${formatKoreanMoney(a.loanAmount)}` : ''})`;
+      })
+    : [];
+  const assetsStr = assetsList.length > 0 ? assetsList.join(' ') : '없음';
+
+  const collateralParts: string[] = [];
+  let totalCollateralAmount = 0;
+
+  if (c.housingType !== '자가' && c.housingType !== '무상거주' && c.depositLoanAmount) {
+    collateralParts.push(`보증금 대출(${formatKoreanMoney(c.depositLoanAmount)})`);
+    totalCollateralAmount += c.depositLoanAmount;
+  }
+  if (c.housingType === '자가' && c.ownHouseLoan) {
+    collateralParts.push(`집 담보 대출(${formatKoreanMoney(c.ownHouseLoan)})`);
+    totalCollateralAmount += c.ownHouseLoan;
+  }
+  if (c.assets) {
+    c.assets.filter(a => a.loanAmount > 0).forEach(a => {
+      collateralParts.push(`${a.type} 담보(${formatKoreanMoney(a.loanAmount)})`);
+      totalCollateralAmount += a.loanAmount;
+    });
+  }
+  if (c.collateralLoanDesc) collateralParts.push(c.collateralLoanDesc);
+
+  let collateralStr = collateralParts.length > 0 ? collateralParts.join(', ') : '없음';
+  if (totalCollateralAmount > 0) {
+    collateralStr += ` [총 합계: ${formatKoreanMoney(totalCollateralAmount)}]`;
+  }
+
+  let totalCreditLoanAmount = 0;
+  const creditLoanList = c.creditLoans && c.creditLoans.length > 0
+    ? c.creditLoans.map(l => {
+        totalCreditLoanAmount += (l.amount || 0);
+        return `${l.desc} ${formatKoreanMoney(l.amount)}`;
+      })
+    : (c.debtTotal ? [`신용대출 ${formatKoreanMoney(c.debtTotal)}`] : []);
+
+  if (c.creditCardUse === '사용' && c.creditCardAmount) {
+    totalCreditLoanAmount += c.creditCardAmount;
+    creditLoanList.push(`신용카드 ${formatKoreanMoney(c.creditCardAmount)}`);
+  }
+
+  let creditLoanStr = creditLoanList.length > 0 ? creditLoanList.join(', ') : '없음';
+  if (totalCreditLoanAmount > 0) {
+    creditLoanStr += ` [총 합계: ${formatKoreanMoney(totalCreditLoanAmount)}]`;
+  }
+
+  let historyStr = c.historyType || '없음';
+  if (c.historyType && c.historyType !== '없음' && c.historyMemo) {
+    historyStr += ` (${c.historyMemo})`;
+  } else if (c.historyDetail && c.historyDetail !== '이력 없음') {
+    historyStr = c.historyDetail;
+  }
+
+  const sortedMemos = c.memos
+    ? [...c.memos]
+        .filter(m => !m.content.startsWith('[상태변경]'))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    : [];
+
+  const allMemosContent = sortedMemos.length > 0
+    ? sortedMemos.map(memo => `[${memo.createdAt.slice(0, 16).replace('T', ' ')}]\n${memo.content}`).join('\n\n')
+    : (c.specialMemo || '없음');
+
+  const jobTypesStr = c.jobTypes && c.jobTypes.length > 0 ? c.jobTypes.join(', ') : '정보 없음';
+
+  const incomeParts: string[] = [];
+  if (c.incomeDetails?.salary) incomeParts.push(`직장인 ${formatKoreanMoney(c.incomeDetails.salary)}`);
+  if (c.incomeDetails?.business) incomeParts.push(`사업자 ${formatKoreanMoney(c.incomeDetails.business)}`);
+  if (c.incomeDetails?.freelance) incomeParts.push(`프리랜서 ${formatKoreanMoney(c.incomeDetails.freelance)}`);
+  let incomeDetailsStr = incomeParts.join(' + ');
+  if (incomeParts.length > 1) {
+    incomeDetailsStr += ` (총 ${formatKoreanMoney(c.incomeNet)})`;
+  } else if (incomeParts.length === 0) {
+    incomeDetailsStr = formatKoreanMoney(c.incomeNet);
+  }
+
+  const birthStr = c.birth ? (c.birth.endsWith('년생') ? c.birth : `${c.birth}년생`) : '-';
+
+  const dataMap: Record<string, string> = {
+    managerName: managerName || c.assigneeName || '담당자 미정',
+    customerName: c.customerName || '-',
+    phone: c.phone || '-',
+    birth: birthStr,
+    gender: c.gender || '-',
+    region: c.region || '-',
+    jobTypes: jobTypesStr,
+    insurance4: c.insurance4 || '정보 없음',
+    maritalStatus: c.maritalStatus || '정보 없음',
+    childrenCount: c.childrenCount !== undefined ? `${c.childrenCount}명` : '-',
+    incomeDetails: incomeDetailsStr,
+    loanMonthlyPay: formatKoreanMoney(c.loanMonthlyPay),
+    housingType: c.housingType || '정보 없음',
+    housingDetail: c.housingDetail || '기타',
+    depositRentStr: depositRentStr,
+    assetsStr: assetsStr,
+    creditLoanStr: creditLoanStr,
+    collateralStr: collateralStr,
+    creditCardUse: c.creditCardUse || '미사용',
+    creditCardAmountStr: c.creditCardUse === '사용' && c.creditCardAmount ? formatKoreanMoney(c.creditCardAmount) : '없음',
+    historyStr: historyStr,
+    specialMemo: allMemosContent
+  };
+
+  let result = processedTemplate;
+  for (const key in dataMap) {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    result = result.replace(regex, dataMap[key] || '');
+  }
+
+  return result.trim();
+};
+
+export const injectSummaryMetadata = (text: string, managerName: string): string => {
+  if (!text) return '';
+  let newText = text;
+  const manager = managerName || '담당자 미정';
+
+  const managerRegex = /^[*]?\s*담당자\s*:.*/m;
+  if (managerRegex.test(newText)) {
+    newText = newText.replace(managerRegex, `* 담당자 : ${manager}`);
+  } else {
+    newText = `* 담당자 : ${manager}\n` + newText;
+  }
+  return newText;
+};
+
+export const getMatchingRule = (fee: number, rules: CommissionRule[]): CommissionRule | undefined => {
+  const safeRules = Array.isArray(rules) ? rules : [];
+  const activeRules = safeRules.filter(r => r.active);
+  const matchedRules = activeRules.filter(r => {
+    const minOk = fee >= r.minFee;
+    const maxOk = !r.maxFee || fee <= r.maxFee;
+    return minOk && maxOk;
+  });
+
+  if (matchedRules.length === 0) return undefined;
+
+  matchedRules.sort((a, b) => {
+    if (b.minFee !== a.minFee) return b.minFee - a.minFee;
+    if (b.priority !== a.priority) return b.priority - a.priority;
+    return 0;
+  });
+
+  return matchedRules[0];
+};
+
+export const calculateCommission = (fee: number, rules?: CommissionRule[]): number => {
+  if (!fee || fee <= 0) return 0;
+  const safeRules = Array.isArray(rules) ? rules : [];
+  const rule = getMatchingRule(fee, safeRules);
+  if (rule) return rule.commission;
+  // 기본 추정 룰: 수임료의 약 10%
+  return Math.round(fee * 0.1);
+};
 

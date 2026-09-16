@@ -14,9 +14,27 @@ import {
   Edit2,
   Filter,
   Clock,
-  Sparkles
+  Sparkles,
+  Download,
+  PlayCircle,
+  Volume2,
+  ExternalLink,
+  X
 } from 'lucide-react';
-import { SalesLead, CommunicationLog, CommunicationType, SmsTemplate } from '../../../types/leadTypes';
+import { SalesLead, CommunicationLog, CommunicationType, SmsTemplate, RecordingItem } from '../../../types/leadTypes';
+import { 
+  fetchCommunicationLogs, 
+  fetchSmsTemplates, 
+  saveSmsTemplate, 
+  deleteSmsTemplate, 
+  enqueueSms,
+  enqueueCall,
+  subscribeToCommunicationLogs,
+  findMatchingRecordingForLog,
+  exportCommunicationLogsAsText,
+  DEFAULT_SMS_TEMPLATES 
+} from '../../../services/communicationService';
+import { CustomAudioPlayer } from './CustomAudioPlayer';
 import { toast } from 'sonner';
 
 interface CaseCallsSmsTabProps {
@@ -24,103 +42,90 @@ interface CaseCallsSmsTabProps {
   onUpdateLead: (updated: SalesLead) => void;
 }
 
-const DEFAULT_SMS_TEMPLATES: SmsTemplate[] = [
-  {
-    id: 'tmpl-1',
-    title: '부재중 1차 안내',
-    content: '[법률사무소] 고객님, 신청하신 개인회생/파산 무료 상담 관련하여 연락드렸으나 부재중이셔서 문자 남깁니다. 통화 가능하신 편한 시간대를 알려주시면 다시 연락드리겠습니다.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'tmpl-2',
-    title: '필수 서류 목록 안내',
-    content: '[법률사무소] 개인회생 1차 심사 필수 서류 안내입니다.\n1. 주민등록등본·초본(전체주소 포함)\n2. 가족관계증명서(상세)\n3. 최근 1년 급여명세서 또는 통장거래내역\n4. 부채증명서\n서류 사진을 찍어 본 번호로 회신해 주시면 빠른 검토가 가능합니다.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'tmpl-3',
-    title: '방문/출장 미팅 안내',
-    content: '[법률사무소] 대면 상담 일정 안내드립니다.\n- 일시: 상담 예약 확정 후 개별 안내\n- 장소: 법률사무소 서초 상담센터\n- 준비물: 신분증, 소득 증빙 서류\n주차 가능하며, 도착 10분 전 연락 부탁드립니다.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'tmpl-4',
-    title: '금지명령 결정 안내',
-    content: '[법률사무소] 법원에서 채권자 금지명령이 발령되었습니다. 이제 모든 채권추심, 독촉 전화 및 급여/통장 압류가 법적으로 전면 금지됩니다. 세부 진행사항은 유선으로 안내드리겠습니다.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'tmpl-5',
-    title: '개인파산 자격 검토',
-    content: '[법률사무소] 고령 또는 질병·장애로 근로능력이 부족하신 경우 파산면책을 통해 채무 100% 탕감이 가능합니다. 전문 변호사 심층 검토를 위해 추가 통화 부탁드립니다.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
-
 export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdateLead }) => {
-  // Load templates from localStorage or fallback to defaults
-  const [templates, setTemplates] = useState<SmsTemplate[]>(() => {
-    try {
-      const saved = localStorage.getItem('legal_crm_sms_templates');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Failed to parse saved sms templates', e);
-    }
-    return DEFAULT_SMS_TEMPLATES;
-  });
+  const [dbLogs, setDbLogs] = useState<CommunicationLog[]>(lead.communicationLogs || []);
+  const [templates, setTemplates] = useState<SmsTemplate[]>(DEFAULT_SMS_TEMPLATES);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const [activeTemplateId, setActiveTemplateId] = useState<string>('custom');
   const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'calls' | 'sms'>('all');
   const [simLine, setSimLine] = useState<'기본' | '투넘버'>('기본');
+  const [playingRecording, setPlayingRecording] = useState<RecordingItem | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 분쟁 대비 통화 및 문자 내역 공식 소명 증빙 파일 다운로드 (TXT)
+  const handleExportLogs = () => {
+    if (dbLogs.length === 0) {
+      toast.error('내보낼 통화 및 문자 내역이 없습니다.');
+      return;
+    }
+    const textContent = exportCommunicationLogsAsText(dbLogs, lead.customerName, lead.phone);
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `[통화문자증빙]_${lead.customerName}_${lead.phone.replace(/[^0-9]/g, '')}_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('통화 및 문자 소명 증빙 파일이 다운로드되었습니다.');
+  };
+
+  // Fetch real logs from Supabase & subscribe to Realtime changes
+  useEffect(() => {
+    let isMounted = true;
+    const init = async () => {
+      setIsLoadingLogs(true);
+      try {
+        const [fetchedLogs, fetchedTemplates] = await Promise.all([
+          fetchCommunicationLogs(lead.phone),
+          fetchSmsTemplates()
+        ]);
+        if (isMounted) {
+          if (fetchedLogs && fetchedLogs.length > 0) {
+            setDbLogs(fetchedLogs);
+          } else if (lead.communicationLogs && lead.communicationLogs.length > 0) {
+            setDbLogs(lead.communicationLogs);
+          }
+          if (fetchedTemplates && fetchedTemplates.length > 0) {
+            setTemplates(fetchedTemplates);
+          }
+        }
+      } catch (err) {
+        console.warn('Init communication tab failed:', err);
+      } finally {
+        if (isMounted) setIsLoadingLogs(false);
+      }
+    };
+
+    init();
+
+    const unsubscribe = subscribeToCommunicationLogs(lead.phone, (newLog) => {
+      setDbLogs(prev => {
+        if (prev.some(l => l.id === newLog.id)) return prev;
+        return [...prev, newLog];
+      });
+      toast.info(`스마트폰에서 새 ${newLog.type.includes('CALL') ? '통화' : '문자'} 기록이 수신되었습니다.`);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [lead.phone]);
 
   // Auto-scroll timeline when logs change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [lead.communicationLogs]);
-
-  // Initial mock logs if empty
-  const logs: CommunicationLog[] = lead.communicationLogs || [
-    {
-      id: 'log-init-1',
-      phoneNumber: lead.phone,
-      type: 'CALL_MISSED',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      lineInfo: '기본',
-      content: '1차 부재중 (신호음 45초 후 종료)'
-    },
-    {
-      id: 'log-init-2',
-      phoneNumber: lead.phone,
-      type: 'SMS_OUT',
-      content: '[법률사무소] 고객님, 요청하신 개인회생 상담 관련하여 연락드렸으나 부재중이셔서 문자 남깁니다.',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
-      lineInfo: '기본'
-    },
-    {
-      id: 'log-init-3',
-      phoneNumber: lead.phone,
-      type: 'CALL_IN',
-      duration: 185,
-      timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-      createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-      lineInfo: '투넘버',
-      content: '고객 인바운드 회신 통화 (월 소득 265만, 총 채무 7,800만 확인)'
-    }
-  ];
+  }, [dbLogs]);
 
   // Filter logs
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = dbLogs.filter(log => {
     if (selectedFilter === 'calls') return log.type.includes('CALL');
     if (selectedFilter === 'sms') return log.type.includes('SMS');
     return true;
@@ -133,81 +138,82 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
   const charLength = messageContent.length;
   const isLms = charLength > 90;
 
-  // Send SMS handler
-  const handleSendSms = () => {
+  // Send SMS handler (writes into pending_sms queue for Android App)
+  const handleSendSms = async () => {
     if (!messageContent.trim()) {
       toast.error('발송할 문자 내용을 입력해주세요.');
       return;
     }
 
-    const newLog: CommunicationLog = {
-      id: `comm-${Date.now()}`,
-      phoneNumber: lead.phone,
-      type: 'SMS_OUT',
-      content: messageContent,
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      lineInfo: simLine
-    };
-
-    const updatedLogs = [...(lead.communicationLogs || logs), newLog];
-    const updatedLead: SalesLead = {
-      ...lead,
-      communicationLogs: updatedLogs,
-      updatedAt: new Date().toISOString()
-    };
-
-    onUpdateLead(updatedLead);
-    if (activeTemplateId === 'custom') {
-      setCustomMessage('');
+    setIsSending(true);
+    try {
+      const res = await enqueueSms(lead.phone, messageContent, simLine);
+      if (res.success) {
+        toast.success(res.message);
+        if (res.log) {
+          const updated = [...dbLogs, res.log];
+          setDbLogs(updated);
+          onUpdateLead({
+            ...lead,
+            communicationLogs: updated,
+            updatedAt: new Date().toISOString()
+          });
+        }
+        if (activeTemplateId === 'custom') {
+          setCustomMessage('');
+        }
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('문자 발송 요청 중 오류가 발생했습니다.');
+    } finally {
+      setIsSending(false);
     }
-
-    toast.success(`스마트폰(${simLine})을 통해 ${isLms ? 'LMS(장문)' : 'SMS(단문)'} 발송 요청이 등록되었습니다.`);
   };
 
   // Save template
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!editingTemplate) return;
     if (!editingTemplate.title.trim() || !editingTemplate.content.trim()) {
       toast.error('제목과 내용을 모두 입력해주세요.');
       return;
     }
 
-    let nextTemplates = [...templates];
-    if (editingTemplate.id && templates.some(t => t.id === editingTemplate.id)) {
-      // Edit existing
-      nextTemplates = nextTemplates.map(t => t.id === editingTemplate.id ? editingTemplate : t);
-      toast.success('템플릿이 수정되었습니다.');
-    } else {
-      // New template - max 5 limit
-      if (templates.length >= 5) {
-        toast.error('문자 템플릿은 최대 5개까지만 등록할 수 있습니다.');
-        return;
-      }
-      nextTemplates.push({
-        ...editingTemplate,
-        id: `tmpl-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      toast.success('새 템플릿이 추가되었습니다.');
+    if (!editingTemplate.id && templates.length >= 5) {
+      toast.error('문자 템플릿은 최대 5개까지만 등록할 수 있습니다.');
+      return;
     }
 
-    setTemplates(nextTemplates);
-    localStorage.setItem('legal_crm_sms_templates', JSON.stringify(nextTemplates));
-    setEditingTemplate(null);
+    try {
+      const saved = await saveSmsTemplate(editingTemplate);
+      const nextTemplates = editingTemplate.id
+        ? templates.map(t => t.id === saved.id ? saved : t)
+        : [...templates, saved];
+      setTemplates(nextTemplates);
+      setEditingTemplate(null);
+      toast.success('템플릿이 저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('템플릿 저장 실패');
+    }
   };
 
   // Delete template
-  const handleDeleteTemplate = (id: string, e: React.MouseEvent) => {
+  const handleDeleteTemplate = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextTemplates = templates.filter(t => t.id !== id);
-    setTemplates(nextTemplates);
-    localStorage.setItem('legal_crm_sms_templates', JSON.stringify(nextTemplates));
-    if (activeTemplateId === id) {
-      setActiveTemplateId('custom');
+    try {
+      await deleteSmsTemplate(id);
+      const nextTemplates = templates.filter(t => t.id !== id);
+      setTemplates(nextTemplates);
+      if (activeTemplateId === id) {
+        setActiveTemplateId('custom');
+      }
+      toast.info('템플릿이 삭제되었습니다.');
+    } catch (e) {
+      console.error(e);
     }
-    toast.info('템플릿이 삭제되었습니다.');
   };
 
   // Quick Call Log Simulation
@@ -250,53 +256,79 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                <span>통화 및 문자 타임라인</span>
+                <span>통화 및 문자 기록</span>
                 <span className="text-[11px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
                   {filteredLogs.length}건
                 </span>
               </h3>
               <p className="text-[10px] text-slate-500">
-                스마트폰(LeadMasterApp)과 실시간 연동되어 통화 및 문자 송수신 내역이 기록됩니다.
+                스마트폰 삭제 대비 CRM 영구 보관 (통화 클릭 시 구글 드라이브 녹취 즉시 재생)
               </p>
             </div>
           </div>
 
-          {/* 필터 칩 */}
-          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+          {/* 우측 액션: 증빙 다운로드 & 필터 칩 */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <button
-              onClick={() => setSelectedFilter('all')}
-              className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors ${
-                selectedFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              type="button"
+              onClick={handleExportLogs}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer press-scale active:scale-[0.98]"
+              title="분쟁 대비 공식 통화/문자 소명 증빙 파일 다운로드"
             >
-              전체
+              <Download size={12} className="text-blue-600" />
+              <span>증빙 다운로드</span>
             </button>
-            <button
-              onClick={() => setSelectedFilter('calls')}
-              className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors ${
-                selectedFilter === 'calls' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              통화
-            </button>
-            <button
-              onClick={() => setSelectedFilter('sms')}
-              className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors ${
-                selectedFilter === 'sms' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              문자
-            </button>
+
+            {/* 필터 칩 */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                onClick={() => setSelectedFilter('all')}
+                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                  selectedFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setSelectedFilter('calls')}
+                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                  selectedFilter === 'calls' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                통화
+              </button>
+              <button
+                onClick={() => setSelectedFilter('sms')}
+                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                  selectedFilter === 'sms' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                문자
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* 상단 오디오 플레이어 (통화 카드 클릭 시 즉시 활성화) */}
+        {playingRecording && (
+          <div className="mb-3 animate-fadeIn">
+            <CustomAudioPlayer
+              src={playingRecording.url}
+              fileName={playingRecording.filename}
+              onClose={() => setPlayingRecording(null)}
+            />
+          </div>
+        )}
 
         {/* 타임라인 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
           {filteredLogs.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
-              <MessageSquare size={32} className="text-slate-300" />
-              <p className="text-xs font-medium text-slate-600">통화 및 문자 내역이 없습니다.</p>
-              <p className="text-[11px] text-slate-400">우측 발송 도크에서 문자를 발송하거나 통화를 기록해보세요.</p>
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-2 py-12">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                <Clock size={24} className="text-slate-300" />
+              </div>
+              <p className="text-xs font-medium">기록된 통화 및 문자 내역이 없습니다.</p>
+              <p className="text-[11px] text-slate-400">우측에서 문자를 발송하거나 스마트폰 앱과 동기화하세요.</p>
             </div>
           ) : (
             filteredLogs.map((log, index) => {
@@ -305,14 +337,13 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                weekday: 'short'
+                weekday: 'long'
               });
-              const prevLog = index > 0 ? filteredLogs[index - 1] : null;
-              const prevDateHeader = prevLog ? new Date(prevLog.timestamp).toLocaleDateString('ko-KR', {
+              const prevDateHeader = index > 0 ? new Date(filteredLogs[index - 1].timestamp).toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-                weekday: 'short'
+                weekday: 'long'
               }) : null;
               const showDateSeparator = dateHeader !== prevDateHeader;
 
@@ -329,12 +360,16 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                 return `${m}분 ${s}초`;
               };
 
+              // 해당 통화 로그에 매칭되는 구글 드라이브 녹취 파일 탐색
+              const matchedRec = isCall ? findMatchingRecordingForLog(log, lead.recordings) : undefined;
+              const isCurrentPlaying = playingRecording && matchedRec && playingRecording.url === matchedRec.url;
+
               return (
                 <React.Fragment key={log.id}>
                   {/* 날짜 구분 배너 */}
                   {showDateSeparator && (
                     <div className="flex justify-center my-3">
-                      <span className="bg-slate-200/90 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full shadow-2xs">
+                      <span className="bg-slate-200/90 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full shadow-2xs">
                         {dateHeader}
                       </span>
                     </div>
@@ -343,9 +378,13 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                   {/* 통화 카드 UI */}
                   {isCall ? (
                     <div className={`flex w-full ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                      <div className="w-full max-w-[88%] bg-white rounded-2xl p-3 shadow-xs border border-slate-200/80 transition-all hover:border-slate-300">
+                      <div className={`w-full max-w-[90%] bg-white rounded-2xl p-3 shadow-xs border transition-all ${
+                        isCurrentPlaying 
+                          ? 'border-purple-400 ring-2 ring-purple-400/20 bg-purple-50/20' 
+                          : 'border-slate-200/90 hover:border-slate-300'
+                      }`}>
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                               isMissed
                                 ? 'bg-rose-100 text-rose-600'
@@ -356,10 +395,10 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                               {isMissed ? <PhoneMissed size={16} /> : isInbound ? <PhoneIncoming size={16} /> : <PhoneOutgoing size={16} />}
                             </div>
 
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`text-xs font-bold ${isMissed ? 'text-rose-700' : 'text-slate-900'}`}>
-                                  {isMissed ? '부재중 통화' : isInbound ? '수신 통화 (인바운드)' : '발신 통화 (아웃바운드)'}
+                                  {isMissed ? '부재중 통화' : isInbound ? '수신 통화' : '발신 통화'}
                                 </span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                                   log.lineInfo === '투넘버' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
@@ -367,13 +406,48 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                                   {log.lineInfo || '기본'}
                                 </span>
                                 {log.duration && log.duration > 0 && (
-                                  <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded font-semibold">
-                                    ⏱️ {formatDuration(log.duration)}
+                                  <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
+                                    {formatDuration(log.duration)}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-slate-400 font-mono">{timeStr}</span>
+                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{timeStr}</span>
                             </div>
+                          </div>
+
+                          {/* 우측 액션: 구글 드라이브 녹취 청취 버튼 & 다이얼 버튼 */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {matchedRec ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPlayingRecording(matchedRec);
+                                  toast.info(`녹음 파일 '${matchedRec.filename}'을 로드하여 재생합니다.`);
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                  isCurrentPlaying
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs animate-pulse'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                                }`}
+                                title="구글 드라이브 녹취 스트리밍 재생"
+                              >
+                                <PlayCircle size={12} />
+                                <span>{isCurrentPlaying ? '재생 중' : '녹음 듣기'}</span>
+                              </button>
+                            ) : null}
+
+                            {/* 스마트폰으로 전화 걸기 버튼 */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                enqueueCall(lead.phone, lead.customerName);
+                                toast.success(`${lead.customerName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                              }}
+                              className="w-8 h-8 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors cursor-pointer"
+                              title="스마트폰으로 전화 걸기"
+                            >
+                              <Phone size={13} />
+                            </button>
                           </div>
                         </div>
 

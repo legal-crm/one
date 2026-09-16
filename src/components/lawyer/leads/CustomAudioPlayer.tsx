@@ -124,6 +124,19 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
 
     const isDriveUrl = src.includes('drive.google.com');
 
+    // Convert to Google Drive preview iframe URL if needed
+    const getPreviewUrl = (url: string) => {
+      if (!url.includes('drive.google.com')) return url;
+      let id = '';
+      const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match1) id = match1[1];
+      else {
+        const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match2) id = match2[1];
+      }
+      return id ? `https://drive.google.com/file/d/${id}/preview` : url;
+    };
+
     return (
       <div className="bg-white rounded-xl shadow-md border border-purple-200/80 p-3.5 w-full">
         {/* 헤더: 파일명 & 재생 상태 */}
@@ -138,15 +151,17 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* 배속 조절 버튼 */}
-            <button
-              onClick={cyclePlaybackRate}
-              className="px-2 py-0.5 text-[11px] font-mono font-bold rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors flex items-center gap-1"
-              title="재생 배속 변경 (1x, 1.25x, 1.5x, 2x)"
-            >
-              <Gauge size={11} />
-              {playbackRate}x
-            </button>
+            {/* 배속 조절 버튼 (로컬 플레이어일 때) */}
+            {!isDriveUrl && (
+              <button
+                onClick={cyclePlaybackRate}
+                className="px-2 py-0.5 text-[11px] font-mono font-bold rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors flex items-center gap-1"
+                title="재생 배속 변경 (1x, 1.25x, 1.5x, 2x)"
+              >
+                <Gauge size={11} />
+                {playbackRate}x
+              </button>
+            )}
             {onClose && (
               <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5 rounded text-xs">
                 ✕
@@ -155,37 +170,64 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
           </div>
         </div>
 
-        {/* 숨김 오디오 엘리먼트 */}
-        <audio
-          ref={audioRef}
-          src={src}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleLoadedMetadata}
-          onEnded={() => setIsPlaying(false)}
-          onError={() => {
-            setError(true);
-            setIsPlaying(false);
-          }}
-        />
-
-        {error ? (
-          <div className="bg-rose-50 text-rose-700 text-xs p-2.5 rounded-lg flex items-center justify-between border border-rose-200">
-            <span className="flex items-center gap-1.5 font-medium">
-              <AlertCircle size={14} className="shrink-0 text-rose-500" />
-              오디오를 재생할 수 없습니다.
-            </span>
-            {src && (
+        {/* Google Drive Iframe 플레이어 (CORS 우회 및 스트리밍 지원) */}
+        {isDriveUrl ? (
+          <div className="flex flex-col gap-2">
+            <div className="relative w-full h-[100px] bg-slate-100 rounded-lg overflow-hidden border border-purple-200">
+              <iframe
+                src={getPreviewUrl(src)}
+                className="w-full h-full border-none"
+                title="Audio Preview"
+                allow="autoplay"
+              />
+            </div>
+            <div className="flex justify-end items-center gap-2">
+              <span className="text-[10px] text-slate-400">
+                * 구글 드라이브 보안 정책으로 표준 플레이어를 사용합니다.
+              </span>
               <a
                 href={src}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline font-bold text-rose-700 hover:text-rose-900"
+                className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded font-bold hover:bg-purple-100 transition-colors"
               >
-                다운로드/열기
+                새 창에서 열기
               </a>
-            )}
+            </div>
           </div>
         ) : (
+          <>
+            {/* 숨김 오디오 엘리먼트 */}
+            <audio
+              ref={audioRef}
+              src={src}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={() => setIsPlaying(false)}
+              onError={() => {
+                setError(true);
+                setIsPlaying(false);
+              }}
+            />
+
+            {error ? (
+              <div className="bg-rose-50 text-rose-700 text-xs p-2.5 rounded-lg flex items-center justify-between border border-rose-200">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <AlertCircle size={14} className="shrink-0 text-rose-500" />
+                  오디오를 재생할 수 없습니다.
+                </span>
+                {src && (
+                  <a
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-bold text-rose-700 hover:text-rose-900"
+                  >
+                    다운로드/열기
+                  </a>
+                )}
+              </div>
+            ) : (
           <div className="space-y-2">
             {/* 타임라인 슬라이더 */}
             <div className="relative">
@@ -233,6 +275,8 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     );

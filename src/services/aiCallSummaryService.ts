@@ -30,14 +30,9 @@ export interface CallSummaryContext {
   caseType?: string;
 }
 
-export const REHABILITATION_DOMAIN_KEYWORDS = [
-  '개인회생', '파산면책', '금지명령', '중지명령', '개시결정', '변제계획안', '변제인가', '면책결정',
-  '별제권', '우선변제권', '일반우선채권', '후순위채권', '채권자집회', '보정권고', '보정명령',
-  '총 채무액', '원금', '이자', '변제율', '변제기간', '월 변제금', '가용소득', '청산가치',
-  '최저생계비', '기준중위소득', '부양가족', '배우자 재산', '임대차보증금', '최우선변제금', '압류', '가압류',
-  '독촉', '추심', '신용회복위원회', '워크아웃', '프리워크아웃', '새출발기금', '대부업체', '저축은행',
-  '카드론', '현금서비스', '마이너스통장', '담보대출', '신용대출', '햇살론', '사채', '일수'
-];
+import { REHABILITATION_DOMAIN_KEYWORDS, AVAILABLE_AI_MODELS } from '../types/leadTypes';
+
+export { REHABILITATION_DOMAIN_KEYWORDS, AVAILABLE_AI_MODELS };
 
 export const DEFAULT_AI_PROMPT = `당신은 법률 사무소의 개인회생/파산 전문 수석 상담원 보조 AI입니다.
 업로드된 통화 녹음 음성을 분석하여 다음 2개 섹션으로 명확히 구분하여 작성하세요.
@@ -192,7 +187,9 @@ export const generateSmartMockSummary = (file: File, context?: CallSummaryContex
 };
 
 /**
- * Gemini 2.5 Flash를 이용한 통화 녹음 파일 STT 및 2단계 요약 생성
+/**
+ * Gemini 3.5 Transcribe & Gemini 3.5 Flash를 이용한 통화 녹음 파일 STT 및 2단계 요약 생성
+ * (화자분리 전사 + 타임스탬프 + 95대 회생/파산 전문 어휘 주입)
  */
 export const generateAiCallSummary = async (
   file: File,
@@ -216,16 +213,24 @@ export const generateAiCallSummary = async (
     });
   }
 
-  // 3. API 키가 있는 경우 Gemini 2.5 Flash 멀티모달 호출
+  // 3. 모델 라인업 및 Fallback 설정 (기본: gemini-3.5-transcribe, fallback: gemini-3.5-flash)
+  const VALID_MODELS = ['gemini-3.5-transcribe', 'gemini-3.5-flash', 'gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
+  const FALLBACK_MODEL = 'gemini-3.5-flash';
+  let selectedModel = typeof window !== 'undefined' ? (localStorage.getItem('lm_geminiModel') || 'gemini-3.5-transcribe') : 'gemini-3.5-transcribe';
+
+  if (!VALID_MODELS.includes(selectedModel)) {
+    selectedModel = 'gemini-3.5-transcribe';
+  }
+
   try {
     const base64Data = await fileToBase64(file);
     const domainKeywordsStr = REHABILITATION_DOMAIN_KEYWORDS.join(', ');
 
     const promptText = `
 당신은 대한민국 법률사무소의 개인회생/파산/신용회복 전문 수석 상담원 보조 AI입니다.
-업로드된 음성 파일을 경청하고 다음 2개 섹션([1. 상담 요약]과 [2. 전체 대화록])을 명확히 구분하여 충실하게 작성하세요.
+업로드된 통화 음성 파일을 정밀 분석하여 [1. 상담 요약]과 [2. 전체 대화록]을 순서대로 작성하세요.
 
-[도메인 특화 전문 용어 사전 (음성 인식 보정)]
+[도메인 특화 전문 용어 사전 (인식 정확도 보정 - 95대 핵심 어휘)]
 ${domainKeywordsStr}
 
 [고객 및 상담 맥락]
@@ -238,46 +243,63 @@ ${customPrompt || DEFAULT_AI_PROMPT}
 
 [출력 형식 필수 준수사항]:
 반드시 첫 번째 줄부터 '[1. 상담 요약]'으로 시작하여 핵심 정보를 정리하고,
-그 뒤에 반드시 '[2. 전체 대화록]' 헤더를 넣은 후 '[00:00] 화자: 대화내용' 형식으로 타임스탬프와 함께 전문을 전사하세요.
+그 뒤에 반드시 구분선과 함께 '[2. 전체 대화록]' 헤더를 넣은 후 화자(상담원, 고객)를 분리하고 '[00:00] 화자: 대화내용' 형식으로 타임스탬프와 함께 전문을 전사하세요.
 `;
 
     const mimeType = file.type || (file.name.endsWith('.m4a') ? 'audio/m4a' : file.name.endsWith('.wav') ? 'audio/wav' : 'audio/mp3');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: promptText },
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Data
+    // Helper: Call Gemini Generative Language API
+    const callGeminiModel = async (modelName: string): Promise<string | null> => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: promptText },
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                  }
                 }
-              }
-            ]
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 8192
           }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 4096
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Model ${modelName} returned ${response.status}: ${errorText}`);
+      }
+
+      const json = await response.json();
+      return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    };
+
+    // 1차 시도: 선택된 모델 (gemini-3.5-transcribe)
+    try {
+      const resultText = await callGeminiModel(selectedModel);
+      if (resultText) return resultText;
+    } catch (firstError: any) {
+      console.warn(`[aiCallSummaryService] Model ${selectedModel} failed, trying fallback to ${FALLBACK_MODEL}:`, firstError);
+      
+      // Fallback 시도: gemini-3.5-flash
+      if (selectedModel !== FALLBACK_MODEL) {
+        try {
+          const fallbackResult = await callGeminiModel(FALLBACK_MODEL);
+          if (fallbackResult) return fallbackResult;
+        } catch (fallbackError) {
+          console.warn('[aiCallSummaryService] Fallback model failed too:', fallbackError);
         }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn('[aiCallSummaryService] Gemini API returned error, falling back to smart mock:', errorText);
-      return generateSmartMockSummary(file, context);
-    }
-
-    const json = await response.json();
-    const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (candidateText && candidateText.trim().length > 0) {
-      return candidateText.trim();
+      }
     }
 
     return generateSmartMockSummary(file, context);
@@ -285,4 +307,22 @@ ${customPrompt || DEFAULT_AI_PROMPT}
     console.warn('[aiCallSummaryService] Gemini API call threw exception, falling back to smart mock:', error);
     return generateSmartMockSummary(file, context);
   }
+};
+
+/**
+ * AI 요약문에서 상담 메모/이력으로 저장하기 위한 '특이사항' 항목만 정제 추출
+ */
+export const extractSpecialMemoFromSummary = (summaryText: string): string => {
+  if (!summaryText) return '';
+
+  // 1. "특이사항 및 결론 :" 또는 "특이사항 :" 뒤의 내용 탐색
+  const memoMatch = summaryText.match(/(?:\*?\s*특이사항[^\n:]*[:\s]+)([\s\S]*?)(?=\n\s*(?:\[2\.|\={3,}|$))/i);
+  if (memoMatch && memoMatch[1]) {
+    const cleaned = memoMatch[1].trim();
+    if (cleaned.length > 0) return cleaned;
+  }
+
+  // 2. 만약 특정 섹션이 없으면 첫 5줄 또는 요약문 앞부분 반환
+  const lines = summaryText.split('\n').filter(l => !l.startsWith('[1.') && !l.startsWith('[2.'));
+  return lines.slice(0, 5).join('\n').trim();
 };
