@@ -564,9 +564,6 @@ export default function Stage3DocumentsHubView({
                   <h4 className="font-extrabold text-sm text-slate-900">
                     1차 기본서류 & 인감 수령
                   </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    인감도장/증명서({requiredSealCount}부) 실물 수령 필수
-                  </p>
                 </div>
               </div>
               <span className={`text-[11px] font-black px-2 py-0.8 rounded-full border shrink-0 ${
@@ -732,13 +729,6 @@ export default function Stage3DocumentsHubView({
                   <h4 className="font-extrabold text-sm text-slate-900">
                     부채증명서 발급 대행
                   </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {!stats.isPhase1Done
-                      ? '1차 서류 수령 후 신청서 작성 가능'
-                      : !isDebtDispatched
-                      ? '1차 서류 수령완료! 대행 신청서를 작성하세요'
-                      : `원클릭부채대행 접수 완료 (약 7영업일 소요)`}
-                  </p>
                 </div>
               </div>
 
@@ -864,9 +854,6 @@ export default function Stage3DocumentsHubView({
                   <h4 className="font-extrabold text-sm text-slate-900">
                     2차 소득·재산 서류 수합
                   </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    부채증명서 발급 7일 동안 통장·소득 간편 업로드
-                  </p>
                 </div>
               </div>
               <span className="text-[11px] font-black px-2 py-0.8 rounded-full bg-blue-100 text-blue-800 border border-blue-300 shrink-0">
