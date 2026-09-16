@@ -515,13 +515,14 @@ export default function DebtAgencyApplicationModal({
                 기본서류 발급신청 ( V )
               </div>
 
-              <div className="grid grid-cols-12 divide-x divide-slate-900">
-                {/* 열 1: 신용조회 / 은행연합회 / 보험협회 (4컬럼) */}
-                <div className="col-span-4 divide-y divide-slate-900">
+              <div className="grid grid-cols-[1.05fr_1.15fr_1.45fr] divide-x divide-slate-900">
+                {/* 열 1: 신용조회 / 은행연합회 / 보험협회 */}
+                <div className="divide-y divide-slate-900">
                   {/* 신용조회 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight">
-                      신용<br />조회<br /><span className="text-[10px] text-slate-500 font-normal">(나이스)</span>
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[11px] text-slate-900">신용조회</span>
+                      <span className="text-[10px] text-slate-500 font-normal leading-none mt-0.5">(나이스)</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1.5 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -535,6 +536,7 @@ export default function DebtAgencyApplicationModal({
                               niceCredit: { ...appData.basicDocs.niceCredit, requested: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>신청</span>
                       </label>
@@ -549,7 +551,7 @@ export default function DebtAgencyApplicationModal({
                               niceCredit: { ...appData.basicDocs.niceCredit, extraCreditorsAfterIssue: e.target.checked }
                             }
                           })}
-                          className="mt-0.5"
+                          className="mt-0.5 shrink-0"
                         />
                         <span>발급 후 신청건 외 채권사 추가발급진행</span>
                       </label>
@@ -558,8 +560,9 @@ export default function DebtAgencyApplicationModal({
 
                   {/* 은행연합회 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight">
-                      은행<br />연합회<br /><span className="text-[9px] text-slate-500 font-normal">(조회서)</span>
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[11px] text-slate-900">은행연합회</span>
+                      <span className="text-[10px] text-slate-500 font-normal leading-none mt-0.5">(조회서)</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1.5 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -573,6 +576,7 @@ export default function DebtAgencyApplicationModal({
                               bankUnion: { ...appData.basicDocs.bankUnion, requested: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>신청</span>
                       </label>
@@ -587,7 +591,7 @@ export default function DebtAgencyApplicationModal({
                               bankUnion: { ...appData.basicDocs.bankUnion, extraCreditorsAfterIssue: e.target.checked }
                             }
                           })}
-                          className="mt-0.5"
+                          className="mt-0.5 shrink-0"
                         />
                         <span>발급 후 신청건 외 채권사 추가발급진행</span>
                       </label>
@@ -596,8 +600,9 @@ export default function DebtAgencyApplicationModal({
 
                   {/* 생명/손해보험협회 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight text-[10px]">
-                      생명(손해)<br />보험협회
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[10.5px] text-slate-900">생명(손해)</span>
+                      <span className="text-[10.5px] text-slate-900 mt-0.5">보험협회</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1.5 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -611,6 +616,7 @@ export default function DebtAgencyApplicationModal({
                               lifeInsuranceAssoc: { ...appData.basicDocs.lifeInsuranceAssoc, requested: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>신청</span>
                       </label>
@@ -625,7 +631,7 @@ export default function DebtAgencyApplicationModal({
                               lifeInsuranceAssoc: { ...appData.basicDocs.lifeInsuranceAssoc, expectedRefundDoc: e.target.checked }
                             }
                           })}
-                          className="mt-0.5"
+                          className="mt-0.5 shrink-0"
                         />
                         <span>보험 예상해지 환급금증명서 진행</span>
                       </label>
@@ -633,12 +639,13 @@ export default function DebtAgencyApplicationModal({
                   </div>
                 </div>
 
-                {/* 열 2: 국민건강보험 & 국민연금 (4컬럼) */}
-                <div className="col-span-4 divide-y divide-slate-900">
+                {/* 열 2: 국민건강보험 & 국민연금 */}
+                <div className="divide-y divide-slate-900">
                   {/* 국민건강보험 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight">
-                      국민<br />건강<br />보험
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[11px] text-slate-900">국민건강</span>
+                      <span className="text-[11px] text-slate-900 mt-0.5">보험</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -652,6 +659,7 @@ export default function DebtAgencyApplicationModal({
                               healthInsurance: { ...appData.basicDocs.healthInsurance, all: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span className="font-bold">전체내역발급</span>
                       </label>
@@ -666,6 +674,7 @@ export default function DebtAgencyApplicationModal({
                               healthInsurance: { ...appData.basicDocs.healthInsurance, unpaidPaymentHistory: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>건강보험 미납(납부)내역서</span>
                       </label>
@@ -680,6 +689,7 @@ export default function DebtAgencyApplicationModal({
                               healthInsurance: { ...appData.basicDocs.healthInsurance, eligibilityConfirm: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>자격득실 확인서</span>
                       </label>
@@ -694,11 +704,12 @@ export default function DebtAgencyApplicationModal({
                               healthInsurance: { ...appData.basicDocs.healthInsurance, assessmentNotice: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>산정(부과)내역서</span>
                       </label>
-                      <div className="flex items-center gap-1 text-[10px] pt-0.5">
-                        <span>기타:</span>
+                      <div className="flex items-center gap-1 text-[10.5px] pt-0.5">
+                        <span className="shrink-0 text-slate-600">기타:</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.healthInsurance.other} 
@@ -710,7 +721,7 @@ export default function DebtAgencyApplicationModal({
                               healthInsurance: { ...appData.basicDocs.healthInsurance, other: e.target.value }
                             }
                           })}
-                          className="flex-1 bg-transparent border-b border-slate-300 outline-none"
+                          className="flex-1 min-w-0 bg-transparent border-b border-slate-300 outline-none text-[10px] px-1 placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -718,8 +729,8 @@ export default function DebtAgencyApplicationModal({
 
                   {/* 국민연금 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight">
-                      국민<br />연금
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[11px] text-slate-900">국민연금</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -733,6 +744,7 @@ export default function DebtAgencyApplicationModal({
                               nationalPension: { ...appData.basicDocs.nationalPension, all: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span className="font-bold">전체내역발급</span>
                       </label>
@@ -747,6 +759,7 @@ export default function DebtAgencyApplicationModal({
                               nationalPension: { ...appData.basicDocs.nationalPension, subscriberConfirm: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>가입자 가입증명서</span>
                       </label>
@@ -761,6 +774,7 @@ export default function DebtAgencyApplicationModal({
                               nationalPension: { ...appData.basicDocs.nationalPension, pensionCalcHistory: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>연금산정가입내역확인서</span>
                       </label>
@@ -775,11 +789,12 @@ export default function DebtAgencyApplicationModal({
                               nationalPension: { ...appData.basicDocs.nationalPension, rehabApplicationConfirm: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>개인회생신청용확인서</span>
                       </label>
-                      <div className="flex items-center gap-1 text-[10px] pt-0.5">
-                        <span>기타:</span>
+                      <div className="flex items-center gap-1 text-[10.5px] pt-0.5">
+                        <span className="shrink-0 text-slate-600">기타:</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.nationalPension.other} 
@@ -791,19 +806,20 @@ export default function DebtAgencyApplicationModal({
                               nationalPension: { ...appData.basicDocs.nationalPension, other: e.target.value }
                             }
                           })}
-                          className="flex-1 bg-transparent border-b border-slate-300 outline-none"
+                          className="flex-1 min-w-0 bg-transparent border-b border-slate-300 outline-none text-[10px] px-1 placeholder:text-slate-400"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 열 3: 국세(세무서) & 구청/동사무소 (4컬럼) */}
-                <div className="col-span-4 divide-y divide-slate-900">
+                {/* 열 3: 국세(세무서) & 구청/동사무소 */}
+                <div className="divide-y divide-slate-900">
                   {/* 국세(세무서) */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight">
-                      국세<br /><span className="text-[10px] text-slate-500 font-normal">(세무서)</span>
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight">
+                      <span className="text-[11px] text-slate-900">국세</span>
+                      <span className="text-[10px] text-slate-500 font-normal leading-none mt-0.5">(세무서)</span>
                     </div>
                     <div className="flex-1 p-2 space-y-1 text-[11px]">
                       <label className="flex items-center gap-1.5 cursor-pointer">
@@ -817,6 +833,7 @@ export default function DebtAgencyApplicationModal({
                               nationalTax: { ...appData.basicDocs.nationalTax, all: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span className="font-bold">전체내역발급</span>
                       </label>
@@ -831,6 +848,7 @@ export default function DebtAgencyApplicationModal({
                               nationalTax: { ...appData.basicDocs.nationalTax, taxPaymentCert: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>납세증명,체납증명</span>
                       </label>
@@ -845,6 +863,7 @@ export default function DebtAgencyApplicationModal({
                               nationalTax: { ...appData.basicDocs.nationalTax, incomeAmountCert: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>소득금액증명</span>
                       </label>
@@ -859,11 +878,12 @@ export default function DebtAgencyApplicationModal({
                               nationalTax: { ...appData.basicDocs.nationalTax, closedBizCert: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
                         <span>휴,폐업사실증명</span>
                       </label>
-                      <div className="flex items-center gap-1 text-[10px] pt-0.5">
-                        <span>기타:</span>
+                      <div className="flex items-center gap-1 text-[10.5px] pt-0.5">
+                        <span className="shrink-0 text-slate-600">기타:</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.nationalTax.other} 
@@ -875,7 +895,7 @@ export default function DebtAgencyApplicationModal({
                               nationalTax: { ...appData.basicDocs.nationalTax, other: e.target.value }
                             }
                           })}
-                          className="flex-1 bg-transparent border-b border-slate-300 outline-none"
+                          className="flex-1 min-w-0 bg-transparent border-b border-slate-300 outline-none text-[10px] px-1 placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -883,10 +903,11 @@ export default function DebtAgencyApplicationModal({
 
                   {/* 구청 및 동사무소 */}
                   <div className="flex">
-                    <div className="w-16 bg-slate-50 border-r border-slate-900 p-2 flex items-center justify-center text-center font-bold leading-tight text-[11px]">
-                      구청<br />및<br />동사무소
+                    <div className="w-[70px] shrink-0 bg-slate-50 border-r border-slate-900 px-1 py-1.5 flex flex-col items-center justify-center text-center font-bold leading-tight text-[11px]">
+                      <span className="text-[11px] text-slate-900">구청 및</span>
+                      <span className="text-[11px] text-slate-900 mt-0.5">동사무소</span>
                     </div>
-                    <div className="flex-1 p-2 space-y-1 text-[11px]">
+                    <div className="flex-1 p-2 space-y-1.5 text-[10.5px]">
                       <div className="flex items-center gap-1">
                         <input 
                           type="checkbox" 
@@ -898,8 +919,9 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, localTaxCert: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
-                        <span>지방세세목별과세증명:</span>
+                        <span className="shrink-0">지방세세목별과세증명:</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.localDistrict.localTaxJurisdiction}
@@ -911,7 +933,7 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, localTaxJurisdiction: e.target.value }
                             }
                           })}
-                          className="w-20 bg-transparent border-b border-slate-300 text-[10px] outline-none"
+                          className="flex-1 min-w-0 bg-transparent border-b border-slate-300 text-[10px] outline-none px-1 placeholder:text-slate-400"
                         />
                       </div>
 
@@ -926,8 +948,9 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, residentAbstract: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
-                        <span>주민등록 등초본: 세대주(</span>
+                        <span className="shrink-0">주민등록 등초본: 세대주(</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.localDistrict.residentHead}
@@ -939,9 +962,9 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, residentHead: e.target.value }
                             }
                           })}
-                          className="w-12 bg-transparent border-b border-slate-300 text-[10px] text-center outline-none"
+                          className="w-12 bg-transparent border-b border-slate-300 text-[10px] text-center outline-none px-0.5 placeholder:text-slate-400"
                         />
-                        <span>)</span>
+                        <span className="shrink-0">)</span>
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -955,8 +978,9 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, vehicleRegister: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
-                        <span>자동차등록원부:</span>
+                        <span className="shrink-0">자동차등록원부:</span>
                         <input 
                           type="text" 
                           value={appData.basicDocs.localDistrict.vehiclePlate}
@@ -968,7 +992,7 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, vehiclePlate: e.target.value }
                             }
                           })}
-                          className="w-16 bg-transparent border-b border-slate-300 text-[10px] outline-none"
+                          className="flex-1 min-w-0 bg-transparent border-b border-slate-300 text-[10px] outline-none px-1 placeholder:text-slate-400"
                         />
                       </div>
 
@@ -983,8 +1007,9 @@ export default function DebtAgencyApplicationModal({
                               localDistrict: { ...appData.basicDocs.localDistrict, cadastreLandRecord: e.target.checked }
                             }
                           })}
+                          className="shrink-0"
                         />
-                        <span>지적전산자료조회결과서(토지소유현황)</span>
+                        <span className="whitespace-nowrap">지적전산자료조회결과서(토지소유현황)</span>
                       </label>
                     </div>
                   </div>
