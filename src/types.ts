@@ -864,6 +864,11 @@ export interface CrmClientExtension {
   certificateVault?: CertificateVaultData;
   // ── 대법원 전산양식 D5101 개인회생절차 개시신청서 본안 편집 데이터 ──
   petitionInfo?: CourtPetitionData;
+  // ── LeadMaster CRM 이식: 통화 녹취 & 구글 드라이브 & 실시간 소통 로그 ──
+  recordings?: import('./types/leadTypes').RecordingItem[];
+  aiSummary?: string;
+  communicationLogs?: import('./types/leadTypes').CommunicationLog[];
+  googleDriveConfig?: import('./types/leadTypes').GoogleDriveConfig;
 }
 
 // ── 2026 대한민국 법원 개인회생절차 개시신청서 본안(D5101) 데이터 ──

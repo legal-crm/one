@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Send, Phone, MessageSquare, Clock, FileText, CheckCircle2, 
   Sparkles, X, ChevronRight, AlertCircle, Copy, AlertTriangle,
-  Inbox, ListChecks, History, PhoneCall, Lock
+  Inbox, ListChecks, History, PhoneCall, Lock, PlayCircle,
+  UploadCloud, FileAudio, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User, AlimtokMilestone } from '../../../types';
+import type { RecordingItem } from '../../../types/leadTypes';
 import type { PipelineStage } from './WorkflowPipelineStepper';
 import { addClientNotification } from '../../../services/clientNotificationService';
+import { enqueueCall, uploadRecordingToDrive } from '../../../services/communicationService';
+import { generateAiCallSummary, extractSpecialMemoFromSummary } from '../../../services/aiCallSummaryService';
+import { CustomAudioPlayer } from '../leads/CustomAudioPlayer';
 import AlimtalkSendConfirmModal from './AlimtalkSendConfirmModal';
 
 interface ClientCommunicationSidePanelProps {
@@ -17,6 +22,7 @@ interface ClientCommunicationSidePanelProps {
   pipelineStage: PipelineStage;
   onAddNote: (text: string) => void;
   onClose?: () => void;
+  onUpdateExt?: (updated: CrmClientExtension) => void;
 }
 
 type PanelTab = 'action_required' | 'active_requests' | 'timeline' | 'calls';
@@ -28,10 +34,16 @@ export default function ClientCommunicationSidePanel({
   pipelineStage,
   onAddNote,
   onClose,
+  onUpdateExt,
 }: ClientCommunicationSidePanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>('action_required');
   const [quickMemo, setQuickMemo] = useState('');
   const [callDuration, setCallDuration] = useState('5분');
+  const [playingRecording, setPlayingRecording] = useState<RecordingItem | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [confirmModalConfig, setConfirmModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -188,6 +200,63 @@ export default function ClientCommunicationSidePanel({
     onAddNote(`[통화/상담 ${callDuration}] ${quickMemo.trim()}`);
     setQuickMemo('');
     toast.success('고객 상담 메모가 사건 타임라인에 저장되었습니다.');
+  };
+
+  // 통화 녹음 파일 업로드 & Gemini 3.5 Transcribe
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setIsTranscribing(true);
+    setUploadProgressText('구글 드라이브 업로드 & Gemini AI 전사 중...');
+
+    try {
+      const driveRes = await uploadRecordingToDrive(file, crmExt.googleDriveConfig, activeLawyer.email);
+      const newRec: RecordingItem = {
+        id: `rec-${Date.now()}`,
+        filename: file.name,
+        url: driveRes.url,
+        driveFileId: driveRes.driveFileId,
+        uploadedAt: new Date().toISOString(),
+        duration: 0,
+      };
+
+      const aiRes = await generateAiCallSummary(file, {
+        customerName: clientName,
+        phone: clientRequest.phone,
+        managerName: activeLawyer.name,
+        caseType: crmExt.caseType === 'bankruptcy' ? '개인파산·면책' : '개인회생'
+      });
+
+      const updatedRecordings = [newRec, ...(crmExt.recordings || [])];
+      const updated: CrmClientExtension = {
+        ...crmExt,
+        recordings: updatedRecordings,
+        aiSummary: aiRes.rawTranscript,
+        lastActivityAt: new Date().toISOString()
+      };
+
+      if (onUpdateExt) {
+        onUpdateExt(updated);
+      }
+      setPlayingRecording(newRec);
+      toast.success('통화 녹취 업로드 및 AI 대화록 작성이 완료되었습니다.');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`녹취 분석 실패: ${err.message || '오류 발생'}`);
+    } finally {
+      setIsTranscribing(false);
+      setUploadProgressText('');
+    }
+  };
+
+  // AI 요약 특이사항을 사건 메모로 등록
+  const handleSendAiMemo = () => {
+    if (!crmExt.aiSummary) return;
+    const memo = extractSpecialMemoFromSummary(crmExt.aiSummary);
+    onAddNote(`[AI 통화 요약 특이사항]\n${memo}`);
+    toast.success('AI 요약 특이사항이 사건 상담 메모로 전송되었습니다.');
   };
 
   return (
@@ -353,7 +422,12 @@ export default function ClientCommunicationSidePanel({
           }`}
         >
           <PhoneCall className="w-3 h-3 text-emerald-600" />
-          <span>상담 메모</span>
+          <span>통화·AI</span>
+          {(crmExt.recordings || []).length > 0 && (
+            <span className="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.2 rounded-full font-bold">
+              {(crmExt.recordings || []).length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -477,12 +551,119 @@ export default function ClientCommunicationSidePanel({
           </div>
         )}
 
-        {/* 탭 4: 통화·상담 메모 (Calls) */}
+        {/* 탭 4: 통화·AI 분석 & 상담 메모 (Calls) */}
         {activeTab === 'calls' && (
           <div className="space-y-3">
+            {/* 1. 빠른 통화 실행 & 녹음 업로드 버튼 */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!clientRequest.phone) {
+                    toast.error('연락처가 등록되어 있지 않습니다.');
+                    return;
+                  }
+                  enqueueCall(clientRequest.phone, clientName);
+                  toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                }}
+                className="py-2 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale"
+                title="스마트폰으로 즉시 전화 걸기"
+              >
+                <Phone size={13} className="text-blue-600" />
+                <span>스마트폰 통화</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isTranscribing}
+                className="py-2 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale disabled:opacity-50"
+                title="녹음 파일(.m4a, .mp3) 업로드 및 Gemini 3.5 AI 분석"
+              >
+                <UploadCloud size={13} className="text-purple-600" />
+                <span>{isTranscribing ? 'AI 분석 중...' : '녹음 AI 분석'}</span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioUpload}
+                className="hidden"
+              />
+            </div>
+
+            {/* AI 분석 중 인디케이터 */}
+            {isTranscribing && (
+              <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl flex items-center gap-2 text-purple-800 text-[11px] font-bold animate-pulse">
+                <Sparkles size={14} className="text-purple-600 animate-spin shrink-0" />
+                <span className="truncate">{uploadProgressText}</span>
+              </div>
+            )}
+
+            {/* 오디오 플레이어 (선택된 녹음 재생) */}
+            {playingRecording && (
+              <div className="animate-fadeIn">
+                <CustomAudioPlayer
+                  src={playingRecording.url}
+                  fileName={playingRecording.filename}
+                  onClose={() => setPlayingRecording(null)}
+                />
+              </div>
+            )}
+
+            {/* 구글 드라이브 보관 녹취 목록 */}
+            {(crmExt.recordings || []).length > 0 && (
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                    <FileAudio size={12} className="text-purple-600" />
+                    <span>보관된 녹취 ({crmExt.recordings?.length}건)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">구글 드라이브</span>
+                </div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {crmExt.recordings?.slice(0, 5).map((rec) => (
+                    <div key={rec.id} className="p-1.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-[10px]">
+                      <span className="truncate max-w-[150px] font-medium text-slate-700">{rec.filename}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPlayingRecording(rec)}
+                          className="px-1.5 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-[10px] font-bold cursor-pointer"
+                        >
+                          청취
+                        </button>
+                        <a
+                          href={rec.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-slate-400 hover:text-slate-600"
+                        >
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI 요약 특이사항 메모 등록 버튼 */}
+            {crmExt.aiSummary && (
+              <button
+                type="button"
+                onClick={handleSendAiMemo}
+                className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <FileText size={12} className="text-blue-600" />
+                <span>AI 요약 특이사항을 사건 메모로 등록</span>
+              </button>
+            )}
+
+            {/* 2. 빠른 통화 내용 수동 기록 폼 */}
             <form onSubmit={handleSaveMemo} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 text-[11px]">통화 내용 기록</span>
+                <span className="font-bold text-slate-800 text-[11px]">통화 내용 직접 메모</span>
                 <select
                   value={callDuration}
                   onChange={e => setCallDuration(e.target.value)}
@@ -495,10 +676,10 @@ export default function ClientCommunicationSidePanel({
                 </select>
               </div>
               <textarea
-                rows={3}
+                rows={2}
                 value={quickMemo}
                 onChange={e => setQuickMemo(e.target.value)}
-                placeholder="통화 중 협의된 채무 사유, 가족 관계, 서류 발급 기한을 기록하세요..."
+                placeholder="통화 중 협의된 채무 사유, 가족 관계, 서류 발급 기한..."
                 className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F] resize-none"
               />
               <button
@@ -510,9 +691,10 @@ export default function ClientCommunicationSidePanel({
               </button>
             </form>
 
+            {/* 3. 이전 상담 메모 목록 */}
             <div className="space-y-2">
               <span className="text-[11px] font-bold text-slate-700">이전 상담 메모 ({crmExt.notes.length})</span>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {crmExt.notes.slice(-4).reverse().map(n => (
                   <div key={n.id} className="p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
                     <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">

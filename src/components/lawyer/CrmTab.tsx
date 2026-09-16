@@ -6,7 +6,7 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -24,6 +24,9 @@ import BulkMessageSendModal from './BulkMessageSendModal';
 import CaseBriefingBanner from './CaseBriefingBanner';
 import CrmSettingsModal from './CrmSettingsModal';
 import { extractBriefingFromClient } from '../../services/leadService';
+import { ClientCaseSummarySubTab } from './ClientCaseSummarySubTab';
+import { ClientCallsSmsSubTab } from './ClientCallsSmsSubTab';
+import { GoogleDriveSettingsModal } from './leads/GoogleDriveSettingsModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import CourtCaseTab from './CourtCaseTab';
@@ -101,7 +104,7 @@ interface CrmTabProps {
   setCopilotPreselectedReqId?: (id: string) => void;
   initialView?: 'leads';
   initialClientId?: string;
-  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'bankruptcy' | 'corrections' | 'court';
+  initialDetailTab?: 'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault';
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
@@ -223,7 +226,8 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
+  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   // ── 5단계 실무 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
   const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>('pipeline');
@@ -2735,6 +2739,17 @@ export default function CrmTab({
                           )}
                         </button>
 
+                        {/* ☁️ 구글 드라이브 연동 설정 */}
+                        <button
+                          type="button"
+                          onClick={() => setIsDriveModalOpen(true)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700"
+                          title="통화 녹취 자동 업로드용 구글 드라이브 계정 및 폴더 설정"
+                        >
+                          <Cloud className="w-3.5 h-3.5 text-blue-400" />
+                          <span>구글 드라이브</span>
+                        </button>
+
                         {/* 💬 우측 원스톱 고객 소통 패널 토글 버튼 */}
                         <button
                           type="button"
@@ -2903,6 +2918,10 @@ export default function CrmTab({
                           pipelineStage={pipelineStage}
                           onAddNote={(text) => handleAddNote(text, 'general')}
                           onClose={() => setShowCommPanel(false)}
+                          onUpdateExt={(updated) => {
+                            setCrmData(prev => ({ ...prev, [selectedId]: updated }));
+                            saveCrmClient(selectedId, updated);
+                          }}
                         />
                       </div>
                     )}
@@ -2915,8 +2934,10 @@ export default function CrmTab({
                         const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                     return [
                       { key: 'info', label: '종합 정보', icon: '👤', count: null },
+                      { key: 'summary', label: '사건 요약문', icon: '📄', count: null },
                       { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
                       { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
+                      { key: 'calls', label: '통화 및 문자', icon: '💬', count: (selectedExt.communicationLogs || []).length > 0 ? (selectedExt.communicationLogs || []).length : null },
                       { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
                       { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
                       { 
@@ -3501,6 +3522,19 @@ export default function CrmTab({
                     </div>
                   )}
 
+                  {/* ══════════ [신설] 사건 요약문 탭 ══════════ */}
+                  {detailTab === 'summary' && selectedClient && (
+                    <ClientCaseSummarySubTab
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      activeLawyer={activeLawyer}
+                      onUpdateExt={(updated) => {
+                        setCrmData(prev => ({ ...prev, [selectedId]: updated }));
+                        saveCrmClient(selectedId, updated);
+                      }}
+                    />
+                  )}
+
                   {/* ══════════ [2] 메모 탭 ══════════ */}
                   {detailTab === 'notes' && currentPermissions.writeNotes && (
                     <div className="space-y-4">
@@ -3786,6 +3820,19 @@ export default function CrmTab({
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {/* ══════════ [신설] 통화 및 문자 탭 ══════════ */}
+                  {detailTab === 'calls' && selectedClient && (
+                    <ClientCallsSmsSubTab
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      activeLawyer={activeLawyer}
+                      onUpdateExt={(updated) => {
+                        setCrmData(prev => ({ ...prev, [selectedId]: updated }));
+                        saveCrmClient(selectedId, updated);
+                      }}
+                    />
                   )}
 
                   {/* ══════════ [4] 업무 지시 탭 ══════════ */}
@@ -5207,6 +5254,14 @@ export default function CrmTab({
           }}
         />
       )}
+
+      {/* ── 13. 구글 드라이브 녹취 연동 설정 모달 ── */}
+      <GoogleDriveSettingsModal
+        isOpen={isDriveModalOpen}
+        onClose={() => setIsDriveModalOpen(false)}
+        activeLawyerEmail={activeLawyer.email}
+        activeLawyerName={activeLawyer.name}
+      />
     </div>
   );
 }

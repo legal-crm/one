@@ -421,6 +421,27 @@ export function convertLeadToClient(
   newExt.partnerId = lead.partnerId;
   newExt.reminders = lead.reminders || [];
 
+  // 통화 녹취, AI 요약문, 스마트폰 소통 로그 계승 (100% 무손실 이관)
+  newExt.recordings = lead.recordings || [];
+  newExt.aiSummary = lead.aiSummary || '';
+  newExt.communicationLogs = lead.communicationLogs || [];
+  if (lead.contractFee) {
+    newExt.totalFee = lead.contractFee;
+    newExt.contractAmount = lead.contractFee * 10000;
+  }
+  if (lead.contractAt) {
+    newExt.contractDate = lead.contractAt;
+  }
+  if (lead.depositHistory && lead.depositHistory.length > 0) {
+    newExt.feeSchedule = lead.depositHistory.map((d, i) => ({
+      installmentNo: i + 1,
+      dueDate: d.date,
+      amount: d.amount,
+      status: d.amount > 0 ? 'paid' : 'pending',
+      paidAt: d.date,
+    }));
+  }
+
   // 통화 메모 및 상담 이력 계승
   if (lead.callLogs && lead.callLogs.length > 0) {
     lead.callLogs.forEach(c => {
@@ -909,5 +930,87 @@ export const calculateCommission = (fee: number, rules?: CommissionRule[]): numb
   if (rule) return rule.commission;
   // 기본 추정 룰: 수임료의 약 10%
   return Math.round(fee * 0.1);
+};
+
+// ── 본안 수임 고객(ConsultRequest & CrmClientExtension) 표준 요약문 생성 함수 ──
+export const generateClientSummary = (
+  client: ConsultRequest,
+  ext?: CrmClientExtension | null,
+  managerName?: string,
+  template: string = DEFAULT_SUMMARY_TEMPLATE
+): string => {
+  let processedTemplate = template;
+  const fp = client.financialProfile || {};
+
+  if (fp.maritalStatus === '미혼' || fp.maritalStatus === 'single') {
+    processedTemplate = processedTemplate.replace(/^\* 미성년 자녀 수 : .*\r?\n?/gm, '');
+  }
+
+  if (ext?.creditCardUse === '미사용') {
+    processedTemplate = processedTemplate.replace(/^\* 신용카드 사용금액 : .*\r?\n?/gm, '');
+  }
+
+  const depositRentStrParts: string[] = [];
+  if (fp.housingType === '자가' || fp.housingType === 'own') {
+    depositRentStrParts.push(`자가 소유`);
+  } else if (fp.housingType === '월세' || fp.housingType === 'monthly') {
+    if (fp.housingDeposit) depositRentStrParts.push(`보증금 ${formatKoreanMoney(fp.housingDeposit)}`);
+    if (fp.housingMonthlyRent) depositRentStrParts.push(`월세 ${formatKoreanMoney(fp.housingMonthlyRent)}`);
+  } else if (fp.housingType === '전세' || fp.housingType === 'jeonse') {
+    if (fp.housingDeposit) depositRentStrParts.push(`전세 보증금 ${formatKoreanMoney(fp.housingDeposit)}`);
+  } else if (fp.housingType === '무상' || fp.housingType === 'free') {
+    depositRentStrParts.push(`무상거주`);
+  }
+  const depositRentStr = depositRentStrParts.length > 0 ? depositRentStrParts.join(' ') : '정보 없음';
+
+  const assetsStr = fp.assetsTotal ? `${formatKoreanMoney(fp.assetsTotal)} (청산가치 반영)` : '특이 자산 없음';
+  const creditLoanStr = fp.debtTotal ? `${formatKoreanMoney(fp.debtTotal)} (총 채무 원금)` : '미확인';
+  const collateralStr = ext?.collateralLoanDesc || '없음';
+  const historyStr = ext?.historyDetail || fp.debtCause || '이력 없음';
+
+  const sortedNotes = ext?.notes
+    ? [...ext.notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    : [];
+
+  const allMemosContent = sortedNotes.length > 0
+    ? sortedNotes.slice(0, 5).map(n => `[${n.createdAt.slice(0, 16).replace('T', ' ')} / ${n.authorName || '상담원'}]\n${n.content || (n as any).text || ''}`).join('\n\n')
+    : (ext?.preInfo || client.content || '없음');
+
+  const age = fp.age;
+  const birthStr = age ? `${new Date().getFullYear() - age}년생 (${age}세)` : '-';
+  const genderStr = fp.gender === 'male' ? '남' : fp.gender === 'female' ? '여' : '-';
+
+  const dataMap: Record<string, string> = {
+    managerName: managerName || ext?.assignedLawyerId || '담당 변호사',
+    customerName: client.realClientName || client.clientName || '의뢰인',
+    phone: client.phone || '-',
+    birth: birthStr,
+    gender: genderStr,
+    region: fp.residenceRegion || ext?.region || '-',
+    jobTypes: fp.employmentType || '정보 없음',
+    insurance4: '정보 없음',
+    maritalStatus: fp.maritalStatus === 'single' ? '미혼' : fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus || '정보 없음',
+    childrenCount: fp.dependents !== undefined ? `${fp.dependents}명` : '-',
+    incomeDetails: formatKoreanMoney(fp.income),
+    loanMonthlyPay: formatKoreanMoney(ext?.loanMonthlyPay),
+    housingType: fp.housingType || '정보 없음',
+    housingDetail: '기타',
+    depositRentStr: depositRentStr,
+    assetsStr: assetsStr,
+    creditLoanStr: creditLoanStr,
+    collateralStr: collateralStr,
+    creditCardUse: ext?.creditCardUse || '미사용',
+    creditCardAmountStr: '없음',
+    historyStr: historyStr,
+    specialMemo: allMemosContent
+  };
+
+  let result = processedTemplate;
+  for (const key in dataMap) {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    result = result.replace(regex, dataMap[key] || '');
+  }
+
+  return result.trim();
 };
 
