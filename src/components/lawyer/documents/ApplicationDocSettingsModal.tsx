@@ -35,6 +35,7 @@ export default function ApplicationDocSettingsModal({
   // 새 서류 추가 모드
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newPhase, setNewPhase] = useState<1 | 2>(2);
   const [newAgency, setNewAgency] = useState('정부24 / 주민센터');
   const [newAgencyUrl, setNewAgencyUrl] = useState('');
   const [newTips, setNewTips] = useState('');
@@ -44,6 +45,7 @@ export default function ApplicationDocSettingsModal({
   // 개별 서류 수정 모드
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editPhase, setEditPhase] = useState<1 | 2>(1);
   const [editAgency, setEditAgency] = useState('');
   const [editAgencyUrl, setEditAgencyUrl] = useState('');
   const [editTips, setEditTips] = useState('');
@@ -79,19 +81,25 @@ export default function ApplicationDocSettingsModal({
       return;
     }
 
+    // 인감 관련 서류는 무조건 1차 서류 자동 지정
+    const isSeal = newName.includes('인감');
+    const assignedPhase: 1 | 2 = isSeal ? 1 : newPhase;
+
     ApplicationDocTemplateService.addTemplate({
       name: newName.trim(),
       category: activeCategory,
+      phase: assignedPhase,
       agency: newAgency.trim() || '정부24 / 주민센터',
       agencyUrl: newAgencyUrl.trim() || undefined,
       tips: newTips.trim() || '관공서 또는 온라인을 통해 발급받아 첨부해 주세요.',
-      isRequired: newIsRequired,
+      isRequired: isSeal ? true : newIsRequired,
       isThirdPartyMasking: newIsThirdPartyMasking
     });
 
-    toast.success(`'${newName}' 서류가 ${APPLICATION_CATEGORIES.find(c => c.key === activeCategory)?.label} 목록에 추가되었습니다.`);
+    toast.success(`'${newName}' 서류가 [${assignedPhase}차 서류]로 추가되었습니다.`);
     setIsAdding(false);
     setNewName('');
+    setNewPhase(2);
     setNewAgency('정부24 / 주민센터');
     setNewAgencyUrl('');
     setNewTips('');
@@ -104,6 +112,7 @@ export default function ApplicationDocSettingsModal({
   const handleStartEdit = (item: ApplicationDocMasterItem) => {
     setEditingId(item.id);
     setEditName(item.name);
+    setEditPhase(item.phase || 1);
     setEditAgency(item.agency);
     setEditAgencyUrl(item.agencyUrl || '');
     setEditTips(item.tips);
@@ -118,12 +127,16 @@ export default function ApplicationDocSettingsModal({
       return;
     }
 
+    const isSeal = editName.includes('인감');
+    const assignedPhase: 1 | 2 = isSeal ? 1 : editPhase;
+
     ApplicationDocTemplateService.updateTemplate(id, {
       name: editName.trim(),
+      phase: assignedPhase,
       agency: editAgency.trim(),
       agencyUrl: editAgencyUrl.trim() || undefined,
       tips: editTips.trim(),
-      isRequired: editIsRequired,
+      isRequired: isSeal ? true : editIsRequired,
       isThirdPartyMasking: editIsThirdPartyMasking
     });
 
@@ -280,7 +293,19 @@ export default function ApplicationDocSettingsModal({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 block mb-1">서류 구분 (차수) *</label>
+                  <select
+                    value={newPhase}
+                    onChange={e => setNewPhase(Number(e.target.value) as 1 | 2)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-brand"
+                  >
+                    <option value={1}>1차 서류 (기본·인감·등본)</option>
+                    <option value={2}>2차 서류 (소득·재산·진술서)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">서류 공식 명칭 *</label>
                   <input
@@ -288,7 +313,14 @@ export default function ApplicationDocSettingsModal({
                     required
                     placeholder="예: 주민등록등본, 급여명세서"
                     value={newName}
-                    onChange={e => setNewName(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewName(val);
+                      if (val.includes('인감')) {
+                        setNewPhase(1);
+                        setNewIsRequired(true);
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-brand"
                   />
                 </div>
@@ -366,18 +398,19 @@ export default function ApplicationDocSettingsModal({
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                  <th className="p-3 text-center w-14">순번</th>
-                  <th className="p-3 w-48">서류명</th>
-                  <th className="p-3 w-40">발급처</th>
-                  <th className="p-3">발급 팁 & 의뢰인 안내사항</th>
+                  <th className="p-3 text-center w-12">순번</th>
                   <th className="p-3 text-center w-24">구분</th>
-                  <th className="p-3 text-center w-28">순서/관리</th>
+                  <th className="p-3 w-48">서류명</th>
+                  <th className="p-3 w-36">발급처</th>
+                  <th className="p-3">발급 팁 & 의뢰인 안내사항</th>
+                  <th className="p-3 text-center w-20">필수여부</th>
+                  <th className="p-3 text-center w-24">순서/관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                 {currentCategoryDocs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       등록된 신청서류가 없습니다. [+ 새 서류 추가] 버튼을 눌러 등록해 보세요.
                     </td>
                   </tr>
@@ -390,6 +423,16 @@ export default function ApplicationDocSettingsModal({
                         <tr key={item.id} className="bg-amber-50/40">
                           <td className="p-3 text-center font-bold text-slate-400">
                             {idx + 1}
+                          </td>
+                          <td className="p-3 text-center">
+                            <select
+                              value={editPhase}
+                              onChange={e => setEditPhase(Number(e.target.value) as 1 | 2)}
+                              className="px-1.5 py-1 border border-slate-300 rounded-lg text-xs font-bold w-full bg-white"
+                            >
+                              <option value={1}>1차 서류</option>
+                              <option value={2}>2차 서류</option>
+                            </select>
                           </td>
                           <td className="p-3">
                             <input
@@ -469,6 +512,17 @@ export default function ApplicationDocSettingsModal({
                       <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3 text-center font-bold text-slate-500">
                           {idx + 1}
+                        </td>
+                        <td className="p-3 text-center">
+                          {item.phase === 1 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-block whitespace-nowrap">
+                              1차 서류
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 inline-block whitespace-nowrap">
+                              2차 서류
+                            </span>
+                          )}
                         </td>
                         <td className="p-3">
                           <span className="font-extrabold text-slate-900 block">{item.name}</span>

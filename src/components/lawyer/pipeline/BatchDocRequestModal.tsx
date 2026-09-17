@@ -85,7 +85,7 @@ export default function BatchDocRequestModal({
     }
     const type = selectedPhase === 1 ? 'phase1' : selectedPhase === 2 ? 'phase2' : 'custom';
     onConfirmBatchSend(selectedIds, deadlineDays, type);
-    const typeLabel = selectedPhase === 1 ? '[1차 실물등기]' : selectedPhase === 2 ? '[2차 디지털서류]' : '';
+    const typeLabel = selectedPhase === 1 ? '[1차 서류]' : selectedPhase === 2 ? '[2차 서류]' : '';
     toast.success(`${clientName}님께 ${typeLabel} 미제출 서류 ${selectedIds.length}건 묶음 요청 알림톡이 전송되었습니다.`);
     onClose();
   };
@@ -150,7 +150,7 @@ export default function BatchDocRequestModal({
                     : 'bg-amber-50/60 text-amber-900 border-amber-200 hover:bg-amber-100'
                 }`}
               >
-                📮 1차 실물등기 ({unsubmittedDocs.filter(d => (d.phase || 1) === 1).length}건)
+                📮 1차 서류 ({unsubmittedDocs.filter(d => (d.phase || 1) === 1).length}건)
               </button>
               <button
                 type="button"
@@ -161,7 +161,7 @@ export default function BatchDocRequestModal({
                     : 'bg-blue-50/60 text-blue-900 border-blue-200 hover:bg-blue-100'
                 }`}
               >
-                📲 2차 모바일 ({unsubmittedDocs.filter(d => d.phase === 2).length}건)
+                📋 2차 서류 ({unsubmittedDocs.filter(d => d.phase === 2).length}건)
               </button>
             </div>
           </div>
@@ -322,7 +322,7 @@ ${clientName}님, 1차 서류 수령 확인 완료! 부채증명서 발급(약 7
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})
 ■ 제출 기한: ${deadlineStr}까지
-■ 제출 방법: 우편 발송 필요 없이 아래 모바일 링크에서 스마트폰 촬영으로 간편 제출
+■ 제출 방법: 스마트폰 간편 업로드 또는 등기우편 발송 모두 가능
 
 [모바일 원클릭 2차 서류함 열기]`
               ) : (

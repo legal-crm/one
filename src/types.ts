@@ -698,7 +698,7 @@ export interface DocumentCheckItem {
   checked: boolean;
   checkedBy?: string;
   checkedAt?: string;
-  phase?: 1 | 2;                        // 1차 실물 등기 vs 2차 디지털
+  phase?: 1 | 2;                        // 1차 서류 vs 2차 서류
   submissionMethod?: 'POST_MAIL' | 'DIGITAL_UPLOAD' | 'DIRECT_VISIT';
   validityNote?: string;                // 예: '신청일 기준 2개월 이내 발급 필수'
   linkedFormCode?: string;              // 'D5103_LEDGER', 'D5102', 'STATEMENT' 등

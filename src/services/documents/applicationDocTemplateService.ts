@@ -36,19 +36,19 @@ export const APPLICATION_CATEGORIES: ApplicationCategoryConfig[] = [
   { 
     key: 'REHAB_SALARIED', 
     label: '개인회생 (급여소득자)', 
-    description: '1차 실물 등기 9종 + 2차 소득·재산 17종 표준 구비서류 26종',
+    description: '1차 서류 9종 + 2차 서류 17종 표준 구비서류 26종',
     badge: '💼 급여 표준 26종'
   },
   { 
     key: 'REHAB_BUSINESS', 
     label: '개인회생 (영업소득자)', 
-    description: '1차 실물 등기 9종 + 2차 매출·부가세·사업재산 소명 18종',
+    description: '1차 서류 9종 + 2차 서류 18종 소명 구비서류 27종',
     badge: '🏢 영업 표준 27종'
   },
   { 
     key: 'BANKRUPTCY', 
     label: '개인파산 및 면책', 
-    description: '1차 신분·위임 실물 9종 + 2차 관재인 청산가치·불허가방어 16종',
+    description: '1차 서류 9종 + 2차 서류 16종 표준 구비서류 25종',
     badge: '⚖️ 파산 표준 25종'
   },
   { 
@@ -149,11 +149,11 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     order: 7,
     phase: 1,
     submissionMethod: 'POST_MAIL',
-    name: '인감증명서 (채권사수 + 5부)',
+    name: '인감증명서 (본인발급 2~3부 / 채권사수 + 5부)',
     category: 'REHAB_SALARIED',
     subCategory: 'GOV',
-    agency: '주민센터 방문 발급 (인터넷 발급 불가)',
-    tips: '주민센터 본인 발급 필수. 채권사 1곳당 원본 1부 회수 + 예비 5부 (예: 채권사 5곳이면 총 10부).',
+    agency: '주민센터 방문 발급 (대리 불가)',
+    tips: '주민센터 본인 발급 필수. 금융기관 부채증명서 대행 발급 및 법원 전자소송 위임용 (1차 서류 필수).',
     isRequired: true,
     isCreditorMultiplier: true,
     isThirdPartyMasking: false
@@ -538,6 +538,23 @@ const STORAGE_KEY = 'LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V2';
 
 export class ApplicationDocTemplateService {
   /**
+   * 서류 항목 정규화 (인감증명서는 부채증명서 발급 필수 서류이므로 무조건 1차 서류 보장)
+   */
+  static normalizeItem(item: ApplicationDocMasterItem): ApplicationDocMasterItem {
+    const isSealDoc = item.name.includes('인감');
+    const phase: DocPhase = isSealDoc ? 1 : (item.phase || (item.order <= 9 ? 1 : 2));
+    const isRequired = isSealDoc ? true : item.isRequired;
+    const submissionMethod: SubmissionMethod = phase === 1 ? 'POST_MAIL' : (item.submissionMethod || 'DIGITAL_UPLOAD');
+
+    return {
+      ...item,
+      phase,
+      isRequired,
+      submissionMethod,
+    };
+  }
+
+  /**
    * 저장소에서 전체 템플릿 목록 로드 (없으면 기본값 초기화)
    */
   static getTemplates(): ApplicationDocMasterItem[] {
@@ -549,12 +566,22 @@ export class ApplicationDocTemplateService {
       }
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // v1 -> v2 마이그레이션 호환: phase와 submissionMethod 보장
-        return parsed.map(item => ({
-          ...item,
-          phase: item.phase || (item.order <= 9 ? 1 : 2),
-          submissionMethod: item.submissionMethod || (item.phase === 1 || item.order <= 9 ? 'POST_MAIL' : 'DIGITAL_UPLOAD'),
-        }));
+        // v1 -> v2 마이그레이션 및 인감 1차 서류 자동 승격 보정
+        let hasChanges = false;
+        const normalizedList = parsed.map(item => {
+          const normalized = this.normalizeItem(item);
+          if (normalized.phase !== item.phase || normalized.isRequired !== item.isRequired) {
+            hasChanges = true;
+          }
+          return normalized;
+        });
+
+        // 인감증명서 등 변경된 사항이 있으면 로컬스토리지 자동 갱신
+        if (hasChanges) {
+          this.saveTemplates(normalizedList);
+        }
+
+        return normalizedList;
       }
       return DEFAULT_DOC_TEMPLATES;
     } catch {
@@ -588,12 +615,16 @@ export class ApplicationDocTemplateService {
     const sameCat = list.filter(i => i.category === item.category);
     const maxOrder = sameCat.reduce((max, i) => Math.max(max, i.order), 0);
 
+    const isSealDoc = item.name.includes('인감');
+    const phase: DocPhase = isSealDoc ? 1 : (item.phase || 2);
+
     const newItem: ApplicationDocMasterItem = {
       ...item,
       id: `doc-tpl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       order: maxOrder + 1,
-      phase: item.phase || 2,
-      submissionMethod: item.submissionMethod || (item.phase === 1 ? 'POST_MAIL' : 'DIGITAL_UPLOAD'),
+      phase,
+      isRequired: isSealDoc ? true : item.isRequired,
+      submissionMethod: item.submissionMethod || (phase === 1 ? 'POST_MAIL' : 'DIGITAL_UPLOAD'),
     };
 
     list.push(newItem);
@@ -609,7 +640,8 @@ export class ApplicationDocTemplateService {
     const idx = list.findIndex(i => i.id === id);
     if (idx === -1) return false;
 
-    list[idx] = { ...list[idx], ...updates };
+    const merged = { ...list[idx], ...updates };
+    list[idx] = this.normalizeItem(merged);
     this.saveTemplates(list);
     return true;
   }

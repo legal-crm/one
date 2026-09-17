@@ -201,7 +201,7 @@ export default function MobileApplicationDocHubModal({
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>📮 1차 빠른등기</span>
+              <span>📮 1차 서류</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 activePhase === 1 ? 'bg-brand/10 text-brand' : 'bg-white/20 text-white'
               }`}>
@@ -217,7 +217,7 @@ export default function MobileApplicationDocHubModal({
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>📲 2차 소득·재산</span>
+              <span>📋 2차 서류</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 activePhase === 2 ? 'bg-brand/10 text-brand' : 'bg-white/20 text-white'
               }`}>
@@ -351,7 +351,7 @@ export default function MobileApplicationDocHubModal({
                 <span>부채증명서 발급(약 7일) 기간 동안 준비</span>
               </div>
               <p className="text-[11px] text-blue-800 leading-relaxed">
-                1차 실물 등기로 부채증명서가 발급되는 동안, 아래 2차 소득·재산 서류를 카메라 촬영이나 PDF로 간편하게 업로드해 주세요.
+                1차 서류를 통해 부채증명서가 발급되는 동안, 아래 2차 서류(소득·재산)를 간편하게 제출해 주세요. (온라인 업로드 또는 우편등기 가능)
               </p>
             </div>
 

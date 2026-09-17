@@ -152,12 +152,16 @@ export default function Stage3DocumentsHubView({
     };
   });
 
-  // 로펌 실무 기준 서류 목록 초기화 (1차 실물 9종 + 2차 디지털 17종)
+  // 로펌 실무 기준 서류 목록 초기화 (1차 서류 9종 + 2차 서류 17종)
   const [docList, setDocList] = useState<DocItemModel[]>(() => {
     const uploaded = crmExt?.uploadedFiles || [];
     const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest);
 
-    return masterTemplates.map((item, idx) => {
+    return masterTemplates.map((rawItem, idx) => {
+      // 인감 관련 서류(인감증명서, 인감도장)는 부채증명서 발급 대행을 위해 무조건 1차 서류 보장
+      const isSeal = rawItem.name.includes('인감');
+      const item = isSeal ? { ...rawItem, phase: 1 as DocPhase, isRequired: true } : rawItem;
+
       // 1차 서류 기본 시뮬레이션 상태
       if (item.phase === 1) {
         // 인감도장/등본 등 초기 1차 수령 시뮬레이션
@@ -179,7 +183,7 @@ export default function Stage3DocumentsHubView({
         };
       }
 
-      // 2차 디지털 서류 시뮬레이션 상태
+      // 2차 서류 시뮬레이션 상태
       const match = uploaded.find(f => f.name.includes(item.name.slice(0, 3)));
       if (match) {
         return {
@@ -318,7 +322,7 @@ export default function Stage3DocumentsHubView({
     setIsSealKeptInSafe(true);
     // 1차 서류 수령 직후 -> 대행 신청서 작성 대기 모드로 진입
     setIsDebtDispatched(false);
-    toast.success('1차 실물 서류 9종 수령 및 인감 보관이 확인되었습니다! 이제 [대행 신청서 작성]을 진행해 주세요.', {
+    toast.success('1차 서류 수령 및 인감 보관이 확인되었습니다! 이제 [대행 신청서 작성]을 진행해 주세요.', {
       duration: 5000,
     });
     
@@ -565,7 +569,7 @@ export default function Stage3DocumentsHubView({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="truncate">1차 실물서류 수령</span>
+                <span className="truncate">1차 서류 수령</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-white/80 border">
                   {stats.isPhase1Done ? '완료' : '진행중'}
                 </span>
@@ -801,7 +805,7 @@ export default function Stage3DocumentsHubView({
               }`}
             >
               <Check className="w-3.5 h-3.5" />
-              <span>{stats.isPhase1Done ? '1차 9종 수령완료됨' : '1차 실물 9종 일괄 수령확인'}</span>
+              <span>{stats.isPhase1Done ? '1차 서류 수령완료됨' : '1차 서류 일괄 수령확인'}</span>
             </button>
             <button
               type="button"
@@ -1093,8 +1097,8 @@ export default function Stage3DocumentsHubView({
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
-            <span>📮 1차 실물 등기 서류 ({stats.phase1ApprovedCount}/{stats.phase1Total}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">인감·등본</span>
+            <span>📮 1차 서류 ({stats.phase1ApprovedCount}/{stats.phase1Total}건)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">인감·등본 등</span>
           </button>
           <button
             type="button"
@@ -1121,8 +1125,8 @@ export default function Stage3DocumentsHubView({
             }`}
           >
             <Smartphone className="w-3.5 h-3.5" />
-            <span>📲 2차 디지털 사본 서류 ({stats.phase2ApprovedCount}/{stats.phase2Total}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">모바일 업로드</span>
+            <span>📋 2차 서류 ({stats.phase2ApprovedCount}/{stats.phase2Total}건)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold">소득·재산 등</span>
           </button>
         </div>
 
@@ -1310,14 +1314,14 @@ export default function Stage3DocumentsHubView({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* 1차/2차 및 제출방식 뱃지 */}
+                        {/* 1차/2차 서류 구분 뱃지 */}
                         {doc.phase === 1 ? (
                           <span className="text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                            <Mail className="w-2.5 h-2.5" /> 1차 등기실물
+                            <FileText className="w-2.5 h-2.5" /> 1차 서류
                           </span>
                         ) : (
                           <span className="text-[10px] px-2 py-0.5 rounded font-black bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
-                            <Smartphone className="w-2.5 h-2.5" /> 2차 디지털
+                            <FileText className="w-2.5 h-2.5" /> 2차 서류
                           </span>
                         )}
 
