@@ -64,6 +64,7 @@ import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { syncCompanionWithCrmCase } from '../../services/companionService';
+import { detectClientIncomeType } from '../../utils/incomeTypeHelper';
 import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
@@ -2127,6 +2128,9 @@ export default function CrmTab({
         const termMonths = fp.specialCondition && fp.specialCondition !== 'none' || (fp.age && fp.age < 30) ? 24 : 36;
         const estimatedTotalRepay = monthlyDisposable * termMonths;
         const estimatedDischargeRate = debtTotal > 0 ? Math.max(0, Math.min(95, Math.round(((debtTotal - estimatedTotalRepay) / debtTotal) * 100))) : 0;
+        
+        // 소득 유형 및 법원 필수 서류 가이드 정보 판별
+        const incomeTypeInfo = detectClientIncomeType(fp, selectedExt?.incomeExpenseD5103, selectedClient);
 
         return (
           <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm animate-fadeIn">
@@ -2211,6 +2215,13 @@ export default function CrmTab({
                           📍 {fp.residenceRegion}
                         </span>
                       )}
+                      {/* 💼 소득 유형 뱃지 (헤더 상시 노출) */}
+                      <span 
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${incomeTypeInfo.badgeClass}`}
+                        title={`[소득 구분] ${incomeTypeInfo.label}\n• 준비 서류: ${incomeTypeInfo.documentSummary}`}
+                      >
+                        {incomeTypeInfo.badgeLabel}
+                      </span>
                       {(fp.age && fp.age < 30) || (fp.specialCondition && fp.specialCondition !== 'none') ? (
                         <span className="text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-amber-300" />
@@ -2317,6 +2328,16 @@ export default function CrmTab({
                     </div>
 
                     <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">소득 구분</span>
+                      <span 
+                        className={`font-bold text-[11px] px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${incomeTypeInfo.badgeClass}`}
+                        title={`${incomeTypeInfo.label} • ${incomeTypeInfo.documentSummary}`}
+                      >
+                        {incomeTypeInfo.badgeLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500 font-medium">담당자</span>
                       <span className="font-bold text-slate-800">
                         {lawyers.find(l => l.id === (selectedExt.assigneeId || selectedExt.assignedLawyerId))?.name || 
@@ -2367,7 +2388,12 @@ export default function CrmTab({
                       <span className="font-mono font-bold text-slate-900">{formatWonShort(debtTotal)}</span>
                     </div>
                     <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-[10px] text-slate-500 block">월 소득 (세후)</span>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
+                        <span>월 소득 (세후)</span>
+                        <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-slate-200/80 text-slate-700">
+                          {incomeTypeInfo.shortTag}
+                        </span>
+                      </div>
                       <span className="font-mono font-bold text-slate-900">{income.toLocaleString()}만원</span>
                     </div>
                   </div>
@@ -2382,6 +2408,12 @@ export default function CrmTab({
                       <div className="flex justify-between text-slate-600">
                         <span>월 예상 가용소득</span>
                         <span className="font-mono font-bold text-blue-600">{monthlyDisposable.toLocaleString()}만원</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>수지표(D5103)</span>
+                        <span className={`font-bold text-[11px] ${incomeTypeInfo.requiresD5103 ? 'text-amber-600' : 'text-slate-500'}`}>
+                          {incomeTypeInfo.requiresD5103 ? '필수 (영업소득)' : '면제 (급여소득)'}
+                        </span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>채무 배율 (DTI)</span>
