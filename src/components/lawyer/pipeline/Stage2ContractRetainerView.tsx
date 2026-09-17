@@ -627,7 +627,6 @@ ${d.content}
               <Calculator className="w-4 h-4 text-[#1E3A5F]" />
               <h4 className="font-black text-sm text-slate-900">법원 필수 실비 자동 산출</h4>
             </div>
-            <span className="text-[11px] font-mono text-slate-500 font-bold">2026 전자소송 요율 기준</span>
           </div>
 
           <div className="space-y-3 text-xs">
@@ -698,9 +697,6 @@ ${d.content}
               <Coins className="w-4 h-4 text-emerald-600" />
               <h4 className="font-black text-sm text-slate-900">수임료 및 분납 조건 설정</h4>
             </div>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              무이자 분납 지원
-            </span>
           </div>
 
           <div className="space-y-3 text-xs">
