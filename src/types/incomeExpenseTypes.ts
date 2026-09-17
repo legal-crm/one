@@ -148,7 +148,114 @@ export interface IncomeExpenseD5103Data {
   // 4. 가용소득 산출 요약
   disposableIncome: DisposableIncomeSummary;
   
+  // ── 5대 직업별 맞춤 수지표 & 12개월 엑셀 원장 연동 ──
+  detailedIncomeType?: DetailedIncomeType;
+  monthlyLedger?: BusinessMonthlyLedger;          // 개인사업자 12개월 수지표
+  freelancerLedger?: FreelancerMonthlyLedger;      // 프리랜서 거래처·경비 수지표
+  dayLaborerLedger?: DayLaborerLedger;            // 일용직 근무일수·일당 수지표
+  partTimeLedger?: PartTimeLedger;                // 아르바이트 근무시간·시급표
+  
+  // 수지표 고객-변호사 협업 상태 추적
+  d5103ClientStatus?: 'not_started' | 'client_submitted' | 'lawyer_reviewed';
+  d5103ClientSubmittedAt?: string;
+  d5103LawyerReviewedAt?: string;
+  
   // 상태 관리
   lastSavedAt?: string;
   isCompleted?: boolean;
 }
+
+/** 9. 5대 세부 소득 형태 분류 */
+export type DetailedIncomeType = 'EMPLOYEE' | 'BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME' | 'MIXED';
+
+/** 10. 동적 경비 항목 (고객 무제한 추가 및 법원 4대 경비 롤업 매핑) */
+export interface DynamicExpenseItem {
+  id: string;
+  name: string;               // 항목명 (예: 배달대행료, 세무기장료, 알바비 등)
+  monthlyAmount: number;      // 월 금액 (원)
+  rollupTarget: 'operating' | 'rent' | 'utility' | 'electricity'; // 법원 4대 표준 경비 매핑
+  receiptFileId?: string;     // 영수증/이체증 첨부 파일 ID
+  receiptFileName?: string;   // 파일명
+  note?: string;              // 세부 메모
+}
+
+/** 11. 12개월 엑셀 수지표 월별 행 모델 (사용자 첨부 엑셀 서식 100% 매핑) */
+export interface MonthlyLedgerItem {
+  month: string;              // 예: "2024.03" 또는 "24.03"
+  incomeCard: number;         // 카드 매출 (원)
+  incomeCash: number;         // 현금 매출 (원)
+  incomeTotal: number;        // 수입 소계 [카드 + 현금]
+  expenseOperating: number;   // 운영비 (원)
+  expenseRent: number;        // 월세 (원)
+  expenseUtility: number;     // 가스/수도/등유 (원)
+  expenseElectricity: number; // 전기요금 (원)
+  expenseTotal: number;       // 지출 소계 [운영비 + 월세 + 공과금 + 전기]
+  netIncome: number;          // 월 순수익 [수입 소계 - 지출 소계]
+}
+
+/** 12. 개인사업자 12개월 전체 수지표 원장 모델 */
+export interface BusinessMonthlyLedger {
+  months: MonthlyLedgerItem[];
+  dynamicExpenses?: DynamicExpenseItem[]; // 고객이 추가한 세부 경비 목록
+  annualTotals: {
+    totalCard: number;
+    totalCash: number;
+    totalGrossRevenue: number;     // 연간 총매출
+    totalOperating: number;
+    totalRent: number;
+    totalUtility: number;
+    totalElectricity: number;
+    totalOperatingExpense: number; // 연간 총경비
+    totalNetProfit: number;        // 연간 총순수익
+  };
+  monthlyAverages: {
+    avgGrossRevenue: number;       // 월평균 매출액
+    avgOperatingExpense: number;   // 월평균 경비
+    avgNetIncome: number;          // 월평균 순소득 (D5103 바인딩)
+  };
+}
+
+/** 13. 프리랜서(3.3%) 수입상황보고서 모델 */
+export interface FreelancerExpenseItem {
+  id: string;
+  name: string;               // 유류비, 통신비, 프로그램구독료, 배달앱수수료 등
+  monthlyAmount: number;      // 월 금액 (원)
+  category: 'fuel' | 'telecom' | 'software' | 'fee' | 'material' | 'other';
+  receiptFileName?: string;
+}
+
+export interface FreelancerMonthlyLedger {
+  jobTypeDetail: string;      // 배달라이더, 보험설계사, 학원강사, IT개발자, 지입차주 등
+  monthlyGrossIncome: number; // 월평균 총 수수료/입금액 (원)
+  expenses: FreelancerExpenseItem[];
+  totalMonthlyExpenses: number; // 월평균 필요경비 합계 (원)
+  netMonthlyIncome: number;   // 월평균 순소득 (총수입 - 필요경비)
+  annualGrossRevenue: number; // 연 환산 수입
+  evidenceDocuments: string[];
+}
+
+/** 14. 일용직 근무일수·일당 수지표 모델 */
+export interface DayLaborerLedger {
+  workDaysPerMonth: number;   // 월평균 근무일수 (예: 18일)
+  dailyWage: number;          // 일당 (원)
+  monthlyGrossIncome: number; // 월평균 수령액 (workDaysPerMonth * dailyWage)
+  isDirectCash: boolean;      // 현금 수령 여부
+  evidenceDocuments: string[];
+}
+
+/** 15. 아르바이트 시급·근무시간표 모델 */
+export interface PartTimeWorkplace {
+  id: string;
+  workplaceName: string;      // 사업장명
+  hourlyWage: number;         // 시급 (원)
+  weeklyHours: number;        // 주당 근무시간
+  hasWeeklyHolidayPay: boolean; // 주휴수당 여부
+  monthlyGrossIncome: number; // 월 급여
+}
+
+export interface PartTimeLedger {
+  workplaces: PartTimeWorkplace[];
+  totalMonthlyGrossIncome: number; // 복수 알바 합산 월소득
+  evidenceDocuments: string[];
+}
+

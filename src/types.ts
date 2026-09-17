@@ -700,6 +700,11 @@ export interface DocumentCheckItem {
   checkedAt?: string;
   phase?: 1 | 2;                        // 1차 실물 등기 vs 2차 디지털
   submissionMethod?: 'POST_MAIL' | 'DIGITAL_UPLOAD' | 'DIRECT_VISIT';
+  validityNote?: string;                // 예: '신청일 기준 2개월 이내 발급 필수'
+  linkedFormCode?: string;              // 'D5103_LEDGER', 'D5102', 'STATEMENT' 등
+  folderCategory?: string;              // 16대 표준 폴더 (01_신분가족 ~ 16_보정명령)
+  description?: string;                 // 세부 도움말
+  isRequired?: boolean;
   // ── 양방향 동기화 ──
   reviewStatus?: DocumentReviewStatus;  // 검토 상태
   linkedFileId?: string;                // 연결된 uploadedFile의 ID
@@ -709,23 +714,143 @@ export interface DocumentCheckItem {
   reviewerNote?: string;                // 변호사 검토 메모
 }
 
-export const DEFAULT_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
-  { id: 'doc-01', label: '주민등록등본', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-02', label: '주민등록초본', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-03', label: '가족관계증명서', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-04', label: '재산세 과세증명', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-05', label: '소득금액증명원', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-06', label: '건강보험자격확인서', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-07', label: '급여명세서 (3개월)', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-08', label: '재직증명서', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-09', label: '채무증명원 (전 금융기관)', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-10', label: '통장사본 (전 계좌)', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-11', label: '보험가입내역조회서', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-12', label: '국민연금가입증명', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-13', label: '임대차계약서', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-14', label: '자동차등록원부', checked: false, reviewStatus: 'not_submitted' },
-  { id: 'doc-15', label: '퇴직금산정서류', checked: false, reviewStatus: 'not_submitted' },
+// ── 🏢 개인사업자(영업소득자) 21종 표준 서류 목록 (실무 체크리스트 원본 100% 일치) ──
+export const DEFAULT_BUSINESS_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'b-doc-01', label: '소득증빙자료 (최근 1년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '10_사업매출', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-02', label: '집 임대차계약서 또는 무상거주 확인서 (자가 소유자는 불필요)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '확정일자부 사본', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-03', label: '주택 등기부등본 (본인명의 자가 있으신 분만 준비)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '말소사항 포함 전부', folderCategory: '04_부동산및임대차', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-04', label: '사업자 주거래 통장 앞면 사본', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-05', label: '사업자 주거래 통장 입출금 거래내역 1년', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치 엑셀/PDF', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-06', label: '진술서 (채무증대 경위 및 생활상황)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'STATEMENT', folderCategory: '14_진술서채무증대', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-07', label: '건강보험 자격득실확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-08', label: '국민연금 산정용 가입확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-09', label: '계좌정보통합관리 서비스 (어카운트인포 전 계좌/카드)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-10', label: '지적전산자료조회 서류 (내토지찾기 무소유증명 포함)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-11', label: '보험료납입사실 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '유지 중인 전 보험', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-12', label: '보험 예상 해지환급금 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '전 보험사 기준일자', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-13', label: '사업자등록증명원 (또는 사업자등록증 사본)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-14', label: '소득금액증명원 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 3개년치', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-15', label: '납세증명 및 체납사실증명 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 3개년치', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-16', label: '부가가치세과세표준증명 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 3개년치 (면세는 수입금액증명)', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-17', label: '종합소득세 확정신고서 (최근 2년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '부속서류 손익계산서 포함', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-18', label: '영업 시설 및 비품의 청산가치 자료', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'D5102_ASSET', folderCategory: '11_사업비용', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-19', label: '사업장 임대차계약서 (사업장이 없으면 제외)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '보증금/월세 소명', folderCategory: '11_사업비용', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-20', label: '현재 월 평균 수입액을 알 수 있는 자료 수입지출표 (수지표)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'D5103_LEDGER', folderCategory: '11_사업비용', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'b-doc-21', label: '차량소유 시 차량 시세를 알 수 있는 자료 (자동차원부 및 시세표)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '05_자동차', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
 ];
+
+// ── 💼 직장인(급여소득자) 17종 표준 서류 목록 ──
+export const DEFAULT_SALARIED_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 's-doc-01', label: '주민등록등본 1부 (전체 포함)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-02', label: '주민등록초본 1부 (원초본·과거주소전체·개명)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-03', label: '가족관계증명서 1부 (상세)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-04', label: '혼인관계증명서 1부 (상세, 미혼·이혼 불문)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-05', label: '신분증 사본 및 인감도장', phase: 1, submissionMethod: 'POST_MAIL', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-06', label: '인감증명서 (채권사 수 + 5부)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '주민센터 본인발급', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-07', label: '지방세 세목별 과세증명서 (최근 5년간 전체세목)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-08', label: '재직증명서 (회사 직인 날인) 또는 근로계약서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-09', label: '최근 6~12개월분 급여명세서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-10', label: '급여 수령 통장 입출금 거래내역 (최근 1년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-11', label: '근로소득 원천징수영수증 (최근 1~2년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-12', label: '소득금액증명원 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-13', label: '예상퇴직금확인서 (또는 퇴직연금 가입증명)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-14', label: '건강보험 자격득실확인서 및 납부확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-15', label: '국민연금 산정용 가입확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-16', label: '주택 임대차계약서 또는 무상거주확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 's-doc-17', label: '전 계좌 어카운트인포 및 보험 해약환급금 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+];
+
+// ── 🛵 프리랜서(3.3% 인적용역 제공자) 18종 표준 서류 목록 ──
+export const DEFAULT_FREELANCER_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'f-doc-01', label: '주민등록등본 1부 (전체 포함)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-02', label: '주민등록초본 1부 (원초본)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-03', label: '가족관계증명서 (상세) & 혼인관계증명서 (상세)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-04', label: '인감증명서 (채권자수+5부) 및 신분증 사본', phase: 1, submissionMethod: 'POST_MAIL', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-05', label: '지방세 세목별 과세증명서 (최근 5년간)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-06', label: '3.3% 사업소득 원천징수영수증 또는 지급명세서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-07', label: '위촉계약서, 용역계약서 또는 거래처 계약서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-08', label: '수수료/플랫폼(배민, 쿠팡, 크몽 등) 월별 정산내역서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '10_사업매출', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-09', label: '용역비/수수료 입금 통장 거래내역서 (최근 1년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-10', label: '프리랜서 수입상황보고서 (수지표)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'D5103_LEDGER', folderCategory: '11_사업비용', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-11', label: '업무상 필수경비 지출 영수증 (유류비/통신비/구독료 등)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '11_사업비용', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-12', label: '소득금액증명원 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-13', label: '종합소득세 확정신고서 (최근 2년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '09_사업자등록세금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-14', label: '건강보험 자격득실확인서 및 납부확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-15', label: '국민연금 산정용 가입확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '06_보험퇴직금연금', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-16', label: '주택 임대차계약서 또는 무상거주확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-17', label: '어카운트인포 전 계좌 내역 및 보험 해약환급금 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'f-doc-18', label: '영업용 차량/오토바이 등록원부 (보유 시)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '05_자동차', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+];
+
+// ── 🔨 일용직(건설·물류·일당) 16종 표준 서류 목록 ──
+export const DEFAULT_DAY_LABORER_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'd-doc-01', label: '주민등록등본 및 초본(원초본) 1부', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-02', label: '가족관계증명서 (상세) & 혼인관계증명서 (상세)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-03', label: '인감증명서 (채권자수+5부) 및 신분증 사본', phase: 1, submissionMethod: 'POST_MAIL', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-04', label: '지방세 세목별 과세증명서 (최근 5년간)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-05', label: '일용근로소득 지급명세서 또는 원천징수영수증', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-06', label: '고용·산재보험 일용근로내역 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-07', label: '일당 입금 통장 거래내역서 (최근 1년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-08', label: '현장별 출근부, 근무일지 또는 고용주 소득확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-09', label: '일용직 근무일수·일당 산정표 (수지표)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'D5103_LEDGER', folderCategory: '11_사업비용', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-10', label: '현금수령확인서 (일당 현금 수령 시 해당)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-11', label: '건강보험 자격득실확인서 및 납부확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-12', label: '소득금액증명원 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-13', label: '주택 임대차계약서 또는 무상거주확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-14', label: '어카운트인포 전 계좌 내역 및 보험 해약환급금 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-15', label: '지적전산자료조회결과서 (내토지찾기)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'd-doc-16', label: '진술서 (채무증대 경위서)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'STATEMENT', folderCategory: '14_진술서채무증대', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+];
+
+// ── ⏱️ 아르바이트(시간제·파트타임) 15종 표준 서류 목록 ──
+export const DEFAULT_PART_TIME_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'p-doc-01', label: '주민등록등본 및 초본(원초본) 1부', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-02', label: '가족관계증명서 (상세) & 혼인관계증명서 (상세)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-03', label: '인감증명서 (채권자수+5부) 및 신분증 사본', phase: 1, submissionMethod: 'POST_MAIL', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-04', label: '지방세 세목별 과세증명서 (최근 5년간)', phase: 1, submissionMethod: 'POST_MAIL', validityNote: '2개월 이내 발급분', folderCategory: '01_신분가족', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-05', label: '아르바이트 근로계약서 (시급, 주당 근무시간 명시)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-06', label: '급여명세서 또는 급여대장 (최근 3~6개월)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-07', label: '급여 입금 통장 거래내역서 (최근 1년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '최근 1년치', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-08', label: '사업주 재직/근무확인서 (또는 사업자등록증 사본)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-09', label: '근무시간표, 출근부 또는 알바 시급산정표', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'D5103_LEDGER', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-10', label: '건강보험 자격득실확인서 (피부양자/직장가입 확인)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-11', label: '소득금액증명원 (최근 3년)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '08_직장소득', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-12', label: '주택 임대차계약서 또는 무상거주확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-13', label: '어카운트인포 전 계좌 내역 및 보험 해약환급금 확인서', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '03_은행계좌', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-14', label: '지적전산자료조회결과서 (내토지찾기)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', validityNote: '2개월 이내 발급분', folderCategory: '04_부동산및임대차', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+  { id: 'p-doc-15', label: '진술서 (채무증대 경위서)', phase: 2, submissionMethod: 'DIGITAL_UPLOAD', linkedFormCode: 'STATEMENT', folderCategory: '14_진술서채무증대', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+];
+
+// 기존 코드 호환용 별칭 (기본값: 직장인 17종)
+export const DEFAULT_REHAB_DOCUMENTS = DEFAULT_SALARIED_REHAB_DOCUMENTS;
+
+/** 🎯 고객의 사건 형태 및 직업/소득군에 부합하는 표준 서류 목록 자동 산출 헬퍼 */
+export function getStandardDocumentsForClient(
+  caseType?: 'individual_rehab' | 'bankruptcy' | string,
+  incomeType?: string
+): Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] {
+  if (caseType === 'bankruptcy' || caseType === '개인파산') {
+    return DEFAULT_BANKRUPTCY_DOCUMENTS;
+  }
+  
+  const norm = (incomeType || '').toLowerCase();
+  if (norm.includes('business') || norm.includes('사업') || norm.includes('자영업')) {
+    return DEFAULT_BUSINESS_REHAB_DOCUMENTS;
+  }
+  if (norm.includes('freelancer') || norm.includes('프리랜서') || norm.includes('3.3') || norm.includes('특고') || norm.includes('라이더')) {
+    return DEFAULT_FREELANCER_REHAB_DOCUMENTS;
+  }
+  if (norm.includes('day') || norm.includes('일용') || norm.includes('일당')) {
+    return DEFAULT_DAY_LABORER_REHAB_DOCUMENTS;
+  }
+  if (norm.includes('part') || norm.includes('알바') || norm.includes('아르바이트') || norm.includes('시간제')) {
+    return DEFAULT_PART_TIME_REHAB_DOCUMENTS;
+  }
+  
+  // 기본값: 급여소득자 (직장인)
+  return DEFAULT_SALARIED_REHAB_DOCUMENTS;
+}
+
 
 export const DEFAULT_BANKRUPTCY_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
   { id: 'bdoc-01', label: '주민등록초본 (말소 및 10년 주소변동 포함)', checked: false, reviewStatus: 'not_submitted' },

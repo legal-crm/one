@@ -30,6 +30,7 @@ interface Stage3DocumentsHubViewProps {
   onAdvanceToNextStage: () => void;
   onOpenDocScanner?: () => void;
   onOpenStatementSyncModal?: () => void;
+  onOpenIncomeExpenseModal?: () => void;
 }
 
 export type DocLifecycleStatus = 
@@ -68,6 +69,7 @@ export default function Stage3DocumentsHubView({
   onAdvanceToNextStage,
   onOpenDocScanner,
   onOpenStatementSyncModal,
+  onOpenIncomeExpenseModal,
 }: Stage3DocumentsHubViewProps) {
   // 1차/2차/부채대행 차수별 탭
   const [activePhaseTab, setActivePhaseTab] = useState<PhaseTab>('all');
@@ -1235,6 +1237,18 @@ export default function Stage3DocumentsHubView({
 
                   {/* 상태별 단일 동적 액션 (단색화) */}
                   <div className="flex items-center gap-2 shrink-0">
+                    {/* 수지표 서류인 경우 변호사용 점검/수정 버튼 직접 제공 */}
+                    {(doc.name.includes('수지표') || doc.name.includes('수입 및 지출') || doc.name.includes('영업수지')) && onOpenIncomeExpenseModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenIncomeExpenseModal}
+                        className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer press-scale shadow-xs"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-purple-600" />
+                        <span>수지표 점검/수정</span>
+                      </button>
+                    )}
+
                     {doc.status === 'APPROVED' && (
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />

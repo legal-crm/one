@@ -15,8 +15,16 @@ import type {
 import { 
   createDefaultIncomeExpenseD5103, 
   recalculateD5103Data, 
-  validateD5103Data 
+  validateD5103Data,
+  recalculateBusinessMonthlyLedger,
+  generateMonthlyLedgerFromWizardInputs,
+  syncBusinessLedgerToD5103
 } from '../../../services/documents/incomeExpenseService';
+import type { 
+  MonthlyLedgerItem, 
+  BusinessMonthlyLedger, 
+  DynamicExpenseItem 
+} from '../../../types/incomeExpenseTypes';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
 import { MIN_LIVING_EXPENSE_60_2026 } from '../../../services/repayment/repaymentConstants2026';
 import PrintableIncomeExpenseModal from './PrintableIncomeExpenseModal';
@@ -591,6 +599,279 @@ export default function IncomeExpenseModal({
                         {biz.monthlyAverageIncome.toLocaleString()} 원
                       </span>
                     </div>
+                  </div>
+
+                  {/* ══════════ 의뢰인 12개월 수지표 점검 및 정밀 수정 (사진 2 엑셀 양식) ══════════ */}
+                  <div className="pt-4 border-t border-slate-200 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                            <span className="text-base">📊</span>
+                            [별지: 12개월 수입 및 지출 명세서 (수지표)] 법원 제출 원장
+                          </h5>
+                          {formData.d5103ClientStatus === 'client_submitted' ? (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                              의뢰인 1차 작성 제출됨
+                            </span>
+                          ) : formData.d5103ClientStatus === 'lawyer_reviewed' ? (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              변호사 검토 완료 승인됨
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600">
+                              원장 미작성 (자동생성 가능)
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          고객이 제출한 12개월 수지표를 점검하고 필요시 셀을 직접 수정할 수 있습니다. 수정 즉시 연간 합계와 변제금이 동기화됩니다.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!formData.monthlyLedger && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const avgGross = Math.round(biz.annualGrossRevenue / 12) || 4000000;
+                              const avgCard = Math.round(avgGross * 0.75);
+                              const avgCash = avgGross - avgCard;
+                              const avgExp = Math.round(biz.annualOperatingExpenses / 12) || 2000000;
+                              const rent = 700000;
+                              const util = 150000;
+                              const elec = 150000;
+                              const baseOp = Math.max(0, avgExp - rent - util - elec);
+
+                              const newLedger = generateMonthlyLedgerFromWizardInputs({
+                                avgMonthlyCard: avgCard,
+                                avgMonthlyCash: avgCash,
+                                baseOperatingExpense: baseOp,
+                                rentExpense: rent,
+                                utilityExpense: util,
+                                electricityExpense: elec,
+                                dynamicExpenses: []
+                              });
+                              updateData(p => syncBusinessLedgerToD5103(p, newLedger));
+                              toast.success('현재 매출/경비 기준으로 12개월 수지표 원장이 자동 생성되었습니다.');
+                            }}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>12개월 원장 자동생성</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateData(p => ({
+                              ...p,
+                              d5103ClientStatus: 'lawyer_reviewed',
+                              d5103LawyerReviewedAt: new Date().toISOString()
+                            }));
+                            toast.success('수지표가 변호사 검토 완료로 승인되었습니다.');
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>변호사 검토 승인</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 고객 추가 세부 경비(배달비, 기장료 등) 법원 4대 경비 롤업 브레이크다운 */}
+                    {formData.monthlyLedger?.dynamicExpenses && formData.monthlyLedger.dynamicExpenses.length > 0 && (
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                        <span className="font-bold text-slate-700 block">
+                          💡 고객 등록 세부 경비 ({formData.monthlyLedger.dynamicExpenses.length}개 항목 ➔ 법원 4대 표준 경비로 자동 롤업):
+                        </span>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {formData.monthlyLedger.dynamicExpenses.map(item => (
+                            <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-medium text-slate-800">
+                              <span className="font-bold text-blue-700">{item.name}</span>:
+                              <span>{(item.monthlyAmount || 0).toLocaleString()}원</span>
+                              <span className="text-[10px] text-slate-400">
+                                ({item.rollupTarget === 'rent' ? '월세' : item.rollupTarget === 'utility' ? '공과금' : item.rollupTarget === 'electricity' ? '전기' : '운영비'} 합산)
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 12개월 정밀 엑셀 테이블 (사진 2 서식 100% 일치) */}
+                    {formData.monthlyLedger && formData.monthlyLedger.months && (
+                      <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs">
+                        <table className="w-full text-xs text-left text-slate-700 border-collapse min-w-[760px]">
+                          <thead className="bg-[#f5f5f5] text-slate-800 font-bold border-b border-slate-300">
+                            <tr>
+                              <th className="p-2 border-r border-slate-300 text-center">날짜</th>
+                              <th className="p-2 border-r border-slate-300 text-right">카드(원)</th>
+                              <th className="p-2 border-r border-slate-300 text-right">현금(원)</th>
+                              <th className="p-2 border-r border-slate-300 text-right bg-emerald-50 text-emerald-900">소계</th>
+                              <th className="p-2 border-r border-slate-300 text-right">운영비(원)</th>
+                              <th className="p-2 border-r border-slate-300 text-right">월세(원)</th>
+                              <th className="p-2 border-r border-slate-300 text-right">가스·수도·등유</th>
+                              <th className="p-2 border-r border-slate-300 text-right">전기요금(원)</th>
+                              <th className="p-2 border-r border-slate-300 text-right bg-rose-50 text-rose-900">소계</th>
+                              <th className="p-2 text-right bg-blue-50 text-blue-900 font-black">총매출(월순수익)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {formData.monthlyLedger.months.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50">
+                                <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-800">{row.month}</td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.incomeCard || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], incomeCard: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.incomeCash || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], incomeCash: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1.5 border-r border-slate-300 text-right font-bold text-emerald-900 bg-emerald-50/30 font-mono">
+                                  {(row.incomeCard + row.incomeCash).toLocaleString()}
+                                </td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.expenseOperating || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], expenseOperating: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.expenseRent || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], expenseRent: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.expenseUtility || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], expenseUtility: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1 border-r border-slate-300">
+                                  <input
+                                    type="number"
+                                    value={row.expenseElectricity || 0}
+                                    onChange={e => {
+                                      const val = Math.max(0, Number(e.target.value));
+                                      const updatedMonths = [...formData.monthlyLedger!.months];
+                                      updatedMonths[idx] = { ...updatedMonths[idx], expenseElectricity: val };
+                                      const recalculated = recalculateBusinessMonthlyLedger(updatedMonths, formData.monthlyLedger?.dynamicExpenses);
+                                      updateData(p => syncBusinessLedgerToD5103(p, recalculated));
+                                    }}
+                                    className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded font-mono"
+                                  />
+                                </td>
+                                <td className="p-1.5 border-r border-slate-300 text-right font-bold text-rose-900 bg-rose-50/30 font-mono">
+                                  {(row.expenseOperating + row.expenseRent + row.expenseUtility + row.expenseElectricity).toLocaleString()}
+                                </td>
+                                <td className="p-1.5 text-right font-black text-blue-900 bg-blue-50/30 font-mono">
+                                  {row.netIncome.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          {/* 합계 및 월평균 푸터 행 (사진 2 엑셀 양식 완벽 매핑) */}
+                          <tfoot className="bg-[#f5f5f5] font-black border-t-2 border-slate-300 text-slate-900">
+                            <tr className="border-b border-slate-300">
+                              <td className="p-2 text-center border-r border-slate-300 font-bold bg-slate-200/60">합계</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalCard.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalCash.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-emerald-900 bg-emerald-100/50">
+                                {formData.monthlyLedger.annualTotals.totalGrossRevenue.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalOperating.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalRent.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalUtility.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono">{formData.monthlyLedger.annualTotals.totalElectricity.toLocaleString()}</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-rose-900 bg-rose-100/50">
+                                {formData.monthlyLedger.annualTotals.totalOperatingExpense.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right font-mono text-blue-900 bg-blue-100/60">
+                                {formData.monthlyLedger.annualTotals.totalNetProfit.toLocaleString()}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="p-2 text-center border-r border-slate-300 font-bold bg-slate-200/60">월평균</td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalCard / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalCash / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-emerald-900 bg-emerald-100/80">
+                                {formData.monthlyLedger.monthlyAverages.avgGrossRevenue.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalOperating / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalRent / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalUtility / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-slate-500">
+                                {Math.round(formData.monthlyLedger.annualTotals.totalElectricity / 12).toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right border-r border-slate-300 font-mono text-rose-900 bg-rose-100/80">
+                                {formData.monthlyLedger.monthlyAverages.avgOperatingExpense.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right font-mono text-blue-900 bg-blue-100/90 text-sm">
+                                {formData.monthlyLedger.monthlyAverages.avgNetIncome.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -4,7 +4,7 @@ import type {
   CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus,
   DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
 } from '../types';
-import { DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS } from '../types';
+import { DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, getStandardDocumentsForClient } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 
 // ============================================================
@@ -520,10 +520,14 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
 
 // ── CrmClientExtension 초기화 헬퍼 ──
 
-export function createDefaultCrmExtension(clientId: string, caseType: 'individual_rehab' | 'bankruptcy' = 'individual_rehab'): CrmClientExtension {
+export function createDefaultCrmExtension(
+  clientId: string, 
+  caseType: 'individual_rehab' | 'bankruptcy' = 'individual_rehab',
+  incomeType?: 'EMPLOYEE' | 'BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME'
+): CrmClientExtension {
   const predefined = PREDEFINED_AMJONE_PROFILES[clientId] || {};
   const effectiveCaseType = (predefined.caseType as any) || caseType;
-  const docs = effectiveCaseType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
+  const docs = getStandardDocumentsForClient(effectiveCaseType, incomeType);
   
   return {
     crmStatus: predefined.crmStatus || 'requested',

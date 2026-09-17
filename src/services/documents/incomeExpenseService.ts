@@ -13,7 +13,14 @@ import type {
   IncomeSeizureDetail,
   FamilyMemberItem,
   ExpenseAndLivingDetail,
-  DisposableIncomeSummary
+  DisposableIncomeSummary,
+  DetailedIncomeType,
+  DynamicExpenseItem,
+  MonthlyLedgerItem,
+  BusinessMonthlyLedger,
+  FreelancerMonthlyLedger,
+  DayLaborerLedger,
+  PartTimeLedger
 } from '../../types/incomeExpenseTypes';
 import { get2026LivingExpense, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
 
@@ -398,4 +405,324 @@ export function validateD5103Data(data: IncomeExpenseD5103Data): D5103Validation
     hasCriticalIssue: warnings.some(w => w.level === 'CRITICAL'),
     warnings
   };
+}
+
+/**
+ * 최근 12개월 기준 년.월 라벨 목록 생성 (예: ["25.04", "25.05", ..., "26.03"])
+ */
+export function generateDefaultRecent12MonthsLabels(baseDate: Date = new Date()): string[] {
+  const result: string[] = [];
+  const currentYear = baseDate.getFullYear();
+  const currentMonth = baseDate.getMonth() + 1; // 1-12
+
+  for (let i = 11; i >= 0; i--) {
+    let year = currentYear;
+    let month = currentMonth - i;
+    if (month <= 0) {
+      month += 12;
+      year -= 1;
+    }
+    const yy = year.toString().slice(-2);
+    const mm = month < 10 ? `0${month}` : `${month}`;
+    result.push(`${yy}.${mm}`);
+  }
+  return result;
+}
+
+/**
+ * 12개월 수지표 각 월별 행 및 합계/월평균 재계산 순수 함수
+ */
+export function recalculateBusinessMonthlyLedger(
+  months: MonthlyLedgerItem[],
+  dynamicExpenses: DynamicExpenseItem[] = []
+): BusinessMonthlyLedger {
+  // 각 행의 소계 및 순수익 보정
+  const calculatedMonths: MonthlyLedgerItem[] = months.map(m => {
+    const incomeCard = Math.max(0, m.incomeCard || 0);
+    const incomeCash = Math.max(0, m.incomeCash || 0);
+    const incomeTotal = incomeCard + incomeCash;
+
+    const expenseOperating = Math.max(0, m.expenseOperating || 0);
+    const expenseRent = Math.max(0, m.expenseRent || 0);
+    const expenseUtility = Math.max(0, m.expenseUtility || 0);
+    const expenseElectricity = Math.max(0, m.expenseElectricity || 0);
+    const expenseTotal = expenseOperating + expenseRent + expenseUtility + expenseElectricity;
+
+    const netIncome = incomeTotal - expenseTotal;
+
+    return {
+      month: m.month,
+      incomeCard,
+      incomeCash,
+      incomeTotal,
+      expenseOperating,
+      expenseRent,
+      expenseUtility,
+      expenseElectricity,
+      expenseTotal,
+      netIncome
+    };
+  });
+
+  // 12개월 합계 산출
+  let totalCard = 0;
+  let totalCash = 0;
+  let totalGrossRevenue = 0;
+  let totalOperating = 0;
+  let totalRent = 0;
+  let totalUtility = 0;
+  let totalElectricity = 0;
+  let totalOperatingExpense = 0;
+  let totalNetProfit = 0;
+
+  for (const row of calculatedMonths) {
+    totalCard += row.incomeCard;
+    totalCash += row.incomeCash;
+    totalGrossRevenue += row.incomeTotal;
+    totalOperating += row.expenseOperating;
+    totalRent += row.expenseRent;
+    totalUtility += row.expenseUtility;
+    totalElectricity += row.expenseElectricity;
+    totalOperatingExpense += row.expenseTotal;
+    totalNetProfit += row.netIncome;
+  }
+
+  const monthCount = calculatedMonths.length || 12;
+  const avgGrossRevenue = Math.round(totalGrossRevenue / monthCount);
+  const avgOperatingExpense = Math.round(totalOperatingExpense / monthCount);
+  const avgNetIncome = Math.round(totalNetProfit / monthCount);
+
+  return {
+    months: calculatedMonths,
+    dynamicExpenses,
+    annualTotals: {
+      totalCard,
+      totalCash,
+      totalGrossRevenue,
+      totalOperating,
+      totalRent,
+      totalUtility,
+      totalElectricity,
+      totalOperatingExpense,
+      totalNetProfit
+    },
+    monthlyAverages: {
+      avgGrossRevenue,
+      avgOperatingExpense,
+      avgNetIncome
+    }
+  };
+}
+
+/**
+ * 고객 초간편 마법사 입력값으로부터 12개월 엑셀 수지표 자동 생성
+ * - 동적 경비(배달비, 기장료, 알바비 등)를 법원 4대 표준 경비에 자동 롤업 합산
+ */
+export interface WizardLedgerInputs {
+  avgMonthlyCard: number;          // 월평균 카드 매출 (원)
+  avgMonthlyCash: number;          // 월평균 현금 매출 (원)
+  baseOperatingExpense: number;    // 기본 운영비 (식자재, 매입대금 등, 원)
+  rentExpense: number;             // 월세 (원)
+  utilityExpense: number;          // 가스/수도/등유 (원)
+  electricityExpense: number;      // 전기요금 (원)
+  dynamicExpenses: DynamicExpenseItem[]; // 추가 경비 항목 목록
+  monthsLabels?: string[];         // 12개월 라벨 (생략시 최근 12개월)
+}
+
+export function generateMonthlyLedgerFromWizardInputs(inputs: WizardLedgerInputs): BusinessMonthlyLedger {
+  const labels = inputs.monthsLabels && inputs.monthsLabels.length === 12
+    ? inputs.monthsLabels
+    : generateDefaultRecent12MonthsLabels();
+
+  // 1. 동적 경비 항목을 법원 4대 표준 경비로 롤업 합산
+  let extraOperating = 0;
+  let extraRent = 0;
+  let extraUtility = 0;
+  let extraElectricity = 0;
+
+  for (const exp of inputs.dynamicExpenses) {
+    const amt = exp.monthlyAmount || 0;
+    if (exp.rollupTarget === 'rent') {
+      extraRent += amt;
+    } else if (exp.rollupTarget === 'utility') {
+      extraUtility += amt;
+    } else if (exp.rollupTarget === 'electricity') {
+      extraElectricity += amt;
+    } else {
+      // 기본값 operating
+      extraOperating += amt;
+    }
+  }
+
+  const finalOperating = (inputs.baseOperatingExpense || 0) + extraOperating;
+  const finalRent = (inputs.rentExpense || 0) + extraRent;
+  const finalUtility = (inputs.utilityExpense || 0) + extraUtility;
+  const finalElectricity = (inputs.electricityExpense || 0) + extraElectricity;
+
+  // 2. 12개월 행 생성 (월평균치 분배)
+  const rows: MonthlyLedgerItem[] = labels.map(month => {
+    const incomeCard = inputs.avgMonthlyCard || 0;
+    const incomeCash = inputs.avgMonthlyCash || 0;
+    const incomeTotal = incomeCard + incomeCash;
+
+    const expenseOperating = finalOperating;
+    const expenseRent = finalRent;
+    const expenseUtility = finalUtility;
+    const expenseElectricity = finalElectricity;
+    const expenseTotal = expenseOperating + expenseRent + expenseUtility + expenseElectricity;
+
+    const netIncome = incomeTotal - expenseTotal;
+
+    return {
+      month,
+      incomeCard,
+      incomeCash,
+      incomeTotal,
+      expenseOperating,
+      expenseRent,
+      expenseUtility,
+      expenseElectricity,
+      expenseTotal,
+      netIncome
+    };
+  });
+
+  return recalculateBusinessMonthlyLedger(rows, inputs.dynamicExpenses);
+}
+
+/**
+ * 개인사업자 12개월 수지표 원장을 D5103 양식 및 가용소득 계산에 양방향 동기화
+ */
+export function syncBusinessLedgerToD5103(
+  prev: IncomeExpenseD5103Data,
+  ledger: BusinessMonthlyLedger
+): IncomeExpenseD5103Data {
+  const next: IncomeExpenseD5103Data = {
+    ...prev,
+    incomeType: 'BUSINESS',
+    detailedIncomeType: 'BUSINESS',
+    monthlyLedger: ledger,
+    business: {
+      ...prev.business,
+      annualGrossRevenue: ledger.annualTotals.totalGrossRevenue,
+      annualOperatingExpenses: ledger.annualTotals.totalOperatingExpense,
+      annualTaxes: prev.business.annualTaxes || Math.round(ledger.annualTotals.totalGrossRevenue * 0.03),
+      netAnnualBusinessIncome: ledger.annualTotals.totalNetProfit,
+      monthlyAverageIncome: ledger.monthlyAverages.avgNetIncome
+    }
+  };
+
+  return recalculateD5103Data(next);
+}
+
+/**
+ * 프리랜서(3.3%) 수입·경비 내역을 D5103 양식에 동기화
+ */
+export function syncFreelancerLedgerToD5103(
+  prev: IncomeExpenseD5103Data,
+  freelancer: FreelancerMonthlyLedger
+): IncomeExpenseD5103Data {
+  const totalAnnualRevenue = freelancer.annualGrossRevenue || (freelancer.monthlyGrossIncome * 12);
+  const totalAnnualExpense = freelancer.totalMonthlyExpenses * 12;
+  const netAnnual = Math.max(0, totalAnnualRevenue - totalAnnualExpense);
+  const monthlyNet = freelancer.netMonthlyIncome;
+
+  const next: IncomeExpenseD5103Data = {
+    ...prev,
+    incomeType: 'BUSINESS',
+    detailedIncomeType: 'FREELANCER',
+    freelancerLedger: freelancer,
+    business: {
+      ...prev.business,
+      businessCategory: '사업소득',
+      businessName: `${freelancer.jobTypeDetail || '프리랜서'} 3.3% 용역소득`,
+      annualGrossRevenue: totalAnnualRevenue,
+      annualOperatingExpenses: totalAnnualExpense,
+      annualTaxes: 0, // 원천징수 후 금액인 경우
+      netAnnualBusinessIncome: netAnnual,
+      monthlyAverageIncome: monthlyNet,
+      evidenceDocuments: freelancer.evidenceDocuments || [
+        '원천징수영수증(사업소득)',
+        '최근 1년분 입금통장 사본',
+        '용역계약서 또는 위촉증명서'
+      ]
+    }
+  };
+
+  return recalculateD5103Data(next);
+}
+
+/**
+ * 일용직 근무내역을 D5103 양식에 동기화
+ */
+export function syncDayLaborerLedgerToD5103(
+  prev: IncomeExpenseD5103Data,
+  dayLaborer: DayLaborerLedger
+): IncomeExpenseD5103Data {
+  const monthlyGross = dayLaborer.monthlyGrossIncome || (dayLaborer.workDaysPerMonth * dayLaborer.dailyWage);
+  const annualGross = monthlyGross * 12;
+
+  const next: IncomeExpenseD5103Data = {
+    ...prev,
+    incomeType: 'SALARY',
+    detailedIncomeType: 'DAY_LABORER',
+    dayLaborerLedger: dayLaborer,
+    salary: {
+      ...prev.salary,
+      employerName: '건설·현장 일용직 (다수 현장)',
+      jobTitle: `일용근로자 (월평균 ${dayLaborer.workDaysPerMonth}일 근무, 일당 ${(dayLaborer.dailyWage / 10000).toFixed(0)}만원)`,
+      monthlyBasePay: monthlyGross,
+      annualBonus: 0,
+      monthlyBonusConverted: 0,
+      grossMonthlyIncome: monthlyGross,
+      totalStatutoryDeductions: 0,
+      netMonthlyIncome: monthlyGross,
+      annualConvertedIncome: annualGross,
+      evidenceDocuments: dayLaborer.evidenceDocuments || [
+        '일용근로소득지급명세서',
+        '고용산재보험 토탈서비스 일용근로내역서',
+        '급여입금통장 거래내역서'
+      ]
+    }
+  };
+
+  return recalculateD5103Data(next);
+}
+
+/**
+ * 아르바이트 근무내역을 D5103 양식에 동기화
+ */
+export function syncPartTimeToD5103(
+  prev: IncomeExpenseD5103Data,
+  partTime: PartTimeLedger
+): IncomeExpenseD5103Data {
+  const monthlyGross = partTime.totalMonthlyGrossIncome;
+  const annualGross = monthlyGross * 12;
+  const workplaceNames = partTime.workplaces.map(w => w.workplaceName).filter(Boolean).join(', ') || '단기 아르바이트';
+
+  const next: IncomeExpenseD5103Data = {
+    ...prev,
+    incomeType: 'SALARY',
+    detailedIncomeType: 'PART_TIME',
+    partTimeLedger: partTime,
+    salary: {
+      ...prev.salary,
+      employerName: workplaceNames,
+      jobTitle: '단기·시간제 아르바이트',
+      monthlyBasePay: monthlyGross,
+      annualBonus: 0,
+      monthlyBonusConverted: 0,
+      grossMonthlyIncome: monthlyGross,
+      totalStatutoryDeductions: 0,
+      netMonthlyIncome: monthlyGross,
+      annualConvertedIncome: annualGross,
+      evidenceDocuments: partTime.evidenceDocuments || [
+        '근로계약서 사본',
+        '급여입금통장 거래내역서',
+        '아르바이트 급여명세서'
+      ]
+    }
+  };
+
+  return recalculateD5103Data(next);
 }

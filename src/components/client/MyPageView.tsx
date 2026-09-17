@@ -27,6 +27,7 @@ import ClientCertificateSubmissionModal from './vault/ClientCertificateSubmissio
 import { loadCertificateVault, saveCertificateVault, shredCertificateVault } from '../../services/vault/certificateVaultService';
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
+const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('./incomeExpense/ClientMonthlyIncomeExpenseModal'));
 
 interface MyPageViewProps {
   userAlias: string;
@@ -98,6 +99,10 @@ export default function MyPageView({
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   // 법원 재산상황표(D5102) 모달 열림 상태
   const [isPropertyIntakeModalOpen, setIsPropertyIntakeModalOpen] = useState(false);
+  // 법원 수입및지출목록(D5103, 수지표) 모달 열림 상태
+  const [isIncomeExpenseModalOpen, setIsIncomeExpenseModalOpen] = useState(false);
+  // 서류함 1차(착수등기)/2차(소득재산) 단계 필터 탭
+  const [docPhaseTab, setDocPhaseTab] = useState<'all' | 'phase1' | 'phase2'>('all');
   
   const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
@@ -2638,53 +2643,199 @@ export default function MyPageView({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500 dark:bg-purple-950/40"><FileText className="w-5 h-5" /></div>
-                          관공서 필수 서류 발급 제출
-                        </h3>
-                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">{submittedCount} / 15 제출 완료</span>
-                      </div>
-                      
-                      {/* Progress bar */}
-                      <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(submittedCount / 15) * 100}%` }} />
+                      {/* 📊 법원 제출용 수입 및 지출 내역서(수지표, D5103) 고객 1분 간편 작성 배너 */}
+                      <div className="p-5 md:p-6 bg-gradient-to-r from-teal-950 via-emerald-900 to-slate-900 rounded-3xl text-white shadow-lg space-y-4 border border-emerald-500/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0">
+                              📊
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-base md:text-lg text-white">
+                                  수입 및 지출 내역서 (수지표, D5103) 간편 작성
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-slate-950 font-sans">
+                                  고객 1분 완성
+                                </span>
+                              </div>
+                              <p className="text-xs text-emerald-100 mt-0.5 leading-relaxed">
+                                사업자·프리랜서·일용직 필수 서류! 복잡한 12개월 엑셀을 몰라도 월평균 매출과 경비만 툭툭 입력하시면 법원 정식 12개월 수지표 양식으로 자동 완성됩니다.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsIncomeExpenseModalOpen(true)}
+                            className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs md:text-sm rounded-2xl shadow-md transition-all cursor-pointer press-scale shrink-0 flex items-center justify-center gap-2"
+                          >
+                            <span>📊 수지표 1분 간편 작성하기</span>
+                            <ChevronRight className="w-4 h-4 text-slate-950" />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* 필수 서류 목록 */}
+                      {/* ⚠️ 법원 제출용 서류 발급 유효기간(2개월 원칙) 안내 배너 */}
+                      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 flex items-start gap-3 text-xs leading-relaxed">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-amber-900 dark:text-amber-200 block mb-0.5">
+                            📌 법원 제출용 서류 발급기한 준수 안내 (2개월 이내 최신 서류)
+                          </strong>
+                          <span className="text-amber-800 dark:text-amber-300">
+                            동사무소·세무서·공단 등에서 발급받는 모든 서류는 <strong>개인회생 신청일 기준 최근 2개월 이내에 발급된 원본 서류</strong>이어야 합니다. 유효기간이 지난 서류는 법원 회생위원으로부터 즉시 보정명령이 발령되므로 반드시 발급일자를 확인해 주세요.
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 서류함 헤더 및 1차/2차 단계 필터 탭 */}
                       <div className="space-y-3">
-                        {checklist.map(item => {
-                          const status = item.reviewStatus || 'not_submitted';
-                          const config = DOC_REVIEW_STATUS_CONFIG[status] || DOC_REVIEW_STATUS_CONFIG.not_submitted;
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500 dark:bg-purple-950/40"><FileText className="w-5 h-5" /></div>
+                            관공서 필수 서류 발급 제출
+                          </h3>
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
+                            {submittedCount} / {checklist.length || 15} 제출 완료 ({checklist.length > 0 ? Math.round((submittedCount / checklist.length) * 100) : 0}%)
+                          </span>
+                        </div>
+
+                        {/* 1차 착수 등기 서류 vs 2차 소득·재산 서류 단계 탭 */}
+                        {(() => {
+                          const phase1Count = checklist.filter(d => d.phase === 1).length;
+                          const phase2Count = checklist.filter(d => d.phase === 2 || !d.phase).length;
+
                           return (
-                            <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.label}</span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${config.bgColor} ${config.color} ${config.borderColor}`}>
-                                    {config.emoji} {config.label}
-                                  </span>
-                                </div>
-                                {status === 'rejected' && item.rejectionReason && (
-                                  <p className="text-xs text-red-500 mt-1.5 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/40">
-                                    반려 사유: {item.rejectionReason}
-                                  </p>
-                                )}
-                              </div>
-                              
-                              {['not_submitted', 'rejected'].includes(status) && (
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand transition-all cursor-pointer active:scale-[0.98]">
-                                    <Upload className="w-3.5 h-3.5" />
-                                    업로드
-                                    <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={(e) => handleFileUpload(e.target.files, item.id)} />
-                                  </label>
-                                </div>
-                              )}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setDocPhaseTab('all')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                  docPhaseTab === 'all'
+                                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                전체 ({checklist.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDocPhaseTab('phase1')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                  docPhaseTab === 'phase1'
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                                }`}
+                              >
+                                🚀 1차 착수 등기 서류 ({phase1Count > 0 ? phase1Count : 9})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDocPhaseTab('phase2')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                  docPhaseTab === 'phase2'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                    : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                }`}
+                              >
+                                📋 2차 소득·재산 서류 ({phase2Count})
+                              </button>
                             </div>
                           );
-                        })}
+                        })()}
+                        
+                        {/* Progress bar */}
+                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-emerald-500 transition-all duration-500" 
+                            style={{ width: `${checklist.length > 0 ? (submittedCount / checklist.length) * 100 : 0}%` }} 
+                          />
+                        </div>
                       </div>
+
+                      {/* 필수 서류 목록 (1차/2차 필터 적용 및 수지표 원클릭 작성 연동) */}
+                      {(() => {
+                        const filteredList = checklist.filter(item => {
+                          if (docPhaseTab === 'phase1') return item.phase === 1;
+                          if (docPhaseTab === 'phase2') return item.phase === 2 || !item.phase;
+                          return true;
+                        });
+
+                        return (
+                          <div className="space-y-3">
+                            {filteredList.map(item => {
+                              const status = item.reviewStatus || 'not_submitted';
+                              const config = DOC_REVIEW_STATUS_CONFIG[status] || DOC_REVIEW_STATUS_CONFIG.not_submitted;
+                              const isIncomeExpenseDoc = item.linkedFormCode === 'D5103' || item.label.includes('수지표') || item.label.includes('수입지출');
+
+                              return (
+                                <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.label}</span>
+                                      
+                                      {item.phase === 1 ? (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                          1차 착수
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                          2차 소득재산
+                                        </span>
+                                      )}
+
+                                      {item.validityNote && (
+                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100/70 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                          {item.validityNote}
+                                        </span>
+                                      )}
+
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${config.bgColor} ${config.color} ${config.borderColor}`}>
+                                        {config.emoji} {config.label}
+                                      </span>
+                                    </div>
+
+                                    {item.description && (
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        {item.description}
+                                      </p>
+                                    )}
+
+                                    {status === 'rejected' && item.rejectionReason && (
+                                      <p className="text-xs text-red-500 mt-1.5 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/40">
+                                        반려 사유: {item.rejectionReason}
+                                      </p>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {/* 수지표 항목인 경우 원클릭 간편 작성 버튼 추가 */}
+                                    {isIncomeExpenseDoc && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsIncomeExpenseModalOpen(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs press-scale"
+                                      >
+                                        <Calculator className="w-3.5 h-3.5" />
+                                        <span>수지표 간편작성</span>
+                                      </button>
+                                    )}
+
+                                    {['not_submitted', 'rejected'].includes(status) && (
+                                      <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand transition-all cursor-pointer active:scale-[0.98]">
+                                        <Upload className="w-3.5 h-3.5" />
+                                        업로드
+                                        <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={(e) => handleFileUpload(e.target.files, item.id)} />
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
 
                       {/* 추가 요청 서류 */}
                       {docRequests.length > 0 && (
@@ -3181,6 +3332,26 @@ export default function MyPageView({
           if (updates) {
             await updateCrmClientExtension(targetId, updates);
           }
+          setRefreshTick(c => c + 1);
+        }}
+      />
+    </React.Suspense>
+  )}
+
+  {/* 📊 법원 제출용 수입 및 지출 내역서 (수지표, D5103) 고객 작성 모달 */}
+  {isIncomeExpenseModalOpen && (
+    <React.Suspense fallback={null}>
+      <ClientMonthlyIncomeExpenseModal
+        isOpen={isIncomeExpenseModalOpen}
+        onClose={() => setIsIncomeExpenseModalOpen(false)}
+        clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
+        clientName={profile?.name || userAlias || '신청인'}
+        initialD5103={crmExt?.incomeExpenseD5103 || null}
+        onSaveD5103={async (updatedData) => {
+          const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
+          await updateCrmClientExtension(targetId, {
+            incomeExpenseD5103: updatedData
+          });
           setRefreshTick(c => c + 1);
         }}
       />

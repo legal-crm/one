@@ -2838,6 +2838,7 @@ export default function CrmTab({
                           onAdvanceToNextStage={() => setPipelineStage(4)}
                           onOpenDocScanner={() => setShowDocScanner(true)}
                           onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
+                          onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
                         />
                       )}
                       {pipelineStage === 4 && (

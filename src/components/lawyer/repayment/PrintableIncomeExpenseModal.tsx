@@ -243,6 +243,88 @@ export default function PrintableIncomeExpenseModal({
                       </tr>
                     </tbody>
                   </table>
+
+                  {/* 📊 법원 실무 준칙 [별지: 12개월 수입 및 지출 명세서 (수지표)] - 사진 2 엑셀 양식 100% 일치 */}
+                  {data.monthlyLedger && data.monthlyLedger.months && data.monthlyLedger.months.length > 0 && (
+                    <div className="mt-3 border border-slate-400 rounded overflow-hidden">
+                      <div className="bg-[#f0f0f0] px-3 py-1.5 border-b border-slate-400 flex justify-between items-center">
+                        <span className="font-extrabold text-[11px] text-slate-900">
+                          【별지】 12개월 수입 및 지출 명세서 (영업수지표)
+                        </span>
+                        <span className="text-[10px] text-slate-600 font-mono">
+                          (단위: 원)
+                        </span>
+                      </div>
+                      <table className="w-full text-[10px] border-collapse">
+                        <thead className="bg-[#f5f5f5] text-slate-800 font-bold border-b border-slate-300">
+                          <tr>
+                            <th className="p-1 border-r border-slate-300 text-center w-14">날짜</th>
+                            <th className="p-1 border-r border-slate-300 text-right">카드</th>
+                            <th className="p-1 border-r border-slate-300 text-right">현금</th>
+                            <th className="p-1 border-r border-slate-300 text-right bg-emerald-50 text-emerald-950 font-extrabold">소계</th>
+                            <th className="p-1 border-r border-slate-300 text-right">운영비</th>
+                            <th className="p-1 border-r border-slate-300 text-right">월세</th>
+                            <th className="p-1 border-r border-slate-300 text-right">가스·수도·등유</th>
+                            <th className="p-1 border-r border-slate-300 text-right">전기요금</th>
+                            <th className="p-1 border-r border-slate-300 text-right bg-rose-50 text-rose-950 font-extrabold">소계</th>
+                            <th className="p-1 text-right bg-blue-50 text-blue-950 font-black">총매출(월순수익)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-300">
+                          {data.monthlyLedger.months.map((m, idx) => (
+                            <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/50' : ''}>
+                              <td className="p-1 text-center font-bold border-r border-slate-300">{m.month}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.incomeCard.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.incomeCash.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono font-bold border-r border-slate-300 bg-emerald-50/40">{m.incomeTotal.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.expenseOperating.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.expenseRent.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.expenseUtility.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono border-r border-slate-300">{m.expenseElectricity.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono font-bold border-r border-slate-300 bg-rose-50/40">{m.expenseTotal.toLocaleString()}</td>
+                              <td className="p-1 text-right font-mono font-black text-blue-900 bg-blue-50/40">{m.netIncome.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-[#f5f5f5] font-black border-t-2 border-slate-400 text-slate-900">
+                          <tr className="border-b border-slate-300">
+                            <td className="p-1 text-center border-r border-slate-300 font-bold bg-slate-200/80">합계</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalCard.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalCash.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 bg-emerald-100/60">{data.monthlyLedger.annualTotals.totalGrossRevenue.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalOperating.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalRent.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalUtility.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300">{data.monthlyLedger.annualTotals.totalElectricity.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 bg-rose-100/60">{data.monthlyLedger.annualTotals.totalOperatingExpense.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono bg-blue-100/80 text-blue-950">{data.monthlyLedger.annualTotals.totalNetProfit.toLocaleString()}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-1 text-center border-r border-slate-300 font-bold bg-slate-200/80">월평균</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalCard / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalCash / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 bg-emerald-100/80 text-emerald-950">{data.monthlyLedger.monthlyAverages.avgGrossRevenue.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalOperating / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalRent / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalUtility / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 text-slate-500">{Math.round(data.monthlyLedger.annualTotals.totalElectricity / 12).toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono border-r border-slate-300 bg-rose-100/80 text-rose-950">{data.monthlyLedger.monthlyAverages.avgOperatingExpense.toLocaleString()}</td>
+                            <td className="p-1 text-right font-mono bg-blue-100 text-blue-950 font-black">{data.monthlyLedger.monthlyAverages.avgNetIncome.toLocaleString()}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                      {data.monthlyLedger.dynamicExpenses && data.monthlyLedger.dynamicExpenses.length > 0 && (
+                        <div className="p-2 bg-slate-50 text-[9.5px] text-slate-600 border-t border-slate-300">
+                          <span className="font-bold text-slate-800">※ 세부 필요경비 산출 내역: </span>
+                          {data.monthlyLedger.dynamicExpenses.map((d, i) => (
+                            <span key={d.id || i} className="mr-2">
+                              {d.name}(월 {d.monthlyAmount.toLocaleString()}원)
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
