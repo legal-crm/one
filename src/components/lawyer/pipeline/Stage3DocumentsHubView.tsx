@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
 import { 
   ApplicationDocTemplateService, 
+  compareDocItemsPriority,
   type DocPhase, 
   type SubmissionMethod 
 } from '../../../services/documents/applicationDocTemplateService';
@@ -47,6 +48,7 @@ export interface DocItemModel {
   id: string;
   name: string;
   phase: DocPhase;
+  order?: number;
   submissionMethod: SubmissionMethod;
   agency: string;
   isRequired: boolean;
@@ -155,7 +157,8 @@ export default function Stage3DocumentsHubView({
   // 로펌 실무 기준 서류 목록 초기화 (1차 서류 9종 + 2차 서류 17종)
   const [docList, setDocList] = useState<DocItemModel[]>(() => {
     const uploaded = crmExt?.uploadedFiles || [];
-    const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest);
+    const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest)
+      .sort(compareDocItemsPriority);
 
     return masterTemplates.map((rawItem, idx) => {
       // 인감 관련 서류(인감증명서, 인감도장)는 부채증명서 발급 대행을 위해 무조건 1차 서류 보장
@@ -169,6 +172,7 @@ export default function Stage3DocumentsHubView({
         return {
           id: item.id,
           name: item.name,
+          order: item.order,
           phase: item.phase,
           submissionMethod: item.submissionMethod,
           agency: item.agency,
@@ -189,6 +193,7 @@ export default function Stage3DocumentsHubView({
         return {
           id: item.id,
           name: item.name,
+          order: item.order,
           phase: item.phase,
           submissionMethod: item.submissionMethod,
           agency: item.agency,
@@ -206,6 +211,7 @@ export default function Stage3DocumentsHubView({
         return {
           id: item.id,
           name: item.name,
+          order: item.order,
           phase: item.phase,
           submissionMethod: item.submissionMethod,
           agency: item.agency,
@@ -219,6 +225,7 @@ export default function Stage3DocumentsHubView({
         return {
           id: item.id,
           name: item.name,
+          order: item.order,
           phase: item.phase,
           submissionMethod: item.submissionMethod,
           agency: item.agency,
@@ -232,6 +239,7 @@ export default function Stage3DocumentsHubView({
       return {
         id: item.id,
         name: item.name,
+        order: item.order,
         phase: item.phase,
         submissionMethod: item.submissionMethod,
         agency: item.agency,
@@ -243,7 +251,7 @@ export default function Stage3DocumentsHubView({
         status: idx < 16 ? 'REQUESTED' : 'NOT_REQUESTED',
         requestedAt: idx < 16 ? '2026.09.12' : undefined,
       };
-    });
+    }).sort(compareDocItemsPriority);
   });
 
   // 상태별 및 차수별 서류 집계
@@ -309,7 +317,7 @@ export default function Stage3DocumentsHubView({
       if (statusFilter === 'approved' && doc.status !== 'APPROVED') return false;
 
       return true;
-    });
+    }).sort(compareDocItemsPriority);
   }, [docList, activePhaseTab, activeAgency, statusFilter]);
 
   // 1차 서류 일괄 수령 완료 처리 (게이트 통과)

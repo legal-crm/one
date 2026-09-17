@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { 
   ApplicationDocTemplateService, 
   APPLICATION_CATEGORIES, 
+  compareDocItemsPriority,
   type ApplicationDocMasterItem, 
   type DocCategoryKey 
 } from '../../../services/documents/applicationDocTemplateService';
@@ -61,7 +62,7 @@ export default function ApplicationDocSettingsModal({
   const currentCategoryDocs = useMemo(() => {
     return templates
       .filter(item => item.category === activeCategory)
-      .sort((a, b) => a.order - b.order)
+      .sort(compareDocItemsPriority)
       .filter(item => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();

@@ -63,8 +63,35 @@ export const APPLICATION_CATEGORIES: ApplicationCategoryConfig[] = [
 const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
   // ── [1차 서류] 개인회생 (급여소득자) - 착수 & 부채증명서 대행 (등기 9종) ──
   {
-    id: 'rs-p1-1',
+    id: 'rs-p1-7',
     order: 1,
+    phase: 1,
+    submissionMethod: 'POST_MAIL',
+    name: '인감증명서 (본인발급 2~3부 / 채권사수 + 5부)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'GOV',
+    agency: '주민센터 방문 발급 (대리 불가)',
+    tips: '주민센터 본인 발급 필수. 금융기관 부채증명서 대행 발급 및 법원 전자소송 위임용 (1차 서류 필수).',
+    isRequired: true,
+    isCreditorMultiplier: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p1-6',
+    order: 2,
+    phase: 1,
+    submissionMethod: 'POST_MAIL',
+    name: '인감도장 (실물)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'PERSONAL',
+    agency: '신청인 보유 (실물 등기 발송)',
+    tips: '인감증명서와 동일한 인감도장 필수. 금융기관 부채증명서 대리 발급 위임장 날인 후 안전 반환.',
+    isRequired: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p1-1',
+    order: 3,
     phase: 1,
     submissionMethod: 'POST_MAIL',
     name: '주민등록등본 1부 (전체 포함)',
@@ -78,7 +105,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
   },
   {
     id: 'rs-p1-2',
-    order: 2,
+    order: 4,
     phase: 1,
     submissionMethod: 'POST_MAIL',
     name: '주민등록초본 1부 (과거 주소이력 포함)',
@@ -92,7 +119,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
   },
   {
     id: 'rs-p1-3',
-    order: 3,
+    order: 5,
     phase: 1,
     submissionMethod: 'POST_MAIL',
     name: '가족관계증명서 1부 (상세)',
@@ -106,7 +133,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
   },
   {
     id: 'rs-p1-4',
-    order: 4,
+    order: 6,
     phase: 1,
     submissionMethod: 'POST_MAIL',
     name: '혼인관계증명서 1부 (상세, 미혼자 포함)',
@@ -120,7 +147,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
   },
   {
     id: 'rs-p1-5',
-    order: 5,
+    order: 7,
     phase: 1,
     submissionMethod: 'POST_MAIL',
     name: '신분증 사본 (앞/뒤)',
@@ -129,33 +156,6 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     agency: '신청인 보유',
     tips: '주민등록증 또는 운전면허증 앞/뒤 선명한 사본 (부채증명서 발급 위임 필수 첨부).',
     isRequired: true,
-    isThirdPartyMasking: false
-  },
-  {
-    id: 'rs-p1-6',
-    order: 6,
-    phase: 1,
-    submissionMethod: 'POST_MAIL',
-    name: '인감도장 (실물)',
-    category: 'REHAB_SALARIED',
-    subCategory: 'PERSONAL',
-    agency: '신청인 보유 (실물 등기 발송)',
-    tips: '인감증명서와 동일한 인감도장 필수. 금융기관 부채증명서 대리 발급 위임장 날인 후 안전 반환.',
-    isRequired: true,
-    isThirdPartyMasking: false
-  },
-  {
-    id: 'rs-p1-7',
-    order: 7,
-    phase: 1,
-    submissionMethod: 'POST_MAIL',
-    name: '인감증명서 (본인발급 2~3부 / 채권사수 + 5부)',
-    category: 'REHAB_SALARIED',
-    subCategory: 'GOV',
-    agency: '주민센터 방문 발급 (대리 불가)',
-    tips: '주민센터 본인 발급 필수. 금융기관 부채증명서 대행 발급 및 법원 전자소송 위임용 (1차 서류 필수).',
-    isRequired: true,
-    isCreditorMultiplier: true,
     isThirdPartyMasking: false
   },
   {
@@ -536,6 +536,38 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
 
 const STORAGE_KEY = 'LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V2';
 
+/**
+ * 서류 목록 정렬 우선순위 비교기
+ * 1순위: 인감증명서 (부채증명서 발급 핵심 필수 서류 -> 최상단)
+ * 2순위: 인감도장 (인감증명서 직후 최상단)
+ * 3순위: 1차 서류군 (주민등록등본, 초본 등 기본 서류)
+ * 4순위: 2차 서류군 (소득, 재산, 진술서 등)
+ */
+export function compareDocItemsPriority<T extends { name: string; phase?: number; order?: number }>(a: T, b: T): number {
+  const isASealCert = a.name.includes('인감증명서');
+  const isBSealCert = b.name.includes('인감증명서');
+  if (isASealCert && !isBSealCert) return -1;
+  if (!isASealCert && isBSealCert) return 1;
+
+  const isASealStamp = a.name.includes('인감도장');
+  const isBSealStamp = b.name.includes('인감도장');
+  if (isASealStamp && !isBSealStamp) return -1;
+  if (!isASealStamp && isBSealStamp) return 1;
+
+  const isASealAny = a.name.includes('인감');
+  const isBSealAny = b.name.includes('인감');
+  if (isASealAny && !isBSealAny) return -1;
+  if (!isASealAny && isBSealAny) return 1;
+
+  const phaseA = a.phase || 1;
+  const phaseB = b.phase || 1;
+  if (phaseA !== phaseB) {
+    return phaseA - phaseB;
+  }
+
+  return (a.order || 0) - (b.order || 0);
+}
+
 export class ApplicationDocTemplateService {
   /**
    * 서류 항목 정규화 (인감증명서는 부채증명서 발급 필수 서류이므로 무조건 1차 서류 보장)
@@ -562,7 +594,7 @@ export class ApplicationDocTemplateService {
       const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V1');
       if (!raw) {
         this.resetToDefaults();
-        return DEFAULT_DOC_TEMPLATES;
+        return DEFAULT_DOC_TEMPLATES.slice().sort(compareDocItemsPriority);
       }
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -576,6 +608,20 @@ export class ApplicationDocTemplateService {
           return normalized;
         });
 
+        // 인감증명서 최상단 우선순위 정렬
+        normalizedList.sort(compareDocItemsPriority);
+
+        // 인감증명서가 최상단 order(1)이 아니면 순서 재할당 및 저장
+        const sealItem = normalizedList.find(i => i.name.includes('인감증명서') && i.category === 'REHAB_SALARIED');
+        if (sealItem && sealItem.order !== 1) {
+          hasChanges = true;
+          const catCounts: Record<string, number> = {};
+          normalizedList.forEach(item => {
+            catCounts[item.category] = (catCounts[item.category] || 0) + 1;
+            item.order = catCounts[item.category];
+          });
+        }
+
         // 인감증명서 등 변경된 사항이 있으면 로컬스토리지 자동 갱신
         if (hasChanges) {
           this.saveTemplates(normalizedList);
@@ -583,9 +629,9 @@ export class ApplicationDocTemplateService {
 
         return normalizedList;
       }
-      return DEFAULT_DOC_TEMPLATES;
+      return DEFAULT_DOC_TEMPLATES.slice().sort(compareDocItemsPriority);
     } catch {
-      return DEFAULT_DOC_TEMPLATES;
+      return DEFAULT_DOC_TEMPLATES.slice().sort(compareDocItemsPriority);
     }
   }
 
@@ -596,7 +642,7 @@ export class ApplicationDocTemplateService {
     const list = this.getTemplates();
     return list
       .filter(item => item.category === category)
-      .sort((a, b) => a.order - b.order);
+      .sort(compareDocItemsPriority);
   }
 
   /**
@@ -692,35 +738,39 @@ export class ApplicationDocTemplateService {
   }
 
   /**
-   * 의뢰인 사건 정보(소득, 회생/파산)에 부합하는 권장 서류 목록 반환
+   * 의뢰인 사건 정보(소득, 회생/파산)에 부합하는 권장 서류 목록 반환 (인감증명서 최상단 보장)
    */
   static getRecommendedDocsForClient(clientRequest: any): ApplicationDocMasterItem[] {
     const isBankruptcy = clientRequest?.caseType === 'bankruptcy' || clientRequest?.targetSolution === '파산면책';
     const isBusiness = clientRequest?.jobType === '사업자' || clientRequest?.isBusiness || clientRequest?.incomeType === '사업소득';
 
-    // 공통 1차 등기 서류 9종 (실무 표준)
+    // 공통 1차 서류 (인감증명서 최상단 보장)
     const phase1Docs = this.getTemplatesByCategory('REHAB_SALARIED').filter(d => d.phase === 1);
 
     if (isBankruptcy) {
-      // 파산: 1차 등기 9종 + 파산 전용 2차 서류
+      // 파산: 1차 서류 + 파산 전용 2차 서류
       const bpPhase2 = this.getTemplatesByCategory('BANKRUPTCY');
       const commonPhase2 = this.getTemplatesByCategory('REHAB_SALARIED').filter(d => 
         d.phase === 2 && ['rs-p2-1', 'rs-p2-2', 'rs-p2-3', 'rs-p2-6', 'rs-p2-7', 'rs-p2-8', 'rs-p2-10'].includes(d.id)
       );
-      return [...phase1Docs, ...commonPhase2, ...bpPhase2].map((d, idx) => ({ ...d, order: idx + 1 }));
+      return [...phase1Docs, ...commonPhase2, ...bpPhase2]
+        .sort(compareDocItemsPriority)
+        .map((d, idx) => ({ ...d, order: idx + 1 }));
     }
 
     if (isBusiness) {
-      // 영업소득자: 1차 등기 9종 + 일반 급여제외 2차 + 사업자 전용 2차
+      // 영업소득자: 1차 서류 + 일반 급여제외 2차 + 사업자 전용 2차
       const salariedPhase2 = this.getTemplatesByCategory('REHAB_SALARIED').filter(d => 
         d.phase === 2 && !['rs-p2-13', 'rs-p2-14', 'rs-p2-15', 'rs-p2-16'].includes(d.id)
       );
       const businessDocs = this.getTemplatesByCategory('REHAB_BUSINESS');
-      return [...phase1Docs, ...salariedPhase2, ...businessDocs].map((d, idx) => ({ ...d, order: idx + 1 }));
+      return [...phase1Docs, ...salariedPhase2, ...businessDocs]
+        .sort(compareDocItemsPriority)
+        .map((d, idx) => ({ ...d, order: idx + 1 }));
     }
 
-    // 기본: 급여소득자 26종
-    return this.getTemplatesByCategory('REHAB_SALARIED');
+    // 기본: 급여소득자 (인감증명서 최상단 정렬)
+    return this.getTemplatesByCategory('REHAB_SALARIED').sort(compareDocItemsPriority);
   }
 
   /**
