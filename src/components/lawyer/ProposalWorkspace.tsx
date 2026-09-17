@@ -447,41 +447,45 @@ export default function ProposalWorkspace({
       />
 
       {/* 유료 고객 전용 AI 정밀분석 보고서 모달 (변호사 직접 수정 모드 탑재) */}
-      <PremiumProposalReportModal
-        isOpen={isAIReportOpen}
-        onClose={() => setIsAIReportOpen(false)}
-        userInput={rehabUserInput}
-        calcResult={rehabCalcResult}
-        clientInfo={{
-          clientName,
-          court: courtName,
-          totalDebt: rehabUserInput.totalDebt || (rehabCalcResult as any)?.totalDebt
-        }}
-        proposal={{
-          aiInsights: { isAIPremium: true, ...(aiAnalysis as any) },
-          monthlyPayment: rehabCalcResult.monthlyPayment,
-          repaymentMonths: (rehabCalcResult as any).repaymentMonths || 36,
-          debtReductionRate: rehabCalcResult.debtReductionRate,
-          lawyer: lawyerInfo,
-          lawyerName: lawyerInfo?.name || '김회생 변호사',
-          firmName: lawyerInfo?.firmName || '법무법인 케어'
-        }}
-        isLawyerEditor={true}
-        onApplyChanges={handleApplyAIReportChanges}
-      />
+      {isAIReportOpen && (
+        <PremiumProposalReportModal
+          isOpen={isAIReportOpen}
+          onClose={() => setIsAIReportOpen(false)}
+          userInput={rehabUserInput}
+          calcResult={rehabCalcResult}
+          clientInfo={{
+            clientName,
+            court: courtName,
+            totalDebt: rehabUserInput?.totalDebt || (rehabCalcResult as any)?.totalDebt
+          }}
+          proposal={{
+            aiInsights: { isAIPremium: true, ...(aiAnalysis as any) },
+            monthlyPayment: rehabCalcResult?.monthlyPayment,
+            repaymentMonths: (rehabCalcResult as any)?.repaymentMonths || 36,
+            debtReductionRate: rehabCalcResult?.debtReductionRate,
+            lawyer: lawyerInfo,
+            lawyerName: lawyerInfo?.name || '김회생 변호사',
+            firmName: lawyerInfo?.firmName || '법무법인 케어'
+          }}
+          isLawyerEditor={true}
+          onApplyChanges={handleApplyAIReportChanges}
+        />
+      )}
 
       {/* ⚖️ 변호사법 준수 AI 정밀분석 변호사 직접 확인/승인 팝업 */}
-      <LawyerAttestationModal
-        isOpen={isAttestationOpen}
-        onClose={() => setIsAttestationOpen(false)}
-        onConfirm={handleAttestationConfirm}
-        clientName={clientName}
-        monthlyPayment={rehabCalcResult.monthlyPayment || 400000}
-        totalDebt={rehabUserInput.totalDebt || 50000000}
-        courtName={courtName}
-        lawyerName={lawyerInfo?.name || '김회생 변호사'}
-        firmName={lawyerInfo?.firmName || '법무법인 케어'}
-      />
+      {isAttestationOpen && (
+        <LawyerAttestationModal
+          isOpen={isAttestationOpen}
+          onClose={() => setIsAttestationOpen(false)}
+          onConfirm={handleAttestationConfirm}
+          clientName={clientName}
+          monthlyPayment={rehabCalcResult?.monthlyPayment || 400000}
+          totalDebt={rehabUserInput?.totalDebt || 50000000}
+          courtName={courtName}
+          lawyerName={lawyerInfo?.name}
+          firmName={lawyerInfo?.firmName}
+        />
+      )}
 
     </div>
   );

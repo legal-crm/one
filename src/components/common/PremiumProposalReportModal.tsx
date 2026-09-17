@@ -156,8 +156,6 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     }
   }, [isAIPremium, activeTab]);
 
-  if (!isOpen && !embedded) return null;
-
   // 2. Unify and normalize props across reportData & proposal & clientInfo
   const lawyerName = 
     reportData?.lawyerInfo?.name || 
@@ -633,6 +631,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       onClose();
     }
   };
+
+  if (!isOpen && !embedded) return null;
 
   const modalContent = (
     <div className={embedded ? "w-full" : "fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"}>
