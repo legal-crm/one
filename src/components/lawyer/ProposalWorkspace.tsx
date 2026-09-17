@@ -252,8 +252,18 @@ export default function ProposalWorkspace({
           </button>
         </div>
 
-        {/* 우측 도구: 템플릿 관리자 + 닫기 */}
+        {/* 우측 도구: AI 분석 + 템플릿 관리자 + 닫기 */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsAIReportOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-sm hover:shadow transition-all cursor-pointer active:scale-95 whitespace-nowrap press-scale"
+            title="AI 사건 정밀 분석 보고서 및 추천안 열기"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>AI 분석</span>
+          </button>
+
           <button
             onClick={() => setIsTemplateModalOpen(true)}
             className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"

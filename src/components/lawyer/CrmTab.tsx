@@ -47,6 +47,7 @@ import CourtPetitionEditModal from './filing/CourtPetitionEditModal';
 import CreditorManagementModal from './filing/CreditorManagementModal';
 import CourtFormPreviewModal from './filing/CourtFormPreviewModal';
 import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
+import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
@@ -298,6 +299,8 @@ export default function CrmTab({
   const [newDocRequestLabel, setNewDocRequestLabel] = useState('');
   const [newDocRequestDesc, setNewDocRequestDesc] = useState('');
   const [showDocScanner, setShowDocScanner] = useState(false);
+  // ── 고객 자가진단 전수 상세 팝업 ──
+  const [showIntakeDetailModal, setShowIntakeDetailModal] = useState(false);
   // ── 배정 지시 모달 ──
   const [showDirectiveModal, setShowDirectiveModal] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState<{
@@ -2291,15 +2294,14 @@ export default function CrmTab({
                     </button>
                   )}
 
-                  {setCopilotPreselectedReqId && setActiveTab && (
-                    <button
-                      onClick={() => { setCopilotPreselectedReqId(selectedClient.id); setActiveTab('case-copilot'); }}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700 whitespace-nowrap press-scale cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-brand" />
-                      AI 분석
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowIntakeDetailModal(true)}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700 whitespace-nowrap press-scale cursor-pointer"
+                    title="고객이 '내 상황 체크하기'에서 남긴 전체 채무 및 개인 현황 상세 팝업 열기"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-400" />
+                    <span>고객 상세보기</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -5295,6 +5297,16 @@ export default function CrmTab({
         activeLawyerEmail={activeLawyer.email}
         activeLawyerName={activeLawyer.name}
       />
+
+      {/* ── 14. 고객 자가진단('내 상황 체크하기') 11개 영역 전수 상세 팝업 ── */}
+      {showIntakeDetailModal && selectedClient && (
+        <ClientIntakeDetailModal
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onClose={() => setShowIntakeDetailModal(false)}
+          onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
+        />
+      )}
     </div>
   );
 }
