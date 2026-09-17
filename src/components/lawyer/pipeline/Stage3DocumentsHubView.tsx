@@ -6,7 +6,7 @@ import {
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
   RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy,
   FileSpreadsheet, Lock, Unlock, ArrowUpRight, Edit2, Save, X,
-  ChevronDown, ChevronUp, BookOpen
+  BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
@@ -25,7 +25,6 @@ import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal'
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
-import { detectClientIncomeType } from '../../../utils/incomeTypeHelper';
 
 interface Stage3DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -102,15 +101,6 @@ export default function Stage3DocumentsHubView({
   const [showSpeedReviewModal, setShowSpeedReviewModal] = useState(false);
   const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
 
-  // 고객 소득 유형 판별 및 맞춤 서류 가이드
-  const [isIncomeGuideOpen, setIsIncomeGuideOpen] = useState(true);
-  const incomeTypeInfo = useMemo(() => {
-    return detectClientIncomeType(
-      clientRequest.financialProfile,
-      crmExt?.incomeExpenseD5103,
-      clientRequest
-    );
-  }, [clientRequest, crmExt]);
 
   // 부채증명서 대행 주문 상태
   const [debtOrder, setDebtOrder] = useState<DebtCertificateOrder>(() => {
@@ -444,117 +434,6 @@ export default function Stage3DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── 0. 고객 소득 유형별 맞춤 서류 수집 가이드 배너 (Job-Tailored Document Guidance) ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#1E293B] to-[#0F172A] rounded-2xl border border-slate-800 p-4 sm:p-5 text-white shadow-sm transition-all">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-lg shrink-0">
-              {incomeTypeInfo.icon}
-            </span>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg border ${incomeTypeInfo.badgeClass}`}>
-                  {incomeTypeInfo.badgeLabel}
-                </span>
-                <span className="text-xs font-bold text-slate-200">
-                  소득 유형 맞춤 법원 서류 가이드
-                </span>
-                {incomeTypeInfo.requiresD5103 ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                    ⚠️ 12개월 수지표(D5103) 필수
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    ✓ 수지표 면제 (근로소득)
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                {incomeTypeInfo.documentSummary}
-              </p>
-            </div>
-          </div>
-
-          {/* 우측 빠른 액션 버튼 그룹 */}
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-            {incomeTypeInfo.requiresD5103 && onOpenIncomeExpenseModal && (
-              <button
-                type="button"
-                onClick={onOpenIncomeExpenseModal}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm press-scale cursor-pointer"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>수지표(D5103) 작성·동기화</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsIncomeGuideOpen(!isIncomeGuideOpen)}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors text-xs flex items-center gap-1 cursor-pointer"
-              title={isIncomeGuideOpen ? "가이드 접기" : "가이드 펼치기"}
-            >
-              <span className="text-[11px] font-medium">{isIncomeGuideOpen ? '접기' : '상세 기준'}</span>
-              {isIncomeGuideOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* 펼침 시: 법원 심리 근거 및 필수 vs 면제 서류 대조표 */}
-        {isIncomeGuideOpen && (
-          <div className="pt-3.5 space-y-3 text-xs animate-fadeIn">
-            {/* 법률 실무적 근거 (Rationale) */}
-            <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-bold text-slate-200">법원 심리 및 서류 징구 기준</span>
-                <p className="text-slate-300 leading-relaxed text-[11px]">
-                  {incomeTypeInfo.rationale}
-                </p>
-              </div>
-            </div>
-
-            {/* 2단 비교: 필수 핵심 서류 vs 면제 서류 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              {/* 필수 집중 수합 서류 */}
-              <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-2">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-400 text-xs">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>필수 집중 수합 서류</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {incomeTypeInfo.keyRequiredDocuments.map((doc, idx) => (
-                    <span 
-                      key={idx}
-                      className="text-[11px] bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 px-2 py-0.5 rounded-lg"
-                    >
-                      {doc}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* 면제 / 생략 가능 서류 */}
-              <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-2">
-                <div className="flex items-center gap-1.5 font-bold text-slate-400 text-xs">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>제출 불요 / 면제 서류</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {incomeTypeInfo.exemptDocuments.map((doc, idx) => (
-                    <span 
-                      key={idx}
-                      className="text-[11px] bg-slate-800/60 text-slate-400 border border-slate-700/60 px-2 py-0.5 rounded-lg line-through"
-                    >
-                      {doc}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── 1. [실무 타임라인] 릴레이 파이프라인 리본 (Relay Progress Ribbon) ── */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2 mb-3">
