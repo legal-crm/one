@@ -148,7 +148,7 @@ export default function CorrectionBriefModal({
                 <li>신용카드 결제내역 및 생활필수지출 소명표 (소갑 제2호증)</li>
               )}
               {data.highValueTrans.length > 0 && (
-                <li>50만 원 이상 계좌거래내역 소명표 및 이체확인증 (소갑 제3호증)</li>
+                <li>[별지] 금융거래 100만 원 이상 출금 내역 및 사용처 소명서 (소갑 제3호증의 1 내지 O)</li>
               )}
               {data.monthlyIncomes.length > 0 && (
                 <li>최근 1년 소득 산정표 및 급여통장 사본 (소갑 제4호증)</li>

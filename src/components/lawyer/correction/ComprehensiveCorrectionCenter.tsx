@@ -20,6 +20,15 @@ import type {
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import CorrectionBriefModal from './CorrectionBriefModal';
 import BankStatementAuditModal from '../../common/BankStatementAuditModal';
+import PrintableHighValueAuditModal from '../../common/PrintableHighValueAuditModal';
+import { 
+  getStoredBankAuditData, 
+  saveStoredBankAuditData, 
+  approveBankAuditByLawyer, 
+  exportToCourtStandardExcel 
+} from '../../../services/bankAuditService';
+import type { BankStatementAuditData } from '../../../types/bankAuditTypes';
+
 
 interface ComprehensiveCorrectionCenterProps {
   clientId: string;
@@ -175,6 +184,24 @@ export default function ComprehensiveCorrectionCenter({
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   // 통장 및 카드 거래내역 소명 자동화 모달 상태
   const [showBankAuditModal, setShowBankAuditModal] = useState(false);
+  // 법원 공식 [별지: 100만 원 이상 출금 사용처 소명서] 인쇄 모달 상태
+  const [showCourtPrintModal, setShowCourtPrintModal] = useState(false);
+  
+  // 의뢰인 작성 100만 원 이상 출금 소명표 실시간 동기화 상태
+  const [clientAuditData, setClientAuditData] = useState<BankStatementAuditData>(() => 
+    getStoredBankAuditData(clientId, clientName)
+  );
+
+  React.useEffect(() => {
+    const handleSync = (e: any) => {
+      if (e.detail?.clientId === clientId && e.detail?.data) {
+        setClientAuditData(e.detail.data);
+      }
+    };
+    window.addEventListener('bank_audit_updated', handleSync);
+    return () => window.removeEventListener('bank_audit_updated', handleSync);
+  }, [clientId]);
+
 
   // 통합 보정 데이터 객체 생성
   const fullBriefData: CorrectionBriefData = useMemo(() => ({
@@ -211,6 +238,46 @@ export default function ComprehensiveCorrectionCenter({
     setShowExtensionModal(false);
     toast.success('📅 1개월 보정기한 연장신청서(기한연장신청서)가 법원 전자소송 제출 규격으로 생성되었습니다!');
   };
+
+  // 100만 원 소명표 변호사 일괄 승인 및 소갑호증 채번
+  const handleApproveBankAudit = () => {
+    const approved = approveBankAuditByLawyer(clientId);
+    setClientAuditData(approved);
+    toast.success('⚖️ 의뢰인 소명표에 대한 법률 검토가 완료되고 [소갑 제3호증]이 순차 채번되었습니다!');
+  };
+
+  // 100만 원 소명표를 보정서 답변(answers) 본문 2항에 자동 결합
+  const handleSyncAuditToBriefAnswers = () => {
+    const targetItems = clientAuditData.items.filter(i => i.amount >= (clientAuditData.thresholdAmount || 1000000));
+    const totalSum = targetItems.reduce((acc, curr) => acc + curr.amount, 0);
+
+    const summaryText = `신청인의 최근 금융거래 내역 중 1회 100만 원 이상 출금된 총 ${targetItems.length}건(총액: ${totalSum.toLocaleString()}원)에 대하여, 채무자 생계유지비(식비·생필품), 주거비(월세·관리비), 필수 질환 치료비 및 타 금융기관 부채 변제에 전액 충당되었음을 상세히 소명합니다(별지 '금융거래 100만 원 이상 출금 사용처 소명서' 참조). 편파변제 또는 재산은닉 의도는 일체 없음을 확인합니다.`;
+
+    setAnswers(prev => prev.map((ans, idx) => {
+      if (idx === 1 || ans.courtInstruction.includes('출금') || ans.courtInstruction.includes('소명')) {
+        return {
+          ...ans,
+          debtorResponse: summaryText,
+          attachedEvidence: '소갑 제3호증의 1 내지 7 (별지 금융거래 100만 원 이상 출금 소명서 및 이체증)'
+        };
+      }
+      return ans;
+    }));
+
+    toast.success('보정서 본문 [2. 금융거래 출금 소명] 항목에 소명 취지 및 소갑호증이 자동 결합되었습니다!');
+  };
+
+  // 법원 표준 엑셀 다운로드
+  const handleExportCourtExcel = () => {
+    exportToCourtStandardExcel(clientAuditData.items, {
+      clientName,
+      caseNumber,
+      courtName,
+      thresholdAmount: clientAuditData.thresholdAmount || 1000000
+    });
+    toast.success('대법원 전자소송 규격 엑셀 파일이 다운로드되었습니다.');
+  };
+
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -266,6 +333,18 @@ export default function ComprehensiveCorrectionCenter({
               <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-700" />
               <span>⚡ 통장·카드 소명기 (30만/50만)</span>
             </button>
+
+            {/* 법원 공식 100만 원 이상 출금 소명서 인쇄 및 엑셀 다운로드 */}
+            <button
+              type="button"
+              onClick={() => setShowCourtPrintModal(true)}
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+              title="법원 제출용 100만 원 이상 출금 사용처 소명서 [별지] A4 인쇄 / PDF 저장 / 엑셀 다운로드"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-700" />
+              <span>🏛️ 100만 원 소명서 [별지]</span>
+            </button>
+
 
             {/* 1개월 기한연장 신청 버튼 */}
             <button
@@ -578,33 +657,217 @@ export default function ComprehensiveCorrectionCenter({
               </div>
             )}
 
-            {/* 3. 50만 이상 거래 */}
+            {/* 3. 100만 원 이상 금융거래 소명표 (의뢰인 실시간 동기화 & 변호사 법률 검토) */}
             {explanationSubTab === 'high_trans' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">50만 원 이상 계좌 이체/출금 거래내역 소명</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowBankAuditModal(true)}
-                    className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>⚡ 엑셀 업로드로 50만 원 이상 자동 추출 소명 →</span>
-                  </button>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-2xl text-xs space-y-2 border border-slate-200">
-                  {highValueTrans.map(t => (
-                    <div key={t.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200">
-                      <div>
-                        <span className="font-bold text-slate-900">{t.bankName} ➔ {t.counterparty}</span>
-                        <p className="text-[11px] text-slate-500">{t.purposeDetail} ({t.transDate})</p>
-                      </div>
-                      <span className="font-mono font-bold text-rose-600">-{t.amount.toLocaleString()}원</span>
+              <div className="space-y-4">
+                {/* 상단 의뢰인 실시간 동기화 상태 바 */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900 to-indigo-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                        <FileSpreadsheet className="w-4 h-4 text-blue-300" />
+                        100만 원 이상 금융거래 출금 사용처 소명서 [별지]
+                      </span>
+                      {clientAuditData.status === 'lawyer_approved' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
+                          ✓ 변호사 승인 및 소갑호증 채번 완료
+                        </span>
+                      ) : clientAuditData.status === 'submitted' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40 animate-pulse">
+                          ● 의뢰인 작성 제출 완료 (검토 대기)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/30 text-slate-300 border border-slate-400/40">
+                          임시작성 중
+                        </span>
+                      )}
                     </div>
-                  ))}
+                    <p className="text-xs text-blue-200/80">
+                      의뢰인이 스마트폰에서 원터치 칩으로 작성한 소명 내용이 실시간 반영됩니다. 변호사가 청산가치 위험 문구를 방어하고 소갑호증을 부여합니다.
+                    </p>
+                  </div>
+
+                  {/* 액션 버튼 그룹 */}
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleApproveBankAudit}
+                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>검토완료 & 소갑호증 채번</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSyncAuditToBriefAnswers}
+                      className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      title="소명 요약문을 보정서 답변 본문 2항에 자동 입력합니다"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>보정서 본문 자동 결합</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportCourtExcel}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>엑셀(.xlsx)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCourtPrintModal(true)}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>A4 인쇄</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 100만 원 이상 출금 거래 테이블 (인라인 수정 가능) */}
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-xs">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                      <tr>
+                        <th className="p-2.5 text-center w-10">연번</th>
+                        <th className="p-2.5 w-24">일자</th>
+                        <th className="p-2.5 w-32">금융사/계좌</th>
+                        <th className="p-2.5 w-20 text-center">구분</th>
+                        <th className="p-2.5 w-32">상대방(적요)</th>
+                        <th className="p-2.5 text-right w-28">출금액</th>
+                        <th className="p-2.5">구체적 사용처 소명내용 (변호사 수정 가능)</th>
+                        <th className="p-2.5 w-28">소명자료(증빙)</th>
+                        <th className="p-2.5 w-28 text-center">입증방법</th>
+                        <th className="p-2.5 w-20 text-center">위험도</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {clientAuditData.items
+                        .filter(i => i.amount >= (clientAuditData.thresholdAmount || 1000000))
+                        .map((item, idx) => {
+                          const isDanger = item.riskCategory === 'DANGER_SPECULATION' || item.riskCategory === 'DANGER_LUXURY';
+                          const isCaution = item.riskCategory === 'CAUTION_CASH' || item.riskCategory === 'CAUTION_TRANSFER';
+
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="p-2 text-center text-slate-500 font-mono font-bold">
+                                {idx + 1}
+                              </td>
+                              <td className="p-2 whitespace-nowrap text-slate-700 font-medium">
+                                {item.date}
+                              </td>
+                              <td className="p-2 text-slate-800 font-semibold truncate max-w-[130px]">
+                                {item.bankOrCard}
+                              </td>
+                              <td className="p-2 text-center whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
+                                  {item.transactionType === 'WITHDRAWAL' ? '계좌출금' : 
+                                   item.transactionType === 'CARD_PAYMENT' ? '카드결제' : 
+                                   item.transactionType === 'ATM_CASH' ? 'ATM현금' : '입금'}
+                                </span>
+                              </td>
+                              <td className="p-2 font-bold text-slate-900 truncate max-w-[140px]">
+                                {item.counterparty}
+                              </td>
+                              <td className="p-2 text-right font-mono font-extrabold text-indigo-700 whitespace-nowrap">
+                                {item.amount.toLocaleString()}원
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.explanation}
+                                  onChange={(e) => {
+                                    const newText = e.target.value;
+                                    const updated = clientAuditData.items.map(x => 
+                                      x.id === item.id ? { ...x, explanation: newText, isResolved: newText.trim().length > 0 } : x
+                                    );
+                                    const newBatch = { ...clientAuditData, items: updated };
+                                    setClientAuditData(newBatch);
+                                    saveStoredBankAuditData(newBatch);
+                                  }}
+                                  placeholder="구체적 사용처 소명 내용을 입력하세요..."
+                                  className="w-full px-2.5 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-lg text-xs transition-colors"
+                                />
+                                {item.clientNote && (
+                                  <span className="block text-[10px] text-slate-400 mt-0.5">
+                                    고객메모: {item.clientNote}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.evidenceType || ''}
+                                  onChange={(e) => {
+                                    const newEv = e.target.value;
+                                    const updated = clientAuditData.items.map(x => 
+                                      x.id === item.id ? { ...x, evidenceType: newEv } : x
+                                    );
+                                    const newBatch = { ...clientAuditData, items: updated };
+                                    setClientAuditData(newBatch);
+                                    saveStoredBankAuditData(newBatch);
+                                  }}
+                                  placeholder="영수증/이체증"
+                                  className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                                />
+                              </td>
+                              <td className="p-2 text-center">
+                                <input
+                                  type="text"
+                                  value={item.evidenceDocIndex || `소갑 제3호증의 ${idx + 1}`}
+                                  onChange={(e) => {
+                                    const newDocIdx = e.target.value;
+                                    const updated = clientAuditData.items.map(x => 
+                                      x.id === item.id ? { ...x, evidenceDocIndex: newDocIdx } : x
+                                    );
+                                    const newBatch = { ...clientAuditData, items: updated };
+                                    setClientAuditData(newBatch);
+                                    saveStoredBankAuditData(newBatch);
+                                  }}
+                                  className="w-24 px-1.5 py-1 bg-blue-50/70 border border-blue-200 text-blue-700 font-bold text-center rounded-lg text-[11px]"
+                                />
+                              </td>
+                              <td className="p-2 text-center whitespace-nowrap">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  isDanger ? 'bg-rose-100 text-rose-700' :
+                                  isCaution ? 'bg-amber-100 text-amber-700' :
+                                  'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {item.riskBadgeText}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                    <tfoot>
+                      {(() => {
+                        const targetList = clientAuditData.items.filter(i => i.amount >= (clientAuditData.thresholdAmount || 1000000));
+                        const sum = targetList.reduce((acc, curr) => acc + curr.amount, 0);
+                        return (
+                          <tr className="bg-slate-100/80 font-bold border-t border-slate-200 text-slate-900">
+                            <td colSpan={5} className="p-2.5 text-center">
+                              100만 원 이상 출금 합계 (총 {targetList.length}건)
+                            </td>
+                            <td className="p-2.5 text-right font-mono text-indigo-900 font-black">
+                              {sum.toLocaleString()}원
+                            </td>
+                            <td colSpan={4} className="p-2.5 text-slate-500 text-[11px] font-normal">
+                              ※ 변호사 승인 시 소갑호증이 자동 부여되며 [별지: 소명서] 및 엑셀로 출력됩니다.
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tfoot>
+                  </table>
                 </div>
               </div>
             )}
+
 
             {/* 4. 최근 1년 소득 산정 */}
             {explanationSubTab === 'income' && (
@@ -874,6 +1137,18 @@ export default function ComprehensiveCorrectionCenter({
             setCreditCards(prev => [...prev, ...newCards]);
           }
         }}
+      />
+
+      {/* 법원 공식 [별지: 금융거래 100만 원 이상 출금 소명서] A4 인쇄/PDF/엑셀 모달 */}
+      <PrintableHighValueAuditModal
+        isOpen={showCourtPrintModal}
+        onClose={() => setShowCourtPrintModal(false)}
+        clientName={clientName}
+        caseNumber={caseNumber}
+        courtName={courtName}
+        items={clientAuditData.items}
+        thresholdAmount={clientAuditData.thresholdAmount || 1000000}
+        isClientView={false}
       />
     </div>
   );

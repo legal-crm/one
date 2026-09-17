@@ -28,6 +28,8 @@ import { loadCertificateVault, saveCertificateVault, shredCertificateVault } fro
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('./incomeExpense/ClientMonthlyIncomeExpenseModal'));
+const ClientBankAuditModal = React.lazy(() => import('./correction/ClientBankAuditModal'));
+
 
 interface MyPageViewProps {
   userAlias: string;
@@ -101,6 +103,9 @@ export default function MyPageView({
   const [isPropertyIntakeModalOpen, setIsPropertyIntakeModalOpen] = useState(false);
   // 법원 수입및지출목록(D5103, 수지표) 모달 열림 상태
   const [isIncomeExpenseModalOpen, setIsIncomeExpenseModalOpen] = useState(false);
+  // 법원 100만 원 이상 금융거래 소명표 모달 열림 상태
+  const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
+
   // 서류함 1차(착수등기)/2차(소득재산) 단계 필터 탭
   const [docPhaseTab, setDocPhaseTab] = useState<'all' | 'phase1' | 'phase2'>('all');
   
@@ -2676,6 +2681,43 @@ export default function MyPageView({
                         </div>
                       </div>
 
+                      {/* 💳 법원 보정명령 1순위: 100만 원 이상 출금 사용처 소명표 배너 */}
+                      <div className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg border border-blue-800/40 relative overflow-hidden">
+                        <div className="absolute right-0 top-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                          <div className="flex items-start gap-3.5">
+                            <span className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0">
+                              💳
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-extrabold text-base md:text-lg text-white">
+                                  100만 원 이상 금융거래 사용처 소명표
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 font-sans">
+                                  법원 보정 1순위
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-400/30 text-blue-200 border border-blue-400/40 font-sans">
+                                  1분 원터치 소명
+                                </span>
+                              </div>
+                              <p className="text-xs text-blue-100 mt-1 leading-relaxed">
+                                회생위원이 가장 집중 심사하는 100만 원 이상 출금 내역을 스마트폰에서 <strong>생활비·월세·대출상환 칩 하나로 1분 만에 소명</strong>하세요. 작성 즉시 변호사에게 동기화됩니다.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsBankAuditModalOpen(true)}
+                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-black text-xs md:text-sm rounded-2xl shadow-md transition-all cursor-pointer press-scale shrink-0 flex items-center justify-center gap-2"
+                          >
+                            <span>💳 100만 원 소명표 작성하기</span>
+                            <ChevronRight className="w-4 h-4 text-white" />
+                          </button>
+                        </div>
+                      </div>
+
                       {/* ⚠️ 법원 제출용 서류 발급 유효기간(2개월 원칙) 안내 배너 */}
                       <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 flex items-start gap-3 text-xs leading-relaxed">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -3358,7 +3400,25 @@ export default function MyPageView({
     </React.Suspense>
   )}
 
+  {/* 💳 법원 100만 원 이상 금융거래 소명표 고객 모달 */}
+  {isBankAuditModalOpen && (
+    <React.Suspense fallback={null}>
+      <ClientBankAuditModal
+        isOpen={isBankAuditModalOpen}
+        onClose={() => setIsBankAuditModalOpen(false)}
+        clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
+        clientName={profile?.name || userAlias || '신청인'}
+        caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '2026개회 108492호'}
+        courtName={crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'}
+        onSubmittedSuccess={() => {
+          setRefreshTick(c => c + 1);
+        }}
+      />
+    </React.Suspense>
+  )}
+
   {/* 🏛️ 채권자집회 출석 완벽 가이드 모달 */}
+
   <CreditorMeetingGuideModal
     isOpen={isCreditorMeetingModalOpen}
     onClose={() => setIsCreditorMeetingModalOpen(false)}

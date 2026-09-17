@@ -34,6 +34,10 @@ export interface AuditTransactionItem {
   explanation: string;              // 의뢰인/변호사 작성 구체적 사용처 소명
   evidenceType?: string;            // 첨부 증빙자료 (영수증, 진단서, 차용증, 이체증 등)
   isResolved: boolean;              // 소명 작성 완료 여부
+  evidenceDocIndex?: string;        // 소갑 제O호증 (예: "소갑 제4호증의 1")
+  status?: 'draft' | 'submitted' | 'lawyer_approved'; // 협업 상태
+  clientNote?: string;              // 고객 비고/메모
+  lawyerReviewNote?: string;        // 변호사 검토 의견
 }
 
 export interface AuditPresetTemplate {
@@ -48,11 +52,27 @@ export interface AuditPresetTemplate {
 export interface AuditSummaryStats {
   totalCount: number;
   totalAmount: number;
-  thresholdCount: number;           // 기준금액(30만/50만 등) 초과 건수
+  thresholdCount: number;           // 기준금액(30만/50만/100만 등) 초과 건수
   thresholdAmount: number;          // 기준금액 초과 총액
   resolvedCount: number;            // 소명 완료 건수
   unresolvedCount: number;          // 소명 미완료 건수
   resolvedRate: number;             // 소명 완료율 (%)
   dangerCount: number;              // 고위험(사행성/사치) 건수
   cautionCount: number;             // 주의(현금인출/편파변제) 건수
+}
+
+/** 100만 원 이상 금융거래 소명표 전체 데이터셋 모델 */
+export interface BankStatementAuditData {
+  id: string;
+  clientId: string;
+  clientName: string;
+  caseNumber?: string;
+  courtName?: string;
+  thresholdAmount: number;          // 기준 금액 (기본 1,000,000원)
+  items: AuditTransactionItem[];
+  stats: AuditSummaryStats;
+  status: 'draft' | 'submitted' | 'lawyer_approved';
+  clientSubmittedAt?: string;
+  lawyerReviewedAt?: string;
+  lastUpdatedAt: string;
 }
