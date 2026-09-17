@@ -62,7 +62,6 @@ export default function WorkflowPipelineStepper({
       stage: 1 as PipelineStage,
       number: '01',
       title: '상담·적격 검토',
-      desc: '제595조 결격사유 & 사건유형 확정',
       icon: UserCheck,
       isCompleted: isConsultCompleted,
       isLocked: false,
@@ -73,9 +72,6 @@ export default function WorkflowPipelineStepper({
       stage: 2 as PipelineStage,
       number: '02',
       title: '계약·착수',
-      desc: isStage2Locked 
-        ? (!hasProposalSent ? '🔒 제안서 발송 필요' : '🔒 고객 확인 대기') 
-        : '실비·수임료 산출 & 모바일 전자계약',
       icon: FileCheck2,
       isCompleted: isContractCompleted,
       isLocked: isStage2Locked,
@@ -86,7 +82,6 @@ export default function WorkflowPipelineStepper({
       stage: 3 as PipelineStage,
       number: '03',
       title: '고객정보·서류수집',
-      desc: isStage3Locked ? '🔒 수임계약 체결 필요' : '4대 발급처 서류 & 진술서 동기화',
       icon: FolderArchive,
       isCompleted: isDocCompleted,
       isLocked: isStage3Locked,
@@ -97,7 +92,6 @@ export default function WorkflowPipelineStepper({
       stage: 4 as PipelineStage,
       number: '04',
       title: '신청서 작성·접수',
-      desc: isStage4Locked ? '🔒 수임계약 체결 필요' : '8대 서식 + 금지명령 일괄 패키징',
       icon: Send,
       isCompleted: isFilingCompleted,
       isLocked: isStage4Locked,
@@ -108,7 +102,6 @@ export default function WorkflowPipelineStepper({
       stage: 5 as PipelineStage,
       number: '05',
       title: '법원대응·보정',
-      desc: isStage5Locked ? '🔒 법원 정식접수 필요' : '나의사건 크롤링 & 7대 표 소명서',
       icon: Scale,
       isCompleted: isCommenced,
       isLocked: isStage5Locked,
@@ -119,7 +112,6 @@ export default function WorkflowPipelineStepper({
       stage: 6 as PipelineStage,
       number: '06',
       title: '사후관리·면책',
-      desc: isStage6Locked ? '🔒 법원 개시결정 필요' : '가상계좌 적립금 & 채권자집회·면책',
       icon: ShieldCheck,
       isCompleted: isDischarged,
       isLocked: isStage6Locked,
@@ -172,7 +164,7 @@ export default function WorkflowPipelineStepper({
                 key={st.stage}
                 type="button"
                 onClick={() => handleStageClick(st.stage, st.isLocked)}
-                className={`p-2.5 sm:p-3 text-left transition-all relative flex flex-col justify-between rounded-xl cursor-pointer press-scale min-h-[82px] group ${
+                className={`p-2.5 text-left transition-all relative flex flex-col justify-between rounded-xl cursor-pointer press-scale min-h-[66px] group ${
                   isActive 
                     ? 'bg-[#1E3A5F] text-white shadow-md border-2 border-[#1E3A5F] ring-2 ring-blue-500/25 z-10' 
                     : st.isCompleted
@@ -188,7 +180,7 @@ export default function WorkflowPipelineStepper({
                 )}
 
                 {/* 스텝 헤더 (번호 + 뱃지) */}
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className={`text-[11px] font-mono font-black px-1.5 py-0.5 rounded ${
                       isActive 
@@ -222,8 +214,8 @@ export default function WorkflowPipelineStepper({
                 </div>
 
                 {/* 스텝 본문 (아이콘 + 타이틀) */}
-                <div className="flex items-start gap-2">
-                  <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 transition-colors ${
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className={`p-1.5 rounded-lg shrink-0 transition-colors ${
                     isActive 
                       ? 'bg-white text-[#1E3A5F] shadow-xs font-black' 
                       : st.isCompleted
@@ -238,11 +230,6 @@ export default function WorkflowPipelineStepper({
                       isActive ? 'text-white' : 'text-slate-900'
                     }`}>
                       {st.title}
-                    </div>
-                    <div className={`text-[10px] truncate mt-0.5 font-normal ${
-                      isActive ? 'text-blue-100' : 'text-slate-500'
-                    }`}>
-                      {st.desc}
                     </div>
                   </div>
                 </div>
