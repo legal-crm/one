@@ -253,6 +253,7 @@ export default function CrmTab({
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   const [showCommPanel, setShowCommPanel] = useState(true);
   const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
+  const [showFeeAccordion, setShowFeeAccordion] = useState(false);
   const [showStatusAccordion, setShowStatusAccordion] = useState(false);
   const [showMetaAccordion, setShowMetaAccordion] = useState(false);
   const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
@@ -2135,6 +2136,65 @@ export default function CrmTab({
         // 소득 유형 및 법원 필수 서류 가이드 정보 판별
         const incomeTypeInfo = detectClientIncomeType(fp, selectedExt?.incomeExpenseD5103, selectedClient);
 
+        // 수임료 납부 및 분납 현황 지표 계산
+        const feeSchedule = selectedExt?.feeSchedule || [];
+        const rawTotalFee = selectedExt?.totalFee || selectedExt?.contractAmount || 0;
+        
+        let contractTotalWon = 0;
+        try {
+          const cleanPhone = selectedClient?.phone ? selectedClient.phone.replace(/[^0-9]/g, '') : '';
+          const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => {
+            if (c.clientId === selectedId) return true;
+            if (selectedClient?.clientId && (c.clientId === selectedClient.clientId || c.clientRefId === selectedClient.clientId)) return true;
+            if (selectedClient?.id && c.clientRefId === selectedClient.id) return true;
+            if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
+            return false;
+          });
+          if (cList.length > 0 && cList[0].totalFee) {
+            contractTotalWon = cList[0].totalFee < 10000 ? cList[0].totalFee * 10000 : cList[0].totalFee;
+          }
+        } catch {}
+
+        const totalFeeWon = rawTotalFee > 0
+          ? (rawTotalFee >= 100000 ? rawTotalFee : rawTotalFee * 10000)
+          : (contractTotalWon > 0 
+              ? contractTotalWon 
+              : feeSchedule.reduce((sum, f) => sum + (f.amount >= 100000 ? f.amount : f.amount * 10000), 0)
+            );
+
+        const paidSchedule = feeSchedule.filter(f => f.status === 'paid');
+        const overdueSchedule = feeSchedule.filter(f => f.status === 'overdue');
+        const pendingSchedule = feeSchedule.filter(f => f.status === 'pending');
+
+        const totalPaidWon = selectedExt?.totalPaid !== undefined && selectedExt.totalPaid > 0
+          ? (selectedExt.totalPaid >= 100000 ? selectedExt.totalPaid : selectedExt.totalPaid * 10000)
+          : paidSchedule.reduce((sum, f) => sum + (f.amount >= 100000 ? f.amount : f.amount * 10000), 0);
+
+        const unpaidWon = Math.max(0, totalFeeWon - totalPaidWon);
+        const paymentRate = totalFeeWon > 0 ? Math.min(100, Math.round((totalPaidWon / totalFeeWon) * 100)) : 0;
+        const isFullyPaid = totalFeeWon > 0 && unpaidWon === 0;
+        const isOverdue = overdueSchedule.length > 0;
+        const nextInst = overdueSchedule[0] || pendingSchedule[0] || null;
+
+        let feeBadgeLabel = '미약정';
+        let feeBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+
+        if (totalFeeWon > 0) {
+          if (isFullyPaid) {
+            feeBadgeLabel = '완납 (100%)';
+            feeBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+          } else if (isOverdue) {
+            feeBadgeLabel = `연체 ${overdueSchedule.length}건`;
+            feeBadgeClass = 'bg-rose-50 text-rose-600 border-rose-200';
+          } else if (totalPaidWon > 0) {
+            feeBadgeLabel = `${paidSchedule.length}/${feeSchedule.length || 1}회 (${paymentRate}%)`;
+            feeBadgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+          } else {
+            feeBadgeLabel = '미납 (0%)';
+            feeBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+          }
+        }
+
         return (
           <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm animate-fadeIn">
             {/* ── 1. Smart Case Profile Banner (환자 차트형 헤더) ── */}
@@ -2356,6 +2416,22 @@ export default function CrmTab({
                     </div>
 
                     <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">수임료</span>
+                      <span className="font-bold text-slate-800 font-mono flex items-center gap-1.5">
+                        {totalFeeWon > 0 ? (
+                          <>
+                            <span>{(totalFeeWon / 10000).toLocaleString()}만원</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-sans font-bold border ${feeBadgeClass}`}>
+                              {feeBadgeLabel}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 font-sans font-normal">미약정</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500 font-medium">고객 반응</span>
                       <span className="text-slate-600 font-mono text-[11px]">
                         {timeAgo(selectedExt.lastActivityAt || selectedClient.createdAt)}
@@ -2424,6 +2500,117 @@ export default function CrmTab({
                       <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
                         <span>{termMonths}개월 총 변제예정</span>
                         <span className="font-mono text-emerald-600">{estimatedTotalRepay.toLocaleString()}만원</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 📂 아코디언: 수임료 납부 현황 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowFeeAccordion(!showFeeAccordion)}
+                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>수임료 납부 현황</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${feeBadgeClass}`}>
+                        {feeBadgeLabel}
+                      </span>
+                      <span className="text-slate-400 text-xs">{showFeeAccordion ? '▴' : '▾'}</span>
+                    </div>
+                  </button>
+
+                  {/* 항상 보이는 콤팩트 2행 요약 & 미니 프로그레스 바 */}
+                  <div className="px-3.5 pb-3 pt-0 space-y-2.5 border-b border-slate-100">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                        <span className="text-[10px] text-slate-500 block">총 수임료</span>
+                        <span className="font-mono font-bold text-slate-900">
+                          {totalFeeWon > 0 ? `${(totalFeeWon / 10000).toLocaleString()}만원` : '미약정'}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
+                          <span>수납 완료</span>
+                          <span className={`text-[9px] font-bold px-1 py-0.2 rounded font-mono ${
+                            isFullyPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {paymentRate}%
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-slate-900">
+                          {totalPaidWon > 0 ? `${(totalPaidWon / 10000).toLocaleString()}만원` : '0원'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 수납 진행률 게이지 바 */}
+                    {totalFeeWon > 0 && (
+                      <div className="space-y-1">
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isFullyPaid 
+                                ? 'bg-emerald-500' 
+                                : isOverdue 
+                                ? 'bg-rose-500' 
+                                : 'bg-blue-600'
+                            }`}
+                            style={{ width: `${Math.min(100, paymentRate)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium">
+                          <span>
+                            {isFullyPaid ? (
+                              <span className="text-emerald-600 font-bold">전액 완납 완료</span>
+                            ) : (
+                              <span>미납 잔액 <strong className="font-mono text-rose-600 font-bold">{(unpaidWon / 10000).toLocaleString()}만원</strong></span>
+                            )}
+                          </span>
+                          <span className="font-mono text-slate-600">
+                            {feeSchedule.length > 0 ? `${paidSchedule.length}/${feeSchedule.length}회차` : '일시납'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 펼침 시 상세 분납 내역 및 수임료 탭 바로가기 */}
+                  {showFeeAccordion && (
+                    <div className="p-3.5 bg-slate-50/70 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
+                      {nextInst && (
+                        <div className="flex justify-between text-slate-600">
+                          <span>다음 분납 예정</span>
+                          <span className="font-mono font-bold text-slate-800">
+                            {nextInst.dueDate} ({(nextInst.amount >= 100000 ? nextInst.amount / 10000 : nextInst.amount)}만원)
+                          </span>
+                        </div>
+                      )}
+                      {isOverdue && (
+                        <div className="flex justify-between text-rose-600 font-bold">
+                          <span>⚠️ 연체 분납금</span>
+                          <span className="font-mono">{overdueSchedule.length}건 연체 중</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-600">
+                        <span>분납 회차 구성</span>
+                        <span className="font-bold text-slate-700">
+                          {feeSchedule.length > 1 ? `총 ${feeSchedule.length}회 분납 약정` : '일시납 / 단건'}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setDetailTab('fees')}
+                          className="w-full py-2 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 font-bold text-xs shadow-2xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-98"
+                        >
+                          <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>수임료 상세 관리 탭 열기 →</span>
+                        </button>
                       </div>
                     </div>
                   )}
