@@ -177,11 +177,11 @@ ${content}`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-3 sm:p-6 flex items-start sm:items-center justify-center animate-fadeIn">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-5xl h-[86vh] max-h-[86vh] flex flex-col overflow-hidden my-auto shrink-0">
         
         {/* ── 1. Modal Top Bar (헤더) ── */}
-        <div className="bg-gradient-to-r from-slate-900 via-[#1E293B] to-[#0F172A] p-5 text-white flex items-center justify-between gap-3 shrink-0">
+        <div className="bg-gradient-to-r from-slate-900 via-[#1E293B] to-[#0F172A] px-5 py-4 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl shrink-0 border border-white/10">
               📋
