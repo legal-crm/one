@@ -150,6 +150,16 @@ export default function Stage2ContractRetainerView({
   // 간략 표기 조항 실시간 미리보기 토글
   const [showClausePreview, setShowClausePreview] = useState(false);
 
+  // 금액 콤마 포맷터 & 파서
+  const formatWon = (val: number | undefined | null) => {
+    if (val === undefined || val === null || isNaN(val)) return '0';
+    return Number(val).toLocaleString();
+  };
+  const parseWon = (str: string) => {
+    const clean = str.replace(/[^0-9]/g, '');
+    return clean ? parseInt(clean, 10) : 0;
+  };
+
   const [isContractSigned, setIsContractSigned] = useState(() => {
     return crmExt?.crmStatus === 'contracted' || crmExt?.crmStatus === 'preparing' || crmExt?.crmStatus === 'completed' || !!crmExt?.contractDate;
   });
@@ -795,110 +805,170 @@ ${d.content}
         </div>
       </div>
 
-      {/* ── 3. 실비·수임료 2단 산정 캔버스 ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 좌측: 2026 전자소송 법원 실비 계산기 */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-[#1E3A5F]" />
-              <h4 className="font-black text-sm text-slate-900">법원 필수 실비 자동 산출</h4>
-            </div>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            <div>
-              <div className="flex justify-between font-bold text-slate-700 mb-1">
-                <span>채권자 수 (금융사 + 개인채권자)</span>
-                <span className="text-[#1E3A5F] font-mono font-bold">{creditorCount}개 사</span>
+      {/* ── 3. 실비·수임료 2단 산정 캔버스 (균형감 & 가독성 극대화 리디자인) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* 좌측: 🏛️ 법원 필수 실비 자동 산출 (공과금 관제) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-slate-900">법원 필수 실비 산출</h4>
+                  <span className="text-[10px] text-slate-400 font-medium">채권자 수 기반 2026 전자소송 공과금</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min="1"
-                max="30"
-                value={creditorCount}
-                onChange={e => {
-                  setCreditorCount(Number(e.target.value));
-                  setTimeout(() => syncContractState(), 50);
-                }}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isBusinessDebtor}
-                  onChange={e => {
-                    setIsBusinessDebtor(e.target.checked);
-                    setTimeout(() => syncContractState(), 50);
-                  }}
-                  className="rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
-                />
-                <span className="font-bold text-slate-800">영업소득자 (외부회생위원 예납금 15만원 대상)</span>
-              </label>
-              <span className={`font-mono font-bold ${isBusinessDebtor ? 'text-blue-600' : 'text-slate-400'}`}>
-                {isBusinessDebtor ? '+150,000원' : '해당없음'}
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                전자소송 10% 감액
               </span>
             </div>
 
-            {/* 실비 상세 내역 */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 text-slate-600">
-              <div className="flex justify-between">
-                <span>1. 인지대 (개시신청 + 금지명령 10% 감액)</span>
-                <span className="font-mono font-bold text-slate-800">{stampFee.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between">
-                <span>2. 송달료 (기본 10회 + {creditorCount}곳 × 8회 = {10 + (creditorCount * 8)}회)</span>
-                <span className="font-mono font-bold text-slate-800">{deliveryFee.toLocaleString()}원</span>
-              </div>
-              {isBusinessDebtor && (
-                <div className="flex justify-between">
-                  <span>3. 외부회생위원 선임 예납금</span>
-                  <span className="font-mono font-bold text-slate-800">{trusteeDeposit.toLocaleString()}원</span>
+            <div className="space-y-4 pt-3 text-xs">
+              {/* 채권자 수 슬라이더 및 빠른 선택 칩 */}
+              <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/70">
+                <div className="flex justify-between items-center">
+                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>채권자 수 (금융사 + 개인채권자)</span>
+                  </label>
+                  <span className="text-[#1E3A5F] font-mono font-black text-sm px-2 py-0.5 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                    {creditorCount}개 사
+                  </span>
                 </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-slate-100 font-extrabold text-slate-900">
-                <span>법원 실비 소계</span>
-                <span className="text-blue-600 font-mono text-sm">{totalCourtCost.toLocaleString()}원</span>
+
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  value={creditorCount}
+                  onChange={e => {
+                    setCreditorCount(Number(e.target.value));
+                    setTimeout(() => syncContractState(), 50);
+                  }}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
+                />
+
+                {/* 채권자 수 빠른 선택 칩 */}
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 font-medium mr-1">빠른 선택:</span>
+                  {[3, 5, 7, 10, 15, 20].map(cnt => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => {
+                        setCreditorCount(cnt);
+                        setTimeout(() => syncContractState(), 50);
+                      }}
+                      className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                        creditorCount === cnt
+                          ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {cnt}곳
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 영업소득자 여부 카드 */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/70">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isBusinessDebtor}
+                    onChange={e => {
+                      setIsBusinessDebtor(e.target.checked);
+                      setTimeout(() => syncContractState(), 50);
+                    }}
+                    className="w-4 h-4 rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-800 block text-xs">영업소득자 (외부회생위원 대상)</span>
+                    <span className="text-[10px] text-slate-400">서울·수원 등 외부회생위원 선임 예납금 대상</span>
+                  </div>
+                </label>
+                <span className={`font-mono font-bold text-xs px-2.5 py-1 rounded-lg ${isBusinessDebtor ? 'bg-blue-100 text-blue-800' : 'bg-slate-200/70 text-slate-500'}`}>
+                  {isBusinessDebtor ? '+150,000원' : '해당없음'}
+                </span>
+              </div>
+
+              {/* 법원 공과금 상세 영수증 명세서 */}
+              <div className="bg-slate-50/90 rounded-xl p-4 border border-slate-200 space-y-2 font-mono">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-[11px] font-sans font-bold text-slate-500">
+                  <span>법원 납부 공과금 항목</span>
+                  <span>산출 금액</span>
+                </div>
+                <div className="flex justify-between text-slate-700 text-xs">
+                  <span className="font-sans">1. 인지대 (개시신청 + 금지명령 10% 감액)</span>
+                  <span className="font-bold">{stampFee.toLocaleString()}원</span>
+                </div>
+                <div className="flex justify-between text-slate-700 text-xs">
+                  <span className="font-sans">2. 송달료 (기본 10회 + {creditorCount}곳 × 8회 = {10 + (creditorCount * 8)}회)</span>
+                  <span className="font-bold">{deliveryFee.toLocaleString()}원</span>
+                </div>
+                {isBusinessDebtor && (
+                  <div className="flex justify-between text-blue-700 text-xs">
+                    <span className="font-sans">3. 외부회생위원 선임 예납금</span>
+                    <span className="font-bold">+{trusteeDeposit.toLocaleString()}원</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 text-slate-900 font-sans font-black">
+                  <span className="text-xs">법원 실비 합계 (소계)</span>
+                  <span className="text-blue-700 font-mono text-base font-black">{totalCourtCost.toLocaleString()}원</span>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* 좌측 하단: 실무 법률 정산 가이드 팁 (여백 밸런스 & 신뢰도 강화) */}
+          <div className="mt-4 p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px] text-blue-900/90 leading-relaxed space-y-1">
+            <div className="font-bold flex items-center gap-1 text-blue-800">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span>법원 공과금 실비 정산 원칙</span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              송달료 및 인지대는 법원 접수 시 전자소송 시스템에 직접 예납되는 법정 실비입니다. 채권자 수 변동이나 송달 추가 발생 시 법원 영수증 기준으로 정산됩니다.
+            </p>
           </div>
         </div>
 
-        {/* 우측: 로펌 수임료 및 분납 일정 확정 (고도화 패널) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+        {/* 우측: 💼 로펌 수임료 및 분납 일정 확정 (보수 관제) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
-              <Coins className="w-4 h-4 text-emerald-600" />
-              <h4 className="font-black text-sm text-slate-900">수임료 및 분납 조건 설정</h4>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-black text-sm text-slate-900">수임료 및 분납 조건 설정</h4>
+                <span className="text-[10px] text-slate-400 font-medium">착수금 + 잔금 맞춤 분납 플랜</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const next = contractStyle === 'simple_box' ? 'standard' : 'simple_box';
-                  setContractStyle(next);
-                  syncContractState(selectedSpecialTerms, next);
-                  toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
-                }}
-                className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                  contractStyle === 'simple_box'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-slate-100 text-slate-600 border-slate-200'
-                }`}
-                title="계약서 수임료 표기 방식 변경"
-              >
-                <FileText className="w-3 h-3 text-blue-600" />
-                <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const next = contractStyle === 'simple_box' ? 'standard' : 'simple_box';
+                setContractStyle(next);
+                syncContractState(selectedSpecialTerms, next);
+                toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
+              }}
+              className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all cursor-pointer flex items-center gap-1 press-scale ${
+                contractStyle === 'simple_box'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+              title="클릭하여 계약서 수임료 표기 방식을 전환합니다"
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
+            </button>
           </div>
 
-          <div className="space-y-3.5 text-xs">
-            {/* 1. 계약금 & 착수금 설정 영역 */}
-            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+          <div className="space-y-4 text-xs">
+            {/* Step 1: 착수금 & 계약금 설정 (콤마 지원 & 빠른 증감 칩) */}
+            <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200/80 space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -909,60 +979,94 @@ ${d.content}
                       setHasDeposit(checked);
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className="rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
+                    className="w-4 h-4 rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
                   />
-                  <span className="font-bold text-slate-800 text-xs">계약금(가계약금) 별도 수납</span>
+                  <span className="font-black text-slate-800 text-xs">계약금(가계약금) 별도 수납</span>
                 </label>
-                <span className="text-[10px] text-slate-400">사무실 정책에 따라 선택</span>
+                <span className="text-[10px] text-slate-400">사무실별 수납 정책에 따라 선택</span>
               </div>
 
-              <div className={`grid ${hasDeposit ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
+              <div className={`grid ${hasDeposit ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
                 {hasDeposit && (
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      계약금 (계약 체결 시)
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-700">
+                      계약금 (계약 체결 시 즉시)
                     </label>
                     <div className="relative">
                       <input
-                        type="number"
-                        step="50000"
-                        value={depositFee}
+                        type="text"
+                        value={formatWon(depositFee)}
                         onChange={e => {
-                          setDepositFee(Number(e.target.value) || 0);
+                          setDepositFee(parseWon(e.target.value));
                           setTimeout(() => syncContractState(), 50);
                         }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                        className="w-full px-3 py-2 pr-7 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold text-right text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white shadow-2xs"
                       />
-                      <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                      <span className="absolute right-3 top-2.5 text-slate-400 font-bold text-xs">원</span>
+                    </div>
+                    {/* 계약금 퀵 칩 */}
+                    <div className="flex gap-1 pt-0.5">
+                      {[100000, 200000, 300000, 500000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            setDepositFee(amt);
+                            setTimeout(() => syncContractState(), 50);
+                          }}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                            depositFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {amt / 10000}만
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    착수금 (사건 착수 시)
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700">
+                    착수금 (사건 착수 시 납부)
                   </label>
                   <div className="relative">
                     <input
-                      type="number"
-                      step="50000"
-                      value={retainerFee}
+                      type="text"
+                      value={formatWon(retainerFee)}
                       onChange={e => {
-                        setRetainerFee(Number(e.target.value) || 0);
+                        setRetainerFee(parseWon(e.target.value));
                         setTimeout(() => syncContractState(), 50);
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                      className="w-full px-3 py-2 pr-7 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold text-right text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white shadow-2xs"
                     />
-                    <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                    <span className="absolute right-3 top-2.5 text-slate-400 font-bold text-xs">원</span>
+                  </div>
+                  {/* 착수금 퀵 칩 */}
+                  <div className="flex gap-1 pt-0.5">
+                    {[500000, 1000000, 1500000, 2000000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setRetainerFee(amt);
+                          setTimeout(() => syncContractState(), 50);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                          retainerFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {amt / 10000}만
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 2. 잔금 분납 방식 선택 탭 & 납부 기준일 */}
-            <div className="space-y-2">
+            {/* Step 2: 잔금 분납 플랜 설정 (균등 vs 월별 수동 탭) */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-700">잔금 분납 방식</span>
+                <span className="font-black text-slate-800">잔금 분납 방식</span>
                 <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                   <button
                     type="button"
@@ -970,10 +1074,10 @@ ${d.content}
                       setInstallmentMode('equal');
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-[11px] font-black rounded-md transition-all cursor-pointer ${
                       installmentMode === 'equal'
                         ? 'bg-white text-[#1E3A5F] shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     균등 분납 (자동)
@@ -984,10 +1088,10 @@ ${d.content}
                       setInstallmentMode('custom');
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-[11px] font-black rounded-md transition-all cursor-pointer ${
                       installmentMode === 'custom'
                         ? 'bg-white text-[#1E3A5F] shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     월별 맞춤 (수동 설정)
@@ -997,48 +1101,70 @@ ${d.content}
 
               {/* 2-A. 균등 분납 모드 UI */}
               {installmentMode === 'equal' ? (
-                <div className="space-y-2.5 bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">월 분납금 (회당)</label>
+                <div className="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700">월 분납금 (회당)</label>
                       <div className="relative">
                         <input
-                          type="number"
-                          step="50000"
-                          value={monthlyFee}
+                          type="text"
+                          value={formatWon(monthlyFee)}
                           onChange={e => {
-                            const val = Number(e.target.value) || 0;
+                            const val = parseWon(e.target.value);
                             setMonthlyFee(val);
                             setCustomInstallments(prev => prev.map(item => ({ ...item, amount: val })));
                             setTimeout(() => syncContractState(), 50);
                           }}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                          className="w-full px-3 py-2 pr-7 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold text-right text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white shadow-2xs"
                         />
-                        <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                        <span className="absolute right-3 top-2.5 text-slate-400 font-bold text-xs">원</span>
+                      </div>
+                      {/* 분납금 퀵 칩 */}
+                      <div className="flex gap-1 pt-0.5">
+                        {[300000, 400000, 500000, 600000].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => {
+                              setMonthlyFee(amt);
+                              setCustomInstallments(prev => prev.map(item => ({ ...item, amount: amt })));
+                              setTimeout(() => syncContractState(), 50);
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                              monthlyFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {amt / 10000}만
+                          </button>
+                        ))}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">매달 납부 약정일</label>
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700">매달 납부 약정일</label>
                       <select
                         value={paymentDayType}
                         onChange={e => {
                           setPaymentDayType(e.target.value as any);
                           setTimeout(() => syncContractState(), 50);
                         }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white cursor-pointer shadow-2xs text-xs"
                       >
-                        <option value="last_day">매달 말일 (실무 기본)</option>
+                        <option value="last_day">매달 말일 (실무 권장)</option>
                         <option value="fixed_10th">매월 10일</option>
                         <option value="fixed_25th">매월 25일 (급여일)</option>
                       </select>
+                      <span className="text-[10px] text-slate-400 block pt-0.5">※ 착수금 입금 익월부터 기산</span>
                     </div>
                   </div>
 
-                  <div>
-                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                  {/* 분납 회차 슬라이더 & 퀵 회차 칩 */}
+                  <div className="space-y-1.5 pt-1 border-t border-slate-200/60">
+                    <div className="flex justify-between items-center font-bold text-slate-700">
                       <span>분납 회차</span>
-                      <span className="text-[#1E3A5F] font-mono font-bold">{installmentMonths}회 분납</span>
+                      <span className="text-[#1E3A5F] font-mono font-black text-sm px-2 py-0.5 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                        {installmentMonths}회 분납
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -1069,16 +1195,35 @@ ${d.content}
                         });
                         setTimeout(() => syncContractState(), 50);
                       }}
-                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
                     />
+                    {/* 회차 퀵 칩 */}
+                    <div className="flex items-center gap-1 pt-0.5">
+                      <span className="text-[10px] text-slate-400 font-medium mr-1">자주 쓰는 회차:</span>
+                      {[2, 3, 4, 5, 6, 8, 10].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setInstallmentMonths(m);
+                            setTimeout(() => syncContractState(), 50);
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                            installmentMonths === m ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {m}회
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
                 /* 2-B. 월별 수동 맞춤 분납 모드 UI */
-                <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
+                <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
                   <div className="flex items-center justify-between pb-1">
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      💡 회차별 원하는 납부 금액과 예정일을 직접 지정하세요.
+                    <span className="text-[11px] text-slate-600 font-medium">
+                      💡 회차별 원하는 납부 금액과 약정기일을 직접 지정합니다.
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1093,7 +1238,7 @@ ${d.content}
                           setTimeout(() => syncContractState(), 50);
                           toast.success('첫 달 100만 + 이후 50만 프리셋이 적용되었습니다.');
                         }}
-                        className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-700 cursor-pointer"
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold text-slate-700 cursor-pointer shadow-2xs"
                       >
                         100만+50만
                       </button>
@@ -1106,7 +1251,7 @@ ${d.content}
                           setTimeout(() => syncContractState(), 50);
                           toast.success('균등 분납액으로 재배분되었습니다.');
                         }}
-                        className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-700 cursor-pointer"
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold text-slate-700 cursor-pointer shadow-2xs"
                       >
                         균등 분할
                       </button>
@@ -1118,9 +1263,9 @@ ${d.content}
                     {customInstallments.map((inst, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs"
+                        className="flex items-center gap-2 p-1.5 bg-white rounded-xl border border-slate-200 shadow-2xs"
                       >
-                        <span className="w-12 text-center text-[11px] font-extrabold text-[#1E3A5F] bg-blue-50 py-1 rounded">
+                        <span className="w-14 text-center text-[11px] font-black text-[#1E3A5F] bg-blue-50 py-1.5 rounded-lg border border-blue-100">
                           {idx + 1}회차
                         </span>
                         <input
@@ -1135,15 +1280,14 @@ ${d.content}
                             });
                             setTimeout(() => syncContractState(), 50);
                           }}
-                          className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
+                          className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
                         />
                         <div className="relative flex-1">
                           <input
-                            type="number"
-                            step="10000"
-                            value={inst.amount}
+                            type="text"
+                            value={formatWon(inst.amount)}
                             onChange={e => {
-                              const val = Number(e.target.value) || 0;
+                              const val = parseWon(e.target.value);
                               setCustomInstallments(prev => {
                                 const next = [...prev];
                                 next[idx] = { ...next[idx], amount: val };
@@ -1151,9 +1295,9 @@ ${d.content}
                               });
                               setTimeout(() => syncContractState(), 50);
                             }}
-                            className="w-full px-2 py-1 pr-6 rounded border border-slate-200 text-[11px] font-mono font-bold text-right text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
+                            className="w-full px-2.5 py-1.5 pr-6 rounded-lg border border-slate-200 text-xs font-mono font-black text-right text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
                           />
-                          <span className="absolute right-2 top-1 text-[10px] text-slate-400">원</span>
+                          <span className="absolute right-2.5 top-1.5 text-[11px] text-slate-400 font-bold">원</span>
                         </div>
                         {customInstallments.length > 1 && (
                           <button
@@ -1169,10 +1313,10 @@ ${d.content}
                               });
                               setTimeout(() => syncContractState(), 50);
                             }}
-                            className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 cursor-pointer"
                             title="회차 삭제"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -1205,32 +1349,35 @@ ${d.content}
                         });
                         setTimeout(() => syncContractState(), 50);
                       }}
-                      className="px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                      className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>회차 추가</span>
                     </button>
-                    <span className="text-[11px] text-slate-500 font-mono">
-                      총 {customInstallments.length}회 잔금: <strong>{totalInstallmentFee.toLocaleString()}원</strong>
+                    <span className="text-xs text-slate-600 font-mono">
+                      총 {customInstallments.length}회 분납 합계: <strong className="text-slate-900">{totalInstallmentFee.toLocaleString()}원</strong>
                     </span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* 3. 부가세 및 요약 */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100 text-slate-600">
-              <div className="flex items-center justify-between pb-1">
-                <span className="text-slate-500 font-medium">부가가치세 (VAT)</span>
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+            {/* Step 3: 프리미엄 수임료 정산 요약 카드 (다크 영수증 스타일) */}
+            <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-md space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
+                  <span>변호사 보수 정산 영수증</span>
+                </span>
+                {/* VAT 토글 */}
+                <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
                   <button
                     type="button"
                     onClick={() => {
                       setVatIncluded(true);
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-2 py-0.5 rounded cursor-pointer ${
-                      vatIncluded ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500'
+                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                      vatIncluded ? 'bg-emerald-500 text-slate-950 font-black shadow-xs' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     VAT 포함
@@ -1241,8 +1388,8 @@ ${d.content}
                       setVatIncluded(false);
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-2 py-0.5 rounded cursor-pointer ${
-                      !vatIncluded ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                      !vatIncluded ? 'bg-emerald-500 text-slate-950 font-black shadow-xs' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     VAT 별도
@@ -1250,67 +1397,71 @@ ${d.content}
                 </div>
               </div>
 
-              {hasDeposit && (
-                <div className="flex justify-between">
-                  <span>계약금 (가계약금)</span>
-                  <span className="font-mono font-bold text-slate-800">{depositFee.toLocaleString()}원</span>
+              {/* 금액 상세 내역 */}
+              <div className="space-y-1.5 text-xs text-slate-300 font-mono">
+                {hasDeposit && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-sans text-slate-400">· 계약금 (가계약금)</span>
+                    <span className="font-bold text-white">{depositFee.toLocaleString()}원</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="font-sans text-slate-400">· 착수금 (사건 착수 시)</span>
+                  <span className="font-bold text-white">{retainerFee.toLocaleString()}원</span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span>착수금 (사건 착수 시)</span>
-                <span className="font-mono font-bold text-slate-800">{retainerFee.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between">
-                <span>
-                  잔금 합계 ({installmentMode === 'equal' ? `${monthlyFee.toLocaleString()}원 × ${installmentMonths}회` : `${customInstallments.length}회 분납`})
-                </span>
-                <span className="font-mono font-bold text-slate-800">{totalInstallmentFee.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-slate-100 font-extrabold text-slate-900">
-                <div>
-                  <span>총 수임료</span>
-                  <span className="text-[10px] font-normal text-slate-500 ml-1.5">
-                    ({vatIncluded ? '부가가치세 포함' : '부가가치세 별도'})
+                <div className="flex justify-between items-center">
+                  <span className="font-sans text-slate-400">
+                    · 잔금 합계 ({installmentMode === 'equal' ? `${monthlyFee.toLocaleString()}원 × ${installmentMonths}회` : `${customInstallments.length}회 분납`})
                   </span>
+                  <span className="font-bold text-white">{totalInstallmentFee.toLocaleString()}원</span>
                 </div>
-                <span className="text-emerald-600 font-mono text-sm">{totalLawyerFee.toLocaleString()}원</span>
               </div>
-              <div className="text-[11px] text-right font-medium text-slate-500">
-                계약서 한글 표기: <strong className="text-slate-800">금 {numberToKoreanAmount(totalLawyerFee)} 원정</strong>
-              </div>
-            </div>
 
-            {/* 4. 실무 간략 박스 실시간 미리보기 아코디언 */}
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => setShowClausePreview(prev => !prev)}
-                className="w-full px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-lg text-slate-700 text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  <span>실제 계약서 반영 수임료 조항 미리보기</span>
-                </span>
-                {showClausePreview ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
-              </button>
-
-              {showClausePreview && (
-                <div className="mt-2 p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed whitespace-pre-wrap border border-slate-800 shadow-inner max-h-56 overflow-y-auto">
-                  {buildSimpleFeeClause({
-                    totalFeeWon: totalLawyerFee,
-                    vatIncluded,
-                    hasDeposit,
-                    depositWon: depositFee,
-                    retainerWon: retainerFee,
-                    installmentMode,
-                    equalMonthlyFeeWon: monthlyFee,
-                    installmentCount: installmentMonths,
-                    customInstallments,
-                    paymentDayText: paymentDayLabel,
-                    articleNumber: 5,
-                  })}
+              {/* 총 수임료 합계 바 */}
+              <div className="pt-2.5 border-t border-dashed border-slate-700 flex justify-between items-end">
+                <div>
+                  <div className="text-[11px] text-slate-400 font-bold">
+                    총 수임료 <span className="text-[10px] text-slate-400 font-normal">({vatIncluded ? '부가가치세 포함' : '부가가치세 별도'})</span>
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                    공식 표기: <strong className="text-white font-bold">금 {numberToKoreanAmount(totalLawyerFee)} 원정</strong>
+                  </div>
                 </div>
-              )}
+                <span className="text-emerald-400 font-mono text-xl font-black">{totalLawyerFee.toLocaleString()}원</span>
+              </div>
+
+              {/* 계약서 조항 실시간 미리보기 버튼 */}
+              <div className="pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowClausePreview(prev => !prev)}
+                  className="w-full px-3 py-1.5 bg-slate-800 hover:bg-slate-750 rounded-xl text-slate-200 text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <FileSignature className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>실제 계약서 제5조 조항 실시간 문안 확인</span>
+                  </span>
+                  {showClausePreview ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                </button>
+
+                {showClausePreview && (
+                  <div className="mt-2 p-3 bg-slate-950 text-slate-200 rounded-xl font-mono text-[11px] leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-52 overflow-y-auto">
+                    {buildSimpleFeeClause({
+                      totalFeeWon: totalLawyerFee,
+                      vatIncluded,
+                      hasDeposit,
+                      depositWon: depositFee,
+                      retainerWon: retainerFee,
+                      installmentMode,
+                      equalMonthlyFeeWon: monthlyFee,
+                      installmentCount: installmentMonths,
+                      customInstallments,
+                      paymentDayText: paymentDayLabel,
+                      articleNumber: 5,
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
