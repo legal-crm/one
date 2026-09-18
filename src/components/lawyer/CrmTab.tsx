@@ -2876,6 +2876,14 @@ export default function CrmTab({
                               <div className="py-1">
                                 <button
                                   type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowDocHubModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-amber-300 hover:text-white bg-amber-950/60 hover:bg-amber-900/60 flex items-center gap-2 cursor-pointer transition-colors font-extrabold border-b border-slate-800"
+                                >
+                                  <span>⚡</span>
+                                  <span>스마트 법원 서식 허브 (80여 종 & 발급안내)</span>
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => { setShowFormsDropdown(false); setShowContractDocLibraryModal(true); }}
                                   className="w-full text-left px-3 py-2 text-blue-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/60 flex items-center gap-2 cursor-pointer transition-colors font-bold border-b border-slate-800"
                                 >
