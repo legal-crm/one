@@ -194,11 +194,11 @@ export default function ClientIntakeDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs p-2 sm:p-4 lg:p-6 flex items-start sm:items-center justify-center animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-6xl 2xl:max-w-7xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden my-auto shrink-0 print:m-0 print:h-auto print:max-h-none print:w-full print:border-none print:shadow-none">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs px-3 sm:px-6 py-4 sm:py-8 flex items-start justify-center animate-fadeIn">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl w-full max-w-6xl 2xl:max-w-7xl h-[86vh] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] flex flex-col overflow-hidden my-auto shrink-0 print:m-0 print:h-auto print:max-h-none print:w-full print:border-none print:shadow-none">
         
         {/* ── 1. Modal Top Bar (헤더 - 컴팩트 & 고대비) ── */}
-        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-[#1e293b] px-4 sm:px-6 py-3 sm:py-3.5 text-white flex items-center justify-between gap-3 shrink-0 border-b border-slate-800">
+        <div className="rounded-t-2xl sm:rounded-t-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-[#1e293b] px-4 sm:px-6 py-3.5 sm:py-4 text-white flex items-center justify-between gap-3 shrink-0 border-b border-slate-800">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg shrink-0 border border-white/15">
               📋
