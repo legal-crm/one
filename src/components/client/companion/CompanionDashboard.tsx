@@ -5,7 +5,7 @@ import {
   TrendingUp, AlertTriangle, ShieldCheck, Copy, 
   ChevronRight, ArrowUpRight, Sparkles, Upload, 
   Layers, Percent, Activity, RefreshCw, Send, Check,
-  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet, Users
+  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet, Users, Mic
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import CourtCaseModal from './CourtCaseModal';
@@ -14,6 +14,11 @@ import CreditorMeetingGuideModal from './CreditorMeetingGuideModal';
 import BankStatementAuditModal from '../../common/BankStatementAuditModal';
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import { toast } from 'sonner';
+
+const Fast2ndDocHubModal = React.lazy(() => import('../Fast2ndDocHubModal'));
+const ClientStatementModal = React.lazy(() => import('../statement/ClientStatementModal'));
+const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('../incomeExpense/ClientMonthlyIncomeExpenseModal'));
+const ClientPropertyIntakeModal = React.lazy(() => import('../property/ClientPropertyIntakeModal'));
 
 interface CompanionDashboardProps {
   caseData: RehabCompanionCase;
@@ -88,6 +93,12 @@ export default function CompanionDashboard({
   const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
   const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
   const [isDischargeRequested, setIsDischargeRequested] = useState(false);
+
+  // 🎙️ 2차 서류 원스톱 완성 허브 및 서류 모달 상태
+  const [isDocHubOpen, setIsDocHubOpen] = useState(false);
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+  const [isIncomeExpenseModalOpen, setIsIncomeExpenseModalOpen] = useState(false);
+  const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
 
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
@@ -271,6 +282,41 @@ export default function CompanionDashboard({
             ⚙️ 사건 정보 / 변제 조건 변경
           </button>
         </div>
+      </div>
+
+      {/* ═══ 1.1 "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!" 2차 서류 원스톱 완성 배너 ═══ */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/40 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="p-3 rounded-2xl bg-indigo-600 text-white shrink-0 shadow-md">
+            <Mic className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-400 text-slate-950">
+                열린 서류 준비 허브
+              </span>
+              <span className="text-xs font-bold text-indigo-200">
+                타 로펌 진행자 및 나홀로 소송도 100% 무료
+              </span>
+            </div>
+            <h3 className="text-base font-black tracking-tight text-white">
+              "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!"
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              가장 까다로운 <strong>진술서(D5104)</strong>와 <strong>수지표(D5103)</strong>를 말로 5분 만에 완성하고, 담당 변호사나 사무장님 휴대폰 번호로 즉시 전달하세요.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsDocHubOpen(true)}
+          className="shrink-0 px-5 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 hover:from-indigo-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] whitespace-nowrap"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>🎙️ 2차 서류 말로 완성 & 전달</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
       {/* ═══ 1.2 간편인증 숨은 채무·체납 10초 전수조회 퀵 배너 ═══ */}
@@ -777,6 +823,68 @@ export default function CompanionDashboard({
         courtName={caseData.courtName}
         caseNumber={caseData.caseNumber}
       />
+
+      {/* 🎙️ 2차 서류 원스톱 완성 & 변호사·사무장 전달 허브 모달 */}
+      {isDocHubOpen && (
+        <React.Suspense fallback={null}>
+          <Fast2ndDocHubModal
+            isOpen={isDocHubOpen}
+            onClose={() => setIsDocHubOpen(false)}
+            clientName={caseData.alias || '김가람'}
+            clientId={caseData.id || 'client-self'}
+            hasStatement={true}
+            hasIncomeExpense={true}
+            hasProperty={false}
+            debtSummary={{
+              totalDebt: (caseData.totalRounds || 36) * (caseData.monthlyRepaymentAmount || 500000) * 1.6,
+              monthlyIncome: caseData.cashflow?.monthlyIncome || 2500000,
+              courtName: caseData.courtName || '서울회생법원',
+              expectedReductionRate: 64,
+              monthlyPayment: caseData.monthlyRepaymentAmount || 500000
+            }}
+            onOpenStatementModal={() => setIsStatementModalOpen(true)}
+            onOpenIncomeExpenseModal={() => setIsIncomeExpenseModalOpen(true)}
+            onOpenPropertyModal={() => setIsPropertyModalOpen(true)}
+          />
+        </React.Suspense>
+      )}
+
+      {/* 진술서 작성 모달 */}
+      {isStatementModalOpen && (
+        <React.Suspense fallback={null}>
+          <ClientStatementModal
+            isOpen={isStatementModalOpen}
+            onClose={() => setIsStatementModalOpen(false)}
+            clientId={caseData.id || 'client-self'}
+            clientName={caseData.alias || '김가람'}
+            courtName={caseData.courtName || '서울회생법원'}
+          />
+        </React.Suspense>
+      )}
+
+      {/* 수지표 작성 모달 */}
+      {isIncomeExpenseModalOpen && (
+        <React.Suspense fallback={null}>
+          <ClientMonthlyIncomeExpenseModal
+            isOpen={isIncomeExpenseModalOpen}
+            onClose={() => setIsIncomeExpenseModalOpen(false)}
+            clientId={caseData.id || 'client-self'}
+            clientName={caseData.alias || '김가람'}
+          />
+        </React.Suspense>
+      )}
+
+      {/* 재산상황표 작성 모달 */}
+      {isPropertyModalOpen && (
+        <React.Suspense fallback={null}>
+          <ClientPropertyIntakeModal
+            isOpen={isPropertyModalOpen}
+            onClose={() => setIsPropertyModalOpen(false)}
+            clientId={caseData.id || 'client-self'}
+            clientName={caseData.alias || '김가람'}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

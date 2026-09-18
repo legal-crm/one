@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, Calculator, Store, UserCheck, Clock, Hammer, DollarSign, 
   Plus, Trash2, CheckCircle2, AlertCircle, Save, Send, HelpCircle, 
-  Sparkles, ArrowRight, ChevronRight, Info, RefreshCw, FileText
+  Sparkles, ArrowRight, ChevronRight, Info, RefreshCw, FileText,
+  Mic, MicOff, Volume2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSpeechRecognition } from '../../../hooks/useSpeechRecognition';
 import type { 
   IncomeExpenseD5103Data, 
   DetailedIncomeType,
@@ -96,6 +98,115 @@ export default function ClientMonthlyIncomeExpenseModal({
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // 🎙️ 말로 작성하는 수지표 (Voice Assistant) 상태
+  const [isVoicePanelOpen, setIsVoicePanelOpen] = useState<boolean>(false);
+  const [voiceParsedItems, setVoiceParsedItems] = useState<{ type: 'card' | 'cash' | 'rent' | 'utility' | 'expense'; label: string; amount: number }[]>([]);
+  const [voiceTranscriptText, setVoiceTranscriptText] = useState<string>('');
+
+  const extractItemsFromSpeech = (text: string) => {
+    if (!text.trim()) return;
+    const items: { type: 'card' | 'cash' | 'rent' | 'utility' | 'expense'; label: string; amount: number }[] = [];
+
+    const parseAmount = (segment: string): number => {
+      const eok = segment.match(/(\d+)\s*억/);
+      const man = segment.match(/(\d+)\s*만/);
+      const plain = segment.match(/(\d+)\s*원/);
+      let total = 0;
+      if (eok) total += parseInt(eok[1], 10) * 100000000;
+      if (man) total += parseInt(man[1], 10) * 10000;
+      if (!eok && !man && plain) total += parseInt(plain[1], 10);
+      if (total === 0) {
+        const num = segment.match(/\b(\d{2,4})\b/);
+        if (num) {
+          const v = parseInt(num[1], 10);
+          return v < 10000 ? v * 10000 : v;
+        }
+      }
+      return total;
+    };
+
+    const patterns = [
+      { key: 'card', names: ['카드', '카드매출', '신용카드'], label: '카드 매출' },
+      { key: 'cash', names: ['현금', '현금매출', '계좌이체'], label: '현금 매출' },
+      { key: 'rent', names: ['월세', '임대료', '임차료', '상가월세', '가게월세'], label: '상가 월세(임차료)' },
+      { key: 'utility', names: ['전기세', '수도세', '공과금', '관리비', '전기요금'], label: '전기·수도·공과금' },
+      { key: 'expense', names: ['배달', '배달대행', '배민', '쿠팡이츠', '배달비'], label: '배달대행료' },
+      { key: 'expense', names: ['식자재', '재료비', '원자재', '식료품'], label: '주방 식자재비' },
+      { key: 'expense', names: ['기장료', '세무', '세무사', '세무비'], label: '세무기장료' },
+      { key: 'expense', names: ['알바', '알바비', '인건비', '직원'], label: '아르바이트 인건비' },
+      { key: 'expense', names: ['유류비', '기름값', '주유비'], label: '차량 유류비' },
+      { key: 'expense', names: ['통신비', '인터넷', '전화요금', '스마트폰'], label: '통신비/인터넷' }
+    ];
+
+    patterns.forEach(p => {
+      for (const name of p.names) {
+        const regex1 = new RegExp(`${name}[^0-9]{0,8}(\\d+\\s*(?:억|만|원|\\b))`, 'g');
+        const regex2 = new RegExp(`(\\d+\\s*(?:억|만|원))[^0-9]{0,8}${name}`, 'g');
+        const m = regex1.exec(text) || regex2.exec(text);
+        if (m) {
+          const amt = parseAmount(m[1] || m[0]);
+          if (amt > 0 && !items.some(i => i.label === p.label)) {
+            items.push({ type: p.key as any, label: p.label, amount: amt });
+            break;
+          }
+        }
+      }
+    });
+
+    if (items.length > 0) {
+      setVoiceParsedItems(items);
+    }
+  };
+
+  const {
+    isSupported: isSpeechSupported,
+    isListening,
+    toggleListening
+  } = useSpeechRecognition({
+    continuous: true,
+    interimResults: true,
+    onResult: (currentTranscript) => {
+      setVoiceTranscriptText(currentTranscript);
+      extractItemsFromSpeech(currentTranscript);
+    }
+  });
+
+  const applyVoiceItemsToForm = () => {
+    let appliedCount = 0;
+    voiceParsedItems.forEach(item => {
+      if (item.type === 'card') {
+        setBizCard(item.amount);
+        appliedCount++;
+      } else if (item.type === 'cash') {
+        setBizCash(item.amount);
+        appliedCount++;
+      } else if (item.type === 'rent') {
+        setBizRent(item.amount);
+        appliedCount++;
+      } else if (item.type === 'utility') {
+        setBizUtility(item.amount);
+        appliedCount++;
+      } else if (item.type === 'expense') {
+        setDynamicExpenses(prev => {
+          const exists = prev.some(e => e.name === item.label);
+          if (exists) {
+            return prev.map(e => e.name === item.label ? { ...e, monthlyAmount: item.amount } : e);
+          }
+          return [...prev, { id: `exp_${Date.now()}_${Math.random()}`, name: item.label, monthlyAmount: item.amount, rollupTarget: 'operating' }];
+        });
+        appliedCount++;
+      }
+    });
+
+    if (selectedIncomeType === 'FREELANCER') {
+      const cardOrCash = voiceParsedItems.find(i => i.type === 'card' || i.type === 'cash');
+      if (cardOrCash) setFlGross(cardOrCash.amount);
+    }
+
+    toast.success(`음성으로 인식된 ${appliedCount}개 수입·경비 항목이 수지표에 자동 반영되었습니다!`);
+    setIsVoicePanelOpen(false);
+  };
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -347,6 +458,122 @@ export default function ClientMonthlyIncomeExpenseModal({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* 🎙️ 말로 작성하는 1분 수지표 AI 음성 비서 바 */}
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-3.5 px-5 border-b border-indigo-500/30 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-500 text-white shrink-0 shadow-xs">
+                <Mic className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-black text-white">
+                    🎙️ 말로 작성하는 수지표 (음성 AI 비서)
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-slate-950">
+                    원터치 음성 입력
+                  </span>
+                </div>
+                <p className="text-[11px] text-indigo-200 mt-0.5">
+                  "카드매출 400에 현금 100이고, 월세 90, 배달대행 60, 식자재 180 나가요"라고 편하게 말씀하시면 AI가 수지표를 자동 완성합니다.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsVoicePanelOpen(!isVoicePanelOpen);
+                if (!isVoicePanelOpen && !isListening) {
+                  toggleListening();
+                }
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm ${
+                isListening
+                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                  : 'bg-white text-indigo-950 hover:bg-indigo-50'
+              }`}
+            >
+              {isListening ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5" />
+                  <span>듣고 있는 중... (완료 시 클릭)</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-blue-600" />
+                  <span>마이크 켜고 말로 쓰기</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* 음성 인식 확장 패널 */}
+          {isVoicePanelOpen && (
+            <div className="p-3.5 bg-black/40 rounded-xl border border-white/15 space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5 text-blue-400" />
+                  실시간 인식 텍스트:
+                </span>
+                {isListening && (
+                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    음성 수신 중...
+                  </span>
+                )}
+              </div>
+
+              <div className="p-2.5 bg-slate-950/80 rounded-lg border border-white/10 text-xs text-white min-h-[44px] leading-relaxed">
+                {voiceTranscriptText || (
+                  <span className="text-slate-500 italic">
+                    지금 말씀해 주세요. (예: "매출은 카드로 380만원 들어오고, 월세 80에 배달비 50, 재료비 150만원 써요")
+                  </span>
+                )}
+              </div>
+
+              {voiceParsedItems.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="text-[11px] text-slate-300 font-bold">
+                    💡 AI가 추출한 수입·지출 항목 ({voiceParsedItems.length}건):
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {voiceParsedItems.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1"
+                      >
+                        <span>{item.label}:</span>
+                        <span className="text-white font-mono">{won(item.amount)}원</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVoiceParsedItems([]);
+                        setVoiceTranscriptText('');
+                      }}
+                      className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg transition"
+                    >
+                      다시 말하기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={applyVoiceItemsToForm}
+                      className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>수지표에 일괄 반영하기</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 안내 바 & 5대 소득 유형 탭 선택 */}

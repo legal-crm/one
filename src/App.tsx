@@ -37,6 +37,7 @@ import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shiel
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
 import ClientRemoteSignView from './components/client/ClientRemoteSignView';
+import UnregisteredLawyerDocViewer from './components/client/UnregisteredLawyerDocViewer';
 import ContractPublicVerifierModal from './components/common/ContractPublicVerifierModal';
 import { getContract } from './services/contractService';
 import type { ElectronicContract } from './types';
@@ -91,6 +92,9 @@ export default function App() {
   // Share report viewer states (URL에서 즉시 읽어 플래시 방지)
   const [sharePayload, setSharePayload] = useState<string | null>(() => {
     return new URLSearchParams(window.location.search).get('share');
+  });
+  const [docShareToken, setDocShareToken] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('docShare');
   });
   const [unlockedData, setUnlockedData] = useState<{ result: any; userInput: any } | null>(null);
   const [pin, setPin] = useState('');
@@ -715,6 +719,26 @@ export default function App() {
         <Toaster position="top-center" richColors />
         <ClientRemoteSignView cid={signParams.cid} token={signParams.token} />
       </>
+    );
+  }
+
+  // 변호사·사무장 서류 패키지 모바일 열람 모드 (?docShare=TOKEN)
+  if (docShareToken) {
+    return (
+      <UnregisteredLawyerDocViewer
+        token={docShareToken}
+        onLawyerRegistered={(lawyerId) => {
+          setDocShareToken(null);
+          setCurrentRole('lawyer');
+          const cleanUrl = window.location.pathname + '?role=lawyer';
+          window.history.replaceState({}, document.title, cleanUrl);
+        }}
+        onNavigateHome={() => {
+          setDocShareToken(null);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setCurrentRole('client');
+        }}
+      />
     );
   }
 

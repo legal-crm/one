@@ -25,6 +25,7 @@ import { LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES } from '../../types
 import CreditorMeetingGuideModal from './companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from './vault/ClientCertificateSubmissionModal';
 import { loadCertificateVault, saveCertificateVault, shredCertificateVault } from '../../services/vault/certificateVaultService';
+const Fast2ndDocHubModal = React.lazy(() => import('./Fast2ndDocHubModal'));
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('./incomeExpense/ClientMonthlyIncomeExpenseModal'));
@@ -97,6 +98,8 @@ export default function MyPageView({
   
   // 진단서 상세 항목 수정 폼 접기/펼치기 상태 (컴팩트 모드에서는 항상 펼침)
   const [isEditingBlueprint, setIsEditingBlueprint] = useState(false);
+  // 2차 서류 원스톱 완성 허브 모달 열림 상태
+  const [isFastDocHubOpen, setIsFastDocHubOpen] = useState(false);
   // 법원 진술서 모달 열림 상태
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   // 법원 재산상황표(D5102) 모달 열림 상태
@@ -2582,6 +2585,42 @@ export default function MyPageView({
                     {/* 2. 필수 서류 제출 */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
                       
+                      {/* 🌟 "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!" 2차 서류 원스톱 허브 배너 */}
+                      <div className="p-6 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 rounded-3xl text-white shadow-xl space-y-4 border border-indigo-500/40">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-start gap-3.5">
+                            <span className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-2xl shrink-0 shadow-md">
+                              🚀
+                            </span>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-400 text-slate-950">
+                                  서류 원스톱 포털
+                                </span>
+                                <span className="text-xs font-bold text-indigo-300">
+                                  타 로펌 진행자도 100% 무료 이용
+                                </span>
+                              </div>
+                              <h3 className="text-lg md:text-xl font-black text-white">
+                                "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!"
+                              </h3>
+                              <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
+                                복잡한 진술서(D5104)와 수지표(D5103)를 말로 5분 만에 완성하고, 변호사나 사무장님 휴대폰 번호로 즉시 전달해 보세요.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsFastDocHubOpen(true)}
+                            className="px-5 py-3.5 bg-gradient-to-r from-indigo-500 to-emerald-500 hover:from-indigo-400 hover:to-emerald-400 text-slate-950 font-black text-xs md:text-sm rounded-2xl shadow-lg transition-all cursor-pointer press-scale shrink-0 flex items-center justify-center gap-2"
+                          >
+                            <span>🎙️ 2차 서류 말로 완성 & 전달</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
                       {/* 🌟 법원 진술서 고객 간편 작성 (음성 STT + Gemini AI 도우미) 배너 */}
                       <div className="p-5 md:p-6 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 rounded-3xl text-white shadow-lg space-y-4 border border-indigo-700/40">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3340,6 +3379,31 @@ export default function MyPageView({
         handleStartContractFromProposal(propToAppoint);
       }}
     />
+  )}
+
+  {/* 🚀 2차 서류 원스톱 완성 & 변호사·사무장 전달 허브 모달 */}
+  {isFastDocHubOpen && (
+    <React.Suspense fallback={null}>
+      <Fast2ndDocHubModal
+        isOpen={isFastDocHubOpen}
+        onClose={() => setIsFastDocHubOpen(false)}
+        clientName={profile?.name || userAlias || '신청인'}
+        clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
+        hasStatement={true}
+        hasIncomeExpense={true}
+        hasProperty={false}
+        debtSummary={{
+          totalDebt: profile?.debtTotal ? profile.debtTotal * 10000 : 50000000,
+          monthlyIncome: profile?.income ? profile.income * 10000 : 2500000,
+          courtName: activeRequest?.court || '서울회생법원',
+          expectedReductionRate: 64,
+          monthlyPayment: 680000
+        }}
+        onOpenStatementModal={() => setIsStatementModalOpen(true)}
+        onOpenIncomeExpenseModal={() => setIsIncomeExpenseModalOpen(true)}
+        onOpenPropertyModal={() => setIsPropertyIntakeModalOpen(true)}
+      />
+    </React.Suspense>
   )}
 
   {/* 🎙️ 법원 제출용 진술서 작성 모달 (Gemini AI 도우미) */}

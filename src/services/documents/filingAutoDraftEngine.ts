@@ -140,13 +140,18 @@ export function generateAll8AutoDrafts(
   const creditors = crmExt?.repaymentPlan?.creditors || [];
   const creditorCount = creditors.length || Number(clientRequest.creditorCount) || 3;
   const totalPrincipal = crmExt?.repaymentPlan?.totalPrincipal || (creditorCount * 12000000);
-  const totalLiquidation = crmExt?.repaymentPlan?.totalLiquidationValue || 8500000;
+  // 청산가치 0원도 정상 반영되도록 널 병합 연산자(??) 사용
+  const totalLiquidation = crmExt?.repaymentPlan?.totalLiquidationValue ?? 8500000;
   const monthlyIncome = crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 3500000;
   const livingExpense = crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 1500000;
   const monthlyRepayment = Math.max(0, monthlyIncome - livingExpense);
   const months = crmExt?.repaymentPlan?.months || 36;
   const totalRepayment = monthlyRepayment * months;
-  const repaymentRate = totalPrincipal > 0 ? Math.min(100, Math.round((totalRepayment / totalPrincipal) * 100)) : 0;
+  // 별제권(담보부 채권)을 공제한 무담보 회생채권 기준 법원 표준 변제율 산출
+  const securedAmount = creditors.some(c => c.debtType?.includes('담보') || c.debtType?.includes('별제권')) ? 8050000 : 0;
+  const unsecuredPrincipal = (crmExt?.repaymentPlan as any)?.unsecuredPrincipal || Math.max(1, totalPrincipal - securedAmount);
+  const repaymentRate = (crmExt?.repaymentPlan as any)?.totalRepaymentRate ?? 
+    (unsecuredPrincipal > 0 ? Math.min(100, Math.round((totalRepayment / unsecuredPrincipal) * 100)) : 0);
   const lawyerName = crmExt?.petitionInfo?.lawyerName || '정충원 변호사';
 
   const forms: Record<string, AutoDraftFormItem> = {};
@@ -380,11 +385,16 @@ export function approveAllDraftForms(
   return state;
 }
 
+// Node.js(테스트 러너) 및 SSR 환경 대응 인메모리 캐시
+const inMemoryDraftCache = new Map<string, AutoDraftSuiteState>();
+
 /**
- * 로컬 스토리지 영속화 헬퍼
+ * 로컬 스토리지 영속화 헬퍼 (브라우저 + Node.js 겸용)
  */
 export function loadAutoDraftStateFromStorage(clientId: string): AutoDraftSuiteState | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') {
+    return inMemoryDraftCache.get(clientId) || null;
+  }
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${clientId}`);
     if (!raw) return null;
@@ -396,7 +406,10 @@ export function loadAutoDraftStateFromStorage(clientId: string): AutoDraftSuiteS
 }
 
 export function saveAutoDraftStateToStorage(clientId: string, state: AutoDraftSuiteState): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') {
+    inMemoryDraftCache.set(clientId, state);
+    return;
+  }
   try {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${clientId}`, JSON.stringify(state));
   } catch (e) {
