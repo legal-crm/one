@@ -49,6 +49,7 @@ import CourtFormPreviewModal from './filing/CourtFormPreviewModal';
 import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
 import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
+import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import CertificateVaultCard from './vault/CertificateVaultCard';
@@ -250,6 +251,7 @@ export default function CrmTab({
   const [showCreditorEditModal, setShowCreditorEditModal] = useState(false);
   const [showCourtFormPreviewModal, setShowCourtFormPreviewModal] = useState(false);
   const [courtFormPreviewCode, setCourtFormPreviewCode] = useState('R01');
+  const [showContractDocLibraryModal, setShowContractDocLibraryModal] = useState(false);
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   const [showCommPanel, setShowCommPanel] = useState(true);
   const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
@@ -2874,6 +2876,14 @@ export default function CrmTab({
                               <div className="py-1">
                                 <button
                                   type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowContractDocLibraryModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-blue-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/60 flex items-center gap-2 cursor-pointer transition-colors font-bold border-b border-slate-800"
+                                >
+                                  <span>📝</span>
+                                  <span>사건 위임계약서 서식함 (11대 양식)</span>
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => { setShowFormsDropdown(false); setShowBatchFilingModal(true); }}
                                   className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
                                 >
@@ -5243,6 +5253,25 @@ export default function CrmTab({
             setShowBulkMessage(false);
             setBulkSendModalConfig(null);
           }}
+        />
+      )}
+
+      {/* ── 0. 사건 위임계약서 서식함 (11대 표준 라이브러리) 모달 ── */}
+      {showContractDocLibraryModal && (
+        <ContractDocLibraryModal
+          isOpen={showContractDocLibraryModal}
+          onClose={() => setShowContractDocLibraryModal(false)}
+          lawyerName={activeLawyer.name}
+          lawFirmName={activeLawyer.firmName || '법무법인 로앤'}
+          contractContext={selectedClient ? {
+            clientName: selectedClient.clientName,
+            clientPhone: selectedClient.phone,
+            clientAddress: selectedClient.financialProfile?.residenceRegion || '',
+            lawyerName: activeLawyer.name,
+            lawFirmName: activeLawyer.firmName || '법무법인 로앤',
+            totalFee: selectedExt?.totalFee || 300,
+            contractDate: new Date().toISOString().split('T')[0],
+          } : undefined}
         />
       )}
 

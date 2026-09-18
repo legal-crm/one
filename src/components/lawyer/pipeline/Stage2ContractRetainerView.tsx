@@ -5,7 +5,7 @@ import {
   ExternalLink, FileText, Phone, Clock, Eye, Edit3, Printer,
   Plus, Check, X, ShieldCheck, ChevronRight, FileSignature,
   Download, Layers, AlertCircle, Copy, CheckSquare, Square,
-  Trash2, ChevronDown, ChevronUp, Bookmark, Save, RotateCcw
+  Trash2, ChevronDown, ChevronUp, Bookmark, Save, RotateCcw, FolderKanban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -33,6 +33,7 @@ import {
 } from '../../../services/feePresetService';
 import ContractWizard from '../ContractWizard';
 import { ContractDocEditModal } from '../ContractDocEditModal';
+import { ContractDocLibraryModal } from '../ContractDocLibraryModal';
 import ClientSignShareModal from '../ClientSignShareModal';
 import { HighlightedDocumentViewer } from '../../common/HighlightedDocumentViewer';
 import { useDialog } from '../../common/DialogProvider';
@@ -189,6 +190,7 @@ export default function Stage2ContractRetainerView({
   const [customSpecialTerm, setCustomSpecialTerm] = useState('');
   const [showAddCustomTerm, setShowAddCustomTerm] = useState(false);
   const [showOfflineMenu, setShowOfflineMenu] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)
   const stampFee = 28800; // 인지대: 개시 27,000 + 금지명령 1,800
@@ -830,6 +832,16 @@ ${d.content}
 
                 <button
                   type="button"
+                  onClick={() => setIsLibraryOpen(true)}
+                  className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
+                  title="11대 법률 표준 위임계약서 및 서식 보관함 전체보기"
+                >
+                  <FolderKanban className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>서식함</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setIsPreviewAllOpen(true)}
                   className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                   title="현재 설정된 수임료·특약이 반영된 계약서 전문 열람"
@@ -1055,24 +1067,35 @@ ${d.content}
                 <span className="text-[10px] text-slate-400 font-medium">착수금 + 잔금 맞춤 분납 플랜</span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const next = contractStyle === 'simple_box' ? 'standard' : 'simple_box';
-                setContractStyle(next);
-                syncContractState(selectedSpecialTerms, next);
-                toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
-              }}
-              className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all cursor-pointer flex items-center gap-1 press-scale ${
-                contractStyle === 'simple_box'
-                  ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-              }`}
-              title="클릭하여 계약서 수임료 표기 방식을 전환합니다"
-            >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsLibraryOpen(true)}
+                className="px-2.5 py-1 text-[11px] font-black rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all cursor-pointer flex items-center gap-1 press-scale shadow-2xs"
+                title="11대 법률 표준 계약서 및 커스텀 서식 보관함 열기"
+              >
+                <FolderKanban className="w-3.5 h-3.5 text-indigo-600" />
+                <span>서식 보관함</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = contractStyle === 'simple_box' ? 'standard' : 'simple_box';
+                  setContractStyle(next);
+                  syncContractState(selectedSpecialTerms, next);
+                  toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
+                }}
+                className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all cursor-pointer flex items-center gap-1 press-scale ${
+                  contractStyle === 'simple_box'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="클릭하여 계약서 수임료 표기 방식을 전환합니다"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
+              </button>
+            </div>
           </div>
 
           {/* ── ⚡ 수임료 프리셋 (메모리) 선택 & 저장 바 ── */}
@@ -2176,6 +2199,25 @@ ${d.content}
             </div>
           </div>
         </ModalPortal>
+      )}
+
+      {/* ── 11대 법률 표준 위임계약서 및 서식 보관함 모달 ── */}
+      {isLibraryOpen && (
+        <ContractDocLibraryModal
+          isOpen={isLibraryOpen}
+          onClose={() => setIsLibraryOpen(false)}
+          lawyerName={activeLawyer.name}
+          lawFirmName={activeLawyer.lawFirmName || '법무법인 로앤'}
+          contractContext={{
+            clientName: clientRequest.clientName,
+            clientPhone: clientRequest.phone,
+            clientAddress: clientRequest.financialProfile?.residenceRegion || '',
+            lawyerName: activeLawyer.name || '담당 변호사',
+            lawFirmName: activeLawyer.lawFirmName || '법무법인 로앤',
+            totalFee: Math.round(totalLawyerFee / 10000),
+            contractDate: contract?.contractDate || new Date().toISOString().split('T')[0],
+          }}
+        />
       )}
     </div>
   );
