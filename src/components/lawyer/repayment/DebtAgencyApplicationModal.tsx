@@ -19,6 +19,7 @@ import {
   saveDebtCertificateOrder,
   exportDebtAgencyZipPackage
 } from '../../../services/repayment/debtCertificateService';
+import { DebtIntakeRuleService } from '../../../services/repayment/debtIntakeRuleService';
 
 interface DebtAgencyApplicationModalProps {
   isOpen: boolean;
@@ -78,6 +79,25 @@ export default function DebtAgencyApplicationModal({
       setAppData(createDefaultAgencyApplicationData(order, clientRequest, activeLawyerName));
     }
   }, [order.items.length, order.agencyApplication]);
+
+  // 의뢰인 모바일 7대 실무 입력 내역 확인
+  const clientIntake = React.useMemo(() => {
+    return clientId ? DebtIntakeRuleService.getClientIntake(clientId) : null;
+  }, [clientId]);
+
+  // 의뢰인 입력값 대행 신청서에 100% 자동 동기화
+  const handleSyncClientIntake = () => {
+    if (!clientIntake || !clientIntake.entries || clientIntake.entries.length === 0) {
+      toast.info('의뢰인이 아직 모바일에서 부채 상세정보를 입력하지 않았습니다.');
+      return;
+    }
+    const convertedRows = DebtIntakeRuleService.convertIntakeToAgencyCreditorRows(clientIntake.entries);
+    setAppData((prev) => ({
+      ...prev,
+      creditors: convertedRows,
+    }));
+    toast.success(`의뢰인 모바일 7대 실무 입력값(${convertedRows.length}건)이 신청서 표에 성공적으로 동기화되었습니다!`);
+  };
 
   if (!isOpen) return null;
 
@@ -232,6 +252,18 @@ export default function DebtAgencyApplicationModal({
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap shrink-0 justify-end">
+            {clientIntake && clientIntake.entries && clientIntake.entries.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSyncClientIntake}
+                className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale whitespace-nowrap"
+                title="의뢰인이 모바일에서 입력한 7대 실무 정보(지점명, 카드분리, 담보 리스크 등)를 표에 동기화합니다."
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>고객 모바일 7대 실무 동기화 ({clientIntake.entries.length}곳)</span>
+              </button>
+            )}
+
             <button
               onClick={handlePrint}
               className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale whitespace-nowrap"
@@ -1077,13 +1109,39 @@ export default function DebtAgencyApplicationModal({
                         />
                       </td>
                       <td className="border-r border-slate-900 px-2 py-1">
-                        <input 
-                          type="text" 
-                          value={row.note || ''} 
-                          placeholder="지점명, 계좌번호 등 메모"
-                          onChange={(e) => handleUpdateCreditorRow(idx, { note: e.target.value })}
-                          className="w-full bg-transparent text-slate-600 outline-none text-[11px]"
-                        />
+                        <div className="flex flex-col gap-0.5">
+                          {row.note && (
+                            <div className="flex items-center gap-1 flex-wrap mb-0.5">
+                              {row.note.includes('경매주의') && (
+                                <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 text-[9px] font-extrabold border border-rose-300">
+                                  🚨 자가담보 경매주의
+                                </span>
+                              )}
+                              {row.note.includes('공매주의') && (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 text-[9px] font-extrabold border border-amber-300">
+                                  🚨 차량담보 공매주의
+                                </span>
+                              )}
+                              {row.note.includes('카드사 분리') && (
+                                <span className="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[9px] font-extrabold border border-blue-200">
+                                  💳 카드 분리발급
+                                </span>
+                              )}
+                              {row.note.includes('지점') && (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold border border-emerald-200">
+                                  📍 지점명 반영
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <input 
+                            type="text" 
+                            value={row.note || ''} 
+                            placeholder="지점명, 계좌번호 등 메모"
+                            onChange={(e) => handleUpdateCreditorRow(idx, { note: e.target.value })}
+                            className="w-full bg-transparent text-slate-700 outline-none text-[11px] font-medium"
+                          />
+                        </div>
                       </td>
                       <td className="no-print py-1 text-center">
                         <button

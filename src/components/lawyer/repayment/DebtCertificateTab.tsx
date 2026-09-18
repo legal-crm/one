@@ -26,6 +26,8 @@ import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY } from '
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
 import DebtAgencyApplicationModal from './DebtAgencyApplicationModal';
+import { DebtIntakeRuleService } from '../../../services/repayment/debtIntakeRuleService';
+import ClientDebtIntakeWizardModal from '../../client/ClientDebtIntakeWizardModal';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -126,6 +128,51 @@ export default function DebtCertificateTab({
   const [isZipping, setIsZipping] = useState(false);
   const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
   const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
+  const [isDebtIntakeModalOpen, setIsDebtIntakeModalOpen] = useState(false);
+
+  // 의뢰인 모바일 7대 실무 입력 내역
+  const clientIntake = useMemo(() => {
+    return clientId ? DebtIntakeRuleService.getClientIntake(clientId) : null;
+  }, [clientId, isDebtIntakeModalOpen]);
+
+  // 의뢰인 부채확인 알림톡 문구 복사/발송
+  const handleSendIntakeAlimtok = () => {
+    const msg = DebtIntakeRuleService.generateIntakeNotificationMessage(
+      clientRequest.clientName || '신청인',
+      '법률사무소'
+    );
+    navigator.clipboard.writeText(msg);
+    toast.success('📱 의뢰인용 부채 세부확인(7대 실무) 알림톡 문구가 복사되었습니다!');
+  };
+
+  // 의뢰인 모바일 7대 실무 입력 내역을 부채증명서 관리 목록에 동기화
+  const handleSyncDebtIntake = () => {
+    if (!clientIntake || !clientIntake.entries || clientIntake.entries.length === 0) {
+      toast.info('의뢰인이 아직 모바일에서 부채 상세정보를 입력하지 않았습니다.');
+      return;
+    }
+    const newItems = DebtIntakeRuleService.convertIntakeToDebtCertificateItems(clientIntake.entries);
+    const existingNames = new Set(order.items.map((i) => i.creditorName.trim()));
+    const toAdd = newItems.filter((i) => !existingNames.has(i.creditorName.trim()));
+
+    if (toAdd.length === 0 && order.items.length > 0) {
+      handleSaveOrder({
+        ...order,
+        items: newItems,
+        totalAgencyCost: newItems.length * 17000,
+      });
+      toast.success(`의뢰인의 7대 실무 입력 내역(${newItems.length}건)으로 목록이 전체 동기화되었습니다.`);
+      return;
+    }
+
+    const updated = [...order.items, ...toAdd];
+    handleSaveOrder({
+      ...order,
+      items: updated,
+      totalAgencyCost: updated.length * 17000,
+    });
+    toast.success(`의뢰인 모바일 7대 실무 입력값(${toAdd.length}건 추가)이 부채증명서 목록에 동기화되었습니다.`);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -438,6 +485,33 @@ export default function DebtCertificateTab({
             >
               <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>⚡ 간편인증 숨은 채무 발굴</span>
+            </button>
+
+            {clientIntake && clientIntake.entries && clientIntake.entries.length > 0 ? (
+              <button
+                onClick={handleSyncDebtIntake}
+                className="px-3.5 py-2 text-xs font-black text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
+                title="고객이 모바일에서 입력한 7대 실무 정보(지점명, 카드분리, 담보 등)를 목록에 동기화합니다."
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>고객 7대 실무 동기화 ({clientIntake.entries.length}곳)</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSendIntakeAlimtok}
+                className="px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
+                title="고객에게 7대 실무(지점명, 카드분리) 입력 모바일 알림톡을 발송합니다."
+              >
+                <span>📱 고객 세부확인 알림톡</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsDebtIntakeModalOpen(true)}
+              className="px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
+              title="의뢰인 모바일 7대 실무 입력 화면을 열어 직접 입력하거나 테스트합니다."
+            >
+              <span>✍️ 세부정보 직접입력/체험</span>
             </button>
 
             <button
@@ -1137,6 +1211,20 @@ export default function DebtCertificateTab({
           crmExt={crmExt}
           order={order}
           onSaveOrder={handleSaveOrder}
+        />
+      )}
+
+      {/* 의뢰인 모바일 7대 실무 입력 화면 시뮬레이션 / 직접 입력 모달 */}
+      {isDebtIntakeModalOpen && (
+        <ClientDebtIntakeWizardModal
+          isOpen={isDebtIntakeModalOpen}
+          onClose={() => setIsDebtIntakeModalOpen(false)}
+          clientId={clientId}
+          clientName={clientRequest.clientName || '신청인'}
+          clientPhone={clientRequest.phone || '010-0000-0000'}
+          onComplete={() => {
+            handleSyncDebtIntake();
+          }}
         />
       )}
     </div>

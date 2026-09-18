@@ -3,7 +3,7 @@ import {
   X, Download, CheckCircle2, ChevronRight, ChevronDown, 
   Upload, Camera, ExternalLink, ShieldCheck, AlertCircle, 
   FileText, Clock, HelpCircle, ArrowLeft, RefreshCw,
-  Mail, Copy, Check, Sparkles, Send, Stamp, Truck
+  Mail, Copy, Check, Sparkles, Send, Stamp, Truck, ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -12,6 +12,7 @@ import {
   type DocPhase 
 } from '../../services/documents/applicationDocTemplateService';
 import { CARRIER_LIST } from '../../utils/carrierTracking';
+import ClientDebtIntakeWizardModal from './ClientDebtIntakeWizardModal';
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
 interface MobileApplicationDocHubModalProps {
@@ -74,6 +75,8 @@ export default function MobileApplicationDocHubModal({
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   // 재산상황표(D5102) 모달 상태
   const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
+  // 부채증명서 발급용 채권자 상세 입력 위자드 상태
+  const [showDebtIntakeWizard, setShowDebtIntakeWizard] = useState(false);
 
   const currentDocs = activePhase === 1 ? phase1Docs : phase2Docs;
   const completedCount = currentDocs.filter(d => submittedDocIds.has(d.id)).length;
@@ -338,6 +341,30 @@ export default function MobileApplicationDocHubModal({
                   </>
                 )}
               </button>
+
+              {/* ⚡ 부채증명서 발급 채권자 세부 확인 배너 (7대 실무 규칙 적용) */}
+              <div className="p-3 bg-gradient-to-r from-amber-500/15 to-blue-500/10 rounded-2xl border border-amber-500/30 text-xs space-y-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900">
+                    <span className="px-1.5 py-0.5 rounded-md bg-amber-500 text-slate-950 font-black text-[10px]">필수</span>
+                    <span>부채증명서 발급 채권사 세부 확인</span>
+                  </div>
+                  <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-full">
+                    약 3분 소요
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  국민·신한·우리·하나 <strong>카드 분리</strong>, 새마을금고·신협·농협 <strong>지점명</strong>을 입력해 주셔야 금융기관 대행 발급이 가능합니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDebtIntakeWizard(true)}
+                  className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 press-scale cursor-pointer shadow-xs"
+                >
+                  <span>⚡ 금융사 지점 및 카드 분리 입력하기</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -577,6 +604,20 @@ export default function MobileApplicationDocHubModal({
             clientName={clientName}
           />
         </React.Suspense>
+      )}
+
+      {/* ⚡ 부채증명서 발급 채권자 상세 확인 모달 (7대 실무 규칙) */}
+      {showDebtIntakeWizard && (
+        <ClientDebtIntakeWizardModal
+          isOpen={showDebtIntakeWizard}
+          onClose={() => setShowDebtIntakeWizard(false)}
+          clientId={clientRequest?.id || 'client-mobile'}
+          clientName={clientName}
+          clientPhone={clientRequest?.phone || '010-0000-0000'}
+          onComplete={() => {
+            setShowDebtIntakeWizard(false);
+          }}
+        />
       )}
     </div>
   );
