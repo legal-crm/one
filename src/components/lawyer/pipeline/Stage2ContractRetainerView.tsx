@@ -4,7 +4,8 @@ import {
   Coins, UserCheck, Calendar, ArrowRight, ShieldAlert, Sparkles,
   ExternalLink, FileText, Phone, Clock, Eye, Edit3, Printer,
   Plus, Check, X, ShieldCheck, ChevronRight, FileSignature,
-  Download, Layers, AlertCircle, Copy, CheckSquare, Square
+  Download, Layers, AlertCircle, Copy, CheckSquare, Square,
+  Trash2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -18,6 +19,12 @@ import {
   calculateCourtCosts 
 } from '../../../services/contractService';
 import { syncContractToCrm } from '../../../services/crmService';
+import { 
+  numberToKoreanAmount, 
+  buildSimpleFeeClause, 
+  buildSimpleMainContractDocument,
+  type CustomInstallmentItem 
+} from '../../../utils/contractFeeFormatters';
 import ContractWizard from '../ContractWizard';
 import { ContractDocEditModal } from '../ContractDocEditModal';
 import ClientSignShareModal from '../ClientSignShareModal';
@@ -76,15 +83,73 @@ export default function Stage2ContractRetainerView({
   const [isBusinessDebtor, setIsBusinessDebtor] = useState(() => {
     return (clientRequest as any)?.category === 'business' || (clientRequest as any)?.jobType === 'business';
   });
-  const [retainerFee, setRetainerFee] = useState<number>(() => {
-    return crmExt?.feeSchedule?.[0]?.amount || (crmExt?.totalFee ? Math.round(crmExt.totalFee * 0.3) : 500000);
+
+  // 계약금(가계약금) 옵션
+  const [hasDeposit, setHasDeposit] = useState<boolean>(() => {
+    const s = crmExt?.feeSchedule;
+    return Boolean(s && s.length > 2 && (s[0]?.memo?.includes('계약금') || s[0]?.itemType === 'down_payment'));
   });
+  const [depositFee, setDepositFee] = useState<number>(() => {
+    const s = crmExt?.feeSchedule;
+    if (s && s.length > 2 && (s[0]?.memo?.includes('계약금') || s[0]?.itemType === 'down_payment')) {
+      return s[0].amount || 300000;
+    }
+    return 300000;
+  });
+
+  // 착수금 (사건 착수 시)
+  const [retainerFee, setRetainerFee] = useState<number>(() => {
+    const s = crmExt?.feeSchedule;
+    if (s && s.length > 2 && (s[0]?.memo?.includes('계약금') || s[0]?.itemType === 'down_payment')) {
+      return s[1]?.amount || 1000000;
+    }
+    return crmExt?.feeSchedule?.[0]?.amount || (crmExt?.totalFee ? Math.round(crmExt.totalFee * 0.3) : 1000000);
+  });
+
+  // 부가세 포함/별도
+  const [vatIncluded, setVatIncluded] = useState<boolean>(true);
+
+  // 분납 방식: 'equal' (균등) | 'custom' (월별 맞춤 수동)
+  const [installmentMode, setInstallmentMode] = useState<'equal' | 'custom'>('equal');
+
+  // 균등 분납 시 파라미터
   const [monthlyFee, setMonthlyFee] = useState<number>(() => {
-    return crmExt?.feeSchedule?.[1]?.amount || 300000;
+    return crmExt?.feeSchedule?.[1]?.amount || 500000;
   });
   const [installmentMonths, setInstallmentMonths] = useState<number>(() => {
     return crmExt?.feeSchedule?.length ? Math.max(1, crmExt.feeSchedule.length - 1) : 4;
   });
+
+  // 월별 수동 맞춤 분납 리스트
+  const [customInstallments, setCustomInstallments] = useState<CustomInstallmentItem[]>(() => {
+    const list: CustomInstallmentItem[] = [];
+    const today = new Date();
+    const count = 4;
+    for (let i = 1; i <= count; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i + 1, 0);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const amt = i === 1 ? 1000000 : 500000;
+      list.push({
+        round: i,
+        amount: amt,
+        dueDate: `${yyyy}-${mm}-${dd}`,
+        label: `${i}회차 분납`,
+      });
+    }
+    return list;
+  });
+
+  // 매달 납부 기준일 (말일 vs 10일 vs 25일)
+  const [paymentDayType, setPaymentDayType] = useState<'last_day' | 'fixed_10th' | 'fixed_25th'>('last_day');
+
+  // 계약서 서식 스타일: 'simple_box' (첨부 실제 간략형) | 'standard' (표준형)
+  const [contractStyle, setContractStyle] = useState<'simple_box' | 'standard'>('simple_box');
+
+  // 간략 표기 조항 실시간 미리보기 토글
+  const [showClausePreview, setShowClausePreview] = useState(false);
+
   const [isContractSigned, setIsContractSigned] = useState(() => {
     return crmExt?.crmStatus === 'contracted' || crmExt?.crmStatus === 'preparing' || crmExt?.crmStatus === 'completed' || !!crmExt?.contractDate;
   });
@@ -108,10 +173,27 @@ export default function Stage2ContractRetainerView({
   const trusteeDeposit = isBusinessDebtor ? 150000 : 0; // 외부회생위원 선임 예납금
   const totalCourtCost = stampFee + deliveryFee + trusteeDeposit;
 
+  // 잔금 분납 총액 계산
+  const totalInstallmentFee = useMemo(() => {
+    if (installmentMode === 'custom') {
+      return customInstallments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    }
+    return monthlyFee * installmentMonths;
+  }, [installmentMode, customInstallments, monthlyFee, installmentMonths]);
+
+  // 계약금 실효액
+  const effectiveDepositFee = hasDeposit ? depositFee : 0;
+
   // 총 변호사 수임료 (원화)
-  const totalLawyerFee = retainerFee + (monthlyFee * installmentMonths);
+  const totalLawyerFee = effectiveDepositFee + retainerFee + totalInstallmentFee;
   // 의뢰인 총 부담금
   const grandTotal = totalCourtCost + totalLawyerFee;
+
+  const paymentDayLabel = useMemo(() => {
+    if (paymentDayType === 'fixed_10th') return '매월 10일';
+    if (paymentDayType === 'fixed_25th') return '매월 25일';
+    return '매달 말일';
+  }, [paymentDayType]);
 
   // ── 3. 전자계약서 로드 및 동기화 ──
   useEffect(() => {
@@ -191,55 +273,149 @@ export default function Stage2ContractRetainerView({
     return newC;
   };
 
-  // 분납 일정 계산 함수
+  // 분납 일정 계산 함수 (계약금 + 착수금 + 분납 일정 일괄 조립)
   const buildFeeSchedule = (): FeeInstallment[] => {
     const today = new Date();
-    const schedule: FeeInstallment[] = [
-      {
-        round: 1,
-        dueDate: today.toISOString().split('T')[0],
-        amount: retainerFee,
-        status: 'pending',
-        label: '착수금 (1회차)',
-      }
-    ];
-    for (let i = 1; i <= installmentMonths; i++) {
-      const d = new Date(today);
-      d.setMonth(today.getMonth() + i);
+    const todayStr = today.toISOString().split('T')[0];
+    const schedule: FeeInstallment[] = [];
+    let roundIndex = 1;
+
+    // 1. 계약금 (선택 시)
+    if (hasDeposit && depositFee > 0) {
       schedule.push({
-        round: i + 1,
-        dueDate: d.toISOString().split('T')[0],
-        amount: monthlyFee,
+        id: `inst-deposit-${Date.now()}`,
+        round: roundIndex++,
+        dueDate: todayStr,
+        amount: depositFee,
         status: 'pending',
-        label: `월 분납금 (${i + 1}회차)`,
+        label: '계약금 (가계약금)',
+        memo: '계약 체결 시 즉시 납부',
+        itemType: 'down_payment',
+        paymentMethod: '계좌이체',
       });
     }
+
+    // 2. 착수금
+    schedule.push({
+      id: `inst-retainer-${Date.now()}`,
+      round: roundIndex++,
+      dueDate: todayStr,
+      amount: retainerFee,
+      status: 'pending',
+      label: '착수금',
+      memo: '사건 착수 시 납부',
+      itemType: hasDeposit ? 'installment' : 'down_payment',
+      paymentMethod: '계좌이체',
+    });
+
+    // 3. 잔금 분납
+    if (installmentMode === 'custom') {
+      customInstallments.forEach((item, idx) => {
+        schedule.push({
+          id: `inst-custom-${Date.now()}-${idx}`,
+          round: roundIndex++,
+          dueDate: item.dueDate,
+          amount: item.amount,
+          status: 'pending',
+          label: `${item.round}회차 분납`,
+          memo: `월 잔금 분납 (${item.round}회차)`,
+          itemType: 'installment',
+          paymentMethod: '계좌이체',
+        });
+      });
+    } else {
+      for (let i = 1; i <= installmentMonths; i++) {
+        let d = new Date(today);
+        if (paymentDayType === 'last_day') {
+          d = new Date(today.getFullYear(), today.getMonth() + i + 1, 0);
+        } else if (paymentDayType === 'fixed_10th') {
+          d = new Date(today.getFullYear(), today.getMonth() + i, 10);
+        } else {
+          d = new Date(today.getFullYear(), today.getMonth() + i, 25);
+        }
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        schedule.push({
+          id: `inst-equal-${Date.now()}-${i}`,
+          round: roundIndex++,
+          dueDate: `${yyyy}-${mm}-${dd}`,
+          amount: monthlyFee,
+          status: 'pending',
+          label: `${i}회차 분납`,
+          memo: `월 잔금 분납 (${i}회차)`,
+          itemType: 'installment',
+          paymentMethod: '계좌이체',
+        });
+      }
+    }
+
     return schedule;
   };
 
   // 금액/실비 변경 시 활성 계약서 인스턴스 실시간 반영
-  const syncContractState = (customTermsList: string[] = selectedSpecialTerms) => {
+  const syncContractState = (
+    customTermsList: string[] = selectedSpecialTerms,
+    overrideStyle?: 'simple_box' | 'standard'
+  ) => {
     if (!contract) return null;
     const schedule = buildFeeSchedule();
     const lawyerFeeManwon = Math.round(totalLawyerFee / 10000);
+    const effectiveStyle = overrideStyle || contractStyle;
 
     // 특약사항 텍스트 생성
     const termsTexts = customTermsList.map(id => {
       const preset = PRESET_SPECIAL_TERMS.find(p => p.id === id);
       return preset ? preset.text : id;
     });
+    const termsBody = termsTexts.map((t, idx) => `제 ${idx + 1} 항: ${t}`).join('\n\n');
 
-    // 제1호 사건위임계약서 본문 특약 조항 업데이트
+    // 실무 간략 박스형 조항 생성
+    const feeClauseText = buildSimpleFeeClause({
+      totalFeeWon: totalLawyerFee,
+      vatIncluded,
+      hasDeposit,
+      depositWon: depositFee,
+      retainerWon: retainerFee,
+      installmentMode,
+      equalMonthlyFeeWon: monthlyFee,
+      installmentCount: installmentMonths,
+      customInstallments,
+      paymentDayText: paymentDayLabel,
+      articleNumber: 5,
+    });
+
+    // 제1호 사건위임계약서 본문 업데이트
     const updatedDocs = contract.documents.map(d => {
       if (d.type === 'main_contract') {
-        const headerMarker = '════════════════════════════════════════════════\n[특약사항 (당사자 합의 특약)]';
-        const base = d.content.split(headerMarker)[0].trimEnd();
-        if (termsTexts.length === 0) return { ...d, content: base };
-        const termsBody = termsTexts.map((t, idx) => `제 ${idx + 1} 항: ${t}`).join('\n\n');
-        return {
-          ...d,
-          content: `${base}\n\n${headerMarker}\n${termsBody}\n════════════════════════════════════════════════`
-        };
+        if (effectiveStyle === 'simple_box') {
+          return {
+            ...d,
+            title: '사건위임계약서 (실무 간략형)',
+            content: buildSimpleMainContractDocument({
+              clientName: clientRequest.clientName,
+              clientPhone: clientRequest.phone,
+              clientAddress: clientRequest.financialProfile?.residenceRegion || '',
+              lawyerName: activeLawyer.name || '담당 변호사',
+              lawFirmName: activeLawyer.lawFirmName || '법무법인 로앤',
+              feeClauseText,
+              specialTermsText: termsBody,
+              contractDate: contract.contractDate || new Date().toISOString().split('T')[0],
+            }),
+          };
+        } else {
+          const headerMarker = '════════════════════════════════════════════════\n[특약사항 (당사자 합의 특약)]';
+          const base = d.content.split(headerMarker)[0].trimEnd();
+          const baseWithFee = base.replace(
+            /총 수임료는 일금 [^정]+정/g,
+            `총 수임료는 일금 ${totalLawyerFee.toLocaleString()}원정`
+          );
+          if (termsTexts.length === 0) return { ...d, content: baseWithFee };
+          return {
+            ...d,
+            content: `${baseWithFee}\n\n${headerMarker}\n${termsBody}\n════════════════════════════════════════════════`
+          };
+        }
       }
       return d;
     });
@@ -247,6 +423,7 @@ export default function Stage2ContractRetainerView({
     const updatedContract: ElectronicContract = {
       ...contract,
       totalFee: lawyerFeeManwon,
+      vatIncluded,
       courtCosts: {
         creditorCount,
         deliveryFee,
@@ -341,7 +518,7 @@ export default function Stage2ContractRetainerView({
           <h2 style="text-align: center; margin-bottom: 24px; font-size: 20px; font-weight: 800;">
             [제${i + 1}호 서식] ${d.title}
           </h2>
-          <div style="white-space: pre-wrap; font-size: 12px; min-height: 520px; background: #f8fafc; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; line-height: 1.8;">
+          <div style="white-space: pre-wrap; font-family: 'Consolas', -apple-system, BlinkMacSystemFont, 'Pretendard', monospace; font-size: 12px; min-height: 520px; background: #f8fafc; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; line-height: 1.8;">
 ${d.content}
           </div>
           <div style="margin-top: 36px; border-top: 1px solid #cbd5e1; padding-top: 20px; display: flex; justify-content: space-between; font-size: 12px;">
@@ -690,83 +867,450 @@ ${d.content}
           </div>
         </div>
 
-        {/* 우측: 로펌 수임료 및 분납 일정 확정 */}
+        {/* 우측: 로펌 수임료 및 분납 일정 확정 (고도화 패널) */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-emerald-600" />
               <h4 className="font-black text-sm text-slate-900">수임료 및 분납 조건 설정</h4>
             </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = contractStyle === 'simple_box' ? 'standard' : 'simple_box';
+                  setContractStyle(next);
+                  syncContractState(selectedSpecialTerms, next);
+                  toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
+                }}
+                className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                  contractStyle === 'simple_box'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}
+                title="계약서 수임료 표기 방식 변경"
+              >
+                <FileText className="w-3 h-3 text-blue-600" />
+                <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">착수금 (계약 시 납부)</label>
-                <div className="relative">
+          <div className="space-y-3.5 text-xs">
+            {/* 1. 계약금 & 착수금 설정 영역 */}
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
-                    type="number"
-                    step="50000"
-                    value={retainerFee}
+                    type="checkbox"
+                    checked={hasDeposit}
                     onChange={e => {
-                      setRetainerFee(Number(e.target.value));
+                      const checked = e.target.checked;
+                      setHasDeposit(checked);
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                    className="rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
                   />
-                  <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
-                </div>
+                  <span className="font-bold text-slate-800 text-xs">계약금(가계약금) 별도 수납</span>
+                </label>
+                <span className="text-[10px] text-slate-400">사무실 정책에 따라 선택</span>
               </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">월 분납금 (회당)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="50000"
-                    value={monthlyFee}
-                    onChange={e => {
-                      setMonthlyFee(Number(e.target.value));
-                      setTimeout(() => syncContractState(), 50);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
-                  />
-                  <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+
+              <div className={`grid ${hasDeposit ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
+                {hasDeposit && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      계약금 (계약 체결 시)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="50000"
+                        value={depositFee}
+                        onChange={e => {
+                          setDepositFee(Number(e.target.value) || 0);
+                          setTimeout(() => syncContractState(), 50);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                      />
+                      <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    착수금 (사건 착수 시)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="50000"
+                      value={retainerFee}
+                      onChange={e => {
+                        setRetainerFee(Number(e.target.value) || 0);
+                        setTimeout(() => syncContractState(), 50);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                    />
+                    <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between font-bold text-slate-700 mb-1">
-                <span>분납 회차</span>
-                <span className="text-[#1E3A5F] font-mono font-bold">{installmentMonths}회 분납</span>
+            {/* 2. 잔금 분납 방식 선택 탭 & 납부 기준일 */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700">잔금 분납 방식</span>
+                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstallmentMode('equal');
+                      setTimeout(() => syncContractState(), 50);
+                    }}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                      installmentMode === 'equal'
+                        ? 'bg-white text-[#1E3A5F] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    균등 분납 (자동)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstallmentMode('custom');
+                      setTimeout(() => syncContractState(), 50);
+                    }}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                      installmentMode === 'custom'
+                        ? 'bg-white text-[#1E3A5F] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    월별 맞춤 (수동 설정)
+                  </button>
+                </div>
               </div>
-              <input
-                type="range"
-                min="1"
-                max="12"
-                value={installmentMonths}
-                onChange={e => {
-                  setInstallmentMonths(Number(e.target.value));
-                  setTimeout(() => syncContractState(), 50);
-                }}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
-              />
+
+              {/* 2-A. 균등 분납 모드 UI */}
+              {installmentMode === 'equal' ? (
+                <div className="space-y-2.5 bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">월 분납금 (회당)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="50000"
+                          value={monthlyFee}
+                          onChange={e => {
+                            const val = Number(e.target.value) || 0;
+                            setMonthlyFee(val);
+                            setCustomInstallments(prev => prev.map(item => ({ ...item, amount: val })));
+                            setTimeout(() => syncContractState(), 50);
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                        />
+                        <span className="absolute right-3 top-2 text-slate-400 font-medium">원</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">매달 납부 약정일</label>
+                      <select
+                        value={paymentDayType}
+                        onChange={e => {
+                          setPaymentDayType(e.target.value as any);
+                          setTimeout(() => syncContractState(), 50);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white cursor-pointer"
+                      >
+                        <option value="last_day">매달 말일 (실무 기본)</option>
+                        <option value="fixed_10th">매월 10일</option>
+                        <option value="fixed_25th">매월 25일 (급여일)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>분납 회차</span>
+                      <span className="text-[#1E3A5F] font-mono font-bold">{installmentMonths}회 분납</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="12"
+                      value={installmentMonths}
+                      onChange={e => {
+                        const count = Number(e.target.value);
+                        setInstallmentMonths(count);
+                        setCustomInstallments(prev => {
+                          const today = new Date();
+                          const list: CustomInstallmentItem[] = [];
+                          for (let i = 1; i <= count; i++) {
+                            const existing = prev[i - 1];
+                            if (existing) {
+                              list.push(existing);
+                            } else {
+                              const d = new Date(today.getFullYear(), today.getMonth() + i + 1, 0);
+                              list.push({
+                                round: i,
+                                amount: monthlyFee,
+                                dueDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                                label: `${i}회차 분납`,
+                              });
+                            }
+                          }
+                          return list;
+                        });
+                        setTimeout(() => syncContractState(), 50);
+                      }}
+                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A5F]"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* 2-B. 월별 수동 맞춤 분납 모드 UI */
+                <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      💡 회차별 원하는 납부 금액과 예정일을 직접 지정하세요.
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomInstallments(prev =>
+                            prev.map((item, idx) => ({
+                              ...item,
+                              amount: idx === 0 ? 1000000 : 500000,
+                            }))
+                          );
+                          setTimeout(() => syncContractState(), 50);
+                          toast.success('첫 달 100만 + 이후 50만 프리셋이 적용되었습니다.');
+                        }}
+                        className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-700 cursor-pointer"
+                      >
+                        100만+50만
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomInstallments(prev =>
+                            prev.map(item => ({ ...item, amount: monthlyFee }))
+                          );
+                          setTimeout(() => syncContractState(), 50);
+                          toast.success('균등 분납액으로 재배분되었습니다.');
+                        }}
+                        className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-700 cursor-pointer"
+                      >
+                        균등 분할
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 회차 목록 리스트 */}
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {customInstallments.map((inst, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs"
+                      >
+                        <span className="w-12 text-center text-[11px] font-extrabold text-[#1E3A5F] bg-blue-50 py-1 rounded">
+                          {idx + 1}회차
+                        </span>
+                        <input
+                          type="date"
+                          value={inst.dueDate}
+                          onChange={e => {
+                            const newDueDate = e.target.value;
+                            setCustomInstallments(prev => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], dueDate: newDueDate };
+                              return next;
+                            });
+                            setTimeout(() => syncContractState(), 50);
+                          }}
+                          className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
+                        />
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            step="10000"
+                            value={inst.amount}
+                            onChange={e => {
+                              const val = Number(e.target.value) || 0;
+                              setCustomInstallments(prev => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], amount: val };
+                                return next;
+                              });
+                              setTimeout(() => syncContractState(), 50);
+                            }}
+                            className="w-full px-2 py-1 pr-6 rounded border border-slate-200 text-[11px] font-mono font-bold text-right text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
+                          />
+                          <span className="absolute right-2 top-1 text-[10px] text-slate-400">원</span>
+                        </div>
+                        {customInstallments.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomInstallments(prev => {
+                                const next = prev.filter((_, i) => i !== idx).map((item, i) => ({
+                                  ...item,
+                                  round: i + 1,
+                                  label: `${i + 1}회차 분납`,
+                                }));
+                                return next;
+                              });
+                              setTimeout(() => syncContractState(), 50);
+                            }}
+                            className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                            title="회차 삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomInstallments(prev => {
+                          const last = prev[prev.length - 1];
+                          let nextDate = '';
+                          if (last && last.dueDate) {
+                            const parts = last.dueDate.split('-');
+                            const nextMonth = new Date(Number(parts[0]), Number(parts[1]) + 1, 0);
+                            nextDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(nextMonth.getDate()).padStart(2, '0')}`;
+                          } else {
+                            nextDate = new Date().toISOString().split('T')[0];
+                          }
+                          return [
+                            ...prev,
+                            {
+                              round: prev.length + 1,
+                              amount: last ? last.amount : 500000,
+                              dueDate: nextDate,
+                              label: `${prev.length + 1}회차 분납`,
+                            },
+                          ];
+                        });
+                        setTimeout(() => syncContractState(), 50);
+                      }}
+                      className="px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>회차 추가</span>
+                    </button>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      총 {customInstallments.length}회 잔금: <strong>{totalInstallmentFee.toLocaleString()}원</strong>
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 수임료 및 총액 요약 */}
+            {/* 3. 부가세 및 요약 */}
             <div className="space-y-1.5 pt-2 border-t border-slate-100 text-slate-600">
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-slate-500 font-medium">부가가치세 (VAT)</span>
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVatIncluded(true);
+                      setTimeout(() => syncContractState(), 50);
+                    }}
+                    className={`px-2 py-0.5 rounded cursor-pointer ${
+                      vatIncluded ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    VAT 포함
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVatIncluded(false);
+                      setTimeout(() => syncContractState(), 50);
+                    }}
+                    className={`px-2 py-0.5 rounded cursor-pointer ${
+                      !vatIncluded ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    VAT 별도
+                  </button>
+                </div>
+              </div>
+
+              {hasDeposit && (
+                <div className="flex justify-between">
+                  <span>계약금 (가계약금)</span>
+                  <span className="font-mono font-bold text-slate-800">{depositFee.toLocaleString()}원</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>착수금 1회</span>
+                <span>착수금 (사건 착수 시)</span>
                 <span className="font-mono font-bold text-slate-800">{retainerFee.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between">
-                <span>분납 합계 ({monthlyFee.toLocaleString()}원 × {installmentMonths}회)</span>
-                <span className="font-mono font-bold text-slate-800">{(monthlyFee * installmentMonths).toLocaleString()}원</span>
+                <span>
+                  잔금 합계 ({installmentMode === 'equal' ? `${monthlyFee.toLocaleString()}원 × ${installmentMonths}회` : `${customInstallments.length}회 분납`})
+                </span>
+                <span className="font-mono font-bold text-slate-800">{totalInstallmentFee.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-slate-100 font-extrabold text-slate-900">
-                <span>총 수임료 (부가세 별도/포함 합의)</span>
+                <div>
+                  <span>총 수임료</span>
+                  <span className="text-[10px] font-normal text-slate-500 ml-1.5">
+                    ({vatIncluded ? '부가가치세 포함' : '부가가치세 별도'})
+                  </span>
+                </div>
                 <span className="text-emerald-600 font-mono text-sm">{totalLawyerFee.toLocaleString()}원</span>
               </div>
+              <div className="text-[11px] text-right font-medium text-slate-500">
+                계약서 한글 표기: <strong className="text-slate-800">금 {numberToKoreanAmount(totalLawyerFee)} 원정</strong>
+              </div>
+            </div>
+
+            {/* 4. 실무 간략 박스 실시간 미리보기 아코디언 */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowClausePreview(prev => !prev)}
+                className="w-full px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-lg text-slate-700 text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>실제 계약서 반영 수임료 조항 미리보기</span>
+                </span>
+                {showClausePreview ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+              </button>
+
+              {showClausePreview && (
+                <div className="mt-2 p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed whitespace-pre-wrap border border-slate-800 shadow-inner max-h-56 overflow-y-auto">
+                  {buildSimpleFeeClause({
+                    totalFeeWon: totalLawyerFee,
+                    vatIncluded,
+                    hasDeposit,
+                    depositWon: depositFee,
+                    retainerWon: retainerFee,
+                    installmentMode,
+                    equalMonthlyFeeWon: monthlyFee,
+                    installmentCount: installmentMonths,
+                    customInstallments,
+                    paymentDayText: paymentDayLabel,
+                    articleNumber: 5,
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

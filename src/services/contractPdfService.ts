@@ -250,7 +250,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
         <!-- 핵심 위임 조항 요약 (리걸플로 벤치마킹 실무 세분화 반영) -->
         <div style="font-size: 11px; line-height: 1.7; color: #1e293b; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fafafa;">
           <p style="margin: 0 0 6px 0;"><strong>제1조 (위임의 목적)</strong> 위임인(갑)은 수임인(을)에게 ${contract.caseType || '개인회생·파산신청'} 사건의 대리 및 그에 부수하는 일체의 법률사무 처리를 위임한다.</p>
-          <p style="margin: 0 0 6px 0;"><strong>제2조 (수임료 및 법원실비)</strong> 변호사 보수(순 수임료)는 금 ${formattedFee}원${contract.vatIncluded ? '(VAT 10% 별도)' : '(VAT 포함)'}으로 정한다. 송달료(${(contract.courtCosts?.deliveryFee || 0).toLocaleString()}원), 인지대(${(contract.courtCosts?.stampFee || 0).toLocaleString()}원), 부채증명서 발급대행비(${(contract.courtCosts?.debtCertFee || 0).toLocaleString()}원)${contract.courtCosts?.provisionalDeposit ? `, 변제예납금(${(contract.courtCosts.provisionalDeposit).toLocaleString()}원)` : ''} 등 법원 실비는 사건 진행 중 실비로 별도 정산한다.</p>
+          <p style="margin: 0 0 6px 0;"><strong>제2조 (수임료 및 법원실비)</strong> 변호사 보수(순 수임료)는 금 ${formattedFee}원${contract.vatIncluded ? '(VAT 포함)' : '(VAT 10% 별도)'}으로 정한다. 송달료(${(contract.courtCosts?.deliveryFee || 0).toLocaleString()}원), 인지대(${(contract.courtCosts?.stampFee || 0).toLocaleString()}원), 부채증명서 발급대행비(${(contract.courtCosts?.debtCertFee || 0).toLocaleString()}원)${contract.courtCosts?.provisionalDeposit ? `, 변제예납금(${(contract.courtCosts.provisionalDeposit).toLocaleString()}원)` : ''} 등 법원 실비는 사건 진행 중 실비로 별도 정산한다.</p>
           <p style="margin: 0 0 6px 0;"><strong>제3조 (입금 지정 계좌)</strong> 수임료는 [${contract.feeAccount?.bankName || '신한은행'} ${contract.feeAccount?.accountNumber || ''} (예금주: ${contract.feeAccount?.accountHolder || contract.lawFirmName})] 계좌로 입금한다.</p>
           ${contract.successFee?.enabled ? `
             <p style="margin: 0 0 6px 0; color: #78350f;"><strong>제4조 (성공보수 약정)</strong> 갑은 [${contract.successFee.dueDateCondition || '면책 또는 인가결정 확정 시'}] 을에게 ${contract.successFee.type === 'reduction_rate' ? `탕감액의 ${contract.successFee.ratePercent || 5}%` : `약정금 ${(contract.successFee.amount || 500000).toLocaleString()}원`}의 성공보수를 지급하기로 약정한다.</p>
@@ -265,19 +265,19 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
           <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; text-align: center;">
             <thead>
               <tr style="background: #f1f5f9; border-top: 1.5px solid #0f172a; border-bottom: 1px solid #cbd5e1;">
-                <th style="padding: 6px; width: 60px;">회차</th>
-                <th style="padding: 6px; width: 140px;">납부 약정기일</th>
-                <th style="padding: 6px; width: 140px;">약정 금액</th>
-                <th style="padding: 6px;">구분 및 비고</th>
+                <th style="padding: 6px; width: 80px;">구분/회차</th>
+                <th style="padding: 6px; width: 130px;">납부 약정기일</th>
+                <th style="padding: 6px; width: 130px;">약정 금액</th>
+                <th style="padding: 6px;">상세 내역</th>
               </tr>
             </thead>
             <tbody>
               ${(contract.feeSchedule || []).map(f => `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 6px; font-weight: bold;">${f.round === 0 ? '착수금' : `${f.round}회차`}</td>
+                  <td style="padding: 6px; font-weight: bold;">${f.label || (f.round === 0 ? '착수금' : `${f.round}회차`)}</td>
                   <td style="padding: 6px; font-family: monospace;">${f.dueDate}</td>
                   <td style="padding: 6px; font-weight: bold; color: #1e3a8a;">${f.amount.toLocaleString()}원</td>
-                  <td style="padding: 6px; color: #64748b;">${f.round === 0 ? '계약 착수금 (착수 시)' : (f.memo || '분납금')}</td>
+                  <td style="padding: 6px; color: #64748b;">${f.memo || f.label || '수임료 납부'}</td>
                 </tr>
               `).join('')}
             </tbody>

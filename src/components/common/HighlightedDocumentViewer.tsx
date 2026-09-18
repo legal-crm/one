@@ -24,6 +24,24 @@ export const HighlightedDocumentViewer: React.FC<Props> = ({
       return <div key={lineIdx} className="h-3" />;
     }
 
+    // 박스형 수임료 조항 라인 감지 (┌, │, └)
+    if (line.includes('┌') || line.includes('│') || line.includes('└')) {
+      return (
+        <div key={lineIdx} className="font-mono text-xs text-slate-900 whitespace-pre-wrap leading-relaxed bg-slate-50 px-2 py-0.5 rounded border-l-2 border-[#1E3A5F]">
+          {line}
+        </div>
+      );
+    }
+
+    // 구분선 라인 감지 (═══)
+    if (line.includes('════════')) {
+      return (
+        <div key={lineIdx} className="font-mono text-[11px] text-slate-400 whitespace-pre text-center my-1 select-none">
+          {line}
+        </div>
+      );
+    }
+
     // 정규식 분할: (==g:.*?==)|(==o:.*?==)|(==.*?==)|(\*\*.*?\*\*)
     const regex = /(==g:.*?==|==o:.*?==|==.*?==|\*\*.*?\*\*)/g;
     const parts = line.split(regex);
