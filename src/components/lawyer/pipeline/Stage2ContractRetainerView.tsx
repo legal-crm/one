@@ -5,7 +5,7 @@ import {
   ExternalLink, FileText, Phone, Clock, Eye, Edit3, Printer,
   Plus, Check, X, ShieldCheck, ChevronRight, FileSignature,
   Download, Layers, AlertCircle, Copy, CheckSquare, Square,
-  Trash2, ChevronDown, ChevronUp
+  Trash2, ChevronDown, ChevronUp, Bookmark, Save, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -25,6 +25,12 @@ import {
   buildSimpleMainContractDocument,
   type CustomInstallmentItem 
 } from '../../../utils/contractFeeFormatters';
+import { 
+  getFeePresets, 
+  saveFeePreset, 
+  deleteFeePreset, 
+  type FeePreset 
+} from '../../../services/feePresetService';
 import ContractWizard from '../ContractWizard';
 import { ContractDocEditModal } from '../ContractDocEditModal';
 import ClientSignShareModal from '../ClientSignShareModal';
@@ -149,6 +155,13 @@ export default function Stage2ContractRetainerView({
 
   // 간략 표기 조항 실시간 미리보기 토글
   const [showClausePreview, setShowClausePreview] = useState(false);
+
+  // ── 수임료 프리셋 (메모리) 상태 ──
+  const [feePresets, setFeePresets] = useState<FeePreset[]>(() => getFeePresets());
+  const [activePresetId, setActivePresetId] = useState<string>('preset-standard-300');
+  const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState<boolean>(false);
+  const [newPresetName, setNewPresetName] = useState<string>('');
+  const [newPresetDesc, setNewPresetDesc] = useState<string>('');
 
   // 금액 콤마 포맷터 & 파서
   const formatWon = (val: number | undefined | null) => {
@@ -474,6 +487,102 @@ export default function Stage2ContractRetainerView({
     setShowAddCustomTerm(false);
     syncContractState(next);
     toast.success('커스텀 특약 조항이 계약서에 추가되었습니다.');
+  };
+
+  // ── 3-1. 수임료 프리셋 (메모리) 적용 핸들러 ──
+  const handleApplyPreset = (presetId: string) => {
+    const target = feePresets.find(p => p.id === presetId);
+    if (!target) return;
+
+    setActivePresetId(presetId);
+    setHasDeposit(target.hasDeposit);
+    setDepositFee(target.depositFee);
+    setRetainerFee(target.retainerFee);
+    setVatIncluded(target.vatIncluded);
+    setInstallmentMode(target.installmentMode);
+    setMonthlyFee(target.monthlyFee);
+    setInstallmentMonths(target.installmentMonths);
+
+    if (target.customInstallments && target.customInstallments.length > 0) {
+      const today = new Date();
+      const updatedCustom = target.customInstallments.map((item, idx) => {
+        if (item.dueDate) return item;
+        const d = new Date(today.getFullYear(), today.getMonth() + idx + 2, 0);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return {
+          ...item,
+          dueDate: `${yyyy}-${mm}-${dd}`,
+        };
+      });
+      setCustomInstallments(updatedCustom);
+    }
+
+    setPaymentDayType(target.paymentDayType);
+    setContractStyle(target.contractStyle);
+
+    setTimeout(() => {
+      syncContractState(selectedSpecialTerms, target.contractStyle);
+    }, 60);
+
+    toast.success(`[${target.name}] 프리셋이 적용되었습니다.`);
+  };
+
+  // ── 3-2. 현재 수임료 조건을 새 프리셋으로 저장 ──
+  const handleSaveCurrentAsPreset = () => {
+    if (!newPresetName.trim()) {
+      toast.error('프리셋 명칭을 입력해 주세요.');
+      return;
+    }
+
+    try {
+      const saved = saveFeePreset({
+        name: newPresetName.trim(),
+        description: newPresetDesc.trim() || undefined,
+        hasDeposit,
+        depositFee,
+        retainerFee,
+        vatIncluded,
+        installmentMode,
+        monthlyFee,
+        installmentMonths,
+        customInstallments,
+        paymentDayType,
+        contractStyle,
+      });
+
+      const updated = getFeePresets();
+      setFeePresets(updated);
+      setActivePresetId(saved.id);
+      setIsSavePresetModalOpen(false);
+      setNewPresetName('');
+      setNewPresetDesc('');
+      toast.success(`'${saved.name}' 프리셋이 저장되었습니다.`);
+    } catch (e) {
+      toast.error('프리셋 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // ── 3-3. 사용자 정의 프리셋 삭제 ──
+  const handleDeletePreset = async (presetId: string, presetName: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const confirmed = await dialog.confirm({
+      title: '🗑️ 프리셋 삭제',
+      message: `'${presetName}' 프리셋을 영구 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    deleteFeePreset(presetId);
+    const updated = getFeePresets();
+    setFeePresets(updated);
+    if (activePresetId === presetId) {
+      setActivePresetId(updated[0]?.id || '');
+    }
+    toast.success(`'${presetName}' 프리셋이 삭제되었습니다.`);
   };
 
   // ── 4. 전자계약서 모바일 발송 핸들러 (ClientSignShareModal 연동) ──
@@ -964,6 +1073,79 @@ ${d.content}
               <FileText className="w-3.5 h-3.5 text-blue-600" />
               <span>{contractStyle === 'simple_box' ? '실무 간략 표기형 적용중' : '표준형 표기'}</span>
             </button>
+          </div>
+
+          {/* ── ⚡ 수임료 프리셋 (메모리) 선택 & 저장 바 ── */}
+          <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 p-3 rounded-xl border border-blue-100/90 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-5 h-5 rounded-md bg-[#1E3A5F] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Bookmark className="w-3 h-3" />
+                </div>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="font-black text-slate-800 text-xs whitespace-nowrap">수임료 프리셋 메모리</span>
+                  <span className="text-[10px] text-slate-400 truncate">(원클릭 불러오기)</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewPresetName(`맞춤 플랜 (${Math.round(totalLawyerFee / 10000)}만원)`);
+                    setIsSavePresetModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-all press-scale whitespace-nowrap"
+                  title="현재 입력된 수임료 조건을 새 프리셋으로 저장합니다"
+                >
+                  <Save className="w-3 h-3 text-blue-600" />
+                  <span>현재 세팅 저장</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 프리셋 셀렉트 박스 & 삭제 버튼 */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <select
+                  value={activePresetId}
+                  onChange={e => handleApplyPreset(e.target.value)}
+                  className="w-full pl-2.5 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] shadow-2xs cursor-pointer truncate"
+                >
+                  <optgroup label="🏛️ 실무 기본 추천 프리셋">
+                    {feePresets.filter(p => p.isSystemDefault).map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  {feePresets.some(p => !p.isSystemDefault) && (
+                    <optgroup label="💾 사용자 직접 저장 프리셋">
+                      {feePresets.filter(p => !p.isSystemDefault).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {/* 선택된 프리셋이 사용자 저장 프리셋인 경우 삭제 버튼 표시 */}
+              {feePresets.find(p => p.id === activePresetId && !p.isSystemDefault) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const current = feePresets.find(p => p.id === activePresetId);
+                    if (current) handleDeletePreset(current.id, current.name, e);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg bg-white transition-colors cursor-pointer shrink-0"
+                  title="선택된 사용자 프리셋 삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4 text-xs">
@@ -1896,6 +2078,104 @@ ${d.content}
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── 프리셋 저장 모달 (ModalPortal) ── */}
+      {isSavePresetModalOpen && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                    <Bookmark className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">현재 수임료 조건 프리셋 저장</h3>
+                    <p className="text-[11px] text-slate-500">저장된 세팅은 언제든지 원클릭으로 다시 불러올 수 있습니다.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSavePresetModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 저장 대상 요약 프리뷰 */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div className="font-bold text-slate-700 flex justify-between">
+                  <span>총 수임료</span>
+                  <span className="text-blue-700 font-mono font-black">{totalLawyerFee.toLocaleString()}원</span>
+                </div>
+                <div className="text-[11px] text-slate-500 flex justify-between">
+                  <span>구성</span>
+                  <span className="font-medium text-slate-700">
+                    {hasDeposit ? `계약금 ${depositFee.toLocaleString()}원 + ` : ''}
+                    착수금 {retainerFee.toLocaleString()}원 + 
+                    잔금 {installmentMode === 'equal' ? `${monthlyFee.toLocaleString()}원 × ${installmentMonths}회` : `${customInstallments.length}회 맞춤`}
+                  </span>
+                </div>
+              </div>
+
+              {/* 입력 폼 */}
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleSaveCurrentAsPreset();
+                }}
+                className="space-y-3 text-xs"
+              >
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-800">
+                    프리셋 이름 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 실무 5회 분납 (총 350만), 급여소득자 기본형 등"
+                    value={newPresetName}
+                    onChange={e => setNewPresetName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-800">
+                    설명 / 비고 <span className="text-slate-400 font-normal">(선택)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 착수 100만 + 50만 5회, 매월 25일 급여일 납부"
+                    value={newPresetDesc}
+                    onChange={e => setNewPresetDesc(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                  />
+                </div>
+
+                {/* 모달 버튼 */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsSavePresetModalOpen(false)}
+                    className="px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-black text-white bg-[#1E3A5F] hover:bg-slate-800 rounded-xl shadow-xs cursor-pointer press-scale flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>프리셋 저장</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
       )}
     </div>
   );
