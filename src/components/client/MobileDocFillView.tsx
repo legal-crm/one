@@ -32,6 +32,40 @@ export default function MobileDocFillView({
   const [loanDate, setLoanDate] = useState('');
   const [loanPurpose, setLoanPurpose] = useState('생활비 및 기존 채무 돌려막기');
 
+  // 3. 100만 원 이상 출금 사용처 소명
+  const [expenseDate, setExpenseDate] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseBank, setExpenseBank] = useState('');
+  const [expenseRecipient, setExpenseRecipient] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('생활비');
+  const [expenseDetails, setExpenseDetails] = useState('');
+
+  // 4. 최근 1년 1,000만 원 이상 재산처분 소명
+  const [disposedAssetType, setDisposedAssetType] = useState('부동산');
+  const [disposalDate, setDisposalDate] = useState('');
+  const [disposalTotalAmount, setDisposalTotalAmount] = useState('');
+  const [debtPayoffAmount, setDebtPayoffAmount] = useState('');
+  const [netProceeds, setNetProceeds] = useState('');
+  const [proceedsUsage, setProceedsUsage] = useState('');
+
+  // 5. 영업소득자 필요경비 산출
+  const [monthlyGrossSales, setMonthlyGrossSales] = useState('');
+  const [rentExpense, setRentExpense] = useState('');
+  const [payrollExpense, setPayrollExpense] = useState('');
+  const [materialExpense, setMaterialExpense] = useState('');
+  const [utilityExpense, setUtilityExpense] = useState('');
+
+  // 6. 추가 생계비 신청
+  const [additionalLivingType, setAdditionalLivingType] = useState('주거비(고액월세)');
+  const [additionalAmount, setAdditionalAmount] = useState('');
+  const [additionalReason, setAdditionalReason] = useState('');
+
+  // 7. 배우자 재산 및 이혼 재산분할
+  const [spouseName, setSpouseName] = useState('');
+  const [spousePropertyList, setSpousePropertyList] = useState('');
+  const [propertyDivisionDetail, setPropertyDivisionDetail] = useState('');
+  const [childSupport, setChildSupport] = useState('');
+
   // 금융동의/위임 공통 동의
   const [isAgreed, setIsAgreed] = useState(false);
 
@@ -118,15 +152,49 @@ export default function MobileDocFillView({
       submittedAt: new Date().toISOString()
     };
 
-    if (requestItem?.docCode === '111110') {
+    const docCode = requestItem?.docCode || '';
+    const docTitle = requestItem?.docTitle || '';
+
+    if (docCode === '111110' || docTitle.includes('무상거주')) {
       formData.ownerName = ownerName || '부모(소유자)';
       formData.ownerRelation = ownerRelation;
       formData.freeResidenceReason = freeResidenceReason;
-    } else if (requestItem?.docCode === '121020') {
+    } else if (docCode === '121020' || docTitle.includes('사채') || docTitle.includes('차용')) {
       formData.lenderName = lenderName || '개인대여자';
       formData.loanAmount = loanAmount;
       formData.loanDate = loanDate;
       formData.loanPurpose = loanPurpose;
+    } else if (docCode === '122040' || docTitle.includes('사용처') || docTitle.includes('출금')) {
+      formData.expenseDate = expenseDate || new Date().toISOString().slice(0, 10);
+      formData.expenseAmount = expenseAmount;
+      formData.expenseBank = expenseBank;
+      formData.expenseRecipient = expenseRecipient;
+      formData.expenseCategory = expenseCategory;
+      formData.expenseDetails = expenseDetails;
+    } else if (docCode === 'ASSET_DISPOSAL' || docTitle.includes('재산처분') || docTitle.includes('처분대금')) {
+      formData.disposedAssetType = disposedAssetType;
+      formData.disposalDate = disposalDate;
+      formData.disposalTotalAmount = disposalTotalAmount;
+      formData.debtPayoffAmount = debtPayoffAmount;
+      formData.netProceeds = netProceeds;
+      formData.proceedsUsage = proceedsUsage;
+    } else if (docCode === '122050' || docTitle.includes('영업소득') || docTitle.includes('필요경비')) {
+      formData.monthlyGrossSales = monthlyGrossSales;
+      formData.rentExpense = rentExpense;
+      formData.payrollExpense = payrollExpense;
+      formData.materialExpense = materialExpense;
+      formData.utilityExpense = utilityExpense;
+    } else if (docCode === '122011' || docTitle.includes('생계비')) {
+      formData.additionalLivingType = additionalLivingType;
+      formData.additionalAmount = additionalAmount;
+      formData.additionalReason = additionalReason;
+    } else if (docCode === '113120' || docTitle.includes('배우자') || docTitle.includes('이혼')) {
+      formData.spouseName = spouseName;
+      formData.spousePropertyList = spousePropertyList;
+      formData.propertyDivisionDetail = propertyDivisionDetail;
+      formData.childSupport = childSupport;
+    } else {
+      formData.genericStatement = freeResidenceReason || loanPurpose || '사실대로 진술함';
     }
 
     setTimeout(() => {
@@ -306,6 +374,329 @@ export default function MobileDocFillView({
                       onChange={e => setLoanPurpose(e.target.value)}
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* 3) 100만 원 이상 출금 사용처 소명표 */}
+              {(requestItem.docCode === '122040' || requestItem.docTitle.includes('사용처') || requestItem.docTitle.includes('출금')) && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                    💡 <strong>법원 보정 1순위 소명:</strong> 통장에서 출금 또는 송금된 고액 자금의 객관적 사용 목적을 선택 및 소명해 주세요.
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">거래 일자</label>
+                      <input 
+                        type="date" 
+                        value={expenseDate}
+                        onChange={e => setExpenseDate(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">출금/이체 금액 (만 원)</label>
+                      <input 
+                        type="number" 
+                        placeholder="예: 300"
+                        value={expenseAmount}
+                        onChange={e => setExpenseAmount(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">출금 계좌/은행</label>
+                      <input 
+                        type="text" 
+                        placeholder="예: 국민은행 1234"
+                        value={expenseBank}
+                        onChange={e => setExpenseBank(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">송금처 (받는 분 성명)</label>
+                      <input 
+                        type="text" 
+                        placeholder="예: 홍길동 또는 상호"
+                        value={expenseRecipient}
+                        onChange={e => setExpenseRecipient(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">사용 목적 분류</label>
+                    <select
+                      value={expenseCategory}
+                      onChange={e => setExpenseCategory(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    >
+                      <option value="생활비">생활비 (식비, 주거비, 공과금)</option>
+                      <option value="병원비/의료비">병원비 / 수술비 / 장기간병비</option>
+                      <option value="기존채무변제">기존 대출금 / 카드대금 상환</option>
+                      <option value="가족부양">부모님 또는 자녀 긴급 생활지원</option>
+                      <option value="사업물품대금">사업장 원재료 / 물품대금 결제</option>
+                      <option value="보증금/전세금">주거지 보증금 및 이사비용</option>
+                      <option value="기타">기타 불가피한 지출</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">구체적 지출 경위</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="구체적인 사용 경위를 기재해 주세요 (예: 모친 수술비 지출 및 영수증 보관 중)"
+                      value={expenseDetails}
+                      onChange={e => setExpenseDetails(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 4) 최근 1년 1,000만 원 이상 재산처분대금 소명서 */}
+              {(requestItem.docCode === 'ASSET_DISPOSAL' || requestItem.docTitle.includes('재산처분') || requestItem.docTitle.includes('처분대금')) && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-900 text-[11px] leading-relaxed">
+                    💡 <strong>편파변제 및 은닉 방어:</strong> 부동산, 차량, 전세보증금 매각 후 남은 잔여대금의 사용처를 증빙합니다.
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">처분한 재산 종류</label>
+                      <select
+                        value={disposedAssetType}
+                        onChange={e => setDisposedAssetType(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      >
+                        <option value="부동산">부동산 (아파트, 빌라, 토지)</option>
+                        <option value="자동차">자동차 / 오토바이</option>
+                        <option value="임차보증금">전세 / 월세 임차보증금 반환</option>
+                        <option value="보험해약금">보험 해약환급금 수령</option>
+                        <option value="기타재산">기타 회원권 또는 귀금속</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-800">처분(매각) 일자</label>
+                      <input 
+                        type="date"
+                        value={disposalDate}
+                        onChange={e => setDisposalDate(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-800">총 매각가 (만원)</label>
+                      <input 
+                        type="number"
+                        placeholder="예: 5000"
+                        value={disposalTotalAmount}
+                        onChange={e => setDisposalTotalAmount(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-800">담보대출상환액</label>
+                      <input 
+                        type="number"
+                        placeholder="예: 3000"
+                        value={debtPayoffAmount}
+                        onChange={e => setDebtPayoffAmount(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-800">실제 정산금(수령)</label>
+                      <input 
+                        type="number"
+                        placeholder="예: 2000"
+                        value={netProceeds}
+                        onChange={e => setNetProceeds(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">수령한 정산금의 사용처 상세</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="대출 상환 후 손에 쥔 정산금을 어디에 사용하셨는지 기재해 주세요"
+                      value={proceedsUsage}
+                      onChange={e => setProceedsUsage(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 5) 영업소득자 필요경비 산출표 */}
+              {(requestItem.docCode === '122050' || requestItem.docTitle.includes('영업소득') || requestItem.docTitle.includes('필요경비')) && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200 text-indigo-900 text-[11px] leading-relaxed">
+                    💡 <strong>영업 순소득 산출:</strong> 매출액에서 필수 사업 지출(월세, 인건비, 재료비, 공과금)을 공제하여 실소득을 산정합니다.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">최근 1년 월평균 총매출액 (만 원)</label>
+                    <input 
+                      type="number" 
+                      placeholder="예: 600"
+                      value={monthlyGrossSales}
+                      onChange={e => setMonthlyGrossSales(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">사업장 월세 (만 원)</label>
+                      <input 
+                        type="number" 
+                        placeholder="예: 120"
+                        value={rentExpense}
+                        onChange={e => setRentExpense(e.target.value)}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">직원/알바 인건비</label>
+                      <input 
+                        type="number" 
+                        placeholder="예: 150"
+                        value={payrollExpense}
+                        onChange={e => setPayrollExpense(e.target.value)}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">재료/원자재비</label>
+                      <input 
+                        type="number" 
+                        placeholder="예: 100"
+                        value={materialExpense}
+                        onChange={e => setMaterialExpense(e.target.value)}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">전기/통신/공과금</label>
+                      <input 
+                        type="number" 
+                        placeholder="예: 30"
+                        value={utilityExpense}
+                        onChange={e => setUtilityExpense(e.target.value)}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 6) 추가 생계비 인정 신청서 */}
+              {(requestItem.docCode === '122011' || requestItem.docTitle.includes('생계비')) && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 text-[11px] leading-relaxed">
+                    💡 <strong>변제금 절감 핵심:</strong> 기본 법정 생계비 외에 매월 고정적으로 지출되는 필수 비용을 추가 인정받아 변제금을 낮춥니다.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">추가 생계비 신청 항목</label>
+                    <select
+                      value={additionalLivingType}
+                      onChange={e => setAdditionalLivingType(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    >
+                      <option value="주거비(고액월세)">주거비 (실제 지급 중인 고액 월세 실비)</option>
+                      <option value="중증/만성질환 의료비">의료비 (본인 또는 가족의 중증 질환 정기 병원비)</option>
+                      <option value="특수교육비">교육비 (장애/특수아동 교육 및 치료비)</option>
+                      <option value="장애인간병비">간병비 (고령 부모 또는 장애 가족 간병비)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">월 추가 필요 금액 (만 원)</label>
+                    <input 
+                      type="number"
+                      placeholder="예: 40"
+                      value={additionalAmount}
+                      onChange={e => setAdditionalAmount(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">구체적 소명 사유 및 진단/지출 배경</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="신청 사유를 구체적으로 적어주세요 (예: 월세 75만 원 중 기준 초과분 또는 당뇨 만성질환 정기 약제비)"
+                      value={additionalReason}
+                      onChange={e => setAdditionalReason(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 7) 배우자 재산 진술서 및 이혼 재산분할 소명서 */}
+              {(requestItem.docCode === '113120' || requestItem.docTitle.includes('배우자') || requestItem.docTitle.includes('이혼')) && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-950 text-[11px] leading-relaxed">
+                    💡 <strong>배우자 고유재산 소명:</strong> 배우자 명의 재산이 신청인의 은닉 자산이나 위장이혼이 아님을 진술합니다.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">배우자 (또는 전 배우자) 성명</label>
+                    <input 
+                      type="text" 
+                      placeholder="예: 이배우"
+                      value={spouseName}
+                      onChange={e => setSpouseName(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-800">배우자 보유 재산 내역 (부동산, 차량, 예금 등)</label>
+                    <input 
+                      type="text" 
+                      placeholder="예: 본인 명의 재산 없음 (또는 소형 승용차 1대)"
+                      value={spousePropertyList}
+                      onChange={e => setSpousePropertyList(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-800">재산분할 수령/지급액</label>
+                      <input 
+                        type="text" 
+                        placeholder="예: 없음 (또는 1,000만원 지급)"
+                        value={propertyDivisionDetail}
+                        onChange={e => setPropertyDivisionDetail(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-800">월 양육비 약정액</label>
+                      <input 
+                        type="text" 
+                        placeholder="예: 월 50만 원"
+                        value={childSupport}
+                        onChange={e => setChildSupport(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

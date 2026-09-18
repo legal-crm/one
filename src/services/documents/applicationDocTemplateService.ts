@@ -532,9 +532,257 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     isRequired: false,
     isThirdPartyMasking: false
   },
+
+  // ── [신규 확장 구비서류군: 특수 상황, 상세 소명 및 시가 평가 증빙] ──
+  {
+    id: 'rs-p2-18',
+    order: 35,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '건강보험료 납부확인서 (최근 1~2년분)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'GOV',
+    agency: '국민건강보험공단 (1577-1000)',
+    agencyUrl: 'https://www.nhis.or.kr',
+    tips: '건보공단 홈페이지 또는 전화(1577-1000) 팩스 신청. 급여 실수령액 및 체납 여부 교차 소명.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-19',
+    order: 36,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '소득금액증명원 (최근 3년분, 국세청 홈택스)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'TAX',
+    agency: '국세청 홈택스 / 세무서',
+    agencyUrl: 'https://www.hometax.go.kr',
+    tips: '최근 3개년도 발급. 소득이 없었던 기간은 "사실증명(신고사실없음)" 발급.',
+    isRequired: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rb-p2-5',
+    order: 37,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '소득금액증명원 (영업소득자용 최근 3년)',
+    category: 'REHAB_BUSINESS',
+    subCategory: 'TAX',
+    agency: '국세청 홈택스',
+    agencyUrl: 'https://www.hometax.go.kr',
+    tips: '종합소득세 신고 기준 최근 3년 소득금액증명원 발급.',
+    isRequired: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rb-p2-6',
+    order: 38,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '국세 및 지방세 납세증명서·체납사실증명서',
+    category: 'REHAB_BUSINESS',
+    subCategory: 'TAX',
+    agency: '홈택스 / 위택스',
+    agencyUrl: 'https://www.hometax.go.kr',
+    tips: '조세채권은 우선권 있는 개인회생채권으로 분류되므로 체납액 확인 필수.',
+    isRequired: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rb-p2-7',
+    order: 39,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '표준재무제표증명 (최근 3개년도)',
+    category: 'REHAB_BUSINESS',
+    subCategory: 'TAX',
+    agency: '국세청 홈택스',
+    agencyUrl: 'https://www.hometax.go.kr',
+    tips: '복식부기의무자 또는 법인사업자 필수 (대차대조표, 손익계산서 포함).',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rb-p2-8',
+    order: 40,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '사업장 매출장부 및 매출통장 거래내역 (최근 1년)',
+    category: 'REHAB_BUSINESS',
+    subCategory: 'FINANCE',
+    agency: '사업장 포스기 / 매출통장 은행',
+    tips: '최근 1년간의 POS 매출 집계표 또는 사업용 계좌 거래내역서.',
+    isRequired: true,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rb-p2-9',
+    order: 41,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '사업장 필요경비 증빙자료 (공과금, 매입세금계산서)',
+    category: 'REHAB_BUSINESS',
+    subCategory: 'TAX',
+    agency: '홈택스 / 관리비 영수증',
+    agencyUrl: 'https://www.hometax.go.kr',
+    tips: '월세 이체확인증, 전기/가스/통신비 영수증, 매입세금계산서 등 필요경비 공제 소명자료.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-20',
+    order: 42,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '기초생활수급자 / 장애인 / 연금수급 증명서',
+    category: 'REHAB_SALARIED',
+    subCategory: 'GOV',
+    agency: '정부24 / 국민연금공단 / 주민센터',
+    agencyUrl: 'https://www.gov.kr',
+    tips: '취약계층 소명 시 법원 생계비 특례 및 변제율 완화 적용 가능.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-21',
+    order: 43,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '부동산 시가 확인자료 (KB시세/실거래가/공인중개사)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: 'KB부동산 / 국토부 실거래가 / 인근 중개업소',
+    agencyUrl: 'https://kbland.kr',
+    tips: 'KB부동산 일반평균가 캡처본(아파트) 또는 국토부 실거래가, 인근 공인중개사 2곳 시세확인서.',
+    isRequired: false,
+    targetParty: 'BOTH',
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-22',
+    order: 44,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '자동차 시가 확인자료 (기준가액/중고차 2곳)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '보험개발원 / 엔카 / KB차차차',
+    agencyUrl: 'https://www.kidi.or.kr',
+    tips: '보험개발원 차량기준가액표 출력본 및 엔카/KB차차차 중고차 시세표 2곳.',
+    isRequired: false,
+    targetParty: 'BOTH',
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-23',
+    order: 45,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '대여금·미수금 등 채권 증빙 (차용증/이체증)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '보관 서류 / 은행 이체확인증',
+    tips: '타인에게 빌려준 돈이나 미수금이 있는 경우 차용증, 판결문 및 회수불능 사유서 첨부.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-24',
+    order: 46,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '최근 1년 이내 1,000만원 이상 재산 처분대금 소명서',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '매매계약서 / 계좌 입금증명 / 사용처 소명표',
+    tips: '부동산, 차량, 전세금 처분 대금의 담보 상환 후 잔여금 사용처(은닉/편파변제 방어).',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-25',
+    order: 47,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '개인채권자 부채 증빙자료 (차용증/이체증/인적사항)',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '보관 차용증 / 계좌이체증 / 채권자 주민등록초본',
+    tips: '지인/개인 사채 채권자의 성명, 주민번호, 주소, 연락처 및 송금내역서 필수.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-26',
+    order: 48,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '사적 채무조정(신용회복위원회) 신용상담보고서/실효확인서',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '신용회복위원회 (cyber.ccrs.or.kr)',
+    agencyUrl: 'https://cyber.ccrs.or.kr',
+    tips: '신용회복위원회 협약 가입 이력자 필수. 신용상담보고서 또는 채무조정 실효확인서 발급.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'rs-p2-27',
+    order: 49,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '강제집행·압류결정문 및 압류적립금 확인서',
+    category: 'REHAB_SALARIED',
+    subCategory: 'FINANCE',
+    agency: '송달 결정문 / 직장 총무팀 적립금 증명',
+    tips: '법원 채권압류및추심명령 결정문(타채 사건번호) 및 직장 급여 압류적립금 잔액 확인서.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'cor-3',
+    order: 50,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '최근 2년 내 이혼 재산분할 소명자료 및 양육비부담조서',
+    category: 'CORRECTION',
+    subCategory: 'PERSONAL',
+    agency: '가정법원 / 주민센터',
+    tips: '이혼판결문, 조정조서, 협의이혼의사확인서, 재산분할협의서(위장이혼 방어 필수).',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'cor-4',
+    order: 51,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '과거 10년 이내 회생·파산 결정문 및 변제수행 납입증명원',
+    category: 'CORRECTION',
+    subCategory: 'PERSONAL',
+    agency: '대법원 나의사건검색 / 관할 법원',
+    tips: '종전 사건 개시/인가/폐지/면책결정문 및 법원 변제금 전액 납입 증명원.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
+  {
+    id: 'cor-5',
+    order: 52,
+    phase: 2,
+    submissionMethod: 'DIGITAL_UPLOAD',
+    name: '추가 생계비(주거비/의료비/교육비) 인정 신청 소명자료',
+    category: 'CORRECTION',
+    subCategory: 'PERSONAL',
+    agency: '임대차계약서·월세이체증 / 병원 진단서 및 진료비영수증',
+    tips: '기준중위소득 60% 외에 불가피한 고액 월세, 중증질환 정기 병원비, 특수교육비 실비 소명.',
+    isRequired: false,
+    isThirdPartyMasking: false
+  },
 ];
 
-const STORAGE_KEY = 'LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V2';
+const STORAGE_KEY = 'LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V3';
 
 /**
  * 서류 목록 정렬 우선순위 비교기
@@ -587,18 +835,19 @@ export class ApplicationDocTemplateService {
   }
 
   /**
-   * 저장소에서 전체 템플릿 목록 로드 (없으면 기본값 초기화)
+   * 저장소에서 전체 템플릿 목록 로드 (없으면 기본값 초기화 및 지능형 마이그레이션)
    */
   static getTemplates(): ApplicationDocMasterItem[] {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V1');
+      const raw = localStorage.getItem(STORAGE_KEY) || 
+                  localStorage.getItem('LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V2') || 
+                  localStorage.getItem('LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V1');
       if (!raw) {
         this.resetToDefaults();
         return DEFAULT_DOC_TEMPLATES.slice().sort(compareDocItemsPriority);
       }
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // v1 -> v2 마이그레이션 및 인감 1차 서류 자동 승격 보정
         let hasChanges = false;
         const normalizedList = parsed.map(item => {
           const normalized = this.normalizeItem(item);
@@ -608,22 +857,20 @@ export class ApplicationDocTemplateService {
           return normalized;
         });
 
+        // V3 마스터 서류 지능형 머지: 기본 템플릿 중 누락된 신규 항목 자동 병합
+        const existingIds = new Set(normalizedList.map(i => i.id));
+        DEFAULT_DOC_TEMPLATES.forEach(defItem => {
+          if (!existingIds.has(defItem.id)) {
+            normalizedList.push(defItem);
+            hasChanges = true;
+          }
+        });
+
         // 인감증명서 최상단 우선순위 정렬
         normalizedList.sort(compareDocItemsPriority);
 
-        // 인감증명서가 최상단 order(1)이 아니면 순서 재할당 및 저장
-        const sealItem = normalizedList.find(i => i.name.includes('인감증명서') && i.category === 'REHAB_SALARIED');
-        if (sealItem && sealItem.order !== 1) {
-          hasChanges = true;
-          const catCounts: Record<string, number> = {};
-          normalizedList.forEach(item => {
-            catCounts[item.category] = (catCounts[item.category] || 0) + 1;
-            item.order = catCounts[item.category];
-          });
-        }
-
-        // 인감증명서 등 변경된 사항이 있으면 로컬스토리지 자동 갱신
-        if (hasChanges) {
+        // 변경된 사항이 있거나 V3 승격 시 로컬스토리지 자동 갱신
+        if (hasChanges || !localStorage.getItem(STORAGE_KEY)) {
           this.saveTemplates(normalizedList);
         }
 

@@ -13,6 +13,9 @@ import {
 } from '../../../services/documents/applicationDocTemplateService';
 import ApplicationDocSettingsModal from '../documents/ApplicationDocSettingsModal';
 import MobileApplicationDocHubModal from '../../client/MobileApplicationDocHubModal';
+import DocumentIssuanceGuideModal from '../../common/DocumentIssuanceGuideModal';
+import { getIssuanceGuideForDoc } from '../../../services/documents/legalDocRegistry';
+import { ClientMobileDocService } from '../../../services/documents/clientMobileDocService';
 
 interface Stage2DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -47,40 +50,71 @@ export default function Stage2DocumentsHubView({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileHubModal, setShowMobileHubModal] = useState(false);
 
+  // 관공서 발급 가이드 모달 상태
+  const [guideModalDoc, setGuideModalDoc] = useState<{
+    title: string;
+    agency: string;
+    url?: string;
+    phone?: string;
+    steps?: string[];
+    tips?: string;
+    maskingRequired?: boolean;
+  } | null>(null);
+
+  const handleOpenGuide = (docName: string, agency: string, isMasking: boolean, notes: string) => {
+    const guide = getIssuanceGuideForDoc(docName);
+    setGuideModalDoc({
+      title: docName,
+      agency: guide?.agencyName || agency,
+      url: guide?.agencyUrl,
+      phone: guide?.agencyPhone,
+      steps: guide?.issuanceSteps,
+      tips: guide?.tips || notes,
+      maskingRequired: isMasking ?? guide?.maskingRequired ?? false
+    });
+  };
+
   // 기관별 4대 서류 표준 데이터베이스 (korea.legal 신우법무사 표준 실무 모델)
   const govDocs: StandardDocItem[] = [
-    { id: 'gov-1', name: '주민등록등본', agency: '주민센터/정부24', isRequired: true, notes: '배우자와 세대 분리 시 배우자 등본도 필수 발급', isThirdPartyMaskingRequired: true },
+    { id: 'gov-1', name: '주민등록등본', agency: '주민센터/정부24', isRequired: true, notes: '과거 주소변동 전체 포함 (배우자와 세대 분리 시 배우자 등본도 필수 발급)', isThirdPartyMaskingRequired: true },
     { id: 'gov-2', name: '주민등록초본', agency: '주민센터/정부24', isRequired: true, notes: '과거 주소 전체, 개명, 주민등록번호 변동사항 포함 발급', isThirdPartyMaskingRequired: false },
     { id: 'gov-3', name: '가족관계증명서(상세)', agency: '주민센터/정부24', isRequired: true, notes: '상세증명서 발급 (신청인 외 가족 뒷자리 마스킹 필수)', isThirdPartyMaskingRequired: true },
-    { id: 'gov-4', name: '혼인관계증명서(상세)', agency: '주민센터/정부24', isRequired: true, notes: '미혼인 경우에도 반드시 상세증명서로 발급', isThirdPartyMaskingRequired: true },
-    { id: 'gov-5', name: '지방세 세목별 과세증명서', agency: '주민센터/정부24', isRequired: true, notes: '최근 5년 동안, 전국 단위, 모든 세목 표시 발급', isThirdPartyMaskingRequired: false },
-    { id: 'gov-6', name: '인감증명서 (본인발급)', agency: '주민센터/정부24', isRequired: false, notes: '부채증명서 대리 발급 의뢰 시 채권자 수 + 3부 필요', isThirdPartyMaskingRequired: false },
+    { id: 'gov-4', name: '혼인관계증명서(상세)', agency: '주민센터/정부24', isRequired: true, notes: '미혼인 경우에도 반드시 상세증명서로 발급 (마스킹 필수)', isThirdPartyMaskingRequired: true },
+    { id: 'gov-5', name: '지방세 세목별 과세증명서', agency: '주민센터/정부24', isRequired: true, notes: '최근 5년 동안, 전국 단위, 모든 세목 (과세사실 없어도 납세사실없음 기재)', isThirdPartyMaskingRequired: false },
+    { id: 'gov-6', name: '인감증명서 (본인발급)', agency: '주민센터/정부24', isRequired: true, notes: '주민센터 본인 발급 필수 (부채증명서 대리 발급용 채권자 수 + 5부 필요)', isThirdPartyMaskingRequired: false },
+    { id: 'gov-7', name: '인감도장 (실물)', agency: '주민센터/정부24', isRequired: true, notes: '인감증명서와 동일한 실물 도장 (위임장 날인 후 반환)', isThirdPartyMaskingRequired: false },
+    { id: 'gov-8', name: '신분증 사본 (앞/뒤)', agency: '주민센터/정부24', isRequired: true, notes: '주민등록증 또는 운전면허증 앞/뒤 선명한 사본', isThirdPartyMaskingRequired: false },
   ];
 
   const taxDocs: StandardDocItem[] = [
-    { id: 'tax-1', name: '근로소득세 원천징수영수증', agency: '국세청/홈택스', isRequired: true, notes: '최근 1~2년도 해당분 (급여소득자)', isThirdPartyMaskingRequired: false },
-    { id: 'tax-2', name: '소득금액증명원', agency: '국세청/홈택스', isRequired: true, notes: '최근 3년분 발급 (급여/영업 공통)', isThirdPartyMaskingRequired: false },
+    { id: 'tax-1', name: '근로소득세 원천징수영수증', agency: '국세청/홈택스', isRequired: true, notes: '최근 1~2년도 해당분 (급여소득자 필수)', isThirdPartyMaskingRequired: false },
+    { id: 'tax-2', name: '소득금액증명원', agency: '국세청/홈택스', isRequired: true, notes: '최근 3년분 발급 (급여소득/영업소득 공통)', isThirdPartyMaskingRequired: false },
     { id: 'tax-3', name: '사업자등록증명원 / 폐업사실증명원', agency: '국세청/홈택스', isRequired: false, notes: '개인사업자 또는 과거 5년 내 사업 이력자 필수', isThirdPartyMaskingRequired: false },
     { id: 'tax-4', name: '부가가치세 과세표준증명원', agency: '국세청/홈택스', isRequired: false, notes: '최근 3년분 (영업소득자 필수, 면세사업자는 수입금액증명)', isThirdPartyMaskingRequired: false },
-    { id: 'tax-5', name: '납세증명서 및 체납사실증명서', agency: '국세청/홈택스', isRequired: true, notes: '국세 체납 여부 소명 및 우선권 있는 채권 목록화용', isThirdPartyMaskingRequired: false },
-    { id: 'tax-6', name: '종합소득세 확정신고서', agency: '국세청/홈택스', isRequired: false, notes: '최근 2~3년분 (영업소득자 및 프리랜서 필수)', isThirdPartyMaskingRequired: false },
+    { id: 'tax-5', name: '납세증명서 및 체납사실증명서', agency: '국세청/홈택스', isRequired: true, notes: '국세/지방세 체납 여부 소명 및 우선권 채권 목록화용', isThirdPartyMaskingRequired: false },
+    { id: 'tax-6', name: '종합소득세 확정신고서', agency: '국세청/홈택스', isRequired: false, notes: '최근 2~3년분 (영업소득자 및 프리랜서 필수, 손익계산서 부속)', isThirdPartyMaskingRequired: false },
+    { id: 'tax-7', name: '표준재무제표증명원 (최근 3년)', agency: '국세청/홈택스', isRequired: false, notes: '법인 또는 복식부기의무 개인사업자 필수', isThirdPartyMaskingRequired: false },
   ];
 
   const workDocs: StandardDocItem[] = [
-    { id: 'work-1', name: '재직증명서', agency: '직장/사업장', isRequired: true, notes: '현재 직장의 재직 사실 및 직위 확인', isThirdPartyMaskingRequired: false },
+    { id: 'work-1', name: '재직증명서', agency: '직장/사업장', isRequired: true, notes: '현재 직장의 재직 사실, 입사일자 및 직위 확인 (회사 직인 필수)', isThirdPartyMaskingRequired: false },
     { id: 'work-2', name: '근로계약서 및 급여명세서', agency: '직장/사업장', isRequired: true, notes: '재직 1년 미만인 경우 최근 3~6개월 급여명세서 첨부', isThirdPartyMaskingRequired: false },
     { id: 'work-3', name: '예상퇴직금확인서 (또는 퇴직연금)', agency: '직장/사업장', isRequired: true, notes: '재직 1년 이상 필수 (퇴직금의 1/2이 청산가치에 반영됨)', isThirdPartyMaskingRequired: false },
-    { id: 'work-4', name: '영업장부 사본 및 손익계산서', agency: '직장/사업장', isRequired: false, notes: '영업소득자의 현재 실질 매출액 증빙자료', isThirdPartyMaskingRequired: false },
-    { id: 'work-5', name: '사업장 임대차계약서 및 공과금 영수증', agency: '직장/사업장', isRequired: false, notes: '필요경비(임료, 전기세, 통신비 등) 지출 소명', isThirdPartyMaskingRequired: false },
+    { id: 'work-4', name: '건강보험 자격득실확인서 (전체이력)', agency: '직장/사업장', isRequired: true, notes: '국민건강보험공단 1577-1000 (전체 취업/실직 이력 포함)', isThirdPartyMaskingRequired: false },
+    { id: 'work-5', name: '국민연금 산정용 가입내역확인서', agency: '직장/사업장', isRequired: true, notes: '국민연금공단 1355 발급 (공적 기준소득 교차 검증용)', isThirdPartyMaskingRequired: false },
+    { id: 'work-6', name: '건강보험료 납부확인서 (최근 1년)', agency: '직장/사업장', isRequired: false, notes: '건보공단 발급 (월 급여 실수령액 산정 참조용)', isThirdPartyMaskingRequired: false },
+    { id: 'work-7', name: '영업장부 사본 및 사업장 임대차계약서', agency: '직장/사업장', isRequired: false, notes: '영업소득자의 필요경비(임료, 재료비, 인건비) 지출 소명', isThirdPartyMaskingRequired: false },
   ];
 
   const financeDocs: StandardDocItem[] = [
-    { id: 'fin-1', name: '금융결제원 어카운트인포 계좌내역', agency: '금융기관/공공포털', isRequired: true, notes: '전 은행별 계좌목록 및 계좌 상세내역서 (휴면계좌 포함)', isThirdPartyMaskingRequired: false },
-    { id: 'fin-2', name: '최근 1년 모든 계좌 거래내역서', agency: '금융기관/공공포털', isRequired: true, notes: '주거래/부거래 통장 1년 입출금 거래내역 (엑셀 또는 PDF)', isThirdPartyMaskingRequired: false },
-    { id: 'fin-3', name: 'K-Geo 지적전산자료조회결과서', agency: '금융기관/공공포털', isRequired: true, notes: '전국 단위 토지 소유현황 (무소유 증명 포함 필수)', isThirdPartyMaskingRequired: false },
-    { id: 'fin-4', name: '신용정보원 보험가입조회서 및 해약환급금', agency: '금융기관/공공포털', isRequired: true, notes: '내보험다보여 조회서 + 각 보험사 예상 해약환급금 증명서', isThirdPartyMaskingRequired: false },
-    { id: 'fin-5', name: '주거지 임대차계약서 (또는 무상거주확인서)', agency: '금융기관/공공포털', isRequired: true, notes: '임차보증금 반환채권 및 우선변제 소액보증금 면제 산정', isThirdPartyMaskingRequired: false },
-    { id: 'fin-6', name: '부동산/자동차 시가 확인자료', agency: '금융기관/공공포털', isRequired: false, notes: 'KB시세, 실거래가 화면, 차량기준가액, 중고차 2곳 시세표', isThirdPartyMaskingRequired: false },
+    { id: 'fin-1', name: '금융결제원 어카운트인포 계좌내역', agency: '금융기관/공공포털', isRequired: true, notes: '전 은행·저축은행·증권사 전 계좌목록 및 상세내역서 (휴면계좌 포함)', isThirdPartyMaskingRequired: false },
+    { id: 'fin-2', name: '최근 1년 모든 계좌 거래내역서', agency: '금융기관/공공포털', isRequired: true, notes: '주거래/부거래 통장 1년 입출금 거래내역 (엑셀 또는 PDF 다운로드)', isThirdPartyMaskingRequired: false },
+    { id: 'fin-3', name: 'K-Geo 지적전산자료조회결과서', agency: '금융기관/공공포털', isRequired: true, notes: '전국 단위 토지 소유현황 (토지가 없어도 "무소유 증명" 필수)', isThirdPartyMaskingRequired: false },
+    { id: 'fin-4', name: '신용정보원 보험가입조회서 및 해약환급금', agency: '금융기관/공공포털', isRequired: true, notes: '내보험찾기 조회서 + 각 보험사 예상 해약환급금 확인서', isThirdPartyMaskingRequired: false },
+    { id: 'fin-5', name: '주거지 임대차계약서 (또는 무상거주확인서)', agency: '금융기관/공공포털', isRequired: true, notes: '확정일자부 임대차계약서 (무상 거주 시 무상거주사실확인서 대체)', isThirdPartyMaskingRequired: false },
+    { id: 'fin-6', name: '부동산/자동차 시가 확인자료', agency: '금융기관/공공포털', isRequired: false, notes: 'KB부동산시세, 실거래가, 보험개발원 차량기준가액, 중고차 2곳 시세표', isThirdPartyMaskingRequired: false },
+    { id: 'fin-7', name: '법원 변제금 환급용 통장사본 (앞면)', agency: '금융기관/공공포털', isRequired: true, notes: '압류되지 않은 1금융권 통장 앞면 사본 (인가 후 변제금 전용 계좌)', isThirdPartyMaskingRequired: false },
+    { id: 'fin-8', name: '부동산 등기사항전부증명서 (자가/토지)', agency: '금융기관/공공포털', isRequired: false, notes: '대법원 인터넷등기소 (본인 또는 배우자 소유 부동산 필수 발급)', isThirdPartyMaskingRequired: false },
   ];
 
   // 업로드된 파일 매핑 상태
@@ -309,7 +343,20 @@ export default function Stage2DocumentsHubView({
                         <>
                           <button
                             type="button"
+                            onClick={() => handleOpenGuide(doc.name, doc.agency, doc.isThirdPartyMaskingRequired ?? false, doc.notes)}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                            title="상세 발급처, 바로가기 링크 및 마스킹 가이드 확인"
+                          >
+                            <ExternalLink className="w-3 h-3 text-slate-500" />
+                            <span>발급안내</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => {
+                              const guide = getIssuanceGuideForDoc(doc.name);
+                              const msg = `[법률사무소 서류 발급 안내]\n${clientRequest.clientName} 님, 법원 제출용 [${doc.name}] 발급 안내입니다.\n\n▶ 발급처: ${guide?.agencyName || doc.agency}\n▶ 바로가기: ${guide?.agencyUrl || '관할 주민센터/온라인'}\n▶ 주의사항: ${doc.isThirdPartyMaskingRequired ? '가족 주민번호 뒷자리 마스킹(******) 필수' : doc.notes}`;
+                              if (navigator?.clipboard) navigator.clipboard.writeText(msg);
                               toast.success(`[알림톡 발송] ${clientRequest.clientName}님께 '${doc.name}' 모바일 간편 발급 가이드가 전송되었습니다.`);
                             }}
                             className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer press-scale border border-blue-200"
@@ -318,10 +365,11 @@ export default function Stage2DocumentsHubView({
                             <Send className="w-3 h-3 text-blue-600" />
                             <span>카톡 요청</span>
                           </button>
+
                           <button
                             type="button"
-                            onClick={() => toast.info(`${doc.name} 직접 업로드 창이 열렸습니다.`)}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                            onClick={() => handleOpenGuide(doc.name, doc.agency, doc.isThirdPartyMaskingRequired ?? false, doc.notes)}
+                            className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                           >
                             <Upload className="w-3 h-3 text-slate-500" />
                             <span>업로드</span>
@@ -344,28 +392,128 @@ export default function Stage2DocumentsHubView({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
-                  <span className="font-black text-slate-900">① 최근 1년 이내 1,000만원 이상 재산 처분자</span>
-                  <p className="text-slate-500 text-[11px]">부동산 매매계약서, 배당표, 통장 입금내역, 처분대금 사용처 소명표</p>
-                  <span className="inline-block text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">은닉·편파변제 방어</span>
+                {/* 1. 재산 처분 소명 */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-slate-900">① 최근 1년 이내 1,000만원 이상 재산 처분자</span>
+                      <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">은닉·편파변제 방어</span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] mt-1">부동산 매매계약서, 배당표, 통장 입금내역, 처분대금 사용처 소명표</p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const req = ClientMobileDocService.createRequest(clientRequest.id, clientRequest.clientName, clientRequest.phone || '', 'ASSET_DISPOSAL', '최근 1년 재산처분대금 사용처 소명서');
+                        if (navigator.clipboard) navigator.clipboard.writeText(ClientMobileDocService.generateNotificationMessage(req));
+                        toast.success(`${clientRequest.clientName} 님께 재산처분 소명서 모바일 작성 알림톡이 전송되었습니다.`);
+                      }}
+                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>카톡 작성요청</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('최근 1년 재산처분대금 소명서', '공인중개사/금융기관', false, '매매계약서 및 잔금 입금 통장내역 준비')}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>직접 업로드</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
-                  <span className="font-black text-slate-900">② 최근 2년 이내 이혼 및 재산분할 이력자</span>
-                  <p className="text-slate-500 text-[11px]">재산분할 명세서, 양육비부담조서, 재판상이혼 판결서 및 확정증명</p>
-                  <span className="inline-block text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded">위장이혼 의혹 해소</span>
+                {/* 2. 이혼 및 재산분할 */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-slate-900">② 최근 2년 이내 이혼 및 재산분할 이력자</span>
+                      <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded">위장이혼 의혹 해소</span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] mt-1">재산분할 명세서, 양육비부담조서, 재판상이혼 판결서 및 확정증명원</p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const req = ClientMobileDocService.createRequest(clientRequest.id, clientRequest.clientName, clientRequest.phone || '', '113120', '이혼에 따른 재산분할 경위 및 소명서');
+                        if (navigator.clipboard) navigator.clipboard.writeText(ClientMobileDocService.generateNotificationMessage(req));
+                        toast.success(`${clientRequest.clientName} 님께 이혼 재산분할 소명서 모바일 작성 알림톡이 전송되었습니다.`);
+                      }}
+                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>카톡 작성요청</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('이혼 판결서 및 재산분할조서', '가정법원 / 정부24', false, '가정법원 민원실 또는 전자소송 사이트에서 판결정본 및 확정증명 발급')}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>직접 업로드</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
-                  <span className="font-black text-slate-900">③ 과거 5~10년 내 회생·파산 신청 이력자</span>
-                  <p className="text-slate-500 text-[11px]">기존 사건 신청서, 인가결정문, 면책결정문, 변제수행 납입증명원</p>
-                  <span className="inline-block text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded">제595조 5년제한 검증</span>
+                {/* 3. 과거 5~10년 회생파산 이력 */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-slate-900">③ 과거 5~10년 내 회생·파산 신청 이력자</span>
+                      <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded">제595조 5년제한 검증</span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] mt-1">기존 사건 신청서, 인가결정문, 면책결정문, 변제수행 납입증명원</p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('과거 회생·파산 결정문 및 납입증명원', '대법원 나의사건검색 / 관할법원', false, '대법원 나의사건검색에서 과거 사건번호 조회 후 인가/면책결정문 발급')}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>발급안내</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('과거 회생파산 사건기록', '법원 접수계', false, '기존 사건 인가결정문 또는 폐지결정문 업로드')}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>직접 업로드</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
-                  <span className="font-black text-slate-900">④ 기존 급여·통장 압류 집행 계류자</span>
-                  <p className="text-slate-500 text-[11px]">법원 압류결정문(타채 사건번호), 상대방 채권자 목록, 압류적립금 소명서</p>
-                  <span className="inline-block text-[10px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded">Stage 3 중지명령 연계</span>
+                {/* 4. 기존 급여·통장 압류 집행 계류 */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-slate-900">④ 기존 급여·통장 압류 집행 계류자</span>
+                      <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded">중지명령 연계</span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] mt-1">법원 압류결정문(타채 사건번호), 상대방 채권자 목록, 압류적립금 소명서</p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('121120', '현 직장 총무/회계팀', false, '직장 급여담당부서에서 법원 압류적립금 확인서 수령')}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>발급안내</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuide('법원 채권압류 및 추심명령 결정문', '송달받은 법원 결정문', false, '타채 사건번호가 표기된 압류결정문 스캔/촬영본 업로드')}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>직접 업로드</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -469,6 +617,25 @@ export default function Stage2DocumentsHubView({
         clientRequest={clientRequest}
         uploadedFiles={uploadedFiles}
       />
+
+      {/* ── 관공서 및 외부기관 발급 가이드 원스톱 팝업 ── */}
+      {guideModalDoc && (
+        <DocumentIssuanceGuideModal
+          isOpen={!!guideModalDoc}
+          onClose={() => setGuideModalDoc(null)}
+          docTitle={guideModalDoc.title}
+          agencyName={guideModalDoc.agency}
+          agencyUrl={guideModalDoc.url}
+          agencyPhone={guideModalDoc.phone}
+          steps={guideModalDoc.steps}
+          tips={guideModalDoc.tips}
+          maskingRequired={guideModalDoc.maskingRequired}
+          clientName={clientRequest.clientName}
+          onUploadFile={(file) => {
+            toast.success(`'${guideModalDoc.title}' 파일('${file.name}')이 접수 서류함에 정상 등록되었습니다.`);
+          }}
+        />
+      )}
     </div>
   );
 }
