@@ -44,7 +44,7 @@ import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
 // [SECURITY] 진짜 관리자 전용 경로 (환경변수 VITE_ADMIN_SECRET_PATH로 분기, 뻔한 ?role=admin은 허니팟으로 유인)
-export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_auth';
+export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_9k7q';
 
 export default function App() {
   // Quad role state: 'client' | 'lawyer' | 'admin' | 'honeypot'
@@ -59,18 +59,13 @@ export default function App() {
     const isTargetingAdmin = roleParam && (
       (configuredAdminPath && roleParam === configuredAdminPath) ||
       roleParam === ADMIN_SECRET_ROLE ||
-      roleParam === 'adm_sec_9k7q'
+      roleParam === 'adm_sec_9k7q' ||
+      roleParam === 'adm_sec_auth'
     );
 
     if (isTargetingAdmin) {
-      // 검증된 관리자 세션이 있거나 방금 진행한 관리자 OAuth 리다이렉트인 경우 관리자 화면 허용
-      const hasAdminSession = secureGetItem('legal_crm_admin_session');
-      const isPendingOAuth = sessionStorage.getItem('pending_admin_oauth') === 'true';
-      if (hasAdminSession || isPendingOAuth || configuredAdminPath) {
-        return 'admin';
-      }
-      // 세션이나 사전 OAuth 요청 없이 파라미터만 임의 추측한 접근은 허니팟으로 포획
-      return 'honeypot';
+      // 지정된 관리자 시크릿 파라미터로 접근 시 관리자 뷰(구글 OAuth 로그인 화면 포함) 허용
+      return 'admin';
     }
 
     if (roleParam === 'lawyer') return 'lawyer';
