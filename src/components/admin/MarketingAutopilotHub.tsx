@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem } from '../../services/marketingAiService';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -326,6 +327,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 export default function MarketingAutopilotHub() {
   const [activeTab, setActiveTab] = useState('오늘의 오토파일럿');
   const [studioChannel, setStudioChannel] = useState('blog');
+  const [activeBlogContent, setActiveBlogContent] = useState<BlogContentData>(DDOK_BLOG_PRESETS_DATA[0]);
 
   const handleSwitchToStudio = (channelId: string) => {
     const map: Record<string, string> = {
@@ -378,9 +380,20 @@ export default function MarketingAutopilotHub() {
 
       {/* Content Area */}
       <div className="animate-fadeIn">
-        {activeTab === '오늘의 오토파일럿' && <TabTodayAutopilot onSwitchToStudio={handleSwitchToStudio} />}
+        {activeTab === '오늘의 오토파일럿' && (
+          <TabTodayAutopilot 
+            onSwitchToStudio={handleSwitchToStudio} 
+            activeBlogContent={activeBlogContent} 
+          />
+        )}
         {activeTab === 'Gemini 키 관리' && <TabKeyManagement />}
-        {activeTab === '콘텐츠 스튜디오' && <TabContentStudio initialTab={studioChannel} />}
+        {activeTab === '콘텐츠 스튜디오' && (
+          <TabContentStudio 
+            initialTab={studioChannel} 
+            activeBlogContent={activeBlogContent} 
+            setActiveBlogContent={setActiveBlogContent} 
+          />
+        )}
         {activeTab === '365일 캘린더' && <TabCalendar />}
         {activeTab === '성과 분석' && <TabAnalytics />}
       </div>
@@ -389,7 +402,13 @@ export default function MarketingAutopilotHub() {
 }
 
 // --- TAB 1: 오늘의 오토파일럿 ---
-function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId: string) => void }) {
+function TabTodayAutopilot({ 
+  onSwitchToStudio, 
+  activeBlogContent 
+}: { 
+  onSwitchToStudio: (channelId: string) => void;
+  activeBlogContent: BlogContentData;
+}) {
   const [autoMode, setAutoMode] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string; time: string; status: string; icon: any; color: string } | null>(null);
 
@@ -417,7 +436,7 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
             </span>
             <span className="text-white font-bold text-lg">수요일 = 전문가보증 (스텔스 보증)</span>
           </div>
-          <h2 className="text-xl font-bold text-white">오늘의 자동 선정 뉴스: "기준금리 동결, 서민 이자 부담은 여전..."</h2>
+          <h2 className="text-xl font-bold text-white">오늘의 자동 선정 뉴스: "{activeBlogContent.topic}"</h2>
           <p className="text-slate-400 text-sm leading-relaxed">
             [연결 앵글] 금리 동결에도 실질적인 채무 부담을 느끼는 소상공인/직장인들을 타겟으로, 
             플랫폼의 '스텔스 가명' 기술을 통해 완전 비대면으로 안전하게 변호사 상담과 견적을 받아볼 수 있음을 강조.
@@ -505,7 +524,7 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
             
             <div className="bg-[#0B0F19] rounded-xl p-4 text-sm text-slate-300 h-32 overflow-hidden relative">
               <div className="line-clamp-4">
-                {ch.id === 'blog' && "[100% 익명] 빚 독촉으로 밤잠 설치는 분들 필독. 최근 금리 동결에도 불구하고 자영업자들의 시름은 깊어지고 있습니다. 하지만 마이김변의 스텔스 기술을 통해 개인정보 노출 없이 안전하게..."}
+                {ch.id === 'blog' && `${activeBlogContent.title}. ${activeBlogContent.summary}`}
                 {ch.id === 'shorts' && "(후킹) 아직도 빚 때문에 전화기 꺼두시나요? (본론) 내 이름 숨기고 회생 가능성 알아보는 법. 지금 바로 확인하세요. #개인회생 #스텔스보증"}
                 {ch.id === 'cardnews' && "[카드 1] 이자 갚다 지친 당신을 위한 솔루션\n[카드 2] 마이김변 100% 안심 가명 상담\n[카드 3] 변호사 직접 검토, 철저한 비밀 보장"}
                 {ch.id === 'threads' && "오늘도 이자 낼 생각에 한숨 쉬셨나요? 법적 구제제도가 있어도 낙인찍힐까봐 망설이는 분들을 위해, 완벽한 익명성을 보장하는 플랫폼이 나왔습니다. 고민만 하지 말고 안심 상담을 받아보세요."}
@@ -535,6 +554,7 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
             setSelectedChannel(null);
             onSwitchToStudio(chId);
           }}
+          blogContent={activeBlogContent}
         />
       )}
     </div>
@@ -545,19 +565,31 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
 function ContentDetailModal({ 
   channel, 
   onClose,
-  onEditInStudio 
+  onEditInStudio,
+  blogContent
 }: { 
   channel: { id: string; name: string; time: string; status: string; icon: any; color: string };
   onClose: () => void;
   onEditInStudio: () => void;
+  blogContent?: BlogContentData;
 }) {
   const [copied, setCopied] = useState(false);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'text' | 'visual' | 'cue' | 'images' | 'preview'>(channel.id === 'blog' ? 'preview' : 'text');
-  const content = CHANNEL_FULL_CONTENTS[channel.id] || CHANNEL_FULL_CONTENTS.blog;
+  const rawContent = CHANNEL_FULL_CONTENTS[channel.id] || CHANNEL_FULL_CONTENTS.blog;
+  const content = (channel.id === 'blog' && blogContent) ? {
+    ...rawContent,
+    title: blogContent.title,
+    summary: blogContent.summary,
+    fullBody: blogContent.fullBody,
+    blogImages: blogContent.blogImages,
+    hashtags: blogContent.hashtags,
+    specs: blogContent.specs
+  } : rawContent;
   const Icon = channel.icon;
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`${content.title}\n\n${content.fullBody}\n\n${content.hashtags.join(' ')}`);
@@ -1246,17 +1278,109 @@ function ContentDetailModal({
 // --- TAB 2: Gemini 키 관리 ---
 function TabKeyManagement() {
   const [showModal, setShowModal] = useState(false);
+  const [activeApiKey, setActiveApiKey] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('marketing_gemini_api_key') || '') : '';
+  });
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [modalKeyInput, setModalKeyInput] = useState('');
+  const [modalRole, setModalRole] = useState('블로그 전문 작가 & 이미지 디렉터');
 
   const keys = [
     { id: 1, role: '뉴스분석관 & 검수관', name: 'Account #1', key: 'AIzaSyD...xQ9A', status: 'active', usage: 45, icon: Search },
-    { id: 2, role: '블로그 전문 작가', name: 'Account #2', key: 'AIzaSyA...m2P1', status: 'active', usage: 82, icon: FileText },
+    { id: 2, role: '블로그 전문 작가', name: 'Account #2', key: activeApiKey ? (activeApiKey.slice(0, 7) + '...' + activeApiKey.slice(-4)) : 'AIzaSyA...m2P1', status: activeApiKey ? 'active' : 'active', usage: 82, icon: FileText },
     { id: 3, role: '숏폼 스크립트 디렉터', name: 'Account #3', key: 'AIzaSyM...k8L0', status: 'rate-limited', usage: 98, icon: Video },
     { id: 4, role: '소셜 스토리텔러', name: 'Account #4', key: 'AIzaSyC...v4N2', status: 'active', usage: 30, icon: MessageCircle },
     { id: 5, role: '비주얼 프롬프트 아티스트', name: 'Account #5', key: 'AIzaSyP...t5X3', status: 'active', usage: 15, icon: ImageIcon },
   ];
 
+  const handleTestKey = async (testKey?: string) => {
+    const keyToTest = testKey || activeApiKey;
+    if (!keyToTest) {
+      toast.error('테스트할 Gemini API Key를 먼저 입력하거나 등록해주세요.');
+      return;
+    }
+    setIsTestingKey(true);
+    const toastId = toast.loading('Gemini 2.5 Flash API 연결 테스트 중...');
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keyToTest}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Respond with OK' }] }]
+        })
+      });
+      if (res.ok) {
+        toast.success('Gemini 2.5 Flash API 연결 성공! 실시간 AI 4컷 이미지 및 칼럼 생성이 활성화되었습니다.', { id: toastId });
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(`API 연결 실패: ${errData?.error?.message || res.statusText}`, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(`연결 오류: ${err.message || '네트워크 확인 필요'}`, { id: toastId });
+    } finally {
+      setIsTestingKey(false);
+    }
+  };
+
+  const handleSaveActiveKey = (key: string) => {
+    const clean = key.trim();
+    if (!clean) {
+      toast.error('API Key를 입력해주세요.');
+      return;
+    }
+    localStorage.setItem('marketing_gemini_api_key', clean);
+    setActiveApiKey(clean);
+    toast.success('Gemini API Key가 성공적으로 저장되었습니다.');
+    handleTestKey(clean);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Active Key Banner */}
+      <div className="bg-[#111622] rounded-2xl border border-indigo-500/30 p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Key size={20} className="text-indigo-400" />
+              마케팅 오토파일럿 활성 Gemini 2.5 Flash API Key
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">
+              네이버 블로그 4컷 이미지(Nano Banana 2 / Imagen 3 프롬프트) 및 D.I.A.+ 칼럼 자동 생성에 사용됩니다.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${activeApiKey ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+              {activeApiKey ? '연결 완료 (ACTIVE)' : '프리셋 모드 동작 중'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input 
+            type="password"
+            value={activeApiKey}
+            onChange={(e) => setActiveApiKey(e.target.value)}
+            placeholder="AIzaSy... 형식의 Gemini API Key를 입력하세요"
+            className="flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
+          />
+          <button
+            onClick={() => handleSaveActiveKey(activeApiKey)}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all press-scale min-h-[44px] cursor-pointer whitespace-nowrap shadow-sm"
+          >
+            저장 및 즉시 적용
+          </button>
+          <button
+            onClick={() => handleTestKey()}
+            disabled={isTestingKey}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors min-h-[44px] cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+          >
+            {isTestingKey ? <Loader2 size={14} className="animate-spin text-indigo-400" /> : <Sparkles size={14} className="text-amber-400" />}
+            {isTestingKey ? '테스트 중...' : '연결 테스트'}
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 shadow-sm">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -1272,7 +1396,7 @@ function TabKeyManagement() {
           </div>
           <button 
             onClick={() => setShowModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors press-scale flex items-center gap-2 min-h-[44px]"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors press-scale flex items-center gap-2 min-h-[44px] cursor-pointer"
           >
             <Plus size={16} /> API Key 등록
           </button>
@@ -1322,7 +1446,10 @@ function TabKeyManagement() {
               </div>
             </div>
             
-            <button className="w-full py-2 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-colors min-h-[44px]">
+            <button 
+              onClick={() => handleTestKey(activeApiKey)}
+              className="w-full py-2 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-colors min-h-[44px] cursor-pointer"
+            >
               연결 테스트
             </button>
           </div>
@@ -1330,34 +1457,47 @@ function TabKeyManagement() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-[#111622] rounded-3xl border border-[#1E293B] p-6 w-full max-w-md shadow-lg">
             <h3 className="text-xl font-bold text-white mb-4">새 Gemini API Key 등록</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-slate-400 mb-1.5">계정 별칭</label>
-                <input type="text" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" placeholder="예: Account #6" />
+                <input type="text" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" placeholder="예: Account #6" defaultValue="Account #6" />
               </div>
               <div>
                 <label className="block text-sm text-slate-400 mb-1.5">할당 역할</label>
-                <select className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 appearance-none">
+                <select 
+                  value={modalRole} 
+                  onChange={(e) => setModalRole(e.target.value)}
+                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 appearance-none"
+                >
+                  <option>블로그 전문 작가 & 이미지 디렉터</option>
+                  <option>뉴스분석관 & 검수관</option>
                   <option>백업용 예비 풀</option>
-                  <option>뉴스분석관</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm text-slate-400 mb-1.5">API Key</label>
-                <input type="password" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" placeholder="AIzaSy..." />
+                <input 
+                  type="password" 
+                  value={modalKeyInput}
+                  onChange={(e) => setModalKeyInput(e.target.value)}
+                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" 
+                  placeholder="AIzaSy..." 
+                />
               </div>
             </div>
             <div className="flex gap-3 mt-8">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 min-h-[44px]">취소</button>
+              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 min-h-[44px] cursor-pointer">취소</button>
               <button 
                 onClick={() => {
-                  toast.success('API Key가 성공적으로 등록되었습니다.');
+                  if (modalKeyInput.trim()) {
+                    handleSaveActiveKey(modalKeyInput);
+                  }
                   setShowModal(false);
                 }}
-                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 min-h-[44px]"
+                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 min-h-[44px] cursor-pointer font-medium"
               >
                 저장 및 테스트
               </button>
@@ -1369,17 +1509,9 @@ function TabKeyManagement() {
   );
 }
 
-// --- 똑생(ddok.life) 벤치마킹 8대 핵심 주제 프리셋 ---
-const DDOK_BLOG_PRESETS = [
-  { label: '카드/신용', topic: '개인회생 중 신용카드 정지 시점과 신용점수 회복 시기 (2026년 기준)', theme: '서류혁신' },
-  { label: '전세대출', topic: '개인회생 중 전세대출이나 주택담보대출 있으면 집에서 나가야 할까?', theme: '안심탐색' },
-  { label: '스텔스가명', topic: '사설 브로커 DB 영업의 덫 vs 010 번호 유출 0% 마이김변 스텔스 가명', theme: '안심탐색' },
-  { label: '서류혁신', topic: '동사무소 40종 서류 지옥 탈출: 말로 쓰는 AI 음성 진술서와 30분 패키징', theme: '서류혁신' },
-  { label: '변제금미납', topic: '개인회생 변제금 3회 이상 미납하면? 폐지 기준과 회생동행 구제법', theme: '면책완주' },
-  { label: '코인/주식', topic: '주식·코인 투자 빚도 탕감 가능할까? 서울·수원·부산회생법원 최신 실무준칙', theme: '주말안심상담' },
-  { label: '단점극복', topic: '개인회생 단점 5가지와 현실적인 대비법 총정리 (2026)', theme: '전문가보증' },
-  { label: '자격확인', topic: '2026 최저생계비 인상 반영: 내 소득으로 회생 신청 가능할까?', theme: '비대면기술' }
-];
+// --- 똑생(ddok.life) 벤치마킹 8대 핵심 주제 프리셋 참조 ---
+const DDOK_BLOG_PRESETS = DDOK_BLOG_PRESETS_DATA;
+
 
 // --- 채널별 최적화 가이드 & 알고리즘 공략 데이터 ---
 const CHANNEL_OPTIMIZATION_GUIDES: Record<string, {
@@ -1441,11 +1573,23 @@ const CHANNEL_OPTIMIZATION_GUIDES: Record<string, {
 };
 
 // --- TAB 3: 콘텐츠 스튜디오 ---
-function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
-  const [topic, setTopic] = useState('가계부채 폭증과 2030 영끌족의 파산 위기');
-  const [theme, setTheme] = useState('비대면기술');
+function TabContentStudio({ 
+  initialTab = 'blog',
+  activeBlogContent,
+  setActiveBlogContent
+}: { 
+  initialTab?: string;
+  activeBlogContent: BlogContentData;
+  setActiveBlogContent: (b: BlogContentData) => void;
+}) {
+  const [topic, setTopic] = useState(activeBlogContent.topic);
+  const [theme, setTheme] = useState(activeBlogContent.theme);
   const [genTab, setGenTab] = useState(initialTab);
   const [selectedSlide, setSelectedSlide] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [exportingStudioId, setExportingStudioId] = useState<string | null>(null);
+  const [isExportingStudioZip, setIsExportingStudioZip] = useState(false);
 
   useEffect(() => {
     if (initialTab) {
@@ -1453,10 +1597,107 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
     }
   }, [initialTab]);
 
-  const handleSelectPreset = (p: typeof DDOK_BLOG_PRESETS[0]) => {
+  useEffect(() => {
+    setTopic(activeBlogContent.topic);
+    setTheme(activeBlogContent.theme);
+  }, [activeBlogContent]);
+
+  const handleSelectPreset = (p: typeof DDOK_BLOG_PRESETS_DATA[0]) => {
     setTopic(p.topic);
     setTheme(p.theme);
-    toast.success(`'${p.label}' 주제 프리셋이 적용되었습니다.`);
+    setActiveBlogContent(p);
+    toast.success(`'${p.label}' 주제의 블로그 4컷 이미지와 칼럼이 즉시 로드되었습니다.`);
+  };
+
+  const handleGenerateAllChannels = async () => {
+    setIsGenerating(true);
+    const toastId = toast.loading(`'${topic.slice(0, 18)}...' 6채널 콘텐츠 및 4컷 이미지를 생성 중입니다...`);
+    try {
+      const generated = await generateBlogContentWithGemini(topic, theme);
+      setActiveBlogContent(generated);
+      toast.success(`'${topic.slice(0, 15)}...' 6채널 최적화 콘텐츠 및 4컷 이미지가 성공적으로 생성되었습니다!`, { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('생성 중 오류가 발생했습니다. 프리셋 모드로 복구합니다.', { id: toastId });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // 단일 요소 고해상도 PNG 다운로드 (3x scale - 한글 깨짐 0%)
+  const downloadStudioElementAsPng = async (elementId: string, filename: string) => {
+    const el = document.getElementById(elementId);
+    if (!el) {
+      toast.error('다운로드할 이미지 요소를 찾을 수 없습니다.');
+      return;
+    }
+    setExportingStudioId(elementId);
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: null,
+        allowTaint: true,
+      });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+      if (!blob) throw new Error('Blob 생성 실패');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${filename} 이미지가 다운로드되었습니다.`);
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      toast.error('이미지 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setExportingStudioId(null);
+    }
+  };
+
+  // 네이버 블로그 이미지 4컷 일괄 압축팩(ZIP) 다운로드
+  const downloadAllStudioBlogImagesAsZip = async () => {
+    if (!activeBlogContent.blogImages || activeBlogContent.blogImages.length === 0) return;
+    setIsExportingStudioZip(true);
+    const toastId = toast.loading('블로그 4컷 이미지를 고해상도로 렌더링 및 압축 중입니다...');
+    try {
+      const zip = new JSZip();
+      for (const bImg of activeBlogContent.blogImages) {
+        const el = document.getElementById(`studio-blog-visual-${bImg.id}`);
+        if (el) {
+          const canvas = await html2canvas(el, {
+            scale: 3,
+            useCORS: true,
+            logging: false,
+            backgroundColor: null,
+            allowTaint: true,
+          });
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+          if (blob) {
+            zip.file(`[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`, blob);
+          }
+        }
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.download = `[마이김변]_블로그_4컷_압축팩_${activeBlogContent.label || '맞춤'}.zip`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('블로그 4컷 이미지 압축팩이 성공적으로 다운로드되었습니다.', { id: toastId });
+    } catch (err) {
+      console.error('Failed to export zip:', err);
+      toast.error('일괄 다운로드 중 오류가 발생했습니다.', { id: toastId });
+    } finally {
+      setIsExportingStudioZip(false);
+    }
   };
 
   const currentGuide = CHANNEL_OPTIMIZATION_GUIDES[genTab] || CHANNEL_OPTIMIZATION_GUIDES.blog;
@@ -1477,14 +1718,18 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
 
             {/* 똑생 스타일 인기 주제 프리셋 버튼들 */}
             <div className="mb-4">
-              <span className="block text-xs font-semibold text-slate-400 mb-2">🔥 인기 주제 퀵 프리셋 (클릭 시 자동 입력)</span>
+              <span className="block text-xs font-semibold text-slate-400 mb-2">🔥 인기 주제 퀵 프리셋 (클릭 시 4컷 이미지 즉시 반영)</span>
               <div className="flex flex-wrap gap-1.5">
-                {DDOK_BLOG_PRESETS.map((p, idx) => (
+                {DDOK_BLOG_PRESETS_DATA.map((p, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSelectPreset(p)}
-                    className="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-white border border-slate-700/80 transition-colors cursor-pointer"
+                    className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                      activeBlogContent.presetKey === p.presetKey
+                        ? 'bg-indigo-600 text-white font-bold border-indigo-500 shadow-sm'
+                        : 'bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-white border-slate-700/80'
+                    }`}
                   >
                     #{p.label}
                   </button>
@@ -1498,7 +1743,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                 <textarea 
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 min-h-[100px] resize-none"
+                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 min-h-[100px] resize-none text-sm"
                 />
               </div>
               
@@ -1507,7 +1752,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                 <select 
                   value={theme}
                   onChange={(e) => setTheme(e.target.value)}
-                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 appearance-none"
+                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 appearance-none text-sm"
                 >
                   <option value="서류혁신">월 = 서류혁신 (간편 서류 발급)</option>
                   <option value="안심탐색">화 = 안심탐색 (보안 상담)</option>
@@ -1531,31 +1776,32 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                 <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold shrink-0 z-10 text-indigo-400">1</div>
                 <div className="bg-[#0B0F19] p-3 rounded-xl border border-slate-800 flex-1">
                   <span className="text-xs text-slate-500 block mb-1">Fact (뉴스)</span>
-                  <p className="text-sm text-slate-300">2030세대 영끌족, 금리 인상 여파로 가계부채 한계 봉착</p>
+                  <p className="text-sm text-slate-300">{topic.slice(0, 40)}...</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold shrink-0 z-10 text-indigo-400">2</div>
                 <div className="bg-[#0B0F19] p-3 rounded-xl border border-slate-800 flex-1">
                   <span className="text-xs text-slate-500 block mb-1">Dilemma (채무자 딜레마)</span>
-                  <p className="text-sm text-slate-300">파산/회생을 알아보고 싶지만, 직장 불이익이나 주변 시선이 두려움</p>
+                  <p className="text-sm text-slate-300">사설 브로커 스팸이나 가족/직장 소문 두려움으로 해결을 망설임</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm font-bold shrink-0 z-10 text-indigo-400">3</div>
                 <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 flex-1">
                   <span className="text-xs text-indigo-400 block mb-1">Solution (플랫폼 브릿지)</span>
-                  <p className="text-sm text-indigo-100">'스텔스 가명' 기술로 철저히 신분을 숨기고 010 번호 없이 안전하게 상담 가능함 어필</p>
+                  <p className="text-sm text-indigo-100">'010 번호 없는 스텔스 가명'과 30분 서류 패키징으로 안전하게 상담 가능함 어필</p>
                 </div>
               </div>
             </div>
 
             <button 
-              onClick={() => toast.success('6개 채널 콘텐츠 생성을 시작합니다.')}
-              className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition-all press-scale flex items-center justify-center gap-2 shadow-sm min-h-[44px]"
+              onClick={handleGenerateAllChannels}
+              disabled={isGenerating}
+              className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition-all press-scale flex items-center justify-center gap-2 shadow-sm min-h-[44px] cursor-pointer"
             >
-              <UploadCloud size={18} />
-              원클릭 6채널 콘텐츠 생성
+              {isGenerating ? <Loader2 size={18} className="animate-spin text-white" /> : <UploadCloud size={18} />}
+              {isGenerating ? 'AI 6채널 & 4컷 이미지 생성 중...' : '원클릭 6채널 콘텐츠 생성'}
             </button>
           </div>
         </div>
@@ -1620,41 +1866,154 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
           </div>
 
           {/* Channel-Specific Interactive Editor Views */}
-          <div className="flex-1 flex flex-col space-y-3">
+          <div className="flex-1 flex flex-col space-y-4">
             
             {/* 1. Blog Editor */}
             {genTab === 'blog' && (
-              <div className="flex-1 flex flex-col space-y-3">
+              <div className="flex-1 flex flex-col space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">제목 (스마트블록 검색 키워드 최적화)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-400">제목 (스마트블록 검색 키워드 최적화)</label>
+                    <span className="text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-medium">
+                      {activeBlogContent.label ? `#${activeBlogContent.label} 프리셋` : 'AI 맞춤 생성'}
+                    </span>
+                  </div>
                   <input 
                     type="text" 
+                    value={activeBlogContent.title}
+                    onChange={(e) => setActiveBlogContent({ ...activeBlogContent, title: e.target.value })}
                     className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none focus:border-indigo-500 text-sm"
-                    defaultValue="[100% 익명] 빚 독촉으로 밤잠 설치는 분들 필독 — 010 번호 유출 없이 다중 견적 받는 법"
                   />
                 </div>
 
                 {/* Answer-First Box */}
-                <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300 mb-1">
-                    <Sparkles size={14} /> Answer-First 3문장 핵심 요약 (방문자 5초 이탈 방지)
+                <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                      <Sparkles size={14} /> Answer-First 3문장 핵심 요약 (방문자 5초 이탈 방지)
+                    </div>
+                    <span className="text-[10px] text-emerald-400 font-medium">체류시간 3분+ 견인</span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    1. 2026년 기준금리 동결에도 채무 원리금 부담이 한계에 도달했다면 개인회생 신청자격을 즉시 검토해야 합니다.<br/>
-                    2. 사설 포털에 번호를 남길 경우 불법 DB 유통으로 스팸 전화에 시달릴 위험이 큽니다.<br/>
-                    3. 마이김변은 010 번호 노출 없이 안심 가명으로 전문 변호사 3명의 견적을 직접 비교할 수 있습니다.
-                  </p>
+                  <div className="space-y-1 text-xs text-slate-300 leading-relaxed">
+                    {activeBlogContent.answerFirst.map((ans, idx) => (
+                      <p key={idx}>{ans}</p>
+                    ))}
+                  </div>
                 </div>
 
+                {/* 4컷 본문 삽입 이미지 세트 실시간 프리뷰 & 다운로드 섹션 */}
+                <div className="space-y-3 bg-[#0B0F19] p-4 rounded-xl border border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <ImageIcon size={15} className="text-indigo-400" />
+                        네이버 블로그 본문 삽입용 4컷 이미지 세트 (D.I.A.+ & 100% 한글 벡터 선명도)
+                      </span>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        주제 맞춤 생성된 4컷 이미지입니다. 개별 PNG 또는 4컷 일괄 ZIP으로 즉시 다운로드할 수 있습니다.
+                      </p>
+                    </div>
+                    <button
+                      onClick={downloadAllStudioBlogImagesAsZip}
+                      disabled={isExportingStudioZip}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[36px]"
+                    >
+                      {isExportingStudioZip ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      {isExportingStudioZip ? '4컷 압축 중...' : '4컷 일괄 다운로드 (ZIP)'}
+                    </button>
+                  </div>
+
+                  {/* 4 Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {activeBlogContent.blogImages.map((bImg) => (
+                      <div key={bImg.id} className="bg-[#111622] rounded-xl border border-slate-800 p-3 flex flex-col justify-between space-y-2.5">
+                        
+                        {/* Visual Card (Rendered for html2canvas) */}
+                        <div 
+                          id={`studio-blog-visual-${bImg.id}`}
+                          className={`w-full h-44 rounded-lg bg-gradient-to-br ${bImg.previewGradient} p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden`}
+                        >
+                          <div className="flex justify-between items-start z-10">
+                            <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[10px] font-bold backdrop-blur-sm border border-white/10">
+                              {bImg.tag}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[9px] font-medium border border-emerald-500/30">
+                              {bImg.insertPosition}
+                            </span>
+                          </div>
+                          <div className="z-10 my-auto space-y-1">
+                            <h6 className="text-sm sm:text-base font-extrabold text-white leading-tight drop-shadow-md whitespace-pre-line">
+                              {bImg.previewTitle}
+                            </h6>
+                            <p className="text-[11px] text-slate-200 line-clamp-2 drop-shadow-sm font-medium">
+                              {bImg.previewSub}
+                            </p>
+                          </div>
+                          <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-300">
+                            <span className="text-emerald-400 font-bold">마이김변 안심 리걸테크</span>
+                            <span>010 번호 유출 0%</span>
+                          </div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        </div>
+
+                        {/* Role & Prompt info */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-slate-300">#{bImg.order}. {bImg.title}</span>
+                          </div>
+                          <div className="bg-[#0B0F19] rounded-lg p-2 border border-slate-800 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-mono text-slate-400 truncate flex-1">{bImg.prompt}</span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(bImg.prompt);
+                                setCopiedPromptId(bImg.id);
+                                toast.success('프롬프트가 복사되었습니다.');
+                                setTimeout(() => setCopiedPromptId(null), 2000);
+                              }}
+                              className="text-[10px] text-indigo-400 hover:text-indigo-300 shrink-0 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedPromptId === bImg.id ? <CheckCheck size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                              {copiedPromptId === bImg.id ? '복사됨' : '복사'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Download button */}
+                        <button
+                          onClick={() => downloadStudioElementAsPng(`studio-blog-visual-${bImg.id}`, `[마이김변]_블로그_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`)}
+                          disabled={exportingStudioId === `studio-blog-visual-${bImg.id}`}
+                          className="w-full py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[34px]"
+                        >
+                          {exportingStudioId === `studio-blog-visual-${bImg.id}` ? (
+                            <Loader2 size={12} className="animate-spin text-indigo-400" />
+                          ) : (
+                            <Download size={12} />
+                          )}
+                          {exportingStudioId === `studio-blog-visual-${bImg.id}` ? '렌더링 중...' : '고해상도 PNG 다운로드'}
+                        </button>
+
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Full Body Column */}
                 <div className="flex-1 flex flex-col">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">본문 칼럼 (D.I.A.+ 고품질 2,500자)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-400">본문 칼럼 (D.I.A.+ 고품질 2,500자)</label>
+                    <span className="text-[11px] text-slate-400">
+                      공백 포함 {activeBlogContent.fullBody.length}자
+                    </span>
+                  </div>
                   <textarea 
                     className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-300 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[220px]"
-                    defaultValue={CHANNEL_FULL_CONTENTS.blog.fullBody}
+                    value={activeBlogContent.fullBody}
+                    onChange={(e) => setActiveBlogContent({ ...activeBlogContent, fullBody: e.target.value })}
                   />
                 </div>
               </div>
             )}
+
 
             {/* 2. YouTube Shorts Editor */}
             {genTab === 'shorts' && (
