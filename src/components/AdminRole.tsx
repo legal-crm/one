@@ -9,7 +9,7 @@ import {
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
-  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope, Download, Send, Printer, RefreshCw
+  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope, Download, Send, Printer, RefreshCw, Megaphone
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
@@ -36,6 +36,7 @@ import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/ad
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
 import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
+import MarketingAutopilotHub from './admin/MarketingAutopilotHub';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -102,7 +103,7 @@ export default function AdminRole({
 }: AdminRoleProps) {
   const dialog = useDialog();
   // Triple tab state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
@@ -1069,7 +1070,14 @@ export default function AdminRole({
                 )}
               </button>
 
-              {/* 그룹 3: 설정 */}
+              {/* 그룹 3: 마케팅 */}
+              <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">마케팅</p>
+              <button onClick={() => setActiveTab('marketing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'marketing' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Megaphone className="w-5 h-5 shrink-0 text-fuchsia-400" /><span>마케팅 자동화</span>
+              </button>
+
+              {/* 그룹 4: 설정 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
               <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">설정</p>
               <button onClick={() => setActiveTab('contents')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'contents' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
@@ -1119,7 +1127,7 @@ export default function AdminRole({
                 </span>
               )}
             </button>
-            <button onClick={() => { const tabs: Array<typeof activeTab> = ['security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => { const tabs: Array<typeof activeTab> = ['marketing', 'security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-sm font-bold">더보기</span>
             </button>
           </div>
@@ -5896,6 +5904,13 @@ export default function AdminRole({
           {activeTab === 'security' && (
             <div className="space-y-6 animate-fadeIn">
               <GlobalSessionMonitor currentAdminEmail={pendingAdminEmail || 'pipj601@gmail.com'} />
+            </div>
+          )}
+
+          {/* TAB 9: MARKETING AUTOPILOT HUB */}
+          {activeTab === 'marketing' && (
+            <div className="animate-fadeIn">
+              <MarketingAutopilotHub />
             </div>
           )}
 
