@@ -65,10 +65,10 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 - 수입지출목록과 재산목록까지 30분 만에 패키징하여 담당 변호사에게 1초 전송
 
 ■ 결론 및 안내: 더 이상 혼자 속앓이하지 마세요
-회생과 파산은 성실하지만 불운한 채무자를 구제하기 위한 헌법상의 제도입니다. 혼자 끙끙 앓다 기회를 놓치지 마시고, 지금 마이김변에서 30초 익명 자가진단으로 탕감 가능성을 먼저 확인해보세요.
+회생과 파산은 성실하지만 불운한 채무자를 구제하기 위한 헌법상의 제도입니다. 혼자 끙끙 앓다 기회를 놓치지 마시고, 지금 마이김변에서 010 번호 유출 없이 내 안심 가명으로 변호사 리스트를 확인하고 무료 안심 견적을 받아보세요.
 
 [📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
-(100% 무료 익명 자가진단 바로가기 — 마이김변 공식 배너)
+(010 번호 유출 0% 안심 가명 상담 신청 바로가기 — 마이김변 공식 배너)
 
 ※ 본 콘텐츠는 리걸테크 플랫폼 마이김변의 기술적 편의성을 안내하는 정보성 칼럼이며, 개별 법률 상담 및 소송 대리는 의뢰인이 선택한 독립된 법률사무소가 수행합니다.`,
     blogImages: [
@@ -111,13 +111,13 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
       {
         id: "blog-img-4",
         order: 4,
-        title: "CTA 배너: 30초 무료 익명 자가진단 바로가기",
-        role: "블로그 독자를 플랫폼 유입 및 진단 신청으로 전환",
+        title: "CTA 배너: 010 번호 노출 없는 안심 가명 상담 바로가기",
+        role: "블로그 독자를 플랫폼 유입 및 변호사 상담 신청으로 전환",
         insertPosition: "본문 최하단 (결론 및 면책 공지 직전)",
-        prompt: "A high-conversion horizontal banner with glowing emerald CTA button '30초 무료 익명 자가진단', sleek dark background with golden shield badge, professional fintech look",
+        prompt: "A high-conversion horizontal banner with glowing emerald CTA button '안심 가명 상담 신청', sleek dark background with golden shield badge, professional fintech look",
         previewGradient: "from-emerald-950 via-slate-900 to-indigo-950",
-        previewTitle: "내 빚도 탕감받을 수 있을까?",
-        previewSub: "지금 30초 만에 100% 무료 익명으로 확인해보세요",
+        previewTitle: "내게 맞는 도산 전문 변호사 찾기",
+        previewSub: "010 번호 노출 없이 변호사 프로필 확인 후 안심 상담받으세요",
         tag: "전환 CTA 배너"
       }
     ],
@@ -147,13 +147,13 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다."
 
 [29~35초: CTA]
-(화면 연출: 고정 댓글 링크 화살표 강조 & 30초 익명 진단 뱃지)
-성우 나레이션: "고정 댓글 링크에서 30초 만에 내 탕감 가능성을 100% 무료로 확인하세요!"`,
+(화면 연출: 고정 댓글 링크 화살표 강조 & 안심 가명 상담 신청 뱃지)
+성우 나레이션: "고정 댓글 링크에서 010 번호 유출 없이 전문 변호사 안심 상담을 신청하세요!"`,
     cueSheet: [
       { time: "00~05초", action: "부재중 전화 30통 폭탄 모션 + 경고음 효과음", script: "아직도 빚 독촉 전화 받기 무서워서 전화기 비행기 모드로 해두셨나요?" },
       { time: "06~17초", action: "포털 번호 입력 망설이는 인물 줌인 (Ken Burns)", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 쏟아질까 봐 겁나시죠?" },
       { time: "18~28초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 다중 선택", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
-      { time: "29~35초", action: "고정 댓글 화살표 펄스 애니메이션 + 로고 아웃트로", script: "고정 댓글 링크에서 30초 만에 내 탕감 가능성을 100% 무료로 확인하세요!" }
+      { time: "29~35초", action: "고정 댓글 화살표 펄스 애니메이션 + 로고 아웃트로", script: "고정 댓글 링크에서 010 번호 유출 없이 전문 변호사 안심 상담을 신청하세요!" }
     ],
     visualPrompt: "Cinematic vertical 9:16 shot, modern dark neon Korean legal office, stressed person looking at smartphone with glowing shield UI, 8k resolution, dramatic lighting",
     hashtags: ["#개인회생", "#빚독촉", "#스텔스보증", "#유튜브쇼츠", "#마이김변", "#채무탕감"],
@@ -182,18 +182,18 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 2️⃣ 내가 직접 고르는 투명한 전문 변호사 다중 견적
 3️⃣ 말로 하면 30분 만에 끝나는 AI 서류 패키징
 
-지금 프로필 링크(@mykimbyun)에서 30초 무료 익명 자가진단을 시작하세요! ✨
+지금 프로필 링크(@mykimbyun)에서 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청해보세요! 🛡️
 
-#마이김변 #개인회생 #개인파산 #신용회복 #빚탈출 #스텔스보증 #비대면법률 #카드뉴스`,
+#마이김변 #개인회생 #개인파산 #신용회복 #빚탈출 #스텔스보증 #비대면법률`,
     slides: [
       { page: 1, headline: "이자 갚다 지친 당신을 위한 솔루션", subtext: "번호 유출 0%! 변호사 직접 고르고 30분 만에 끝내는 법", visualDesc: "어두운 밤 서류와 영수증을 보며 고뇌하는 채무자의 감성적 일러스트" },
       { page: 2, headline: "상담 신청하기 망설여지는 진짜 이유", subtext: "포털에 번호 남기면 사방에서 쏟아지는 대출 영업 전화의 공포", visualDesc: "스마트폰 화면 위로 쏟아지는 붉은색 알림 아이콘들" },
       { page: 3, headline: "010 번호 유출 0%, '스텔스 가명'", subtext: "내 진짜 번호는 어디에도 노출되지 않습니다. 오직 안전한 가명으로 상담 진행", visualDesc: "마이김변의 보안 쉴드(Shield) 그래픽과 비공개 보호 뱃지" },
       { page: 4, headline: "내가 직접 보고 선택하는 전문 변호사", subtext: "경력, 전문분야, 솔직 후기 확인 후 마음에 드는 변호사 3명에게 동시 견적", visualDesc: "신뢰감 있는 변호사 프로필 카드 3개가 나란히 배치된 UI 목업" },
       { page: 5, headline: "40종 서류 지옥? 말로 쓰는 AI 진술서", subtext: "동사무소 뛰어다닐 필요 없이 스마트폰으로 30분 만에 서류 패키지 완성", visualDesc: "마이크 아이콘에서 텍스트로 자동 변환되는 실시간 음성 인식 그래픽" },
-      { page: 6, headline: "지금 30초 만에 익명으로 확인하세요", subtext: "프로필 링크 클릭 ➔ 100% 무료 자가진단 ➔ 탕감 가능성 즉시 조회", visualDesc: "마이김변 앱 다운로드/시작하기 버튼과 깔끔한 로고 엔딩" }
+      { page: 6, headline: "지금 30초 만에 익명으로 확인하세요", subtext: "프로필 링크 클릭 ➔ 변호사 프로필 확인 ➔ 010 번호 없이 안심 상담 신청", visualDesc: "마이김변 앱 다운로드/시작하기 버튼과 깔끔한 로고 엔딩" }
     ],
-    hashtags: ["#마이김변", "#개인회생", "#개인파산", "#신용회복", "#빚탈출", "#스텔스보증", "#카드뉴스"],
+    hashtags: ["#마이김변", "#개인회생", "#개인파산", "#신용회복", "#빚탈출", "#스텔스보증"],
     specs: [
       { label: "카드 수", value: "6장 슬라이드" },
       { label: "해상도", value: "1080 x 1080 (1:1 Square)" },
@@ -219,7 +219,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 [4/4]
 더 이상 혼자 숨죽여 버티지 마세요.
 회생/파산은 성실하게 살다 넘어진 분들이 다시 일어서라고 법이 만들어둔 안전망입니다.
-프로필 링크에서 익명으로 30초 자가진단부터 받아보세요. 아무에게도 알려지지 않습니다.`,
+프로필 링크에서 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청해보세요. 아무에게도 알려지지 않습니다.`,
     hashtags: ["#개인회생", "#개인파산", "#채무조정", "#스레드", "#마이김변", "#스텔스보증"],
     specs: [
       { label: "타래 구성", value: "총 4단 연결 타래" },
@@ -249,9 +249,9 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 3. 복잡한 40종 서류, 스마트폰으로 말만 하면 30분 만에 원스톱 패키징
 
 더 이상 혼자 속앓이하며 버티지 마시고, 합법적인 제도의 보호를 받으십시오.
-지금 아래 링크를 클릭하시면 100% 익명으로 30초 만에 무료 자가진단을 받아보실 수 있습니다.
+지금 아래 링크를 클릭하시면 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청하실 수 있습니다.
 
-👉 무료 익명 자가진단 바로가기: https://mykimbyun.com/diagnosis
+👉 안심 가명 상담 신청 바로가기: https://mykimbyun.com/consult
 
 ※ 마이김변은 법률문서 작성 보조 및 변호사 선택을 지원하는 합법 리걸테크 플랫폼입니다.`,
     hashtags: ["#개인회생", "#개인파산", "#자영업자지원", "#소상공인대출", "#채무탕감", "#마이김변"],
@@ -279,7 +279,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 
 [21~25초: 엔딩 & CTA]
 (화면 연출: 프로필 링크 손가락으로 가리키기)
-자막/음성: "내가 빚 탕감받을 수 있는지 프로필 링크에서 30초 만에 공짜로 확인해봐요!"`,
+자막/음성: "프로필 링크에서 내 번호 안 밝히고 변호사 견적 바로 받아보세요!"`,
     visualPrompt: "Fast-paced TikTok vertical style, youthful aesthetic, smartphone closeups showing anonymous toggle switch turning green, vibrant lighting",
     hashtags: ["#개인회생", "#꿀팁", "#정보공유", "#빚탈출", "#스텔스보증", "#틱톡추천", "#마이김변"],
     specs: [
@@ -388,7 +388,7 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
           <h2 className="text-xl font-bold text-white">오늘의 자동 선정 뉴스: "기준금리 동결, 서민 이자 부담은 여전..."</h2>
           <p className="text-slate-400 text-sm leading-relaxed">
             [연결 앵글] 금리 동결에도 실질적인 채무 부담을 느끼는 소상공인/직장인들을 타겟으로, 
-            플랫폼의 '스텔스 가명' 기술을 통해 완전 비대면으로 안전하게 파산/회생 가능성을 진단받을 수 있음을 강조.
+            플랫폼의 '스텔스 가명' 기술을 통해 완전 비대면으로 안전하게 변호사 상담과 견적을 받아볼 수 있음을 강조.
           </p>
         </div>
         
@@ -475,10 +475,10 @@ function TabTodayAutopilot({ onSwitchToStudio }: { onSwitchToStudio: (channelId:
               <div className="line-clamp-4">
                 {ch.id === 'blog' && "[100% 익명] 빚 독촉으로 밤잠 설치는 분들 필독. 최근 금리 동결에도 불구하고 자영업자들의 시름은 깊어지고 있습니다. 하지만 마이김변의 스텔스 기술을 통해 개인정보 노출 없이 안전하게..."}
                 {ch.id === 'shorts' && "(후킹) 아직도 빚 때문에 전화기 꺼두시나요? (본론) 내 이름 숨기고 회생 가능성 알아보는 법. 지금 바로 확인하세요. #개인회생 #스텔스보증"}
-                {ch.id === 'cardnews' && "[카드 1] 이자 갚다 지친 당신을 위한 솔루션\n[카드 2] 마이김변 100% 익명 진단\n[카드 3] 변호사 직접 검토, 철저한 비밀 보장"}
-                {ch.id === 'threads' && "오늘도 이자 낼 생각에 한숨 쉬셨나요? 법적 구제제도가 있어도 낙인찍힐까봐 망설이는 분들을 위해, 완벽한 익명성을 보장하는 플랫폼이 나왔습니다. 고민만 하지 말고 진단받아보세요."}
-                {ch.id === 'facebook' && "🚨 금리 동결 소식에도 웃지 못하는 소상공인 여러분! 🚨 더 이상 혼자 앓지 마세요. 스텔스 가명 기술로 내 신분을 철저히 숨기고, 무료로 회생/파산 가능성을 진단받을 수 있습니다."}
-                {ch.id === 'tiktok' && "빚독촉 피하는 꿀팁 방출! 내 이름 안 밝히고 변호사한테 회생 파산 진단받는 법. 마이김변 스텔스 모드 키면 끝. 링크에서 바로 확인해봐요!"}
+                {ch.id === 'cardnews' && "[카드 1] 이자 갚다 지친 당신을 위한 솔루션\n[카드 2] 마이김변 100% 안심 가명 상담\n[카드 3] 변호사 직접 검토, 철저한 비밀 보장"}
+                {ch.id === 'threads' && "오늘도 이자 낼 생각에 한숨 쉬셨나요? 법적 구제제도가 있어도 낙인찍힐까봐 망설이는 분들을 위해, 완벽한 익명성을 보장하는 플랫폼이 나왔습니다. 고민만 하지 말고 안심 상담을 받아보세요."}
+                {ch.id === 'facebook' && "🚨 금리 동결 소식에도 웃지 못하는 소상공인 여러분! 🚨 더 이상 혼자 앓지 마세요. 스텔스 가명 기술로 내 신분을 철저히 숨기고, 안전하게 전문 변호사 견적과 상담을 받아보실 수 있습니다."}
+                {ch.id === 'tiktok' && "빚독촉 피하는 꿀팁 방출! 내 이름 안 밝히고 변호사한테 회생 파산 안심 견적 받는 법. 마이김변 스텔스 모드 키면 끝. 링크에서 바로 확인해봐요!"}
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0B0F19] to-transparent"></div>
             </div>
@@ -763,15 +763,15 @@ function ContentDetailModal({
                 <div className="space-y-3 pt-6 border-t border-slate-800">
                   <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 rounded-2xl border border-indigo-500/30 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
                     <div className="space-y-1 text-center sm:text-left">
-                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">100% 익명 보장 · 변호사법 준수</span>
-                      <h4 className="text-lg font-bold text-white">내 빚도 탕감받을 수 있을까?</h4>
-                      <p className="text-xs text-slate-300">서울·수원·부산회생법원 실무준칙 반영 30초 익명 진단</p>
+                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">100% 익명 보장 · 010 번호 비공개</span>
+                      <h4 className="text-lg font-bold text-white">010 번호 노출 없는 안심 변호사 상담</h4>
+                      <p className="text-xs text-slate-300">스텔스 가명으로 내 정보 완벽 보호 · 복수 변호사 직접 비교</p>
                     </div>
                     <button
-                      onClick={() => toast.info('자가진단 서비스 페이지로 이동합니다.')}
+                      onClick={() => toast.info('안심 상담 신청 페이지로 이동합니다.')}
                       className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-sm transition-all press-scale shadow-lg shrink-0 cursor-pointer"
                     >
-                      초정밀 탕감액 진단 시작 →
+                      안심 가명 상담 신청하기 →
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-500 text-center">▲ [이미지 4] 블로그 하단 전환용 공식 CTA 배너</p>
@@ -1144,9 +1144,9 @@ const DDOK_BLOG_PRESETS = [
   { label: '스텔스가명', topic: '사설 브로커 DB 영업의 덫 vs 010 번호 유출 0% 마이김변 스텔스 가명', theme: '안심탐색' },
   { label: '서류혁신', topic: '동사무소 40종 서류 지옥 탈출: 말로 쓰는 AI 음성 진술서와 30분 패키징', theme: '서류혁신' },
   { label: '변제금미납', topic: '개인회생 변제금 3회 이상 미납하면? 폐지 기준과 회생동행 구제법', theme: '면책완주' },
-  { label: '코인/주식', topic: '주식·코인 투자 빚도 탕감 가능할까? 서울·수원·부산회생법원 최신 실무준칙', theme: '주간자가진단' },
+  { label: '코인/주식', topic: '주식·코인 투자 빚도 탕감 가능할까? 서울·수원·부산회생법원 최신 실무준칙', theme: '주말안심상담' },
   { label: '단점극복', topic: '개인회생 단점 5가지와 현실적인 대비법 총정리 (2026)', theme: '전문가보증' },
-  { label: '자격진단', topic: '2026 최저생계비 인상 반영: 내 소득으로 회생 신청 가능할까?', theme: '비대면기술' }
+  { label: '자격확인', topic: '2026 최저생계비 인상 반영: 내 소득으로 회생 신청 가능할까?', theme: '비대면기술' }
 ];
 
 // --- TAB 3: 콘텐츠 스튜디오 ---
@@ -1221,7 +1221,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                   <option value="높은호환성">목 = 높은호환성 (모든 기기 지원)</option>
                   <option value="비대면기술">금 = 비대면기술 (100% 비대면)</option>
                   <option value="면책완주">토 = 면책완주 (끝까지 동행)</option>
-                  <option value="주간자가진단">일 = 주간자가진단 (주말 빠른 진단)</option>
+                  <option value="주말안심상담">일 = 주말안심상담 (주말 안심 상담)</option>
                 </select>
               </div>
             </div>
@@ -1255,7 +1255,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm font-bold shrink-0 z-10 text-indigo-400">3</div>
                 <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 flex-1">
                   <span className="text-xs text-indigo-400 block mb-1">Solution (플랫폼 브릿지)</span>
-                  <p className="text-sm text-indigo-100">'스텔스 가명' 기술로 철저히 신분을 숨기고 완전 비대면으로 진단 가능함 어필</p>
+                  <p className="text-sm text-indigo-100">'스텔스 가명' 기술로 철저히 신분을 숨기고 010 번호 없이 안전하게 상담 가능함 어필</p>
                 </div>
               </div>
             </div>
@@ -1303,7 +1303,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                 />
                 <textarea 
                   className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-b-xl px-4 py-4 text-slate-300 focus:outline-none resize-none leading-relaxed"
-                  defaultValue={`안녕하세요, 최근 금리 인상 여파로 2030세대 영끌족의 고민이 깊어지고 있습니다.\n\n매달 돌아오는 이자 상환일에 가슴 졸이며, 혹시나 직장에 알려질까 전전긍긍하시는 분들이 많습니다. 법적인 구제 제도가 있다는 것은 알지만, 주변의 시선과 낙인 효과가 두려워 상담조차 받지 못하는 것이 현실입니다.\n\n하지만 걱정하지 마세요.\n마이김변 플랫폼에서는 '스텔스 가명' 기술을 도입하여 100% 완전 익명으로 회생/파산 가능성을 진단받을 수 있습니다. 내 진짜 이름이나 연락처를 노출하지 않고도, 전문 변호사의 검토를 받을 수 있는 비대면 기술입니다.\n\n더 이상 혼자 앓지 마시고, 안전한 플랫폼에서 첫 걸음을 떼보세요.`}
+                  defaultValue={`안녕하세요, 최근 금리 인상 여파로 2030세대 영끌족의 고민이 깊어지고 있습니다.\n\n매달 돌아오는 이자 상환일에 가슴 졸이며, 혹시나 직장에 알려질까 전전긍긍하시는 분들이 많습니다. 법적인 구제 제도가 있다는 것은 알지만, 주변의 시선과 낙인 효과가 두려워 상담조차 받지 못하는 것이 현실입니다.\n\n하지만 걱정하지 마세요.\n마이김변 플랫폼에서는 '스텔스 가명' 기술을 도입하여 100% 완전 익명으로 전문 변호사의 안심 견적과 상담을 받아보실 수 있습니다. 내 진짜 이름이나 연락처를 노출하지 않고도, 전문 변호사의 검토를 받을 수 있는 비대면 기술입니다.\n\n더 이상 혼자 앓지 마시고, 안전한 플랫폼에서 첫 걸음을 떼보세요.`}
                 />
               </>
             )}
@@ -1475,7 +1475,7 @@ function TabAnalytics() {
           <div className="space-y-4">
             {[
               { title: '"이자 갚다 지쳤다면 필수 시청"', type: '유튜브 쇼츠', views: '12.4k', conversions: 42 },
-              { title: '2030 영끌족 파산 진단 가이드', type: '네이버 블로그', views: '8.2k', conversions: 28 },
+              { title: '2030 영끌족 파산 안심 상담 가이드', type: '네이버 블로그', views: '8.2k', conversions: 28 },
               { title: '스텔스 가명으로 알아보는 내 빚', type: '틱톡', views: '24k', conversions: 19 },
               { title: '법원 서류, 비대면으로 끝내는 법', type: '인스타 카드뉴스', views: '5.1k', conversions: 15 },
             ].map((item, i) => (
