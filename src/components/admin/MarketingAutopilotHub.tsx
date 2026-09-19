@@ -4,7 +4,7 @@ import {
   CheckCircle, Clock, ChevronRight, RefreshCcw, Search, ExternalLink, 
   Layout, Eye, ArrowRight, Play, FileText, Image as ImageIcon, MessageCircle, 
   Video, Facebook, Share2, Plus, ArrowUpRight, TrendingUp, Users, Target,
-  Check, X, MoreVertical, Smartphone, UploadCloud, Layers, Copy, CheckCheck, ShieldCheck, Sparkles
+  Check, X, MoreVertical, Smartphone, UploadCloud, Layers, Copy, CheckCheck, ShieldCheck, Sparkles, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,23 +20,44 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
   visualPrompt?: string;
   cueSheet?: { time: string; action: string; script: string }[];
   slides?: { page: number; headline: string; subtext: string; visualDesc: string }[];
+  blogImages?: {
+    id: string;
+    order: number;
+    title: string;
+    role: string;
+    insertPosition: string;
+    prompt: string;
+    previewGradient: string;
+    previewTitle: string;
+    previewSub: string;
+    tag: string;
+  }[];
 }> = {
   blog: {
     title: "[100% 익명] 빚 독촉으로 밤잠 설치는 분들 필독 — 010 번호 유출 없이 다중 견적 받는 법",
-    badge: "네이버 블로그 2,500자 SEO 칼럼",
-    format: "네이버 블로그 스마트에디터 최적화 (H2/H3 구조 & FAQ 탑재)",
+    badge: "네이버 블로그 2,500자 SEO 칼럼 + 이미지 4컷",
+    format: "네이버 블로그 스마트에디터 최적화 (대표 썸네일 1컷 + 본문 인포그래픽 3컷 탑재)",
     summary: "최근 기준금리 동결에도 불구하고 늘어난 이자 부담에 시달리는 분들을 위해, 번호 유출 없이 변호사를 직접 고르고 30분 만에 서류를 완성하는 마이김변 3단 솔루션을 심층 분석합니다.",
-    fullBody: `■ 서론: 금리 동결 속, 채무자들의 시름은 왜 더 깊어질까요?
+    fullBody: `[📷 이미지 1: 대표 썸네일 삽입 위치]
+(기준금리 동결과 채무자의 현실 — 010 번호 유출 0% 개인회생 가이드)
+
+■ 서론: 금리 동결 속, 채무자들의 시름은 왜 더 깊어질까요?
 최근 한국은행의 기준금리 동결 발표가 있었지만, 실제 채무자분들이 체감하는 금융 환경은 여전히 가혹합니다. 연체이자 부담과 금융권의 추심 압박 속에서 '개인회생이나 파산을 알아보고 싶어도', 포털에 전화번호를 남겼다가 하루 수십 통의 대출 영업 전화에 시달릴까 두려워 망설이시는 분들이 너무나 많습니다.
 
 ■ 1. 사설 DB 수집의 덫: 내 번호가 팔리고 있다?
 많은 분들이 인터넷 광고를 보고 상담 신청을 했다가 "변호사는 만나보지도 못하고 무분별한 영업 전화만 쏟아졌다"고 호소하십니다. 사설 브로커나 대행사들이 수집한 DB는 허수(Junk Leads)가 많고, 개인정보가 무방비로 유출될 위험이 큽니다.
+
+[📷 이미지 2: 본문 삽입 인포그래픽 #1]
+(사설 DB 수집 vs 마이김변 스텔스 가명 비교 도표)
 
 ■ 2. 마이김변의 혁신 1: 010 번호 유출 0% '스텔스 가명' 시스템
 마이김변(my김변)은 국내 최초로 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다.
 - 영업 전화 0통 보장: 내가 원할 때만, 안전한 인앱 안심 채팅으로 소통
 - 변호사 직접 탐색: 법조 경력, 승소 후기, 전문 분야를 투명하게 직접 확인 후 복수 지정
 - 역경매가 아닌 '고객 주도형 다중 안심 상담': 변호사법 제34조를 완벽히 준수하며 가격 덤핑 없이 정당한 실력으로 승부
+
+[📷 이미지 3: 본문 삽입 UI 목업 #2]
+(스마트폰으로 30분 만에 끝내는 AI 음성 진술서 & 서류 원스톱 패키징)
 
 ■ 3. 마이김변의 혁신 2: 40종 서류 지옥 탈출! 'AI 음성 진술서 & Fast 2nd DocHub'
 개인회생 준비에서 가장 고통스러운 단계가 바로 40종에 달하는 관공서 서류와 복잡한 진술서 작성입니다.
@@ -46,10 +67,64 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 ■ 결론 및 안내: 더 이상 혼자 속앓이하지 마세요
 회생과 파산은 성실하지만 불운한 채무자를 구제하기 위한 헌법상의 제도입니다. 혼자 끙끙 앓다 기회를 놓치지 마시고, 지금 마이김변에서 30초 익명 자가진단으로 탕감 가능성을 먼저 확인해보세요.
 
+[📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
+(100% 무료 익명 자가진단 바로가기 — 마이김변 공식 배너)
+
 ※ 본 콘텐츠는 리걸테크 플랫폼 마이김변의 기술적 편의성을 안내하는 정보성 칼럼이며, 개별 법률 상담 및 소송 대리는 의뢰인이 선택한 독립된 법률사무소가 수행합니다.`,
+    blogImages: [
+      {
+        id: "blog-img-1",
+        order: 1,
+        title: "대표 썸네일: 기준금리 동결과 채무자의 현실",
+        role: "검색 결과 클릭률(CTR) 극대화 대표 썸네일 (1:1 정방형)",
+        insertPosition: "본문 최상단 (서론 전)",
+        prompt: "A cinematic, moody Korean financial desk with calculator, gavel, interest rate chart, dramatic atmospheric lighting, photorealistic, 8k resolution, elegant dark navy tone",
+        previewGradient: "from-blue-950 via-slate-900 to-indigo-950",
+        previewTitle: "기준금리 동결 속 빚 독촉 해결법",
+        previewSub: "010 번호 노출 없이 변호사 직접 고르는 개인회생",
+        tag: "대표 썸네일 (1080x1080)"
+      },
+      {
+        id: "blog-img-2",
+        order: 2,
+        title: "인포그래픽: 사설 DB 영업 vs 마이김변 스텔스 가명",
+        role: "문제점 환기 및 010 번호 유출 0% 기술 신뢰도 제공",
+        insertPosition: "2번 섹션 (스텔스 가명 시스템 설명 상단)",
+        prompt: "A clean modern vector comparison infographic: left side showing red spam phone calls and leaked numbers, right side showing a glowing cyan security lock shield protecting user identity, dark tech style",
+        previewGradient: "from-slate-900 via-rose-950/40 to-emerald-950/40",
+        previewTitle: "사설 DB vs 마이김변 비교",
+        previewSub: "영업 전화 0통 · 010 번호 비공개 · 변호사 직접 선택",
+        tag: "비교 인포그래픽"
+      },
+      {
+        id: "blog-img-3",
+        order: 3,
+        title: "기능 화면: 말로 쓰는 AI 음성 진술서 & 서류 30분 패키징",
+        role: "40종 서류 지옥 탈출 솔루션의 시각적 입증",
+        insertPosition: "3번 섹션 (AI 음성 진술서 설명 하단)",
+        prompt: "A sleek modern smartphone floating mockup displaying a Korean legal document app with audio waveform recording and green checkmarks for completed documents, photorealistic 3D render",
+        previewGradient: "from-indigo-950 via-slate-900 to-purple-950",
+        previewTitle: "말로 쓰는 AI 음성 진술서",
+        previewSub: "동사무소 40종 서류 지옥? 스마트폰 30분 원스톱 완성",
+        tag: "앱 UI 목업"
+      },
+      {
+        id: "blog-img-4",
+        order: 4,
+        title: "CTA 배너: 30초 무료 익명 자가진단 바로가기",
+        role: "블로그 독자를 플랫폼 유입 및 진단 신청으로 전환",
+        insertPosition: "본문 최하단 (결론 및 면책 공지 직전)",
+        prompt: "A high-conversion horizontal banner with glowing emerald CTA button '30초 무료 익명 자가진단', sleek dark background with golden shield badge, professional fintech look",
+        previewGradient: "from-emerald-950 via-slate-900 to-indigo-950",
+        previewTitle: "내 빚도 탕감받을 수 있을까?",
+        previewSub: "지금 30초 만에 100% 무료 익명으로 확인해보세요",
+        tag: "전환 CTA 배너"
+      }
+    ],
     hashtags: ["#개인회생", "#개인파산", "#채무조정", "#스텔스가명", "#마이김변", "#빚독촉탈출", "#비대면법률"],
     specs: [
       { label: "글자 수", value: "2,540자 (공백 포함)" },
+      { label: "삽입 이미지", value: "총 4컷 (대표 썸네일 1 + 본문 인포그래픽 3)" },
       { label: "권장 폰트", value: "나눔고딕 15pt / 행간 180%" },
       { label: "포함 요소", value: "H2/H3 소제목 3단 구조, FAQ 3종, 법적 면책 고지문" }
     ]
@@ -445,7 +520,8 @@ function ContentDetailModal({
   onEditInStudio: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'text' | 'visual' | 'cue'>('text');
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'text' | 'visual' | 'cue' | 'images' | 'preview'>(channel.id === 'blog' ? 'preview' : 'text');
   const content = CHANNEL_FULL_CONTENTS[channel.id] || CHANNEL_FULL_CONTENTS.blog;
   const Icon = channel.icon;
 
@@ -454,6 +530,13 @@ function ContentDetailModal({
     setCopied(true);
     toast.success('콘텐츠 전문 및 태그가 클립보드에 복사되었습니다.');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyPrompt = (id: string, prompt: string) => {
+    navigator.clipboard.writeText(prompt);
+    setCopiedPromptId(id);
+    toast.success('Imagen 3 생성 프롬프트가 복사되었습니다.');
+    setTimeout(() => setCopiedPromptId(null), 2000);
   };
 
   return (
@@ -495,7 +578,18 @@ function ContentDetailModal({
         </div>
 
         {/* Sub Navigation (특화 탭) */}
-        <div className="px-6 pt-3 pb-2 border-b border-[#1E293B]/60 flex gap-2 bg-[#0E131F]">
+        <div className="px-6 pt-3 pb-2 border-b border-[#1E293B]/60 flex flex-wrap gap-2 bg-[#0E131F]">
+          {channel.id === 'blog' && (
+            <button
+              onClick={() => setActiveSubTab('preview')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Eye size={14} />
+              독자 시점 미리보기 (똑생 스타일)
+            </button>
+          )}
           <button
             onClick={() => setActiveSubTab('text')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
@@ -504,6 +598,17 @@ function ContentDetailModal({
           >
             본문 전문 (텍스트)
           </button>
+          {content.blogImages && (
+            <button
+              onClick={() => setActiveSubTab('images')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeSubTab === 'images' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ImageIcon size={14} />
+              본문 삽입 이미지 ({content.blogImages.length}컷)
+            </button>
+          )}
           {content.cueSheet && (
             <button
               onClick={() => setActiveSubTab('cue')}
@@ -529,25 +634,254 @@ function ContentDetailModal({
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200">
           
-          {/* Main Title Banner */}
-          <div className="bg-[#0B0F19] rounded-2xl p-4 border border-slate-800 space-y-2">
-            <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Title / Headline</span>
-            <h4 className="text-base sm:text-lg font-bold text-white leading-snug">{content.title}</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">{content.summary}</p>
-          </div>
+          {/* Main Title Banner (미리보기 모드가 아닐 때 노출) */}
+          {activeSubTab !== 'preview' && (
+            <div className="bg-[#0B0F19] rounded-2xl p-4 border border-slate-800 space-y-2">
+              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Title / Headline</span>
+              <h4 className="text-base sm:text-lg font-bold text-white leading-snug">{content.title}</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">{content.summary}</p>
+            </div>
+          )}
+
+          {/* Tab: Reader View Preview (똑생 스타일 독자 시점 미리보기) */}
+          {activeSubTab === 'preview' && channel.id === 'blog' && (
+            <div className="bg-[#0F1420] border border-slate-800 rounded-2xl p-4 sm:p-8 space-y-8 max-w-3xl mx-auto shadow-inner text-slate-200">
+              
+              {/* Blog Header (똑생 스타일) */}
+              <div className="space-y-4 border-b border-slate-800/80 pb-6">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold">
+                    회생 꿀팁
+                  </span>
+                  <span className="text-xs text-slate-400">2026년 9월 19일 · 7분 읽기</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight">
+                  {content.title}
+                </h2>
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center font-bold text-white text-xs shadow-md">
+                    마이
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-200">마이김변 도산법률연구팀</div>
+                    <div className="text-[11px] text-slate-400">법원 회생실무준칙 자문위원 검수 완료</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hero Thumbnail Image (이미지 #1) */}
+              {content.blogImages && content.blogImages[0] && (
+                <div className="space-y-2">
+                  <div className={`w-full h-56 sm:h-72 rounded-2xl bg-gradient-to-br ${content.blogImages[0].previewGradient} p-6 flex flex-col justify-end border border-slate-700/60 shadow-lg relative overflow-hidden`}>
+                    <div className="z-10 space-y-1.5">
+                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-indigo-300 text-xs font-bold backdrop-blur-sm border border-white/10">
+                        {content.blogImages[0].tag}
+                      </span>
+                      <h4 className="text-lg sm:text-xl font-black text-white drop-shadow-md">{content.blogImages[0].previewTitle}</h4>
+                      <p className="text-xs text-slate-300 drop-shadow-sm">{content.blogImages[0].previewSub}</p>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 1] 대표 썸네일: 기준금리 동결과 채무자의 현실</p>
+                </div>
+              )}
+
+              {/* Section 1: Intro (공감과 문제 제기) */}
+              <div className="space-y-4 text-sm sm:text-base leading-relaxed text-slate-300">
+                <p className="text-base sm:text-lg font-medium text-slate-100 leading-snug">
+                  "안녕하세요. 마이김변 도산법률센터입니다. 오늘은 많은 분들이 문의주시는 010 번호 유출 없는 안전한 개인회생 상담법에 대해 솔직하게 말씀드리고자 합니다."
+                </p>
+                <p>
+                  최근 한국은행의 기준금리 동결 발표가 있었지만, 실제 채무자분들이 체감하는 금융 환경은 여전히 가혹합니다. 연체이자 부담과 금융권의 추심 압박 속에서 '개인회생이나 파산을 알아보고 싶어도', 포털에 전화번호를 남겼다가 하루 수십 통의 대출 영업 전화에 시달릴까 두려워 망설이시는 분들이 너무나 많습니다.
+                </p>
+
+                {/* Callout Box 1 (똑생 스타일 인용구) */}
+                <div className="bg-[#141A28] border-l-4 border-amber-500 rounded-r-xl p-4 my-4 space-y-1">
+                  <span className="text-xs font-bold text-amber-400">⚠️ 사설 DB 수집의 현실</span>
+                  <p className="text-xs sm:text-sm text-slate-300">
+                    "상담 번호를 남기자마자 대부업체와 정체불명의 대행사로부터 하루 20통이 넘는 전화가 걸려왔습니다." — 실제 이용자 상담 사례
+                  </p>
+                </div>
+              </div>
+
+              {/* Section 2: Infographic Image #2 (사설 DB vs 마이김변 비교) */}
+              {content.blogImages && content.blogImages[1] && (
+                <div className="space-y-3 pt-4">
+                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <span className="w-2 h-5 rounded-full bg-indigo-500 inline-block"></span>
+                    1. 010 번호 유출 0%, '스텔스 가명'이 필요한 이유
+                  </h3>
+                  <div className={`w-full h-48 sm:h-60 rounded-2xl bg-gradient-to-br ${content.blogImages[1].previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-lg relative overflow-hidden`}>
+                    <div className="z-10 flex justify-between items-start">
+                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-emerald-300 text-xs font-bold border border-white/10">
+                        {content.blogImages[1].tag}
+                      </span>
+                    </div>
+                    <div className="z-10 space-y-1">
+                      <h4 className="text-base sm:text-lg font-bold text-white drop-shadow-md">{content.blogImages[1].previewTitle}</h4>
+                      <p className="text-xs text-slate-300">{content.blogImages[1].previewSub}</p>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 2] 사설 DB 수집 방식과 마이김변 안심 보안 모델 비교 인포그래픽</p>
+                  
+                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed pt-2">
+                    마이김변(my김변)은 국내 최초로 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다. 변호사법 제34조를 엄격히 준수하며, 가격 덤핑 유인 대신 검증된 전문성과 승소 이력을 바탕으로 고객이 주도적으로 선택할 수 있습니다.
+                  </p>
+                </div>
+              )}
+
+              {/* Section 3: UI Mockup Image #3 (AI 음성 진술서) */}
+              {content.blogImages && content.blogImages[2] && (
+                <div className="space-y-3 pt-4">
+                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <span className="w-2 h-5 rounded-full bg-indigo-500 inline-block"></span>
+                    2. 40종 서류 지옥 탈출: 말로 쓰는 AI 음성 진술서
+                  </h3>
+                  <div className={`w-full h-48 sm:h-60 rounded-2xl bg-gradient-to-br ${content.blogImages[2].previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-lg relative overflow-hidden`}>
+                    <div className="z-10">
+                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-purple-300 text-xs font-bold border border-white/10">
+                        {content.blogImages[2].tag}
+                      </span>
+                    </div>
+                    <div className="z-10 space-y-1">
+                      <h4 className="text-base sm:text-lg font-bold text-white drop-shadow-md">{content.blogImages[2].previewTitle}</h4>
+                      <p className="text-xs text-slate-300">{content.blogImages[2].previewSub}</p>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 3] 스마트폰 30분 원스톱 서류 패키징 화면</p>
+
+                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed pt-2">
+                    개인회생 사건은 100% 서면 절차입니다. 동사무소와 은행을 뛰어다니며 복잡한 서류를 떼고 진술서를 쓰다 지칠 필요가 없습니다. 스마트폰에 대고 말만 하면 법원 표준 양식에 맞춘 진술서 초안이 완성되며, 수입지출목록과 재산목록까지 30분 만에 패키징됩니다.
+                  </p>
+                </div>
+              )}
+
+              {/* Section 4: Floating CTA Banner (이미지 #4) - 똑생 스타일 */}
+              {content.blogImages && content.blogImages[3] && (
+                <div className="space-y-3 pt-6 border-t border-slate-800">
+                  <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 rounded-2xl border border-indigo-500/30 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+                    <div className="space-y-1 text-center sm:text-left">
+                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">100% 익명 보장 · 변호사법 준수</span>
+                      <h4 className="text-lg font-bold text-white">내 빚도 탕감받을 수 있을까?</h4>
+                      <p className="text-xs text-slate-300">서울·수원·부산회생법원 실무준칙 반영 30초 익명 진단</p>
+                    </div>
+                    <button
+                      onClick={() => toast.info('자가진단 서비스 페이지로 이동합니다.')}
+                      className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-sm transition-all press-scale shadow-lg shrink-0 cursor-pointer"
+                    >
+                      초정밀 탕감액 진단 시작 →
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 4] 블로그 하단 전환용 공식 CTA 배너</p>
+                </div>
+              )}
+
+              {/* Blog Footer Tags */}
+              <div className="pt-4 border-t border-slate-800/80 flex flex-wrap gap-2">
+                {content.hashtags.map((tag, i) => (
+                  <span key={i} className="text-xs text-slate-400 bg-slate-800/60 px-3 py-1 rounded-full">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+            </div>
+          )}
 
           {/* Tab 1: Text Body */}
           {activeSubTab === 'text' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                   <FileText size={14} className="text-indigo-400" />
                   원문 텍스트 (줄바꿈 및 마크다운 서식 포함)
                 </span>
                 <span className="text-xs text-emerald-400 font-medium">검수 통과 (변호사법 준수 100%)</span>
               </div>
+              {content.blogImages && (
+                <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-xl px-4 py-2.5 text-xs text-indigo-300 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-indigo-400 shrink-0" />
+                  <span>본문 내 <strong>[📷 이미지 N 삽입 위치]</strong> 표기에 맞춰 이미지를 함께 첨부하면 검색 노출(C-Rank) 효과가 극대화됩니다.</span>
+                </div>
+              )}
               <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 text-sm font-normal text-slate-300 leading-relaxed whitespace-pre-wrap font-sans select-text">
                 {content.fullBody}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 4: Blog Images (본문 삽입 이미지) */}
+          {activeSubTab === 'images' && content.blogImages && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  <ImageIcon size={14} className="text-indigo-400" />
+                  네이버 블로그 본문 삽입용 이미지 세트 (Imagen 3 생성)
+                </span>
+                <span className="text-xs text-slate-500">권장 순서대로 본문 삽입</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {content.blogImages.map((bImg) => (
+                  <div key={bImg.id} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
+                    
+                    {/* Visual Preview Box */}
+                    <div className={`w-full h-44 rounded-xl bg-gradient-to-br ${bImg.previewGradient} p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group`}>
+                      <div className="flex justify-between items-start z-10">
+                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[11px] font-bold backdrop-blur-sm border border-white/10">
+                          {bImg.tag}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-medium border border-emerald-500/30">
+                          {bImg.insertPosition}
+                        </span>
+                      </div>
+                      <div className="z-10 space-y-1">
+                        <h6 className="text-sm font-bold text-white leading-tight drop-shadow-md">{bImg.previewTitle}</h6>
+                        <p className="text-[11px] text-slate-300 line-clamp-2 drop-shadow-sm">{bImg.previewSub}</p>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                    </div>
+
+                    {/* Image Meta Info */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-white">이미지 #{bImg.order}. {bImg.title}</span>
+                      </div>
+                      <p className="text-xs text-slate-400">{bImg.role}</p>
+                    </div>
+
+                    {/* Prompt Box */}
+                    <div className="bg-[#111622] rounded-xl p-3 border border-slate-800 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-pink-400 flex items-center gap-1">
+                          <Sparkles size={12} /> Imagen 3 프롬프트
+                        </span>
+                        <button
+                          onClick={() => handleCopyPrompt(bImg.id, bImg.prompt)}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedPromptId === bImg.id ? <CheckCheck size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedPromptId === bImg.id ? '복사됨' : '프롬프트 복사'}
+                        </button>
+                      </div>
+                      <p className="text-[11px] font-mono text-slate-400 line-clamp-2 select-text">{bImg.prompt}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => toast.success(`${bImg.title} 이미지가 다운로드되었습니다.`)}
+                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Download size={13} />
+                        이미지 다운로드
+                      </button>
+                    </div>
+
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -803,6 +1137,18 @@ function TabKeyManagement() {
   );
 }
 
+// --- 똑생(ddok.life) 벤치마킹 8대 핵심 주제 프리셋 ---
+const DDOK_BLOG_PRESETS = [
+  { label: '카드/신용', topic: '개인회생 중 신용카드 정지 시점과 신용점수 회복 시기 (2026년 기준)', theme: '서류혁신' },
+  { label: '전세대출', topic: '개인회생 중 전세대출이나 주택담보대출 있으면 집에서 나가야 할까?', theme: '안심탐색' },
+  { label: '스텔스가명', topic: '사설 브로커 DB 영업의 덫 vs 010 번호 유출 0% 마이김변 스텔스 가명', theme: '안심탐색' },
+  { label: '서류혁신', topic: '동사무소 40종 서류 지옥 탈출: 말로 쓰는 AI 음성 진술서와 30분 패키징', theme: '서류혁신' },
+  { label: '변제금미납', topic: '개인회생 변제금 3회 이상 미납하면? 폐지 기준과 회생동행 구제법', theme: '면책완주' },
+  { label: '코인/주식', topic: '주식·코인 투자 빚도 탕감 가능할까? 서울·수원·부산회생법원 최신 실무준칙', theme: '주간자가진단' },
+  { label: '단점극복', topic: '개인회생 단점 5가지와 현실적인 대비법 총정리 (2026)', theme: '전문가보증' },
+  { label: '자격진단', topic: '2026 최저생계비 인상 반영: 내 소득으로 회생 신청 가능할까?', theme: '비대면기술' }
+];
+
 // --- TAB 3: 콘텐츠 스튜디오 ---
 function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
   const [topic, setTopic] = useState('가계부채 폭증과 2030 영끌족의 파산 위기');
@@ -815,6 +1161,12 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
     }
   }, [initialTab]);
 
+  const handleSelectPreset = (p: typeof DDOK_BLOG_PRESETS[0]) => {
+    setTopic(p.topic);
+    setTheme(p.theme);
+    toast.success(`'${p.label}' 주제 프리셋이 적용되었습니다.`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -822,7 +1174,29 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
         {/* Left Panel - Inputs & Bridge Preview */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-white mb-4">수동 생성 설정</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-white">수동 생성 설정</h3>
+              <span className="text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 font-medium">
+                똑생 벤치마킹 탑재
+              </span>
+            </div>
+
+            {/* 똑생 스타일 인기 주제 프리셋 버튼들 */}
+            <div className="mb-4">
+              <span className="block text-xs font-semibold text-slate-400 mb-2">🔥 인기 주제 퀵 프리셋 (클릭 시 자동 입력)</span>
+              <div className="flex flex-wrap gap-1.5">
+                {DDOK_BLOG_PRESETS.map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectPreset(p)}
+                    className="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-white border border-slate-700/80 transition-colors cursor-pointer"
+                  >
+                    #{p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             
             <div className="space-y-4">
               <div>
