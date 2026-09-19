@@ -4,9 +4,11 @@ import {
   CheckCircle, Clock, ChevronRight, RefreshCcw, Search, ExternalLink, 
   Layout, Eye, ArrowRight, Play, FileText, Image as ImageIcon, MessageCircle, 
   Video, Facebook, Share2, Plus, ArrowUpRight, TrendingUp, Users, Target,
-  Check, X, MoreVertical, Smartphone, UploadCloud, Layers, Copy, CheckCheck, ShieldCheck, Sparkles, Download
+  Check, X, MoreVertical, Smartphone, UploadCloud, Layers, Copy, CheckCheck, ShieldCheck, Sparkles, Download, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
+import JSZip from 'jszip';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -551,6 +553,8 @@ function ContentDetailModal({
 }) {
   const [copied, setCopied] = useState(false);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'text' | 'visual' | 'cue' | 'images' | 'preview'>(channel.id === 'blog' ? 'preview' : 'text');
   const content = CHANNEL_FULL_CONTENTS[channel.id] || CHANNEL_FULL_CONTENTS.blog;
   const Icon = channel.icon;
@@ -567,6 +571,123 @@ function ContentDetailModal({
     setCopiedPromptId(id);
     toast.success('Imagen 3 생성 프롬프트가 복사되었습니다.');
     setTimeout(() => setCopiedPromptId(null), 2000);
+  };
+
+  // 단일 요소 고해상도 PNG 다운로드 (3x scale - 한글 깨짐 0%)
+  const downloadElementAsPng = async (elementId: string, filename: string) => {
+    const el = document.getElementById(elementId);
+    if (!el) {
+      toast.error('다운로드할 이미지 요소를 찾을 수 없습니다.');
+      return;
+    }
+    setExportingId(elementId);
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 3, // 3배율 고해상도로 한글 폰트 1픽셀도 깨짐 없이 선명하게 렌더링
+        useCORS: true,
+        logging: false,
+        backgroundColor: null,
+        allowTaint: true,
+      });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+      if (!blob) throw new Error('Blob 생성 실패');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${filename} 이미지가 다운로드되었습니다.`);
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      toast.error('이미지 생성 및 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  // 네이버 블로그 이미지 4컷 일괄 압축팩(ZIP) 다운로드
+  const downloadAllBlogImagesAsZip = async () => {
+    if (!content.blogImages) return;
+    setIsExportingAll(true);
+    const toastId = toast.loading('블로그 이미지 4컷을 고해상도로 렌더링 및 압축 중입니다...');
+    try {
+      const zip = new JSZip();
+      for (const bImg of content.blogImages) {
+        const el = document.getElementById(`blog-visual-${bImg.id}`);
+        if (el) {
+          const canvas = await html2canvas(el, {
+            scale: 3,
+            useCORS: true,
+            logging: false,
+            backgroundColor: null,
+            allowTaint: true,
+          });
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+          if (blob) {
+            zip.file(`[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`, blob);
+          }
+        }
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.download = `[마이김변]_네이버블로그_이미지_4컷팩.zip`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('블로그 이미지 4컷 압축팩이 성공적으로 다운로드되었습니다.', { id: toastId });
+    } catch (err) {
+      console.error('Failed to export zip:', err);
+      toast.error('일괄 다운로드 중 오류가 발생했습니다.', { id: toastId });
+    } finally {
+      setIsExportingAll(false);
+    }
+  };
+
+  // 인스타그램 카드뉴스 10장 일괄 압축팩(ZIP) 다운로드
+  const downloadAllCardNewsAsZip = async () => {
+    if (!content.slides) return;
+    setIsExportingAll(true);
+    const toastId = toast.loading('인스타그램 카드뉴스 10장을 고해상도로 렌더링 및 압축 중입니다...');
+    try {
+      const zip = new JSZip();
+      for (const slide of content.slides) {
+        const el = document.getElementById(`cardnews-slide-${slide.page}`);
+        if (el) {
+          const canvas = await html2canvas(el, {
+            scale: 3,
+            useCORS: true,
+            logging: false,
+            backgroundColor: null,
+            allowTaint: true,
+          });
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+          if (blob) {
+            zip.file(`[마이김변]_카드뉴스_${slide.page.toString().padStart(2, '0')}장.png`, blob);
+          }
+        }
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.download = `[마이김변]_인스타그램_카드뉴스_10장_완전팩.zip`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('카드뉴스 10장 완전팩이 성공적으로 다운로드되었습니다.', { id: toastId });
+    } catch (err) {
+      console.error('Failed to export zip:', err);
+      toast.error('일괄 다운로드 중 오류가 발생했습니다.', { id: toastId });
+    } finally {
+      setIsExportingAll(false);
+    }
   };
 
   return (
@@ -845,20 +966,30 @@ function ContentDetailModal({
           {/* Tab 4: Blog Images (본문 삽입 이미지) */}
           {activeSubTab === 'images' && content.blogImages && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                   <ImageIcon size={14} className="text-indigo-400" />
-                  네이버 블로그 본문 삽입용 이미지 세트 (Imagen 3 생성)
+                  네이버 블로그 본문 삽입용 이미지 세트 (D.I.A.+ 최적화 & 고해상도 PNG)
                 </span>
-                <span className="text-xs text-slate-500">권장 순서대로 본문 삽입</span>
+                <button
+                  onClick={downloadAllBlogImagesAsZip}
+                  disabled={isExportingAll}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[36px]"
+                >
+                  {isExportingAll ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  {isExportingAll ? '4컷 압축팩 생성 중...' : '4컷 전체 일괄 다운로드 (ZIP)'}
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {content.blogImages.map((bImg) => (
                   <div key={bImg.id} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
                     
-                    {/* Visual Preview Box */}
-                    <div className={`w-full h-44 rounded-xl bg-gradient-to-br ${bImg.previewGradient} p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group`}>
+                    {/* Visual Preview Box (Captured by html2canvas) */}
+                    <div 
+                      id={`blog-visual-${bImg.id}`}
+                      className={`w-full h-48 rounded-xl bg-gradient-to-br ${bImg.previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group`}
+                    >
                       <div className="flex justify-between items-start z-10">
                         <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[11px] font-bold backdrop-blur-sm border border-white/10">
                           {bImg.tag}
@@ -867,9 +998,13 @@ function ContentDetailModal({
                           {bImg.insertPosition}
                         </span>
                       </div>
-                      <div className="z-10 space-y-1">
-                        <h6 className="text-sm font-bold text-white leading-tight drop-shadow-md">{bImg.previewTitle}</h6>
-                        <p className="text-[11px] text-slate-300 line-clamp-2 drop-shadow-sm">{bImg.previewSub}</p>
+                      <div className="z-10 space-y-1.5 my-auto">
+                        <h6 className="text-base font-extrabold text-white leading-tight drop-shadow-md">{bImg.previewTitle}</h6>
+                        <p className="text-xs text-slate-200 line-clamp-2 drop-shadow-sm font-medium">{bImg.previewSub}</p>
+                      </div>
+                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-300">
+                        <span className="text-emerald-400 font-bold">마이김변 안심 리걸테크</span>
+                        <span>010 번호 유출 0%</span>
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     </div>
@@ -902,11 +1037,16 @@ function ContentDetailModal({
                     {/* Actions */}
                     <div className="flex gap-2 pt-1">
                       <button
-                        onClick={() => toast.success(`${bImg.title} 이미지가 다운로드되었습니다.`)}
-                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        onClick={() => downloadElementAsPng(`blog-visual-${bImg.id}`, `[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`)}
+                        disabled={exportingId === `blog-visual-${bImg.id}`}
+                        className="flex-1 py-2 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[38px]"
                       >
-                        <Download size={13} />
-                        이미지 다운로드
+                        {exportingId === `blog-visual-${bImg.id}` ? (
+                          <Loader2 size={13} className="animate-spin text-indigo-400" />
+                        ) : (
+                          <Download size={13} />
+                        )}
+                        {exportingId === `blog-visual-${bImg.id}` ? 'PNG 렌더링 중...' : '고해상도 PNG 다운로드'}
                       </button>
                     </div>
 
@@ -947,27 +1087,89 @@ function ContentDetailModal({
 
           {/* Tab 3: Slides for Card News */}
           {activeSubTab === 'visual' && content.slides && (
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                <ImageIcon size={14} className="text-indigo-400" />
-                장별 슬라이드 헤드라인 & 시각 요소
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  <ImageIcon size={14} className="text-indigo-400" />
+                  인스타그램 10장 황금 캐러셀 (1:1 정방형 1080x1080 · 한글 0% 깨짐 고해상도)
+                </span>
+                <button
+                  onClick={downloadAllCardNewsAsZip}
+                  disabled={isExportingAll}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[36px]"
+                >
+                  {isExportingAll ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  {isExportingAll ? '10장 압축팩 생성 중...' : '10장 전체 일괄 다운로드 (ZIP)'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {content.slides.map((slide) => (
-                  <div key={slide.page} className="bg-[#0B0F19] rounded-xl p-4 border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center text-xs font-bold">
-                          {slide.page}
+                  <div key={slide.page} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
+                    
+                    {/* 1:1 Square Card News Slide (Captured by html2canvas) */}
+                    <div 
+                      id={`cardnews-slide-${slide.page}`}
+                      className="w-full aspect-square rounded-2xl p-6 bg-gradient-to-br from-[#0B1120] via-[#1E1B4B] to-[#0B0F19] border border-indigo-500/30 flex flex-col justify-between relative overflow-hidden shadow-xl"
+                    >
+                      {/* Top Header */}
+                      <div className="flex justify-between items-center z-10">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
+                          <span className="text-[11px] font-bold text-indigo-300 tracking-wider">마이김변 공식 리걸테크</span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-white text-xs font-bold backdrop-blur-sm border border-white/10">
+                          {slide.page} / 10
                         </span>
-                        <span className="text-[10px] text-slate-500">1080 x 1080</span>
                       </div>
-                      <h5 className="font-bold text-white text-sm mb-1">{slide.headline}</h5>
-                      <p className="text-xs text-slate-400">{slide.subtext}</p>
+
+                      {/* Body Content */}
+                      <div className="z-10 my-auto space-y-3 text-center sm:text-left">
+                        <span className="inline-block px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30">
+                          {slide.page === 1 ? '🔥 핵심 쟁점' : slide.page === 2 ? '⚠️ 현실 통증' : slide.page === 10 ? '🛡️ 안심 신청' : '💡 솔루션'}
+                        </span>
+                        <h4 className="text-lg sm:text-xl font-extrabold text-white leading-snug drop-shadow-md whitespace-pre-line">
+                          {slide.headline}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium drop-shadow-sm">
+                          {slide.subtext}
+                        </p>
+                      </div>
+
+                      {/* Footer Bar */}
+                      <div className="z-10 pt-3 border-t border-white/10 flex justify-between items-center text-[11px]">
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <ShieldCheck size={13} /> 010 번호 유출 0%
+                        </span>
+                        <span className="text-indigo-300 font-medium">
+                          {slide.page === 10 ? '📌 프로필 링크에서 확인' : '옆으로 넘기기 ➔'}
+                        </span>
+                      </div>
+
+                      {/* Ambient Glows */}
+                      <div className="absolute -right-12 -bottom-12 w-36 h-36 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                      <div className="absolute -left-12 -top-12 w-36 h-36 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
                     </div>
-                    <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-indigo-400/80">
+
+                    {/* Visual Prompt Info */}
+                    <div className="text-[11px] text-indigo-300/80 bg-[#111622] p-2.5 rounded-xl border border-slate-800/80">
                       🖼️ {slide.visualDesc}
                     </div>
+
+                    {/* Action: Single Slide Download */}
+                    <button
+                      onClick={() => downloadElementAsPng(`cardnews-slide-${slide.page}`, `[마이김변]_카드뉴스_${slide.page.toString().padStart(2, '0')}장.png`)}
+                      disabled={exportingId === `cardnews-slide-${slide.page}`}
+                      className="w-full py-2 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[38px]"
+                    >
+                      {exportingId === `cardnews-slide-${slide.page}` ? (
+                        <Loader2 size={13} className="animate-spin text-indigo-400" />
+                      ) : (
+                        <Download size={13} />
+                      )}
+                      {exportingId === `cardnews-slide-${slide.page}` ? 'PNG 렌더링 중...' : `${slide.page}장 고해상도 PNG 다운로드`}
+                    </button>
+
                   </div>
                 ))}
               </div>
@@ -1511,7 +1713,7 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                       onClick={() => setSelectedSlide(idx)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                         selectedSlide === idx 
-                          ? 'bg-amber-600 text-white font-bold' 
+                          ? 'bg-amber-600 text-white font-bold shadow-sm' 
                           : 'bg-[#0B0F19] text-slate-400 hover:text-white border border-slate-800'
                       }`}
                     >
@@ -1520,34 +1722,109 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
                   ))}
                 </div>
 
-                {/* Active Slide Details */}
+                {/* Active Slide Details & Live 1:1 Preview */}
                 {CHANNEL_FULL_CONTENTS.cardnews.slides && (
-                  <div className="bg-[#0B0F19] rounded-xl border border-slate-700 p-4 space-y-3 flex-1">
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">
-                        헤드라인 (슬라이드 {selectedSlide + 1} / 10)
-                      </label>
-                      <input 
-                        type="text" 
-                        value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.headline}
-                        readOnly
-                        className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-white font-medium text-sm focus:outline-none"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                    {/* Left: 1:1 Card Preview (Captured by html2canvas) */}
+                    <div className="flex flex-col space-y-2">
+                      <div 
+                        id="studio-active-card-slide"
+                        className="w-full aspect-square rounded-2xl p-5 bg-gradient-to-br from-[#0B1120] via-[#1E1B4B] to-[#0B0F19] border border-amber-500/30 flex flex-col justify-between relative overflow-hidden shadow-xl"
+                      >
+                        <div className="flex justify-between items-center z-10">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                            <span className="text-[10px] font-bold text-amber-300 tracking-wider">마이김변 인스타 캐러셀</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-bold backdrop-blur-sm border border-white/10">
+                            {selectedSlide + 1} / 10
+                          </span>
+                        </div>
+
+                        <div className="z-10 my-auto space-y-2 text-center sm:text-left">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/30">
+                            {selectedSlide === 0 ? '🔥 핵심 쟁점' : selectedSlide === 1 ? '⚠️ 현실 통증' : selectedSlide === 9 ? '🛡️ 안심 신청' : '💡 솔루션'}
+                          </span>
+                          <h4 className="text-base sm:text-lg font-extrabold text-white leading-snug drop-shadow-md whitespace-pre-line">
+                            {CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.headline}
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed font-medium drop-shadow-sm">
+                            {CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.subtext}
+                          </p>
+                        </div>
+
+                        <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px]">
+                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                            <ShieldCheck size={12} /> 010 번호 유출 0%
+                          </span>
+                          <span className="text-amber-300 font-medium">
+                            {selectedSlide === 9 ? '📌 프로필 링크에서 확인' : '옆으로 넘기기 ➔'}
+                          </span>
+                        </div>
+
+                        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-amber-600/15 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="absolute -left-10 -top-10 w-32 h-32 bg-purple-600/15 rounded-full blur-3xl pointer-events-none"></div>
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          const el = document.getElementById('studio-active-card-slide');
+                          if (!el) return;
+                          const toastId = toast.loading(`${selectedSlide + 1}장 고해상도 PNG 렌더링 중...`);
+                          try {
+                            const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false, backgroundColor: null, allowTaint: true });
+                            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+                            if (!blob) throw new Error('Blob 생성 실패');
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.download = `[마이김변]_카드뉴스_${(selectedSlide + 1).toString().padStart(2, '0')}장.png`;
+                            link.href = url;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            toast.success(`${selectedSlide + 1}장 고해상도 PNG가 다운로드되었습니다.`, { id: toastId });
+                          } catch (err) {
+                            console.error(err);
+                            toast.error('다운로드 중 오류가 발생했습니다.', { id: toastId });
+                          }
+                        }}
+                        className="w-full py-2 bg-slate-800 hover:bg-amber-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[38px]"
+                      >
+                        <Download size={13} />
+                        현재 슬라이드 PNG 즉시 다운로드
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">서브 텍스트 & 전달 메시지</label>
-                      <input 
-                        type="text" 
-                        value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.subtext}
-                        readOnly
-                        className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-xs focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">비주얼 연출 프롬프트</label>
-                      <p className="text-xs text-slate-400 bg-[#111622] p-2.5 rounded-lg border border-slate-800">
-                        {CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.visualDesc}
-                      </p>
+
+                    {/* Right: Editable Details */}
+                    <div className="bg-[#0B0F19] rounded-xl border border-slate-700 p-4 space-y-3 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-semibold">
+                            헤드라인 (슬라이드 {selectedSlide + 1} / 10)
+                          </label>
+                          <input 
+                            type="text" 
+                            value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.headline}
+                            readOnly
+                            className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-white font-medium text-xs focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-semibold">서브 텍스트 & 전달 메시지</label>
+                          <textarea 
+                            value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.subtext}
+                            readOnly
+                            className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-xs focus:outline-none resize-none h-20"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1 font-semibold">비주얼 연출 프롬프트</label>
+                        <p className="text-[11px] text-slate-400 bg-[#111622] p-2.5 rounded-lg border border-slate-800">
+                          {CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.visualDesc}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
