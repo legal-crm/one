@@ -1017,13 +1017,31 @@ function ContentDetailModal({
                 {content.blogImages.map((bImg) => (
                   <div key={bImg.id} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
                     
-                    {/* Visual Preview Box (Captured by html2canvas) */}
+                    {/* Visual Preview Box (Captured by html2canvas — AI 배경 지원) */}
                     <div 
                       id={`blog-visual-${bImg.id}`}
-                      className={`w-full h-48 rounded-xl bg-gradient-to-br ${bImg.previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group`}
+                      className={`w-full h-48 rounded-xl p-5 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group ${
+                        bImg.backgroundImageUrl ? 'bg-slate-900' : `bg-gradient-to-br ${bImg.previewGradient}`
+                      }`}
                     >
+                      {/* AI 배경 이미지 (있을 경우) */}
+                      {bImg.backgroundImageUrl && (
+                        <img
+                          src={bImg.backgroundImageUrl}
+                          alt=""
+                          crossOrigin="anonymous"
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      {/* 다크 오버레이 */}
+                      <div className={`absolute inset-0 ${
+                        bImg.backgroundImageUrl
+                          ? 'bg-gradient-to-t from-black/80 via-black/50 to-black/30'
+                          : 'bg-gradient-to-t from-black/60 via-transparent to-transparent'
+                      }`}></div>
                       <div className="flex justify-between items-start z-10">
-                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[11px] font-bold backdrop-blur-sm border border-white/10">
+                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[11px] font-bold border border-white/10">
                           {bImg.tag}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-medium border border-emerald-500/30">
@@ -1031,14 +1049,13 @@ function ContentDetailModal({
                         </span>
                       </div>
                       <div className="z-10 space-y-1.5 my-auto">
-                        <h6 className="text-base font-extrabold text-white leading-tight drop-shadow-md">{bImg.previewTitle}</h6>
-                        <p className="text-xs text-slate-200 line-clamp-2 drop-shadow-sm font-medium">{bImg.previewSub}</p>
+                        <h6 className="text-base font-extrabold text-white leading-tight drop-shadow-lg">{bImg.previewTitle}</h6>
+                        <p className="text-xs text-slate-100 line-clamp-2 drop-shadow-md font-medium">{bImg.previewSub}</p>
                       </div>
-                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-300">
-                        <span className="text-emerald-400 font-bold">마이김변 안심 리걸테크</span>
-                        <span>010 번호 유출 0%</span>
+                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-200">
+                        <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변 안심 리걸테크</span>
+                        <span className="drop-shadow-sm">010 번호 유출 0%</span>
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     </div>
 
                     {/* Image Meta Info */}
@@ -1664,7 +1681,16 @@ function TabContentStudio({
     const toastId = toast.loading(`'${topic.slice(0, 18)}...' 6채널 콘텐츠 및 4컷 이미지를 생성 중입니다...`);
     try {
       const generated = await generateBlogContentWithGemini(topic, theme);
-      setActiveBlogContent(generated);
+      // Pollinations 모드면 생성된 콘텐츠에도 AI 배경 URL 주입
+      if (imageSource === 'pollinations' && generated.blogImages.length > 0) {
+        const injected = injectPollinationsUrls(generated.blogImages);
+        setActiveBlogContent({ ...generated, blogImages: injected });
+        const initStatus: Record<string, 'loading'> = {};
+        injected.forEach(img => { initStatus[img.id] = 'loading'; });
+        setBgImageStatus(initStatus);
+      } else {
+        setActiveBlogContent(generated);
+      }
       toast.success(`'${topic.slice(0, 15)}...' 6채널 최적화 콘텐츠 및 4컷 이미지가 성공적으로 생성되었습니다!`, { id: toastId });
     } catch (err) {
       console.error(err);
@@ -1672,6 +1698,38 @@ function TabContentStudio({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  /**
+   * html2canvas CORS 해결: 외부 이미지(Pollinations 등)를 인라인 data URL로 변환
+   * canvas.toBlob()의 SecurityError를 방지합니다.
+   */
+  const convertExternalImagesToDataUrls = async (container: HTMLElement): Promise<() => void> => {
+    const imgs = container.querySelectorAll('img[src^="https://image.pollinations.ai"]');
+    const originals: { img: HTMLImageElement; src: string }[] = [];
+
+    for (const imgEl of Array.from(imgs) as HTMLImageElement[]) {
+      if (!imgEl.complete || imgEl.naturalWidth === 0) continue;
+      try {
+        const response = await fetch(imgEl.src);
+        const blob = await response.blob();
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        originals.push({ img: imgEl, src: imgEl.src });
+        imgEl.src = dataUrl;
+      } catch {
+        // CORS fetch 실패 시 원본 유지 — html2canvas의 allowTaint:true가 폴백
+        console.warn('CORS proxy failed for image, using allowTaint fallback');
+      }
+    }
+
+    // 복원 함수 반환
+    return () => {
+      originals.forEach(({ img, src }) => { img.src = src; });
+    };
   };
 
   // 단일 요소 고해상도 PNG 다운로드 (3x scale - 한글 깨짐 0%)
@@ -1683,6 +1741,8 @@ function TabContentStudio({
     }
     setExportingStudioId(elementId);
     try {
+      // 외부 이미지를 data URL로 변환하여 CORS 문제 해결
+      const restoreImages = await convertExternalImagesToDataUrls(el);
       const canvas = await html2canvas(el, {
         scale: 3,
         useCORS: true,
@@ -1690,6 +1750,7 @@ function TabContentStudio({
         backgroundColor: null,
         allowTaint: true,
       });
+      restoreImages(); // 원본 URL 복원
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
       if (!blob) throw new Error('Blob 생성 실패');
       const url = URL.createObjectURL(blob);
@@ -1719,6 +1780,8 @@ function TabContentStudio({
       for (const bImg of activeBlogContent.blogImages) {
         const el = document.getElementById(`studio-blog-visual-${bImg.id}`);
         if (el) {
+          // 외부 이미지를 data URL로 변환
+          const restoreImages = await convertExternalImagesToDataUrls(el);
           const canvas = await html2canvas(el, {
             scale: 3,
             useCORS: true,
@@ -1726,6 +1789,7 @@ function TabContentStudio({
             backgroundColor: null,
             allowTaint: true,
           });
+          restoreImages();
           const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
           if (blob) {
             zip.file(`[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`, blob);
