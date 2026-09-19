@@ -3,6 +3,7 @@ import { X, Cloud, Mail, CheckCircle2, AlertCircle, Save, ExternalLink, RefreshC
 import { toast } from 'sonner';
 import { GoogleDriveConfig } from '../../../types/leadTypes';
 import { getGoogleDriveConfig, saveGoogleDriveConfig, DEFAULT_GOOGLE_SCRIPT_URL } from '../../../services/communicationService';
+import ModalPortal from '../../common/ModalPortal';
 
 interface GoogleDriveSettingsModalProps {
   isOpen: boolean;
@@ -82,11 +83,12 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto flex min-h-full items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] my-auto">
+          {/* Modal Header */}
+          <div className="shrink-0 flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
               <Cloud size={20} />
             </div>
@@ -238,15 +240,15 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-3">
+        {/* Footer */}
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50">
           <button
             type="button"
             onClick={handleTestConnection}
             disabled={isTesting}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={13} className={isTesting ? 'animate-spin text-purple-600' : ''} />
+            <RefreshCw size={13} className={isTesting ? 'animate-spin' : ''} />
             <span>연결 테스트</span>
           </button>
 
@@ -270,5 +272,6 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };

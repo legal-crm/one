@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Check, EyeOff } from 'lucide-react';
+import ModalPortal from '../../common/ModalPortal';
 
 interface StatusVisibilityModalProps {
   isOpen: boolean;
@@ -33,22 +34,23 @@ export default function StatusVisibilityModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-sm">
-            <EyeOff className="text-slate-500 w-4 h-4" />
-            {title}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-slate-500"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs p-4 flex min-h-full items-center justify-center animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] my-auto">
+          <div className="shrink-0 flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-sm">
+              <EyeOff className="text-slate-500 w-4 h-4" />
+              {title}
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-slate-500"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        <div className="p-3.5 bg-blue-50/80 border-b border-blue-100 text-xs text-blue-900 leading-relaxed">
+          <div className="shrink-0 p-3.5 bg-blue-50/80 border-b border-blue-100 text-xs text-blue-900 leading-relaxed">
           <p className="font-bold">💡 체크 해제된 상태는 목록에서 숨겨집니다.</p>
           <p className="text-blue-700 text-[11px] mt-0.5">(단, 상단 필터에서 해당 상태를 직접 선택하면 즉시 표시됩니다.)</p>
         </div>
@@ -96,7 +98,7 @@ export default function StatusVisibilityModal({
           </div>
         </div>
 
-        <div className="p-3.5 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <div className="shrink-0 p-3.5 border-t border-slate-100 bg-slate-50 flex justify-end">
           <button
             type="button"
             onClick={onClose}
@@ -107,5 +109,6 @@ export default function StatusVisibilityModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

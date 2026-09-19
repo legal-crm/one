@@ -6,6 +6,7 @@ import type { ConsultRequest } from '../../../types';
 import { ChipSelect } from './ChipSelect';
 import { formatPhone, normalizeBirthYear, checkLeadPhoneDuplicate } from '../../../services/leadService';
 import { loadInboundPaths, loadSecondaryStatuses } from '../../../services/settingsService';
+import ModalPortal from '../../common/ModalPortal';
 
 interface NewLeadModalProps {
   isOpen: boolean;
@@ -119,19 +120,20 @@ export default function NewLeadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-sm shadow-blue-500/20">
-              <UserPlus size={18} />
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 flex min-h-full items-center justify-center animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+          {/* Header */}
+          <div className="shrink-0 px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-sm shadow-blue-500/20">
+                <UserPlus size={18} />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">단건 신규 영업 DB 등록</h2>
+                <p className="text-xs text-slate-500">초고속 칩 선택 폼을 통해 영업 리드를 빠르게 등록합니다.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">단건 신규 영업 DB 등록</h2>
-              <p className="text-xs text-slate-500">초고속 칩 선택 폼을 통해 영업 리드를 빠르게 등록합니다.</p>
-            </div>
-          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-slate-500"
@@ -471,7 +473,7 @@ export default function NewLeadModal({
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
@@ -489,5 +491,6 @@ export default function NewLeadModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

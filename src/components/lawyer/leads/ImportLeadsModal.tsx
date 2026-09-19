@@ -6,6 +6,7 @@ import type { SalesLead } from '../../../types/leadTypes';
 import type { ConsultRequest } from '../../../types';
 import { formatPhone, normalizeBirthYear } from '../../../services/leadService';
 import { loadInboundPaths } from '../../../services/settingsService';
+import ModalPortal from '../../common/ModalPortal';
 
 interface ImportLeadsModalProps {
   isOpen: boolean;
@@ -211,26 +212,27 @@ export default function ImportLeadsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-sm shadow-violet-500/20">
-              <Upload size={18} />
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 flex min-h-full items-center justify-center animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+          {/* Modal Header */}
+          <div className="shrink-0 px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-sm shadow-violet-500/20">
+                <Upload size={18} />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">영업용 대량 DB 엑셀 업로드</h2>
+                <p className="text-xs text-slate-500">타사 제3자동의 DB 및 광고 리드를 고객 CRM과 격리하여 등록합니다.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">영업용 대량 DB 엑셀 업로드</h2>
-              <p className="text-xs text-slate-500">타사 제3자동의 DB 및 광고 리드를 고객 CRM과 격리하여 등록합니다.</p>
-            </div>
+            <button onClick={handleClose} className="p-2 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-slate-500">
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer text-slate-500">
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Step Indicator */}
-        <div className="px-6 py-3 bg-slate-100/60 border-b border-slate-100 flex items-center justify-center gap-4 text-xs font-bold">
+          {/* Step Indicator */}
+          <div className="shrink-0 px-6 py-3 bg-slate-100/60 border-b border-slate-100 flex items-center justify-center gap-4 text-xs font-bold">
           <span className={`px-2.5 py-1 rounded-lg ${step === 1 ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>1. 파일 선택</span>
           <ArrowRight size={14} className="text-slate-400" />
           <span className={`px-2.5 py-1 rounded-lg ${step === 2 ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>2. 컬럼 매핑 & 배치</span>
@@ -388,7 +390,7 @@ export default function ImportLeadsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <button
             type="button"
             onClick={step === 1 ? handleClose : () => setStep(prev => (prev - 1) as any)}
@@ -423,5 +425,6 @@ export default function ImportLeadsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

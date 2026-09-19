@@ -14,6 +14,7 @@ import {
   saveSalesLead, logLeadCall, addLeadReminder, 
   extractBriefingData, formatPhone, normalizeBirthYear 
 } from '../../../services/leadService';
+import ModalPortal from '../../common/ModalPortal';
 import type { User as LawyerUser, ConsultRequest } from '../../../types';
 
 interface LeadDetailModalProps {
@@ -215,11 +216,12 @@ export default function LeadDetailModal({
   const statusConfig = LEAD_STATUS_CONFIG[formData.status] || LEAD_STATUS_CONFIG.new;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 animate-fadeIn overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden my-auto">
-        
-        {/* ── Top Header Toolbar ── */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto flex min-h-full items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden my-auto">
+          
+          {/* ── Top Header Toolbar ── */}
+          <div className="shrink-0 px-6 py-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
           {/* Customer Meta */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-400/40 text-blue-300 flex items-center justify-center font-black text-base shrink-0">
@@ -966,5 +968,6 @@ export default function LeadDetailModal({
 
       </div>
     </div>
+    </ModalPortal>
   );
 }

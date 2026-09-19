@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { SalesLead } from '../../../types/leadTypes';
 import type { CaseType, User, StaffMember } from '../../../types';
 import { convertLeadToClient } from '../../../services/leadService';
+import ModalPortal from '../../common/ModalPortal';
 
 interface LeadConversionModalProps {
   isOpen: boolean;
@@ -77,11 +78,12 @@ export default function LeadConversionModal({
   if (!isOpen || !lead) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 flex min-h-full items-center justify-center animate-fadeIn">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+          {/* Header */}
+          <div className="shrink-0 px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white flex items-center justify-between">
+            <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
               <Sparkles size={20} />
             </div>
@@ -212,7 +214,7 @@ export default function LeadConversionModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
@@ -232,5 +234,6 @@ export default function LeadConversionModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
