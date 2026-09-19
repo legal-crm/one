@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
-import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType } from '../../services/marketingAiService';
+import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType, generatePollinationsUrl } from '../../services/marketingAiService';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -2219,7 +2219,7 @@ function TabContentStudio({
             )}
 
 
-            {/* 2. YouTube Shorts Editor */}
+            {/* 2. YouTube Shorts Editor — 장면별 비주얼 프리뷰 & PNG 내보내기 */}
             {genTab === 'shorts' && (
               <div className="flex-1 flex flex-col space-y-3">
                 <div>
@@ -2231,18 +2231,183 @@ function TabContentStudio({
                   />
                 </div>
 
-                {/* 4-Step Timeline Cue Sheet */}
-                <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
-                  <span className="block text-xs font-semibold text-slate-400">⏱️ 4단계 타임라인 큐시트 (심리스 루프 설계)</span>
-                  {(CHANNEL_FULL_CONTENTS.shorts.cueSheet || []).map((cue, idx) => (
-                    <div key={idx} className="bg-[#0B0F19] p-3 rounded-xl border border-slate-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-indigo-400">{cue.time}</span>
-                        <span className="text-[11px] text-slate-400">{cue.action}</span>
+                {/* 장면별 9:16 비주얼 프리뷰 카드 + PNG 내보내기 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Video size={14} className="text-red-400" />
+                      쇼츠 장면별 비주얼 프리뷰 & CapCut 에셋 내보내기
+                    </span>
+                    <button
+                      onClick={async () => {
+                        const cueSheetData = CHANNEL_FULL_CONTENTS.shorts.cueSheet || [];
+                        if (cueSheetData.length === 0) return;
+                        setIsExportingStudioZip(true);
+                        const toastId = toast.loading('쇼츠 4장면을 고해상도 PNG로 렌더링 중...');
+                        try {
+                          const zip = new JSZip();
+                          for (let i = 0; i < cueSheetData.length; i++) {
+                            const el = document.getElementById(`shorts-scene-${i}`);
+                            if (el) {
+                              const restoreImages = await convertExternalImagesToDataUrls(el);
+                              const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false, backgroundColor: null, allowTaint: true });
+                              restoreImages();
+                              const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+                              if (blob) zip.file(`[마이김변]_쇼츠_장면${i + 1}_${cueSheetData[i].time.replace(/[~]/g, '-')}.png`, blob);
+                            }
+                          }
+                          const zipBlob = await zip.generateAsync({ type: 'blob' });
+                          const url = URL.createObjectURL(zipBlob);
+                          const link = document.createElement('a');
+                          link.download = `[마이김변]_쇼츠_4장면_에셋팩.zip`;
+                          link.href = url;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                          toast.success('쇼츠 4장면 에셋팩이 다운로드되었습니다!', { id: toastId });
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('에셋팩 다운로드 중 오류가 발생했습니다.', { id: toastId });
+                        } finally {
+                          setIsExportingStudioZip(false);
+                        }
+                      }}
+                      disabled={isExportingStudioZip}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[34px] whitespace-nowrap"
+                    >
+                      {isExportingStudioZip ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      {isExportingStudioZip ? '렌더링 중...' : '4장면 ZIP 다운로드'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    각 장면을 9:16 세로 비율 PNG로 내보낸 후, CapCut에서 불러와 자막과 트랜지션을 추가하세요.
+                  </p>
+                </div>
+
+                {/* 4장면 비주얼 카드 그리드 */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {(CHANNEL_FULL_CONTENTS.shorts.cueSheet || []).map((cue, idx) => {
+                    const scenePrompts = [
+                      'dark dramatic close-up of smartphone screen showing 30 missed calls notifications, red alert glow, cinematic tension, no text, no watermark',
+                      'silhouette of worried person at computer portal search screen with spam notification bubbles floating, moody blue lighting, no text, no watermark',
+                      'futuristic privacy shield UI hologram glowing green around smartphone, 3 lawyer profile cards floating, dark professional background, no text, no watermark',
+                      'glowing pinned comment icon with pulsing arrow animation, seamless loop visual bridge, dark gradient background with subtle light trails, no text, no watermark'
+                    ];
+                    const bgUrl = generatePollinationsUrl(scenePrompts[idx] || scenePrompts[0], { width: 608, height: 1080, seed: 7700 + idx, nologo: true });
+                    const sceneLabels = ['🎬 후킹', '😰 공감', '🛡️ 솔루션', '🔄 CTA 루프'];
+                    const sceneColors = ['from-red-900/80', 'from-blue-900/80', 'from-emerald-900/80', 'from-purple-900/80'];
+                    
+                    return (
+                      <div key={idx} className="flex flex-col gap-2">
+                        {/* 9:16 비주얼 카드 */}
+                        <div
+                          id={`shorts-scene-${idx}`}
+                          className="w-full aspect-[9/16] rounded-xl relative overflow-hidden bg-slate-900 flex flex-col justify-between p-3 border border-slate-700/60"
+                        >
+                          <img
+                            src={bgUrl}
+                            alt=""
+                            crossOrigin="anonymous"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <div className={`absolute inset-0 bg-gradient-to-t ${sceneColors[idx]} via-black/60 to-black/40`}></div>
+                          
+                          {/* 상단 뱃지 */}
+                          <div className="flex justify-between items-start z-10">
+                            <span className="px-2 py-0.5 rounded-lg bg-red-600/80 text-white text-[9px] font-bold border border-red-400/30">
+                              {sceneLabels[idx]}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded-md bg-black/60 text-slate-300 text-[8px] font-mono">
+                              {cue.time}
+                            </span>
+                          </div>
+
+                          {/* 연출 지시 */}
+                          <div className="z-10 text-[8px] text-slate-300/80 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
+                            🎬 {cue.action.length > 40 ? cue.action.slice(0, 40) + '...' : cue.action}
+                          </div>
+
+                          {/* 메인 자막 텍스트 — 키네틱 스타일 */}
+                          <div className="z-10 flex-1 flex items-center justify-center px-1">
+                            <p className="text-white text-[11px] sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                              "{cue.script.length > 60 ? cue.script.slice(0, 60) + '...' : cue.script}"
+                            </p>
+                          </div>
+
+                          {/* 하단 브랜드 */}
+                          <div className="z-10 flex justify-between items-center text-[8px] text-slate-300 border-t border-white/10 pt-1">
+                            <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변</span>
+                            <span className="drop-shadow-sm">YT Shorts</span>
+                          </div>
+                        </div>
+
+                        {/* 장면 액션 버튼 */}
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(cue.script);
+                              toast.success(`장면 ${idx + 1} 나레이션 복사됨`);
+                            }}
+                            className="flex-1 py-1 bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                          >
+                            <Copy size={10} />
+                            자막 복사
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const el = document.getElementById(`shorts-scene-${idx}`);
+                              if (!el) return;
+                              setExportingStudioId(`shorts-scene-${idx}`);
+                              try {
+                                const restoreImages = await convertExternalImagesToDataUrls(el);
+                                const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false, backgroundColor: null, allowTaint: true });
+                                restoreImages();
+                                const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+                                if (!blob) throw new Error('Blob fail');
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.download = `[마이김변]_쇼츠_장면${idx + 1}.png`;
+                                link.href = url;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                                toast.success(`장면 ${idx + 1} PNG 다운로드 완료`);
+                              } catch { toast.error('다운로드 실패'); }
+                              finally { setExportingStudioId(null); }
+                            }}
+                            className="py-1 px-2 bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                          >
+                            {exportingStudioId === `shorts-scene-${idx}` ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-200 font-medium">"{cue.script}"</p>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+
+                {/* CapCut 워크플로우 가이드 */}
+                <div className="bg-gradient-to-r from-[#0B0F19] to-[#111827] rounded-xl p-3 border border-slate-800 space-y-2">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-amber-400" />
+                    CapCut 5분 제작 워크플로우
+                  </span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { step: '①', title: '에셋 가져오기', desc: '4장면 ZIP 다운로드 → CapCut에서 열기' },
+                      { step: '②', title: '타임라인 배치', desc: '장면별 초수에 맞춰 이미지 배치' },
+                      { step: '③', title: '자막 추가', desc: '자막 복사 → CapCut 텍스트에 붙여넣기' },
+                      { step: '④', title: '내보내기', desc: '1080x1920 MP4 내보내기 → 업로드' },
+                    ].map((item) => (
+                      <div key={item.step} className="bg-black/30 rounded-lg p-2 border border-slate-800">
+                        <span className="text-amber-400 font-bold text-xs">{item.step}</span>
+                        <span className="text-white text-[11px] font-bold ml-1">{item.title}</span>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Seamless Loop & Pinned Comment Guide */}
@@ -2457,7 +2622,7 @@ function TabContentStudio({
               </div>
             )}
 
-            {/* 6. TikTok Editor */}
+            {/* 6. TikTok Editor — 장면별 비주얼 프리뷰 & PNG 내보내기 */}
             {genTab === 'tiktok' && (
               <div className="flex-1 flex flex-col space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2483,14 +2648,149 @@ function TabContentStudio({
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">
-                    🎙️ 1.2배속 초스피드 나레이션 대본 (22초 컷)
-                  </label>
-                  <textarea 
-                    className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[200px]"
-                    defaultValue={CHANNEL_FULL_CONTENTS.tiktok.fullBody}
-                  />
+                {/* 틱톡 장면별 비주얼 프리뷰 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Video size={14} className="text-cyan-400" />
+                      틱톡 장면별 비주얼 프리뷰 & CapCut 에셋 내보내기
+                    </span>
+                    <button
+                      onClick={async () => {
+                        setIsExportingStudioZip(true);
+                        const toastId = toast.loading('틱톡 4장면을 고해상도 PNG로 렌더링 중...');
+                        try {
+                          const zip = new JSZip();
+                          for (let i = 0; i < 4; i++) {
+                            const el = document.getElementById(`tiktok-scene-${i}`);
+                            if (el) {
+                              const restoreImages = await convertExternalImagesToDataUrls(el);
+                              const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false, backgroundColor: null, allowTaint: true });
+                              restoreImages();
+                              const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+                              if (blob) zip.file(`[마이김변]_틱톡_장면${i + 1}.png`, blob);
+                            }
+                          }
+                          const zipBlob = await zip.generateAsync({ type: 'blob' });
+                          const url = URL.createObjectURL(zipBlob);
+                          const link = document.createElement('a');
+                          link.download = `[마이김변]_틱톡_4장면_에셋팩.zip`;
+                          link.href = url;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                          toast.success('틱톡 4장면 에셋팩이 다운로드되었습니다!', { id: toastId });
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('에셋팩 다운로드 중 오류가 발생했습니다.', { id: toastId });
+                        } finally {
+                          setIsExportingStudioZip(false);
+                        }
+                      }}
+                      disabled={isExportingStudioZip}
+                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[34px] whitespace-nowrap"
+                    >
+                      {isExportingStudioZip ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      {isExportingStudioZip ? '렌더링 중...' : '4장면 ZIP 다운로드'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 틱톡 4장면 비주얼 카드 */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { time: '00~03초', label: '⚡ 0.3초 훅', script: '아직도 빚 상담에 010 번호 남기나요? 절대 금지 ❌', action: '중앙 볼드 텍스트 팝업 + 빨간 X 모션', prompt: 'dramatic red X mark over phone number input field, dark moody smartphone screen, urgent warning vibe, no text, no watermark', color: 'from-cyan-900/80' },
+                    { time: '04~11초', label: '😱 충격', script: '한 번 남긴 번호로 20곳 넘게 영업전화가 옵니다. 상담 한번 받으려다 스팸 지옥에 빠지는 거죠.', action: '전화기 스팸 알림 쏟아지는 모션 1.2배속', prompt: 'smartphone screen overwhelmed with spam call notifications flooding in, dark dramatic lighting, anxiety inducing visual, no text, no watermark', color: 'from-rose-900/80' },
+                    { time: '12~18초', label: '🛡️ 해결', script: '마이김변은 010 번호 대신 가명으로 변호사 3명에게 동시 견적을 받습니다. 번호 유출 0%.', action: '스텔스 가명 쉴드 ON + 변호사 프로필 3장', prompt: 'futuristic green privacy shield protecting smartphone, three professional lawyer cards floating nearby, clean dark UI aesthetic, no text, no watermark', color: 'from-emerald-900/80' },
+                    { time: '19~22초', label: '👆 CTA', script: '프로필 링크에서 지금 바로 확인하세요!', action: '프로필 링크 손가락 제스처 + 초고속 엔딩', prompt: 'finger tapping glowing profile link button on phone screen, sparkle effect, fast dynamic energy, dark background, no text, no watermark', color: 'from-purple-900/80' },
+                  ].map((scene, idx) => {
+                    const bgUrl = generatePollinationsUrl(scene.prompt, { width: 608, height: 1080, seed: 8800 + idx, nologo: true });
+                    return (
+                      <div key={idx} className="flex flex-col gap-2">
+                        <div
+                          id={`tiktok-scene-${idx}`}
+                          className="w-full aspect-[9/16] rounded-xl relative overflow-hidden bg-slate-900 flex flex-col justify-between p-3 border border-cyan-500/20"
+                        >
+                          <img src={bgUrl} alt="" crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <div className={`absolute inset-0 bg-gradient-to-t ${scene.color} via-black/60 to-black/40`}></div>
+                          <div className="flex justify-between items-start z-10">
+                            <span className="px-2 py-0.5 rounded-lg bg-cyan-600/80 text-white text-[9px] font-bold border border-cyan-400/30">{scene.label}</span>
+                            <span className="px-1.5 py-0.5 rounded-md bg-black/60 text-slate-300 text-[8px] font-mono">{scene.time}</span>
+                          </div>
+                          <div className="z-10 text-[8px] text-slate-300/80 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
+                            🎬 {scene.action.length > 35 ? scene.action.slice(0, 35) + '...' : scene.action}
+                          </div>
+                          <div className="z-10 flex-1 flex items-center justify-center px-1">
+                            <p className="text-white text-[11px] sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                              "{scene.script.length > 50 ? scene.script.slice(0, 50) + '...' : scene.script}"
+                            </p>
+                          </div>
+                          <div className="z-10 flex justify-between items-center text-[8px] text-slate-300 border-t border-white/10 pt-1">
+                            <span className="text-cyan-400 font-bold drop-shadow-sm">마이김변</span>
+                            <span className="drop-shadow-sm">TikTok</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(scene.script); toast.success(`장면 ${idx + 1} 자막 복사됨`); }}
+                            className="flex-1 py-1 bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                          >
+                            <Copy size={10} /> 자막 복사
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const el = document.getElementById(`tiktok-scene-${idx}`);
+                              if (!el) return;
+                              setExportingStudioId(`tiktok-scene-${idx}`);
+                              try {
+                                const restoreImages = await convertExternalImagesToDataUrls(el);
+                                const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false, backgroundColor: null, allowTaint: true });
+                                restoreImages();
+                                const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
+                                if (!blob) throw new Error('fail');
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.download = `[마이김변]_틱톡_장면${idx + 1}.png`;
+                                link.href = url;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                                toast.success(`장면 ${idx + 1} PNG 다운로드 완료`);
+                              } catch { toast.error('다운로드 실패'); }
+                              finally { setExportingStudioId(null); }
+                            }}
+                            className="py-1 px-2 bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                          >
+                            {exportingStudioId === `tiktok-scene-${idx}` ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* CapCut 가이드 */}
+                <div className="bg-gradient-to-r from-[#0B0F19] to-[#0B1520] rounded-xl p-3 border border-cyan-500/20 space-y-2">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-cyan-400" />
+                    CapCut 5분 제작 워크플로우 (1.2배속 적용)
+                  </span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { step: '①', title: 'PNG 가져오기', desc: '4장면 ZIP → CapCut에서 열기' },
+                      { step: '②', title: '타임라인 배치', desc: '초수별 배치 (3+8+7+4=22초)' },
+                      { step: '③', title: '자막+1.2배속', desc: '자막 붙여넣기 + 재생속도 1.2x' },
+                      { step: '④', title: '틱톡 업로드', desc: '1080x1920 내보내기 → 업로드' },
+                    ].map((item) => (
+                      <div key={item.step} className="bg-black/30 rounded-lg p-2 border border-slate-800">
+                        <span className="text-cyan-400 font-bold text-xs">{item.step}</span>
+                        <span className="text-white text-[11px] font-bold ml-1">{item.title}</span>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
