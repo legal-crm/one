@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
-import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem } from '../../services/marketingAiService';
+import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType } from '../../services/marketingAiService';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -1590,6 +1590,10 @@ function TabContentStudio({
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [exportingStudioId, setExportingStudioId] = useState<string | null>(null);
   const [isExportingStudioZip, setIsExportingStudioZip] = useState(false);
+  // 이미지 소스 토글: 'pollinations' (AI 배경 생성) | 'gradient' (CSS 그라데이션 폴백)
+  const [imageSource, setImageSource] = useState<ImageSourceType>('pollinations');
+  // AI 배경 이미지 로딩 상태 추적 (이미지 ID → loaded/error)
+  const [bgImageStatus, setBgImageStatus] = useState<Record<string, 'loading' | 'loaded' | 'error'>>({});
 
   useEffect(() => {
     if (initialTab) {
@@ -1602,10 +1606,56 @@ function TabContentStudio({
     setTheme(activeBlogContent.theme);
   }, [activeBlogContent]);
 
+  // Pollinations AI 배경 모드일 때 자동으로 URL 주입
+  useEffect(() => {
+    if (imageSource === 'pollinations' && activeBlogContent.blogImages.length > 0) {
+      const hasUrls = activeBlogContent.blogImages.every(img => img.backgroundImageUrl);
+      if (!hasUrls) {
+        const injected = injectPollinationsUrls(activeBlogContent.blogImages);
+        setActiveBlogContent({ ...activeBlogContent, blogImages: injected });
+        // 로딩 상태 초기화
+        const initStatus: Record<string, 'loading'> = {};
+        injected.forEach(img => { initStatus[img.id] = 'loading'; });
+        setBgImageStatus(initStatus);
+      }
+    }
+  }, [imageSource, activeBlogContent.presetKey]);
+
+  const handleImageSourceChange = (source: ImageSourceType) => {
+    setImageSource(source);
+    setBgImageStatus({});
+    if (source === 'pollinations') {
+      const injected = injectPollinationsUrls(activeBlogContent.blogImages);
+      setActiveBlogContent({ ...activeBlogContent, blogImages: injected });
+      const initStatus: Record<string, 'loading'> = {};
+      injected.forEach(img => { initStatus[img.id] = 'loading'; });
+      setBgImageStatus(initStatus);
+      toast.success('AI 배경 이미지를 생성합니다. 이미지당 5~15초 소요됩니다.');
+    } else {
+      // 그라데이션 모드로 전환 — URL 제거
+      const cleaned = activeBlogContent.blogImages.map(img => ({
+        ...img,
+        backgroundImageUrl: undefined,
+        imageSource: 'gradient' as ImageSourceType,
+      }));
+      setActiveBlogContent({ ...activeBlogContent, blogImages: cleaned });
+      toast.success('CSS 그라데이션 모드로 전환되었습니다.');
+    }
+  };
+
   const handleSelectPreset = (p: typeof DDOK_BLOG_PRESETS_DATA[0]) => {
     setTopic(p.topic);
     setTheme(p.theme);
-    setActiveBlogContent(p);
+    // Pollinations 모드면 URL 주입
+    if (imageSource === 'pollinations') {
+      const injected = injectPollinationsUrls(p.blogImages);
+      setActiveBlogContent({ ...p, blogImages: injected });
+      const initStatus: Record<string, 'loading'> = {};
+      injected.forEach(img => { initStatus[img.id] = 'loading'; });
+      setBgImageStatus(initStatus);
+    } else {
+      setActiveBlogContent(p);
+    }
     toast.success(`'${p.label}' 주제의 블로그 4컷 이미지와 칼럼이 즉시 로드되었습니다.`);
   };
 
@@ -1903,6 +1953,36 @@ function TabContentStudio({
 
                 {/* 4컷 본문 삽입 이미지 세트 실시간 프리뷰 & 다운로드 섹션 */}
                 <div className="space-y-3 bg-[#0B0F19] p-4 rounded-xl border border-slate-800">
+                  {/* 이미지 소스 토글 */}
+                  <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-800">
+                    <span className="text-[11px] font-bold text-slate-400 mr-1">이미지 소스:</span>
+                    <button
+                      onClick={() => handleImageSourceChange('pollinations')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer min-h-[34px] whitespace-nowrap ${
+                        imageSource === 'pollinations'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      <Sparkles size={13} />
+                      🎨 AI 배경 (Pollinations)
+                    </button>
+                    <button
+                      onClick={() => handleImageSourceChange('gradient')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer min-h-[34px] whitespace-nowrap ${
+                        imageSource === 'gradient'
+                          ? 'bg-slate-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      <Layers size={13} />
+                      🎯 그라데이션
+                    </button>
+                    {imageSource === 'pollinations' && (
+                      <span className="text-[10px] text-emerald-400 ml-1">✨ FLUX 모델 기반 무료 AI 배경 자동 생성 (5~15초)</span>
+                    )}
+                  </div>
+
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -1910,7 +1990,9 @@ function TabContentStudio({
                         네이버 블로그 본문 삽입용 4컷 이미지 세트 (D.I.A.+ & 100% 한글 벡터 선명도)
                       </span>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        주제 맞춤 생성된 4컷 이미지입니다. 개별 PNG 또는 4컷 일괄 ZIP으로 즉시 다운로드할 수 있습니다.
+                        {imageSource === 'pollinations'
+                          ? 'AI가 생성한 배경 위에 한글 텍스트를 합성합니다. 로딩 실패 시 자동으로 그라데이션 폴백됩니다.'
+                          : '주제 맞춤 생성된 4컷 이미지입니다. 개별 PNG 또는 4컷 일괄 ZIP으로 즉시 다운로드할 수 있습니다.'}
                       </p>
                     </div>
                     <button
@@ -1928,13 +2010,48 @@ function TabContentStudio({
                     {activeBlogContent.blogImages.map((bImg) => (
                       <div key={bImg.id} className="bg-[#111622] rounded-xl border border-slate-800 p-3 flex flex-col justify-between space-y-2.5">
                         
-                        {/* Visual Card (Rendered for html2canvas) */}
+                        {/* Visual Card (Rendered for html2canvas — AI 배경 + 한글 오버레이 합성) */}
                         <div 
                           id={`studio-blog-visual-${bImg.id}`}
-                          className={`w-full h-44 rounded-lg bg-gradient-to-br ${bImg.previewGradient} p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden`}
+                          className={`w-full h-44 rounded-lg p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden ${
+                            !(imageSource === 'pollinations' && bImg.backgroundImageUrl && bgImageStatus[bImg.id] !== 'error')
+                              ? `bg-gradient-to-br ${bImg.previewGradient}`
+                              : 'bg-slate-900'
+                          }`}
                         >
+                          {/* AI 배경 이미지 (Pollinations 모드) */}
+                          {imageSource === 'pollinations' && bImg.backgroundImageUrl && bgImageStatus[bImg.id] !== 'error' && (
+                            <>
+                              <img
+                                src={bImg.backgroundImageUrl}
+                                alt=""
+                                crossOrigin="anonymous"
+                                className="absolute inset-0 w-full h-full object-cover"
+                                onLoad={() => setBgImageStatus(prev => ({ ...prev, [bImg.id]: 'loaded' }))}
+                                onError={() => {
+                                  setBgImageStatus(prev => ({ ...prev, [bImg.id]: 'error' }));
+                                  toast.error(`이미지 ${bImg.order}번 AI 배경 생성 실패 — 그라데이션 폴백`, { duration: 2000 });
+                                }}
+                              />
+                              {/* 로딩 스켈레톤 */}
+                              {bgImageStatus[bImg.id] === 'loading' && (
+                                <div className="absolute inset-0 bg-slate-800 animate-pulse flex items-center justify-center z-20">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Loader2 size={20} className="animate-spin text-indigo-400" />
+                                    <span className="text-[10px] text-slate-400 font-medium">AI 배경 생성 중...</span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {/* 다크 오버레이 — AI 배경 위 텍스트 가독성 보장 */}
+                          <div className={`absolute inset-0 ${
+                            imageSource === 'pollinations' && bImg.backgroundImageUrl && bgImageStatus[bImg.id] === 'loaded'
+                              ? 'bg-gradient-to-t from-black/80 via-black/50 to-black/30'
+                              : 'bg-gradient-to-t from-black/60 via-transparent to-transparent'
+                          }`}></div>
                           <div className="flex justify-between items-start z-10">
-                            <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[10px] font-bold backdrop-blur-sm border border-white/10">
+                            <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[10px] font-bold border border-white/10">
                               {bImg.tag}
                             </span>
                             <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[9px] font-medium border border-emerald-500/30">
@@ -1942,18 +2059,17 @@ function TabContentStudio({
                             </span>
                           </div>
                           <div className="z-10 my-auto space-y-1">
-                            <h6 className="text-sm sm:text-base font-extrabold text-white leading-tight drop-shadow-md whitespace-pre-line">
+                            <h6 className="text-sm sm:text-base font-extrabold text-white leading-tight drop-shadow-lg whitespace-pre-line">
                               {bImg.previewTitle}
                             </h6>
-                            <p className="text-[11px] text-slate-200 line-clamp-2 drop-shadow-sm font-medium">
+                            <p className="text-[11px] text-slate-100 line-clamp-2 drop-shadow-md font-medium">
                               {bImg.previewSub}
                             </p>
                           </div>
-                          <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-300">
-                            <span className="text-emerald-400 font-bold">마이김변 안심 리걸테크</span>
-                            <span>010 번호 유출 0%</span>
+                          <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-200">
+                            <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변 안심 리걸테크</span>
+                            <span className="drop-shadow-sm">010 번호 유출 0%</span>
                           </div>
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                         </div>
 
                         {/* Role & Prompt info */}

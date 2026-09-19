@@ -7,6 +7,9 @@
  * - 가격 덤핑 역경매 배제, 승소율 과장 금지
  */
 
+// --- 이미지 소스 타입 ---
+export type ImageSourceType = 'pollinations' | 'gradient';
+
 export interface BlogImageItem {
   id: string;
   order: number;
@@ -18,6 +21,82 @@ export interface BlogImageItem {
   previewTitle: string;
   previewSub: string;
   tag: string;
+  backgroundImageUrl?: string;  // Pollinations.ai 등 AI 생성 배경 URL
+  imageSource?: ImageSourceType; // 이미지 소스 추적
+}
+
+// --- Pollinations.ai AI 배경 이미지 URL 생성기 ---
+// 완전 무료, API 키 불필요, GET 요청만으로 FLUX 모델 기반 고품질 이미지 생성
+export interface PollinationsImageOptions {
+  width?: number;
+  height?: number;
+  seed?: number;
+  nologo?: boolean;
+  model?: string;
+}
+
+/**
+ * Pollinations.ai URL을 생성합니다.
+ * 한글 텍스트는 AI가 렌더링하지 못하므로 배경/일러스트만 생성하고,
+ * 한글 텍스트는 HTML Canvas 오버레이로 합성합니다.
+ */
+export function generatePollinationsUrl(
+  prompt: string,
+  options: PollinationsImageOptions = {}
+): string {
+  const {
+    width = 1080,
+    height = 1080,
+    seed = 42,
+    nologo = true,
+    model = 'flux',
+  } = options;
+
+  // 프롬프트에서 한글/CJK 문자 제거 (AI 이미지 모델은 한글 렌더링 불가)
+  const cleanPrompt = prompt
+    .replace(/[가-힣ㄱ-ㅎㅏ-ㅣ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // 법률 서비스 분위기 강화 접미사
+  const enhancedPrompt = `${cleanPrompt}, professional corporate photography, clean composition, no text, no watermark, no letters`;
+
+  const encodedPrompt = encodeURIComponent(enhancedPrompt);
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=${nologo}&model=${model}`;
+}
+
+/**
+ * BlogImageItem 배열에 Pollinations 배경 URL을 일괄 주입합니다.
+ * 각 이미지의 prompt를 기반으로 고유 seed를 생성하여 결정적 이미지를 보장합니다.
+ */
+export function injectPollinationsUrls(images: BlogImageItem[]): BlogImageItem[] {
+  return images.map((img, idx) => {
+    // 각 이미지마다 고유 seed 생성 (프리셋 ID + 순서 기반)
+    const seedBase = img.id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const seed = seedBase * 100 + (idx + 1) * 7;
+
+    // 이미지 타입별 최적 크기
+    const sizeMap: Record<string, { width: number; height: number }> = {
+      '대표 썸네일': { width: 1080, height: 1080 },
+      '비교 인포그래픽': { width: 1080, height: 720 },
+      '앱 UI 목업': { width: 1080, height: 1080 },
+      '전환 CTA 배너': { width: 1200, height: 628 },
+    };
+
+    // tag에서 매칭되는 크기 찾기
+    const matchedKey = Object.keys(sizeMap).find(k => img.tag.includes(k));
+    const size = matchedKey ? sizeMap[matchedKey] : { width: 1080, height: 1080 };
+
+    return {
+      ...img,
+      backgroundImageUrl: generatePollinationsUrl(img.prompt, {
+        ...size,
+        seed,
+        nologo: true,
+      }),
+      imageSource: 'pollinations' as ImageSourceType,
+    };
+  });
 }
 
 export interface BlogContentData {
