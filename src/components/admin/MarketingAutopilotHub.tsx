@@ -130,162 +130,192 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
     ]
   },
   shorts: {
-    title: "아직도 빚 때문에 전화기 꺼두시나요? (35초 컷)",
-    badge: "유튜브 쇼츠 / 9:16 세로 숏폼",
-    format: "세로 1080x1920 MP4 비디오 (키네틱 자막 + AI 음성 연출)",
-    summary: "독촉 전화에 시달리는 채무자에게 번호 유출 없는 스텔스 가명 상담과 변호사 다중 견적 방법을 35초 만에 전달하는 고효율 숏폼 대본입니다.",
-    fullBody: `[00~05초: 훅(Hook)]
-(화면 연출: 화면 가득 부재중 전화 30통 알림이 울리는 긴박한 모션 그래픽)
-성우 나레이션: "아직도 빚 독촉 전화 받기 무서워서 전화기 비행기 모드로 해두셨나요?"
+    title: "이자 갚다 지쳤다면 딱 3초만 집중 (심리스 무한 루프 35초)",
+    badge: "유튜브 쇼츠 / 9:16 세로 숏폼 (E-A-Q-R 후킹)",
+    format: "세로 1080x1920 MP4 비디오 (키네틱 자막 + 심리스 무한 루프 연출)",
+    summary: "인사말('안녕하세요')을 배제하고 첫 3초 E-A-Q-R 훅으로 이탈을 막은 뒤, 영상의 마지막 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop)로 시청지속시간 100%+를 유도합니다.",
+    fullBody: `[00~03초: E-A-Q-R 3초 훅 (인사말 없이 즉시 시작)]
+(화면 연출: 화면 가득 부재중 전화 30통 알림이 쏟아지는 긴박한 줌인 효과, 인사말 배제)
+성우 나레이션: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요."
 
-[06~17초: 공감 & 딜레마]
-(화면 연출: 한숨 쉬며 포털에 번호 입력하려다 멈칫하는 실루엣)
-성우 나레이션: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 쏟아질까 봐 겁나시죠?"
+[04~15초: 공감 & 딜레마 폭로]
+(화면 연출: 포털 검색창에 번호 적으려다 멈칫하는 실루엣 + 쏟아지는 스팸 알림)
+성우 나레이션: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 100통 쏟아질까 봐 겁나시죠?"
 
-[18~28초: 솔루션(마이김변)]
-(화면 연출: 스마트폰 마이김변 앱에서 '스텔스 가명' 켜지며 변호사 3명 프로필 터치)
+[16~27초: 솔루션 (마이김변 스텔스 가명)]
+(화면 연출: 마이김변 앱에서 '스텔스 가명' 켜지며 실시간 변호사 프로필 3명 터치)
 성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다."
 
-[29~35초: CTA]
-(화면 연출: 고정 댓글 링크 화살표 강조 & 안심 가명 상담 신청 뱃지)
-성우 나레이션: "고정 댓글 링크에서 010 번호 유출 없이 전문 변호사 안심 상담을 신청하세요!"`,
+[28~35초: 심리스 루프(Seamless Loop) & 고정 댓글 CTA]
+(화면 연출: 고정 댓글 화살표 펄스 애니메이션 후, 첫 장면의 질문으로 자연스럽게 이어지는 문장 아웃트로)
+성우 나레이션: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 완전히 벗어나는 비결은 바로,"
+➔ (영상 첫 문장 "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요."로 끊김 없이 무한 루프 연결)`,
     cueSheet: [
-      { time: "00~05초", action: "부재중 전화 30통 폭탄 모션 + 경고음 효과음", script: "아직도 빚 독촉 전화 받기 무서워서 전화기 비행기 모드로 해두셨나요?" },
-      { time: "06~17초", action: "포털 번호 입력 망설이는 인물 줌인 (Ken Burns)", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 쏟아질까 봐 겁나시죠?" },
-      { time: "18~28초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 다중 선택", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
-      { time: "29~35초", action: "고정 댓글 화살표 펄스 애니메이션 + 로고 아웃트로", script: "고정 댓글 링크에서 010 번호 유출 없이 전문 변호사 안심 상담을 신청하세요!" }
+      { time: "00~03초", action: "부재중 전화 30통 폭탄 모션 + 줌인 (인사말 없음)", script: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요." },
+      { time: "04~15초", action: "포털 번호 입력 망설이는 인물 + 스팸 경고음", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 100통 쏟아질까 봐 겁나시죠?" },
+      { time: "16~27초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 3명 터치", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
+      { time: "28~35초", action: "고정 댓글 강조 + 루프 브릿지 문장으로 첫 장면 연결", script: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 완전히 벗어나는 비결은 바로," }
     ],
     visualPrompt: "Cinematic vertical 9:16 shot, modern dark neon Korean legal office, stressed person looking at smartphone with glowing shield UI, 8k resolution, dramatic lighting",
     hashtags: ["#개인회생", "#빚독촉", "#스텔스보증", "#유튜브쇼츠", "#마이김변", "#채무탕감"],
     specs: [
-      { label: "영상 길이", value: "35초" },
-      { label: "해상도", value: "1080 x 1920 (9:16 Vertical)" },
-      { label: "권장 BGM", value: "긴장감 넘치다 희망적으로 전환되는 로우파이 비트" }
+      { label: "영상 길이", value: "35초 (완독률 최적화)" },
+      { label: "후킹 구조", value: "HF-3 / E-A-Q-R 첫 3초 예측 붕괴 (인사말 절대 금지)" },
+      { label: "알고리즘 공략", value: "심리스 루프 (Seamless Loop) 설계로 시청지속시간 100%+ 달성" },
+      { label: "전환 장치", value: "영상 내 고정 댓글(Pinned Comment) 링크 유도" }
     ]
   },
   cardnews: {
-    title: "이자 갚다 지친 당신을 위한 솔루션 — 번호 노출 없이 끝내는 개인회생",
-    badge: "인스타그램 카드뉴스 (6장 슬라이드)",
-    format: "1080x1080 정방형 PNG 캐러셀 앨범",
-    summary: "인스타그램 피드용 6장 카드뉴스로, 고통스러운 현실 공감부터 스텔스 가명과 30분 서류 패키징까지 한눈에 이해할 수 있도록 디자인되었습니다.",
+    title: "빚 5천만원 넘어가면 무조건 확인해야 하는 3가지 (10장 황금 캐러셀)",
+    badge: "인스타그램 카드뉴스 (10장 캐러셀)",
+    format: "1080x1080 정방형 PNG 캐러셀 (1슬라이드 1메시지 + 저장/공유 유도)",
+    summary: "인스타그램 최신 알고리즘 가중치(저장/공유)를 정조준한 10장 황금 캐러셀입니다. 열린 고리(Open Loop) 기법으로 스와이프 완독률을 극대화합니다.",
     fullBody: `[인스타그램 본문 캡션]
 매달 돌아오는 이자 갚느라 숨이 턱 끝까지 차오르셨나요? 😢
 
-법적인 구제 제도가 있다는 건 알지만...
-"상담 신청했다가 회사나 가족에게 알려지면 어쩌지?"
-"하루 종일 대출 영업 전화 쏟아지는 거 아냐?"
+원금은 그대로인데 이자만 나가고 있다면,
+지금 당장 '채무 구조'를 바꾸셔야 할 때입니다.
 
-더 이상 혼자 앓지 마세요.
-마이김변의 혁신적인 3대 기술이 여러분을 지켜드립니다. 🛡️
+하지만 인터넷에 번호 남겼다가
+사방에서 대출 영업 전화 쏟아질까 봐 망설여지셨죠?
 
-1️⃣ 010 번호 유출 0%! 스텔스 가명 시스템
-2️⃣ 내가 직접 고르는 투명한 전문 변호사 다중 견적
-3️⃣ 말로 하면 30분 만에 끝나는 AI 서류 패키징
+010 번호 단 1자리도 넘기지 않고,
+안심 가명으로 전문 변호사 3명의 견적을 직접 비교하는 법을 정리했습니다.
 
-지금 프로필 링크(@mykimbyun)에서 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청해보세요! 🛡️
+📌 나중에 다시 확인하려면 지금 오른쪽 아래 [저장]을 눌러두세요!
+주변에 혼자 빚 고민으로 힘들어하는 친구가 있다면 조용히 [공유]해 주세요. 🛡️
 
 #마이김변 #개인회생 #개인파산 #신용회복 #빚탈출 #스텔스보증 #비대면법률`,
     slides: [
-      { page: 1, headline: "이자 갚다 지친 당신을 위한 솔루션", subtext: "번호 유출 0%! 변호사 직접 고르고 30분 만에 끝내는 법", visualDesc: "어두운 밤 서류와 영수증을 보며 고뇌하는 채무자의 감성적 일러스트" },
-      { page: 2, headline: "상담 신청하기 망설여지는 진짜 이유", subtext: "포털에 번호 남기면 사방에서 쏟아지는 대출 영업 전화의 공포", visualDesc: "스마트폰 화면 위로 쏟아지는 붉은색 알림 아이콘들" },
-      { page: 3, headline: "010 번호 유출 0%, '스텔스 가명'", subtext: "내 진짜 번호는 어디에도 노출되지 않습니다. 오직 안전한 가명으로 상담 진행", visualDesc: "마이김변의 보안 쉴드(Shield) 그래픽과 비공개 보호 뱃지" },
-      { page: 4, headline: "내가 직접 보고 선택하는 전문 변호사", subtext: "경력, 전문분야, 솔직 후기 확인 후 마음에 드는 변호사 3명에게 동시 견적", visualDesc: "신뢰감 있는 변호사 프로필 카드 3개가 나란히 배치된 UI 목업" },
-      { page: 5, headline: "40종 서류 지옥? 말로 쓰는 AI 진술서", subtext: "동사무소 뛰어다닐 필요 없이 스마트폰으로 30분 만에 서류 패키지 완성", visualDesc: "마이크 아이콘에서 텍스트로 자동 변환되는 실시간 음성 인식 그래픽" },
-      { page: 6, headline: "지금 30초 만에 익명으로 확인하세요", subtext: "프로필 링크 클릭 ➔ 변호사 프로필 확인 ➔ 010 번호 없이 안심 상담 신청", visualDesc: "마이김변 앱 다운로드/시작하기 버튼과 깔끔한 로고 엔딩" }
+      { page: 1, headline: "빚 5,000만원 넘어가면 무조건 확인해야 하는 3가지", subtext: "원금은 그대로고 이자만 나가고 있다면 필독 (옆으로 넘겨보기 ➔)", visualDesc: "어두운 밤 계산기와 영수증을 바라보는 고대비 타이포그래피 표지" },
+      { page: 2, headline: "혹시 매달 '이자만' 갚고 계신가요?", subtext: "월급 받아서 대출 이자 내면 남는 돈 0원... 더 이상 버티기 어렵다면", visualDesc: "스마트폰 계좌 잔액 0원과 늘어나는 이자 그래프" },
+      { page: 3, headline: "법적 구제 제도가 있지만 망설여지는 이유", subtext: "'인터넷에 상담 글 올렸더니 하루 종일 대출 스팸 전화가 와요'", visualDesc: "화면 위로 쏟아지는 붉은색 스팸 알림 아이콘들" },
+      { page: 4, headline: "사설 브로커의 번호 장사 vs 안전한 해결책", subtext: "내 소중한 010 개인정보가 불법 유통되는 구조를 피해야 합니다", visualDesc: "사설 DB 유출 경로와 경고 그래픽" },
+      { page: 5, headline: "첫 번째: 010 번호 유출 0% '스텔스 가명'", subtext: "내 진짜 번호는 가리고, 안심 가명으로만 안전하게 상담 진행", visualDesc: "마이김변 보안 쉴드(Shield)와 가명 생성 인터페이스" },
+      { page: 6, headline: "두 번째: 변호사 직접 탐색 & 복수 안심 견적", subtext: "경력과 승소 사례를 투명하게 확인하고 마음에 드는 변호사를 직접 선택", visualDesc: "도산 전문 변호사 프로필 카드 3개 비교 화면" },
+      { page: 7, headline: "세 번째: 40종 서류, 말로 쓰는 AI 음성 진술서", subtext: "동사무소 서류 지옥 탈출! 스마트폰으로 말만 하면 30분 패키징 완성", visualDesc: "음성 파형이 법원 표준 진술서로 자동 변환되는 UI" },
+      { page: 8, headline: "핵심 요약: 번호 없이 시작하는 안심 회생", subtext: "혼자 앓지 말고 합법적 제도의 보호를 안전하게 받으세요", visualDesc: "3단계 체크리스트 정리 그래픽" },
+      { page: 9, headline: "💡 주변에 이런 고민을 하는 동료가 있다면?", subtext: "주변 소문 걱정 없이 조용히 도움받을 수 있도록 이 글을 공유해 주세요", visualDesc: "공유(Share) 아이콘과 온기 있는 일러스트" },
+      { page: 10, headline: "지금 프로필 링크에서 안심 가명으로 확인", subtext: "나중에 다시 보려면 꼭 [저장] 누르고 프로필 링크(@mykimbyun)를 확인하세요!", visualDesc: "저장(Save) 버튼 하이라이트와 프로필 링크 안내" }
     ],
     hashtags: ["#마이김변", "#개인회생", "#개인파산", "#신용회복", "#빚탈출", "#스텔스보증"],
     specs: [
-      { label: "카드 수", value: "6장 슬라이드" },
-      { label: "해상도", value: "1080 x 1080 (1:1 Square)" },
-      { label: "합성 기술", value: "Imagen 3 배경 + html2canvas 타이포그래피" }
+      { label: "슬라이드 수", value: "10장 황금 캐러셀 (완독률·저장률 최적화)" },
+      { label: "콘텐츠 구조", value: "표지 훅 ➔ 통증 공감 ➔ 3대 솔루션 ➔ 반전 팁 ➔ 저장·공유 CTA" },
+      { label: "디자인 기준", value: "1:1 Square (1080x1080), 30pt 이상 폰트, WCAG AA 고대비" }
     ]
   },
   threads: {
-    title: "스레드 4단 연속 타래: 빚 독촉으로 밤잠 설치던 분들이 마이김변을 찾는 이유",
-    badge: "스레드 4단 인사이트 타래 (Threads)",
-    format: "담백한 1인칭 독백체 텍스트 타래 (Threads Thread)",
-    summary: "스레드 플랫폼 특유의 담백하고 진솔한 독백체로 법률 업계의 DB 유출 현실을 꼬집고, 마이김변의 스텔스 가명 기술 필요성을 설득합니다.",
+    title: "스레드 바이럴 타래: 빚 독촉으로 밤잠 설칠 때 010 번호 없이 살아남는 법 (반말 독백체)",
+    badge: "스레드 4단 바이럴 타래 (Threads)",
+    format: "담백한 1인칭 반말 독백체 (1~2줄 줄바꿈 + 첫 댓글 링크 유도)",
+    summary: "스레드 알고리즘 맞춤: 친구에게 털어놓듯 편안한 반말 구어체, 1~2줄 단위 줄바꿈 여백, 첫 댓글 링크 유도로 도달률 페널티를 완벽 회피합니다.",
     fullBody: `[1/4]
-오늘도 이자 낼 생각에 한숨부터 쉬셨나요?
-법적 구제제도가 있는 건 알지만, 회사나 가족한테 알려질까 봐 혹은 사방에서 영업 전화 쏟아질까 봐 검색창만 켰다 껐다 반복하는 분들 정말 많습니다. 혼자 끙끙 앓다 보면 밤새 잠도 안 오죠.
+오늘도 이자 낼 생각에 한숨부터 쉬었지?
+
+법적 구제제도 있는 건 아는데,
+회사나 가족한테 알려질까 봐 혹은 사방에서 광고 전화 쏟아질까 봐
+검색창만 켰다 껐다 반복하는 사람 진짜 많더라.
+
+혼자 끙끙 앓다 보면 밤새 잠도 안 오는 거, 나도 다 알아.
 
 [2/4]
-실제로 사설 상담소나 포털에 번호 한 번 남기면 그 DB가 여기저기 넘어가서 하루 종일 광고 전화에 시달리게 됩니다. 정작 내가 신뢰할 수 있는 변호사는 얼굴도 못 보고, 수임료나 조건도 제대로 비교하기 어렵습니다.
+근데 진짜 조심해야 하는 게 뭔지 알아?
+
+사설 상담소나 포털에 '무료 상담'이라고 번호 한 번 남기잖아?
+그 DB가 브로커들한테 넘어가서 하루 종일 대출 광고 전화에 시달리게 됨.
+
+정작 내가 신뢰할 수 있는 변호사는 얼굴도 못 보고,
+수임료나 조건도 제대로 비교 못 하고 덤터기 쓰는 경우도 수두룩해.
 
 [3/4]
-그래서 마이김변은 '010 번호 유출 0%' 스텔스 가명 시스템을 만들었습니다.
-내 진짜 번호는 단 1글자도 넘기지 않고, 검증된 도산 전문 변호사들의 프로필과 후기를 직접 확인한 뒤 마음에 드는 변호사 여러 명에게 동시에 안심 견적을 받아볼 수 있습니다.
+그래서 마이김변이 '010 번호 유출 0%' 스텔스 가명 시스템을 만든 거래.
+
+내 진짜 번호는 단 1글자도 넘기지 않고,
+검증된 도산 전문 변호사들 프로필이랑 승소 후기 직접 확인한 다음
+마음에 드는 변호사 3명한테 동시에 안심 견적을 받아볼 수 있음.
+
+진짜 010 번호 없이 가명으로만 소통하니까 영업 전화 0통 보장됨. 신기하지?
 
 [4/4]
-더 이상 혼자 숨죽여 버티지 마세요.
-회생/파산은 성실하게 살다 넘어진 분들이 다시 일어서라고 법이 만들어둔 안전망입니다.
-프로필 링크에서 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청해보세요. 아무에게도 알려지지 않습니다.`,
+더 이상 혼자 속으로 앓으면서 버티지 마.
+회생/파산은 성실하게 살다 넘어진 사람들이 다시 일어서라고 법이 만들어둔 정당한 권리야.
+
+📌 010 번호 노출 없이 안심 가명으로 변호사 견적 받는 법은 '첫 번째 댓글'에 남겨둘게!
+너희는 빚 갚으면서 제일 힘들었던 순간이 언제였어? 댓글로 편하게 털어놔줘.`,
     hashtags: ["#개인회생", "#개인파산", "#채무조정", "#스레드", "#마이김변", "#스텔스보증"],
     specs: [
       { label: "타래 구성", value: "총 4단 연결 타래" },
-      { label: "문체", value: "담백하고 진솔한 1인칭 독백체" },
-      { label: "추천 발행 시각", value: "퇴근길 17:30 (피로도와 고민이 극대화되는 골든타임)" }
+      { label: "문체", value: "친구 대화형 반말 독백체 (~했어, ~알아, ~하더라)" },
+      { label: "가독성", value: "1~2줄 단위 여백 줄바꿈 (모바일 완독률 최적화)" },
+      { label: "CTA 장치", value: "본문 링크 배제 ➔ 첫 번째 댓글(First Comment) 링크 유도" }
     ]
   },
   facebook: {
-    title: "🚨 기준금리 동결에도 웃지 못하는 자영업자·가장 여러분 🚨",
-    badge: "페이스북 4060 타겟 장문 피드",
-    format: "페이스북 긴 글 피드 + 카드뉴스 앨범 연동",
-    summary: "4060 자영업자와 가장들의 현실적인 채무 상환 고통에 깊이 공감하고, 가족과 주변에 폐 끼치지 않고 비밀리에 해결할 수 있는 방안을 제시합니다.",
+    title: "🚨 기준금리 동결에도 웃지 못하는 자영업자·가장 여러분 🚨 (첫 댓글 링크 기법)",
+    badge: "페이스북 4060 타겟 장문 피드 (도달률 최적화)",
+    format: "장문 스토리텔링 피드 + 첫 댓글(First Comment) 링크 연동",
+    summary: "페이스북 알고리즘의 외부 링크 도달률 페널티를 완벽히 회피하기 위해 본문 내 링크를 배제하고 첫 댓글로 안내하며, 4060 가장의 현실적인 고통에 깊이 공감합니다.",
     fullBody: `🚨 기준금리 동결 소식에도 웃지 못하는 자영업자·가장 여러분 🚨
 
 매달 나가는 원리금 상환액에 가게 문을 열 때마다 가슴이 철렁 내려앉으시나요?
 열심히 일해온 죄밖에 없는데, 늘어난 대출 이자에 잠 못 이루는 밤이 길어지고 계실 겁니다.
 
 "법원에 회생 신청하면 주변에 다 소문나는 건 아닐까?"
-"상담받으려다 영업 사원들에게 시달리는 건 아닐까?"
+"상담받으려다 대출 영업 사원들에게 번호 털리는 건 아닐까?"
 
-걱정하지 마십시오.
+가장으로서 짊어진 무게, 더 이상 혼자 속으로 삼키지 마십시오.
 국내 유일의 리걸테크 플랫폼 [마이김변]은 소상공인과 가장 여러분의 비밀을 철저히 지켜드립니다.
 
 🔒 마이김변 3대 안심 약속:
-1. 010 번호 유출 0% — '스텔스 가명'으로 신분 철저 보호
+1. 010 번호 유출 0% — '스텔스 가명'으로 신분 철저 보호 (영업 전화 0통 보장)
 2. 검증된 도산 전문 변호사 직접 탐색 & 투명한 다중 견적
 3. 복잡한 40종 서류, 스마트폰으로 말만 하면 30분 만에 원스톱 패키징
 
 더 이상 혼자 속앓이하며 버티지 마시고, 합법적인 제도의 보호를 받으십시오.
-지금 아래 링크를 클릭하시면 010 번호 노출 없이 안심 가명으로 변호사 상담을 신청하실 수 있습니다.
+주변에 비슷한 고민으로 밤잠 설치는 동료나 가족이 있다면 조용히 이 글을 전해주세요.
 
-👉 안심 가명 상담 신청 바로가기: https://mykimbyun.com/consult
+👉 안심 가명 상담 신청 링크는 '첫 번째 댓글'에 남겨두었습니다.
+(페이스북 정책상 본문 링크 시 도달률이 제한되어 첫 댓글에 기재합니다)
 
 ※ 마이김변은 법률문서 작성 보조 및 변호사 선택을 지원하는 합법 리걸테크 플랫폼입니다.`,
     hashtags: ["#개인회생", "#개인파산", "#자영업자지원", "#소상공인대출", "#채무탕감", "#마이김변"],
     specs: [
       { label: "타겟 연령", value: "40대~60대 자영업자 및 가장" },
-      { label: "강조 포인트", value: "가족/주변인 비밀 보장, 신뢰감, 합법성" }
+      { label: "도달률 최적화", value: "본문 외부 링크 배제 ➔ 첫 댓글 링크 기법 적용" },
+      { label: "인게이지먼트", value: "가족/동료 비밀 보장 강조 및 조용한 공유 유도" }
     ]
   },
   tiktok: {
-    title: "빚독촉 피하는 합법적 꿀팁 방출! (내 이름 안 밝히고 변호사 상담받는 법)",
-    badge: "틱톡 15~25초 스낵 비디오",
-    format: "세로 1080x1920 초단기 숏폼 대본 (빠른 템포 + 텍스트 오버레이)",
-    summary: "틱톡 특유의 빠른 템포와 직관적인 언어로, 번호 노출 없이 가명으로 회생 가능성을 확인하는 꿀팁을 전수합니다.",
-    fullBody: `[00~03초: 후킹]
-(화면 연출: 모르는 02, 070 번호로 전화 계속 오는 화면 캡처)
-자막/음성: "빚 독촉 전화 받기 무서워서 모르는 번호 다 씹는 사람 손? 🙋‍♂️"
+    title: "빚독촉 피하는 합법적 꿀팁 방출! (첫 0.3초 텍스트 오버레이 22초)",
+    badge: "틱톡 15~22초 초스피드 스낵 비디오",
+    format: "세로 1080x1920 초단기 숏폼 대본 (0.3초 텍스트 오버레이 + 1.2배속)",
+    summary: "틱톡 무음 시청자 60%를 겨냥한 첫 0.3초 중앙 텍스트 오버레이와 22초 초고속 스낵 템포, 캡션 첫 줄 키워드 SEO를 적용했습니다.",
+    fullBody: `[00~03초: 첫 0.3초 텍스트 오버레이 후킹]
+(화면 연출: 영상 시작 0.3초 만에 화면 중앙 상단에 볼드 텍스트 팝업! 모르는 02, 070 부재중 전화 30통 알림)
+[화면 중앙 볼드 자막]: "아직도 빚 상담에 010 번호 남기나요? 절대 금지 ❌"
+나레이션(1.2배속): "빚 독촉 전화 받기 무서워서 모르는 번호 다 씹는 사람 손? 🙋‍♂️"
 
-[04~11초: 문제점 폭로]
-(화면 연출: 팩트 폭격 제스처)
-자막/음성: "인터넷에 무료 상담이라고 번호 남기면 사방에서 광고 전화 100통 오는 거 다들 아시죠?"
+[04~11초: 팩트 폭격 & 문제점]
+(화면 연출: 빠른 컷 전환과 경고 효과음)
+[자막]: "무료 상담에 번호 적었다가 광고 전화 100통 쏟아짐"
+나레이션(1.2배속): "인터넷에 무료 상담이라고 번호 남기면 사방에서 광고 전화 100통 오는 거 다들 아시죠?"
 
-[12~20초: 마이김변 꿀팁]
-(화면 연출: 마이김변 앱에서 '스텔스 모드' 켜지는 시각 효과)
-자막/음성: "이제 번호까지 숨기고 상담받으세요. 마이김변에서는 내 010 번호 대신 가명으로 전문 변호사 3명한테 견적이 싹 들어옵니다!"
+[12~18초: 마이김변 꿀팁]
+(화면 연출: 마이김변 앱에서 '스텔스 가명' 토글 켜지며 변호사 견적 도착 화면)
+[자막]: "010 번호 1도 없이 가명으로 변호사 견적 비교!"
+나레이션(1.2배속): "이제 번호 숨기고 상담받으세요. 마이김변에서는 010 번호 대신 가명으로 전문 변호사 3명 견적이 싹 들어옵니다!"
 
-[21~25초: 엔딩 & CTA]
-(화면 연출: 프로필 링크 손가락으로 가리키기)
-자막/음성: "프로필 링크에서 내 번호 안 밝히고 변호사 견적 바로 받아보세요!"`,
+[19~22초: 초고속 엔딩 CTA]
+(화면 연출: 프로필 링크 손가락 가리키기 + 앱 다운로드 UI)
+[자막]: "프로필 링크에서 010 번호 없이 안심 견적 받기 ➔"
+나레이션(1.2배속): "프로필 링크에서 내 번호 안 밝히고 변호사 견적 바로 받아보세요!"`,
     visualPrompt: "Fast-paced TikTok vertical style, youthful aesthetic, smartphone closeups showing anonymous toggle switch turning green, vibrant lighting",
     hashtags: ["#개인회생", "#꿀팁", "#정보공유", "#빚탈출", "#스텔스보증", "#틱톡추천", "#마이김변"],
     specs: [
-      { label: "영상 길이", value: "25초" },
-      { label: "템포", value: "1.2배속 빠른 나레이션" },
-      { label: "타겟", value: "2030 청년 채무자 및 직장인" }
+      { label: "영상 길이", value: "22초 (초단기 스낵 숏폼)" },
+      { label: "무음 시청 대응", value: "0.3초 중앙 상단 볼드 텍스트 오버레이 필수" },
+      { label: "SEO 캡션", value: "#개인회생 #빚탕감 #스텔스가명 #마이김변 #신용회복" }
     ]
   }
 };
@@ -1149,11 +1179,71 @@ const DDOK_BLOG_PRESETS = [
   { label: '자격확인', topic: '2026 최저생계비 인상 반영: 내 소득으로 회생 신청 가능할까?', theme: '비대면기술' }
 ];
 
+// --- 채널별 최적화 가이드 & 알고리즘 공략 데이터 ---
+const CHANNEL_OPTIMIZATION_GUIDES: Record<string, {
+  name: string;
+  badge: string;
+  tone: string;
+  algorithmTrick: string;
+  ctaDevice: string;
+  tags: string[];
+}> = {
+  blog: {
+    name: '네이버 블로그',
+    badge: 'D.I.A.+ & 스마트블록 최적화',
+    tone: '신뢰감 있는 전문가 칼럼 (합법 실무준칙 인용)',
+    algorithmTrick: '서두 3문장 이내 Answer-First 요약 박스 + 3문단 주기 시각 인포그래픽 배치로 체류시간 3분 이상 확보',
+    ctaDevice: '본문 중간/하단 010 번호 없는 스텔스 안심 가명 상담 배너',
+    tags: ['Answer-First 3문장', 'H2/H3 구조화', '체류시간 1,500~2,500자', '오리지널 도표 3컷+']
+  },
+  shorts: {
+    name: '유튜브 쇼츠',
+    badge: 'E-A-Q-R 3초 훅 & 심리스 루프',
+    tone: '긴박하고 직관적인 어조 ("안녕하세요" 인사말 절대 금지)',
+    algorithmTrick: '끝 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop) 대본으로 시청지속시간 100%+ 달성',
+    ctaDevice: '영상 내 고정 댓글(Pinned Comment)로 안심 가명 상담 링크 안내',
+    tags: ['0초 즉시 후킹 (인사말 금지)', '35초 완독률', '화면 중앙 키네틱 자막', '심리스 무한 루프']
+  },
+  card: {
+    name: '인스타그램 카드뉴스',
+    badge: '10장 황금 캐러셀 & 저장/공유 극대화',
+    tone: '통증 공감 ➔ 명확한 1슬라이드 1메시지 ➔ 솔루션',
+    algorithmTrick: '알고리즘 가중치가 가장 높은 저장(Save)과 친구 공유(Share)를 마지막 2개 슬라이드에서 강력 유도',
+    ctaDevice: '프로필 링크(@mykimbyun) + 마지막 장 [저장] 안내 뱃지',
+    tags: ['1장: 표지 훅', '2장: 통증 공감', '3~7장: 1장 1메시지', '10장: [저장] 유도 CTA']
+  },
+  threads: {
+    name: '스레드 (Threads)',
+    badge: '친구 대화형 반말 독백체 & 첫 댓글 링크',
+    tone: '솔직하고 담백한 반말 구어체 ("~했어", "~인 거 있지?", "~하더라")',
+    algorithmTrick: '모바일 스크롤에 맞춘 1~2줄 단위 여백 줄바꿈 + 본문 링크 배제로 도달률 페널티 회피',
+    ctaDevice: '첫 번째 댓글(First Comment) 링크 유도 + 질문형 댓글 유도',
+    tags: ['친구 대화 반말체', '1~2줄 여백 줄바꿈', '본문 링크 금지(첫 댓글)', '질문형 댓글 유도']
+  },
+  fb: {
+    name: '페이스북',
+    badge: '3050 가장·자영업자 공감 스토리',
+    tone: '현실적 고통에 깊이 공감하는 진정성 있는 가장의 시선',
+    algorithmTrick: '외부 링크 도달률 페널티 회피를 위해 본문 링크 배제 ➔ "신청 링크는 첫 댓글 확인" 기법 적용',
+    ctaDevice: '첫 번째 댓글 링크 + 동료/가족 비밀 보장 강조',
+    tags: ['3050 가장 공감', '본문 링크 배제 (첫 댓글)', '가족 비밀 보장', '조용한 공유(Share) 유도']
+  },
+  tiktok: {
+    name: '틱톡 (TikTok)',
+    badge: '첫 0.3초 텍스트 오버레이 & 초고속 스낵',
+    tone: '1.2배속 빠른 템포 + 직관적인 사이다 톤앤매너',
+    algorithmTrick: '60% 무음 시청자를 위한 0.3초 중앙 상단 볼드 텍스트 팝업 + 캡션 첫 줄 키워드 SEO',
+    ctaDevice: '프로필 링크 손가락 제스처 + 초고속 엔딩',
+    tags: ['0.3초 중앙 볼드 자막', '15~22초 1.2배속', '무음 시청 60% 대응', '검색 키워드 캡션']
+  }
+};
+
 // --- TAB 3: 콘텐츠 스튜디오 ---
 function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
   const [topic, setTopic] = useState('가계부채 폭증과 2030 영끌족의 파산 위기');
   const [theme, setTheme] = useState('비대면기술');
   const [genTab, setGenTab] = useState(initialTab);
+  const [selectedSlide, setSelectedSlide] = useState(0);
 
   useEffect(() => {
     if (initialTab) {
@@ -1166,6 +1256,8 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
     setTheme(p.theme);
     toast.success(`'${p.label}' 주제 프리셋이 적용되었습니다.`);
   };
+
+  const currentGuide = CHANNEL_OPTIMIZATION_GUIDES[genTab] || CHANNEL_OPTIMIZATION_GUIDES.blog;
 
   return (
     <div className="space-y-6">
@@ -1232,10 +1324,6 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
               <Layers size={16} /> 3-Step 연결 브릿지 설계
             </h3>
             
-            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-indigo-500/50 before:via-slate-700 before:to-slate-800 hidden md:block">
-              {/* Stepper hidden on very small screens for simplicity, rendered sequentially instead */}
-            </div>
-            
             <div className="space-y-4">
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold shrink-0 z-10 text-indigo-400">1</div>
@@ -1270,8 +1358,10 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
           </div>
         </div>
 
-        {/* Right Panel - Editor */}
-        <div className="lg:col-span-2 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 shadow-sm flex flex-col h-full min-h-[600px]">
+        {/* Right Panel - Editor with Optimization Intelligence */}
+        <div className="lg:col-span-2 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 shadow-sm flex flex-col h-full min-h-[650px]">
+          
+          {/* Channel Selector Tabs */}
           <div className="flex overflow-x-auto space-x-2 mb-4 pb-2 scrollbar-hide border-b border-slate-800">
             {[
               { id: 'blog', label: '블로그' },
@@ -1284,8 +1374,8 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
               <button
                 key={t.id}
                 onClick={() => setGenTab(t.id)}
-                className={`px-3 py-2 rounded-lg text-sm whitespace-nowrap min-h-[44px] transition-colors ${
-                  genTab === t.id ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                className={`px-3 py-2 rounded-lg text-sm whitespace-nowrap min-h-[44px] transition-colors cursor-pointer ${
+                  genTab === t.id ? 'bg-indigo-600 text-white font-medium shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
                 {t.label}
@@ -1293,42 +1383,314 @@ function TabContentStudio({ initialTab = 'blog' }: { initialTab?: string }) {
             ))}
           </div>
 
-          <div className="flex-1 flex flex-col">
+          {/* Dynamic Channel Optimization Intelligence Banner */}
+          <div className="mb-4 bg-[#0B0F19] rounded-xl border border-indigo-500/20 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-indigo-400" />
+                <span className="text-sm font-bold text-white">{currentGuide.name}</span>
+                <span className="text-[11px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-medium">
+                  {currentGuide.badge}
+                </span>
+              </div>
+              <span className="text-xs text-slate-400">
+                🗣️ <span className="text-slate-300 font-medium">{currentGuide.tone}</span>
+              </span>
+            </div>
+            
+            <p className="text-xs text-slate-300 mb-2 leading-relaxed bg-[#111622] p-2.5 rounded-lg border border-slate-800">
+              <span className="text-indigo-400 font-bold mr-1">알고리즘 공략:</span>
+              {currentGuide.algorithmTrick}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {currentGuide.tags.map((tag, idx) => (
+                  <span key={idx} className="text-[10px] text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60">
+                    ✓ {tag}
+                  </span>
+                ))}
+              </div>
+              <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                <Target size={12} /> {currentGuide.ctaDevice}
+              </span>
+            </div>
+          </div>
+
+          {/* Channel-Specific Interactive Editor Views */}
+          <div className="flex-1 flex flex-col space-y-3">
+            
+            {/* 1. Blog Editor */}
             {genTab === 'blog' && (
-              <>
-                <input 
-                  type="text" 
-                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-t-xl px-4 py-3 text-white font-medium focus:outline-none border-b-0"
-                  defaultValue="[100% 익명] 2030 영끌족, 빚 독촉 피하고 비대면으로 파산/회생 알아보는 법"
-                />
-                <textarea 
-                  className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-b-xl px-4 py-4 text-slate-300 focus:outline-none resize-none leading-relaxed"
-                  defaultValue={`안녕하세요, 최근 금리 인상 여파로 2030세대 영끌족의 고민이 깊어지고 있습니다.\n\n매달 돌아오는 이자 상환일에 가슴 졸이며, 혹시나 직장에 알려질까 전전긍긍하시는 분들이 많습니다. 법적인 구제 제도가 있다는 것은 알지만, 주변의 시선과 낙인 효과가 두려워 상담조차 받지 못하는 것이 현실입니다.\n\n하지만 걱정하지 마세요.\n마이김변 플랫폼에서는 '스텔스 가명' 기술을 도입하여 100% 완전 익명으로 전문 변호사의 안심 견적과 상담을 받아보실 수 있습니다. 내 진짜 이름이나 연락처를 노출하지 않고도, 전문 변호사의 검토를 받을 수 있는 비대면 기술입니다.\n\n더 이상 혼자 앓지 마시고, 안전한 플랫폼에서 첫 걸음을 떼보세요.`}
-                />
-              </>
-            )}
-            {genTab === 'card' && (
-              <div className="flex-1 flex items-center justify-center bg-[#0B0F19] border border-slate-700 rounded-xl relative overflow-hidden">
-                <div className="text-center">
-                  <ImageIcon size={48} className="text-slate-700 mx-auto mb-4" />
-                  <p className="text-slate-400 mb-4">카드뉴스 이미지 렌더링 프리뷰 영역</p>
-                  <button className="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm min-h-[44px]">프롬프트 재생성</button>
+              <div className="flex-1 flex flex-col space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">제목 (스마트블록 검색 키워드 최적화)</label>
+                  <input 
+                    type="text" 
+                    className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none focus:border-indigo-500 text-sm"
+                    defaultValue="[100% 익명] 빚 독촉으로 밤잠 설치는 분들 필독 — 010 번호 유출 없이 다중 견적 받는 법"
+                  />
+                </div>
+
+                {/* Answer-First Box */}
+                <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300 mb-1">
+                    <Sparkles size={14} /> Answer-First 3문장 핵심 요약 (방문자 5초 이탈 방지)
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    1. 2026년 기준금리 동결에도 채무 원리금 부담이 한계에 도달했다면 개인회생 신청자격을 즉시 검토해야 합니다.<br/>
+                    2. 사설 포털에 번호를 남길 경우 불법 DB 유통으로 스팸 전화에 시달릴 위험이 큽니다.<br/>
+                    3. 마이김변은 010 번호 노출 없이 안심 가명으로 전문 변호사 3명의 견적을 직접 비교할 수 있습니다.
+                  </p>
+                </div>
+
+                <div className="flex-1 flex flex-col">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">본문 칼럼 (D.I.A.+ 고품질 2,500자)</label>
+                  <textarea 
+                    className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-300 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[220px]"
+                    defaultValue={CHANNEL_FULL_CONTENTS.blog.fullBody}
+                  />
                 </div>
               </div>
             )}
-            {(genTab !== 'blog' && genTab !== 'card') && (
-              <div className="flex-1 flex items-center justify-center text-slate-500">
-                선택한 채널의 에디터가 표시됩니다.
+
+            {/* 2. YouTube Shorts Editor */}
+            {genTab === 'shorts' && (
+              <div className="flex-1 flex flex-col space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">영상 타이틀</label>
+                  <input 
+                    type="text" 
+                    className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2 text-white font-medium focus:outline-none focus:border-indigo-500 text-sm"
+                    defaultValue={CHANNEL_FULL_CONTENTS.shorts.title}
+                  />
+                </div>
+
+                {/* 4-Step Timeline Cue Sheet */}
+                <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                  <span className="block text-xs font-semibold text-slate-400">⏱️ 4단계 타임라인 큐시트 (심리스 루프 설계)</span>
+                  {(CHANNEL_FULL_CONTENTS.shorts.cueSheet || []).map((cue, idx) => (
+                    <div key={idx} className="bg-[#0B0F19] p-3 rounded-xl border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-400">{cue.time}</span>
+                        <span className="text-[11px] text-slate-400">{cue.action}</span>
+                      </div>
+                      <p className="text-xs text-slate-200 font-medium">"{cue.script}"</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Seamless Loop & Pinned Comment Guide */}
+                <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3 flex items-center justify-between">
+                  <div className="text-xs">
+                    <span className="font-bold text-rose-300 block mb-0.5">🔄 심리스 무한 루프 연결:</span>
+                    <span className="text-slate-300 text-[11px]">영상 마지막 문장 ➔ 첫 문장("매달 이자 내고 통장 잔고 0원 찍히나요?")으로 100%+ 완독 유도</span>
+                  </div>
+                  <span className="text-[10px] text-rose-400 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20 whitespace-nowrap font-bold">
+                    루프 연결됨
+                  </span>
+                </div>
               </div>
             )}
+
+            {/* 3. Instagram Card News Editor */}
+            {genTab === 'card' && (
+              <div className="flex-1 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-400">📑 10장 황금 캐러셀 슬라이드 선택</span>
+                  <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    1슬라이드 1메시지 원칙
+                  </span>
+                </div>
+
+                {/* Slide Switcher */}
+                <div className="flex overflow-x-auto gap-1.5 pb-1 scrollbar-hide">
+                  {(CHANNEL_FULL_CONTENTS.cardnews.slides || []).map((s, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedSlide(idx)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                        selectedSlide === idx 
+                          ? 'bg-amber-600 text-white font-bold' 
+                          : 'bg-[#0B0F19] text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      {s.page}장 {idx === 0 ? '(표지)' : idx === 9 ? '(CTA)' : ''}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active Slide Details */}
+                {CHANNEL_FULL_CONTENTS.cardnews.slides && (
+                  <div className="bg-[#0B0F19] rounded-xl border border-slate-700 p-4 space-y-3 flex-1">
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">
+                        헤드라인 (슬라이드 {selectedSlide + 1} / 10)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.headline}
+                        readOnly
+                        className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-white font-medium text-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">서브 텍스트 & 전달 메시지</label>
+                      <input 
+                        type="text" 
+                        value={CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.subtext}
+                        readOnly
+                        className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-xs focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1 font-semibold">비주얼 연출 프롬프트</label>
+                      <p className="text-xs text-slate-400 bg-[#111622] p-2.5 rounded-lg border border-slate-800">
+                        {CHANNEL_FULL_CONTENTS.cardnews.slides[selectedSlide]?.visualDesc}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. Threads Editor */}
+            {genTab === 'threads' && (
+              <div className="flex-1 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-400">
+                    💬 스레드 4단 타래 본문 (친구 대화형 반말체)
+                  </label>
+                  <span className="text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                    1~2줄 여백 줄바꿈 적용
+                  </span>
+                </div>
+
+                <textarea 
+                  className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[220px]"
+                  defaultValue={CHANNEL_FULL_CONTENTS.threads.fullBody}
+                />
+
+                {/* First Comment Trick Field */}
+                <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3">
+                  <span className="text-xs font-bold text-indigo-300 block mb-1">
+                    📌 첫 번째 댓글(First Comment) 링크 유도 (도달률 페널티 회피)
+                  </span>
+                  <input 
+                    type="text"
+                    readOnly
+                    value="010 번호 유출 없는 안심 가명 변호사 견적 비교 ➔ https://mykim.kr (영업 전화 0통 보장)"
+                    className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 5. Facebook Editor */}
+            {genTab === 'fb' && (
+              <div className="flex-1 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-400">
+                    👥 페이스북 장문 피드 (3050 가장·자영업자 공감 스토리)
+                  </label>
+                  <span className="text-[11px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                    본문 링크 배제 ➔ 첫 댓글 링크
+                  </span>
+                </div>
+
+                <textarea 
+                  className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[220px]"
+                  defaultValue={CHANNEL_FULL_CONTENTS.facebook.fullBody}
+                />
+
+                <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-3">
+                  <span className="text-xs font-bold text-blue-300 block mb-1">
+                    💬 첫 번째 댓글 자동 등록 (알고리즘 페널티 방지)
+                  </span>
+                  <input 
+                    type="text"
+                    readOnly
+                    value="👉 010 번호 노출 없는 안심 가명 변호사 상담 신청: https://mykim.kr (가족/직장 비밀 철저 보장)"
+                    className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 6. TikTok Editor */}
+            {genTab === 'tiktok' && (
+              <div className="flex-1 flex flex-col space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-cyan-400 mb-1">
+                      ⚡ 첫 0.3초 화면 중앙 볼드 자막 (무음 시청 60% 대응)
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full bg-[#0B0F19] border border-cyan-500/50 rounded-xl px-4 py-2 text-white font-bold focus:outline-none text-sm"
+                      defaultValue="아직도 빚 상담에 010 번호 남기나요? 절대 금지 ❌"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      🔍 캡션 첫 줄 키워드 SEO (검색 최적화)
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2 text-slate-300 focus:outline-none text-sm"
+                      defaultValue="#개인회생 #빚탕감 #스텔스가명 #마이김변 #신용회복"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 flex flex-col">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    🎙️ 1.2배속 초스피드 나레이션 대본 (22초 컷)
+                  </label>
+                  <textarea 
+                    className="w-full flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 resize-none text-sm leading-relaxed min-h-[200px]"
+                    defaultValue={CHANNEL_FULL_CONTENTS.tiktok.fullBody}
+                  />
+                </div>
+              </div>
+            )}
+
           </div>
           
-          <div className="mt-4 flex justify-end gap-3">
-            <button className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm hover:bg-slate-700 min-h-[44px]">임시저장</button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 min-h-[44px] shadow-sm flex items-center gap-2">
-              <Share2 size={16} /> 즉시 배포하기
+          {/* Action Buttons */}
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+            <button 
+              onClick={() => {
+                const text = genTab === 'blog' ? CHANNEL_FULL_CONTENTS.blog.fullBody
+                  : genTab === 'shorts' ? CHANNEL_FULL_CONTENTS.shorts.fullBody
+                  : genTab === 'threads' ? CHANNEL_FULL_CONTENTS.threads.fullBody
+                  : genTab === 'fb' ? CHANNEL_FULL_CONTENTS.facebook.fullBody
+                  : genTab === 'tiktok' ? CHANNEL_FULL_CONTENTS.tiktok.fullBody
+                  : '카드뉴스 10장 캐러셀';
+                navigator.clipboard?.writeText(text);
+                toast.success(`${currentGuide.name} 최적화 콘텐츠가 클립보드에 복사되었습니다.`);
+              }}
+              className="px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs hover:bg-slate-700 min-h-[44px] flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Copy size={14} /> 최적화 원문 복사
             </button>
+
+            <div className="flex gap-2">
+              <button 
+                onClick={() => toast.success('임시 저장이 완료되었습니다.')}
+                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs hover:bg-slate-700 min-h-[44px] transition-colors cursor-pointer"
+              >
+                임시저장
+              </button>
+              <button 
+                onClick={() => toast.success(`${currentGuide.name} 최적화 콘텐츠 배포가 예약되었습니다.`)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs hover:bg-indigo-700 min-h-[44px] shadow-sm flex items-center gap-1.5 font-medium transition-colors cursor-pointer press-scale"
+              >
+                <Share2 size={14} /> 즉시 배포하기
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
