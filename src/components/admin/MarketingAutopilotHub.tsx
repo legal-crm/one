@@ -2077,7 +2077,7 @@ function TabContentStudio({
                         {/* Visual Card (Rendered for html2canvas — AI 배경 + 한글 오버레이 합성) */}
                         <div 
                           id={`studio-blog-visual-${bImg.id}`}
-                          className={`w-full h-44 rounded-lg p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden ${
+                          className={`w-full aspect-[4/3] rounded-lg p-4 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden ${
                             !(imageSource === 'pollinations' && bImg.backgroundImageUrl && bgImageStatus[bImg.id] !== 'error')
                               ? `bg-gradient-to-br ${bImg.previewGradient}`
                               : 'bg-slate-900'
@@ -2158,19 +2158,43 @@ function TabContentStudio({
                           </div>
                         </div>
 
-                        {/* Download button */}
-                        <button
-                          onClick={() => downloadStudioElementAsPng(`studio-blog-visual-${bImg.id}`, `[마이김변]_블로그_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`)}
-                          disabled={exportingStudioId === `studio-blog-visual-${bImg.id}`}
-                          className="w-full py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[34px]"
-                        >
-                          {exportingStudioId === `studio-blog-visual-${bImg.id}` ? (
-                            <Loader2 size={12} className="animate-spin text-indigo-400" />
-                          ) : (
-                            <Download size={12} />
+                        {/* Action buttons */}
+                        <div className="flex gap-2">
+                          {/* AI 배경 재생성 버튼 (Pollinations 모드에서만 표시) */}
+                          {imageSource === 'pollinations' && bImg.backgroundImageUrl && (
+                            <button
+                              onClick={() => {
+                                // 새 랜덤 시드로 다른 배경 이미지 생성
+                                const newSeed = Math.floor(Math.random() * 100000);
+                                const currentUrl = new URL(bImg.backgroundImageUrl!);
+                                currentUrl.searchParams.set('seed', String(newSeed));
+                                const updatedImages = activeBlogContent.blogImages.map(img =>
+                                  img.id === bImg.id ? { ...img, backgroundImageUrl: currentUrl.toString() } : img
+                                );
+                                setActiveBlogContent({ ...activeBlogContent, blogImages: updatedImages });
+                                setBgImageStatus(prev => ({ ...prev, [bImg.id]: 'loading' }));
+                                toast.success(`이미지 ${bImg.order}번 새 AI 배경을 생성합니다.`);
+                              }}
+                              className="py-1.5 px-3 bg-slate-800 hover:bg-purple-600 text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[34px] whitespace-nowrap"
+                            >
+                              <RefreshCcw size={12} />
+                              재생성
+                            </button>
                           )}
-                          {exportingStudioId === `studio-blog-visual-${bImg.id}` ? '렌더링 중...' : '고해상도 PNG 다운로드'}
-                        </button>
+                          {/* PNG 다운로드 */}
+                          <button
+                            onClick={() => downloadStudioElementAsPng(`studio-blog-visual-${bImg.id}`, `[마이김변]_블로그_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`)}
+                            disabled={exportingStudioId === `studio-blog-visual-${bImg.id}`}
+                            className="flex-1 py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[34px]"
+                          >
+                            {exportingStudioId === `studio-blog-visual-${bImg.id}` ? (
+                              <Loader2 size={12} className="animate-spin text-indigo-400" />
+                            ) : (
+                              <Download size={12} />
+                            )}
+                            {exportingStudioId === `studio-blog-visual-${bImg.id}` ? '렌더링 중...' : '고해상도 PNG 다운로드'}
+                          </button>
+                        </div>
 
                       </div>
                     ))}
