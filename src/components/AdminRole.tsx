@@ -9,7 +9,8 @@ import {
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
-  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope, Download, Send, Printer, RefreshCw, Megaphone
+  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope, Download, Send, Printer, RefreshCw, Megaphone,
+  Globe
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
@@ -37,6 +38,7 @@ import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
 import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
 import MarketingAutopilotHub from './admin/MarketingAutopilotHub';
+import SeoGeoManager from './admin/SeoGeoManager';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -103,7 +105,7 @@ export default function AdminRole({
 }: AdminRoleProps) {
   const dialog = useDialog();
   // Triple tab state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing' | 'seo_geo'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
@@ -1071,11 +1073,15 @@ export default function AdminRole({
                 )}
               </button>
 
-              {/* 그룹 3: 마케팅 */}
+              {/* 그룹 3: 마케팅 & 검색 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">마케팅</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">마케팅 & 검색</p>
               <button onClick={() => setActiveTab('marketing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'marketing' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <Megaphone className="w-5 h-5 shrink-0 text-fuchsia-400" /><span>마케팅 자동화</span>
+              </button>
+              <button onClick={() => setActiveTab('seo_geo')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer relative ${activeTab === 'seo_geo' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Globe className="w-5 h-5 shrink-0 text-cyan-400" /><span>SEO · GEO 최적화</span>
+                <span className="ml-auto bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded-full">GEO</span>
               </button>
 
               {/* 그룹 4: 설정 */}
@@ -1128,7 +1134,7 @@ export default function AdminRole({
                 </span>
               )}
             </button>
-            <button onClick={() => { const tabs: Array<typeof activeTab> = ['marketing', 'security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => { const tabs: Array<typeof activeTab> = ['marketing', 'seo_geo', 'security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-sm font-bold">더보기</span>
             </button>
           </div>
@@ -5912,6 +5918,13 @@ export default function AdminRole({
           {activeTab === 'marketing' && (
             <div className="animate-fadeIn">
               <MarketingAutopilotHub />
+            </div>
+          )}
+
+          {/* TAB 10: SEO & GEO OPTIMIZATION HUB */}
+          {activeTab === 'seo_geo' && (
+            <div className="animate-fadeIn">
+              <SeoGeoManager />
             </div>
           )}
 
