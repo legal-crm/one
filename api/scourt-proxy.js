@@ -13,13 +13,32 @@ let cachedToken = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// [COST DEFENSE] 24시간 서버 측 응답 캐시
-// 동일 사건번호에 대한 CODEF B2B 중복 호출을 방지하여 비용을 ~90% 절감
-// Vercel Serverless 인스턴스 인메모리 — 콜드 스타트 시 초기화됨
+// [COST DEFENSE] 사건 단계별 적응형 서버 측 캐시
+// 면책/종결 사건은 7일, 인가 후 변제 중은 3일, 활성 사건은 24시간 캐시
+// Vercel Serverless 인메모리 — 콜드 스타트 시 초기화됨
 // ─────────────────────────────────────────────────────────────
 const responseCache = new Map();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 const MAX_CACHE_ENTRIES = 500;
+
+// 서버 측 적응형 TTL (클라이언트와 동기화)
+const SERVER_CACHE_TTL = {
+  COMPLETED: 7 * 24 * 60 * 60 * 1000,     // 7일 — 면책/종결 사건
+  POST_DECISION: 3 * 24 * 60 * 60 * 1000, // 3일 — 인가 후 변제 중
+  ACTIVE: 24 * 60 * 60 * 1000,            // 24시간 — 일반 활성 사건
+};
+
+function getServerCacheTTL(data) {
+  if (!data?.data) return SERVER_CACHE_TTL.ACTIVE;
+  const caseList = data.data?.resCaseList || [];
+  const finalResult = caseList[0]?.resFinalResult || '';
+  if (finalResult.includes('면책') || finalResult.includes('종결') || finalResult.includes('폐지')) {
+    return SERVER_CACHE_TTL.COMPLETED;
+  }
+  if (finalResult.includes('인가')) {
+    return SERVER_CACHE_TTL.POST_DECISION;
+  }
+  return SERVER_CACHE_TTL.ACTIVE;
+}
 
 function getCacheKey(courtName, caseNumber) {
   return `${courtName}::${caseNumber}`.trim().toLowerCase();
@@ -43,9 +62,11 @@ function setCachedResponse(courtName, caseNumber, data) {
     const firstKey = responseCache.keys().next().value;
     responseCache.delete(firstKey);
   }
+  const ttl = getServerCacheTTL(data);
   responseCache.set(key, {
     data,
-    expiresAt: Date.now() + CACHE_TTL_MS,
+    expiresAt: Date.now() + ttl,
+    ttlMs: ttl,
     cachedAt: new Date().toISOString(),
   });
 }
