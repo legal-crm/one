@@ -4,8 +4,9 @@
 import { handleCorsPreflight } from './_lib/cors-helper.js';
 import { verifyAuth } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
@@ -220,3 +221,7 @@ ${hasInterviewAnswers ? `
   const fallback = generateRuleBasedFallback();
   return res.status(200).json(fallback);
 }
+
+// [SECURITY] STANDARD 다단계 Rate Limiter 래핑
+// Gemini 2.5 Flash 진술서 생성 — 건당 ~3원, 반복 생성 방지
+export default withMultiTierRateLimit(handler, RATE_LIMIT_TIERS.STANDARD);

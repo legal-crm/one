@@ -4,8 +4,9 @@
 import { handleCorsPreflight } from './_lib/cors-helper.js';
 import { verifyAuth } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
@@ -285,3 +286,7 @@ export default async function handler(req, res) {
     result: defaultResult
   });
 }
+
+// [SECURITY] STANDARD 다단계 Rate Limiter 래핑
+// Gemini 3.6 Flash Vision OCR — 건당 ~6원, 연타 방지 필수
+export default withMultiTierRateLimit(handler, RATE_LIMIT_TIERS.STANDARD);

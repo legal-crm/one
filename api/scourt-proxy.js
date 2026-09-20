@@ -5,11 +5,50 @@
 import { handleCorsPreflight } from './_lib/cors-helper.js';
 import { verifyAuth } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
 let cachedToken = {
   accessToken: null,
   expiresAt: 0
 };
+
+// ─────────────────────────────────────────────────────────────
+// [COST DEFENSE] 24시간 서버 측 응답 캐시
+// 동일 사건번호에 대한 CODEF B2B 중복 호출을 방지하여 비용을 ~90% 절감
+// Vercel Serverless 인스턴스 인메모리 — 콜드 스타트 시 초기화됨
+// ─────────────────────────────────────────────────────────────
+const responseCache = new Map();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+const MAX_CACHE_ENTRIES = 500;
+
+function getCacheKey(courtName, caseNumber) {
+  return `${courtName}::${caseNumber}`.trim().toLowerCase();
+}
+
+function getCachedResponse(courtName, caseNumber) {
+  const key = getCacheKey(courtName, caseNumber);
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedResponse(courtName, caseNumber, data) {
+  const key = getCacheKey(courtName, caseNumber);
+  // 캐시 크기 제한: 초과 시 가장 오래된 항목 삭제
+  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = responseCache.keys().next().value;
+    responseCache.delete(firstKey);
+  }
+  responseCache.set(key, {
+    data,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    cachedAt: new Date().toISOString(),
+  });
+}
 
 // 사건번호 문자열 파싱 헬퍼 (예: "2024개회108492" -> { year: "2024", type: "개회", number: "108492" })
 function parseCaseNumber(rawCaseNumber) {
@@ -143,7 +182,7 @@ function generateMockCourtData(courtName, caseNumber, clientName) {
   };
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
@@ -198,6 +237,20 @@ export default async function handler(req, res) {
 
   // 사건번호 파싱
   const parsed = parseCaseNumber(caseNumber);
+  const forceRefresh = req.body?.forceRefresh === true;
+
+  // [COST DEFENSE] 캐시 조회 — 동일 사건번호에 대해 24시간 내 재호출 방지
+  if (!forceRefresh && caseNumber) {
+    const cached = getCachedResponse(courtName, caseNumber);
+    if (cached) {
+      console.info(`[CODEF Cache HIT] ${courtName} ${caseNumber} — CODEF 호출 생략, 캐시 응답 반환`);
+      return res.status(200).json({
+        ...cached,
+        fromCache: true,
+        cacheInfo: '24시간 캐시 데이터입니다. 최신 데이터가 필요하면 "새로고침" 버튼을 눌러주세요.',
+      });
+    }
+  }
 
   // 1. CODEF 상용 API 키가 설정되어 있는 경우: 실시간 B2B 호출
   if (clientId && clientSecret && caseNumber) {
@@ -246,13 +299,19 @@ export default async function handler(req, res) {
         }
 
         if (resultJson.result?.code === 'CF-00000') {
-          return res.status(200).json({
+          const responsePayload = {
             ok: true,
             isB2BLive: true,
             provider: 'CODEF 대법원 나의사건검색',
             data: resultJson.data,
             result: resultJson.result
-          });
+          };
+
+          // [COST DEFENSE] 성공 응답을 24시간 캐시에 저장
+          setCachedResponse(courtName, caseNumber, responsePayload);
+          console.info(`[CODEF Cache SET] ${courtName} ${caseNumber} — 24시간 캐시 저장 완료`);
+
+          return res.status(200).json(responsePayload);
         }
       }
     } catch (codefErr) {
@@ -283,3 +342,8 @@ export default async function handler(req, res) {
     ]
   });
 }
+
+// [SECURITY] STANDARD 다단계 Rate Limiter 래핑
+// 1분 10회 / 10분 30회 / 30분 60회 / 위반 시 15분 Jail
+// CODEF B2B 호출은 건당 30~100원이므로, 연타 방지가 비용 방어의 핵심
+export default withMultiTierRateLimit(handler, RATE_LIMIT_TIERS.STANDARD);
