@@ -34,7 +34,8 @@ const A4_PAGE_STYLE = `
   background: #ffffff;
   color: #000000;
   font-family: 'Batang', 'BatangChe', '바탕', 'Gungsuh', serif;
-  font-size: 12px;
+  font-size: 16px;
+  line-height: 2.0;
   box-sizing: border-box;
   position: relative;
   page-break-after: always;
@@ -45,7 +46,7 @@ const TABLE_BORDER_STYLE = `
   width: 100%;
   border-collapse: collapse;
   border: 1px solid #000000;
-  font-size: 12px;
+  font-size: 14px;
 `;
 
 /** 1. 개시신청서 표지 (Cover) */
