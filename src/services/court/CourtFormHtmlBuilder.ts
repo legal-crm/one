@@ -30,10 +30,11 @@ const A4_PAGE_STYLE = `
   width: 794px;
   min-height: 1123px;
   height: 1123px;
-  padding: 48px 55px;
+  padding: 170px 76px 113px 76px;
   background: #ffffff;
-  color: #111827;
-  font-family: 'Malgun Gothic', '맑은 고딕', 'Pretendard', sans-serif;
+  color: #000000;
+  font-family: 'Batang', 'BatangChe', '바탕', 'Gungsuh', serif;
+  font-size: 12px;
   box-sizing: border-box;
   position: relative;
   page-break-after: always;
@@ -43,7 +44,7 @@ const A4_PAGE_STYLE = `
 const TABLE_BORDER_STYLE = `
   width: 100%;
   border-collapse: collapse;
-  border: 1.5px solid #1e293b;
+  border: 1px solid #000000;
   font-size: 12px;
 `;
 
@@ -97,35 +98,35 @@ export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
     </div>
 
     <div style="margin-left: 360px; margin-bottom: 70px;">
-      <table style="width: 320px; border-collapse: collapse; border: 1.5px solid #334155; font-size: 11px; text-align: center;">
+      <table style="width: 320px; border-collapse: collapse; border: 1px solid #000000; font-size: 11px; text-align: center;">
         <tbody>
-          <tr style="height: 28px; border-bottom: 1px solid #64748b;">
-            <td style="width: 100px; background: #f8fafc; font-weight: bold; border-right: 1px solid #64748b; letter-spacing: 2px;">사 건 번 호</td>
+          <tr style="height: 28px; border-bottom: 1px solid #000000;">
+            <td style="width: 100px; background: transparent; font-weight: bold; border-right: 1px solid #000000; letter-spacing: 2px;">사 건 번 호</td>
             <td></td>
           </tr>
-          <tr style="height: 28px; border-bottom: 1px solid #64748b;">
-            <td style="background: #f8fafc; font-weight: bold; border-right: 1px solid #64748b; letter-spacing: 1px;">해당순위번호</td>
+          <tr style="height: 28px; border-bottom: 1px solid #000000;">
+            <td style="background: transparent; font-weight: bold; border-right: 1px solid #000000; letter-spacing: 1px;">해당순위번호</td>
             <td></td>
           </tr>
-          <tr style="height: 28px; border-bottom: 1px solid #64748b;">
-            <td style="background: #f8fafc; font-weight: bold; border-right: 1px solid #64748b; letter-spacing: 4px;">재 판 부</td>
+          <tr style="height: 28px; border-bottom: 1px solid #000000;">
+            <td style="background: transparent; font-weight: bold; border-right: 1px solid #000000; letter-spacing: 4px;">재 판 부</td>
             <td></td>
           </tr>
           <tr style="height: 28px;">
-            <td style="background: #f8fafc; font-weight: bold; border-right: 1px solid #64748b; letter-spacing: 8px;">주 심</td>
+            <td style="background: transparent; font-weight: bold; border-right: 1px solid #000000; letter-spacing: 8px;">주 심</td>
             <td></td>
           </tr>
         </tbody>
       </table>
 
-      <table style="width: 320px; border-collapse: collapse; border: 1.5px solid #334155; font-size: 11px; margin-top: 10px;">
+      <table style="width: 320px; border-collapse: collapse; border: 1px solid #000000; font-size: 11px; margin-top: 10px;">
         <tbody>
-          <tr style="height: 24px; border-bottom: 1px solid #64748b; text-align: center; background: #f8fafc;">
-            <td style="width: 200px; font-weight: bold; border-right: 1px solid #64748b;">최초면담기일통지</td>
+          <tr style="height: 24px; border-bottom: 1px solid #000000; text-align: center; background: transparent;">
+            <td style="width: 200px; font-weight: bold; border-right: 1px solid #000000;">최초면담기일통지</td>
             <td style="font-weight: bold;">영 수 인</td>
           </tr>
           <tr style="height: 55px;">
-            <td style="border-right: 1px solid #64748b; padding-left: 12px; font-size: 12px; color: #475569;">
+            <td style="border-right: 1px solid #000000; padding-left: 12px; font-size: 12px; color: #333333;">
               20 &nbsp; &nbsp; . &nbsp; &nbsp; . &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; :
             </td>
             <td></td>
@@ -133,9 +134,9 @@ export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
         </tbody>
       </table>
 
-      <table style="width: 120px; border-collapse: collapse; border: 1.5px solid #334155; font-size: 11px; margin-top: 10px; text-align: center;">
+      <table style="width: 120px; border-collapse: collapse; border: 1px solid #000000; font-size: 11px; margin-top: 10px; text-align: center;">
         <tbody>
-          <tr style="height: 35px; background: #f8fafc; border-bottom: 1px solid #64748b;">
+          <tr style="height: 35px; background: transparent; border-bottom: 1px solid #000000;">
             <td style="font-weight: bold; line-height: 1.3;">당일면담<br>희망여부</td>
           </tr>
           <tr style="height: 35px;">
@@ -197,44 +198,44 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
 
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 12px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td rowspan="5" style="width: 55px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">신청인</td>
-          <td style="width: 110px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">성 &nbsp; &nbsp; 명</td>
-          <td style="width: 240px; padding: 5px 12px; font-weight: bold; border-right: 1px solid #cbd5e1;">${clientName}</td>
-          <td style="width: 100px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">주민등록번호</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td rowspan="5" style="width: 55px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">신청인</td>
+          <td style="width: 110px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">성 &nbsp; &nbsp; 명</td>
+          <td style="width: 240px; padding: 5px 12px; font-weight: bold; border-right: 1px solid #000000;">${clientName}</td>
+          <td style="width: 100px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">주민등록번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${clientRrn}</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">주민등록상주소</td>
-          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${residentAddress}</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">주민등록상주소</td>
+          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #000000;">${residentAddress}</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">우편번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${residentPostcode}</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">현 &nbsp; 주 &nbsp; 소</td>
-          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${currentAddress}</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">현 &nbsp; 주 &nbsp; 소</td>
+          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #000000;">${currentAddress}</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">우편번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${currentPostcode}</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">직 장 &nbsp;주 소</td>
-          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${companyAddress}</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">직 장 &nbsp;주 소</td>
+          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #000000;">${companyAddress}</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">우편번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${companyPostcode}</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 36px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">송 달 &nbsp;장 소</td>
-          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">
+        <tr style="border-bottom: 1px solid #000000; height: 36px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">송 달 &nbsp;장 소</td>
+          <td colspan="2" style="padding: 5px 12px; border-right: 1px solid #000000;">
             ${serviceAddress}<br>
-            <span style="font-size: 11px; color: #475569;">송달영수인: &nbsp;${serviceRecipient}</span>
+            <span style="font-size: 11px; color: #333333;">송달영수인: &nbsp;${serviceRecipient}</span>
           </td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">우편번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${servicePostcode}</td>
         </tr>
         <tr style="height: 32px;">
-          <td colspan="2" style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전화번호(집·직장)</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${clientTel}</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">휴대전화</td>
+          <td colspan="2" style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">전화번호(집·직장)</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #000000;">${clientTel}</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">휴대전화</td>
           <td style="padding: 5px 12px; font-family: monospace; font-weight: bold;">${clientPhone}</td>
         </tr>
       </tbody>
@@ -242,23 +243,23 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
 
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 16px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td rowspan="3" style="width: 55px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">대리인</td>
-          <td style="width: 110px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">성 &nbsp; &nbsp; 명</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td rowspan="3" style="width: 55px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">대리인</td>
+          <td style="width: 110px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">성 &nbsp; &nbsp; 명</td>
           <td colspan="3" style="padding: 5px 12px; font-weight: bold;">
             ${firmName} &nbsp; 변호사 ${lawyerName}
           </td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">사무실 주소</td>
-          <td style="width: 320px; padding: 5px 12px; border-right: 1px solid #cbd5e1;">${firmAddress}</td>
-          <td style="width: 80px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">우편번호</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">사무실 주소</td>
+          <td style="width: 320px; padding: 5px 12px; border-right: 1px solid #000000;">${firmAddress}</td>
+          <td style="width: 80px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">우편번호</td>
           <td style="padding: 5px 12px; font-family: monospace;">${firmPostcode}</td>
         </tr>
         <tr style="height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전화 / 팩스</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${firmPhone} &nbsp;/&nbsp; ${firmFax}</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">전자우편</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">전화 / 팩스</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #000000;">${firmPhone} &nbsp;/&nbsp; ${firmFax}</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">전자우편</td>
           <td style="padding: 5px 12px; font-size: 11px;">${firmEmail}</td>
         </tr>
       </tbody>
@@ -280,7 +281,7 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
       <p style="font-size: 12px; line-height: 1.9; margin: 0 0 12px 0; text-align: justify;">
         ${petitionReason}
       </p>
-      <div style="font-size: 12px; line-height: 1.8; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+      <div style="font-size: 12px; line-height: 1.8; padding: 10px 14px; background: transparent; border: 1px solid #e2e8f0; border-radius: 0;">
         <div style="font-weight: ${incomeType === 'salary' ? 'bold' : 'normal'}; color: ${incomeType === 'salary' ? '#0f172a' : '#64748b'};">
           ${incomeType === 'salary' ? '■' : '□'} 신청인은 정기적이고 확실한 수입을 얻을 것으로 예상되고, 또한 채무자 회생 및 파산에 관한 법률 제595조에 해당하는 개시신청 기각사유는 없습니다(급여소득자).
         </div>
@@ -331,7 +332,7 @@ export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): strin
       <h3 style="font-size: 14px; font-weight: 900; text-align: center; margin: 0 0 10px 0; letter-spacing: 4px;">
         첨 &nbsp;부 &nbsp;서 &nbsp;류
       </h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 11px; padding: 10px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 11px; padding: 10px 14px; background: transparent; border: 1px solid #cbd5e1; border-radius: 0;">
         <div>1. 개인회생채권자목록 1통</div>
         <div>2. 재산목록 1통</div>
         <div>3. 수입 및 지출에 관한 목록 1통</div>
@@ -344,18 +345,18 @@ export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): strin
       </div>
     </div>
 
-    <div style="border: 1.5px solid #1e293b; padding: 14px 18px; margin-bottom: 28px; border-radius: 4px;">
+    <div style="border: 1px solid #000000; padding: 14px 18px; margin-bottom: 28px; border-radius: 0;">
       <h4 style="font-size: 14px; font-weight: 900; text-align: center; margin: 0 0 10px 0; letter-spacing: 2px;">
         휴대전화를 통한 정보수신 신청서
       </h4>
-      <p style="font-size: 11px; line-height: 1.6; margin: 0 0 12px 0; text-align: justify; color: #334155;">
+      <p style="font-size: 11px; line-height: 1.6; margin: 0 0 12px 0; text-align: justify; color: #000000;">
         위 사건에 관한 개인회생절차 개시결정, 폐지결정, 면책결정, 월 변제액 3개월분 연체의 정보를 예납의무자가 납부한 송달료 잔액 범위 내에서 휴대전화를 통하여 알려주실 것을 신청합니다.
       </p>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
         <div><strong>▣ 휴대전화 번호:</strong> &nbsp; <span style="font-family: monospace; font-size: 13px;">${smsPhone}</span></div>
         <div>신청인 채무자 &nbsp; <strong>${clientName}</strong> &nbsp; (날인 또는 서명)</div>
       </div>
-      <div style="font-size: 10px; color: #64748b; line-height: 1.5; border-top: 1px dashed #cbd5e1; padding-top: 8px;">
+      <div style="font-size: 10px; color: #000000; line-height: 1.5; border-top: 1px dashed #000000; padding-top: 8px;">
         ※ 개인회생절차 개시결정, 폐지결정, 면책결정이 있거나, 변제계획 인가결정 후 월 변제액 3개월분 이상 연체시 위 휴대전화로 문자메시지가 발송됩니다.<br>
         ※ 문자메시지 서비스 이용금액은 메시지 1건당 17원씩 납부된 송달료에서 지급됩니다.
       </div>
@@ -405,21 +406,21 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
   const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
 
   const rowsHtml = creditors.slice(0, 15).map((c, idx) => `
-    <tr style="border-bottom: 1px solid #cbd5e1; font-size: 11px;">
-      <td style="padding: 6px; text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
-      <td style="padding: 6px 8px; font-weight: bold; border-right: 1px solid #cbd5e1;">
+    <tr style="border-bottom: 1px solid #000000; font-size: 11px;">
+      <td style="padding: 6px; text-align: center; font-weight: bold; border-right: 1px solid #000000;">${idx + 1}</td>
+      <td style="padding: 6px 8px; font-weight: bold; border-right: 1px solid #000000;">
         ${c.name}<br>
-        <span style="font-size: 10px; color: #64748b; font-weight: normal;">${c.address || '주소 등록 완료'}</span>
+        <span style="font-size: 10px; color: #000000; font-weight: normal;">${c.address || '주소 등록 완료'}</span>
       </td>
-      <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">
+      <td style="padding: 6px 8px; border-right: 1px solid #000000;">
         ${c.borrowedDate || '2023-01-01'} 신용대출금<br>
-        <span style="font-size: 10px; color: #475569;">${c.debtCauseDetail || '대여금 및 리볼빙 채무'}</span>
+        <span style="font-size: 10px; color: #333333;">${c.debtCauseDetail || '대여금 및 리볼빙 채무'}</span>
       </td>
-      <td style="padding: 6px 8px; text-align: right; font-weight: bold; border-right: 1px solid #cbd5e1;">
+      <td style="padding: 6px 8px; text-align: right; font-weight: bold; border-right: 1px solid #000000;">
         ${Math.round(c.principal || 0).toLocaleString()}원<br>
-        <span style="font-size: 10px; color: #ef4444;">이자: ${Math.round(c.interest || 0).toLocaleString()}원</span>
+        <span style="font-size: 10px; color: #000000;">이자: ${Math.round(c.interest || 0).toLocaleString()}원</span>
       </td>
-      <td style="padding: 6px 8px; text-align: center; font-size: 10px; color: #3b82f6; border-right: 1px solid #cbd5e1;">
+      <td style="padding: 6px 8px; text-align: center; font-size: 10px; color: #000000; border-right: 1px solid #000000;">
         부채증명서 참조<br>
         (${dateStr})
       </td>
@@ -431,7 +432,7 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
 
   return `
   <div style="${A4_PAGE_STYLE}">
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #475569; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
       <span>2026 개회 (접수예정)</span>
       <span>채무자 ${clientName}</span>
     </div>
@@ -443,32 +444,32 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
     </div>
 
     <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-      <table style="width: 50%; border-collapse: collapse; border: 1.5px solid #1e293b; font-size: 11px;">
+      <table style="width: 50%; border-collapse: collapse; border: 1px solid #000000; font-size: 11px;">
         <tbody>
-          <tr style="border-bottom: 1px solid #cbd5e1; height: 26px;">
-            <td rowspan="3" style="width: 90px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">채권현재액</td>
-            <td style="width: 70px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">합 &nbsp; 계</td>
+          <tr style="border-bottom: 1px solid #000000; height: 26px;">
+            <td rowspan="3" style="width: 90px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">채권현재액</td>
+            <td style="width: 70px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">합 &nbsp; 계</td>
             <td style="padding: 4px 10px; text-align: right; font-weight: bold; color: #1e3a8a;">${Math.round(totalSum).toLocaleString()}원</td>
           </tr>
-          <tr style="border-bottom: 1px solid #cbd5e1; height: 26px;">
-            <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">원 &nbsp; 금</td>
+          <tr style="border-bottom: 1px solid #000000; height: 26px;">
+            <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">원 &nbsp; 금</td>
             <td style="padding: 4px 10px; text-align: right; font-weight: bold;">${Math.round(totalPrincipal).toLocaleString()}원</td>
           </tr>
           <tr style="height: 26px;">
-            <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">이 &nbsp; 자</td>
+            <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">이 &nbsp; 자</td>
             <td style="padding: 4px 10px; text-align: right; color: #dc2626;">${Math.round(totalInterest).toLocaleString()}원</td>
           </tr>
         </tbody>
       </table>
 
-      <table style="width: 50%; border-collapse: collapse; border: 1.5px solid #1e293b; font-size: 11px;">
+      <table style="width: 50%; border-collapse: collapse; border: 1px solid #000000; font-size: 11px;">
         <tbody>
-          <tr style="border-bottom: 1px solid #cbd5e1; height: 38px;">
-            <td style="width: 120px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">담보부 회생채권 합계</td>
+          <tr style="border-bottom: 1px solid #000000; height: 38px;">
+            <td style="width: 120px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">담보부 회생채권 합계</td>
             <td style="padding: 4px 10px; text-align: right; font-weight: bold;">0원</td>
           </tr>
           <tr style="height: 38px;">
-            <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">무담보 회생채권 합계</td>
+            <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">무담보 회생채권 합계</td>
             <td style="padding: 4px 10px; text-align: right; font-weight: bold; color: #1e3a8a;">${Math.round(totalSum).toLocaleString()}원</td>
           </tr>
         </tbody>
@@ -477,12 +478,12 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
 
     <table style="${TABLE_BORDER_STYLE}">
       <thead>
-        <tr style="background: #f1f5f9; height: 30px; border-bottom: 1.5px solid #334155; text-align: center;">
-          <th style="width: 40px; border-right: 1px solid #cbd5e1;">순번</th>
-          <th style="width: 170px; border-right: 1px solid #cbd5e1;">채권자 / 주소</th>
-          <th style="border-right: 1px solid #cbd5e1;">채권의 원인 및 내용</th>
-          <th style="width: 130px; border-right: 1px solid #cbd5e1;">채권현재액(원금/이자)</th>
-          <th style="width: 100px; border-right: 1px solid #cbd5e1;">산정근거</th>
+        <tr style="background: transparent; height: 30px; border-bottom: 1.5px solid #334155; text-align: center;">
+          <th style="width: 40px; border-right: 1px solid #000000;">순번</th>
+          <th style="width: 170px; border-right: 1px solid #000000;">채권자 / 주소</th>
+          <th style="border-right: 1px solid #000000;">채권의 원인 및 내용</th>
+          <th style="width: 130px; border-right: 1px solid #000000;">채권현재액(원금/이자)</th>
+          <th style="width: 100px; border-right: 1px solid #000000;">산정근거</th>
           <th style="width: 70px;">부속서류</th>
         </tr>
       </thead>
@@ -519,7 +520,7 @@ export function buildCourtStayOrderHtml(ctx: CourtFormDataContext): string {
     <div style="font-size: 13px; line-height: 2.2; margin-left: 20px; margin-bottom: 30px;">
       <div><strong>사 &nbsp; &nbsp; &nbsp; 건:</strong> &nbsp; 2026 개회 (접수예정) 개인회생</div>
       <div><strong>신 &nbsp;청 &nbsp;인:</strong> &nbsp; <strong>${clientName}</strong> (${clientRrn})</div>
-      <div style="padding-left: 72px; color: #334155;">주소: ${residentAddress}</div>
+      <div style="padding-left: 72px; color: #000000;">주소: ${residentAddress}</div>
       <div><strong>대 &nbsp;리 &nbsp;인:</strong> &nbsp; ${firmName} &nbsp; 변호사 ${lawyerName}</div>
     </div>
 
@@ -527,7 +528,7 @@ export function buildCourtStayOrderHtml(ctx: CourtFormDataContext): string {
       <h3 style="font-size: 15px; font-weight: 900; text-align: center; margin-bottom: 12px; letter-spacing: 4px;">
         신 &nbsp;청 &nbsp;취 &nbsp;지
       </h3>
-      <div style="font-size: 12px; line-height: 2; padding: 16px 20px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: justify;">
+      <div style="font-size: 12px; line-height: 2; padding: 16px 20px; background: transparent; border: 1.5px solid #cbd5e1; border-radius: 0; text-align: justify;">
         「개인회생절차의 개시신청에 대한 결정이 있을 때까지, 채무자 회생 및 파산에 관한 법률 제593조 제1항 각 호에 기하여, 개인회생채권에 기하여 신청인의 급여채권, 유체동산 및 일체의 재산에 대하여 행하는 강제집행·가압류 또는 가처분의 절차를 금지한다.」<br>
         라는 결정을 구합니다.
       </div>
@@ -585,7 +586,7 @@ export function buildCourtPropertyListHtml(ctx: CourtFormDataContext): string {
 
   return `
   <div style="${A4_PAGE_STYLE}">
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #475569; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
       <span>[전산양식 D5102]</span>
       <span>채무자: ${clientName}</span>
     </div>
@@ -598,49 +599,49 @@ export function buildCourtPropertyListHtml(ctx: CourtFormDataContext): string {
 
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 20px;">
       <thead>
-        <tr style="background: #f1f5f9; height: 32px; border-bottom: 1.5px solid #334155; text-align: center;">
-          <th style="width: 140px; border-right: 1px solid #cbd5e1;">재산의 종류</th>
-          <th style="border-right: 1px solid #cbd5e1;">소재지 / 보관처 / 내역</th>
-          <th style="width: 120px; border-right: 1px solid #cbd5e1;">평가액 (시가)</th>
-          <th style="width: 80px; border-right: 1px solid #cbd5e1;">압류유무</th>
+        <tr style="background: transparent; height: 32px; border-bottom: 1.5px solid #334155; text-align: center;">
+          <th style="width: 140px; border-right: 1px solid #000000;">재산의 종류</th>
+          <th style="border-right: 1px solid #000000;">소재지 / 보관처 / 내역</th>
+          <th style="width: 120px; border-right: 1px solid #000000;">평가액 (시가)</th>
+          <th style="width: 80px; border-right: 1px solid #000000;">압류유무</th>
           <th style="width: 120px;">청산가치 반영액</th>
         </tr>
       </thead>
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">1. 예금 / 적금</td>
-          <td style="padding: 5px 10px; border-right: 1px solid #cbd5e1;">시중은행 및 우체국 보유계좌 잔액 (185만원 이하 공제)</td>
-          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #cbd5e1;">${Math.round(depositAmount).toLocaleString()}원</td>
-          <td style="text-align: center; border-right: 1px solid #cbd5e1;">무</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">1. 예금 / 적금</td>
+          <td style="padding: 5px 10px; border-right: 1px solid #000000;">시중은행 및 우체국 보유계좌 잔액 (185만원 이하 공제)</td>
+          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #000000;">${Math.round(depositAmount).toLocaleString()}원</td>
+          <td style="text-align: center; border-right: 1px solid #000000;">무</td>
           <td style="padding: 5px 10px; text-align: right; font-weight: bold;">${Math.max(0, depositAmount - 1850000).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">2. 보험 해약환급금</td>
-          <td style="padding: 5px 10px; border-right: 1px solid #cbd5e1;">보유 보험계약 실효/해약환급금 합계 (150만원 이하 공제)</td>
-          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #cbd5e1;">${Math.round(insuranceAmount).toLocaleString()}원</td>
-          <td style="text-align: center; border-right: 1px solid #cbd5e1;">무</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">2. 보험 해약환급금</td>
+          <td style="padding: 5px 10px; border-right: 1px solid #000000;">보유 보험계약 실효/해약환급금 합계 (150만원 이하 공제)</td>
+          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #000000;">${Math.round(insuranceAmount).toLocaleString()}원</td>
+          <td style="text-align: center; border-right: 1px solid #000000;">무</td>
           <td style="padding: 5px 10px; text-align: right; font-weight: bold;">${Math.max(0, insuranceAmount - 1500000).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">3. 자동차 / 오토바이</td>
-          <td style="padding: 5px 10px; border-right: 1px solid #cbd5e1;">${vehicleAmount > 0 ? '차량등록원부 등록차량 (시가 평가)' : '해당 없음'}</td>
-          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #cbd5e1;">${Math.round(vehicleAmount).toLocaleString()}원</td>
-          <td style="text-align: center; border-right: 1px solid #cbd5e1;">${vehicleAmount > 0 ? '무' : '-'}</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">3. 자동차 / 오토바이</td>
+          <td style="padding: 5px 10px; border-right: 1px solid #000000;">${vehicleAmount > 0 ? '차량등록원부 등록차량 (시가 평가)' : '해당 없음'}</td>
+          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #000000;">${Math.round(vehicleAmount).toLocaleString()}원</td>
+          <td style="text-align: center; border-right: 1px solid #000000;">${vehicleAmount > 0 ? '무' : '-'}</td>
           <td style="padding: 5px 10px; text-align: right;">${Math.round(vehicleAmount).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">4. 주거용 임차보증금</td>
-          <td style="padding: 5px 10px; border-right: 1px solid #cbd5e1;">${leaseAmount > 0 ? `임대차보증금 (주택임대차보호법 최우선변제 소액공제 적용)` : '무상거주 (가족/친족 소유 또는 임차)'}</td>
-          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #cbd5e1;">${Math.round(leaseAmount).toLocaleString()}원</td>
-          <td style="text-align: center; border-right: 1px solid #cbd5e1;">-</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">4. 주거용 임차보증금</td>
+          <td style="padding: 5px 10px; border-right: 1px solid #000000;">${leaseAmount > 0 ? `임대차보증금 (주택임대차보호법 최우선변제 소액공제 적용)` : '무상거주 (가족/친족 소유 또는 임차)'}</td>
+          <td style="padding: 5px 10px; text-align: right; border-right: 1px solid #000000;">${Math.round(leaseAmount).toLocaleString()}원</td>
+          <td style="text-align: center; border-right: 1px solid #000000;">-</td>
           <td style="padding: 5px 10px; text-align: right;">${Math.max(0, leaseAmount - 55000000).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1.5px solid #1e293b; height: 36px; background: #f8fafc;">
-          <td colspan="2" style="font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">합 &nbsp; &nbsp; &nbsp; 계</td>
-          <td style="padding: 5px 10px; text-align: right; font-weight: bold; border-right: 1px solid #cbd5e1;">
+        <tr style="border-bottom: 1.5px solid #1e293b; height: 36px; background: transparent;">
+          <td colspan="2" style="font-weight: bold; text-align: center; border-right: 1px solid #000000;">합 &nbsp; &nbsp; &nbsp; 계</td>
+          <td style="padding: 5px 10px; text-align: right; font-weight: bold; border-right: 1px solid #000000;">
             ${Math.round(depositAmount + insuranceAmount + vehicleAmount + leaseAmount).toLocaleString()}원
           </td>
-          <td style="text-align: center; border-right: 1px solid #cbd5e1;">-</td>
+          <td style="text-align: center; border-right: 1px solid #000000;">-</td>
           <td style="padding: 5px 10px; text-align: right; font-weight: 900; color: #1e3a8a;">
             ${Math.round(totalLiquidation).toLocaleString()}원 (청산가치)
           </td>
@@ -648,7 +649,7 @@ export function buildCourtPropertyListHtml(ctx: CourtFormDataContext): string {
       </tbody>
     </table>
 
-    <div style="font-size: 11px; color: #475569; line-height: 1.8; padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+    <div style="font-size: 11px; color: #333333; line-height: 1.8; padding: 12px; background: transparent; border: 1px solid #cbd5e1; border-radius: 0;">
       <strong>[면제재산 결정신청 내용]</strong><br>
       • 신청인의 예금 및 보험해약환급금은 민사집행법 및 채무자 회생 및 파산에 관한 법률상 압류금지재산 한도(예금 185만원, 보험 150만원) 내에 해당하여 전액 청산가치에서 제외됩니다.<br>
       • 임차보증금은 주택임대차보호법 시행령상 소액임차인 우선변제금(서울 5,500만원, 과밀억제 4,800만원) 한도 내 공제가 적용됩니다.
@@ -672,7 +673,7 @@ export function buildCourtIncomeExpenseHtml(ctx: CourtFormDataContext): string {
 
   return `
   <div style="${A4_PAGE_STYLE}">
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #475569; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
       <span>[전산양식 D5103]</span>
       <span>채무자: ${clientName}</span>
     </div>
@@ -688,16 +689,16 @@ export function buildCourtIncomeExpenseHtml(ctx: CourtFormDataContext): string {
     </h3>
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 20px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="width: 120px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">직 장 명</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${companyName}</td>
-          <td style="width: 100px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">직종 및 직위</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="width: 120px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">직 장 명</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #000000;">${companyName}</td>
+          <td style="width: 100px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">직종 및 직위</td>
           <td style="padding: 5px 12px;">${jobTitle}</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">월 평균 실수령액</td>
-          <td style="padding: 5px 12px; font-weight: bold; color: #0f172a; border-right: 1px solid #cbd5e1;">${Math.round(monthlyIncome).toLocaleString()}원</td>
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">압류 여부</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">월 평균 실수령액</td>
+          <td style="padding: 5px 12px; font-weight: bold; color: #0f172a; border-right: 1px solid #000000;">${Math.round(monthlyIncome).toLocaleString()}원</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">압류 여부</td>
           <td style="padding: 5px 12px;">없음 (정상 수령)</td>
         </tr>
       </tbody>
@@ -708,14 +709,14 @@ export function buildCourtIncomeExpenseHtml(ctx: CourtFormDataContext): string {
     </h3>
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 20px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="width: 160px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">부양가족 수</td>
-          <td style="padding: 5px 12px; border-right: 1px solid #cbd5e1;">${dependentText}</td>
-          <td style="width: 140px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">법정 인정 생계비</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="width: 160px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">부양가족 수</td>
+          <td style="padding: 5px 12px; border-right: 1px solid #000000;">${dependentText}</td>
+          <td style="width: 140px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">법정 인정 생계비</td>
           <td style="padding: 5px 12px; font-weight: bold;">${Math.round(livingCost).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 36px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">월 가용소득 (변제재원)</td>
+        <tr style="border-bottom: 1px solid #000000; height: 36px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">월 가용소득 (변제재원)</td>
           <td colspan="3" style="padding: 5px 12px; font-size: 13px; font-weight: 900; color: #2563eb;">
             월 ${Math.round(monthlyDisposable).toLocaleString()}원 (월 소득 ${Math.round(monthlyIncome).toLocaleString()}원 - 생계비 ${Math.round(livingCost).toLocaleString()}원)
           </td>
@@ -752,12 +753,12 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
     </h3>
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 16px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="width: 110px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">최 종 학 력</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="width: 110px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">최 종 학 력</td>
           <td colspan="3" style="padding: 4px 10px;">${education}</td>
         </tr>
         <tr style="height: 30px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">주요 경력사항</td>
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">주요 경력사항</td>
           <td colspan="3" style="padding: 4px 10px;">${jobText}</td>
         </tr>
       </tbody>
@@ -766,7 +767,7 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
     <h3 style="font-size: 13px; font-weight: 900; color: #1e3a8a; margin: 0 0 8px 0;">
       2. 개인회생절차에 이르게 된 사정 (중복 선택)
     </h3>
-    <div style="font-size: 11px; line-height: 2; padding: 10px 14px; background: #f8fafc; border: 1px solid #cbd5e1; margin-bottom: 16px; border-radius: 4px;">
+    <div style="font-size: 11px; line-height: 2; padding: 10px 14px; background: transparent; border: 1px solid #cbd5e1; margin-bottom: 16px; border-radius: 0;">
       <div>[ ■ ] 생활비 부족 &nbsp; &nbsp; [ &nbsp; ] 교육비 과다지출 &nbsp; &nbsp; [ &nbsp; ] 점포운영 실패 &nbsp; &nbsp; [ &nbsp; ] 사업실패</div>
       <div>[ &nbsp; ] 타인 채무보증 &nbsp; &nbsp; [ &nbsp; ] 사기 피해 &nbsp; &nbsp; [ &nbsp; ] 주식/가상화폐 투자실패 &nbsp; &nbsp; [ ■ ] 의료비 지출</div>
     </div>
@@ -774,7 +775,7 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
     <h3 style="font-size: 13px; font-weight: 900; color: #1e3a8a; margin: 0 0 8px 0;">
       3. 채무증대 및 지급불능에 이르게 된 상세 사정
     </h3>
-    <div style="font-size: 12px; line-height: 2; padding: 14px 18px; border: 1.5px solid #1e293b; border-radius: 4px; text-align: justify; height: 420px; overflow: hidden;">
+    <div style="font-size: 12px; line-height: 2; padding: 14px 18px; border: 1px solid #000000; border-radius: 0; text-align: justify; height: 420px; overflow: hidden;">
       ${detailCause}
       <br><br>
       현재 신청인은 과거의 미숙한 재정 관리를 뼈저리게 반성하고 있으며, 정기적인 소득을 통해 향후 36개월간 인가된 변제계획을 단 하루도 어기지 않고 성실히 수행할 것을 굳게 다짐하고 있습니다. 부디 법원의 너그러운 선처로 새출발(Rebirth)의 기회를 허락하여 주시기를 간곡히 앙망합니다.
@@ -797,7 +798,7 @@ export function buildCourtRepaymentPlanHtml(ctx: CourtFormDataContext): string {
 
   return `
   <div style="${A4_PAGE_STYLE}">
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #475569; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
       <span>[전산양식 D5110]</span>
       <span>채무자: ${clientName}</span>
     </div>
@@ -810,20 +811,20 @@ export function buildCourtRepaymentPlanHtml(ctx: CourtFormDataContext): string {
 
     <table style="${TABLE_BORDER_STYLE} margin-bottom: 20px;">
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="width: 140px; background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">변 제 기 간</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="width: 140px; background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">변 제 기 간</td>
           <td style="padding: 5px 12px; font-weight: bold;">36개월 (3개년 분할변제)</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">월 변제예정액</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">월 변제예정액</td>
           <td style="padding: 5px 12px; font-weight: 900; color: #2563eb;">월 ${Math.round(monthlyRepayment).toLocaleString()}원 (매월 10일 납입)</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">총 변제예정액</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">총 변제예정액</td>
           <td style="padding: 5px 12px; font-weight: bold;">${Math.round(totalRepayment).toLocaleString()}원</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 32px;">
-          <td style="background: #f8fafc; font-weight: bold; text-align: center; border-right: 1px solid #cbd5e1;">원금 변제율 / 탕감률</td>
+        <tr style="border-bottom: 1px solid #000000; height: 32px;">
+          <td style="background: transparent; font-weight: bold; text-align: center; border-right: 1px solid #000000;">원금 변제율 / 탕감률</td>
           <td style="padding: 5px 12px; font-weight: bold;">
             원금의 <span style="color: #2563eb;">${repaymentRate}%</span> 변제 (원금의 <span style="color: #dc2626;">${(100 - repaymentRate).toFixed(1)}%</span> 면책)
           </td>
@@ -834,7 +835,7 @@ export function buildCourtRepaymentPlanHtml(ctx: CourtFormDataContext): string {
     <h3 style="font-size: 13px; font-weight: 900; color: #1e3a8a; margin: 0 0 8px 0;">
       개인회생채권 변제예정액 산출 요약
     </h3>
-    <div style="font-size: 11px; line-height: 1.8; padding: 12px 16px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; text-align: justify;">
+    <div style="font-size: 11px; line-height: 1.8; padding: 12px 16px; background: transparent; border: 1px solid #cbd5e1; border-radius: 0; text-align: justify;">
       • 본 변제계획안은 채무자의 가용소득(월 소득에서 법정 최저생계비를 공제한 잔액) 전액을 36개월간 안분 변제하는 안으로, 채권자들의 원금 비율에 따라 공평하게 안분 배당됩니다.<br>
       • 신청인의 청산가치(0원)를 완벽히 상회하여 청산가치 보장의 원칙을 100% 충족하고 있습니다.
     </div>
@@ -870,7 +871,7 @@ export function buildCourtPowerOfAttorneyHtml(ctx: CourtFormDataContext): string
       위 사건에 관하여 위임인은 수임인을 소송대리인으로 선임하고 다음 표시의 권한을 수여합니다.
     </p>
 
-    <div style="font-size: 11px; line-height: 1.9; padding: 12px 16px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 4px; margin-bottom: 24px;">
+    <div style="font-size: 11px; line-height: 1.9; padding: 12px 16px; background: transparent; border: 1.5px solid #cbd5e1; border-radius: 0; margin-bottom: 24px;">
       <div>1. 일체의 소송행위, 반소의 제기 및 응소</div>
       <div>2. 소의 취하, 화해, 청구의 포기 및 인낙</div>
       <div>3. 복대리인의 선임</div>
@@ -904,7 +905,7 @@ export function buildCourtRequiredDocumentChecklistHtml(ctx: CourtFormDataContex
 
   return `
   <div style="${A4_PAGE_STYLE}">
-    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #475569; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
       <span>[서울회생법원 실무준칙 별지]</span>
       <span>신청인: ${clientName}</span>
     </div>
@@ -917,72 +918,72 @@ export function buildCourtRequiredDocumentChecklistHtml(ctx: CourtFormDataContex
 
     <table style="${TABLE_BORDER_STYLE}">
       <thead>
-        <tr style="background: #f1f5f9; height: 32px; border-bottom: 1.5px solid #334155; text-align: center;">
-          <th style="width: 45px; border-right: 1px solid #cbd5e1;">번호</th>
-          <th style="border-right: 1px solid #cbd5e1;">서 류 명</th>
-          <th style="width: 75px; border-right: 1px solid #cbd5e1;">제출여부</th>
+        <tr style="background: transparent; height: 32px; border-bottom: 1.5px solid #334155; text-align: center;">
+          <th style="width: 45px; border-right: 1px solid #000000;">번호</th>
+          <th style="border-right: 1px solid #000000;">서 류 명</th>
+          <th style="width: 75px; border-right: 1px solid #000000;">제출여부</th>
           <th style="width: 220px;">비고 / 소명 내용</th>
         </tr>
       </thead>
       <tbody>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">1</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">주민등록등본 및 초본 (말소·변동 전체)</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">과거 5년 주소변동 전체 포함 제출</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">1</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">주민등록등본 및 초본 (말소·변동 전체)</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">과거 5년 주소변동 전체 포함 제출</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">2</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">가족관계증명서 및 혼인관계증명서 (상세)</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">가족 주민등록번호 뒷자리 마스킹 처리</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">2</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">가족관계증명서 및 혼인관계증명서 (상세)</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">가족 주민등록번호 뒷자리 마스킹 처리</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">3</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">지방세 세목별 과세(비과세)증명서 (5년)</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">전국 자치단체 대상 전체 세목 발행본</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">3</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">지방세 세목별 과세(비과세)증명서 (5년)</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전국 자치단체 대상 전체 세목 발행본</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">4</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">지적전산자료 조회결과서 (K-Geo 무소유 증명)</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">신청인 본인 명의 전국 부동산 무소유 확인</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">4</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">지적전산자료 조회결과서 (K-Geo 무소유 증명)</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">신청인 본인 명의 전국 부동산 무소유 확인</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">5</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">계좌정보통합관리서비스(어카운트인포) 내역</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">은행권·제2금융권 전체 활동성/비활동성 계좌</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">5</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">계좌정보통합관리서비스(어카운트인포) 내역</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">은행권·제2금융권 전체 활동성/비활동성 계좌</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">6</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">보험계약 조회결과서 및 해약환급금 확인서</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">전 보험사 계약 현황 및 150만원 공제 적용</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">6</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">보험계약 조회결과서 및 해약환급금 확인서</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전 보험사 계약 현황 및 150만원 공제 적용</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">7</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">소득금액증명원 / 근로소득원천징수영수증</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">최근 1개년 급여 내역 및 세무서 발행본</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">7</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">소득금액증명원 / 근로소득원천징수영수증</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">최근 1개년 급여 내역 및 세무서 발행본</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">8</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">재직증명서 및 최근 1년 급여입금통장 거래내역</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">현재 재직 상태 및 급여 실지급액 입증</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">8</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">재직증명서 및 최근 1년 급여입금통장 거래내역</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">현재 재직 상태 및 급여 실지급액 입증</td>
         </tr>
-        <tr style="border-bottom: 1px solid #cbd5e1; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">9</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #cbd5e1;">금융기관별 부채증명서 원본 일체</td>
-          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #cbd5e1;">■ 제출</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #475569;">채권자목록 기재 채권사 전원 부채확인서</td>
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">9</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">금융기관별 부채증명서 원본 일체</td>
+          <td style="text-align: center; font-weight: bold; color: #16a34a; border-right: 1px solid #000000;">■ 제출</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">채권자목록 기재 채권사 전원 부채확인서</td>
         </tr>
       </tbody>
     </table>
 
-    <div style="margin-top: 20px; font-size: 11px; color: #64748b; line-height: 1.6;">
+    <div style="margin-top: 20px; font-size: 11px; color: #000000; line-height: 1.6;">
       ※ 위 서류는 대한민국 법원(서울회생법원 실무준칙)이 개시신청 시 필수적으로 요구하는 서류이며, 일체의 누락 없이 정해진 편철 순서에 따라 제출합니다.
     </div>
   </div>

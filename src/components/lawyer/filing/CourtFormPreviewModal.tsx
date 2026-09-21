@@ -145,6 +145,8 @@ export default function CourtFormPreviewModal({
               margin: 0;
               padding: 0;
               background: #ffffff;
+              font-family: 'Batang', 'BatangChe', '바탕', 'Gungsuh', serif;
+              color: #000000;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }

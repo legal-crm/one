@@ -189,7 +189,7 @@ export default function CourtDocSuiteViewerModal({
 
   // PDF 다운로드 핸들러
   const handleDownloadPdf = () => {
-    toast.info('대법원 전자소송 제출 규격(A4 300DPI)의 PDF 인쇄 모듈을 실행합니다.');
+    toast.info('인쇄 대화상자에서 "PDF로 저장"을 선택하면 대법원 전자소송 제출용 텍스트 PDF가 생성됩니다.', { duration: 5000 });
     setTimeout(() => {
       window.print();
     }, 500);
