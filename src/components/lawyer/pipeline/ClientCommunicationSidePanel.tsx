@@ -261,23 +261,25 @@ export default function ClientCommunicationSidePanel({
 
   return (
     <div className="w-full h-full flex flex-col bg-white border-l border-slate-200 shadow-sm">
-      {/* 패널 헤더 */}
-      <div className="p-4 bg-[#1E3A5F] text-white flex items-center justify-between">
+      {/* 패널 헤더 (모던 클린 드로어 헤더) */}
+      <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-white/10 text-white">
+          <div className="p-2 rounded-xl bg-blue-600/20 border border-blue-400/30 text-blue-400">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-extrabold text-xs block text-slate-100">
-              사건 실행형 고객 소통창
-            </span>
-            <span className="text-[11px] text-blue-200 flex items-center gap-1.5">
-              <span>{displayClientName}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-black text-xs text-white">
+                고객 소통창
+              </span>
               {!isContactShared && (
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
                   익명 보호
                 </span>
               )}
+            </div>
+            <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+              <span>{displayClientName}</span>
             </span>
           </div>
         </div>
@@ -286,10 +288,11 @@ export default function ClientCommunicationSidePanel({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-            title="패널 닫기"
+            className="px-2 py-1 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold border border-slate-700/60"
+            title="소통창 닫고 서류 작업 복귀"
           >
-            <X className="w-4 h-4" />
+            <span className="text-[11px]">닫기</span>
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

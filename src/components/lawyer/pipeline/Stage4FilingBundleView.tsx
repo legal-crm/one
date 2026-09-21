@@ -325,7 +325,7 @@ export default function Stage4FilingBundleView({
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 w-full max-w-[1440px] mx-auto">
       {/* ── Next Action Hero Card ── */}
       <div className={`p-5 rounded-2xl border transition-all shadow-xs space-y-4 ${
         isFilingSubmitted 

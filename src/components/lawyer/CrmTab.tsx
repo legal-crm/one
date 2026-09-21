@@ -253,7 +253,9 @@ export default function CrmTab({
   const [courtFormPreviewCode, setCourtFormPreviewCode] = useState('R01');
   const [showContractDocLibraryModal, setShowContractDocLibraryModal] = useState(false);
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
-  const [showCommPanel, setShowCommPanel] = useState(true);
+  // ── 서류 작업 집중 모드 (Wide Workbench): 팩트시트와 소통창 기본 닫힘 ──
+  const [isFactSheetOpen, setIsFactSheetOpen] = useState(false);
+  const [showCommPanel, setShowCommPanel] = useState(false);
   const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
   const [showFeeAccordion, setShowFeeAccordion] = useState(false);
   const [showStatusAccordion, setShowStatusAccordion] = useState(false);
@@ -2368,22 +2370,33 @@ export default function CrmTab({
               </div>
             </div>
 
-            {/* ── 2단 레이아웃: 좌측 컨트롤 허브 + 우측 메인 작업 캔버스 ── */}
+            {/* ── 2단 레이아웃: 좌측 보조 인스펙터(토글) + 우측 메인 서류 작업 캔버스 ── */}
             <div className="flex flex-col lg:flex-row">
               
-              {/* ══════════ 좌측 컬럼: 사건 팩트시트 (280px 고정) ══════════ */}
-              <div className="w-full lg:w-[280px] shrink-0 border-r border-slate-200/90 bg-slate-50/70 p-4 space-y-3.5">
-                
-                {/* 📌 상시 표시 핵심 팩트 카드 */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <span>📌 사건 팩트시트</span>
-                    </span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                      {selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy' ? '개인파산' : '개인회생'}
-                    </span>
-                  </div>
+              {/* ══════════ 좌측 컬럼: 사건 팩트시트 (접이식 서브 인스펙터) ══════════ */}
+              {isFactSheetOpen && (
+                <div className="w-full lg:w-[280px] shrink-0 border-r border-slate-200/90 bg-slate-50/70 p-4 space-y-3.5 animate-fadeIn">
+                  
+                  {/* 📌 상시 표시 핵심 팩트 카드 */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <span>📌 사건 팩트시트</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                          {selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy' ? '개인파산' : '개인회생'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsFactSheetOpen(false)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="팩트시트 접기 (서류 작업 공간 극대화)"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
 
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between items-center">
@@ -2739,6 +2752,7 @@ export default function CrmTab({
                 </div>
 
               </div>
+              )}
 
               {/* ══════════ 우측 메인 영역: Deep Analysis & Workspace Canvas ══════════ */}
               <div className="flex-1 min-w-0 bg-white">
@@ -2803,15 +2817,49 @@ export default function CrmTab({
 
                   return (
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800 relative z-30">
-                      {/* 좌측: 현재 단계 칩 & 통합 실무 목표 + 진행도 단일화 */}
+                      {/* 좌측: 팩트시트 토글 + 현재 단계 칩 & 통합 실무 목표 + 진행도 */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* 📋 사건 팩트시트 인스펙터 토글 */}
+                        <button
+                          type="button"
+                          onClick={() => setIsFactSheetOpen(!isFactSheetOpen)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs border shrink-0 ${
+                            isFactSheetOpen
+                              ? 'bg-blue-600 border-blue-500 text-white shadow-blue-500/20'
+                              : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300 hover:text-white'
+                          }`}
+                          title={isFactSheetOpen ? "사건 팩트시트 접기 (서류 작업 공간 극대화)" : "사건 팩트시트 열기 (상세 재무/수임료/상태 확인)"}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>사건 팩트시트</span>
+                          <span className="text-[10px] opacity-75">{isFactSheetOpen ? '접기' : '열기'}</span>
+                        </button>
+
                         <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-black shrink-0 tracking-tight shadow-2xs">
                           Stage 0{pipelineStage} 목표
                         </span>
                         <span className="text-xs text-white font-bold truncate">
                           {currentMeta.title}
                         </span>
-                        <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-700/80 shrink-0">
+
+                        {/* 팩트시트가 닫혀 있을 때 표시되는 콤팩트 필수 메타 바 (문맥 보존) */}
+                        {!isFactSheetOpen && (
+                          <div className="hidden xl:flex items-center gap-1.5 pl-2 border-l border-slate-700/80 shrink-0 text-[11px]">
+                            <span className="font-bold text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">
+                              🏛️ {selectedExt.courtCase?.courtName || selectedClient.court || '서울회생법원'}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded font-bold border ${incomeTypeInfo.badgeClass}`}>
+                              {incomeTypeInfo.badgeLabel}
+                            </span>
+                            {totalFeeWon > 0 && (
+                              <span className="text-emerald-400 font-mono font-bold bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">
+                                💰 {(totalFeeWon / 10000).toLocaleString()}만원 ({feeBadgeLabel})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="hidden 2xl:flex items-center gap-2 pl-2 border-l border-slate-700/80 shrink-0">
                           <span className={`text-[11px] px-2 py-0.5 rounded-md font-mono font-bold border ${currentMeta.badgeCls}`}>
                             실무 진행: {currentMeta.progressText}
                           </span>
@@ -2822,6 +2870,14 @@ export default function CrmTab({
                             />
                           </div>
                         </div>
+
+                        {/* 서류 집중 모드 인디케이터 */}
+                        {!isFactSheetOpen && !showCommPanel && (
+                          <span className="hidden 2xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold shrink-0">
+                            <Sparkles className="w-3 h-3 text-indigo-400" />
+                            서류 집중 모드 (Wide)
+                          </span>
+                        )}
                       </div>
 
                       {/* 우측: 사건 유형 스위처 + 실무 서식 보관함 드롭다운 + 소통창 토글 */}
@@ -3148,21 +3204,32 @@ export default function CrmTab({
                       )}
                     </div>
 
-                    {/* 우측 원스톱 고객 소통 패널 (토글 지원) */}
+                    {/* 💬 우측 원스톱 고객 소통 패널 (슬라이드오버 Drawer - 서류 작업 가로폭 100% 보장) */}
                     {showCommPanel && (
-                      <div className="w-full xl:w-[320px] shrink-0 border-t xl:border-t-0 xl:border-l border-slate-200/90 bg-white">
-                        <ClientCommunicationSidePanel
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          activeLawyer={activeLawyer}
-                          pipelineStage={pipelineStage}
-                          onAddNote={(text) => handleAddNote(text, 'general')}
-                          onClose={() => setShowCommPanel(false)}
-                          onUpdateExt={(updated) => {
-                            setCrmData(prev => ({ ...prev, [selectedId]: updated }));
-                            saveCrmClient(selectedId, updated);
-                          }}
+                      <div className="fixed inset-0 z-50 overflow-hidden">
+                        {/* 반투명 백드롭 (클릭 시 닫기) */}
+                        <div 
+                          className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity animate-fadeIn"
+                          onClick={() => setShowCommPanel(false)}
                         />
+                        
+                        {/* 우측 슬라이드오버 컨테이너 */}
+                        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-none">
+                          <div className="w-screen max-w-md bg-white shadow-2xl border-l border-slate-200 pointer-events-auto flex flex-col animate-slideLeft">
+                            <ClientCommunicationSidePanel
+                              clientRequest={selectedClient}
+                              crmExt={selectedExt}
+                              activeLawyer={activeLawyer}
+                              pipelineStage={pipelineStage}
+                              onAddNote={(text) => handleAddNote(text, 'general')}
+                              onClose={() => setShowCommPanel(false)}
+                              onUpdateExt={(updated) => {
+                                setCrmData(prev => ({ ...prev, [selectedId]: updated }));
+                                saveCrmClient(selectedId, updated);
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
