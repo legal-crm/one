@@ -40,6 +40,8 @@ import {
 } from './CourtFilingDocTemplates';
 import LawPassCourtFilingSidebar from './LawPassCourtFilingSidebar';
 import { exportCourtFilingCompleteBundle } from '../../../services/documents/courtFilingBundleService';
+import { downloadFilledHwpx, HWPX_TEMPLATE_CATALOG } from '../../../services/court/hwpxTemplateEngine';
+import { mapMasterDataToHwpxFields, type CourtFormType } from '../../../services/court/hwpxFieldMapper';
 
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
@@ -195,6 +197,37 @@ export default function CourtDocSuiteViewerModal({
     }, 500);
   };
 
+  // HWPX 다운로드 핸들러 — 법원 원본 양식에 CRM 데이터를 주입하여 다운로드
+  const handleDownloadHwpx = async () => {
+    // 현재 활성 탭에 해당하는 양식 코드 매핑
+    const tabToFormCode: Record<string, CourtFormType> = {
+      'PETITION_COVER': 'D5101',
+      'PETITION_BODY': 'D5101',
+      'CREDITOR_LIST': 'D5102',
+      'ASSET_LIST': 'D5103',
+      'INCOME_EXPENSE': 'D5104',
+      'STATEMENT': 'D5105',
+      'REPAYMENT_PLAN': 'D5110',
+      'REPAYMENT_SCHEDULE': 'D5110',
+    };
+
+    const formCode = tabToFormCode[activeTab];
+    if (!formCode) {
+      toast.info('이 서식은 HWPX 템플릿을 사용하지 않습니다. PDF 인쇄를 이용해 주세요.');
+      return;
+    }
+
+    const template = HWPX_TEMPLATE_CATALOG.find(t => t.formCode === formCode);
+    if (!template) {
+      toast.error('해당 양식의 HWPX 템플릿을 찾을 수 없습니다.');
+      return;
+    }
+
+    const fieldData = mapMasterDataToHwpxFields(masterData, formCode);
+    const fileName = `[${formCode}]_${template.title}_${masterData.debtor.name}.hwpx`;
+    await downloadFilledHwpx(template.templatePath, fieldData, fileName);
+  };
+
   // 110~140p 첨부 직결 번들 머징 핸들러
   const handleGenerateBundle = async () => {
     try {
@@ -304,6 +337,15 @@ export default function CourtDocSuiteViewerModal({
           >
             <Download className="w-3.5 h-3.5" />
             <span>단일 PDF</span>
+          </button>
+
+          <button
+            onClick={handleDownloadHwpx}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-bold text-white shadow-sm transition whitespace-nowrap"
+            title="법원 공식 HWPX 양식에 CRM 데이터를 자동 주입하여 다운로드 — ecfs.scourt.go.kr에 그대로 업로드 가능"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>HWPX 법원양식</span>
           </button>
 
           <button
