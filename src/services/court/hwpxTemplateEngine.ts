@@ -1,18 +1,18 @@
 /**
  * hwpxTemplateEngine.ts
  * ============================================================
- * 대법원 전자소송용 HWPX 템플릿 데이터 바인딩 엔진
+ * 대법원 전자소송용 법원 양식 데이터 바인딩 엔진
  * 
- * HWPX = ZIP(XML) 포맷 (KS X 6101 / OWPML 국가표준)
- * JSZip만으로 클라이언트 측에서 완전 처리 가능
+ * 지원 포맷:
+ * - HWPX: JSZip으로 ZIP(XML) 해제 → 필드 치환 → 리패키징 (자동 바인딩)
+ * - HWP: 법원 원본 양식 다운로드 제공 (수동 편집)
  * 
- * 처리 흐름:
- * 1. JSZip으로 HWPX(ZIP) 해제
- * 2. Contents/section*.xml 파싱
- * 3. 누름틀(CLICK_HERE) 필드 또는 {{placeholder}} 텍스트 치환
- * 4. <hp:linesegarray> 조판 캐시 일괄 제거 (한컴 호환 필수)
- * 5. mimetype을 STORE(무압축)로 ZIP 리패키징
- * 6. 완성된 HWPX Blob 반환
+ * 대법원 공식 전산양식 D-Code 체계:
+ * - D5100: 개시신청서 | D5101/D5102: 재산목록(정규/간이)
+ * - D5103: 수입지출목록 | D5105: 진술서
+ * - D5106/D5107: 채권자목록(정규/간이)
+ * - D5110/D5111/D5112: 변제계획안(가용소득/재산처분/간이)
+ * - D5113: 중지명령 | D5114: 금지명령
  * ============================================================
  */
 
@@ -26,13 +26,18 @@ export interface HwpxFieldData {
   [fieldName: string]: string;
 }
 
-/** HWPX 템플릿 메타데이터 */
-export interface HwpxTemplateMeta {
+/** 법원 양식 템플릿 메타데이터 */
+export interface CourtTemplateMeta {
   id: string;
-  formCode: string;           // D5101, D5102, etc.
-  title: string;              // 개인회생절차개시신청서
-  templatePath: string;       // /templates/court/hwpx/D5101_개시신청서.hwpx
+  formCode: string;           // D5100, D5101, D5103, D5105, D5106, D5110, ...
+  title: string;              // 국문 표준 명칭
+  fileName: string;           // 실제 파일명
+  templatePath: string;       // /templates/court/hwpx/...
+  format: 'hwp' | 'hwpx' | 'xlsx';
+  category: 'A_필수' | 'B_부속' | 'C_파산' | 'D_기타';
+  priority: 'must-have' | 'nice-to-have' | 'optional';
   description: string;
+  supportsAutoBind: boolean;  // HWPX 자동 바인딩 지원 여부
 }
 
 /** 필드 치환 결과 */
@@ -45,62 +50,152 @@ export interface HwpxFillResult {
   errors: string[];
 }
 
-// ── 등록된 HWPX 템플릿 카탈로그 ──
+// ── 대법원 공식 D-Code 기반 양식 카탈로그 ──
 
-export const HWPX_TEMPLATE_CATALOG: HwpxTemplateMeta[] = [
+export const COURT_TEMPLATE_CATALOG: CourtTemplateMeta[] = [
+  // ═══ Group A: 개인회생 6대 필수 서류 + 핵심 부속 ═══
+  {
+    id: 'D5100',
+    formCode: 'D5100',
+    title: '개인회생절차 개시신청서',
+    fileName: 'D5100_개시신청서.hwp',
+    templatePath: '/templates/court/hwpx/D5100_개시신청서.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '법원 메인 접수용 본안 서식 (인적사항, 신청취지, 신청이유)',
+    supportsAutoBind: false,
+  },
   {
     id: 'D5101',
     formCode: 'D5101',
-    title: '개인회생절차 개시신청서',
-    templatePath: '/templates/court/hwpx/D5101_개시신청서.hwpx',
-    description: '신청인 인적사항, 신청 취지 및 이유'
-  },
-  {
-    id: 'D5102',
-    formCode: 'D5102',
-    title: '개인회생채권자목록',
-    templatePath: '/templates/court/hwpx/D5102_채권자목록.hwpx',
-    description: '채권자별 원금/이자, 담보/무담보 구분'
+    title: '재산목록',
+    fileName: 'D5101_재산목록.hwp',
+    templatePath: '/templates/court/hwpx/D5101_재산목록.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '예금, 보험, 부동산, 자동차 등 11대 재산 평가 정식 양식',
+    supportsAutoBind: false,
   },
   {
     id: 'D5103',
     formCode: 'D5103',
-    title: '재산목록',
-    templatePath: '/templates/court/hwpx/D5103_재산목록.hwpx',
-    description: '예금, 보험, 부동산, 자동차 등 자산 평가'
-  },
-  {
-    id: 'D5104',
-    formCode: 'D5104',
     title: '수입 및 지출에 관한 목록',
-    templatePath: '/templates/court/hwpx/D5104_수입지출목록.hwpx',
-    description: '월평균 수입, 중위소득 대비 생계비 공제'
+    fileName: 'D5103_수입지출목록.hwp',
+    templatePath: '/templates/court/hwpx/D5103_수입지출목록.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '월평균 소득, 중위소득 대비 생계비 공제 산출표',
+    supportsAutoBind: false,
   },
   {
     id: 'D5105',
     formCode: 'D5105',
     title: '진술서',
-    templatePath: '/templates/court/hwpx/D5105_진술서.hwpx',
-    description: '채무 발생 경위, 학력/경력 사항'
+    fileName: 'D5105_진술서.hwp',
+    templatePath: '/templates/court/hwpx/D5105_진술서.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '채무 발생 경위, 학력/경력, 주거 상황 소명',
+    supportsAutoBind: false,
+  },
+  {
+    id: 'D5106',
+    formCode: 'D5106',
+    title: '개인회생채권자목록',
+    fileName: 'D5106_채권자목록.hwp',
+    templatePath: '/templates/court/hwpx/D5106_채권자목록.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '채권자별 원금/이자, 담보/무담보 구분 정식 양식',
+    supportsAutoBind: false,
   },
   {
     id: 'D5110',
     formCode: 'D5110',
-    title: '변제계획안',
-    templatePath: '/templates/court/hwpx/D5110_변제계획안.hwpx',
-    description: '월 변제금, 변제 기간, 총 변제율'
+    title: '변제계획안 (가용소득)',
+    fileName: 'D5110_변제계획안.hwp',
+    templatePath: '/templates/court/hwpx/D5110_변제계획안.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '가용소득만으로 변제하는 경우 (실무 90%+ 사용)',
+    supportsAutoBind: false,
+  },
+  {
+    id: 'D5111',
+    formCode: 'D5111',
+    title: '변제계획안 (재산처분 병행)',
+    fileName: 'D5111_변제계획안_재산처분.hwp',
+    templatePath: '/templates/court/hwpx/D5111_변제계획안_재산처분.hwp',
+    format: 'hwp',
+    category: 'A_필수',
+    priority: 'nice-to-have',
+    description: '가용소득 + 부동산/차량 처분 병행 변제 시 사용',
+    supportsAutoBind: false,
+  },
+  {
+    id: 'D5114',
+    formCode: 'D5114',
+    title: '금지명령 신청서',
+    fileName: 'D5114_금지명령신청서.hwp',
+    templatePath: '/templates/court/hwpx/D5114_금지명령신청서.hwp',
+    format: 'hwp',
+    category: 'B_부속',
+    priority: 'must-have',
+    description: '개시신청과 동시 접수 필수 — 독촉/압류 금지',
+    supportsAutoBind: false,
+  },
+  {
+    id: 'D5113',
+    formCode: 'D5113',
+    title: '중지명령 신청서',
+    fileName: 'D5113_중지명령신청서.hwp',
+    templatePath: '/templates/court/hwpx/D5113_중지명령신청서.hwp',
+    format: 'hwp',
+    category: 'B_부속',
+    priority: 'nice-to-have',
+    description: '이미 압류/경매 진행 중인 사건의 집행 중지',
+    supportsAutoBind: false,
+  },
+  {
+    id: 'XLSX_변제예정액표',
+    formCode: 'XLSX',
+    title: '변제예정액표 (엑셀)',
+    fileName: '변제예정액표.xlsx',
+    templatePath: '/templates/court/hwpx/변제예정액표.xlsx',
+    format: 'xlsx',
+    category: 'A_필수',
+    priority: 'must-have',
+    description: '변제계획안에 반드시 첨부하는 채권별 변제 예정액 계산표',
+    supportsAutoBind: false,
+  },
+  {
+    id: '위임장',
+    formCode: '위임장',
+    title: '위임장',
+    fileName: '위임장.hwp',
+    templatePath: '/templates/court/hwpx/위임장.hwp',
+    format: 'hwp',
+    category: 'D_기타',
+    priority: 'must-have',
+    description: '변호사/법무사 선임 시 필수 제출',
+    supportsAutoBind: false,
   },
 ];
+
+// Legacy 호환용 별칭
+export const HWPX_TEMPLATE_CATALOG = COURT_TEMPLATE_CATALOG;
 
 // ── 핵심 엔진 함수 ──
 
 /**
  * HWPX 템플릿에 데이터를 주입하여 완성된 HWPX 파일을 생성합니다.
- * 
- * @param templateBuffer - HWPX 템플릿 파일의 ArrayBuffer
- * @param fieldData - 치환할 필드 데이터 (키-값 쌍)
- * @param fileName - 출력 파일명
- * @returns HwpxFillResult
+ * (HWPX 포맷 전용 — HWP 바이너리는 지원하지 않음)
  */
 export async function fillHwpxTemplate(
   templateBuffer: ArrayBuffer,
@@ -112,16 +207,14 @@ export async function fillHwpxTemplate(
   let replacedCount = 0;
 
   try {
-    // 1. JSZip으로 HWPX(ZIP) 해제
     const zip = await JSZip.loadAsync(templateBuffer);
 
-    // 2. Contents/ 내의 모든 section*.xml 파일 처리
     const sectionFiles = Object.keys(zip.files).filter(
       (name) => name.startsWith('Contents/section') && name.endsWith('.xml')
     );
 
     if (sectionFiles.length === 0) {
-      errors.push('HWPX 파일에서 section XML을 찾을 수 없습니다.');
+      errors.push('HWPX 파일에서 section XML을 찾을 수 없습니다. HWP 바이너리 파일은 HWPX 자동 바인딩을 지원하지 않습니다.');
       return { success: false, blob: null, fileName, replacedCount: 0, unresolvedFields: [], errors };
     }
 
@@ -131,7 +224,7 @@ export async function fillHwpxTemplate(
 
       let xml = await sectionFile.async('string');
 
-      // 3-A. {{placeholder}} 패턴 치환
+      // {{placeholder}} 패턴 치환
       for (const [key, value] of Object.entries(fieldData)) {
         const escapedValue = escapeXmlText(value);
         const pattern = `{{${key}}}`;
@@ -142,11 +235,9 @@ export async function fillHwpxTemplate(
         }
       }
 
-      // 3-B. 누름틀(CLICK_HERE) 필드 치환
-      // <hp:fieldBegin ... name="필드명" ... /><hp:t>기존값</hp:t><hp:fieldEnd ... />
+      // 누름틀(CLICK_HERE) 필드 치환
       for (const [key, value] of Object.entries(fieldData)) {
         const escapedValue = escapeXmlText(value);
-        // 누름틀 필드의 텍스트 치환 정규표현식
         const fieldPattern = new RegExp(
           `(<hp:fieldBegin[^>]*name="${escapeRegExp(key)}"[^>]*/>\\s*<hp:t>)([^<]*)(</hp:t>\\s*<hp:fieldEnd)`,
           'g'
@@ -158,15 +249,13 @@ export async function fillHwpxTemplate(
         }
       }
 
-      // 4. 조판 캐시(linesegarray) 일괄 제거
-      // 한컴오피스가 텍스트 변경 후 레이아웃을 자동 재계산하도록 합니다
+      // 조판 캐시(linesegarray) 일괄 제거
       xml = xml.replace(/<hp:linesegarray[\s\S]*?<\/hp:linesegarray>/g, '');
 
-      // 5. 수정된 XML 저장
       zip.file(sectionPath, xml);
     }
 
-    // 6. 미치환 플레이스홀더 검출
+    // 미치환 플레이스홀더 검출
     for (const sectionPath of sectionFiles) {
       const sectionFile = zip.file(sectionPath);
       if (!sectionFile) continue;
@@ -177,17 +266,13 @@ export async function fillHwpxTemplate(
       }
     }
 
-    // 7. mimetype은 반드시 STORE(무압충)으로 설정
-    const mimetypeContent = 'application/hwp+zip';
-    zip.file('mimetype', mimetypeContent, { compression: 'STORE' });
+    // mimetype STORE 설정
+    zip.file('mimetype', 'application/hwp+zip', { compression: 'STORE' });
 
-    // 8. 새 HWPX ZIP 생성
     const hwpxBlob = await zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
       compressionOptions: { level: 6 },
-      // mimetype 파일을 첫 번째로 배치하는 것이 중요
-      // JSZip은 파일 추가 순서대로 저장하므로 위에서 이미 처리됨
     });
 
     return {
@@ -206,11 +291,9 @@ export async function fillHwpxTemplate(
 }
 
 /**
- * HWPX 템플릿을 다운로드하고 데이터를 주입하여 완성된 파일을 사용자에게 제공합니다.
- * 
- * @param templatePath - 템플릿 파일 경로 (예: /templates/court/hwpx/D5101_개시신청서.hwpx)
- * @param fieldData - 치환할 필드 데이터
- * @param outputFileName - 출력 파일명
+ * 법원 양식 파일을 다운로드합니다.
+ * - HWPX: 데이터를 자동 주입하여 완성된 파일 생성
+ * - HWP/XLSX: 원본 템플릿을 그대로 다운로드 (변호사가 한컴오피스에서 편집)
  */
 export async function downloadFilledHwpx(
   templatePath: string,
@@ -218,48 +301,51 @@ export async function downloadFilledHwpx(
   outputFileName: string
 ): Promise<void> {
   try {
-    // 1. 템플릿 파일 로드
-    toast.info('법원 양식 템플릿을 로드하고 있습니다...');
+    const isHwpx = templatePath.endsWith('.hwpx');
+
+    toast.info('법원 양식 파일을 준비하고 있습니다...');
     const response = await fetch(templatePath);
     if (!response.ok) {
-      toast.error(`템플릿 파일을 찾을 수 없습니다: ${templatePath}\n\n법원 전자민원센터(help.scourt.go.kr)에서 해당 양식의 HWPX 파일을 다운로드하여\npublic/templates/court/hwpx/ 폴더에 넣어주세요.`);
+      toast.error(`양식 파일을 찾을 수 없습니다: ${templatePath}`);
       return;
     }
 
-    const templateBuffer = await response.arrayBuffer();
+    if (isHwpx) {
+      // HWPX: 자동 데이터 바인딩
+      const templateBuffer = await response.arrayBuffer();
+      const result = await fillHwpxTemplate(templateBuffer, fieldData, outputFileName);
 
-    // 2. 데이터 주입
-    const result = await fillHwpxTemplate(templateBuffer, fieldData, outputFileName);
+      if (!result.success || !result.blob) {
+        toast.error(`HWPX 생성 실패: ${result.errors.join(', ')}`);
+        return;
+      }
 
-    if (!result.success || !result.blob) {
-      toast.error(`HWPX 생성 실패: ${result.errors.join(', ')}`);
-      return;
-    }
+      if (result.unresolvedFields.length > 0) {
+        toast.warning(
+          `${result.unresolvedFields.length}개 필드가 미치환 상태입니다`,
+          { duration: 5000 }
+        );
+      }
 
-    // 3. 미치환 필드 경고
-    if (result.unresolvedFields.length > 0) {
-      toast.warning(
-        `${result.unresolvedFields.length}개 필드가 미치환 상태입니다: ${result.unresolvedFields.slice(0, 5).join(', ')}${result.unresolvedFields.length > 5 ? '...' : ''}`,
+      triggerBlobDownload(result.blob, result.fileName);
+      toast.success(`${result.fileName} 생성 완료 (${result.replacedCount}개 필드 자동 입력)`);
+    } else {
+      // HWP/XLSX: 원본 다운로드 + CRM 데이터 참조 안내
+      const blob = await response.blob();
+      triggerBlobDownload(blob, outputFileName);
+      toast.success(
+        `${outputFileName} 다운로드 완료. 한컴오피스에서 열어 CRM 데이터를 참고하여 편집해 주세요.`,
         { duration: 5000 }
       );
     }
-
-    // 4. 다운로드 트리거
-    triggerBlobDownload(result.blob, result.fileName);
-
-    toast.success(
-      `${result.fileName} 생성 완료 (${result.replacedCount}개 필드 자동 입력)`,
-      { duration: 4000 }
-    );
-
   } catch (err) {
-    console.error('HWPX download error:', err);
-    toast.error('HWPX 파일 생성 중 오류가 발생했습니다.');
+    console.error('Court form download error:', err);
+    toast.error('법원 양식 파일 다운로드 중 오류가 발생했습니다.');
   }
 }
 
 /**
- * HWPX 템플릿이 존재하는지 확인합니다.
+ * 법원 양식 템플릿이 존재하는지 확인합니다.
  */
 export async function checkHwpxTemplateExists(templatePath: string): Promise<boolean> {
   try {
@@ -272,7 +358,6 @@ export async function checkHwpxTemplateExists(templatePath: string): Promise<boo
 
 // ── 유틸리티 함수 ──
 
-/** XML 특수문자 이스케이프 */
 function escapeXmlText(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -282,12 +367,10 @@ function escapeXmlText(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/** 정규표현식 특수문자 이스케이프 */
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Blob을 파일로 다운로드 */
 function triggerBlobDownload(blob: Blob, fileName: string): void {
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);

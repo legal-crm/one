@@ -197,34 +197,38 @@ export default function CourtDocSuiteViewerModal({
     }, 500);
   };
 
-  // HWPX 다운로드 핸들러 — 법원 원본 양식에 CRM 데이터를 주입하여 다운로드
+  // 법원 양식 다운로드 핸들러 — 법원 원본 양식(HWP)을 다운로드 (HWPX 시 자동 바인딩)
   const handleDownloadHwpx = async () => {
-    // 현재 활성 탭에 해당하는 양식 코드 매핑
+    // 현재 활성 탭에 해당하는 대법원 공식 전산양식 D-Code 매핑
     const tabToFormCode: Record<string, CourtFormType> = {
-      'PETITION_COVER': 'D5101',
-      'PETITION_BODY': 'D5101',
-      'CREDITOR_LIST': 'D5102',
-      'ASSET_LIST': 'D5103',
-      'INCOME_EXPENSE': 'D5104',
+      'PETITION_COVER': 'D5100',
+      'PETITION_BODY': 'D5100',
+      'CREDITOR_LIST': 'D5106',
+      'ASSET_LIST': 'D5101',
+      'INCOME_EXPENSE': 'D5103',
+      'MONTHLY_LEDGER': 'D5103',
       'STATEMENT': 'D5105',
       'REPAYMENT_PLAN': 'D5110',
       'REPAYMENT_SCHEDULE': 'D5110',
+      'PROHIBITION_ORDER': 'D5114',
+      'STAY_ORDER': 'D5113',
     };
 
     const formCode = tabToFormCode[activeTab];
     if (!formCode) {
-      toast.info('이 서식은 HWPX 템플릿을 사용하지 않습니다. PDF 인쇄를 이용해 주세요.');
+      toast.info('이 서식은 법원 양식 다운로드를 지원하지 않습니다. PDF 인쇄를 이용해 주세요.');
       return;
     }
 
     const template = HWPX_TEMPLATE_CATALOG.find(t => t.formCode === formCode);
     if (!template) {
-      toast.error('해당 양식의 HWPX 템플릿을 찾을 수 없습니다.');
+      toast.error('해당 양식의 법원 템플릿을 찾을 수 없습니다.');
       return;
     }
 
     const fieldData = mapMasterDataToHwpxFields(masterData, formCode);
-    const fileName = `[${formCode}]_${template.title}_${masterData.debtor.name}.hwpx`;
+    const ext = template.templatePath.split('.').pop() || 'hwp';
+    const fileName = `[${formCode}]_${template.title}_${masterData.debtor.name}.${ext}`;
     await downloadFilledHwpx(template.templatePath, fieldData, fileName);
   };
 

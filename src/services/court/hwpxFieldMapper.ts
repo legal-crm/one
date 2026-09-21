@@ -1,25 +1,22 @@
 /**
  * hwpxFieldMapper.ts
  * ============================================================
- * CRM 마스터 데이터(CourtFilingMasterData) → HWPX 템플릿 필드 매핑
+ * CRM 마스터 데이터(CourtFilingMasterData) → 법원 양식 필드 매핑
  * 
- * 법원 전산양식의 누름틀(CLICK_HERE) 필드명 또는 {{placeholder}}에
- * CRM 데이터를 정확히 매핑합니다.
+ * 대법원 공식 전산양식 D-Code 체계 기준:
+ * D5100: 개시신청서 | D5101: 재산목록 | D5103: 수입지출목록
+ * D5105: 진술서   | D5106: 채권자목록 | D5110: 변제계획안
  * ============================================================
  */
 
 import type { CourtFilingMasterData } from '../documents/courtFilingEngine';
 import type { HwpxFieldData } from './hwpxTemplateEngine';
 
-/** 법원 전산양식 코드 */
-export type CourtFormType = 'D5101' | 'D5102' | 'D5103' | 'D5104' | 'D5105' | 'D5110';
+/** 대법원 공식 전산양식 코드 */
+export type CourtFormType = 'D5100' | 'D5101' | 'D5103' | 'D5105' | 'D5106' | 'D5110' | 'D5111' | 'D5113' | 'D5114';
 
 /**
- * CourtFilingMasterData를 HWPX 템플릿 필드 데이터로 변환합니다.
- * 
- * @param masterData - CRM 마스터 데이터
- * @param formType - 법원 양식 코드
- * @returns HWPX 필드 데이터 (키-값 쌍)
+ * CourtFilingMasterData를 법원 양식 필드 데이터로 변환합니다.
  */
 export function mapMasterDataToHwpxFields(
   masterData: CourtFilingMasterData,
@@ -65,28 +62,31 @@ export function mapMasterDataToHwpxFields(
     '청산가치': formatCurrency(masterData.repaymentSummary.liquidationValue),
   };
 
-  // 양식별 추가 필드
   switch (formType) {
+    case 'D5100':
+      return { ...commonFields, ...mapD5100Fields(masterData) };
     case 'D5101':
       return { ...commonFields, ...mapD5101Fields(masterData) };
-    case 'D5102':
-      return { ...commonFields, ...mapD5102Fields(masterData) };
     case 'D5103':
       return { ...commonFields, ...mapD5103Fields(masterData) };
-    case 'D5104':
-      return { ...commonFields, ...mapD5104Fields(masterData) };
     case 'D5105':
       return { ...commonFields, ...mapD5105Fields(masterData) };
+    case 'D5106':
+      return { ...commonFields, ...mapD5106Fields(masterData) };
     case 'D5110':
+    case 'D5111':
       return { ...commonFields, ...mapD5110Fields(masterData) };
+    case 'D5113':
+    case 'D5114':
+      return { ...commonFields, ...mapD5114Fields(masterData) };
     default:
       return commonFields;
   }
 }
 
-// ── D5101: 개인회생절차 개시신청서 ──
+// ── D5100: 개인회생절차 개시신청서 ──
 
-function mapD5101Fields(data: CourtFilingMasterData): HwpxFieldData {
+function mapD5100Fields(data: CourtFilingMasterData): HwpxFieldData {
   return {
     '인지대합계': formatCurrency(data.fees.totalStamp),
     '인지대본안': formatCurrency(data.fees.mainStamp),
@@ -105,38 +105,9 @@ function mapD5101Fields(data: CourtFilingMasterData): HwpxFieldData {
   };
 }
 
-// ── D5102: 개인회생채권자목록 ──
+// ── D5101: 재산목록 ──
 
-function mapD5102Fields(data: CourtFilingMasterData): HwpxFieldData {
-  const fields: HwpxFieldData = {};
-  const totalPrincipal = data.creditors.reduce((sum, c) => sum + (c.currentPrincipal || 0), 0);
-  const totalInterest = data.creditors.reduce((sum, c) => sum + (c.currentInterest || 0), 0);
-
-  fields['원금합계'] = formatCurrency(totalPrincipal);
-  fields['이자합계'] = formatCurrency(totalInterest);
-  fields['채권현재액합계'] = formatCurrency(totalPrincipal + totalInterest);
-  fields['무담보채권합계'] = formatCurrency(totalPrincipal + totalInterest);
-  fields['담보부채권합계'] = '0원';
-
-  // 개별 채권자 필드 (최대 30명)
-  data.creditors.forEach((c, idx) => {
-    const n = idx + 1;
-    fields[`채권자${n}_성명`] = c.name;
-    fields[`채권자${n}_원금`] = formatCurrency(c.currentPrincipal || 0);
-    fields[`채권자${n}_이자`] = formatCurrency(c.currentInterest || 0);
-    fields[`채권자${n}_합계`] = formatCurrency((c.currentPrincipal || 0) + (c.currentInterest || 0));
-    fields[`채권자${n}_유형`] = c.debtType?.includes('CARD') ? '신용카드 사용대금' : '대여금(신용대출)';
-    fields[`채권자${n}_이율`] = `연 ${c.interestRate || 10}%`;
-    fields[`채권자${n}_주소`] = c.creditorAddress || '';
-    fields[`채권자${n}_전화`] = c.creditorPhone || '고객센터';
-  });
-
-  return fields;
-}
-
-// ── D5103: 재산목록 ──
-
-function mapD5103Fields(data: CourtFilingMasterData): HwpxFieldData {
+function mapD5101Fields(data: CourtFilingMasterData): HwpxFieldData {
   const assets = data.assets;
   const bankTotal = assets.bankAccounts.reduce((sum, a) => sum + a.balance, 0);
   const insuranceTotal = assets.insurance.reduce((sum, i) => sum + i.refundAmount, 0);
@@ -165,9 +136,9 @@ function mapD5103Fields(data: CourtFilingMasterData): HwpxFieldData {
   };
 }
 
-// ── D5104: 수입 및 지출에 관한 목록 ──
+// ── D5103: 수입 및 지출에 관한 목록 ──
 
-function mapD5104Fields(data: CourtFilingMasterData): HwpxFieldData {
+function mapD5103Fields(data: CourtFilingMasterData): HwpxFieldData {
   const rep = data.repaymentSummary;
   return {
     '월순수입': formatCurrency(rep.monthlyNetIncome),
@@ -179,7 +150,6 @@ function mapD5104Fields(data: CourtFilingMasterData): HwpxFieldData {
     '가용소득': formatCurrency(rep.monthlyDisposableIncome),
     '최저변제액': formatCurrency(rep.statutoryMinimumAmount),
     '최저변제액충족': rep.meetsStatutoryMinimum ? '충족' : '미충족',
-    // 12개월 급여 명세
     '연간총수입': formatCurrency(data.ledgerTotals.annualTotalIncome),
     '연간총공제': formatCurrency(data.ledgerTotals.annualTotalDeductions),
     '연간순수입': formatCurrency(data.ledgerTotals.annualNetIncome),
@@ -202,7 +172,33 @@ function mapD5105Fields(data: CourtFilingMasterData): HwpxFieldData {
   };
 }
 
-// ── D5110: 변제계획안 ──
+// ── D5106: 개인회생채권자목록 ──
+
+function mapD5106Fields(data: CourtFilingMasterData): HwpxFieldData {
+  const fields: HwpxFieldData = {};
+  const totalPrincipal = data.creditors.reduce((sum, c) => sum + (c.currentPrincipal || 0), 0);
+  const totalInterest = data.creditors.reduce((sum, c) => sum + (c.currentInterest || 0), 0);
+
+  fields['원금합계'] = formatCurrency(totalPrincipal);
+  fields['이자합계'] = formatCurrency(totalInterest);
+  fields['채권현재액합계'] = formatCurrency(totalPrincipal + totalInterest);
+
+  data.creditors.forEach((c, idx) => {
+    const n = idx + 1;
+    fields[`채권자${n}_성명`] = c.name;
+    fields[`채권자${n}_원금`] = formatCurrency(c.currentPrincipal || 0);
+    fields[`채권자${n}_이자`] = formatCurrency(c.currentInterest || 0);
+    fields[`채권자${n}_합계`] = formatCurrency((c.currentPrincipal || 0) + (c.currentInterest || 0));
+    fields[`채권자${n}_유형`] = c.debtType?.includes('CARD') ? '신용카드 사용대금' : '대여금(신용대출)';
+    fields[`채권자${n}_이율`] = `연 ${c.interestRate || 10}%`;
+    fields[`채권자${n}_주소`] = c.creditorAddress || '';
+    fields[`채권자${n}_전화`] = c.creditorPhone || '고객센터';
+  });
+
+  return fields;
+}
+
+// ── D5110/D5111: 변제계획안 ──
 
 function mapD5110Fields(data: CourtFilingMasterData): HwpxFieldData {
   const rep = data.repaymentSummary;
@@ -214,15 +210,25 @@ function mapD5110Fields(data: CourtFilingMasterData): HwpxFieldData {
   };
 }
 
+// ── D5113/D5114: 중지/금지 명령 ──
+
+function mapD5114Fields(data: CourtFilingMasterData): HwpxFieldData {
+  const fields: HwpxFieldData = {};
+  data.stayCases.forEach((sc, idx) => {
+    const n = idx + 1;
+    fields[`사건${n}_채권자`] = sc.creditorName;
+    fields[`사건${n}_법원`] = sc.courtName;
+    fields[`사건${n}_사건번호`] = sc.caseNumber;
+    fields[`사건${n}_유형`] = sc.caseType;
+    fields[`사건${n}_대상`] = sc.seizureTarget;
+  });
+  return fields;
+}
+
 // ── 유틸리티 ──
 
-/** 숫자를 한국 원화 형식으로 변환 */
 function formatCurrency(amount: number): string {
   return `${amount.toLocaleString('ko-KR')}원`;
 }
 
-/**
- * 특정 양식의 HWPX 파일을 생성하여 다운로드합니다.
- * (UI에서 직접 호출하는 편의 함수)
- */
 export { downloadFilledHwpx } from './hwpxTemplateEngine';
