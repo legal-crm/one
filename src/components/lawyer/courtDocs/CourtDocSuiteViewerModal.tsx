@@ -51,6 +51,7 @@ import { WrittenStatementFormD5105 } from './forms/WrittenStatementFormD5105';
 import { CreditorListFormD5106 } from './forms/CreditorListFormD5106';
 import { RepaymentPlanFormD5110 } from './forms/RepaymentPlanFormD5110';
 import { RepaymentScheduleTable } from './forms/RepaymentScheduleTable';
+import { ProhibitionOrderFormD5114 } from './forms/ProhibitionOrderFormD5114';
 
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
@@ -545,9 +546,9 @@ export default function CourtDocSuiteViewerModal({
               <EvidenceSubmissionListDoc data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 13. 금지명령신청서 */}
+            {/* 13. 금지명령신청서 (D5114 법원 원본 1:1) */}
             {activeTab === 'PROHIBITION_ORDER' && (
-              <ProhibitionOrderDoc data={masterData} isEditable={isEditMode} />
+              <ProhibitionOrderFormD5114 data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 14. 중지명령신청서 (사건별 분할) */}
@@ -571,7 +572,7 @@ export default function CourtDocSuiteViewerModal({
                 <MonthlyIncomeLedgerDoc data={masterData} isEditable={isEditMode} />
                 <WrittenStatementDoc data={masterData} isEditable={isEditMode} />
                 <RepaymentPlanStandardDoc data={masterData} isEditable={isEditMode} />
-                <ProhibitionOrderDoc data={masterData} isEditable={isEditMode} />
+                <ProhibitionOrderFormD5114 data={masterData} isEditable={isEditMode} />
                 {masterData.stayCases.map((c, idx) => (
                   <StayOrderDoc key={c.id} data={masterData} caseItem={c} caseIndex={idx} isEditable={isEditMode} />
                 ))}
