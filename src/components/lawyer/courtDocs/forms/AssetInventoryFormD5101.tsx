@@ -29,7 +29,7 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
         <tbody>
           <tr>
             <td className="border border-black p-2 text-center font-semibold">현금</td>
-            <td className="border border-black p-2 text-right">{data.assets.cash.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right">{(data.assets.cash ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
             <td className="border border-black p-2"></td>
           </tr>
@@ -49,7 +49,7 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
                     <tr key={idx}>
                       <td className="py-1">({idx + 1}) {acc.bankName}</td>
                       <td className="py-1">{acc.accountNumber}</td>
-                      <td className="text-right py-1">{acc.balance.toLocaleString('ko-KR')}</td>
+                      <td className="text-right py-1">{(acc.balance ?? 0).toLocaleString('ko-KR')}</td>
                     </tr>
                   ))}
                   {data.assets.bankAccounts.length === 0 && (
@@ -77,7 +77,7 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
                     <tr key={idx}>
                       <td className="py-1">({idx + 1}) {ins.companyName}</td>
                       <td className="py-1">{ins.policyNumber}</td>
-                      <td className="text-right py-1">{ins.refundAmount.toLocaleString('ko-KR')}</td>
+                      <td className="text-right py-1">{(ins.refundAmount ?? 0).toLocaleString('ko-KR')}</td>
                     </tr>
                   ))}
                   {data.assets.insurance.length === 0 && (
@@ -91,31 +91,31 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
           </tr>
           <tr>
             <td className="border border-black p-2 text-center font-semibold">자동차<br/>(오토바이 포함)</td>
-            <td className="border border-black p-2 text-right">{data.assets.vehicle.netValue.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right">{(data.assets.vehicle.netValue ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
             <td className="border border-black p-2 text-sm text-gray-600">
-               평가액 {data.assets.vehicle.estimatedValue.toLocaleString('ko-KR')}원 - 피담보채무액 {data.assets.vehicle.securedLoan.toLocaleString('ko-KR')}원
+               평가액 {(data.assets.vehicle.estimatedValue ?? 0).toLocaleString('ko-KR')}원 - 피담보채무액 {(data.assets.vehicle.securedLoan ?? 0).toLocaleString('ko-KR')}원
             </td>
           </tr>
           <tr>
             <td className="border border-black p-2 text-center font-semibold">임차보증금<br/><span className="text-[12px] font-normal">(반환받을 금액을 금액란에 적는다.)</span></td>
-            <td className="border border-black p-2 text-right">{data.assets.leaseDeposit.netValue.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right">{(data.assets.leaseDeposit.netValue ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
             <td className="border border-black p-2">
                <div className="mb-1">임차물건: {data.assets.leaseDeposit.address}</div>
-               <div className="mb-1">보증금 및 월세: 보증금 {data.assets.leaseDeposit.deposit.toLocaleString('ko-KR')}원 / 월세 {data.assets.leaseDeposit.monthlyRent.toLocaleString('ko-KR')}원</div>
+               <div className="mb-1">보증금 및 월세: 보증금 {(data.assets.leaseDeposit.deposit ?? 0).toLocaleString('ko-KR')}원 / 월세 {(data.assets.leaseDeposit.monthlyRent ?? 0).toLocaleString('ko-KR')}원</div>
                <div>차이 나는 사유: </div>
             </td>
           </tr>
           <tr>
             <td className="border border-black p-2 text-center font-semibold">부동산<br/><span className="text-[12px] font-normal">(환가예상액에서 피담보채권을 뺀 금액을 금액란에 적는다.)</span></td>
-            <td className="border border-black p-2 text-right">{data.assets.realEstate.netValue.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right">{(data.assets.realEstate.netValue ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
             <td className="border border-black p-2">
                <div className="mb-1">소재지,면적: {data.assets.realEstate.address} ({data.assets.realEstate.area})</div>
                <div className="mb-1">부동산의 종류: 토지(  ), 건물(  ), 집합건물(  )</div>
-               <div className="mb-1">환가예상액: {data.assets.realEstate.marketValue.toLocaleString('ko-KR')}</div>
-               <div>담보권 설정된 경우 그 종류 및 담보액: {data.assets.realEstate.mortgage.toLocaleString('ko-KR')}</div>
+               <div className="mb-1">환가예상액: {(data.assets.realEstate.marketValue ?? 0).toLocaleString('ko-KR')}</div>
+               <div>담보권 설정된 경우 그 종류 및 담보액: {(data.assets.realEstate.mortgage ?? 0).toLocaleString('ko-KR')}</div>
             </td>
           </tr>
           <tr>
@@ -148,10 +148,10 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
           </tr>
           <tr>
             <td className="border border-black p-2 text-center font-semibold">예상 퇴직금</td>
-            <td className="border border-black p-2 text-right">{data.assets.severancePay.netValue.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right">{(data.assets.severancePay.netValue ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
             <td className="border border-black p-2">
-               근무처: {data.assets.severancePay.company} (압류할 수 없는 퇴직금 {data.assets.severancePay.exemptAmount.toLocaleString('ko-KR')}원 제외)
+               근무처: {data.assets.severancePay.company} (압류할 수 없는 퇴직금 {(data.assets.severancePay.exemptAmount ?? 0).toLocaleString('ko-KR')}원 제외)
             </td>
           </tr>
           <tr>
@@ -175,7 +175,7 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
           </tr>
           <tr>
             <td className="border border-black p-2 text-center font-bold">청산가치</td>
-            <td className="border border-black p-2 text-right font-bold text-red-600">{data.repaymentSummary.liquidationValue.toLocaleString('ko-KR')}</td>
+            <td className="border border-black p-2 text-right font-bold text-red-600">{(data.repaymentSummary.liquidationValue ?? 0).toLocaleString('ko-KR')}</td>
             <td colSpan={2} className="border border-black p-2"></td>
           </tr>
         </tbody>

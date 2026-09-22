@@ -103,7 +103,7 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
 
       <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
         <div className="ml-4">
-          <p className="mt-4">2. 신청인은 각 회생채권자에 대한 채무 전액의 변제가 곤란하므로, 그 일부를 분할하여 지급할 계획입니다. 즉 현시점에서 계획하고 있는 변제예정액은 {data.repaymentSummary.repaymentMonths}개월간 월 {data.repaymentSummary.monthlyDisposableIncome.toLocaleString('ko-KR')}원씩이고, 이 변제의 준비 및 절차비용지급의 준비를 위하여, 개시결정이 내려지는 경우 {data.court.firstRepaymentDate}을 제1회로 하여, 이후 매월 {data.court.firstRepaymentDate ? data.court.firstRepaymentDate.split('.')[2]?.trim() || '' : ''}일에 개시결정 시 통지되는 개인회생위원의 은행계좌에 동액의 금전을 입금하겠습니다.</p>
+          <p className="mt-4">2. 신청인은 각 회생채권자에 대한 채무 전액의 변제가 곤란하므로, 그 일부를 분할하여 지급할 계획입니다. 즉 현시점에서 계획하고 있는 변제예정액은 {data.repaymentSummary.repaymentMonths}개월간 월 {(data.repaymentSummary.monthlyDisposableIncome ?? 0).toLocaleString('ko-KR')}원씩이고, 이 변제의 준비 및 절차비용지급의 준비를 위하여, 개시결정이 내려지는 경우 {data.court.firstRepaymentDate}을 제1회로 하여, 이후 매월 {data.court.firstRepaymentDate ? data.court.firstRepaymentDate.split('.')[2]?.trim() || '' : ''}일에 개시결정 시 통지되는 개인회생위원의 은행계좌에 동액의 금전을 입금하겠습니다.</p>
           <p className="mt-4">3. 이 사건 개인회생절차에서 적립금을 반환받을 신청인의 예금계좌는 {data.debtor.refundBank}은행 {data.debtor.refundAccount}이며, 신청인의 계좌가 변경되거나 어떤 사유로든 사용할 수 없게 된 경우에는 신청인은 사건담당 회생위원에게 즉시 변경된 예금계좌를 신청인의 통장사본을 첨부하여 신고하겠습니다.</p>
         </div>
 

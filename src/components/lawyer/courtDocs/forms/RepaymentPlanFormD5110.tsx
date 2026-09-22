@@ -32,12 +32,12 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
           </thead>
           <tbody>
             <tr>
-              <td className="border border-black p-2 text-right">{repaymentSummary.monthlyNetIncome.toLocaleString('ko-KR')}원</td>
+              <td className="border border-black p-2 text-right">{(repaymentSummary.monthlyNetIncome ?? 0).toLocaleString('ko-KR')}원</td>
               <td className="border border-black p-2 text-right">
-                {repaymentSummary.monthlyLivingCost.toLocaleString('ko-KR')}원 
-                {repaymentSummary.additionalLivingCost > 0 ? ` (추가 ${repaymentSummary.additionalLivingCost.toLocaleString('ko-KR')}원 포함)` : ''}
+                {(repaymentSummary.monthlyLivingCost ?? 0).toLocaleString('ko-KR')}원 
+                {repaymentSummary.additionalLivingCost > 0 ? ` (추가 ${(repaymentSummary.additionalLivingCost ?? 0).toLocaleString('ko-KR')}원 포함)` : ''}
               </td>
-              <td className="border border-black p-2 text-right font-bold">{repaymentSummary.monthlyDisposableIncome.toLocaleString('ko-KR')}원</td>
+              <td className="border border-black p-2 text-right font-bold">{(repaymentSummary.monthlyDisposableIncome ?? 0).toLocaleString('ko-KR')}원</td>
             </tr>
           </tbody>
         </table>
@@ -74,10 +74,10 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
                 <tr key={c.id}>
                   <td className="border border-black p-2 text-center">{c.creditorNumber}</td>
                   <td className="border border-black p-2 text-left">{c.name}</td>
-                  <td className="border border-black p-2 text-right">{(c.principal + c.interest).toLocaleString('ko-KR')}원</td>
-                  <td className="border border-black p-2 text-right">{c.monthlyRepayment.toLocaleString('ko-KR')}원</td>
-                  <td className="border border-black p-2 text-right">{c.totalRepayment.toLocaleString('ko-KR')}원</td>
-                  <td className="border border-black p-2 text-center">{(c.repaymentRate).toFixed(2)}%</td>
+                  <td className="border border-black p-2 text-right">{((c.principal ?? (c as any).currentPrincipal ?? 0) + (c.interest ?? (c as any).currentInterest ?? 0)).toLocaleString('ko-KR')}원</td>
+                  <td className="border border-black p-2 text-right">{(c.monthlyRepayment ?? 0).toLocaleString('ko-KR')}원</td>
+                  <td className="border border-black p-2 text-right">{(c.totalRepayment ?? 0).toLocaleString('ko-KR')}원</td>
+                  <td className="border border-black p-2 text-center">{(c.repaymentRate ?? 0).toFixed(2)}%</td>
                 </tr>
               ))}
             </tbody>
@@ -100,8 +100,8 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
               <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-1/2">신청인의 재산 (청산가치)</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 text-center">{repaymentSummary.totalRepaymentAmount.toLocaleString('ko-KR')}원</td>
-              <td className="border border-black p-2 text-center">{repaymentSummary.liquidationValue.toLocaleString('ko-KR')}원</td>
+              <td className="border border-black p-2 text-center">{(repaymentSummary.totalRepaymentAmount ?? 0).toLocaleString('ko-KR')}원</td>
+              <td className="border border-black p-2 text-center">{(repaymentSummary.liquidationValue ?? 0).toLocaleString('ko-KR')}원</td>
             </tr>
           </tbody>
         </table>
