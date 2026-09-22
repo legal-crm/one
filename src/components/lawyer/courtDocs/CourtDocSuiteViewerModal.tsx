@@ -524,9 +524,9 @@ export default function CourtDocSuiteViewerModal({
               <ServiceReportForm data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 12. 자료 제출 (법원별 제출목록) */}
+            {/* 12. 자료 제출 (법원 표준 양식) */}
             {activeTab === 'EVIDENCE_LIST' && (
-              <EvidenceSubmissionListDoc data={masterData} isEditable={isEditMode} />
+              <EvidenceListForm data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 13. 금지명령신청서 (D5114 법원 원본 1:1) */}
