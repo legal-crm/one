@@ -52,6 +52,10 @@ import { CreditorListFormD5106 } from './forms/CreditorListFormD5106';
 import { RepaymentPlanFormD5110 } from './forms/RepaymentPlanFormD5110';
 import { RepaymentScheduleTable } from './forms/RepaymentScheduleTable';
 import { ProhibitionOrderFormD5114 } from './forms/ProhibitionOrderFormD5114';
+import { PowerOfAttorneyForm } from './forms/PowerOfAttorneyForm';
+import { ServiceReportForm } from './forms/ServiceReportForm';
+import { StayOrderFormD5113 } from './forms/StayOrderFormD5113';
+import { EvidenceListForm } from './forms/EvidenceListForm';
 
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
@@ -510,35 +514,14 @@ export default function CourtDocSuiteViewerModal({
               <RepaymentScheduleTable data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 10. 위임장 */}
+            {/* 10. 위임장 (법원 표준 양식) */}
             {activeTab === 'POWER_OF_ATTORNEY' && (
-              <PowerOfAttorneyAndPledgeDoc data={masterData} isEditable={isEditMode} />
+              <PowerOfAttorneyForm data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 11. 송달 신고서 */}
+            {/* 11. 송달 신고서 (법원 표준 양식) */}
             {activeTab === 'SERVICE_REPORT' && (
-              <div className="court-page bg-white p-12 max-w-[210mm] mx-auto text-black font-serif text-[12px] leading-relaxed border border-slate-200 shadow-sm space-y-6">
-                <div className="text-center border-b border-black pb-2">
-                  <h2 className="text-2xl font-bold tracking-widest">송달장소 및 송달영수인 신고서</h2>
-                </div>
-                <div className="border border-black p-3 space-y-2 text-[12px]">
-                  <div>사 건 : {masterData.court.caseNumber} 호 개인회생</div>
-                  <div>신청인(채무자) : {masterData.debtor.name} ({masterData.debtor.residentNumber})</div>
-                </div>
-                <p className="indent-4 text-[12px]">
-                  위 사건에 관하여 신청인은 민사소송법 제184조에 따라 다음과 같이 송달장소 및 송달영수인을 신고합니다.
-                </p>
-                <div className="border border-black p-4 space-y-2 bg-slate-50 text-[12px]">
-                  <div><strong>1. 송달장소</strong> : {masterData.debtor.serviceAddress}</div>
-                  <div><strong>2. 송달영수인</strong> : {masterData.debtor.serviceRecipient}</div>
-                  <div><strong>3. 연락처</strong> : {masterData.debtor.phone}</div>
-                </div>
-                <div className="text-center pt-8">
-                  <p>{masterData.court.applicationDate}</p>
-                  <p className="mt-2 font-semibold">신청인 {masterData.debtor.name} (서명 또는 날인)</p>
-                  <p className="text-center font-bold text-base mt-6">{masterData.court.courtName} 귀중</p>
-                </div>
-              </div>
+              <ServiceReportForm data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 12. 자료 제출 (법원별 제출목록) */}
@@ -551,33 +534,26 @@ export default function CourtDocSuiteViewerModal({
               <ProhibitionOrderFormD5114 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 14. 중지명령신청서 (사건별 분할) */}
+            {/* 14. 중지명령신청서 (D5113 법원 원본 1:1) */}
             {activeTab === 'STAY_ORDER' && (
-              <div className="space-y-8">
-                {masterData.stayCases.map((c, idx) => (
-                  <StayOrderDoc key={c.id} data={masterData} caseItem={c} caseIndex={idx} isEditable={isEditMode} />
-                ))}
-              </div>
+              <StayOrderFormD5113 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 15. 전체 일괄 뷰 (35p 전체 시퀀스) */}
+            {/* 15. 전체 일괄 뷰 — 법원 양식 순서대로 */}
             {activeTab === 'ALL' && (
               <div className="space-y-8 print:space-y-0">
-                <SummaryAndUrgentNoticeDoc data={masterData} isEditable={isEditMode} />
-                <PetitionCoverDoc data={masterData} isEditable={isEditMode} />
-                <PetitionBodyDoc data={masterData} isEditable={isEditMode} />
-                <CreditorListDoc data={masterData} isEditable={isEditMode} />
-                <AssetInventoryDoc data={masterData} isEditable={isEditMode} />
-                <IncomeExpenseDoc data={masterData} isEditable={isEditMode} />
-                <MonthlyIncomeLedgerDoc data={masterData} isEditable={isEditMode} />
-                <WrittenStatementDoc data={masterData} isEditable={isEditMode} />
-                <RepaymentPlanStandardDoc data={masterData} isEditable={isEditMode} />
+                <PetitionFormD5100 data={masterData} isEditable={isEditMode} />
+                <WrittenStatementFormD5105 data={masterData} isEditable={isEditMode} />
+                <CreditorListFormD5106 data={masterData} isEditable={isEditMode} />
+                <AssetInventoryFormD5101 data={masterData} isEditable={isEditMode} />
+                <IncomeExpenseFormD5103 data={masterData} isEditable={isEditMode} />
+                <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
+                <RepaymentScheduleTable data={masterData} isEditable={isEditMode} />
+                <PowerOfAttorneyForm data={masterData} isEditable={isEditMode} />
+                <ServiceReportForm data={masterData} isEditable={isEditMode} />
                 <ProhibitionOrderFormD5114 data={masterData} isEditable={isEditMode} />
-                {masterData.stayCases.map((c, idx) => (
-                  <StayOrderDoc key={c.id} data={masterData} caseItem={c} caseIndex={idx} isEditable={isEditMode} />
-                ))}
-                <EvidenceSubmissionListDoc data={masterData} isEditable={isEditMode} />
-                <PowerOfAttorneyAndPledgeDoc data={masterData} isEditable={isEditMode} />
+                <StayOrderFormD5113 data={masterData} isEditable={isEditMode} />
+                <EvidenceListForm data={masterData} isEditable={isEditMode} />
               </div>
             )}
           </div>
