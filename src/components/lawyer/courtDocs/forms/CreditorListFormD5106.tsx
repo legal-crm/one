@@ -88,7 +88,7 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
           </tbody>
         </table>
 
-        <div className="text-[13px] text-gray-700 mt-4">
+        <div className="text-[13px] mt-4">
           <p>※ 개시 후 이자 등: 아래 각 채권의 개시결정일 이후의 이자·지연손해금 등은 채무자 회생 및 파산에 관한 법률 제581조제2항, 제446조제1항제1,2호의 후순위채권입니다.</p>
         </div>
       </div>

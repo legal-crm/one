@@ -105,7 +105,7 @@ export const ProhibitionOrderFormD5114: React.FC<CourtFormProps> = ({ data }) =>
       </div>
 
       {/* 법원 귀중 — 원본: 파란색 텍스트, 우하단 */}
-      <div className="mt-12 text-right text-[18px] font-bold text-blue-700">
+      <div className="mt-12 text-right text-[18px] font-bold">
         {court?.courtName || ''} 귀중
       </div>
     </div>

@@ -246,9 +246,9 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
             <tr>
               <td className="border border-black bg-gray-50 font-semibold p-1">실수령</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`net-${i}`} className="border border-black p-1 truncate font-semibold text-blue-600">{monthlyLedger[i]?.netIncome?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`net-${i}`} className="border border-black p-1 truncate font-semibold">{monthlyLedger[i]?.netIncome?.toLocaleString('ko-KR') || ''}</td>
               ))}
-              <td className="border border-black p-1 text-right font-semibold text-blue-600">{(ledgerTotals.annualNetIncome ?? 0).toLocaleString('ko-KR')}</td>
+              <td className="border border-black p-1 text-right font-semibold">{(ledgerTotals.annualNetIncome ?? 0).toLocaleString('ko-KR')}</td>
             </tr>
           </tbody>
         </table>
@@ -267,16 +267,16 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
               <td className="border border-black p-2 text-right" colSpan={4}>{(ledgerTotals.annualNetIncome ?? 0).toLocaleString('ko-KR')}원</td>
             </tr>
             <tr>
-              <th className="border border-black bg-gray-50 font-semibold p-2 text-blue-700">월평균수입</th>
-              <td className="border border-black p-2 text-right font-bold text-blue-700" colSpan={4}>{(ledgerTotals.monthlyAverageIncome ?? 0).toLocaleString('ko-KR')}원</td>
+              <th className="border border-black bg-gray-50 font-semibold p-2">월평균수입</th>
+              <td className="border border-black p-2 text-right font-bold" colSpan={4}>{(ledgerTotals.monthlyAverageIncome ?? 0).toLocaleString('ko-KR')}원</td>
             </tr>
             <tr>
-              <th className="border border-black bg-gray-50 font-semibold p-2 text-red-700">기준중위소득 조정금액</th>
-              <td className="border border-black p-2 text-right font-bold text-red-700" colSpan={4}>{(repaymentSummary.monthlyLivingCost + repaymentSummary.additionalLivingCost).toLocaleString('ko-KR')}원</td>
+              <th className="border border-black bg-gray-50 font-semibold p-2">기준중위소득 조정금액</th>
+              <td className="border border-black p-2 text-right font-bold" colSpan={4}>{(repaymentSummary.monthlyLivingCost + repaymentSummary.additionalLivingCost).toLocaleString('ko-KR')}원</td>
             </tr>
             <tr>
-              <th className="border border-black bg-gray-50 font-semibold p-2 text-green-700">월평균가용소득</th>
-              <td className="border border-black p-2 text-right font-bold text-green-700" colSpan={4}>{(repaymentSummary.monthlyDisposableIncome ?? 0).toLocaleString('ko-KR')}원</td>
+              <th className="border border-black bg-gray-50 font-semibold p-2">월평균가용소득</th>
+              <td className="border border-black p-2 text-right font-bold" colSpan={4}>{(repaymentSummary.monthlyDisposableIncome ?? 0).toLocaleString('ko-KR')}원</td>
             </tr>
           </tbody>
         </table>

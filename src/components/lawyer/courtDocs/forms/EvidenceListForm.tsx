@@ -91,7 +91,7 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
         </tbody>
       </table>
 
-      <div className="text-[13px] text-gray-700 space-y-1">
+      <div className="text-[13px] space-y-1">
         <p>※ 위 서류 중 사본 제출이 가능한 서류는 사본에 "원본대조필" 날인을 하여 제출합니다.</p>
         <p>※ 추가 서류가 필요할 경우 법원의 보정명령에 따라 별도 제출합니다.</p>
       </div>

@@ -93,7 +93,7 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
             <td className="border border-black p-2 text-center font-semibold">자동차<br/>(오토바이 포함)</td>
             <td className="border border-black p-2 text-right">{(data.assets.vehicle.netValue ?? 0).toLocaleString('ko-KR')}</td>
             <td className="border border-black p-2 text-center"></td>
-            <td className="border border-black p-2 text-sm text-gray-600">
+            <td className="border border-black p-2 text-sm">
                평가액 {(data.assets.vehicle.estimatedValue ?? 0).toLocaleString('ko-KR')}원 - 피담보채무액 {(data.assets.vehicle.securedLoan ?? 0).toLocaleString('ko-KR')}원
             </td>
           </tr>

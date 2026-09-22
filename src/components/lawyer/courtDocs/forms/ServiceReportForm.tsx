@@ -73,7 +73,7 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
         </tbody>
       </table>
 
-      <div className="mt-4 text-[13px] text-gray-700">
+      <div className="mt-4 text-[13px]">
         <p>※ 송달장소가 변경된 경우에는 즉시 변경신고서를 제출하여야 합니다.</p>
         <p>※ 송달장소에의 송달이 2회 이상 불능이 된 때에는 민사소송법 제187조에 의하여 발송송달을 할 수 있습니다.</p>
       </div>

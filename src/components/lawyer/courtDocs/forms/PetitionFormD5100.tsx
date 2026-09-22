@@ -133,7 +133,7 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
                 <div className="text-right mb-6">
                   신청인  채무자 {data.debtor.name} (서명 또는 날인)
                 </div>
-                <div className="text-left text-[12px] leading-relaxed text-gray-700">
+                <div className="text-left text-[12px] leading-relaxed">
                   ※ 개인회생절차 개시결정, 폐지결정, 면책결정이 있거나, 변제계획 인가결정 후 월 변제액 3개월분 이상 연체 시 위 휴대전화로 문자메시지가 발송됩니다.<br />
                   ※ 문자메시지 서비스 이용 금액은 메시지 1건당 17원씩 납부된 송달료에서 지급됩니다(송달료가 부족하면 문자메시지가 발송되지 않습니다). 추후 서비스 대상 정보, 이용 금액 등이 변동될 수 있습니다.
                 </div>
