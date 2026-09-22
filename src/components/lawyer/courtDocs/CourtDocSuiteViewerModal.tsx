@@ -50,6 +50,7 @@ import { IncomeExpenseFormD5103 } from './forms/IncomeExpenseFormD5103';
 import { WrittenStatementFormD5105 } from './forms/WrittenStatementFormD5105';
 import { CreditorListFormD5106 } from './forms/CreditorListFormD5106';
 import { RepaymentPlanFormD5110 } from './forms/RepaymentPlanFormD5110';
+import { RepaymentScheduleTable } from './forms/RepaymentScheduleTable';
 
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
@@ -503,9 +504,9 @@ export default function CourtDocSuiteViewerModal({
               <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 9. 변제예정액표 */}
+            {/* 9. 변제예정액표 (채권자별 분배표) */}
             {activeTab === 'REPAYMENT_SCHEDULE' && (
-              <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
+              <RepaymentScheduleTable data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 10. 위임장 */}

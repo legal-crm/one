@@ -144,10 +144,11 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
         </table>
       </div>
 
-      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
-        <h1 className="text-center text-[24px] font-bold mb-8">[별지] 월평균소득 산출 내역서</h1>
+      <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] overflow-hidden" style={{ pageBreakAfter: 'always' }}>
+        <h1 className="text-center text-[18px] font-bold mb-4">[별지] 월평균소득 산출 내역서</h1>
+        <p className="text-center text-[11px] mb-3">(단위 : 원)</p>
         
-        <table className="w-full border-collapse border border-black text-[11px] mb-8 text-center" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black text-[9px] mb-6 text-center" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr>
               <th className="border border-black bg-gray-50 font-semibold p-1 w-[8%]">소득내용</th>
