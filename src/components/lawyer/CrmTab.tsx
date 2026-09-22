@@ -40,6 +40,7 @@ import PostCommencementManagementModal from './postcare/PostCommencementManageme
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
 import CourtDocSuiteViewerModal, { type DocTabId, formCodeToDocTabId } from './courtDocs/CourtDocSuiteViewerModal';
+import CourtFormLibraryModal from './courtDocs/CourtFormLibraryModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
 import CourtDocumentExportModal from './filing/CourtDocumentExportModal';
@@ -242,6 +243,7 @@ export default function CrmTab({
   const [showDocHubModal, setShowDocHubModal] = useState(false);
   const [showCourtDocSuite, setShowCourtDocSuite] = useState(false);
   const [courtDocSuiteInitialTab, setCourtDocSuiteInitialTab] = useState<DocTabId>('PETITION_BODY');
+  const [showFormLibrary, setShowFormLibrary] = useState(false);
   const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
   const [showPropertyValuationModal, setShowPropertyValuationModal] = useState(false);
   const [showCourtDocExportModal, setShowCourtDocExportModal] = useState(false);
@@ -4441,6 +4443,14 @@ export default function CrmTab({
                               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                               스마트 서식 허브 (80종)
                             </button>
+                            <button 
+                              onClick={() => setShowFormLibrary(true)} 
+                              className="text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
+                              title="개인회생·파산 법원 양식 60종을 브라우저에서 바로 편집하고 인쇄/PDF 저장합니다."
+                            >
+                              <Scale className="w-3.5 h-3.5" />
+                              법원 양식 (60종)
+                            </button>
                             <button onClick={() => setShowDocScanner(true)} className="text-xs font-bold text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-xs">
                               <Camera className="w-3.5 h-3.5 text-slate-500" />
                               서류 스캔
@@ -5448,6 +5458,12 @@ export default function CrmTab({
           }}
         />
       )}
+
+      {/* ── 4-2. 법원 양식 라이브러리 (60종) ── */}
+      <CourtFormLibraryModal
+        isOpen={showFormLibrary}
+        onClose={() => setShowFormLibrary(false)}
+      />
 
       {/* ── 5. 대법원 전산양식 D5103 수입 및 지출에 관한 목록 모달 ── */}
       {showIncomeExpenseModal && selectedClient && (
