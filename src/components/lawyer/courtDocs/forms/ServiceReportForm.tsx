@@ -22,11 +22,11 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
       <table className="w-full border-collapse border border-black text-[14px] mb-8">
         <tbody>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center w-32">사    건</td>
+            <td className="border border-black p-3 font-semibold text-center w-32">사    건</td>
             <td className="border border-black p-3">{court?.caseNumber || '20    개회        '} 호 개인회생</td>
           </tr>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center">신 청 인<br/>(채무자)</td>
+            <td className="border border-black p-3 font-semibold text-center">신 청 인<br/>(채무자)</td>
             <td className="border border-black p-3">
               {debtor?.name || ''} ({debtor?.residentNumber || ''})
             </td>
@@ -47,25 +47,25 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
       <table className="w-full border-collapse border border-black text-[14px] mb-8">
         <tbody>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center w-40">1. 송달장소</td>
+            <td className="border border-black p-3 font-semibold text-center w-40">1. 송달장소</td>
             <td className="border border-black p-3">
               {debtor?.serviceAddress || court?.lawyerFirm || ''}
             </td>
           </tr>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center">2. 송달영수인</td>
+            <td className="border border-black p-3 font-semibold text-center">2. 송달영수인</td>
             <td className="border border-black p-3">
               {debtor?.serviceRecipient || court?.lawyerName || ''} 변호사
             </td>
           </tr>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center">3. 전화번호</td>
+            <td className="border border-black p-3 font-semibold text-center">3. 전화번호</td>
             <td className="border border-black p-3">
               {debtor?.phone || ''}
             </td>
           </tr>
           <tr>
-            <td className="border border-black p-3 bg-gray-50 font-semibold text-center">4. 팩스번호</td>
+            <td className="border border-black p-3 font-semibold text-center">4. 팩스번호</td>
             <td className="border border-black p-3">
               {debtor?.fax || ''}
             </td>

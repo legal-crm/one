@@ -20,10 +20,10 @@ export const AssetInventoryFormD5101: React.FC<CourtFormProps> = ({ data, isEdit
       <table className="w-full border-collapse border border-black text-[14px]">
         <thead>
           <tr>
-            <th className="border border-black p-2 bg-gray-50 text-center w-[20%]">명   칭</th>
-            <th className="border border-black p-2 bg-gray-50 text-center w-[20%]">금액 또는 시가<br/>(단위: 원)</th>
-            <th className="border border-black p-2 bg-gray-50 text-center w-[15%]">압류 유무</th>
-            <th className="border border-black p-2 bg-gray-50 text-center w-[45%]">비     고</th>
+            <th className="border border-black p-2 text-center w-[20%]">명   칭</th>
+            <th className="border border-black p-2 text-center w-[20%]">금액 또는 시가<br/>(단위: 원)</th>
+            <th className="border border-black p-2 text-center w-[15%]">압류 유무</th>
+            <th className="border border-black p-2 text-center w-[45%]">비     고</th>
           </tr>
         </thead>
         <tbody>

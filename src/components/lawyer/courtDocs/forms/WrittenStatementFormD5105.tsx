@@ -28,31 +28,31 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
           <table className="w-full border-collapse border border-black text-[14px] text-center">
             <tbody>
               <tr>
-                <td className="border border-black bg-gray-50 font-semibold p-2 w-[15%]">기간</td>
+                <td className="border border-black font-semibold p-2 w-[15%]">기간</td>
                 <td className="border border-black p-2 text-left" colSpan={5}>
                   년    월    일부터          현재까지 (자영, 근무)
                 </td>
               </tr>
               <tr>
-                <td className="border border-black bg-gray-50 font-semibold p-2">업종</td>
+                <td className="border border-black font-semibold p-2">업종</td>
                 <td className="border border-black p-2 w-[20%]"></td>
-                <td className="border border-black bg-gray-50 font-semibold p-2 w-[15%]">직장명</td>
+                <td className="border border-black font-semibold p-2 w-[15%]">직장명</td>
                 <td className="border border-black p-2 w-[20%]"></td>
-                <td className="border border-black bg-gray-50 font-semibold p-2 w-[10%]">직위</td>
+                <td className="border border-black font-semibold p-2 w-[10%]">직위</td>
                 <td className="border border-black p-2 w-[20%]"></td>
               </tr>
               <tr>
-                <td className="border border-black bg-gray-50 font-semibold p-2 w-[15%]">기간</td>
+                <td className="border border-black font-semibold p-2 w-[15%]">기간</td>
                 <td className="border border-black p-2 text-left" colSpan={5}>
                   년    월    일부터          년    월    일까지 (자영, 근무)
                 </td>
               </tr>
               <tr>
-                <td className="border border-black bg-gray-50 font-semibold p-2">업종</td>
+                <td className="border border-black font-semibold p-2">업종</td>
                 <td className="border border-black p-2"></td>
-                <td className="border border-black bg-gray-50 font-semibold p-2">직장명</td>
+                <td className="border border-black font-semibold p-2">직장명</td>
                 <td className="border border-black p-2"></td>
-                <td className="border border-black bg-gray-50 font-semibold p-2">직위</td>
+                <td className="border border-black font-semibold p-2">직위</td>
                 <td className="border border-black p-2"></td>
               </tr>
             </tbody>
@@ -73,8 +73,8 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
         <table className="w-full border-collapse border border-black text-[14px]">
           <thead>
             <tr>
-              <th className="border border-black bg-gray-50 font-semibold p-2 w-[40%] text-center">거주 상황(해당란에 표시)</th>
-              <th className="border border-black bg-gray-50 font-semibold p-2 w-[60%] text-center">상세한 내역</th>
+              <th className="border border-black font-semibold p-2 w-[40%] text-center">거주 상황(해당란에 표시)</th>
+              <th className="border border-black font-semibold p-2 w-[60%] text-center">상세한 내역</th>
             </tr>
           </thead>
           <tbody>
@@ -136,10 +136,10 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
           <table className="w-full border-collapse border border-black text-[14px] text-center">
             <thead>
               <tr>
-                <th className="border border-black bg-gray-50 font-semibold p-2 w-[25%]">내   역</th>
-                <th className="border border-black bg-gray-50 font-semibold p-2 w-[25%]">채권자</th>
-                <th className="border border-black bg-gray-50 font-semibold p-2 w-[25%]">관할법원</th>
-                <th className="border border-black bg-gray-50 font-semibold p-2 w-[25%]">사건번호</th>
+                <th className="border border-black font-semibold p-2 w-[25%]">내   역</th>
+                <th className="border border-black font-semibold p-2 w-[25%]">채권자</th>
+                <th className="border border-black font-semibold p-2 w-[25%]">관할법원</th>
+                <th className="border border-black font-semibold p-2 w-[25%]">사건번호</th>
               </tr>
             </thead>
             <tbody>

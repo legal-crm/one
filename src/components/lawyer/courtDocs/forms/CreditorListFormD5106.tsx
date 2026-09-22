@@ -53,14 +53,14 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
         <table className="w-full border-collapse border border-black text-[14px] mb-6">
           <thead>
             <tr>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center" rowSpan={2}>구분</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center" rowSpan={2}>채권자수</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={3}>채권현재액</th>
+              <th className="border border-black p-2 font-semibold text-center" rowSpan={2}>구분</th>
+              <th className="border border-black p-2 font-semibold text-center" rowSpan={2}>채권자수</th>
+              <th className="border border-black p-2 font-semibold text-center" colSpan={3}>채권현재액</th>
             </tr>
             <tr>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">원금합계</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">이자합계</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">채권현재액합계</th>
+              <th className="border border-black p-2 font-semibold text-center">원금합계</th>
+              <th className="border border-black p-2 font-semibold text-center">이자합계</th>
+              <th className="border border-black p-2 font-semibold text-center">채권현재액합계</th>
             </tr>
           </thead>
           <tbody>
@@ -101,22 +101,22 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
             <tbody>
               {/* 채권번호 / 채권자 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-32" rowSpan={2}>채권번호</td>
+                <td className="border border-black p-2 font-semibold text-center w-32" rowSpan={2}>채권번호</td>
                 <td className="border border-black p-2 text-center w-16" rowSpan={2}>{creditor.creditorNumber ?? (index + 1)}</td>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-32">채 권 자</td>
+                <td className="border border-black p-2 font-semibold text-center w-32">채 권 자</td>
                 <td className="border border-black p-2 text-left" colSpan={2}>
                   {creditor.name || ''} {creditor.representative ? `(대표자: ${creditor.representative})` : ''}
                 </td>
               </tr>
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center">채권의 원인</td>
+                <td className="border border-black p-2 font-semibold text-center">채권의 원인</td>
                 <td className="border border-black p-2 text-left" colSpan={2}>
                   {creditor.borrowedDate || ''}{creditor.borrowedDate ? ' ' : ''}{creditor.debtCauseDetail || creditor.debtType || ''}
                 </td>
               </tr>
               {/* 주소 / 연락처 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>주소 및 전화번호</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>주소 및 전화번호</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
                   <div>(주소) {creditor.address || creditor.creditorAddress || ''}</div>
                   <div>(전화) {creditor.creditorPhone || ''}{creditor.fax ? ` (팩스) ${creditor.fax}` : ''}</div>
@@ -124,7 +124,7 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
               </tr>
               {/* 채권의 내용 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>채권의 내용</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권의 내용</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
                   {creditor.debtCauseDetail || creditor.debtType || '대출금'}
                   {creditor.annexDocType ? ` (부속서류: ${creditor.annexDocType})` : ''}
@@ -132,35 +132,35 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
               </tr>
               {/* 채권현재액(원금) */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>채권현재액(원금)</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권현재액(원금)</td>
                 <td className="border border-black p-2 text-right">{fmt(getPrincipal(creditor))}원</td>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center">산정근거</td>
+                <td className="border border-black p-2 font-semibold text-center">산정근거</td>
                 <td className="border border-black p-2 text-left">{creditor.principalCalculationBasis || '부채증명서 참조'}</td>
               </tr>
               {/* 채권현재액(이자) */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>채권현재액(이자)</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권현재액(이자)</td>
                 <td className="border border-black p-2 text-right">{fmt(getInterest(creditor))}원</td>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center">산정근거</td>
+                <td className="border border-black p-2 font-semibold text-center">산정근거</td>
                 <td className="border border-black p-2 text-left">{creditor.interestCalculationBasis || '연체이자 계산서 참조'}</td>
               </tr>
               {/* 보증인 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>보증인 유무</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>보증인 유무</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
                   {creditor.guarantorName ? `유 (${creditor.guarantorName})` : creditor.isGuarantor ? '유 (보증채무)' : '무'}
                 </td>
               </tr>
               {/* 담보 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>담보내용</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>담보내용</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
                   {creditor.isSecured ? (creditor.securedCollateralType || '담보 있음') : '없음'}
                 </td>
               </tr>
               {/* 특이사항 */}
               <tr>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={2}>채권 특이사항</td>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권 특이사항</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
                   {creditor.memo || '해당없음'}
                 </td>

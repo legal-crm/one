@@ -25,9 +25,9 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
         <table className="w-full border-collapse border border-black text-[14px]">
           <thead>
             <tr>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">월평균수입</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">기준중위소득 대비 생계비</th>
-              <th className="border border-black p-2 bg-gray-50 font-semibold text-center">월 가용소득</th>
+              <th className="border border-black p-2 font-semibold text-center">월평균수입</th>
+              <th className="border border-black p-2 font-semibold text-center">기준중위소득 대비 생계비</th>
+              <th className="border border-black p-2 font-semibold text-center">월 가용소득</th>
             </tr>
           </thead>
           <tbody>
@@ -61,12 +61,12 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
           <table className="w-full border-collapse border border-black text-[14px]">
             <thead>
               <tr>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">순번</th>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">채권자명</th>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">채권현재액</th>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">월 변제예정액</th>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">총 변제예정액</th>
-                <th className="border border-black p-2 bg-gray-50 font-semibold text-center">변제율</th>
+                <th className="border border-black p-2 font-semibold text-center">순번</th>
+                <th className="border border-black p-2 font-semibold text-center">채권자명</th>
+                <th className="border border-black p-2 font-semibold text-center">채권현재액</th>
+                <th className="border border-black p-2 font-semibold text-center">월 변제예정액</th>
+                <th className="border border-black p-2 font-semibold text-center">총 변제예정액</th>
+                <th className="border border-black p-2 font-semibold text-center">변제율</th>
               </tr>
             </thead>
             <tbody>
@@ -96,8 +96,8 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
         <table className="w-full border-collapse border border-black text-[14px]">
           <tbody>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-1/2">총변제액의 현재가치</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-1/2">신청인의 재산 (청산가치)</td>
+              <td className="border border-black p-2 font-semibold text-center w-1/2">총변제액의 현재가치</td>
+              <td className="border border-black p-2 font-semibold text-center w-1/2">신청인의 재산 (청산가치)</td>
             </tr>
             <tr>
               <td className="border border-black p-2 text-center">{(repaymentSummary.totalRepaymentAmount ?? 0).toLocaleString('ko-KR')}원</td>

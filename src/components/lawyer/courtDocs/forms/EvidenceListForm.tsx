@@ -61,17 +61,17 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
       <table className="w-full border-collapse border border-black text-[13px] mb-8">
         <thead>
           <tr>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center w-10">순번</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">서 류 명</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center w-16">통수</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center w-20">비 고</th>
+            <th className="border border-black p-2 font-semibold text-center w-10">순번</th>
+            <th className="border border-black p-2 font-semibold text-center">서 류 명</th>
+            <th className="border border-black p-2 font-semibold text-center w-16">통수</th>
+            <th className="border border-black p-2 font-semibold text-center w-20">비 고</th>
           </tr>
         </thead>
         <tbody>
           {requiredDocs.map((cat) => (
             <>
               <tr key={cat.category}>
-                <td className="border border-black p-2 bg-gray-50 font-semibold text-center" colSpan={4}>
+                <td className="border border-black p-2 font-semibold text-center" colSpan={4}>
                   【{cat.category}】
                 </td>
               </tr>

@@ -41,13 +41,13 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
       <table className="w-full border-collapse border border-black text-[12px] mb-8">
         <thead>
           <tr>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center w-10">순번</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">채권자</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">채권현재액</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">안분비율</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">월 변제액</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">총 변제예정액</th>
-            <th className="border border-black p-2 bg-gray-50 font-semibold text-center">변제율</th>
+            <th className="border border-black p-2 font-semibold text-center w-10">순번</th>
+            <th className="border border-black p-2 font-semibold text-center">채권자</th>
+            <th className="border border-black p-2 font-semibold text-center">채권현재액</th>
+            <th className="border border-black p-2 font-semibold text-center">안분비율</th>
+            <th className="border border-black p-2 font-semibold text-center">월 변제액</th>
+            <th className="border border-black p-2 font-semibold text-center">총 변제예정액</th>
+            <th className="border border-black p-2 font-semibold text-center">변제율</th>
           </tr>
         </thead>
         <tbody>
@@ -67,7 +67,7 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
             </tr>
           ))}
           {/* 합계 행 */}
-          <tr className="font-bold bg-gray-50">
+          <tr className="font-bold">
             <td className="border border-black p-2 text-center" colSpan={2}>합 계</td>
             <td className="border border-black p-2 text-right">{fmt(totalDebt)}원</td>
             <td className="border border-black p-2 text-center">100.00%</td>
@@ -85,13 +85,13 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
       <table className="w-full border-collapse border border-black text-[10px]">
         <thead>
           <tr>
-            <th className="border border-black p-1 bg-gray-50 font-semibold text-center" rowSpan={2}>회차</th>
+            <th className="border border-black p-1 font-semibold text-center" rowSpan={2}>회차</th>
             {creditors.slice(0, 6).map((c: any, idx: number) => (
-              <th key={c.id || idx} className="border border-black p-1 bg-gray-50 font-semibold text-center">
+              <th key={c.id || idx} className="border border-black p-1 font-semibold text-center">
                 {c.name?.substring(0, 6) || `채권자${idx + 1}`}
               </th>
             ))}
-            <th className="border border-black p-1 bg-gray-50 font-semibold text-center" rowSpan={2}>월 합계</th>
+            <th className="border border-black p-1 font-semibold text-center" rowSpan={2}>월 합계</th>
           </tr>
         </thead>
         <tbody>
@@ -113,7 +113,7 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
             ))}
             <td className="border border-black p-1 text-center">⋮</td>
           </tr>
-          <tr className="font-bold bg-gray-50">
+          <tr className="font-bold">
             <td className="border border-black p-1 text-center">{months}회</td>
             {creditors.slice(0, 6).map((c: any, idx: number) => (
               <td key={`last-${idx}`} className="border border-black p-1 text-right">

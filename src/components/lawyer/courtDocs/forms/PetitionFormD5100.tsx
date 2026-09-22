@@ -15,28 +15,28 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
         <table className="w-full border-collapse border border-black text-[14px] mb-4">
           <tbody>
             <tr>
-              <td rowSpan={5} className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">신청인</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">성명</td>
+              <td rowSpan={5} className="border border-black p-2 font-semibold text-center w-[15%]">신청인</td>
+              <td className="border border-black p-2 font-semibold text-center w-[15%]">성명</td>
               <td className="border border-black p-2 text-left w-[27.5%]">{data.debtor.name}</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">주민등록번호</td>
+              <td className="border border-black p-2 font-semibold text-center w-[15%]">주민등록번호</td>
               <td className="border border-black p-2 text-left w-[27.5%]">{data.debtor.residentNumber}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">주민등록상 주소</td>
+              <td className="border border-black p-2 font-semibold text-center">주민등록상 주소</td>
               <td colSpan={3} className="border border-black p-2 text-left">{data.debtor.residentAddress}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">현   주  소</td>
+              <td className="border border-black p-2 font-semibold text-center">현   주  소</td>
               <td colSpan={3} className="border border-black p-2 text-left">{data.debtor.currentAddress}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">송 달 장 소</td>
+              <td className="border border-black p-2 font-semibold text-center">송 달 장 소</td>
               <td colSpan={3} className="border border-black p-2 text-left">(송달영수인: {data.debtor.serviceRecipient || ''}) {data.debtor.serviceAddress}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">전화번호(집․직장)</td>
+              <td className="border border-black p-2 font-semibold text-center">전화번호(집․직장)</td>
               <td className="border border-black p-2 text-left">{data.debtor.homePhone}</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">전화번호(휴대전화)</td>
+              <td className="border border-black p-2 font-semibold text-center">전화번호(휴대전화)</td>
               <td className="border border-black p-2 text-left">{data.debtor.phone}</td>
             </tr>
           </tbody>
@@ -45,22 +45,22 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
         <table className="w-full border-collapse border border-black text-[14px] mb-4">
           <tbody>
             <tr>
-              <td rowSpan={4} className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">대리인</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">성     명</td>
+              <td rowSpan={4} className="border border-black p-2 font-semibold text-center w-[15%]">대리인</td>
+              <td className="border border-black p-2 font-semibold text-center w-[15%]">성     명</td>
               <td colSpan={3} className="border border-black p-2 text-left">{data.lawyer.lawyerName}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">사무실 주소</td>
+              <td className="border border-black p-2 font-semibold text-center">사무실 주소</td>
               <td colSpan={3} className="border border-black p-2 text-left">{data.lawyer.address}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">전화번호</td>
+              <td className="border border-black p-2 font-semibold text-center">전화번호</td>
               <td colSpan={3} className="border border-black p-2 text-left">(사무실) {data.lawyer.phone}</td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center">이메일주소</td>
+              <td className="border border-black p-2 font-semibold text-center">이메일주소</td>
               <td className="border border-black p-2 text-left w-[27.5%]">{data.lawyer.email}</td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[15%]">팩스번호</td>
+              <td className="border border-black p-2 font-semibold text-center w-[15%]">팩스번호</td>
               <td className="border border-black p-2 text-left w-[27.5%]">{data.lawyer.fax}</td>
             </tr>
           </tbody>
@@ -74,9 +74,9 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
               </td>
             </tr>
             <tr>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[25%]">성  명</td>
+              <td className="border border-black p-2 font-semibold text-center w-[25%]">성  명</td>
               <td className="border border-black p-2 text-left w-[25%]"></td>
-              <td className="border border-black p-2 bg-gray-50 font-semibold text-center w-[25%]">사건번호</td>
+              <td className="border border-black p-2 font-semibold text-center w-[25%]">사건번호</td>
               <td className="border border-black p-2 text-left w-[25%]"></td>
             </tr>
           </tbody>
@@ -147,7 +147,7 @@ export const PetitionFormD5100: React.FC<CourtFormProps> = ({ data, isEditable }
           <p className="mt-4">신청인              (서명 또는 날인)</p>
         </div>
 
-        <div className="text-center text-[20px] font-bold">
+        <div className="text-right text-[18px] font-bold">
           {data.court.courtName} 귀중
         </div>
       </div>
