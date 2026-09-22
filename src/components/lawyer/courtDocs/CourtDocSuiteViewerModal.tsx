@@ -56,6 +56,7 @@ import { PowerOfAttorneyForm } from './forms/PowerOfAttorneyForm';
 import { ServiceReportForm } from './forms/ServiceReportForm';
 import { StayOrderFormD5113 } from './forms/StayOrderFormD5113';
 import { EvidenceListForm } from './forms/EvidenceListForm';
+import { PetitionCoverPage } from './forms/PetitionCoverPage';
 
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
@@ -468,9 +469,9 @@ export default function CourtDocSuiteViewerModal({
             style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
             className={`transition-transform duration-100 ${selectedFont} ${fontSize} outline-none`}
           >
-            {/* 1. 표지 + 개시신청서 (법원 원본 D5100) */}
+            {/* 1. 표지 (법원 원본 표지) */}
             {activeTab === 'PETITION_COVER' && (
-              <PetitionFormD5100 data={masterData} isEditable={isEditMode} />
+              <PetitionCoverPage data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 2. 신청서 본문 (법원 원본 D5100) */}
@@ -541,6 +542,7 @@ export default function CourtDocSuiteViewerModal({
             {/* 15. 전체 일괄 뷰 — 법원 양식 순서대로 */}
             {activeTab === 'ALL' && (
               <div className="space-y-8 print:space-y-0">
+                <PetitionCoverPage data={masterData} isEditable={isEditMode} />
                 <PetitionFormD5100 data={masterData} isEditable={isEditMode} />
                 <WrittenStatementFormD5105 data={masterData} isEditable={isEditMode} />
                 <CreditorListFormD5106 data={masterData} isEditable={isEditMode} />
