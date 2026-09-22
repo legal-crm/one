@@ -156,7 +156,6 @@ export default function CourtDocSuiteViewerModal({
     { id: 'REPAYMENT_PLAN', label: '변제계획안' },
     { id: 'REPAYMENT_SCHEDULE', label: '변제예정액표' },
     { id: 'POWER_OF_ATTORNEY', label: '위임장' },
-    { id: 'SERVICE_REPORT', label: '송달 신고서' },
     { id: 'EVIDENCE_LIST', label: '자료 제출', badge: 'HWP' },
     { id: 'PROHIBITION_ORDER', label: '금지명령' },
     { id: 'STAY_ORDER', label: '중지명령' },
@@ -550,7 +549,6 @@ export default function CourtDocSuiteViewerModal({
                 <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
                 <RepaymentScheduleTable data={masterData} isEditable={isEditMode} />
                 <PowerOfAttorneyForm data={masterData} isEditable={isEditMode} />
-                <ServiceReportForm data={masterData} isEditable={isEditMode} />
                 <ProhibitionOrderFormD5114 data={masterData} isEditable={isEditMode} />
                 <StayOrderFormD5113 data={masterData} isEditable={isEditMode} />
                 <EvidenceListForm data={masterData} isEditable={isEditMode} />
