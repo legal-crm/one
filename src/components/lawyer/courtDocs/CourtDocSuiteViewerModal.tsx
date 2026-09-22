@@ -43,6 +43,14 @@ import { exportCourtFilingCompleteBundle } from '../../../services/documents/cou
 import { downloadFilledHwpx, HWPX_TEMPLATE_CATALOG } from '../../../services/court/hwpxTemplateEngine';
 import { mapMasterDataToHwpxFields, type CourtFormType } from '../../../services/court/hwpxFieldMapper';
 
+// ── 법원 원본 1:1 양식 컴포넌트 (HWPX 파싱 기반) ──
+import { PetitionFormD5100 } from './forms/PetitionFormD5100';
+import { AssetInventoryFormD5101 } from './forms/AssetInventoryFormD5101';
+import { IncomeExpenseFormD5103 } from './forms/IncomeExpenseFormD5103';
+import { WrittenStatementFormD5105 } from './forms/WrittenStatementFormD5105';
+import { CreditorListFormD5106 } from './forms/CreditorListFormD5106';
+import { RepaymentPlanFormD5110 } from './forms/RepaymentPlanFormD5110';
+
 interface CourtDocSuiteViewerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -455,60 +463,49 @@ export default function CourtDocSuiteViewerModal({
             style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
             className={`transition-transform duration-100 ${selectedFont} ${fontSize} outline-none`}
           >
-            {/* 1. 표지 */}
+            {/* 1. 표지 + 개시신청서 (법원 원본 D5100) */}
             {activeTab === 'PETITION_COVER' && (
-              <div className="space-y-6">
-                <SummaryAndUrgentNoticeDoc data={masterData} isEditable={isEditMode} />
-                <PetitionCoverDoc data={masterData} isEditable={isEditMode} />
-              </div>
+              <PetitionFormD5100 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 2. 신청서 본문 */}
+            {/* 2. 신청서 본문 (법원 원본 D5100) */}
             {activeTab === 'PETITION_BODY' && (
-              <PetitionBodyDoc data={masterData} isEditable={isEditMode} />
+              <PetitionFormD5100 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 3. 진술서 */}
+            {/* 3. 진술서 (법원 원본 D5105) */}
             {activeTab === 'STATEMENT' && (
-              <WrittenStatementDoc data={masterData} isEditable={isEditMode} />
+              <WrittenStatementFormD5105 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 4. 채권자 목록 */}
+            {/* 4. 채권자 목록 (법원 원본 D5106) */}
             {activeTab === 'CREDITOR_LIST' && (
-              <CreditorListDoc data={masterData} isEditable={isEditMode} />
+              <CreditorListFormD5106 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 5. 부속서류 (별제권/다툼/전부명령 등) */}
+            {/* 5. 부속서류 (채권자목록 부속) */}
             {activeTab === 'ANNEX_DOCS' && (
-              <div className="space-y-6">
-                <CreditorListDoc data={masterData} isEditable={isEditMode} />
-              </div>
+              <CreditorListFormD5106 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 6. 재산 목록 */}
+            {/* 6. 재산 목록 (법원 원본 D5101) */}
             {activeTab === 'ASSET_LIST' && (
-              <AssetInventoryDoc data={masterData} isEditable={isEditMode} />
+              <AssetInventoryFormD5101 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 7. 수입 및 지출 */}
+            {/* 7. 수입 및 지출 (법원 원본 D5103) */}
             {activeTab === 'INCOME_EXPENSE' && (
-              <div className="space-y-6">
-                <IncomeExpenseDoc data={masterData} isEditable={isEditMode} />
-                <MonthlyIncomeLedgerDoc data={masterData} isEditable={isEditMode} />
-              </div>
+              <IncomeExpenseFormD5103 data={masterData} isEditable={isEditMode} />
             )}
 
-            {/* 8. 변제계획안 (대법원 전산양식 A5433) */}
+            {/* 8. 변제계획안 (법원 원본 D5110) */}
             {activeTab === 'REPAYMENT_PLAN' && (
-              <RepaymentPlanStandardDoc data={masterData} isEditable={isEditMode} />
+              <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 9. 변제예정액표 */}
             {activeTab === 'REPAYMENT_SCHEDULE' && (
-              <div className="space-y-6">
-                <SummaryAndUrgentNoticeDoc data={masterData} isEditable={isEditMode} />
-                <RepaymentPlanStandardDoc data={masterData} isEditable={isEditMode} />
-              </div>
+              <RepaymentPlanFormD5110 data={masterData} isEditable={isEditMode} />
             )}
 
             {/* 10. 위임장 */}
