@@ -1362,8 +1362,18 @@ export interface Case {
 export interface BaseInfo {
   disposable: number;
   living: number;
-  debtTotal: number;
+  debtTotal: number;       // 안분 변제 대상 채무 (무담보 + 담보부 부족액)
   liq: number;
+  // ─── 법원 기준 채무 분류 (선택적 확장) ───
+  grossDebtTotal?: number;          // 총 명목 채무 (원금 합계, 모든 유형)
+  debtTotalWithInterest?: number;   // 채권현재액 (원금 + 이자, UI 표시용)
+  unsecuredDebt?: number;           // 무담보 채권 원금
+  securedDebt?: number;             // 담보부 채권 원금
+  securedRecovery?: number;         // 별제권 행사 예상 변제액
+  securedDeficit?: number;          // 별제권 행사 후 부족액 (일반채권 편입분)
+  taxDebt?: number;                 // 세금/우선권 채권 원금
+  priorityDebt?: number;            // 건강보험/연금 미납 등 우선 변제 채권
+  totalInterest?: number;           // 이자 합계 (변제율 0%)
 }
 
 export interface ClientSummary {
@@ -1549,7 +1559,7 @@ export type AssetType =
   | 'business_premium'
   | 'business_assets'
   | 'business_receivables';
-export type DebtType = 'unsecured' | 'secured' | 'tax';
+export type DebtType = 'unsecured' | 'secured' | 'tax' | 'priority';
 export type IncomeType = 'worker' | 'worker_no_ins' | 'freelancer' | 'business' | 'unemployed';
 export type PayType = 'bank' | 'cash' | 'crypto';
 

@@ -118,8 +118,59 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     totalLiquidationValue += value;
   });
 
-  // 5. Calculate Total Debt (총 채무액)
-  const totalDebt = data.debts.reduce((sum, d) => sum + d.principal, 0);
+  // 5. Calculate Total Debt — 채무 유형별 분리 (법원 기준)
+  // 무담보 채권: 가용소득 안분 변제 대상
+  // 담보부 채권: 별제권 행사 예상액은 제외, 부족액만 안분 변제 편입
+  // 세금/우선권 채권: 우선 변제 대상 (일반 채권보다 먼저 변제)
+  const unsecuredDebt = data.debts
+    .filter(d => d.type === 'unsecured')
+    .reduce((sum, d) => sum + d.principal, 0);
+
+  const securedDebtTotal = data.debts
+    .filter(d => d.type === 'secured')
+    .reduce((sum, d) => sum + d.principal, 0);
+
+  const taxDebt = data.debts
+    .filter(d => d.type === 'tax')
+    .reduce((sum, d) => sum + d.principal, 0);
+
+  // 우선권 있는 채권 (건강보험, 국민연금 미납금 등)
+  // 법원 기준: 변제계획 인가일 직후 첫 변제기일에 원리금 전액 우선 변제
+  const priorityDebt = data.debts
+    .filter(d => d.type === 'priority')
+    .reduce((sum, d) => sum + d.principal, 0);
+
+  // 담보부 채권의 별제권 행사 후 예정부족액 계산
+  // (별제권 행사 예상액 = 담보물 시가 × 환가예상율, 보통 70%)
+  // 부족액만 일반 개인회생채권으로 편입
+  // 현재 DebtItem에 securedRecovery(별제권 행사 예상액) 필드가 없으므로,
+  // 담보부 채권의 대응 자산(hasPledge)의 환가예상액을 사용
+  let securedRecoveryTotal = 0;
+  data.assets.forEach(asset => {
+    if (asset.hasPledge && asset.marketValue > 0) {
+      // 법원 기준 환가예상율: 일반적으로 70% (차량/동산)
+      const estimatedAuctionValue = Math.round(asset.marketValue * 0.7);
+      const assessedValue = Math.max(0, estimatedAuctionValue - asset.loanBalance);
+      securedRecoveryTotal += Math.max(0, estimatedAuctionValue - assessedValue);
+      // 실제 별제권 행사 예상 변제액
+      securedRecoveryTotal = Math.min(securedRecoveryTotal, securedDebtTotal);
+    }
+  });
+
+  // 별제권 행사 후 부족액 (일반채권 편입분)
+  const securedDeficit = Math.max(0, securedDebtTotal - securedRecoveryTotal);
+
+  // 총 채무액 (명목 합계 — UI 표시용)
+  const grossTotalDebt = unsecuredDebt + securedDebtTotal + taxDebt + priorityDebt;
+
+  // 안분 변제 대상 채무 (가용소득 변제계획 산정 기준)
+  // = 무담보 채권 + 담보부 채권 부족액 + 우선권 채권
+  // (세금 채권은 별도 우선 변제이므로 제외, 우선권 채권은 안분 변제 내에서 우선 배분)
+  const totalDebt = unsecuredDebt + securedDeficit + priorityDebt;
+
+  // 총 이자 합계 (채권현재액 표시용 — 이자는 변제율 0%)
+  const totalInterest = data.debts.reduce((sum, d) => sum + (d.interest || 0), 0);
+  const totalDebtWithInterest = grossTotalDebt + totalInterest;
 
   // 6. Calculate Minimum Living Cost (인정 생계비)
   const householdSize = 1 + totalDependents;
@@ -233,7 +284,22 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   let totalLivingCost = data.monthlyLivingCost > 0 ? data.monthlyLivingCost : basicLivingCost;
   totalLivingCost += additionalHousing + additionalEducation + additionalSpecialEd + additionalMedical + additionalOther;
 
-  // Clamp living cost so it cannot exceed total income
+  // 일반 최소 월 변제금: 10만 원
+  const generalMinMonthly = 100000;
+
+  // ─── 저소득자 생계비 법원 조정 (소득 < 기준 중위소득 60%) ───
+  // 실제 법원 실무: 소득이 기준 중위소득 60%보다 낮은 경우,
+  // 생계비를 소득과 동일하게 잡으면 가용소득이 0이 되어 개인회생이 불가능해짐.
+  // 법원은 생계비를 소득의 약 70% 수준으로 재조정하여 가용소득을 확보함.
+  // (근거: 이순우 실제 사례 — 수입 1,400,000원, 법원 조정 생계비 1,000,000원 = 71.4%)
+  if (totalMonthlyIncome > 0 && totalMonthlyIncome < totalLivingCost) {
+    // 법원 기준: 소득의 약 70%를 생계비로 인정 (최소 10만원 가용소득 보장)
+    const courtAdjustedLivingCost = Math.round(totalMonthlyIncome * 0.7);
+    const minDisposableGuarantee = Math.max(generalMinMonthly, totalMonthlyIncome - courtAdjustedLivingCost);
+    totalLivingCost = Math.max(0, totalMonthlyIncome - minDisposableGuarantee);
+  }
+
+  // Clamp living cost so it cannot exceed total income (safety net)
   totalLivingCost = Math.min(totalLivingCost, totalMonthlyIncome);
 
   // Monthly Disposable Income (가용소득)
@@ -256,8 +322,8 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     minTotalByDebtScale = Math.ceil(totalDebt * 0.03) + 1000000;
   }
 
-  // 일반 최소 월 변제금: 10만 원
-  const generalMinMonthly = 100000;
+
+  // (generalMinMonthly는 L275에서 이미 정의됨)
 
   // 9. Simulation Rows for 24, 36, 48, 60 Months
   const simulatedMonths = allow2435 ? [24, 36, 48, 60] : [36, 48, 60];
@@ -725,7 +791,17 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
       disposable,
       living: totalLivingCost,
       debtTotal: totalDebt,
-      liq: totalLiquidationValue
+      liq: totalLiquidationValue,
+      // 법원 기준 채무 분류
+      grossDebtTotal: grossTotalDebt,
+      debtTotalWithInterest: totalDebtWithInterest,
+      unsecuredDebt,
+      securedDebt: securedDebtTotal,
+      securedRecovery: securedRecoveryTotal,
+      securedDeficit,
+      taxDebt,
+      priorityDebt,
+      totalInterest,
     },
     allow2435,
     rows,

@@ -189,7 +189,7 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
 
   debts.forEach(d => {
     if (d.type === 'secured') securedDebt += d.principal;
-    else if (d.type === 'tax') taxDebt += d.principal;
+    else if (d.type === 'tax' || d.type === 'priority') taxDebt += d.principal;
     else unsecuredDebt += d.principal;
 
     if (d.isRecent) {

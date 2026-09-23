@@ -788,7 +788,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
             <div>
               <label className={labelClass}>채무 저당 성격</label>
-              <select className={inputClass} value={debt.type} onChange={e => updateDebt(debt.id, 'type', e.target.value as DebtType)}><option value="unsecured">신용 대출/카드 채무</option><option value="secured">담보부 대출 채무</option><option value="tax">국세/지방세 및 공과 체납</option></select>
+              <select className={inputClass} value={debt.type} onChange={e => updateDebt(debt.id, 'type', e.target.value as DebtType)}><option value="unsecured">신용 대출/카드 채무</option><option value="secured">담보부 대출 채무</option><option value="tax">국세/지방세 및 공과 체납</option><option value="priority">건강보험/연금 미납 (우선권)</option></select>
             </div>
             
             <div className="flex items-center gap-2.5 h-9">
