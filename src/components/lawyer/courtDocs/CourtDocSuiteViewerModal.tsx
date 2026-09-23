@@ -273,9 +273,124 @@ export default function CourtDocSuiteViewerModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/95 backdrop-blur-md text-slate-100 animate-in fade-in duration-200">
+      {/* ── 인쇄 전용 CSS (대법원 표준 규격 A4 단독 출력 & UI/편집창 원천 배제) ── */}
+      <style>{`
+        @media print {
+          /* 1. 배경 웹 CRM 앱 및 Sonner 토스트 알림 완벽 차단 */
+          #root,
+          [data-sonner-toaster],
+          .no-print {
+            display: none !important;
+          }
+
+          /* 2. 브라우저 인쇄 기본 여백 0 초기화 (법원 서식 A4 내부 여백과 이중 중첩 방지) */
+          @page {
+            size: A4 portrait;
+            margin: 0 !important;
+          }
+
+          /* 3. 모달 컨테이너 풀스크린 fixed/overflow 해제하여 일반 A4 문서 흐름으로 전환 */
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            overflow: visible !important;
+            height: auto !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .court-suite-modal-container {
+            position: static !important;
+            display: block !important;
+            background: #ffffff !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            overflow: visible !important;
+            height: auto !important;
+            width: 100% !important;
+            inset: auto !important;
+            z-index: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          /* 4. 최상단 헤더, 서식 탭 네비게이션, 우측 LawPass 2025 정보입력 편집창(사이드바) 완벽 은닉 */
+          .court-suite-header,
+          .court-suite-tabs,
+          .court-suite-sidebar,
+          header,
+          nav,
+          aside {
+            display: none !important;
+          }
+
+          /* 5. 메인 바디 래퍼: flex 및 overflow 클리핑 해제하여 다중 페이지 자연 출력 */
+          .court-suite-body-wrapper {
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .court-suite-main {
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          /* 6. A4 캔버스: 화면 줌(scale) 해제 및 100% 실규격 A4 출력 */
+          .court-suite-canvas {
+            transform: none !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #ffffff !important;
+            outline: none !important;
+          }
+
+          /* 7. 법원 전산 서식 페이지 스타일 보존 및 페이지 브레이크 최적화 */
+          .court-page {
+            box-shadow: none !important;
+            border: none !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          /* 마지막 페이지 뒤 불필요한 공백 페이지 생성 방지 */
+          .court-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+
+          /* 타이핑 커서/선택 테두리 제거 */
+          [contenteditable] {
+            outline: none !important;
+            user-select: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="court-suite-modal-container fixed inset-0 z-[9999] flex flex-col bg-slate-900/95 backdrop-blur-md text-slate-100 animate-in fade-in duration-200 print:static print:bg-white print:text-black print:overflow-visible print:h-auto print:p-0 print:m-0">
       {/* ── 1. 최상단 헤더 네비게이션 ── */}
-      <header className="flex items-center justify-between px-6 py-2.5 bg-slate-950 border-b border-slate-800 shadow-md shrink-0">
+      <header className="court-suite-header flex items-center justify-between px-6 py-2.5 bg-slate-950 border-b border-slate-800 shadow-md shrink-0 print:hidden">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-600 text-white rounded-lg shadow-sm">
             <Scale className="w-5 h-5" />
@@ -386,7 +501,7 @@ export default function CourtDocSuiteViewerModal({
       </header>
 
       {/* ── 2. 로패스형 가로 서식 탭 네비게이션 바 ── */}
-      <div className="bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex items-center justify-between shrink-0 overflow-x-auto">
+      <div className="court-suite-tabs bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex items-center justify-between shrink-0 overflow-x-auto print:hidden">
         <div className="flex items-center gap-1 overflow-x-auto py-0.5">
           {horizontalTabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -459,15 +574,15 @@ export default function CourtDocSuiteViewerModal({
       </div>
 
       {/* ── 3. 메인 바디 (좌측 A4 캔버스 + 우측 로패스형 스마트 사이드바) ── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="court-suite-body-wrapper flex-1 flex overflow-hidden print:block print:overflow-visible print:h-auto">
         {/* 좌측 메인 영역: 실시간 A4 법원 전산 서식 렌더링 캔버스 */}
-        <main className="flex-1 bg-slate-900/90 overflow-y-auto p-6 flex justify-center custom-scrollbar">
+        <main className="court-suite-main flex-1 bg-slate-900/90 overflow-y-auto p-6 flex justify-center custom-scrollbar print:block print:overflow-visible print:bg-white print:p-0 print:m-0 print:h-auto print:w-full">
           <div 
             ref={printAreaRef}
             contentEditable={isEditMode}
             suppressContentEditableWarning
             style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-            className={`transition-transform duration-100 ${selectedFont} ${fontSize} outline-none`}
+            className={`court-suite-canvas transition-transform duration-100 ${selectedFont} ${fontSize} outline-none print:transform-none`}
           >
             {/* 1. 표지 (법원 원본 표지) */}
             {activeTab === 'PETITION_COVER' && (
@@ -561,12 +676,14 @@ export default function CourtDocSuiteViewerModal({
 
         {/* 우측 스마트 아코디언 입력 폼 (로패스 2025 규격 사이드바) */}
         {showSidebar && (
-          <LawPassCourtFilingSidebar
-            data={masterData}
-            onChangeData={setMasterData}
-            activeDocTab={activeTab}
-            onSelectDocTab={(tabId) => setActiveTab(tabId as DocTabId)}
-          />
+          <div className="court-suite-sidebar h-full shrink-0 print:hidden">
+            <LawPassCourtFilingSidebar
+              data={masterData}
+              onChangeData={setMasterData}
+              activeDocTab={activeTab}
+              onSelectDocTab={(tabId) => setActiveTab(tabId as DocTabId)}
+            />
+          </div>
         )}
       </div>
     </div>

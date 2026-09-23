@@ -72,10 +72,30 @@ export default function LitigationPowerOfAttorneyModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
-        <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] animate-fadeIn">
+      {/* ── 인쇄 전용 CSS ── */}
+      <style>{`
+        @media print {
+          #root, [data-sonner-toaster], .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 0 !important;
+          }
+          html, body {
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 print:static print:bg-white print:p-0 print:overflow-visible">
+        <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] animate-fadeIn print:shadow-none print:border-none print:max-w-none print:max-h-none print:rounded-none print:overflow-visible">
         {/* 헤더 */}
-        <div className="flex items-center justify-between p-5 bg-slate-900 text-white border-b border-slate-800">
+        <div className="flex items-center justify-between p-5 bg-slate-900 text-white border-b border-slate-800 print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-brand/20 border border-brand/40 flex items-center justify-center text-brand">
               <Scale className="w-4 h-4" />
@@ -106,7 +126,7 @@ export default function LitigationPowerOfAttorneyModal({
         </div>
 
         {/* 상단 컨트롤러 (법률사무소 vs 법무법인 선택 & 수권사항 토글) */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs print:hidden">
           <div>
             <label className="text-slate-600 font-bold block mb-1.5">대리인 구분 선택:</label>
             <div className="grid grid-cols-2 gap-2">
@@ -157,10 +177,10 @@ export default function LitigationPowerOfAttorneyModal({
         </div>
 
         {/* 메인 A4 서식 인쇄 미리보기 영역 */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-100/70 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-100/70 flex justify-center print:p-0 print:bg-white print:overflow-visible">
           <div 
             ref={printAreaRef}
-            className="w-[210mm] min-h-[297mm] bg-white p-[20mm] shadow-lg border border-slate-200 text-slate-900 font-serif leading-relaxed text-sm flex flex-col justify-between"
+            className="w-[210mm] min-h-[297mm] bg-white p-[20mm] shadow-lg border border-slate-200 text-slate-900 font-serif leading-relaxed text-sm flex flex-col justify-between print:shadow-none print:border-none print:m-0 print:mx-auto"
           >
             <div className="space-y-6">
               {/* 문서 제목 */}

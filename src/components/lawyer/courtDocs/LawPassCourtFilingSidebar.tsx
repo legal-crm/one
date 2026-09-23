@@ -130,7 +130,7 @@ export default function LawPassCourtFilingSidebar({
   };
 
   return (
-    <aside className="w-[430px] shrink-0 bg-slate-900 border-l border-slate-800 flex flex-col h-full overflow-hidden text-slate-200 select-none">
+    <aside className="w-[430px] shrink-0 bg-slate-900 border-l border-slate-800 flex flex-col h-full overflow-hidden text-slate-200 select-none print:hidden">
       {/* 1. 사이드바 상단 헤더 */}
       <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">

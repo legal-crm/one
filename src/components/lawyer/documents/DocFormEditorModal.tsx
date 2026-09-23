@@ -103,8 +103,28 @@ export default function DocFormEditorModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
-        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden">
+      {/* ── 인쇄 전용 CSS ── */}
+      <style>{`
+        @media print {
+          #root, [data-sonner-toaster], .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 0 !important;
+          }
+          html, body {
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn print:static print:bg-white print:p-0 print:overflow-visible">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden print:shadow-none print:border-none print:max-w-none print:max-h-none print:rounded-none print:overflow-visible">
         
         {/* 모달 상단 헤더 */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -161,7 +181,7 @@ export default function DocFormEditorModal({
         </div>
 
         {/* 2열 분할 작업 영역: 좌측 폼 입력 & AI / 우측 실시간 A4 프리뷰 */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden print:block print:overflow-visible">
           
           {/* ── 좌측: 폼 편집 & AI 코파일럿 ── */}
           <div className="w-full md:w-1/2 border-r border-slate-200 flex flex-col overflow-y-auto p-5 space-y-4 bg-slate-50/50 print:hidden">
@@ -244,12 +264,12 @@ export default function DocFormEditorModal({
           </div>
 
           {/* ── 우측: 대법원 표준 규격 A4 실시간 프리뷰 ── */}
-          <div className="w-full md:w-1/2 bg-slate-200/80 p-4 md:p-6 overflow-y-auto flex justify-center">
+          <div className="w-full md:w-1/2 bg-slate-200/80 p-4 md:p-6 overflow-y-auto flex justify-center print:w-full print:p-0 print:bg-white print:overflow-visible">
             
             {/* A4 용지 렌더링 컨테이너 */}
             <div 
               id="court-a4-printable"
-              className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-lg rounded-sm p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text"
+              className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-lg rounded-sm p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text print:shadow-none print:border-none print:m-0 print:mx-auto"
               style={{ fontFamily: `'Batang', 'BatangChe', 'Gungsuh', serif` }}
             >
               {/* 법원 문서 상단 */}

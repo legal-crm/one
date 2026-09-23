@@ -213,11 +213,31 @@ export default function BankStatementAuditModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-xs animate-fadeIn text-left">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden text-slate-800 dark:text-slate-200">
+      {/* ── 인쇄 전용 CSS ── */}
+      <style>{`
+        @media print {
+          #root, [data-sonner-toaster], .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          html, body {
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-xs animate-fadeIn text-left print:static print:bg-white print:p-0 print:overflow-visible">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden text-slate-800 dark:text-slate-200 print:shadow-none print:border-none print:max-w-none print:max-h-none print:rounded-none print:overflow-visible print:bg-white print:text-black">
         
         {/* ═══ 1. 헤더 & 사건 정보 ═══ */}
-        <div className="p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+        <div className="p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800 print:hidden">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shrink-0 shadow-sm">
               <FileSpreadsheet className="w-6 h-6" />
@@ -270,7 +290,7 @@ export default function BankStatementAuditModal({
         </div>
 
         {/* ═══ 2. 스마트 통계 스코어보드 바 ═══ */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 md:grid-cols-5 gap-3 shrink-0 text-xs">
+        <div className="p-4 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 md:grid-cols-5 gap-3 shrink-0 text-xs print:hidden">
           
           <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <span className="text-slate-500 dark:text-slate-400 block text-[11px]">총 거래내역</span>
@@ -337,7 +357,7 @@ export default function BankStatementAuditModal({
         </div>
 
         {/* ═══ 3. 컨트롤 툴바 (금액 필터, 검색, 파일 업로드) ═══ */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0 text-xs">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0 text-xs print:hidden">
           
           {/* 1행: 금액 기준 필터 칩 & 샘플/업로드 액션 */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -523,12 +543,12 @@ export default function BankStatementAuditModal({
         </div>
 
         {/* ═══ 4. 메인 콘텐츠: 법원 제출용 인쇄 미리보기 OR 거래내역 에디터 ═══ */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 print:p-0 print:overflow-visible">
           
           {isPrintPreview ? (
             /* 법원 제출용 A4 규격 미리보기 */
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs print:hidden">
                 <span className="font-bold text-amber-900 dark:text-amber-200">
                   🏛️ 대한민국 법원 보정명령 제출 양식: 아래 표는 A4 규격으로 인쇄하거나 PDF로 저장할 수 있습니다.
                 </span>
@@ -541,7 +561,7 @@ export default function BankStatementAuditModal({
                 </button>
               </div>
 
-              <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 font-serif leading-relaxed text-xs">
+              <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 font-serif leading-relaxed text-xs print:shadow-none print:border-none print:p-0">
                 <h2 className="text-xl font-black text-center mb-6 tracking-wide underline underline-offset-8">
                   [별지] 통장 및 신용카드 거래내역 소명서 ({thresholdAmount / 10000}만 원 이상)
                 </h2>
