@@ -14,7 +14,7 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
 
   return (
     <>
-      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
+      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <h1 className="text-center text-[24px] font-bold mb-8">[신청서 첨부서류 3]<br/>수입 및 지출에 관한 목록</h1>
         
         <div className="flex justify-between items-end mb-2">
@@ -144,7 +144,7 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
         </table>
       </div>
 
-      <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] overflow-hidden" style={{ pageBreakAfter: 'always' }}>
+      <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] overflow-hidden box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <h1 className="text-center text-[18px] font-bold mb-4">[별지] 월평균소득 산출 내역서</h1>
         <p className="text-center text-[11px] mb-3">(단위 : 원)</p>
         

@@ -473,3 +473,32 @@
   0% { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(-50%, 0, 0); }
 }
+
+/* ═══════════════════════════════════════════════
+   대법원 전자소송 A4 표준 규격 고정 (210mm x 297mm)
+   모든 서식 탭 가로 길이 1:1 완벽 일치 보장
+   ═══════════════════════════════════════════════ */
+.court-suite-canvas {
+  width: 210mm !important;
+  min-width: 210mm !important;
+  max-width: 210mm !important;
+  box-sizing: border-box !important;
+}
+
+.court-page {
+  width: 210mm !important;
+  min-width: 210mm !important;
+  max-width: 210mm !important;
+  min-height: 297mm !important;
+  box-sizing: border-box !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media screen {
+  .court-page {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+  }
+}

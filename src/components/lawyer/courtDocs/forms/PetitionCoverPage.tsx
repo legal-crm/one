@@ -31,7 +31,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
 
   return (
     <div 
-      className="court-page bg-white max-w-[210mm] w-[210mm] min-h-[297mm] h-[297mm] mx-auto text-black font-serif px-[22mm] pt-[26mm] pb-[22mm] flex flex-col justify-between box-border shadow-lg print:shadow-none print:border-none print:m-0 print:p-[22mm] select-text"
+      className="court-page bg-white w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] h-[297mm] mx-auto text-black font-serif px-[22mm] pt-[26mm] pb-[22mm] flex flex-col justify-between box-border shadow-lg print:shadow-none print:border-none print:m-0 print:p-[22mm] select-text"
       style={{ 
         pageBreakAfter: 'always',
         fontFamily: "'Batang', 'BatangChe', 'Gungsuh', serif" 

@@ -10,7 +10,7 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
   const { repaymentSummary, court, trusteeAccount, creditors } = data;
 
   return (
-    <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]">
+    <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none">
       <h1 className="text-center text-[24px] font-bold mb-8">변제계획안</h1>
       <p className="text-center text-[16px] mb-8">(가용소득만으로 변제하는 경우)</p>
       

@@ -41,7 +41,7 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
   return (
     <>
       {/* Page 1: 총괄표 */}
-      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
+      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <div className="text-left font-bold mb-4">[신청서 첨부서류 1]</div>
         <h1 className="text-center text-[24px] font-bold mb-8 tracking-widest">개인회생채권자목록</h1>
         
@@ -95,7 +95,7 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
 
       {/* Pages 2+: 채권자별 상세 */}
       {creditors.map((creditor: any, index: number) => (
-        <div key={creditor.id || index} className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
+        <div key={creditor.id || index} className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
           <h2 className="text-center text-[18px] font-bold mb-4">개인회생채권자목록 (상세)</h2>
           <table className="w-full border-collapse border border-black text-[14px]">
             <tbody>

@@ -49,7 +49,7 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
   let docNum = 0;
 
   return (
-    <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]">
+    <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none">
       
       <h1 className="text-center text-[24px] font-bold mb-6 tracking-[0.2em]">첨 부 서 류  목 록</h1>
       

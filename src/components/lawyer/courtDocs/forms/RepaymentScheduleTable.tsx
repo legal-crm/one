@@ -25,7 +25,7 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
   const totalRepayAll = creditors.reduce((sum, c) => sum + getTotalRepay(c), 0);
 
   return (
-    <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6]">
+    <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] box-border shadow-lg print:shadow-none print:border-none">
       <h1 className="text-center text-[22px] font-bold mb-2 tracking-widest">변제예정액표</h1>
       <p className="text-center text-[13px] mb-6">
         사건: {court?.caseNumber || '20    개회        '} 채무자: {data.debtor?.name || ''}

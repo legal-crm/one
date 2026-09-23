@@ -273,8 +273,34 @@ export default function CourtDocSuiteViewerModal({
 
   return (
     <ModalPortal>
-      {/* ── 인쇄 전용 CSS (대법원 표준 규격 A4 단독 출력 & UI/편집창 원천 배제) ── */}
+      {/* ── 인쇄 및 화면 미리보기 전용 CSS (대법원 표준 규격 A4 210mm 가로 고정) ── */}
       <style>{`
+        /* ── 화면 미리보기 & 인쇄 공통: 대법원 A4 규격 (가로 210mm) 영구 고정 ── */
+        .court-suite-canvas {
+          width: 210mm !important;
+          min-width: 210mm !important;
+          max-width: 210mm !important;
+          box-sizing: border-box !important;
+        }
+
+        .court-page {
+          width: 210mm !important;
+          min-width: 210mm !important;
+          max-width: 210mm !important;
+          min-height: 297mm !important;
+          box-sizing: border-box !important;
+          background-color: #ffffff !important;
+          color: #000000 !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        @media screen {
+          .court-page {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+          }
+        }
+
         @media print {
           /* 1. 배경 웹 CRM 앱 및 Sonner 토스트 알림 완벽 차단 */
           #root,
@@ -576,13 +602,13 @@ export default function CourtDocSuiteViewerModal({
       {/* ── 3. 메인 바디 (좌측 A4 캔버스 + 우측 로패스형 스마트 사이드바) ── */}
       <div className="court-suite-body-wrapper flex-1 flex overflow-hidden print:block print:overflow-visible print:h-auto">
         {/* 좌측 메인 영역: 실시간 A4 법원 전산 서식 렌더링 캔버스 */}
-        <main className="court-suite-main flex-1 bg-slate-900/90 overflow-y-auto p-6 flex justify-center custom-scrollbar print:block print:overflow-visible print:bg-white print:p-0 print:m-0 print:h-auto print:w-full">
+        <main className="court-suite-main flex-1 bg-slate-900/90 overflow-auto p-6 flex justify-center custom-scrollbar print:block print:overflow-visible print:bg-white print:p-0 print:m-0 print:h-auto print:w-full">
           <div 
             ref={printAreaRef}
             contentEditable={isEditMode}
             suppressContentEditableWarning
             style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-            className={`court-suite-canvas transition-transform duration-100 ${selectedFont} ${fontSize} outline-none print:transform-none`}
+            className={`court-suite-canvas w-[210mm] min-w-[210mm] max-w-[210mm] shrink-0 transition-transform duration-100 ${selectedFont} ${fontSize} outline-none print:transform-none`}
           >
             {/* 1. 표지 (법원 원본 표지) */}
             {activeTab === 'PETITION_COVER' && (

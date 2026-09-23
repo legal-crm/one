@@ -11,7 +11,7 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
 
   return (
     <>
-      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
+      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <h1 className="text-center text-[24px] font-bold mb-8">[신청서 첨부서류 4]<br/>진 술 서</h1>
         
         <h2 className="text-[18px] font-bold mb-2">I. 경력</h2>
@@ -128,7 +128,7 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
         </div>
       </div>
 
-      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0]" style={{ pageBreakAfter: 'always' }}>
+      <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[16px] leading-[2.0] box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <h2 className="text-[18px] font-bold mb-2">III. 부채 상황</h2>
         
         <div className="mb-6 ml-4">
