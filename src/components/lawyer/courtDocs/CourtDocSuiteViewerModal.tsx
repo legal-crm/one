@@ -426,12 +426,6 @@ export default function CourtDocSuiteViewerModal({
               <h1 className="font-bold text-sm text-white">
                 대법원 전자소송 개인회생 서식 에디터
               </h1>
-              <span className="text-[10px] bg-blue-900/80 text-blue-300 border border-blue-700/60 px-2 py-0.5 rounded font-mono font-semibold">
-                로패스 2025 규격
-              </span>
-              <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
-                전산양식 A5433
-              </span>
             </div>
             <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
               <span>사건: <strong className="text-slate-200">{masterData.court.caseNumber}</strong></span>
