@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation, Home } from 'lucide-react';
-import type { User, LawFirm } from '../../types';
+import {
+  X, MapPin, Award, BookOpen, Briefcase, Scale, Shield, ChevronRight, Phone, Clock,
+  GraduationCap, Building, Heart, Copy, Check, ExternalLink, Navigation, Home, Star, Wallet, BadgeCheck,
+} from 'lucide-react';
+import type { User, SuccessReview } from '../../types';
 import { mockLawFirms } from '../../data';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 변호사 공개 프로필
+// 원칙: 변호사가 직접 등록했거나 플랫폼이 확인한 정보만 표시한다.
+//  - 주소·전화·채널 링크를 임의로 만들어 채우지 않는다 (타인 번호·도메인 노출 위험)
+//  - "전문" 표기, 실적 수치, 처리 기한 약속 등 광고규정 위반 소지가 있는 기본값을 쓰지 않는다
+//  - 후기는 해당 변호사의 실제 후기만 표시한다
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface LawyerProfileModalProps {
   lawyer: User;
@@ -10,515 +21,377 @@ interface LawyerProfileModalProps {
   onConsult: (lawyerId: string) => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  /** 플랫폼 이용 후기 전체 (해당 변호사 것만 필터링하여 표시) */
+  reviews?: SuccessReview[];
 }
 
-// 의뢰인 후기 mock
-const mockReviews = [
-  { id: 1, author: '김○○', date: '2026.06.15', content: '처음 상담할 때부터 너무 친절하고 꼼꼼하게 설명해주셔서 불안한 마음이 많이 줄었습니다. 변제율도 예상보다 낮게 나와서 정말 감사합니다.', tag: '개인회생' },
-  { id: 2, author: '박○○', date: '2026.05.28', content: '다른 곳에서 기각될 수 있다고 했는데, 여기서 보정명령 대응까지 완벽하게 처리해주셔서 무사히 인가 받았습니다.', tag: '보정명령 대응' },
-  { id: 3, author: '이○○', date: '2026.05.10', content: '진행 과정을 매번 카톡으로 알려주셔서 안심하고 맡길 수 있었습니다. 채권추심도 바로 멈춰주셨어요.', tag: '채권추심 차단' },
-  { id: 4, author: '최○○', date: '2026.04.22', content: '가족에게 비밀로 진행해야 했는데, 보안 유지하면서도 빠르게 처리해주셨습니다. 정말 감사드립니다.', tag: '비밀 상담' },
-  { id: 5, author: '정○○', date: '2026.04.05', content: '3억이 넘는 채무였는데 변제율 25%로 인가받아서 월 상환금이 크게 줄었습니다. 새 출발할 수 있게 되었어요.', tag: '고액채무' },
-];
+type TabKey = 'home' | 'info' | 'reviews';
 
-function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
-  const firmName = firm?.name || lawyer.firmName || '법무법인 한빛';
-  const region = lawyer.region || '서울';
-  const displayName = lawyer.name.replace(' 변호사', '');
-  
-  const baseChannels = {
-    websiteUrl: lawyer.websiteUrl || 'https://hanbitlaw.co.kr',
-    youtubeUrl: lawyer.youtubeUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
-    blogUrl: lawyer.blogUrl || `https://section.blog.naver.com/Search/Post.naver?pageNo=1&rangeType=ALL&orderBy=sim&keyword=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
-  };
-  
-  if (region.includes('부산') || firmName.includes('해원')) {
-    return {
-      ...baseChannels,
-      firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
-      address: '부산광역시 연제구 법원남로 15, 거제빌딩 7층 (연제동)',
-      detail: '부산지방법원·부산가정법원 맞은편 도보 2분',
-      subway: '3호선 거제역 6번 출구 도보 2분 / 동해선 거제해맞이역 도보 5분',
-      phone: '051-507-9012',
-      hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
-      parking: '건물 내 지하 1~2층 무료 주차 2시간 지원',
-      websiteUrl: 'https://haewonlaw.co.kr',
-    };
-  }
-  
-  if (region.includes('경기') || region.includes('수원') || firmName.includes('하늘')) {
-    return {
-      ...baseChannels,
-      firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
-      address: '경기도 수원시 영통구 광교중앙로 248, 광교법조타워 4층 402호',
-      detail: '수원고등법원·수원지방법원 정문 앞 도보 3분',
-      subway: '신분당선 광교중앙역 4번 출구 버스 5분 / 상현역 2번 출구 도보 10분',
-      phone: '031-215-5678',
-      hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
-      parking: '지하 1~3층 전용 주차장 무료 이용',
-      websiteUrl: 'https://skylawfirm.co.kr',
-    };
-  }
+const isHttpUrl = (url?: string) => !!url && /^https?:\/\//i.test(url.trim());
 
-  // 기본값 (서울 서초 법조타운)
-  return {
-    ...baseChannels,
-    firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
-    address: '서울특별시 서초구 서초대로 250, 스타빌딩 6층 (서초동)',
-    detail: '서울회생법원·서울중앙지방법원 인근 도보 3분',
-    subway: '2호선 서초역 1번 출구 도보 3분 / 2·3호선 교대역 10번 출구 도보 5분',
-    phone: '02-588-1234',
-    hours: '평일 09:00 ~ 18:30 (야간·주말 사전 예약 시 상담 가능)',
-    parking: '기계식 및 자주식 무료 발렛 주차 지원',
-  };
-}
-
-export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavorite, onToggleFavorite }: LawyerProfileModalProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'info' | 'reviews'>('home');
+export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavorite, onToggleFavorite, reviews = [] }: LawyerProfileModalProps) {
+  const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [copiedAddress, setCopiedAddress] = useState(false);
 
-  const firm = mockLawFirms.find(f => f.id === lawyer.lawFirmId);
-  const displayName = lawyer.name.replace(' 변호사', '');
-  const reviewCount = 12 + (lawyer.matchedCount % 20);
-  const officeInfo = getLawyerOfficeInfo(lawyer, firm);
+  const firmName = lawyer.firmName || mockLawFirms.find(f => f.id === lawyer.lawFirmId)?.name || '';
+  const displayName = lawyer.name.replace(/\s*변호사$/, '');
+  const isVerified = lawyer.licenseStatus === 'verified';
 
-  const handleCopyAddress = (e: React.MouseEvent) => {
+  const lawyerReviews = useMemo(
+    () => reviews.filter(r => r.lawyerId === lawyer.id),
+    [reviews, lawyer.id]
+  );
+
+  const channels = [
+    { key: 'web', url: lawyer.websiteUrl, label: '사무소 홈페이지', icon: <Home className="w-4 h-4" /> },
+    {
+      key: 'youtube', url: lawyer.youtubeUrl, label: '유튜브 채널',
+      icon: (
+        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'blog', url: lawyer.blogUrl, label: '네이버 블로그',
+      icon: (
+        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z" />
+        </svg>
+      ),
+    },
+  ].filter(c => isHttpUrl(c.url));
+
+  // ESC 닫기
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const handleCopyAddress = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(officeInfo.address);
-    setCopiedAddress(true);
-    setTimeout(() => setCopiedAddress(false), 2000);
+    if (!lawyer.officeAddress) return;
+    try {
+      await navigator.clipboard.writeText(lawyer.officeAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch { /* 클립보드 권한 거부 시 무시 */ }
   };
 
-  const tabs = [
-    { key: 'home' as const, label: '변호사홈' },
-    { key: 'info' as const, label: '변호사 정보' },
-    { key: 'reviews' as const, label: `의뢰인 후기 ${reviewCount}` },
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'home', label: '변호사홈' },
+    { key: 'info', label: '변호사 정보' },
+    { key: 'reviews', label: `의뢰인 후기 ${lawyerReviews.length}` },
   ];
+
+  const infoRows: { label: string; icon: React.ElementType; value?: string; list?: string[] }[] = [
+    { label: '소속', icon: Building, value: firmName || undefined },
+    { label: '관할 법원', icon: Scale, value: lawyer.courtJurisdiction },
+    { label: '경력', icon: Briefcase, list: lawyer.career && lawyer.career.length > 0 ? lawyer.career : undefined },
+    { label: '자격', icon: Award, value: lawyer.certYear },
+    { label: '등록번호', icon: BadgeCheck, value: isVerified && lawyer.licenseNumber ? `${lawyer.licenseNumber} (플랫폼 확인)` : undefined },
+    { label: '소속 변호사회', icon: Shield, value: lawyer.barAssociation },
+    { label: '학력', icon: GraduationCap, value: lawyer.education },
+    { label: '상담 비용', icon: Wallet, value: lawyer.consultationFee || '상담 요청 시 변호사가 개별 안내' },
+  ].filter(r => r.value || (r.list && r.list.length > 0));
 
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/70 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
       <div
-        className="relative w-full max-w-[720px] my-auto bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] sm:max-h-[90vh] animate-fadeIn"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lawyer-profile-title"
+        className="relative w-full max-w-[720px] my-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] sm:max-h-[90vh] animate-fadeIn"
         onClick={e => e.stopPropagation()}
       >
-        {/* ── 상단 버튼들 ── */}
+        {/* 상단 버튼 */}
         <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
           {onToggleFavorite && (
-            <button onClick={onToggleFavorite} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-              isFavorite ? 'bg-rose-500/80 hover:bg-rose-500' : 'bg-black/30 hover:bg-black/50'
-            }`}>
-              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white text-white' : 'text-white'}`} />
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              aria-pressed={!!isFavorite}
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer ${isFavorite ? 'bg-rose-500/90 hover:bg-rose-500' : 'bg-black/30 hover:bg-black/50'}`}
+            >
+              <Heart className={`w-4 h-4 text-white ${isFavorite ? 'fill-white' : ''}`} />
             </button>
           )}
-          <button onClick={onClose} className="w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="프로필 닫기"
+            className="w-11 h-11 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ═══════════════════════════════════════
-            히어로 섹션
-        ═══════════════════════════════════════ */}
+        {/* 히어로 */}
         <div className="relative bg-gradient-to-br from-slate-900 via-[#1e1b4b] to-brand overflow-hidden shrink-0">
-          {/* 배경 글로우 */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-1/4 left-1/3 w-[300px] h-[300px] bg-brand/40 rounded-full blur-[100px]"></div>
-            <div className="absolute bottom-0 right-1/4 w-[250px] h-[250px] bg-indigo-500/30 rounded-full blur-[80px]"></div>
-          </div>
-
           <div className="relative z-10 px-6 sm:px-8 pt-10 pb-6 flex flex-col sm:flex-row items-center gap-6">
-            {/* 프로필 사진 */}
-            <div className="relative shrink-0">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-[3px] border-white/20 shadow-xl">
-                <img src={lawyer.avatarData || lawyer.avatar} alt={lawyer.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-[3px] border-white rounded-full"></div>
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-[3px] border-white/20 shadow-xl shrink-0">
+              <img src={lawyer.avatarData || lawyer.avatar} alt={`${displayName} 변호사 프로필 사진`} className="w-full h-full object-cover" />
             </div>
 
-            {/* 기본 정보 */}
             <div className="flex-1 text-center sm:text-left space-y-2">
-              <div className="flex items-center justify-center sm:justify-start gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{displayName} 변호사</h1>
-                <div className="bg-brand/30 border border-brand/40 rounded-full p-1">
-                  <CheckCircle className="w-4 h-4 text-brand-light" />
-                </div>
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <h1 id="lawyer-profile-title" className="text-2xl sm:text-3xl font-black text-white tracking-tight">{displayName} 변호사</h1>
+                {isVerified && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-200 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-lg" title="플랫폼이 변호사 등록번호를 확인했습니다">
+                    <BadgeCheck className="w-3.5 h-3.5" /> 등록번호 확인
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-white/60">
-                <Building className="w-3.5 h-3.5" />
-                <span className="font-medium">{firm?.name || '법률사무소'}</span>
-                <span className="text-white/30">·</span>
+              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-white/80 flex-wrap">
+                {firmName && (<><Building className="w-3.5 h-3.5" /><span className="font-medium">{firmName}</span><span className="text-white/40" aria-hidden="true">·</span></>)}
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{lawyer.region}</span>
               </div>
 
-              {/* 전문 분야 태그 */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 pt-1">
                 {lawyer.fields.map(f => (
-                  <span key={f} className="bg-white/10 border border-white/10 text-white/80 text-xs px-2.5 py-1 rounded-lg font-bold">#{f}</span>
+                  <span key={f} className="bg-white/10 border border-white/15 text-white/90 text-xs px-2.5 py-1 rounded-lg font-bold">#{f}</span>
                 ))}
               </div>
 
-              {/* 캐치프레이즈 */}
               {lawyer.catchphrase && (
-                <p className="text-sm text-white/50 font-medium leading-relaxed pt-1 max-w-md">
-                  "{lawyer.catchphrase}"
-                </p>
+                <p className="text-sm text-white/80 font-medium leading-relaxed pt-1 max-w-md">"{lawyer.catchphrase}"</p>
               )}
 
-              {/* ── 공식 채널 바로가기 아이콘 (홈페이지, 유튜브, 네이버 블로그) ── */}
-              <div className="flex items-center justify-center sm:justify-start gap-2 pt-2">
-                {/* 홈페이지 */}
-                <a
-                  href={officeInfo.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="사무소 공식 홈페이지"
-                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
-                >
-                  <Home className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
-                </a>
-
-                {/* 유튜브 */}
-                <a
-                  href={officeInfo.youtubeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="유튜브 채널"
-                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
-                >
-                  <svg className="w-4 h-4 text-slate-300 group-hover:text-white fill-current transition-colors" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                  </svg>
-                </a>
-
-                {/* 네이버 블로그 */}
-                <a
-                  href={officeInfo.blogUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="네이버 블로그"
-                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-white fill-current transition-colors" viewBox="0 0 24 24">
-                    <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/>
-                  </svg>
-                </a>
-              </div>
+              {channels.length > 0 && (
+                <div className="flex items-center justify-center sm:justify-start gap-2 pt-2">
+                  {channels.map(c => (
+                    <a
+                      key={c.key}
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      aria-label={`${c.label} (새 창)`}
+                      title={c.label}
+                      className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-95"
+                    >
+                      {c.icon}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* 탭 네비게이션 */}
-          <div className="relative z-10 flex border-t border-white/10">
+          {/* 탭 */}
+          <div role="tablist" aria-label="프로필 정보" className="relative z-10 flex border-t border-white/10">
             {tabs.map(tab => (
               <button
                 key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 py-3 text-sm sm:text-base font-bold transition-all cursor-pointer relative ${
-                  activeTab === tab.key
-                    ? 'text-white'
-                    : 'text-white/40 hover:text-white/70'
-                }`}
+                className={`flex-1 min-h-[44px] py-3 text-sm sm:text-base font-bold transition-all cursor-pointer relative whitespace-nowrap ${activeTab === tab.key ? 'text-white' : 'text-white/70 hover:text-white'}`}
               >
                 {tab.label}
-                {activeTab === tab.key && (
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-brand rounded-t-full"></div>
-                )}
+                {activeTab === tab.key && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-white rounded-t-full" />}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════
-            탭 콘텐츠
-        ═══════════════════════════════════════ */}
+        {/* 탭 콘텐츠 */}
         <div className="p-5 sm:p-7 space-y-6 overflow-y-auto flex-1 text-left">
-
-          {/* ── TAB: 변호사홈 ── */}
           {activeTab === 'home' && (
             <div className="space-y-6 animate-fadeIn">
-              {/* 변호사 소개 */}
-              <div className="bg-gradient-to-r from-brand/5 to-indigo-500/5 border border-brand/10 rounded-2xl p-5 space-y-3">
+              <section className="bg-gradient-to-r from-brand/5 to-indigo-500/5 border border-brand/10 rounded-2xl p-5 space-y-3">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-brand" />
-                  변호사 소개
+                  <BookOpen className="w-4 h-4 text-brand" /> 변호사 소개
                 </h3>
-                <p className="text-sm text-slate-600 leading-relaxed font-medium">{lawyer.bio}</p>
-              </div>
+                <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">
+                  {lawyer.bio || '등록된 소개글이 없습니다.'}
+                </p>
+              </section>
 
-              {/* 전담 서비스 */}
-              <div className="space-y-3">
+              {/* 사무소 위치 — 변호사가 등록한 경우에만 */}
+              <section className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-brand" />
-                  전담 서비스 안내
+                  <MapPin className="w-4 h-4 text-[#1E3A5F]" /> 사무소 위치 및 연락처
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { title: '초기 상담 지원', desc: '채무 현황 분석 및 최적 해결 방안 안내', emoji: '💬' },
-                    { title: '1:1 밀착 관리', desc: '사건 접수부터 인가까지 전 과정 전담 케어', emoji: '🤝' },
-                    { title: '보정명령 긴급 대응', desc: '법원 보정명령 발생 시 48시간 내 즉시 대응', emoji: '⚡' },
-                    { title: '신용 회복 가이드', desc: '면책 후 신용 등급 회복 로드맵 제공', emoji: '📈' },
-                  ].map(svc => (
-                    <div key={svc.title} className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3 hover:border-brand/20 hover:shadow-sm transition-all">
-                      <span className="text-lg">{svc.emoji}</span>
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-900">{svc.title}</h4>
-                        <p className="text-sm text-slate-500 mt-0.5 font-medium">{svc.desc}</p>
+
+                {lawyer.officeAddress || lawyer.officePhone ? (
+                  <div className="space-y-2.5 text-sm">
+                    {firmName && (
+                      <div className="flex items-start gap-2.5">
+                        <Building className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                        <span className="font-bold text-slate-900">{firmName}</span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── 사무소 위치 및 오시는 길 (카카오 지도) ── */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#1E3A5F]" />
-                    사무소 위치 및 연락처
-                  </h3>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    방문 상담 가능
-                  </span>
-                </div>
-
-                {/* 사무소 상세 정보 */}
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex items-start gap-2.5">
-                    <Building className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="font-bold text-slate-900">{officeInfo.firmName}</span>
-                      <span className="text-xs text-slate-500 ml-2">({officeInfo.detail})</span>
-                    </div>
-                  </div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5">
-                      <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                      <span className="text-slate-700 font-medium leading-snug">{officeInfo.address}</span>
-                    </div>
-                    <button
-                      onClick={handleCopyAddress}
-                      className="shrink-0 flex items-center gap-1 text-xs font-bold text-[#1E3A5F] hover:text-brand bg-white border border-slate-200 hover:border-[#1E3A5F]/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                    >
-                      {copiedAddress ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span className="text-emerald-600">복사됨</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>주소 복사</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                    )}
+                    {lawyer.officeAddress && (
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2.5">
+                          <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                          <span className="text-slate-700 font-medium leading-snug">{lawyer.officeAddress}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyAddress}
+                          className="shrink-0 min-h-[36px] flex items-center gap-1 text-xs font-bold text-[#1E3A5F] bg-white border border-slate-200 hover:border-[#1E3A5F]/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          {copiedAddress
+                            ? (<><Check className="w-3 h-3 text-emerald-600" /><span className="text-emerald-700">복사됨</span></>)
+                            : (<><Copy className="w-3 h-3" /><span>주소 복사</span></>)}
+                        </button>
+                      </div>
+                    )}
+                    {(lawyer.officePhone || lawyer.officeHours) && (
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                        {lawyer.officePhone && (
+                          <span className="flex items-center gap-1.5">
+                            <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+                            <a href={`tel:${lawyer.officePhone.replace(/[^\d+]/g, '')}`} className="font-bold text-[#1E3A5F] hover:underline">{lawyer.officePhone}</a>
+                          </span>
+                        )}
+                        {lawyer.officeHours && (
+                          <span className="flex items-center gap-1.5 text-slate-600 font-medium">
+                            <Clock className="w-4 h-4 text-slate-500 shrink-0" />{lawyer.officeHours}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {lawyer.officeDirections && (
+                      <div className="flex items-start gap-2.5 text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-100">
+                        <Navigation className="w-4 h-4 text-[#1E3A5F] mt-0.5 shrink-0" />
+                        <p className="whitespace-pre-wrap">{lawyer.officeDirections}</p>
+                      </div>
+                    )}
+                    {lawyer.officeAddress && (
                       <a
-                        href={`tel:${officeInfo.phone}`}
-                        className="font-bold text-[#1E3A5F] hover:underline"
+                        href={`https://map.kakao.com/link/search/${encodeURIComponent(lawyer.officeAddress)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 min-h-[44px] bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-extrabold text-sm px-4 py-2 rounded-xl transition-all active:scale-[0.98] whitespace-nowrap"
                       >
-                        {officeInfo.phone}
+                        카카오맵에서 길찾기 <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                       </a>
-                    </div>
-                    <span className="text-slate-300">|</span>
-                    <span className="text-xs text-slate-500 font-medium">{officeInfo.hours}</span>
+                    )}
                   </div>
-                  <div className="flex items-start gap-2.5 text-xs text-slate-500 bg-white p-3 rounded-xl border border-slate-100 space-y-1">
-                    <Navigation className="w-4 h-4 text-[#1E3A5F] mt-0.5 shrink-0" />
-                    <div className="space-y-0.5">
-                      <p><strong className="text-slate-700">대중교통:</strong> {officeInfo.subway}</p>
-                      <p><strong className="text-slate-700">주차 안내:</strong> {officeInfo.parking}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── 카카오 지도 비주얼 카드 & 길찾기 버튼 ── */}
-                <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                  {/* 지도 비주얼 목업 배경 */}
-                  <div className="h-32 sm:h-36 w-full relative bg-gradient-to-br from-slate-100 via-blue-50/40 to-slate-200 flex items-center justify-center overflow-hidden">
-                    {/* 지도 격자 및 도로 라인 시뮬레이션 */}
-                    <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#94A3B8" strokeWidth="0.5" />
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#grid)" />
-                      <path d="M -10 60 Q 150 40 400 90 T 800 60" fill="none" stroke="#CBD5E1" strokeWidth="8" />
-                      <path d="M 200 -10 L 220 200" fill="none" stroke="#CBD5E1" strokeWidth="6" />
-                      <path d="M 350 -10 L 330 200" fill="none" stroke="#E2E8F0" strokeWidth="4" />
-                    </svg>
-
-                    {/* 중앙 핀 & 레이블 */}
-                    <div className="relative z-10 flex flex-col items-center">
-                      <div className="bg-[#1E3A5F] text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
-                        <Building className="w-3.5 h-3.5 text-teal-400" />
-                        <span>{officeInfo.firmName}</span>
-                      </div>
-                      <div className="w-2.5 h-2.5 bg-[#1E3A5F] rotate-45 -mt-1.5 shadow-sm"></div>
-                      <div className="w-2 h-1 bg-black/20 rounded-full mt-0.5 blur-[1px]"></div>
-                    </div>
-
-                    {/* 카카오맵 워터마크 뱃지 */}
-                    <div className="absolute top-2.5 left-2.5 z-10 bg-[#FEE500] text-[#191919] font-black text-[10px] px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
-                      <span>kakao</span>
-                      <span className="font-bold text-[9px]">map</span>
-                    </div>
-                  </div>
-
-                  {/* 지도 하단 액션 바 */}
-                  <div className="p-3 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs text-slate-600 font-medium truncate max-w-[260px] sm:max-w-xs">
-                      📍 {officeInfo.address}
-                    </div>
-                    <a
-                      href={`https://map.kakao.com/link/search/${encodeURIComponent(officeInfo.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-extrabold text-xs px-3.5 py-2 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-                    >
-                      <span>카카오맵으로 길찾기</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-
+                ) : (
+                  <p className="text-sm text-slate-600">
+                    사무소 위치·연락처가 아직 등록되지 않았습니다. 상담 요청 후 변호사가 직접 안내합니다.
+                    <span className="block text-xs text-slate-500 mt-1">개인회생·파산은 대부분 비대면으로 진행할 수 있습니다.</span>
+                  </p>
+                )}
+              </section>
             </div>
           )}
 
-          {/* ── TAB: 변호사 정보 ── */}
           {activeTab === 'info' && (
             <div className="space-y-6 animate-fadeIn">
-              {/* 전문 분야 상세 */}
-              <div className="space-y-3">
+              <section className="space-y-3">
                 <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                  <Scale className="w-5 h-5 text-brand" />
-                  전문 분야
+                  <Scale className="w-5 h-5 text-brand" /> 주요 취급 분야
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {(lawyer.specialties || lawyer.fields).map(s => (
                     <span key={s} className="bg-brand/5 border border-brand/15 text-brand text-sm px-3.5 py-1.5 rounded-lg font-bold">{s}</span>
                   ))}
                 </div>
-              </div>
+                <p className="text-xs text-slate-500">
+                  취급 분야는 변호사가 직접 입력한 정보이며, 대한변호사협회 전문분야 등록 여부와는 별개입니다.
+                </p>
+              </section>
 
-              {/* 인증 뱃지 (전문 분야 바로 아래) */}
-              <div className="space-y-3">
-                <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-brand" />
-                  인증 뱃지
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { label: '대한변협 등록', sub: '도산법 전문', icon: '⚖️' },
-                    { label: '회생법원 전담', sub: lawyer.courtJurisdiction || '', icon: '🏛️' },
-                    { label: `수임 ${(lawyer.totalCases || 100)}건+`, sub: '인가 실적', icon: '🏆' },
-                  ].map(badge => (
-                    <div key={badge.label} className="flex items-center gap-3.5 bg-white border border-slate-200 rounded-xl px-4.5 py-3.5 shadow-xs">
-                      <span className="text-2xl">{badge.icon}</span>
-                      <div>
-                        <div className="text-base font-bold text-slate-900">{badge.label}</div>
-                        <div className="text-xs text-brand font-bold mt-0.5">{badge.sub}</div>
+              {infoRows.length > 0 && (
+                <div className="bg-slate-50 rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                  {infoRows.map(row => (
+                    <div key={row.label} className="flex items-start gap-4 px-5 py-4">
+                      <div className="flex items-center gap-2 w-28 shrink-0">
+                        <row.icon className="w-4 h-4 text-slate-500" />
+                        <span className="text-sm text-slate-600 font-bold">{row.label}</span>
+                      </div>
+                      <div className="flex-1 text-left">
+                        {row.list ? (
+                          <ul className="space-y-1">
+                            {row.list.map((item, i) => (
+                              <li key={i} className="text-sm text-slate-700 font-medium flex items-start gap-1.5">
+                                <ChevronRight className="w-3.5 h-3.5 text-brand mt-1 shrink-0" /><span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-sm text-slate-700 font-medium">{row.value}</span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* 정보 테이블 */}
-              <div className="bg-slate-50 rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
-                {[
-                  { label: '관할 법원', value: lawyer.courtJurisdiction || `${lawyer.region} 법원`, icon: Building },
-                  { label: '경력', value: null, icon: Briefcase, list: lawyer.career },
-                  { label: '자격', value: lawyer.certYear || '변호사시험 합격', icon: Award },
-                  { label: '소속', value: lawyer.barAssociation || '대한변호사협회', icon: Users },
-                  { label: '학력', value: lawyer.education || '법학전문대학원 졸업', icon: GraduationCap },
-                ].map(row => (
-                  <div key={row.label} className="flex items-start gap-4 px-5 py-4">
-                    <div className="flex items-center gap-2 w-24 shrink-0">
-                      <row.icon className="w-4 h-4 text-slate-500" />
-                      <span className="text-sm text-slate-600 font-bold">{row.label}</span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      {row.list ? (
-                        <div className="space-y-1">
-                          {row.list.map((item, i) => (
-                            <div key={i} className="text-sm text-slate-700 font-medium flex items-start gap-1.5">
-                              <ChevronRight className="w-3.5 h-3.5 text-brand mt-1 shrink-0" />
-                              <span>{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-slate-700 font-medium">{row.value}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
+              {typeof lawyer.totalCases === 'number' && lawyer.totalCases > 0 && (
+                <p className="text-xs text-slate-500">누적 수임 {lawyer.totalCases.toLocaleString()}건 (변호사 제공 정보, 플랫폼 미검증)</p>
+              )}
             </div>
           )}
 
-          {/* ── TAB: 의뢰인 후기 ── */}
           {activeTab === 'reviews' && (
             <div className="space-y-5 animate-fadeIn">
-              {/* 후기 안내 */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                <p className="text-base text-slate-700 font-bold">이용 후기 {reviewCount}건</p>
-                <p className="text-xs text-slate-500 mt-1">※ 후기는 실제 상담 이용자의 주관적 의견이며, 개별 사례마다 결과가 다를 수 있습니다.</p>
+                <p className="text-base text-slate-800 font-bold">이용 후기 {lawyerReviews.length}건</p>
+                <p className="text-xs text-slate-500 mt-1">※ 후기는 이용자의 주관적 의견이며, 사건 결과는 개별 사정에 따라 다릅니다.</p>
               </div>
 
-              {/* 후기 목록 */}
-              <div className="space-y-3">
-                {mockReviews.map(review => (
-                  <div key={review.id} className="bg-white border border-slate-100 rounded-xl p-4.5 space-y-2.5 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
-                          {review.author.charAt(0)}
+              {lawyerReviews.length === 0 ? (
+                <div className="text-center py-8 space-y-2">
+                  <Star className="w-8 h-8 text-slate-300 mx-auto" aria-hidden="true" />
+                  <p className="text-sm font-bold text-slate-700">아직 등록된 후기가 없습니다</p>
+                  <p className="text-xs text-slate-500">상담을 이용한 의뢰인이 후기를 남기면 이곳에 표시됩니다.</p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {lawyerReviews.map(review => (
+                    <li key={review.id} className="bg-white border border-slate-100 rounded-xl p-4 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0" aria-hidden="true">
+                            {review.author.charAt(0)}
+                          </div>
+                          <span className="text-sm font-bold text-slate-800 truncate">{review.author}</span>
                         </div>
-                        <div>
-                          <span className="text-base font-bold text-slate-800">{review.author}</span>
-                        </div>
+                        {(review.tags?.[0] || review.category) && (
+                          <span className="bg-brand/5 text-brand text-xs font-bold px-2.5 py-0.5 rounded-lg shrink-0">{review.tags?.[0] || review.category}</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-brand/5 text-brand text-xs font-bold px-2.5 py-0.5 rounded">{review.tag}</span>
-                        <span className="text-xs text-slate-400">{review.date}</span>
-                      </div>
-                    </div>
-                    <p className="text-sm sm:text-base text-slate-700 leading-relaxed pl-10 font-medium">{review.content}</p>
-                  </div>
-                ))}
-              </div>
+                      {review.title && <p className="text-sm font-bold text-slate-900">{review.title}</p>}
+                      <p className="text-sm text-slate-700 leading-relaxed font-medium">{review.content}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
-          {/* 서비스 한계 고지 */}
           <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700 text-left">
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다. 
-              플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다. 
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다.
+              플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다.
               전문가의 상담 내용, 업무 수행 결과 또는 사건 결과를 보장하지 않습니다.
             </p>
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════
-            하단 고정 CTA 바
-        ═══════════════════════════════════════ */}
+        {/* 하단 CTA */}
         <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-5 sm:px-7 py-4 flex items-center justify-end gap-4 shrink-0">
           <button
+            type="button"
             onClick={() => onConsult(lawyer.id)}
-            className="w-full sm:w-auto bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="w-full sm:w-auto min-h-[44px] whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            <span>이 변호사를 직접 선택하여 상담 요청</span>
-            <ChevronRight className="w-4 h-4" />
+            <span>이 변호사에게 상담 요청</span>
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>

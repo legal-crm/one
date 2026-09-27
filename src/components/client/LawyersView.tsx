@@ -1,7 +1,34 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle, Heart, ChevronRight, ChevronDown, CheckCircle2, MapPin, Paperclip, Search, X, ShieldCheck, Scale, Clock, Users, Briefcase, Award, Sparkles, ArrowRight } from 'lucide-react';
-import type { User } from '../../types';
+import { toast } from 'sonner';
+import type { User, SuccessReview } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
+
+/** 관리자 자격 심사를 통과한(또는 정지·반려되지 않은) 변호사만 공개 디렉토리에 노출 */
+function isPubliclyListable(l: User): boolean {
+  if (l.approved === false) return false;
+  if (l.licenseStatus === 'pending' || l.licenseStatus === 'rejected' || l.licenseStatus === 'suspended') return false;
+  return true;
+}
+
+/** 플랫폼이 변호사 등록번호를 확인한 경우에만 배지 표시 (대한변협 인증 표기는 사실과 다를 수 있어 사용하지 않음) */
+function isLicenseVerified(l: User): boolean {
+  return l.licenseStatus === 'verified';
+}
+
+/** 카드형 div를 키보드로도 조작할 수 있도록 하는 공통 속성 */
+function clickableProps(onActivate: () => void, label: string) {
+  return {
+    role: 'button' as const,
+    tabIndex: 0,
+    'aria-label': label,
+    onClick: onActivate,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActivate(); }
+    },
+  };
+}
 
 const FAVORITES_KEY = 'lawyer_favorites';
 function loadFavorites(): Set<string> {
@@ -36,6 +63,8 @@ interface LawyersViewProps {
   onConfirmSelection?: (lawyerIds: string[]) => void;
   hasCompletedCheck?: boolean;
   onStartCheck?: () => void;
+  /** 플랫폼 이용 후기 (프로필 모달에서 해당 변호사 후기만 표시) */
+  reviews?: SuccessReview[];
 }
 
 /** certYear 문자열에서 경력년수 계산 (예: "제8회 변호사시험 합격 (2019년)" → 7) */
@@ -57,7 +86,7 @@ function getAffiliation(l: User): string | null {
   return null;
 }
 
-export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, maxSelections = 3, onConfirmSelection, hasCompletedCheck, onStartCheck }: LawyersViewProps) {
+export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, maxSelections = 3, onConfirmSelection, hasCompletedCheck, onStartCheck, reviews }: LawyersViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [page, setPage] = useState(1);
@@ -82,7 +111,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
         return prev.filter(x => x !== id);
       }
       if (prev.length >= maxSelections) {
-        alert(`최대 ${maxSelections}명까지만 선택 가능합니다.`);
+        toast.warning(`최대 ${maxSelections}명까지만 선택할 수 있습니다.`);
         return prev;
       }
       return [...prev, id];
@@ -99,18 +128,32 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
     });
   };
 
-  const filtered = useMemo(() => lawyers.filter(l => {
+  // ── 같은 광고 등급 내 무작위 정렬 (방문 세션마다 1회 셔플, 화면 내에서는 순서 고정) ──
+  // 정액 광고 상품 간 노출 순서 우대를 없애기 위함 (검색 투명성 바의 "정렬: 무작위"와 일치)
+  const [shuffleSeed] = useState(() => Math.random());
+  const rankOf = useCallback((id: string) => {
+    let h = Math.floor(shuffleSeed * 2147483647);
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    return h;
+  }, [shuffleSeed]);
+
+  const listable = useMemo(
+    () => lawyers.filter(isPubliclyListable).sort((a, b) => rankOf(a.id) - rankOf(b.id)),
+    [lawyers, rankOf]
+  );
+
+  const filtered = useMemo(() => listable.filter(l => {
     const queryLower = searchQuery.toLowerCase();
-    const matchesSearch = l.name.toLowerCase().includes(queryLower) || l.fields.some(f => f.toLowerCase().includes(queryLower)) || l.bio.toLowerCase().includes(queryLower);
+    const matchesSearch = l.name.toLowerCase().includes(queryLower) || l.fields.some(f => f.toLowerCase().includes(queryLower)) || (l.bio || '').toLowerCase().includes(queryLower);
     const matchesRegion = selectedRegion === '전체' || l.region.includes(selectedRegion);
     const matchesFav = !showFavoritesOnly || favorites.has(l.id);
     return matchesSearch && matchesRegion && matchesFav;
-  }), [lawyers, searchQuery, selectedRegion, showFavoritesOnly, favorites]);
+  }), [listable, searchQuery, selectedRegion, showFavoritesOnly, favorites]);
 
-  // ── 광고 등급별 변호사 분류 (안정적 정렬) ──
+  // ── 광고 등급별 변호사 분류 ──
   const topAdLawyers = useMemo(() => 
-    lawyers.filter(l => l.adTier === 'top')
-  , [lawyers]);
+    listable.filter(l => l.adTier === 'top')
+  , [listable]);
 
   // 유료 광고 변호사 (regional + basic) — 큰 카드로 표시, top 제외
   const paidLawyers = useMemo(() => {
@@ -143,19 +186,18 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
         <div className="grid grid-cols-3 gap-3 pt-2">
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1"><Users className="w-4 h-4 text-teal-400" /></div>
-            <p className="text-xl font-extrabold text-white">{lawyers.length}<span className="text-sm font-bold text-slate-400 ml-0.5">명</span></p>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">등록 변호사</p>
+            <p className="text-xl font-extrabold text-white">{listable.length}<span className="text-sm font-bold text-slate-400 ml-0.5">명</span></p>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">등록 변호사</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1"><ShieldCheck className="w-4 h-4 text-teal-400" /></div>
-            <p className="text-xl font-extrabold text-white">100<span className="text-sm font-bold text-slate-400 ml-0.5">%</span></p>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">철저한 익명 상담 보장</p>
+            <p className="text-xl font-extrabold text-white whitespace-nowrap">실명 불필요</p>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">계약 전 스텔스 가명</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1"><Clock className="w-4 h-4 text-teal-400" /></div>
-            <p className="text-xl font-extrabold text-white">2<span className="text-sm font-bold text-slate-400 ml-0.5">시간</span></p>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">평균 응답</p>
-            {/* <!-- mock: 서비스 예시 데이터 --> */}
+            <p className="text-xl font-extrabold text-white whitespace-nowrap">최대 {maxSelections}명</p>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">동시 상담 요청</p>
           </div>
         </div>
       </div>
@@ -223,7 +265,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
             {topAdLawyers.slice(0, 6).map((l) => (
               <div
                 key={l.id}
-                onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
+                {...clickableProps(() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l), selectionMode ? `${l.name} 선택` : `${l.name} 프로필 보기`)}
                 className="relative group p-5 rounded-xl border-2 border-[#1E3A5F]/15 bg-gradient-to-br from-[#1E3A5F]/5 to-white hover:border-[#1E3A5F]/30 hover:shadow-md transition-all duration-300 cursor-pointer"
               >
                 <span className="absolute top-3 right-3 bg-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-2 py-0.5 rounded-lg border border-[#1E3A5F]/20">
@@ -241,7 +283,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                 <div className="flex items-start gap-4">
                   <div className="relative shrink-0">
                     <img src={l.avatarData || l.avatar} alt={l.name} className="w-[76px] h-[76px] rounded-xl object-cover border-2 border-[#1E3A5F]/15 shadow-sm" />
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <span className="font-bold text-lg text-slate-900 block truncate">{l.name}</span>
@@ -262,10 +303,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                   <div className="flex items-center gap-3 text-slate-500 font-medium">
                     {l.totalCases && <span>수임 <strong className="text-[#1E3A5F] font-bold">{l.totalCases}건</strong></span>}
                   </div>
-                  <span className="text-emerald-600 font-bold flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    상담 가능
-                  </span>
                 </div>
               </div>
             ))}
@@ -380,7 +417,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {paidLawyers.map(l => (
-                    <div key={l.id} onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)} className={`bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left cursor-pointer ${
+                    <div key={l.id} {...clickableProps(() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l), selectionMode ? `${l.name} 선택` : `${l.name} 프로필 보기`)} className={`bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left cursor-pointer ${
                       selectionMode && selectedLawyerIds.includes(l.id)
                         ? 'border-brand ring-2 ring-brand/20 shadow-brand/10'
                         : 'border-blue-100 dark:border-blue-800 ring-1 ring-blue-100'
@@ -401,7 +438,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                       )}
                       <div className="relative shrink-0 self-start sm:self-center">
                         <img src={l.avatar} alt={l.name} className="w-24 h-24 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 shadow-sm" />
-                        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
                       </div>
                       <div className="flex-1 space-y-2.5">
                         <div className="flex items-start justify-between">
@@ -409,7 +445,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-xl text-slate-900 dark:text-white tracking-tight">{l.name}</h3>
                               {(() => { const yrs = getExperienceYears(l.certYear); return yrs ? <span className="bg-amber-50 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-amber-200 flex items-center gap-1"><Award className="w-3 h-3" />{yrs}년차</span> : null; })()}
-                              <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />대한변협 인증</span>
+                              {isLicenseVerified(l) && <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1" title="플랫폼이 변호사 등록번호를 확인했습니다"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />등록번호 확인</span>}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               {getAffiliation(l) && <span className="text-sm text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" />{getAffiliation(l)}</span>}
@@ -417,7 +453,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-lg border border-blue-200">광고</span>
-                            <button type="button" onClick={(e) => toggleFavorite(l.id, e)} className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer group/fav">
+                            <button type="button" aria-label={favorites.has(l.id) ? `${l.name} 즐겨찾기 해제` : `${l.name} 즐겨찾기 추가`} aria-pressed={favorites.has(l.id)} onClick={(e) => toggleFavorite(l.id, e)} className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer group/fav">
                               <Heart className={`w-4 h-4 transition-colors ${favorites.has(l.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-300 group-hover/fav:text-rose-400'}`} />
                             </button>
                           </div>
@@ -434,7 +470,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                           </p>
                         )}
                         <div className="pt-2 flex items-center justify-end text-sm border-t border-slate-100 dark:border-slate-800">
-                          <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-300 text-sm cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onSelectLawyer(l.id); }} className="whitespace-nowrap min-h-[44px] bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-300 text-sm cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
                             상담하기
                           </button>
                         </div>
@@ -498,7 +534,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                   {freePaginated.map(l => (
                     <div
                       key={l.id}
-                      onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
+                      {...clickableProps(() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l), selectionMode ? `${l.name} 선택` : `${l.name} 프로필 보기`)}
                       className={`bg-slate-50/80 border border-slate-100 rounded-2xl p-5 flex gap-4 hover:bg-white hover:border-slate-200 hover:shadow-md transition-all cursor-pointer group/file relative ${
                         selectionMode && selectedLawyerIds.includes(l.id)
                           ? 'border-brand ring-2 ring-brand/20 bg-brand/5'
@@ -520,13 +556,12 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                       )}
                       <div className="relative shrink-0">
                         <img src={l.avatar} alt={l.name} className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                       </div>
                       <div className="flex-1 min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-lg text-slate-900 truncate">{l.name}</span>
                           {(() => { const yrs = getExperienceYears(l.certYear); return yrs ? <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 shrink-0">{yrs}년차</span> : null; })()}
-                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1 shrink-0"><ShieldCheck className="w-3 h-3 text-emerald-600" />변협 인증</span>
+                          {isLicenseVerified(l) && <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-1.5 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1 shrink-0" title="플랫폼이 변호사 등록번호를 확인했습니다"><ShieldCheck className="w-3 h-3 text-emerald-600" />등록번호 확인</span>}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                           {getAffiliation(l) && <span className="truncate max-w-[180px]">{getAffiliation(l)}</span>}
@@ -574,6 +609,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
           }}
           isFavorite={favorites.has(profileLawyer.id)}
           onToggleFavorite={() => toggleFavorite(profileLawyer.id)}
+          reviews={reviews}
         />
       )}
       {selectionMode && (

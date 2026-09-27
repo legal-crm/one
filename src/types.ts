@@ -1229,6 +1229,12 @@ export interface User {
   websiteUrl?: string; // 공식 홈페이지 URL
   youtubeUrl?: string; // 유튜브 채널 URL
   blogUrl?: string; // 네이버 블로그 URL
+  // ── 사무소 정보 (변호사가 직접 등록한 경우에만 공개 프로필에 노출) ──
+  officeAddress?: string;   // 사무소 도로명 주소
+  officePhone?: string;     // 사무소 대표 전화
+  officeHours?: string;     // 상담 가능 시간
+  officeDirections?: string; // 대중교통·주차 안내
+  consultationFee?: string; // 초기 상담 비용 안내 (예: "첫 상담 무료", "30분 5만원")
   // ── AI 유료 기능 (어드민 활성화) ──
   aiCaseAnalysisEnabled?: boolean;       // AI 사건 분석 활성화 여부 (어드민 제어)
   aiCaseAnalysisActivatedAt?: string;    // 활성화 일시

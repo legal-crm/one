@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
@@ -599,6 +599,17 @@ export default function ClientRole({
   // 챗봇(request) 탭에서는 항상 GNB 숨김
   const isChatbotActive = activeTab === 'request';
 
+  // ── 공개 변호사 디렉토리: 관리자 승인 상태가 반영되는 앱 공용 목록 사용 (정적 mock 고정 사용 금지) ──
+  const directoryLawyers = useMemo<LawyerType[]>(
+    () => (lawyers && lawyers.length > 0 ? lawyers : mockLawyers).filter(l =>
+      // 변호사 자격자만 공개 (직원·실장 계정 노출 시 비변호사 법률사무 오인 소지)
+      l.role === 'LAWYER' &&
+      // 테스트 계정은 프로덕션 디렉토리에서 제외
+      !(import.meta.env.PROD && l.id.startsWith('test-lawyer'))
+    ),
+    [lawyers]
+  );
+
   // ── 변호사 프로필 보기 상태 ──
   const [selectedProfileLawyer, setSelectedProfileLawyer] = useState<LawyerType | null>(null);
 
@@ -607,7 +618,7 @@ export default function ClientRole({
     if (found) {
       setSelectedProfileLawyer(found);
     } else {
-      const mockFound = mockLawyers.find(l => l.id === lawyerId);
+      const mockFound = directoryLawyers.find(l => l.id === lawyerId);
       if (mockFound) {
         setSelectedProfileLawyer(mockFound);
       } else {
@@ -844,7 +855,7 @@ export default function ClientRole({
       setPendingNewRequest(null);
 
       if (newlyAdded.length > 0) {
-        const newNames = newlyAdded.map(id => mockLawyers.find(x => x.id === id)?.name).filter(Boolean);
+        const newNames = newlyAdded.map(id => directoryLawyers.find(x => x.id === id)?.name).filter(Boolean);
         // 의뢰인 화면 전용 안내문 (targetLawyerId: 'client-only'로 타 변호사 노출 차단)
         onAddMessage(
           existingRequest.id,
@@ -3113,7 +3124,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   activeRequest={activeRequest} activeResult={activeResult} onUpdateFinancialProfile={handleUpdateFinancialProfile}
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
                   tempAlias={tempAlias} setTempAlias={setTempAlias}
-                  lawyers={mockLawyers}
+                  lawyers={directoryLawyers}
                   initialModalTrigger={chatModalTrigger}
                   onClearModalTrigger={() => setChatModalTrigger(null)}
                   showDiagnosisReport={platformConfig.showDiagnosisReport}
@@ -3209,7 +3220,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={LAWYER_MAX_SELECTIONS} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} hasCompletedCheck={!!activeResult} onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />)}
+            {activeTab === 'lawyers' && (<LawyersView lawyers={directoryLawyers} reviews={reviews} onSelectLawyer={(lawyerId) => { const l = directoryLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={LAWYER_MAX_SELECTIONS} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} hasCompletedCheck={!!activeResult} onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />)}
 
 
 
@@ -3319,9 +3330,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         <React.Suspense fallback={null}>
           <LawyerProfileModal
             lawyer={selectedProfileLawyer}
+            reviews={reviews}
             onClose={() => setSelectedProfileLawyer(null)}
             onConsult={(lawyerId) => {
-              const l = mockLawyers.find(x => x.id === lawyerId) || lawyers.find(x => x.id === lawyerId);
+              const l = directoryLawyers.find(x => x.id === lawyerId);
               if (l) {
                 setTitle(l.name + ' 변호사 전담 상담 요청');
               }

@@ -86,18 +86,16 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const previewAvatar = form.avatarData || form.avatar;
 
   // ── 오피스 정보 (미리보기용) ──
+  // 변호사가 입력한 값만 미리보기 (임의 주소·전화·도메인으로 채우지 않음 — 공개 프로필과 동일 원칙)
   const getOfficeInfo = () => {
-    const firmName = firm?.name || form.firmName || '법무법인 한빛';
-    const region = form.region || '서울';
+    const firmName = form.firmName || firm?.name || '';
     return {
-      firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
-      address: region.includes('부산') ? '부산광역시 연제구 법원남로 15, 거제빌딩 7층'
-        : region.includes('경기') || region.includes('수원') ? '경기도 수원시 영통구 광교중앙로 248, 광교법조타워 4층'
-        : '서울특별시 서초구 서초대로 250, 스타빌딩 6층',
-      phone: region.includes('부산') ? '051-507-9012' : region.includes('경기') ? '031-215-5678' : '02-588-1234',
-      websiteUrl: form.websiteUrl || 'https://hanbitlaw.co.kr',
-      youtubeUrl: form.youtubeUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(displayName + ' 변호사')}`,
-      blogUrl: form.blogUrl || `https://section.blog.naver.com/Search/Post.naver?keyword=${encodeURIComponent(displayName + ' 변호사')}`,
+      firmName: firmName || '사무소명 미입력',
+      address: form.officeAddress || '주소 미입력',
+      phone: form.officePhone || '전화번호 미입력',
+      websiteUrl: form.websiteUrl || undefined,
+      youtubeUrl: form.youtubeUrl || undefined,
+      blogUrl: form.blogUrl || undefined,
     };
   };
   const officeInfo = getOfficeInfo();
@@ -124,6 +122,32 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const addBtnCls = inline
     ? 'flex items-center gap-1 bg-brand/10 hover:bg-brand/20 text-brand px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap'
     : 'flex items-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-3 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap';
+
+  // ── 사무소 정보 입력 필드 (모달·인라인 공용) — 입력한 항목만 의뢰인 공개 프로필에 노출 ──
+  const officeFields = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="sm:col-span-2">
+        <label className={labelCls} htmlFor="office-address">사무소 주소</label>
+        <input id="office-address" className={inputCls} value={form.officeAddress || ''} onChange={e => updateForm({ officeAddress: e.target.value })} placeholder="예: 서울특별시 서초구 서초대로 000, 0층" />
+      </div>
+      <div>
+        <label className={labelCls} htmlFor="office-phone">대표 전화</label>
+        <input id="office-phone" className={inputCls} value={form.officePhone || ''} onChange={e => updateForm({ officePhone: e.target.value })} placeholder="예: 02-000-0000" inputMode="tel" />
+      </div>
+      <div>
+        <label className={labelCls} htmlFor="office-hours">상담 가능 시간</label>
+        <input id="office-hours" className={inputCls} value={form.officeHours || ''} onChange={e => updateForm({ officeHours: e.target.value })} placeholder="예: 평일 09:00~18:00" />
+      </div>
+      <div>
+        <label className={labelCls} htmlFor="office-fee">초기 상담 비용</label>
+        <input id="office-fee" className={inputCls} value={form.consultationFee || ''} onChange={e => updateForm({ consultationFee: e.target.value })} placeholder="예: 첫 상담 무료 / 30분 5만원" />
+      </div>
+      <div>
+        <label className={labelCls} htmlFor="office-directions">오시는 길·주차</label>
+        <input id="office-directions" className={inputCls} value={form.officeDirections || ''} onChange={e => updateForm({ officeDirections: e.target.value })} placeholder="예: 2호선 서초역 1번 출구 도보 3분" />
+      </div>
+    </div>
+  );
 
   // ── 메인 콘텐츠 렌더링 ──
   const renderContent = () => (
@@ -519,6 +543,15 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   />
                 </div>
               </div>
+            </div>
+
+            {/* § 사무소 정보 (공개 프로필 노출) */}
+            <div className={sectionCls}>
+              <h3 className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5">
+                <Globe className="w-4 h-4" />
+                사무소 정보 (공개 프로필)
+              </h3>
+              {officeFields}
             </div>
 
           </div>
@@ -1083,6 +1116,12 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                 <div><label className={labelCls}><span className="flex items-center gap-1"><svg className="w-3 h-3 fill-current text-rose-500" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>유튜브</span></label><input className={inputCls} value={form.youtubeUrl || ''} onChange={e => updateForm({ youtubeUrl: e.target.value })} placeholder="https://youtube.com/..." /></div>
                 <div><label className={labelCls}><span className="flex items-center gap-1"><svg className="w-3 h-3 fill-current text-emerald-500" viewBox="0 0 24 24"><path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>블로그</span></label><input className={inputCls} value={form.blogUrl || ''} onChange={e => updateForm({ blogUrl: e.target.value })} placeholder="https://blog.naver..." /></div>
               </div>
+            </div>
+
+            {/* § 사무소 정보 (공개 프로필 노출) */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><Globe className="w-4 h-4" /> 사무소 정보 (공개 프로필)</h3>
+              {officeFields}
             </div>
           </div>
 
