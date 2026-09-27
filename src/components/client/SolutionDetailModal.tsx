@@ -34,7 +34,7 @@ const solutions: Record<SolutionType, {
     title: '개인회생',
     summary: '정기적 소득이 있는 분이 법원에 신청하는 채무조정 절차입니다. 3~5년간 일정 금액을 변제하면 나머지 채무가 면책될 수 있습니다.',
     keyPoints: [
-      '무담보 5억, 담보 10억 이하 채무 대상',
+      '무담보 10억, 담보 15억 이하 채무 대상 (채무자회생법 제579조)',
       '매월 일정액 변제 → 나머지 면책 가능',
       '재산을 유지하면서 진행 가능',
     ],
@@ -109,6 +109,7 @@ export default function SolutionDetailModal({
         <div className="relative p-5 bg-[#0F2440] text-white">
           <button
             onClick={onClose}
+            aria-label="닫기"
             className="absolute top-4 right-4 p-2 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />

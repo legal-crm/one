@@ -77,12 +77,19 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
           </div>
 
           {/* 법적 면책 요약 */}
-          <div className="mt-6 pt-5 border-t border-white/5 space-y-2 text-xs text-slate-500 leading-relaxed">
+          <div className="mt-6 pt-5 border-t border-white/5 space-y-2 text-xs text-slate-400 leading-relaxed">
             <p>
               본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다. 플랫폼은 통신판매중개자로서 통신판매의 당사자가 아니며, 변호사회원이 제공하는 법률 서비스의 내용과 질에 대해 법적 책임을 부담하지 않습니다.
             </p>
             <p>
               플랫폼은 변호사법 제34조에 의거 변호사 알선료·수수료 수취를 금지하는 구조를 채택하고 있으며, 광고비는 정액제로 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
+            </p>
+            <p>
+              공적 상담기관: 신용회복위원회{' '}
+              <a href="tel:1600-5500" className="font-semibold text-slate-300 hover:text-white underline-offset-2 hover:underline">1600-5500</a>
+              <span className="mx-1.5 text-slate-500" aria-hidden="true">·</span>
+              대한법률구조공단{' '}
+              <a href="tel:132" className="font-semibold text-slate-300 hover:text-white underline-offset-2 hover:underline">132</a>
             </p>
           </div>
         </div>
@@ -120,7 +127,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
           </div>
 
           {/* 저작권 */}
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-400 font-medium">
             &copy; 2026 {platformConfig.companyName || 'my김변'}. All rights reserved.
           </p>
         </div>

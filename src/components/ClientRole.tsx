@@ -62,6 +62,14 @@ const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModa
 const RehabCompanionView = React.lazy(() => import('./client/companion/RehabCompanionView'));
 import TabErrorBoundary from './common/TabErrorBoundary';
 
+// SolutionDetailModal의 SolutionType 키와 1:1 매칭되는 진입 카테고리 라벨
+const SOLUTION_LABELS: Record<SolutionType, string> = {
+  rehab: '개인회생',
+  bankruptcy: '개인파산',
+  credit: '신용회복',
+  representation: '채무자대리',
+  tax: '세금체납',
+};
 
 interface RemedyPreset {
   jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
@@ -2310,7 +2318,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       setRequestStep(1);
                       setActiveTab('request');
                     }}
-                    className="w-full sm:w-auto bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
+                    className="w-full sm:w-auto min-h-[44px] whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-xl transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base active:scale-[0.98]"
                   >
                     <span>내 채무 상황 체크하기</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -2624,7 +2632,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </div>
                   <div className="space-y-1">
                     <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">100<span className="text-base font-bold text-slate-400">%</span></p>
-                    <p className="text-xs sm:text-sm text-slate-400 font-medium">철저한 익명 상담 보장</p>
+                    <p className="text-xs sm:text-sm text-slate-400 font-medium">익명 상담 (스텔스 가명)</p>
                   </div>
                 </div>
                 {/* <!-- mock: 위 수치는 서비스 예시 데이터입니다 --> */}
@@ -2640,7 +2648,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="text-center space-y-2.5 md:space-y-3 mb-10 md:mb-14">
                   <div className="inline-flex items-center gap-2 bg-[#EEF4FA] border border-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-4 py-1.5 rounded-full">
                     <HeartHandshake className="w-4 h-4" />
-                    <span>STEP 1 · 관심 있는 채무 상황 알아보기</span>
+                    <span>상황별 채무 정보</span>
                   </div>
                   <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight">
                     관심 있는 채무 상황을 선택해 주세요
@@ -2653,10 +2661,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 {/* 아이콘 메뉴 그리드 */}
                 <div className="grid grid-cols-4 gap-x-4 gap-y-8 md:gap-x-8 md:gap-y-10">
                   {Object.values(remedyData).map((item) => (
-                    <div
+                    <button
+                      type="button"
                       key={item.id}
                       onClick={() => handleCategoryClick(item.id)}
-                      className="flex flex-col items-center gap-2.5 md:gap-3 cursor-pointer group"
+                      className="flex flex-col items-center gap-2.5 md:gap-3 cursor-pointer group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A5F] focus-visible:ring-offset-2"
                     >
                       <div className="w-14 h-14 md:w-[76px] md:h-[76px] rounded-full bg-[#F1F5F9] group-hover:bg-[#E2E8F0] flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
                         {renderRemedyIcon(item.iconName, 'w-6 h-6 md:w-8 md:h-8 text-[#475569] stroke-[1.5]')}
@@ -2664,7 +2673,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       <span className="text-sm md:text-base font-bold text-[#334155] group-hover:text-[#0f172a] text-center leading-tight transition-colors">
                         {item.title}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
 
@@ -2713,7 +2722,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         <div>
                           <button
                             onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                            className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-xs md:text-base transition-all shadow-md hover:shadow-lg cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] whitespace-nowrap bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-base transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-[0.98]"
                           >
                             <span>프로필 보기 →</span>
                           </button>
@@ -2735,12 +2744,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => setShowcasePage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
+                            aria-label="이전 광고"
                             className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
                             <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                           </button>
                           <button
                             onClick={() => setShowcasePage((prev) => (prev + 1) % totalPages)}
+                            aria-label="다음 광고"
                             className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
                             <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
@@ -2848,8 +2859,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div key={`${setIdx}-${rev.id}`} className="w-[330px] sm:w-[370px] shrink-0">
                               <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
                                 <div className="space-y-3 text-left">
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
+                                  <div className="flex items-center gap-1.5 mb-2" aria-label={`별점 ${rev.rating ?? 5}점 (5점 만점)`}>
+                                    {/* 실제 후기 별점 반영 (미입력 시 5점) */}
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                      <Star
+                                        key={i}
+                                        aria-hidden="true"
+                                        className={`w-4 h-4 ${i <= (rev.rating ?? 5) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
+                                      />
+                                    ))}
                                     <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
                                   </div>
                                   <h4 className="font-bold text-base text-slate-900 leading-snug line-clamp-1">
@@ -2911,8 +2929,17 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       >
                         {/* Header */}
                         <div
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={isOpen}
                           onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
-                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setOpenedQaId(isOpen ? null : qa.id);
+                            }
+                          }}
+                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E3A5F]"
                         >
                           <div className="space-y-2 text-left">
                             <div className="flex items-center gap-2.5">
@@ -2966,9 +2993,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   setRequestStep(3); // Go directly to submit step
                                   setActiveTab('request');
                                 }}
-                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer"
+                                className="min-h-[44px] whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer active:scale-[0.98]"
                               >
-                                이 변호사에게 유사건 즉시 상담 신청
+                                비슷한 사례로 상담 신청
                               </button>
                             </div>
                           </div>
@@ -2985,9 +3012,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setActiveTab('qna');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm sm:text-base transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-7 py-4 whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm sm:text-base transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
                 >
-                  <span>⚖️ 실시간 고민 해결 상담사례 전체보기 (더보기)</span>
+                  <span>⚖️ 상담사례 전체보기</span>
                   <span className="transition-transform group-hover:translate-x-1">→</span>
                 </button>
               </div>
@@ -3021,7 +3048,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       { q: '변호사 상담 비용은 얼마인가요?', a: '플랫폼 내 상담 요청 및 제안서 수신 과정에서 의뢰인에게 별도 플랫폼 이용료는 없습니다. 정식 선임 시 발생하는 비용은 각 변호사가 개별 안내하며, 사전에 투명하게 비용을 확인한 뒤 결정하실 수 있습니다.' },
                       { q: '이미 다른 곳에서 상담을 받은 적이 있는데, 다시 이용해도 되나요?', a: '물론입니다. 기존 상담 내역과 관계없이 새롭게 채무 상황을 체크하고, 다른 변호사의 의견을 비교해 보실 수 있습니다.' },
                       { q: '채무가 소액이어도 이용할 수 있나요?', a: '네, 채무 금액에 상관없이 이용 가능합니다. 소액 채무의 경우에도 채무조정, 신용회복 등 확인할 수 있는 관련 제도 정보를 안내합니다.' },
-                      { q: '상담 내용이 가족이나 직장에 알려질 수 있나요?', a: '절대 알려지지 않습니다. 모든 상담은 스텔스 가명과 암호화된 채널을 통해 진행되며, 제3자에게 정보가 전달되는 일은 없습니다.' },
+                      { q: '상담 내용이 가족이나 직장에 알려질 수 있나요?', a: '플랫폼은 가족이나 직장에 상담 사실을 알리지 않습니다. 상담은 스텔스 가명과 암호화된 채널로 진행되며, 개인정보는 본인 동의 또는 법령에 근거한 경우에만 제공됩니다. 다만 법원 절차가 시작되면 법령에 따라 채권자 등에게 송달이 이루어질 수 있으므로, 구체적인 사항은 담당 변호사와 상의하시기 바랍니다.' },
                       { q: '서비스 이용 시간에 제한이 있나요?', a: '채무 상황 체크는 24시간 언제든 이용 가능합니다. 변호사 상담의 경우 비실시간 메시지를 남기시면 업무 시간 내에 답변을 받으실 수 있습니다.' },
                       { q: '회원 탈퇴 후 데이터는 어떻게 처리되나요?', a: '회원 탈퇴 시 개인정보 및 상담 기록은 관련 법령에 따른 보관 기간 경과 후 완전히 삭제됩니다. 탈퇴는 마이페이지에서 간편하게 진행할 수 있습니다.' },
                     ];
@@ -3510,7 +3537,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       )}
       {activeSolutionType && (
         <React.Suspense fallback={null}>
-          <SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         </React.Suspense>
       )}
       {selectedArticle && (
