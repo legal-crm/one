@@ -5,7 +5,7 @@
  * 
  * - 수식어 50개 × 명사 80개 = 4,000 기본 조합
  * - Tier 0: 숫자 없음 (4,000명)
- * - Tier 1: 2자리 (328,000명)
+ * - Tier 1: 2자리 (4,000 × 81 = 324,000명)
  * - Tier 2: 3자리 (3,568,000명)
  * - Tier 3: 4자리 (36,448,000명)
  * 
@@ -101,8 +101,27 @@ const VALID_3DIGIT = buildValidNumbers(100, 999);  // ~891개
 
 // ── 가명 생성 ───────────────────────────────────────────────
 
+/**
+ * 암호학적 난수 기반 균등 선택 (Math.random은 예측 가능하므로 사용하지 않음)
+ * rejection sampling으로 modulo bias 제거
+ */
+function secureRandomIndex(length: number): number {
+  const cryptoObj = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (!cryptoObj?.getRandomValues) {
+    // 비브라우저/구형 환경 fallback
+    return Math.floor(Math.random() * length);
+  }
+  const maxUint = 0x100000000;
+  const limit = maxUint - (maxUint % length);
+  const buf = new Uint32Array(1);
+  do {
+    cryptoObj.getRandomValues(buf);
+  } while (buf[0] >= limit);
+  return buf[0] % length;
+}
+
 function randomItem<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[secureRandomIndex(arr.length)];
 }
 
 /**
@@ -112,19 +131,24 @@ function randomItem<T>(arr: readonly T[]): T {
  * - DB 연동 시 Tier 0(숫자 없음)부터 시작하여 자동 스케일링 가능
  * - 현재는 클라이언트 단독 생성이므로 Tier 1을 기본값으로 사용
  * 
- * @returns 생성된 가명 문자열 (예: "파란고래_42")
+ * 포맷: "수식어 명사 숫자" (예: "용감한 고래 42")
+ * - 밑줄(_)은 사용하지 않는다: 변호사 화면의 `clientName.split('_')` 실명/가명 분리 로직과 충돌
+ * - 2자리 조합 공간은 약 32만 개이므로 DB 저장 시 UNIQUE 제약으로 중복 검증 필요
+ *
+ * @returns 생성된 가명 문자열 (예: "용감한 고래 42")
  */
-export function generateAlias(): string {
+export function generateAlias(options: { digits?: 2 | 3 } = {}): string {
   const modifier = randomItem(MODIFIERS);
   const noun = randomItem(NOUNS);
-  const suffix = randomItem(VALID_2DIGIT);
+  // 중복이 반복되면 3자리(Tier 2, 약 356만 조합)로 확장
+  const suffix = randomItem(options.digits === 3 ? VALID_3DIGIT : VALID_2DIGIT);
 
-  return `${modifier}${noun}_${suffix}`;
+  return `${modifier} ${noun} ${suffix}`;
 }
 
 /**
  * 가명 생성 예시를 반환합니다. (placeholder용)
  */
 export function getAliasExample(): string {
-  return '파란고래_42';
+  return '용감한 고래 42';
 }

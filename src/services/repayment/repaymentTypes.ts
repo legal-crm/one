@@ -397,7 +397,7 @@ export interface RepaymentPlanData {
   debtGrowthNarrative?: string;      // 채무 증대 사유에 관한 상세 서술
   
   // 청산가치 보장 및 라이프니쯔 현가 검증 결과
-  leibnizFactor: number;             // 적용된 라이프니쯔 현가 계수 (36개월: 33.7719, 60개월: 53.6433)
+  leibnizFactor: number;             // 적용된 라이프니쯔 현가 계수 (36개월: 33.3657, 60개월: 52.9907)
   presentValue: number;              // 라이프니쯔 현재가치 (L = H * 계수)
   satisfiesLiquidationGuarantee: boolean; // L >= J 보장 여부
   

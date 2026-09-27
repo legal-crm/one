@@ -1091,8 +1091,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Check className="w-4 h-4" />
                       </div>
                       <div>
-                        <h5 className="text-xs font-bold text-slate-900">기각 시 100% 환불 특약</h5>
-                        <p className="text-[11px] text-slate-500 mt-0.5">귀책 없는 기각 시 수임료 전액 환불 안심 보증</p>
+                        <h5 className="text-xs font-bold text-slate-900">환불 기준 사전 명시</h5>
+                        <p className="text-[11px] text-slate-500 mt-0.5">기각·중도 해지 시 환불 조건을 위임계약서에 미리 기재</p>
                       </div>
                     </div>
                   </div>
@@ -1311,8 +1311,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Check className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">기각 시 100% 환불 보증</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5">귀책 없는 기각 시 수임료 전액 환불 특약 적용</p>
+                        <h4 className="text-xs font-bold text-slate-900">환불 기준 사전 명시</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">기각·중도 해지 시 환불 조건을 위임계약서에 미리 기재</p>
                       </div>
                     </div>
                   </div>

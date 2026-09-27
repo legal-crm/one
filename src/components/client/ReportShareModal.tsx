@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Share2, Shield, ArrowRight, MessageSquare, Check } from 'lucide-react';
-import { encryptReport } from '../../utils';
+import { toast } from 'sonner';
+import { createSharedReport, SHARE_MAX_ATTEMPTS } from '../../services/sharedReportService';
 import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 
 interface ReportShareModalProps {
@@ -15,16 +16,17 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
     const [step, setStep] = useState<'setup' | 'result'>('setup');
     const [shareUrl, setShareUrl] = useState('');
     const [copied, setCopied] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
 
     if (!isOpen) return null;
 
     const handleGenerateLink = async () => {
         if (pin.length !== 6 || isNaN(Number(pin))) {
-            alert('비밀번호 숫자 6자리를 정확히 입력해 주세요.');
+            toast.error('비밀번호 숫자 6자리를 정확히 입력해 주세요.');
             return;
         }
         
-        // 민감 정보 제거 후 압축 전송
+        // 식별 정보(이름·주소)는 공유 링크에 포함하지 않음 — 링크 유출 시 개인 식별 방지
         const payload = JSON.stringify({
             result: {
                 status: result.status,
@@ -40,8 +42,6 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                 preferred: (result as any).preferred
             },
             userInput: {
-                name: userInput.name,
-                address: userInput.address,
                 age: userInput.age,
                 monthlyIncome: userInput.monthlyIncome,
                 totalDebt: userInput.totalDebt,
@@ -57,12 +57,18 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
             }
         });
 
-        const encrypted = await encryptReport(payload, pin);
-        const origin = window.location.origin + window.location.pathname;
-        const url = `${origin}?share=${encrypted}`;
-        
-        setShareUrl(url);
-        setStep('result');
+        try {
+            setIsCreating(true);
+            // 암호문은 서버에만 보관, 링크에는 무작위 ID만 포함 (PIN 5회 오입력 시 잠금)
+            const shareId = await createSharedReport(payload, pin);
+            const origin = window.location.origin + window.location.pathname;
+            setShareUrl(`${origin}#share=${shareId}`);
+            setStep('result');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : '공유 링크를 만들지 못했습니다.');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const handleCopy = () => {
@@ -72,7 +78,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
     };
 
     const handleSMS = () => {
-        const text = `[로이 법률 CRM] 안전하게 보호된 채무 진단 보고서가 도착했습니다.\n\n비밀번호(6자리)를 입력하고 확인해보세요!\n보고서 링크: ${shareUrl}`;
+        const text = `[my김변] 비밀번호로 보호된 채무 진단 보고서입니다.\n\n비밀번호(6자리)는 보안을 위해 별도로 전달받아 입력해 주세요.\n보고서 링크: ${shareUrl}`;
         window.open(`sms:?body=${encodeURIComponent(text)}`);
     };
 
@@ -80,7 +86,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: '로이 법률 CRM 채무 진단 보고서',
+                    title: 'my김변 채무 진단 보고서',
                     text: '비밀번호로 보호된 채무 진단 보고서입니다.',
                     url: shareUrl
                 });
@@ -89,7 +95,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
             }
         } else {
             handleCopy();
-            alert('기기 자체 공유가 지원되지 않아 링크가 클립보드에 복사되었습니다.');
+            toast.success('기기 공유가 지원되지 않아 링크를 클립보드에 복사했습니다.');
         }
     };
 
@@ -134,10 +140,10 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
 
                             <button
                                 onClick={handleGenerateLink}
-                                disabled={pin.length !== 6}
+                                disabled={pin.length !== 6 || isCreating}
                                 className="w-full py-3 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1"
                             >
-                                <span>안전 링크 생성하기</span>
+                                <span>{isCreating ? '링크 생성 중...' : '안전 링크 생성하기'}</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                         </>
@@ -149,8 +155,8 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                             <div className="space-y-1.5 w-full">
                                 <h4 className="font-extrabold text-base">보안 공유 링크 생성 완료</h4>
                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    설정하신 비밀번호 <strong className="text-emerald-500">[{pin}]</strong> 와 함께<br />
-                                    아래의 보안 공유 링크를 전달해 주세요.
+                                    설정하신 비밀번호 <strong className="text-emerald-600">[{pin}]</strong> 는 링크와 <strong>다른 경로</strong>로 전달해 주세요.<br />
+                                    비밀번호를 {SHARE_MAX_ATTEMPTS}회 잘못 입력하면 링크가 잠기며, 7일 후 자동 만료됩니다.
                                 </p>
                             </div>
 

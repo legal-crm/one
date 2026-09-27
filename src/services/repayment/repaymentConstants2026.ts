@@ -152,40 +152,25 @@ export const HOUSING_EXEMPT_DEPOSIT_LIMITS: Record<RegionType, { maxDeposit: num
 };
 
 // ==============================================================================
-// 5. 라이프니쯔(Leibniz) 연 5% 복리할인 현가 계수 (선적립 3개월 기준)
+// 5. 라이프니쯔(Leibniz) 연 5% 복리할인 현가 계수 — 플랫폼 단일 표준
 // ==============================================================================
-// 36개월: 3개월(선적립) + 30.7719(33개월 현가) = 33.7719
-export const LEIBNIZ_FACTOR_36 = 33.7719;
+// 월 5/12% 복리 연금현가: Σ(k=1..M) 1/(1+r)^k = (1 - (1+r)^-M) / r
+// 36개월 = 33.3657 / 60개월 = 52.9907
+// (기존 '선적립 3개월' 방식 33.7719·53.6433은 2026-09 단일화 결정으로 폐기 — rehabLegalCore.ts 참고)
+export const LEIBNIZ_MONTHLY_RATE = 0.05 / 12;
 
-// 60개월: 3개월(선적립) + 50.6433(57개월 현가) = 53.6433
-export const LEIBNIZ_FACTOR_60 = 53.6433;
-
-/**
- * 임의 개월수(24개월 ~ 60개월)의 라이프니쯔 현가 계수 맵 (특례 및 연장 지원)
- */
-export const LEIBNIZ_FACTORS: Record<number, number> = {
-  12: 11.7788,
-  18: 17.3826,
-  24: 22.8421,
-  30: 28.1610,
-  36: 33.7719,
-  48: 44.0321,
-  60: 53.6433,
-};
-
-/**
- * 임의 개월수(12~60개월)에 대한 법원 표준 라이프니쯔 연 5% 복리할인 현가 계수 산출
- * (선적립 3개월 3.0 + 잔여 (M-3)개월 복리현가)
- */
+/** 임의 개월수에 대한 라이프니쯔 현가 계수 (소수 4자리 반올림) */
 export function getLeibnizFactor(months: number): number {
   if (months <= 0) return 0;
-  if (months <= 3) return months;
-  if (LEIBNIZ_FACTORS[months]) {
-    return LEIBNIZ_FACTORS[months];
-  }
-  const monthlyRate = 0.05 / 12;
-  const discountMonths = months - 3;
-  const discountedFactor = (1 - Math.pow(1 + monthlyRate, -discountMonths)) / monthlyRate;
-  const totalFactor = 3 + discountedFactor;
-  return Math.round(totalFactor * 10000) / 10000;
+  const r = LEIBNIZ_MONTHLY_RATE;
+  const factor = (1 - Math.pow(1 + r, -months)) / r;
+  return Math.round(factor * 10000) / 10000;
 }
+
+export const LEIBNIZ_FACTOR_36 = getLeibnizFactor(36); // 33.3657
+export const LEIBNIZ_FACTOR_60 = getLeibnizFactor(60); // 52.9907
+
+/** 주요 개월수 계수 표 (화면 표시용, 모두 동일 공식에서 산출) */
+export const LEIBNIZ_FACTORS: Record<number, number> = Object.fromEntries(
+  [12, 18, 24, 30, 36, 48, 60].map(m => [m, getLeibnizFactor(m)])
+) as Record<number, number>;

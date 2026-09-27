@@ -10,6 +10,8 @@ interface MySettingsViewProps {
   isLoggedIn: boolean;
   userAlias: string;
   setUserAlias: (alias: string) => void;
+  /** 중복 검사 후 가명 변경 (true = 반영됨). 미제공 시 기존 방식으로 저장 */
+  onChangeAlias?: (alias: string) => Promise<boolean>;
   isEditingAlias: boolean;
   setIsEditingAlias: (v: boolean) => void;
   tempAlias: string;
@@ -24,6 +26,7 @@ export default function MySettingsView({
   isLoggedIn,
   userAlias,
   setUserAlias,
+  onChangeAlias,
   isEditingAlias,
   setIsEditingAlias,
   tempAlias,
@@ -124,9 +127,13 @@ export default function MySettingsView({
                     <span className="text-xs text-slate-500 font-bold block">스텔스 가명 (채팅 발신 명칭)</span>
                     {isEditingAlias ? (
                       <form
-                        onSubmit={(e) => {
+                        onSubmit={async (e) => {
                           e.preventDefault();
-                          if (tempAlias.trim()) {
+                          if (tempAlias.trim() && onChangeAlias) {
+                            // 서버 중복 검사 통과 시에만 반영, 실패 시 편집 상태 유지
+                            const ok = await onChangeAlias(tempAlias.trim());
+                            if (!ok) return;
+                          } else if (tempAlias.trim()) {
                             setUserAlias(tempAlias.trim());
                             supabase.auth.updateUser({
                               data: { alias: tempAlias.trim() }
@@ -141,7 +148,7 @@ export default function MySettingsView({
                           value={tempAlias}
                           onChange={(e) => setTempAlias(e.target.value)}
                           className="bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-base font-bold focus:ring-1 focus:ring-brand focus:outline-none w-44 text-slate-800 dark:text-white"
-                          maxLength={12}
+                          maxLength={20}
                           autoFocus
                         />
                         <button type="submit" className="p-2 bg-brand text-white rounded-lg hover:bg-brand-hover cursor-pointer" title="저장">

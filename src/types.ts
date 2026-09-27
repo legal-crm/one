@@ -1080,6 +1080,7 @@ export interface ConsultRequest {
   stealthNickname?: string;               // 스텔스 가명 (예: "다시한번44", "은빛수달_59")
   realClientName?: string;                // 실제 고객 실명 (고객 동의 시 공개)
   contactDisclosureStatus?: ContactDisclosureStatus; // 연락처 공개 상태
+  createdByLawyerId?: string;             // 변호사가 직접 등록한 외부 의뢰인 요청 (DB: created_by_lawyer_id)
   contactSharedAt?: string;               // 연락처 제공 동의 일시
   phoneMasked?: boolean;                  // 전화번호 마스킹 여부
   name?: string;

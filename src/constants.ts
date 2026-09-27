@@ -137,11 +137,9 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             incrementOver7 = Math.round(999233 * futureMultiplier);
         }
 
+        // 소액임차보증금 최우선변제 기준은 주택임대차보호법 시행령 고정 금액(물가 연동 아님)
+        // → 시행령 개정 전까지 연도별 인상 적용 금지 (기존: ×1.035 인플레이션으로 2026 서울 1억7080만/5690만 오산출)
         const newDepositRules: Record<RegionKey, DepositRule> = JSON.parse(JSON.stringify(baseDepositRules));
-        for (const key in newDepositRules) {
-            newDepositRules[key as RegionKey].limit = Math.round(baseDepositRules[key as RegionKey].limit * multiplier / 100000) * 100000;
-            newDepositRules[key as RegionKey].deduct = Math.round(baseDepositRules[key as RegionKey].deduct * multiplier / 100000) * 100000;
-        }
 
         // 주거비 한도: 2025/2026은 확정 데이터, 2027+ 미확정(0원)
         let newHousingLimits: Record<RegionKey, Record<number, HousingCostRule>>;
@@ -154,10 +152,8 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             newHousingLimits = JSON.parse(JSON.stringify(emptyHousingLimits));
         }
 
-        const newAssetExemptions = { 
-            deposit: Math.round(baseAssetExemptions.deposit * multiplier), 
-            insurance: Math.round(baseAssetExemptions.insurance * multiplier) 
-        };
+        // 압류금지 예금(185만)·보장성보험(150만)은 민사집행법 시행령 고정 금액 → 연도별 인상 적용 금지
+        const newAssetExemptions = { ...baseAssetExemptions };
 
         // 교육비 및 의료비: 2025/2026 확정 데이터, 2027+ 미확정(0원)
         let newEducationCost = { ...emptyEducationCost };
@@ -187,8 +183,9 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
         const newAdultChildCriteria = { 
             minAge: baseAdultChildCriteria.minAge, 
             maxAge: baseAdultChildCriteria.maxAge, 
-            incomeLimit: Math.round(baseAdultChildCriteria.incomeLimit * multiplier), 
-            grossIncomeLimit: Math.round(baseAdultChildCriteria.grossIncomeLimit * multiplier) 
+            // 부양가족 소득 기준(연 100만/총급여 500만)은 소득세법 기본공제 요건 고정 금액 → 인상 적용 금지
+            incomeLimit: baseAdultChildCriteria.incomeLimit, 
+            grossIncomeLimit: baseAdultChildCriteria.grossIncomeLimit 
         };
 
         policies[year] = {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
@@ -13,6 +13,7 @@ import { CustomerIntake } from './CustomerIntake';
 import { migrateAnonymousRequests } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
 import { generateAlias } from '../utils/generateAlias';
+import { ensureUniqueAlias, claimAlias } from '../services/aliasService';
 const AIRehabChatbotV2 = React.lazy(() => import('../rehab-chatbot-package/components/rehab/AIRehabChatbotV2'));
 import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
@@ -61,6 +62,10 @@ import type { SolutionType } from './client/SolutionDetailModal';
 const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
 const RehabCompanionView = React.lazy(() => import('./client/companion/RehabCompanionView'));
 import TabErrorBoundary from './common/TabErrorBoundary';
+import ServiceGuideSection, { TrustFactsBar } from './client/landing/ServiceGuideSection';
+
+// 의뢰인이 한 번에 상담 요청할 수 있는 변호사 수 (LawyersView 선택 한도 + 랜딩 안내 문구 공용)
+const LAWYER_MAX_SELECTIONS = 3;
 
 // SolutionDetailModal의 SolutionType 키와 1:1 매칭되는 진입 카테고리 라벨
 const SOLUTION_LABELS: Record<SolutionType, string> = {
@@ -1112,8 +1117,18 @@ export default function ClientRole({
         }
         setIsLoggedIn(true);
         touchClientActivity();
-        const metaAlias = session.user.user_metadata?.alias || generateAlias();
+        const existingAlias = session.user.user_metadata?.alias as string | undefined;
+        const metaAlias = existingAlias || generateAlias();
         setUserAlias(metaAlias);
+        // 서버에서 가명 유일성 확보 (타인과 중복 시 재발급) 후, 신규/변경 가명은 계정에 저장
+        ensureUniqueAlias(metaAlias).then(({ alias, changed }) => {
+          if (changed) setUserAlias(alias);
+          if (changed || !existingAlias) {
+            supabase.auth.updateUser({ data: { alias } }).catch((err) => {
+              console.warn('[alias] 가명 저장 실패:', err);
+            });
+          }
+        }).catch(() => {});
         recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
         
         // OAuth 리다이렉트 직후이면 chat 탭으로 이동
@@ -2006,9 +2021,32 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
   // Real Supabase and Fallback Auth Handlers
 
-  const handleRegenAlias = () => {
-    const generatedAlias = generateAlias();
-    setUserAlias(generatedAlias);
+  const handleRegenAlias = async () => {
+    if (!isLoggedIn) {
+      // 가입 전: 후보만 보여주고, 로그인 세션 수립 시 서버에서 유일성 확보
+      setUserAlias(generateAlias());
+      return;
+    }
+    const { alias } = await ensureUniqueAlias();
+    setUserAlias(alias);
+    supabase.auth.updateUser({ data: { alias } }).catch(() => {});
+  };
+
+  // 마이페이지에서 가명 직접 변경 시 중복 검사 (true = 사용 가능하여 반영됨)
+  const handleChangeAlias = async (nextAlias: string): Promise<boolean> => {
+    const alias = nextAlias.trim();
+    const res = await claimAlias(alias);
+    if (res === 'taken') {
+      toast.error('이미 다른 회원이 사용 중인 가명입니다. 다른 가명을 입력해 주세요.');
+      return false;
+    }
+    if (res === 'invalid') {
+      toast.error('가명은 2~20자이며 밑줄(_)은 사용할 수 없습니다.');
+      return false;
+    }
+    setUserAlias(alias);
+    supabase.auth.updateUser({ data: { alias } }).catch(() => {});
+    return true;
   };
 
   // Helper values
@@ -2359,285 +2397,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </div>
             </section>
 
-            {/* ── Sector 2: my김변 이용안내 (Large Visual Guide) ─────────────────── */}
+            {/* -- Sector 2: service guide (4-step interactive stepper) -- */}
+            <ServiceGuideSection
+              maxLawyerSelections={LAWYER_MAX_SELECTIONS}
+              onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
+              onBrowseLawyers={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            />
 
-            {/* 이용안내 헤더 배너 */}
-            <section className="w-full bg-[#0D9488] py-5">
-              <div className="max-w-5xl mx-auto px-4 text-center">
-                <p className="text-white font-extrabold text-lg md:text-xl tracking-tight">✔ my김변 이용안내</p>
-                <p className="text-white/80 text-sm font-medium mt-1">채무 정리부터 변호사 상담까지, 단 4단계로 완료됩니다</p>
-              </div>
-            </section>
-
-            {/* STEP 1: 1분 익명 채무 체크 */}
-            <section className="w-full py-16 md:py-24 bg-white border-b border-slate-100">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  {/* 좌측: 텍스트 */}
-                  <div className="space-y-5 text-left">
-                    <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">01</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">이름 없이 1분이면<br />충분합니다</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 상담을 요청할 수 있습니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4.5 h-4.5" />실명 불필요</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4.5 h-4.5" />1분 소요</span>
-                    </div>
-                    <button
-                      onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
-                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
-                    >
-                      지금 바로 체크하기 →
-                    </button>
-                  </div>
-                  {/* 우측: 스마트폰 목업 (잘린 화면 스타일) */}
-                  <div className="flex justify-center">
-                    <div className="w-[300px] sm:w-[340px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-                      <div className="bg-[#F8FAFC] p-3.5 space-y-3">
-                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-7 h-7 bg-[#7264FF] rounded-lg flex items-center justify-center text-white text-xs font-bold">김</div>
-                            <span className="text-xs sm:text-sm font-bold text-slate-700">my김변 AI</span>
-                          </div>
-                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">안녕하세요! 채무 현황을 정리해 드리겠습니다. 현재 총 채무 금액은 얼마인가요?</p>
-                        </div>
-                        <div className="flex justify-end">
-                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
-                            <p className="text-xs sm:text-sm text-white font-medium">5,000만원 정도입니다</p>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
-                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">확인했습니다. 월 소득은 얼마인가요? (세후 기준)</p>
-                        </div>
-                        <div className="flex justify-end">
-                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
-                            <p className="text-xs sm:text-sm text-white font-medium">230만원입니다</p>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
-                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">부양가족은 몇 명인가요?</p>
-                        </div>
-                        <div className="mt-2 flex gap-2">
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-400">입력해 주세요...</div>
-                          <div className="w-8 h-8 bg-[#7264FF] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* STEP 2: 다수 변호사 선택 & 한번에 상담 요청 */}
-            <section className="w-full py-16 md:py-24 bg-[#F8FAFC] border-b border-slate-100">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  {/* 좌측: 변호사 선택 목업 (lg에서 좌측) */}
-                  <div className="order-2 lg:order-1 flex justify-center">
-                    <div className="w-full max-w-[380px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
-                      <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
-                        <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4.5 h-4.5 text-white" /></div>
-                        <div>
-                          <p className="text-white font-bold text-base">변호사 선택하기</p>
-                          <p className="text-white/70 text-xs">원하는 변호사를 골라 한번에 요청</p>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-2.5">
-                        {/* <!-- mock --> */}
-                        {[
-                          { name: '김도현', specialty: '개인회생 전문', cases: '회생 350건+', checked: true, color: 'bg-[#1E3A5F]' },
-                          { name: '박서연', specialty: '파산·면책 전문', cases: '파산 280건+', checked: true, color: 'bg-[#0D9488]' },
-                          { name: '이정훈', specialty: '채무조정 전문', cases: '조정 200건+', checked: false, color: 'bg-[#3B82F6]' },
-                          { name: '최민지', specialty: '개인회생 전문', cases: '회생 310건+', checked: true, color: 'bg-[#7C3AED]' },
-                        ].map((lawyer, idx) => (
-                          <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-default ${lawyer.checked ? 'border-[#1E3A5F]/30 bg-[#EEF4FA]' : 'border-slate-200 bg-white'}`}>
-                            <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 ${lawyer.checked ? 'border-[#1E3A5F] bg-[#1E3A5F]' : 'border-slate-300'}`}>
-                              {lawyer.checked && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                            <div className={`w-9 h-9 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-base text-slate-900">{lawyer.name} 변호사</p>
-                              <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.cases}</p>
-                            </div>
-                            <span className="text-xs font-bold text-amber-500 shrink-0">★ 4.9</span>
-                          </div>
-                        ))}
-                        <div className="pt-2">
-                          <div className="flex items-center justify-between px-1 pb-2">
-                            <span className="text-sm font-bold text-[#1E3A5F]"><CheckCircle className="w-4 h-4 inline mr-1" />3명 선택됨</span>
-                            <span className="text-xs text-slate-400">최대 5명까지 선택 가능</span>
-                          </div>
-                          <div className="bg-[#1E3A5F] text-white text-center py-3.5 rounded-xl text-base font-bold cursor-default flex items-center justify-center gap-2">
-                            <Send className="w-4.5 h-4.5" />선택한 변호사에게 한번에 요청
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* 우측: 텍스트 (lg에서 우측) */}
-                  <div className="order-1 lg:order-2 space-y-5 text-left">
-                    <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">나에게 맞는 변호사를 골라<br />한번에 상담을 요청하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 변호사를 선택할 수 있습니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4.5 h-4.5" />다수 변호사 동시 선택</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4.5 h-4.5" />한번에 상담 요청</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ClipboardCheck className="w-4.5 h-4.5" />답변 비교 후 선택</span>
-                    </div>
-                    <button
-                      onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
-                    >
-                      변호사 둘러보기 →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* STEP 3: 전문 변호사 비교 & 선택 */}
-            <section className="w-full py-16 md:py-24 bg-white border-b border-slate-100">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  {/* 좌측: 텍스트 */}
-                  <div className="space-y-5 text-left">
-                    <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 변호사의 답변을<br />직접 비교하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 변호사를 선택하세요.</p>
-                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4.5 h-4.5" />여러 변호사 답변 비교</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4.5 h-4.5" />실제 의뢰인 후기</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Heart className="w-4.5 h-4.5" />강요 없는 자율 선택</span>
-                    </div>
-                    <button
-                      onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
-                    >
-                      변호사 프로필 둘러보기 →
-                    </button>
-                  </div>
-                  {/* 우측: 변호사 상담 답변 목업 */}
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-[390px] space-y-3">
-                      <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
-                        <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 변호사 답변 <span className="text-[#0D9488]">3건</span></p>
-                      </div>
-                      {[
-                        { name: '김도현', specialty: '개인회생 전문', answer: '회생 신청이 적합합니다. 현재 소득 대비 채무 비율을 보면 월 38만원 수준의 변제 계획이 가능합니다.', time: '15분 전', color: 'bg-[#1E3A5F]' },
-                        { name: '박서연', specialty: '파산·면책 전문', answer: '파산도 고려해 보실 수 있습니다. 면책 가능성이 높으며, 상세 상담 시 구체적 절차를 안내드리겠습니다.', time: '32분 전', color: 'bg-[#0D9488]' },
-                        { name: '이정훈', specialty: '채무조정 전문', answer: '채무 구조를 보면 회생이 유리합니다. 금지명령을 통해 추심도 즉시 중단할 수 있습니다.', time: '1시간 전', color: 'bg-[#3B82F6]' },
-                      ].map((lawyer, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-base text-slate-900">{lawyer.name} 변호사</p>
-                              <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.time}</p>
-                            </div>
-                            <span className="text-xs font-bold text-amber-500">★ 4.9</span>
-                          </div>
-                          <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3.5">{lawyer.answer}</p>
-                          <div className="flex gap-2">
-                            <button className="flex-1 text-xs font-bold text-[#1E3A5F] bg-[#EEF4FA] py-2.5 rounded-lg cursor-default whitespace-nowrap">프로필 보기</button>
-                            <button className="flex-1 text-xs font-bold text-white bg-[#1E3A5F] py-2.5 rounded-lg cursor-default whitespace-nowrap">상담 시작</button>
-                          </div>
-                        </div>
-                      ))}
-                      {/* <!-- mock --> */}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* STEP 4: 1:1 프라이빗 상담방 */}
-            <section className="w-full py-16 md:py-24 bg-[#F8FAFC] border-b border-slate-200">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  {/* 좌측: 채팅 목업 (lg에서 좌측) */}
-                  <div className="order-2 lg:order-1 flex justify-center">
-                    <div className="w-[300px] sm:w-[340px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-                      <div className="bg-white flex flex-col">
-                        {/* 채팅 헤더 */}
-                        <div className="bg-[#1E3A5F] px-4 py-3.5 flex items-center gap-3">
-                          <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
-                          <div>
-                            <p className="text-white text-sm font-bold">김도현 변호사</p>
-                            <p className="text-white/70 text-xs">프라이빗 상담방</p>
-                          </div>
-                          <div className="ml-auto flex items-center gap-1">
-                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-xs text-emerald-400 font-bold">스텔스 보호중</span>
-                          </div>
-                        </div>
-                        {/* 채팅 내용 */}
-                        <div className="flex-1 p-4 space-y-3.5 bg-[#F1F5F9]">
-                          <div className="flex gap-2.5">
-                            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 shadow-sm">김</div>
-                            <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[80%] shadow-sm">
-                              <p className="text-sm sm:text-base text-slate-800 leading-relaxed font-normal">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
-                            </div>
-                          </div>
-                          <div className="flex justify-end">
-                            <div className="bg-[#1E3A5F] rounded-2xl rounded-br-md px-4 py-3 max-w-[75%] shadow-sm">
-                              <p className="text-sm sm:text-base text-white leading-relaxed font-normal">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2.5">
-                            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 shadow-sm">김</div>
-                            <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[80%] shadow-sm">
-                              <p className="text-sm sm:text-base text-slate-800 leading-relaxed font-normal">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
-                            </div>
-                          </div>
-                        </div>
-                        {/* 입력 영역 */}
-                        <div className="px-3 py-2.5 bg-white border-t border-slate-200 flex gap-2">
-                          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-400">메시지 입력...</div>
-                          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* 우측: 텍스트 (lg에서 우측) */}
-                  <div className="order-1 lg:order-2 space-y-5 text-left">
-                    <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">04</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">가명으로 안전하게<br />1:1 상담을 진행하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 변호사와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4.5 h-4.5" />스텔스 가명 보호</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4.5 h-4.5" />SSL/TLS 암호화</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><MessageSquare className="w-4.5 h-4.5" />실시간 + 비실시간</span>
-                    </div>
-                    <button
-                      onClick={() => { setActiveTab('request'); setRequestType('open'); setRequestStep(1); }}
-                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
-                    >
-                      지금 시작하기 →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ── Trust Stats Bar (풀위드) ─────────────── */}
-            <section className="w-full bg-[#0F2440] border-b border-[#1E3A5F]/30">
-              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">8,400+</p>
-                    <p className="text-xs sm:text-sm text-slate-400 font-medium">누적 이용자 수</p>
-                  </div>
-                  <div className="space-y-1 border-x border-slate-700/50">
-                    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">47<span className="text-base font-bold text-slate-400">초</span></p>
-                    <p className="text-xs sm:text-sm text-slate-400 font-medium">평균 체크 소요시간</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">100<span className="text-base font-bold text-slate-400">%</span></p>
-                    <p className="text-xs sm:text-sm text-slate-400 font-medium">익명 상담 (스텔스 가명)</p>
-                  </div>
-                </div>
-                {/* <!-- mock: 위 수치는 서비스 예시 데이터입니다 --> */}
-              </div>
-            </section>
+            {/* -- Trust Facts Bar (verifiable service facts only) -- */}
+            <TrustFactsBar maxLawyerSelections={LAWYER_MAX_SELECTIONS} />
 
 
 
@@ -3291,6 +3059,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       isLoggedIn={isLoggedIn}
                       userAlias={userAlias}
                       setUserAlias={setUserAlias}
+                      onChangeAlias={handleChangeAlias}
                       isEditingAlias={isEditingAlias}
                       setIsEditingAlias={setIsEditingAlias}
                       tempAlias={tempAlias}
@@ -3440,7 +3209,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} hasCompletedCheck={!!activeResult} onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />)}
+            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={LAWYER_MAX_SELECTIONS} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} hasCompletedCheck={!!activeResult} onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />)}
 
 
 

@@ -17,6 +17,12 @@ import {
     getMedianIncome,
     getRecognizedLivingCost,
 } from '../config/PolicyConfig';
+import {
+    determineRepaymentPlan,
+    checkSpecial24Eligibility,
+    special24FromCondition,
+    type CorePlanStatus,
+} from '../../services/repayment/rehabLegalCore';
 
 // ... (existing code)
 
@@ -121,6 +127,13 @@ export interface RehabCalculationResult {
     // 핵심 수치
     monthlyPayment: number;      // 월 변제금
     repaymentMonths: number;     // 변제 기간 (개월)
+    // 단일 기준 엔진(rehabLegalCore) 판정 근거 (선택)
+    leibnizFactor?: number;      // 적용 라이프니츠 계수 (36개월 33.3657)
+    presentValue?: number;       // 월 변제금 현재가치
+    minimumRepayment?: number;   // 최저변제액 기준
+    priorityRepayment?: number;  // 조세 등 우선채권 변제액
+    planStatus?: CorePlanStatus;
+    planReason?: string;
     totalRepayment: number;      // 총 변제액
     totalDebtReduction: number;  // 총 탕감액
     debtReductionRate: number;   // 탕감율 (%)
@@ -461,88 +474,12 @@ export function calculateRepayment(
         aiAdvice.push(highIncomeAdjustmentMsg);
     }
 
-    let availableIncome = input.monthlyIncome - recognizedLivingCost;
-    let baseLivingCost = recognizedLivingCost; // 초기 인정 생계비 (조정 전)
-    const minAvailableIncome = 100000; // 최소 보장 가용소득 (10만원)
-    let adjustedFamilySize = input.familySize; // 조정된 가구원수 (0.5 단위)
-    let livingCostReductionRate = 0; // 생계비 감액률 (%)
-
-    // 소득이 생계비보다 적거나 가용소득이 너무 적은 경우 (10만원 미만)
-    if (availableIncome < minAvailableIncome) {
-        // [NEW] 1단계: 부양가족 0.5명씩 축소 (최소 1인까지)
-        let foundValidFamilySize = false;
-
-        for (let trySize = input.familySize; trySize >= 1; trySize -= 0.5) {
-            const tryLivingCost = getRecognizedLivingCost(trySize, effectiveConfig);
-            const tryAvailable = input.monthlyIncome - tryLivingCost;
-
-            if (tryAvailable >= minAvailableIncome) {
-                // 이 가구원수로 10만원 확보 가능
-                adjustedFamilySize = trySize;
-                recognizedLivingCost = tryLivingCost;
-                availableIncome = tryAvailable;
-                foundValidFamilySize = true;
-
-                if (trySize < input.familySize) {
-                    const reduction = input.familySize - trySize;
-                    aiAdvice.push(`⚠️ 소득 부족으로 부양가족을 **${reduction}명 축소**(${input.familySize}인→${trySize}인)하여 생계비 ${formatCurrency(recognizedLivingCost)}로 조정했습니다.`);
-                }
-                break;
-            }
-        }
-
-        // 2단계: 1인으로도 부족한 경우 → 생계비 최대 20% 감액
-        if (!foundValidFamilySize) {
-            adjustedFamilySize = 1;
-            const singleLivingCost = getRecognizedLivingCost(1, effectiveConfig);
-            recognizedLivingCost = singleLivingCost;
-            availableIncome = input.monthlyIncome - recognizedLivingCost;
-
-            if (availableIncome < minAvailableIncome) {
-                // 목표 가용소득(10만원)을 맞추기 위한 필요 생계비
-                const targetLivingCost = input.monthlyIncome - minAvailableIncome;
-                const minAllowedLivingCost = Math.floor(singleLivingCost * 0.8); // 최대 20% 삭감 한도
-
-                if (targetLivingCost >= minAllowedLivingCost) {
-                    // 20% 범위 내에서 조정 가능
-                    livingCostReductionRate = Math.round(((singleLivingCost - targetLivingCost) / singleLivingCost) * 100);
-                    recognizedLivingCost = targetLivingCost;
-                    availableIncome = minAvailableIncome; // 10만원으로 맞춤
-
-                    aiAdvice.push(`⚠️ 부양가족을 **1인**(본인만)으로 조정하고, 생계비를 **${livingCostReductionRate}%** 추가 감액하여 최저 가용소득(10만원)을 확보했습니다.`);
-                } else {
-                    // 삭감해도 10만원 확보 불가 → 신청 불가
-                    return {
-                        status: 'IMPOSSIBLE',
-                        statusReason: '생계비를 최대 20%까지 줄여도 월 소득이 너무 적어 개인회생 진행이 불가능합니다.',
-                        monthlyPayment: 0,
-                        currentMonthlyBurden: 0,
-                        repaymentMonths: 0,
-                        totalRepayment: 0,
-                        totalDebtReduction: 0,
-                        debtReductionRate: 0,
-                        baseLivingCost,
-                        additionalLivingCost: 0,
-                        recognizedLivingCost,
-                        availableIncome: 0,
-                        liquidationValue: 0,
-                        exemptDeposit: 0,
-                        courtName,
-                        regionGroup,
-                        courtDescription: courtTrait.description || '',
-                        processingMonths: courtTrait.processingMonths,
-                        aiAdvice: [
-                            '💡 배우자 소득 합산을 통해 가구 소득을 늘려보세요.',
-                            '💡 아르바이트 등 소득을 조금 더 늘려서 월 가용소득 10만원 이상이 되면 진행 가능합니다.',
-                            '💡 소득이 완전히 없는 경우 개인파산 절차를 고려해보세요.'
-                        ],
-                        riskWarnings: ['현재 소득으로는 개인회생 최소 조건(월 변제금 10만원 이상)을 충족하지 못합니다.'],
-                    };
-                }
-            } else {
-                aiAdvice.push(`⚠️ 소득 부족으로 부양가족을 **본인 1인**으로 조정하여 생계비 ${formatCurrency(recognizedLivingCost)}로 계산했습니다.`);
-            }
-        }
+    // [단일 기준] 인정 생계비는 조정하지 않는다 (rehabLegalCore / 법원 정밀 엔진과 동일).
+    // 기존의 "부양가족 축소 · 생계비 20% 감액" 자동 조정은 법원 산식과 달라 제거하고,
+    // 부족분은 determineRepaymentPlan이 60개월 연장 → 생계비 감액 필요액(경고) 순으로 판정한다.
+    const availableIncome = Math.max(0, input.monthlyIncome - recognizedLivingCost);
+    if (availableIncome <= 0) {
+        riskWarnings.push('월 소득이 인정 생계비 이하입니다. 개인회생은 계속적 수입으로 변제해야 하므로, 개인파산 절차도 함께 검토가 필요합니다.');
     }
 
     // 4. 청산가치(재산) 계산
@@ -600,129 +537,78 @@ export function calculateRepayment(
 
 
 
-    // 5. 변제 기간 산정 (기본 36개월)
-    let repaymentMonths = 36;
-    let isYouthSpecial = false;
+    // 5~7. 변제기간·월 변제금·총 변제액 — 법률 산식 단일 기준(rehabLegalCore) 위임
+    //  · 라이프니츠 현가(36개월 33.3657)로 청산가치 보장 검증
+    //  · 최저변제액(5% / 3%+100만), 조세 우선채권 1/2 기간 내 완납
+    //  · 청년(만 30세 미만)·취약계층 24개월 특례 (관할 허용 시)
+    const special24 = checkSpecial24Eligibility({
+        ...special24FromCondition(courtName, input.age, input.specialCondition),
+        courtAllows24: courtTrait.allow24Months,
+    });
+    const corePlan = determineRepaymentPlan({
+        monthlyIncome: input.monthlyIncome,
+        recognizedLivingCost,
+        liquidationValue,
+        generalDebt: Math.max(0, input.totalDebt),
+        priorityDebt: Math.max(0, input.priorityDebt || 0),
+        allow24: special24.eligible,
+    });
+    const repaymentMonths = corePlan.months;
+    const monthlyPayment = corePlan.monthlyPayment;
+    // 탕감률은 일반 회생채권 기준 (조세 우선채권은 감면 대상 아님)
+    const totalRepayment = corePlan.generalRepayment;
+    corePlan.warnings.forEach(w => riskWarnings.push(w));
 
-    // Case 3: 서울 청년 특례 (만 30세 미만)
-    if (courtTrait.allow24Months && input.age && input.age < 30) {
-        repaymentMonths = 24;
-        isYouthSpecial = true;
+    if (special24.eligible && repaymentMonths === 24) {
+        aiAdvice.push(`📅 **24개월 단축 특례** 요건(${special24.reason})을 충족해 24개월 변제로 계산했습니다.`);
+    } else if (special24.eligible) {
+        aiAdvice.push(`💡 24개월 단축 특례 대상(${special24.reason})이지만 청산가치·최저변제액 요건 때문에 ${repaymentMonths}개월로 계산했습니다.`);
+    }
+    if (corePlan.status === 'EXTENDED') {
+        aiAdvice.push('📅 36개월로는 청산가치(현재가치 기준)를 충족하지 못해 변제기간을 **60개월**로 연장했습니다.');
+    }
+    if (corePlan.status === 'FULL_PAYOFF') {
+        aiAdvice.push(`📅 가용소득으로 채무 원금을 **${repaymentMonths}개월** 안에 모두 변제할 수 있는 수준입니다. 개인회생 실익은 변호사와 함께 검토가 필요합니다.`);
+    }
+    if ((input.priorityDebt || 0) > 0) {
+        aiAdvice.push(`🏛️ 세금 체납 ${formatCurrency(input.priorityDebt || 0)}은 우선변제 대상으로, 변제기간의 절반(${Math.floor(repaymentMonths / 2)}회차) 안에 먼저 전액 변제하는 것으로 계산했습니다.`);
     }
 
-    // 6. 월 변제금 결정 - [NEW] 청산가치 우선 원칙 적용
-    let monthlyPayment = availableIncome;
+    // 7. 탕감액/탕감률 계산 (총 채무 0원 시 0 나눗셈 방지)
+    const totalDebtReduction = Math.max(0, input.totalDebt - totalRepayment);
+    const debtReductionRate = input.totalDebt > 0
+        ? Math.round((totalDebtReduction / input.totalDebt) * 100)
+        : 0;
 
-    // 최대 월변제가능액 = 소득 - (생계비 × 0.8) // 생계비 최대 20% 감액 한도
-    const minLivingCostWithReduction = Math.floor(getRecognizedLivingCost(adjustedFamilySize, effectiveConfig) * 0.8);
-    const maxMonthlyPayment = Math.max(0, input.monthlyIncome - minLivingCostWithReduction);
-
-    // 청산가치 보장 원칙: 총 변제액 >= 청산가치
-    let totalRepayment = monthlyPayment * repaymentMonths;
-    let periodAdjustmentMsg = '';
-
-    // [NEW] Case A: 가용소득 × 36 >= 청산가치 → 기본 변제
-    if (availableIncome * 36 >= liquidationValue) {
-        // 청산가치 충족 가능 - 가용소득 기준 유지
-        repaymentMonths = 36;
-        monthlyPayment = Math.max(availableIncome, minAvailableIncome);
-        totalRepayment = monthlyPayment * repaymentMonths;
+    // 7-1. 개인회생 채무한도 (채무자회생법 제579조: 무담보 10억 / 담보 15억)
+    // 챗봇 입력은 담보·무담보를 구분하지 않으므로 총액 기준 경고만 표시
+    const UNSECURED_DEBT_LIMIT = 1_000_000_000;
+    if (input.totalDebt > UNSECURED_DEBT_LIMIT) {
+        riskWarnings.push('총 채무가 10억 원을 초과합니다. 무담보 10억·담보 15억 원 초과 시 개인회생이 아닌 일반회생 절차 검토가 필요합니다.');
     }
-    // [NEW] Case B: 청산가치가 높음 → 기간 연장 시도 (36 → 48 → 60)
-    else {
-        // B-1: 36개월로 가능한지 확인
-        const requiredMonthly36 = Math.ceil(liquidationValue / 36);
-        if (requiredMonthly36 <= maxMonthlyPayment) {
-            repaymentMonths = 36;
-            monthlyPayment = requiredMonthly36;
-            totalRepayment = monthlyPayment * repaymentMonths;
-            periodAdjustmentMsg = '청산가치 충족을 위해 월 변제금이 상향 조정되었습니다.';
-        }
-        // B-2: 48개월로 가능한지 확인
-        else {
-            const requiredMonthly48 = Math.ceil(liquidationValue / 48);
-            if (requiredMonthly48 <= maxMonthlyPayment) {
-                repaymentMonths = 48;
-                monthlyPayment = requiredMonthly48;
-                totalRepayment = monthlyPayment * repaymentMonths;
-                periodAdjustmentMsg = `청산가치 충족을 위해 변제기간이 **48개월**로 연장되었습니다.`;
-            }
-            // B-3: 60개월로 가능한지 확인
-            else {
-                const requiredMonthly60 = Math.ceil(liquidationValue / 60);
-                if (requiredMonthly60 <= maxMonthlyPayment) {
-                    repaymentMonths = 60;
-                    monthlyPayment = requiredMonthly60;
-                    totalRepayment = monthlyPayment * repaymentMonths;
-                    periodAdjustmentMsg = `청산가치 충족을 위해 변제기간이 **60개월**(최대)로 연장되었습니다.`;
-                }
-                // B-4: 60개월로도 불가능 → 개인회생 불가
-                else {
-                    return {
-                        status: 'IMPOSSIBLE',
-                        statusReason: '60개월 최대 변제기간으로도 청산가치를 충족할 수 없어 개인회생 진행이 어렵습니다.',
-                        monthlyPayment: requiredMonthly60,
-                        currentMonthlyBurden: 0,
-                        repaymentMonths: 60,
-                        totalRepayment: liquidationValue,
-                        totalDebtReduction: input.totalDebt - liquidationValue,
-                        debtReductionRate: Math.round(((input.totalDebt - liquidationValue) / input.totalDebt) * 100),
-                        baseLivingCost: baseLivingCostRaw,
-                        additionalLivingCost: additionalHousingCost + additionalMedicalCost + additionalEducationCost,
-                        recognizedLivingCost,
-                        availableIncome,
-                        liquidationValue,
-                        exemptDeposit,
-                        courtName,
-                        regionGroup,
-                        courtDescription: courtTrait.description || '',
-                        processingMonths: courtTrait.processingMonths,
-                        aiAdvice: [
-                            `❌ 청산가치(${formatCurrency(liquidationValue)})가 너무 높습니다.`,
-                            `💡 월 변제 가능액 상한: ${formatCurrency(maxMonthlyPayment)} (생계비 20% 감액 기준)`,
-                            `💡 60개월 기준 필요 월변제금: ${formatCurrency(requiredMonthly60)}`,
-                            '💡 재산 정리나 채무 조정 후 재신청을 고려해보세요.',
-                            '💡 개인파산 절차도 함께 검토해보시기 바랍니다.'
-                        ],
-                        riskWarnings: ['현재 재산 수준으로는 생계비를 20% 감액해도 청산가치 충족이 어렵습니다.'],
-                        housingCostBreakdown,
-                        educationCostBreakdown,
-                        medicalCostBreakdown,
-                    };
-                }
-            }
-        }
-    }
-
-    // 청년 특례 조정 (서울회생법원 등)
-    if (isYouthSpecial && repaymentMonths > 24) {
-        // 청년 특례 가능하지만 청산가치 때문에 기간 연장된 경우 안내
-        aiAdvice.push(`💡 **청년 특례 안내**: 24개월 단축 변제가 가능하나, 청산가치 충족을 위해 ${repaymentMonths}개월로 설정되었습니다.`);
-    }
-
-    // 기간 연장 안내 메시지
-    if (periodAdjustmentMsg) {
-        aiAdvice.push(`📅 ${periodAdjustmentMsg}`);
-    }
-
-    // 7. 탕감액/탕감률 계산
-    const totalDebtReduction = input.totalDebt - totalRepayment;
-    const debtReductionRate = Math.round((totalDebtReduction / input.totalDebt) * 100);
 
     // 8. 상태 판단
     if (input.unemployedReason === 'illness') {
         status = 'IMPOSSIBLE';
         statusReason = '질병이나 장애로 근로능력이 없어 개인회생보다 파산 면책 신청이 적합합니다.';
         aiAdvice.push('💡 질병이나 장애로 인해 근로활동이 불가능한 경우, 법률상 개인회생 신청 요건(반복적이고 확실한 수입)을 충족하기 어렵습니다. 대신 채무 전액을 면책받을 수 있는 개인파산 신청 대상이 될 수 있으므로, 전문 변호사와 파산 가능 여부를 상의하시는 것이 유리합니다.');
-    } else if (liquidationValue >= input.totalDebt) {
+    } else if (corePlan.status === 'LIQUIDATION_EXCEEDS') {
         status = 'IMPOSSIBLE';
         statusReason = '재산 가치가 채무보다 많아 개인회생 신청이 어렵습니다.';
+    } else if (corePlan.status === 'ASSET_DISPOSAL') {
+        status = 'IMPOSSIBLE';
+        statusReason = '소득 전액을 변제해도 청산가치에 미달하여, 재산 처분을 병행하지 않으면 개인회생 진행이 어렵습니다.';
+    } else if (corePlan.status === 'LIVING_COST_CUT' || availableIncome <= 0) {
+        status = 'DIFFICULT';
+        statusReason = availableIncome <= 0
+            ? '월 소득이 인정 생계비 이하여서 개인회생 변제금을 마련하기 어렵습니다. 개인파산도 함께 검토하세요.'
+            : '청산가치·최저변제액을 충족하려면 생계비 감액이 필요해 법원 인가가 어려울 수 있습니다.';
     } else if (monthlyPayment > input.monthlyIncome * 0.8) {
         status = 'DIFFICULT';
         statusReason = '변제금이 소득의 80%를 초과하여 생활이 어려울 수 있습니다.';
-    } else if (debtReductionRate < 0) { // 탕감액 마이너스인 경우
-        status = 'IMPOSSIBLE';
-        statusReason = '총 변제액이 원금을 초과합니다. (이자율에 따라 유불리 판단 필요)';
+    } else if (corePlan.status === 'FULL_PAYOFF') {
+        status = 'DIFFICULT';
+        statusReason = '가용소득으로 원금을 모두 갚을 수 있는 수준이라 개인회생의 감면 실익이 적습니다.';
     } else if (debtReductionRate < 30) {
         status = 'DIFFICULT';
         statusReason = '탕감율이 낮아 실익이 적을 수 있습니다.';
@@ -731,25 +617,14 @@ export function calculateRepayment(
         statusReason = '개인회생 신청이 가능합니다.';
     }
 
-    // 9. AI 조언 생성 (업데이트)
-    // 법원 관련 조언
-    if (isYouthSpecial) {
-        if (repaymentMonths === 24) {
-            aiAdvice.push(`${courtName} 관할 청년 특례로 24개월 단축 변제가 적용되었습니다.`);
-        } else if (repaymentMonths > 24 && repaymentMonths <= 36) {
-            // 위에서 이미 추가됨
-        }
-    } else if (courtTrait.allow24Months && input.age && input.age < 30) {
-        // 서울인데 청년 특례 미적용 (나이 등)
-    }
-
+    // 9. AI 조언 생성 (업데이트) — 24개월 특례 안내는 5~7단계에서 처리
     if (courtTrait.spousePropertyRate === 0 && input.isMarried) {
         aiAdvice.push('이 법원은 배우자 재산을 반영하지 않아 유리합니다.');
     }
 
     // 탕감율 관련
     if (debtReductionRate >= 80) {
-        aiAdvice.push(`최대 ${debtReductionRate}% 탕감이 예상됩니다. 매우 유리한 조건입니다.`);
+        aiAdvice.push(`입력하신 정보 기준 예상 탕감률은 약 ${debtReductionRate}%입니다. 실제 결과는 법원 심사에 따라 달라질 수 있습니다.`);
     } else if (debtReductionRate >= 50) {
         aiAdvice.push(`약 ${debtReductionRate}% 탕감이 예상됩니다.`);
     }
@@ -786,6 +661,13 @@ export function calculateRepayment(
         availableIncome,
         liquidationValue,
         exemptDeposit,
+        // 단일 기준 엔진(rehabLegalCore) 판정 근거
+        leibnizFactor: corePlan.leibnizFactor,
+        presentValue: corePlan.presentValue,
+        minimumRepayment: corePlan.minimumRepayment,
+        priorityRepayment: corePlan.priorityRepayment,
+        planStatus: corePlan.status,
+        planReason: corePlan.why,
         courtName,
         regionGroup,
         courtDescription: courtTrait.description || '',
@@ -924,46 +806,70 @@ const DEBT_TYPE_CONFIG: Record<string, { label: string; color: string; riskLevel
 };
 
 function buildDebtComposition(input: RehabUserInput): DebtComposition[] {
-    const totalDebt = input.totalDebt || 0;
-    if (totalDebt <= 0) return [];
+    // 챗봇은 세금(우선변제채권)을 totalDebt에서 분리해 priorityDebt로 전달하므로
+    // 구성비 분모는 일반채무 + 우선변제채권 합계로 잡는다.
+    const priorityDebt = Math.max(0, input.priorityDebt || 0);
+    const generalDebt = Math.max(0, input.totalDebt || 0);
+    const grandTotal = generalDebt + priorityDebt;
+    if (grandTotal <= 0) return [];
 
+    const pct = (amount: number) => Math.round((amount / grandTotal) * 100);
     const composition: DebtComposition[] = [];
-    let remaining = totalDebt;
+    let remaining = generalDebt;
 
     // 우선변제채권 (세금)
-    if (input.priorityDebt && input.priorityDebt > 0) {
+    if (priorityDebt > 0) {
         composition.push({
             type: 'tax',
             ...DEBT_TYPE_CONFIG.tax,
-            amount: input.priorityDebt,
-            percentage: Math.round((input.priorityDebt / totalDebt) * 100),
+            amount: priorityDebt,
+            percentage: pct(priorityDebt),
         });
-        remaining -= input.priorityDebt;
     }
 
     // 신용카드
     if (input.creditCardDebt && input.creditCardDebt > 0) {
+        const amount = Math.min(input.creditCardDebt, remaining);
         composition.push({
             type: 'credit_card',
             ...DEBT_TYPE_CONFIG.credit_card,
-            amount: input.creditCardDebt,
-            percentage: Math.round((input.creditCardDebt / totalDebt) * 100),
+            amount,
+            percentage: pct(amount),
         });
-        remaining -= input.creditCardDebt;
+        remaining -= amount;
     }
 
-    // 채무 유형별 분류 (debtTypes가 있을 경우)
-    if (input.debtTypes && input.debtTypes.length > 0 && remaining > 0) {
-        const typeCount = input.debtTypes.length;
+    // 채무 유형별 분류 — 입력된 유형별 실제 금액(debtTypeAmounts) 우선 사용
+    const typeAmounts = (input.debtTypeAmounts || {}) as Record<string, number>;
+    const generalTypes = (input.debtTypes || []).filter(t => t !== 'tax');
+    const hasActualAmounts = generalTypes.some(t => (typeAmounts[t] || 0) > 0);
+
+    if (hasActualAmounts && remaining > 0) {
+        generalTypes.forEach((type) => {
+            const amount = Math.min(Math.max(0, typeAmounts[type] || 0), remaining);
+            if (amount <= 0) return;
+            composition.push({
+                type,
+                ...(DEBT_TYPE_CONFIG[type] || DEBT_TYPE_CONFIG.general),
+                amount,
+                percentage: pct(amount),
+            });
+            remaining -= amount;
+        });
+        if (remaining > 0) {
+            composition.push({ type: 'general', ...DEBT_TYPE_CONFIG.general, amount: remaining, percentage: pct(remaining) });
+        }
+    } else if (generalTypes.length > 0 && remaining > 0) {
+        // 유형별 금액이 없는 경우에만 균등 배분 (추정치)
+        const typeCount = generalTypes.length;
         const perType = Math.floor(remaining / typeCount);
-        input.debtTypes.forEach((type, idx) => {
-            const config = DEBT_TYPE_CONFIG[type] || DEBT_TYPE_CONFIG.general;
+        generalTypes.forEach((type, idx) => {
             const amount = idx === typeCount - 1 ? remaining - perType * (typeCount - 1) : perType;
             composition.push({
                 type,
-                ...config,
+                ...(DEBT_TYPE_CONFIG[type] || DEBT_TYPE_CONFIG.general),
                 amount,
-                percentage: Math.round((amount / totalDebt) * 100),
+                percentage: pct(amount),
             });
         });
     } else if (remaining > 0) {
@@ -971,7 +877,7 @@ function buildDebtComposition(input: RehabUserInput): DebtComposition[] {
             type: 'general',
             ...DEBT_TYPE_CONFIG.general,
             amount: remaining,
-            percentage: Math.round((remaining / totalDebt) * 100),
+            percentage: pct(remaining),
         });
     }
 

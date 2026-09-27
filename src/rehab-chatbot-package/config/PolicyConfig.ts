@@ -1,3 +1,5 @@
+import { getRecognizedLivingCost2026 } from '../../services/repayment/rehabLegalCore';
+
 /**
  * PolicyConfig - 2026년 기준 개인회생 변제금 계산 설정값
  * 
@@ -68,10 +70,10 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
     medianIncomeIncrement: 999233, // 6인 초과 시 1인당 추가분 (6인 - 5인 차액)
     // 2026년 확정 인정 생계비 (중위소득 60%)
     recognizedLivingCost: {
-        1: 1538543,     // 1인 가구
+        1: 1538542,     // 1인 가구 (법원 공시 원 단위 절사)
         2: 2519575,     // 2인 가구
-        3: 3215422,     // 3인 가구
-        4: 3896843,     // 4인 가구
+        3: 3215421,     // 3인 가구
+        4: 3896842,     // 4인 가구
         5: 4534031,     // 5인 가구
         6: 5133571,     // 6인 가구
     } as Record<number, number>,
@@ -595,11 +597,19 @@ export function chooseFavorableCourt(courtA: string, courtB: string, config: Reh
  * 가구원수에 따른 중위소득 계산
  */
 export function getMedianIncome(familySize: number, config: RehabPolicyConfig): number {
-    if (familySize <= 6) {
-        return config.medianIncome[familySize] || config.medianIncome[1];
-    }
-    // 6인 초과
-    return config.medianIncome[6] + (familySize - 6) * config.medianIncomeIncrement;
+    const size = Math.max(1, familySize);
+    // 정수 가구원 수의 중위소득 (6인 초과는 1인당 증분 가산)
+    const medianAt = (n: number): number =>
+        n <= 6
+            ? config.medianIncome[n] ?? config.medianIncome[1]
+            : config.medianIncome[6] + (n - 6) * config.medianIncomeIncrement;
+
+    // 미성년 자녀 0.5인 인정 등 소수 가구원 수는 선형 보간
+    // (기존: 2.5인 → 1인 중위소득으로 fallback 되어 고소득자 판정이 왜곡됨)
+    const lower = Math.floor(size);
+    const fraction = size - lower;
+    if (fraction === 0) return medianAt(lower);
+    return Math.round(medianAt(lower) + (medianAt(lower + 1) - medianAt(lower)) * fraction);
 }
 
 /**
@@ -607,19 +617,19 @@ export function getMedianIncome(familySize: number, config: RehabPolicyConfig): 
  * 미성년 자녀 1인당 0.5 추가, 소수점은 양쪽 값의 중간값 적용
  */
 export function getRecognizedLivingCost(familySize: number, config: RehabPolicyConfig): number {
-    // 정수인 경우 바로 반환
-    if (Number.isInteger(familySize) && config.recognizedLivingCost[familySize]) {
-        return config.recognizedLivingCost[familySize];
+    const size = Math.max(1, familySize);
+    // [단일 기준] 2026년은 법원 정밀 엔진의 공시 생계비(원 단위 절사) 테이블을 그대로 사용
+    if (config.baseYear === 2026) {
+        return getRecognizedLivingCost2026(size);
     }
+    // 정수 가구원 수의 인정 생계비: 확정 테이블 우선, 7인 이상은 중위소득 × 생계비율로 산출
+    // (기존: 7인 가구가 1인 생계비로 fallback 되는 버그)
+    const costAt = (n: number): number =>
+        config.recognizedLivingCost[n] ?? Math.round(getMedianIncome(n, config) * config.livingCostRate);
 
-    // 소수점인 경우 양쪽 값의 중간값 계산
-    const lower = Math.floor(familySize);
-    const upper = Math.ceil(familySize);
-    const fraction = familySize - lower;
-
-    const lowerCost = config.recognizedLivingCost[lower] || config.recognizedLivingCost[1];
-    const upperCost = config.recognizedLivingCost[upper] || config.recognizedLivingCost[6];
-
-    // 선형 보간 (예: 1.5인 = 1인 생계비 + (2인 생계비 - 1인 생계비) * 0.5)
-    return Math.round(lowerCost + (upperCost - lowerCost) * fraction);
+    // 소수 가구원 수 (예: 1.5인 = 1인 + (2인 - 1인) × 0.5) 선형 보간
+    const lower = Math.floor(size);
+    const fraction = size - lower;
+    if (fraction === 0) return costAt(lower);
+    return Math.round(costAt(lower) + (costAt(lower + 1) - costAt(lower)) * fraction);
 }

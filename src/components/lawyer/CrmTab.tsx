@@ -52,6 +52,7 @@ import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
+import { checkSpecial24Eligibility, special24FromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import CertificateVaultCard from './vault/CertificateVaultCard';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
@@ -598,6 +599,11 @@ export default function CrmTab({
       },
       assets: [],
       creditors: [],
+      special24Eligible: checkSpecial24Eligibility(special24FromCondition(
+        selectedExt?.courtCase?.courtName || '서울회생법원',
+        selectedClient?.financialProfile?.age,
+        selectedClient?.financialProfile?.specialCondition,
+      )).eligible,
     });
   }, [selectedId, selectedClient, selectedExt]);
 

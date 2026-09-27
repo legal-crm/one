@@ -61,6 +61,121 @@ async function requestToRow(request: ConsultRequest) {
   };
 }
 
+// ── 역할별 DB 동기화 컨텍스트 (012 엄격 RLS 대응) ──
+// - client : 본인 소유 행(client_id = auth.uid())만 upsert
+// - lawyer : 기본 테이블 쓰기 불가 → 화이트리스트 RPC(lawyer_patch/create_consult_request)만 호출
+// - admin  : JWT app_metadata.role=admin 세션에서 upsert
+// - 그 외(honeypot 등): DB 쓰기 안 함
+type ConsultSyncRole = 'client' | 'lawyer' | 'admin' | 'none';
+let syncRole: ConsultSyncRole = 'none';
+let syncActorId: string | null = null;
+// 마지막으로 DB와 일치했던 스냅샷 (변경분만 전송 → 오래된 로컬 사본이 타인 변경을 덮어쓰지 않음)
+const lastSynced = new Map<string, string>();
+
+export function setConsultSyncContext(role: string, actorId?: string | null): void {
+  const next: ConsultSyncRole = role === 'client' || role === 'lawyer' || role === 'admin' ? role : 'none';
+  if (next !== syncRole || (actorId || null) !== syncActorId) {
+    lastSynced.clear();
+  }
+  syncRole = next;
+  syncActorId = actorId || null;
+}
+
+const snapshotOf = (r: ConsultRequest) => JSON.stringify(r);
+const markSynced = (rows: ConsultRequest[]) => rows.forEach(r => lastSynced.set(r.id, snapshotOf(r)));
+const isMaskedPhone = (phone?: string) => !!phone && phone.includes('*');
+
+async function getAuthUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** 변호사 로컬 변경분을 RPC 패치 목록으로 변환 (본인 권한 범위만) */
+function buildLawyerPatches(prev: ConsultRequest, next: ConsultRequest, lawyerId: string): Record<string, unknown>[] {
+  const patches: Record<string, unknown>[] = [];
+  const prevProposals = new Map((prev.proposals || []).map((p: any) => [p.id, JSON.stringify(p)]));
+  for (const p of (next.proposals || []) as any[]) {
+    if (p?.lawyerId === lawyerId && prevProposals.get(p.id) !== JSON.stringify(p)) {
+      patches.push({ proposal: p });
+    }
+  }
+  const scalar: Record<string, unknown> = {};
+  if (!(prev.acceptedLawyerIds || []).includes(lawyerId) && (next.acceptedLawyerIds || []).includes(lawyerId)) {
+    scalar.accept_self = true;
+  }
+  if (prev.selectedLawyerId !== lawyerId && next.selectedLawyerId === lawyerId) {
+    scalar.select_self = true;
+  }
+  if (prev.status !== next.status) {
+    scalar.status = next.status;
+  }
+  // 연락처는 마스킹 값이 아닌 실제 수정일 때만 전송 (서버에서 계약/본인 등록 건만 허용)
+  if (prev.clientName !== next.clientName && !isMaskedPhone(next.phone)) scalar.client_name = next.clientName;
+  if (prev.phone !== next.phone && !isMaskedPhone(next.phone)) scalar.phone = next.phone;
+  if (Object.keys(scalar).length > 0) patches.push(scalar);
+  return patches;
+}
+
+async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
+  if (!isSupabaseConfigured || syncRole === 'none' || requests.length === 0) return;
+
+  const changed = requests.filter(r => lastSynced.get(r.id) !== snapshotOf(r));
+  if (changed.length === 0) return;
+
+  try {
+    if (syncRole === 'client') {
+      const uid = await getAuthUserId();
+      if (!uid) return; // 비로그인: 로컬에만 보관 (로그인 후 본인 ID로 이관되어 저장)
+      const own = changed.filter(r => r.clientId === uid);
+      if (own.length === 0) return;
+      const payload = await Promise.all(own.map(requestToRow));
+      const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
+      if (error) logSupabaseError('syncRequestsToDb(client)', error);
+      else markSynced(own);
+      return;
+    }
+
+    if (syncRole === 'admin') {
+      const payload = await Promise.all(changed.map(requestToRow));
+      const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
+      if (error) logSupabaseError('syncRequestsToDb(admin)', error);
+      else markSynced(changed);
+      return;
+    }
+
+    // lawyer (로그인 직후 컨텍스트 반영 전일 수 있어 세션 저장소도 확인)
+    const lawyerId = syncActorId || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('legal_crm_lawyer_session') : null);
+    if (!lawyerId) return;
+    for (const next of changed) {
+      const prevRaw = lastSynced.get(next.id);
+      if (!prevRaw) {
+        // DB에 없던 행: 변호사가 직접 등록한 외부 의뢰인만 생성
+        const isOwnExternal = next.createdByLawyerId === lawyerId || next.id.startsWith('ext-') || next.clientId === next.id;
+        if (isOwnExternal) {
+          const row = await requestToRow(next);
+          const { error } = await supabase.rpc('lawyer_create_consult_request', { p_row: row });
+          if (error) logSupabaseError('lawyer_create_consult_request', error);
+          else markSynced([{ ...next, createdByLawyerId: lawyerId }]);
+        }
+        continue;
+      }
+      const patches = buildLawyerPatches(JSON.parse(prevRaw) as ConsultRequest, next, lawyerId);
+      let ok = true;
+      for (const patch of patches) {
+        const { error } = await supabase.rpc('lawyer_patch_consult_request', { p_id: next.id, p_patch: patch });
+        if (error) { ok = false; logSupabaseError('lawyer_patch_consult_request', error); }
+      }
+      if (ok) markSynced([next]);
+    }
+  } catch (e) {
+    logSupabaseError('syncRequestsToDb (exception)', e);
+  }
+}
+
 // DB row → ConsultRequest 변환 (financial_profile 자동 복호화)
 async function rowToRequest(row: any): Promise<ConsultRequest> {
   const decryptedProfile = await decryptField<any>(row.financial_profile);
@@ -87,6 +202,9 @@ async function rowToRequest(row: any): Promise<ConsultRequest> {
     safeNumberExpiresAt: row.safe_number_expires_at,
     entryCategory: row.entry_category,
     createdAt: row.created_at,
+    ...(row.created_by_lawyer_id ? { createdByLawyerId: row.created_by_lawyer_id } : {}),
+    // 변호사 마스킹 뷰: 계약 체결(또는 본인 등록) 건만 실제 연락처가 내려옴
+    ...(row.contact_visible === true ? { contactDisclosureStatus: 'contact_shared' as const } : {}),
   };
 }
 
@@ -114,16 +232,15 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
 
   if (isSupabaseConfigured) {
     try {
-      let query = supabase.from('consult_requests').select('*').order('created_at', { ascending: false });
+      // 변호사는 기본 테이블 SELECT 권한이 없음 → 행 범위·마스킹이 강제된 뷰로만 조회 (012)
+      const source = options.lawyerId && !options.clientId ? 'consult_requests_for_lawyers' : 'consult_requests';
+      let query = supabase.from(source).select('*').order('created_at', { ascending: false });
       
       if (options.clientId) {
         query = query.eq('client_id', options.clientId);
-      } else if (options.lawyerId) {
-        if (options.includeOpen) {
-          query = query.or(`selected_lawyer_id.eq.${options.lawyerId},accepted_lawyer_ids.cs.{${options.lawyerId}},and(status.eq.requested,request_type.eq.open)`);
-        } else {
-          query = query.or(`selected_lawyer_id.eq.${options.lawyerId},accepted_lawyer_ids.cs.{${options.lawyerId}}`);
-        }
+      } else if (options.lawyerId && !options.includeOpen) {
+        // 뷰가 이미 본인 관련 + 오픈 대기 요청으로 제한하므로, 오픈 제외 시에만 추가 필터
+        query = query.not('status', 'eq', 'requested');
       }
       
       const { data, error } = await query;
@@ -132,7 +249,9 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
         logSupabaseError('loadConsultRequests', error);
       } else if (data) {
         const mapped = await Promise.all(data.map(rowToRequest));
-        return mapped.filter((req: ConsultRequest) => req.id !== 'req-1' && req.id !== 'req-2' && req.id !== 'req-3');
+        const result = mapped.filter((req: ConsultRequest) => req.id !== 'req-1' && req.id !== 'req-2' && req.id !== 'req-3');
+        markSynced(result);
+        return result;
       }
     } catch (e) {
       logSupabaseError('loadConsultRequests (exception)', e);
@@ -172,38 +291,15 @@ export async function saveConsultRequest(request: ConsultRequest): Promise<void>
   else requests.push(safeRequest);
   setLocalData(REQUESTS_STORAGE_KEY, requests);
 
-  // Also persist to Supabase if configured (DB 전송 시 financial_profile AES-256-GCM 암호화)
-  if (isSupabaseConfigured) {
-    try {
-      const row = await requestToRow(safeRequest);
-      const { error } = await supabase.from('consult_requests').upsert(
-        row,
-        { onConflict: 'id' }
-      );
-      if (error) {
-        logSupabaseError('saveConsultRequest', error);
-      }
-    } catch (e) {
-      logSupabaseError('saveConsultRequest (exception)', e);
-    }
-  }
+  // DB 전송은 역할별 권한 경로로 (financial_profile은 requestToRow에서 AES-256-GCM 암호화)
+  await syncRequestsToDb([safeRequest]);
 }
 
 export async function saveAllConsultRequests(requests: ConsultRequest[]): Promise<void> {
   // Save to localStorage
   setLocalData(REQUESTS_STORAGE_KEY, requests);
-  
-  if (isSupabaseConfigured && requests.length > 0) {
-    try {
-      const payload = await Promise.all(requests.map(requestToRow));
-      const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
-      if (error) {
-        logSupabaseError('saveAllConsultRequests', error);
-      }
-    } catch (e) {
-      logSupabaseError('saveAllConsultRequests (exception)', e);
-    }
-  }
+  // 변경된 행만, 현재 역할이 허용된 경로로 전송 (012 엄격 RLS)
+  await syncRequestsToDb(requests);
 }
 
 export async function deleteConsultRequest(requestId: string): Promise<void> {

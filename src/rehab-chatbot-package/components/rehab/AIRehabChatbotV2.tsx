@@ -3019,7 +3019,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, creditCardDebt: 0 }));
                     goToStep('debt_types');
                     addBotMessage(
-                        '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
+                        '많이 힘드셨을 거예요. 지금 상황을 차근차근 정리해 볼게요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '🏦 은행 대출', value: 'bank' },
                             { label: '💳 카드사/캐피탈', value: 'capital' },
@@ -3041,7 +3041,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // V2.1: 채무 유형 분류로 이동
                 goToStep('debt_types');
                 addBotMessage(
-                    '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
+                    '많이 힘드셨을 거예요. 지금 상황을 차근차근 정리해 볼게요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                     [
                         { label: '🏦 은행 대출', value: 'bank' },
                         { label: '💳 카드사/캐피탈', value: 'capital' },
@@ -3312,7 +3312,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         [
                             { label: '🔘 해당 없음', value: 'none' },
                             { label: '📋 기초생활수급자', value: 'basic_recipient' },
-                            { label: '♿ 심한 장애(1~3급)', value: 'severe_disability' },
+                            { label: '♿ 장애의 정도가 심한 장애인', value: 'severe_disability' },
                             { label: '👴 만 70세 이상', value: 'elderly' },
                             { label: '👨‍👧 한부모 가족', value: 'single_parent' },
                             { label: '🏠 전세사기 피해자', value: 'rent_fraud' }
@@ -3439,7 +3439,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
                     goToStep('debt_confirm');
                     addBotMessage(
-                        `총 채무가 ${formatCurrency(totalDebt)}이 맞으신가요?\n\n(신용카드 채무 및 입력하신 종류별 채무가 모두 포함된 금액입니다.)`,
+                        taxAmount > 0
+                            ? `일반 채무 ${formatCurrency(totalDebt)}, 세금 체납 ${formatCurrency(taxAmount)}이 맞으신가요?\n\n(세금은 우선 변제 대상이라 감면 계산과 분리해 표시합니다.)`
+                            : `총 채무가 ${formatCurrency(totalDebt)}이 맞으신가요?\n\n(신용카드 채무 및 입력하신 종류별 채무가 모두 포함된 금액입니다.)`,
                         [
                             { label: '네, 맞아요', value: 'yes' },
                             { label: '아니오, 다시 입력', value: 'no' }
@@ -3460,7 +3462,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (legalActions.includes('seizure')) {
                     setTimeout(() => {
                         addBotMessage(
-                            '⚡ 압류를 받고 계시군요. 회생 신청하면 바로 멈출 수 있어요!',
+                            '⚡ 압류를 받고 계시군요. 개인회생 신청과 함께 중지·금지명령을 신청하면 법원 결정에 따라 강제집행 중지를 요청할 수 있어요.',
                             undefined,
                             undefined
                         );
@@ -3594,15 +3596,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';
 
             // 무직자 안내 메시지
-            let resultMessage = `${statusEmoji} 분석이 완료되었습니다!\n\n${input.name || '의뢰인'}님은 빚을 최대 **${calculationResult.debtReductionRate}%**까지 탕감받을 수 있어요.`;
+            let resultMessage = `${statusEmoji} 분석이 완료되었습니다!\n\n입력하신 정보 기준 ${input.name || '의뢰인'}님의 예상 탕감률은 약 **${calculationResult.debtReductionRate}%**입니다.\n(참고용 추정치이며, 실제 결과는 법원 심사에 따라 달라질 수 있어요.)`;
 
-            if (input.employmentType === 'none') {
-                resultMessage += '\n\n💡 현재 무직이시지만 월 200만원 수입 기준으로 계산한 결과입니다.\n\n어렵게 생각하지 마세요! 아르바이트 하루만 나가시거나 일용직 하루만 출근하셔도 수입이 인정되어 개인회생 진행이 가능합니다.';
+            if (input.employmentType === 'none' || input.employmentType === 'basic_recipient') {
+                resultMessage += '\n\n💡 현재 확인된 정기 소득이 없어 **월 200만원 소득을 가정한 참고용 계산**입니다.\n\n개인회생은 계속적·반복적인 수입이 있어야 신청할 수 있어요. 소득이 없거나 매우 적다면 개인파산 절차도 함께 검토해 보시길 권합니다.';
             }
 
             // V2.1: 압류 경험자 특별 메시지
             if (input.legalActions?.includes('seizure')) {
-                resultMessage += '\n\n⚡ 압류를 받고 계시군요. 회생 신청하면 바로 멈출 수 있어요!';
+                resultMessage += '\n\n⚡ 압류가 진행 중이라면, 개인회생 신청과 함께 중지·금지명령을 신청해 강제집행 중지를 요청할 수 있어요. 가능 여부는 변호사 검토가 필요합니다.';
             }
 
             addBotMessage(

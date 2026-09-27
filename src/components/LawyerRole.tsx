@@ -18,6 +18,7 @@ import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
 import { loadSalesLeads } from '../services/leadService';
+import { registerLawyerAccount } from '../services/lawyerAccountService';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
@@ -1042,6 +1043,8 @@ export default function LawyerRole({
         sessionStorage.removeItem('pending_lawyer_oauth');
         sessionStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
         sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(matchedLawyer));
+        // DB 접근 권한 매핑 (관리자 승인 전까지 상담 데이터 조회 불가)
+        registerLawyerAccount(matchedLawyer.id).catch(() => {});
         setActiveLawyer(matchedLawyer);
         setIsAuthSuccess(true);
         setTimeout(() => {
@@ -1083,6 +1086,7 @@ export default function LawyerRole({
 
         sessionStorage.setItem('legal_crm_lawyer_session', newLawyerObj.id);
         sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(newLawyerObj));
+        registerLawyerAccount(newLawyerObj.id).catch(() => {});
         try {
           const raw = localStorage.getItem('legal_crm_lawyers');
           const existingList: User[] = raw ? JSON.parse(raw) : [];

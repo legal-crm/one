@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, FileText, AlertTriangle } from 'lucide-react';
+import { DEFAULT_POLICY_CONFIG_2026, getRecognizedLivingCost } from '../../rehab-chatbot-package/config/PolicyConfig';
 
 interface CalculatorViewProps {
   onNavigateToRequest: (data: {
@@ -34,7 +35,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
             <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">나의 예상 변제 부담 시뮬레이션</h3>
           </div>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-sm font-medium">
-            소득과 채무, 부양가족 수에 따른 최저생계비를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
+            소득과 채무, 부양가족 수에 따른 2026 인정 생계비(기준 중위소득 60%)를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
           </p>
         </div>
 
@@ -111,7 +112,10 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
             <div className="absolute right-0 top-0 w-32 h-32 bg-brand/10 rounded-full blur-2xl pointer-events-none"></div>
             
             {(() => {
-              const minLivingCost = calcDependents === 0 ? 133 : calcDependents === 1 ? 221 : calcDependents === 2 ? 282 : 343;
+              // 2026 기준 중위소득 60% 인정 생계비 (만원 단위, PolicyConfig 단일 출처)
+              const minLivingCost = Math.round(
+                getRecognizedLivingCost(calcDependents + 1, DEFAULT_POLICY_CONFIG_2026) / 10000
+              );
               const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
               const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
               const totalReduction = Math.max(0, calcDebt - totalRepayment);
@@ -126,12 +130,12 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                     </span>
                     <div className="space-y-3.5 text-sm sm:text-base text-slate-200 font-medium">
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">보건복지부 고시 최저생계비:</span>
+                        <span className="text-slate-400">2026 인정 생계비 (기준 중위소득 60%):</span>
                         <strong className="text-white text-base font-bold">{minLivingCost}만 원</strong>
                       </div>
                       {isBankruptcyApplicable ? (
                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-sm text-red-300 font-semibold leading-relaxed shadow-sm">
-                          ⚠️ 월 소득이 법정 최저생계비보다 적습니다. 이 경우 개인파산 면책 신청을 검토해 볼 수 있는 상황입니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
+                          ⚠️ 월 소득이 인정 생계비보다 적습니다. 이 경우 개인파산 면책 신청을 검토해 볼 수 있는 상황입니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
                         </div>
                       ) : (
                         <div className="space-y-3">

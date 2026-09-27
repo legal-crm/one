@@ -2,7 +2,7 @@
  * 2026년 기준 개인회생 핵심 계산 엔진 (Calculation Engine)
  * - 가용소득 산정 (중위소득 60% + 추가주거/의료/교육비)
  * - 서울회생법원 규칙 원 미만 올림(Math.ceil) 채권자 안분 배분
- * - 라이프니쯔 연 5% 복리할인 현가 검증 (36개월 33.7719 / 60개월 53.6433)
+ * - 라이프니쯔 연 5% 복리할인 현가 검증 (36개월 33.3657 / 60개월 52.9907, rehabLegalCore 단일 표준)
  * - 전산양식 D5110 / D5111 자동 판정 및 상향 조정
  * - 실무자 수동 미세 조정(Fine-Tuning) 실시간 재계산 지원
  */
@@ -24,6 +24,7 @@ import {
   LEIBNIZ_FACTOR_60,
   LEIBNIZ_FACTORS,
 } from './repaymentConstants2026';
+import { getMinimumRepaymentThreshold } from './rehabLegalCore';
 
 import type {
   IncomeAndExpenseInput,
@@ -531,6 +532,8 @@ export interface BuildPlanOptions {
   incomeExpense: IncomeAndExpenseInput;
   assets: RepaymentAsset[];
   creditors: RepaymentCreditor[];
+  /** 청년(만 30세 미만)·취약계층 24개월 단축 특례 대상 여부 (rehabLegalCore.checkSpecial24Eligibility) */
+  special24Eligible?: boolean;
   
   // 담당자 수동 미세 조정 옵션 (제공 시 자동 계산 대신 우선 반영)
   manualOverride?: {
@@ -602,6 +605,7 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     assets,
     creditors: rawCreditors,
     manualOverride,
+    special24Eligible = false,
   } = options;
 
   // 번호 및 가지번호 정렬 처리
@@ -651,7 +655,12 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
       requiredDisposalAmount = manualOverride.requiredDisposalAmount;
     }
   } else {
-    // ── 자동 판정 알고리즘 (2026 Engine) ──
+    // ── 자동 판정 알고리즘 (2026 Engine, rehabLegalCore와 동일 순서) ──
+    // Step 0: 24개월 단축 특례 (청년·취약계층, 관할 허용 시)
+    const alloc24 = special24Eligible ? allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 24) : null;
+    const check24 = alloc24
+      ? verifyLiquidationGuaranteeAndMinRepayment(totalPrincipal, alloc24.monthlyTotal, 24, totalLiquidationValue)
+      : null;
     // Step A: 36개월 가용소득 검증
     const alloc36 = allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 36);
     const check36 = verifyLiquidationGuaranteeAndMinRepayment(
@@ -661,7 +670,10 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
       totalLiquidationValue
     );
 
-    if (check36.satisfiesLiquidationGuarantee && check36.satisfiesMinimumRepayment) {
+    if (check24 && check24.satisfiesLiquidationGuarantee && check24.satisfiesMinimumRepayment) {
+      months = 24;
+      formType = 'D5110';
+    } else if (check36.satisfiesLiquidationGuarantee && check36.satisfiesMinimumRepayment) {
       // Case A: 36개월 전산양식 D5110
       months = 36;
       formType = 'D5110';
@@ -681,7 +693,15 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
         formType = 'D5110';
       } else {
         // Step C: 60개월로도 미달 시 -> 월 변제금 최소 상향액 산출
-        const minTargetMonthly = Math.ceil(totalLiquidationValue / LEIBNIZ_FACTOR_60);
+        // rehabLegalCore.determineRepaymentPlan Step C와 동일: 청산가치·최저변제액·우선채권(30회 내 완납) 중 최댓값
+        const priorityForStepC = creditors
+          .filter((c) => c.isPriority && !c.isSecured)
+          .reduce((s, c) => s + c.principal, 0);
+        const minTargetMonthly = Math.max(
+          Math.ceil(totalLiquidationValue / LEIBNIZ_FACTOR_60),
+          Math.ceil(getMinimumRepaymentThreshold(totalPrincipal) / 60),
+          priorityForStepC > 0 ? Math.ceil(priorityForStepC / 30) : 0,
+        );
         const adjustedLivingExpense = incomeExpense.monthlyNetIncome - minTargetMonthly;
 
         if (adjustedLivingExpense > 0) {

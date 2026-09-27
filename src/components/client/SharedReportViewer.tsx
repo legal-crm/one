@@ -38,8 +38,8 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                             <Shield className="w-5 h-5" />
                         </div>
                         <div>
-                            <span className="text-sm font-black tracking-tight text-white">로이 법률 CRM</span>
-                            <span className="text-[12px] text-slate-600 block">보안 진단 리포트 뷰어</span>
+                            <span className="text-sm font-black tracking-tight text-white">my김변</span>
+                            <span className="text-[12px] text-slate-400 block">보안 진단 리포트 뷰어</span>
                         </div>
                     </div>
                     <span className="text-[12px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">
@@ -59,7 +59,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                             <h2 className="text-lg font-black text-white leading-tight">
                                 {userInput.name || '의뢰인'}님의 채무 진단서
                             </h2>
-                            <p className="text-[13px] text-slate-600 mt-1">
+                            <p className="text-[13px] text-slate-400 mt-1">
                                 {result.courtName} 기준 시뮬레이션
                             </p>
                         </div>
@@ -69,19 +69,19 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     {/* Main Metrics Box */}
                     <div className="grid grid-cols-2 gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
                         <div className="space-y-0.5">
-                            <span className="text-[12px] text-slate-600">예상 조정 비율</span>
+                            <span className="text-[12px] text-slate-400">예상 조정 비율</span>
                             <div className="text-xl font-black text-emerald-400">
                                 {result.debtReductionRate}%
                             </div>
                         </div>
                         <div className="space-y-0.5">
-                            <span className="text-[12px] text-slate-600">총 채무 절감액</span>
+                            <span className="text-[12px] text-slate-400">총 채무 절감액</span>
                             <div className="text-xl font-black text-[#7264FF]">
                                 {formatCurrency(result.totalDebtReduction)}
                             </div>
                         </div>
                         <div className="col-span-2 border-t border-slate-800/50 pt-2.5 mt-1 space-y-0.5">
-                            <span className="text-[12px] text-slate-600">예상 월 변제금 ({result.repaymentMonths}개월)</span>
+                            <span className="text-[12px] text-slate-400">예상 월 변제금 ({result.repaymentMonths}개월)</span>
                             <div className="text-lg font-black text-white">
                                 {formatCurrency(result.monthlyPayment)} <span className="text-xs text-slate-500 font-normal">/ 월</span>
                             </div>
@@ -91,16 +91,16 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     {/* Summary Info Cards */}
                     <div className="space-y-3.5 text-xs text-slate-300">
                         <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                            <span className="text-slate-600">총 채무액</span>
+                            <span className="text-slate-400">총 채무액</span>
                             <span className="font-semibold text-slate-300">{formatCurrency(userInput.totalDebt)}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                            <span className="text-slate-600">실제 상환 예정 총액</span>
+                            <span className="text-slate-400">실제 상환 예정 총액</span>
                             <span className="font-semibold text-emerald-400">{formatCurrency(result.totalRepayment)}</span>
                         </div>
                         {userInput.retirementPay !== undefined && userInput.retirementPay > 0 && (
                             <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                                <span className="text-slate-600">예상 퇴직금 (반영률)</span>
+                                <span className="text-slate-400">예상 퇴직금 (반영률)</span>
                                 <span className="font-semibold text-slate-300">
                                     {formatCurrency(userInput.retirementPay)} 
                                     <span className="text-[12px] text-slate-500 ml-1">
@@ -110,11 +110,11 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                             </div>
                         )}
                         <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                            <span className="text-slate-600">가구원수 및 인정 부양가족</span>
+                            <span className="text-slate-400">가구원수 및 인정 부양가족</span>
                             <span className="font-semibold text-slate-300">{userInput.familySize}인 가구</span>
                         </div>
                         <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-600">월 실수령액 소득</span>
+                            <span className="text-slate-400">월 실수령액 소득</span>
                             <span className="font-semibold text-slate-300">{formatCurrency(userInput.monthlyIncome)}</span>
                         </div>
                     </div>
@@ -156,7 +156,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     {/* AI Advice Summary */}
                     {result.aiAdvice && result.aiAdvice.length > 0 && (
                         <div className="p-4 bg-slate-950/40 rounded-2xl space-y-2.5 border border-slate-800/60">
-                            <span className="text-[12px] text-slate-600 font-bold block">변호사 검토 의견 가이드라인</span>
+                            <span className="text-[12px] text-slate-400 font-bold block">변호사 검토 의견 가이드라인</span>
                             <div className="space-y-2 text-[13px] text-slate-500">
                                 {result.aiAdvice.slice(0, 2).map((advice, idx) => (
                                     <div key={idx} className="flex gap-1.5 items-start">
@@ -177,7 +177,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                         <Sparkles className="w-4 h-4 text-emerald-400" />
                         나도 채무 감면율을 확인하고 싶다면?
                     </h3>
-                    <p className="text-[13px] text-slate-600">
+                    <p className="text-[13px] text-slate-400">
                         회원가입 없이 5분 만에 예상 조정 범위 체크하기
                     </p>
                 </div>
@@ -190,8 +190,8 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     <ArrowRight className="w-4 h-4" />
                 </button>
                 
-                <p className="text-[11px] text-slate-650">
-                    로이 법률 CRM은 개인정보를 안전하게 보호하며 권한 없이 타인에게 본 분석 내역을 공개하지 않습니다.
+                <p className="text-[11px] text-slate-400">
+                    my김변은 개인정보를 안전하게 보호하며 권한 없이 타인에게 본 분석 내역을 공개하지 않습니다.
                 </p>
             </div>
         </div>

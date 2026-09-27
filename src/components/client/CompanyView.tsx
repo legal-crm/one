@@ -49,10 +49,11 @@ export default function CompanyView({ onNavigate }: CompanyViewProps) {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
-              { value: '8,400+', label: '누적 이용자 수', color: 'text-[#0F766E]' },
-              { value: '47초', label: '평균 체크 소요시간', color: 'text-[#1E3A5F]' },
-              { value: '120+', label: '등록 전문 변호사', color: 'text-[#0F766E]' },
-              { value: '100%', label: '철저한 익명 상담 보장', color: 'text-[#1E3A5F]' },
+              // 검증 가능한 서비스 사실만 표시 (근거 없는 이용자/변호사 수 mock 수치 제거)
+              { value: '0원', label: '상담 요청 단계 이용료', color: 'text-[#0F766E]' },
+              { value: '최대 3명', label: '변호사 동시 상담 요청', color: 'text-[#1E3A5F]' },
+              { value: '정액제', label: '변호사 광고비 (수수료 無)', color: 'text-[#0F766E]' },
+              { value: '100%', label: '익명 상담 (스텔스 가명)', color: 'text-[#1E3A5F]' },
             ].map((stat, idx) => (
               <div key={idx} className="text-center space-y-2">
                 <p className={`text-3xl md:text-4xl font-extrabold ${stat.color} tracking-tight`}>{stat.value}</p>

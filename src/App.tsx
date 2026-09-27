@@ -8,7 +8,8 @@ import {
   loadConsultMessages, 
   saveConsultMessage, 
   saveAllConsultMessages, 
-  migrateAnonymousRequests 
+  migrateAnonymousRequests,
+  setConsultSyncContext
 } from './services/consultService';
 import { 
   mockLawyers, 
@@ -34,7 +35,7 @@ const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
 const AdminRole = React.lazy(() => import('./components/AdminRole'));
 const HoneypotAdminLogin = React.lazy(() => import('./components/admin/HoneypotAdminLogin'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
-import { decryptReport } from './utils';
+import { openSharedReport } from './services/sharedReportService';
 import SharedReportViewer from './components/client/SharedReportViewer';
 import ClientRemoteSignView from './components/client/ClientRemoteSignView';
 import UnregisteredLawyerDocViewer from './components/client/UnregisteredLawyerDocViewer';
@@ -86,7 +87,9 @@ export default function App() {
 
   // Share report viewer states (URL에서 즉시 읽어 플래시 방지)
   const [sharePayload, setSharePayload] = useState<string | null>(() => {
-    return new URLSearchParams(window.location.search).get('share');
+    // 신규 링크는 #share= (fragment는 서버·액세스 로그·Referer로 전송되지 않음), 기존 ?share= 링크도 호환
+    const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('share');
+    return fromHash || new URLSearchParams(window.location.search).get('share');
   });
   const [docShareToken, setDocShareToken] = useState<string | null>(() => {
     return new URLSearchParams(window.location.search).get('docShare');
@@ -95,6 +98,9 @@ export default function App() {
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
+  const [pinErrorMessage, setPinErrorMessage] = useState('');
+  const [shareLocked, setShareLocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   // 모바일 원격 전자서명 뷰 파라미터 감지 (?view=sign&cid=...&token=...)
   const [signParams] = useState<{ cid: string; token: string } | null>(() => {
@@ -195,23 +201,33 @@ export default function App() {
   }, [currentRole, sharePayload, signParams]);
 
   const handleUnlock = async () => {
-    if (pin.length !== 6) return;
-    if (!sharePayload) return;
+    if (pin.length !== 6 || !sharePayload || shareLocked || isUnlocking) return;
+    setIsUnlocking(true);
     try {
-      const decrypted = await decryptReport(sharePayload, pin);
-      const parsed = JSON.parse(decrypted);
-      if (parsed.result && parsed.userInput) {
-        setUnlockedData(parsed);
+      // 서버에서 PIN 검증 (5회 실패 시 링크 잠금) 후 브라우저에서 복호화
+      const res = await openSharedReport(sharePayload, pin);
+      if (res.ok === true) {
+        setUnlockedData((res as Extract<typeof res, { ok: true }>).data);
         setPinError(false);
-      } else {
-        throw new Error('Invalid payload structure');
+        setPinErrorMessage('');
+        return;
       }
-    } catch (err) {
-      console.error('Decryption failed:', err);
+      const fail = res as Extract<typeof res, { ok: false }>;
+      const messages: Record<string, string> = {
+        wrong_pin: `비밀번호가 일치하지 않습니다. (남은 시도 ${fail.remaining ?? 0}회)`,
+        locked: '비밀번호 입력 횟수를 초과해 링크가 잠겼습니다. 보낸 분께 새 링크를 요청해 주세요.',
+        not_found: '존재하지 않거나 만료된 링크입니다.',
+        legacy: '보안이 강화되어 이전 형식의 링크는 열 수 없습니다. 보낸 분께 새 링크를 요청해 주세요.',
+        error: '보고서를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      };
+      if (fail.reason === 'locked' || fail.reason === 'legacy' || fail.reason === 'not_found') setShareLocked(true);
+      setPinErrorMessage(messages[fail.reason] || messages.error);
       setPinError(true);
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       setPin('');
+    } finally {
+      setIsUnlocking(false);
     }
   };
 
@@ -320,6 +336,12 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // DB 쓰기 권한 경로를 현재 역할에 맞춤 (의뢰인: 본인 행 / 변호사: RPC / 관리자: 전체)
+  useEffect(() => {
+    const actorId = currentRole === 'lawyer' ? sessionStorage.getItem('legal_crm_lawyer_session') : null;
+    setConsultSyncContext(currentRole, actorId);
+  }, [currentRole]);
 
   const [messages, _setMessages] = useState<ConsultMessage[]>(() => {
     try {
@@ -784,8 +806,9 @@ export default function App() {
               value={pin}
               onChange={(e) => {
                 setPin(e.target.value.replace(/[^0-9]/g, ''));
-                if (pinError) setPinError(false);
+                if (pinError && !shareLocked) setPinError(false);
               }}
+              disabled={shareLocked}
               placeholder="••••••"
               aria-label="보고서 비밀번호 6자리"
               className={`w-full text-center text-3xl tracking-[0.6em] font-bold py-3.5 border-2 ${
@@ -795,19 +818,19 @@ export default function App() {
             />
 
             {pinError && (
-              <div className="flex items-center gap-1.5 justify-center text-red-400 text-[13px] font-bold">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>비밀번호가 일치하지 않습니다. 다시 입력해주세요.</span>
+              <div role="alert" className="flex items-start gap-1.5 justify-center text-red-400 text-[13px] font-bold">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>{pinErrorMessage || '비밀번호가 일치하지 않습니다.'}</span>
               </div>
             )}
           </div>
 
           <button
             onClick={handleUnlock}
-            disabled={pin.length !== 6}
-            className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-xl transition-colors"
+            disabled={pin.length !== 6 || shareLocked || isUnlocking}
+            className="w-full min-h-[44px] py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-400 text-white text-xs font-bold rounded-xl transition-colors"
           >
-            보고서 잠금 해제하기
+            {isUnlocking ? '확인 중...' : shareLocked ? '열 수 없는 링크입니다' : '보고서 잠금 해제하기'}
           </button>
         </div>
       </div>

@@ -9,6 +9,7 @@
 
 import React, { useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -21,6 +22,7 @@ import { calculateIncomePercentile, calculateDebtPercentile, calculateReductionR
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../config/rehabStatistics2025';
 import { CountUp, GlowingCard, AnimatedProgress, DonutChart, PulsingBadge } from './animations/ReportAnimations';
 import { ProcedureTimeline } from './ProcedureTimeline';
+import { DEFAULT_POLICY_CONFIG_2026, getRecognizedLivingCost } from '../../config/PolicyConfig';
 
 const ExplainerCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border-l-4 border-indigo-400 p-4 rounded-r-xl my-4 space-y-2 text-slate-800 dark:text-slate-200">
@@ -96,7 +98,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             for (let i = 1; i <= totalPages; i++) {
                 const el = document.getElementById(`pdf-page-${i}`);
                 if (!el) {
-                    alert('PDF 템플릿을 찾을 수 없습니다.');
+                    toast.error('PDF 템플릿을 찾을 수 없습니다.');
                     setIsGeneratingPdf(false);
                     return;
                 }
@@ -129,7 +131,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             pdf.save(`종합채무진단보고서_${userInput.name || '의뢰인'}_${date}.pdf`);
         } catch (error) {
             console.error('PDF 다운로드 실패:', error);
-            alert('PDF 다운로드 처리 중 오류가 발생했습니다.');
+            toast.error('PDF 다운로드 처리 중 오류가 발생했습니다.');
         } finally {
             setIsGeneratingPdf(false);
         }
@@ -154,7 +156,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             link.click();
         } catch (error) {
             console.error('보고서 저장 실패:', error);
-            alert('보고서 저장에 실패했습니다. 다시 시도해주세요.');
+            toast.error('보고서 저장에 실패했습니다. 다시 시도해주세요.');
         }
     };
 
@@ -190,13 +192,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     }
                 }, 'image/png');
             } else {
-                alert('이 브라우저에서는 직접 공유가 지원되지 않습니다.\n이미지를 저장한 후 공유해주세요.');
+                toast.error('이 브라우저에서는 직접 공유가 지원되지 않습니다.\n이미지를 저장한 후 공유해주세요.');
                 handleSaveReport();
             }
         } catch (error) {
             console.error('공유 실패:', error);
             if ((error as Error).name !== 'AbortError') {
-                alert('공유에 실패했습니다. 이미지를 저장 후 공유해주세요.');
+                toast.error('공유에 실패했습니다. 이미지를 저장 후 공유해주세요.');
             }
         }
     };
@@ -210,24 +212,25 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         const assets = (userInput.myAssets || 0) + (userInput.spouseAssets || 0) * 0.5 + (userInput.deposit || 0) + retirementAsset;
         const income = userInput.monthlyIncome || 0;
         
-        // 최저생계비 기준 설정 (2026년 기준 1인 생계비 약 133만원 등)
-        const livingCost = result.recognizedLivingCost || 1330000;
+        // 인정 생계비 기준 (2026 기준 중위소득 60%, 예: 1인 1,538,543원) — PolicyConfig 단일 출처
+        const livingCost = result.recognizedLivingCost
+            || getRecognizedLivingCost(userInput.familySize || 1, DEFAULT_POLICY_CONFIG_2026);
         
         // [개인회생]
         let rehabScore = 0;
         let rehabReason = '';
         if (debt > assets && income > livingCost && debt >= 10000000) {
             rehabScore = 95;
-            rehabReason = '월 소득이 법정 최저생계비 이상이고 채무액이 자산보다 크므로, 개인회생 진행 시 최대 원금 탕감 효과를 크게 볼 수 있는 가장 이상적인 조건입니다.';
+            rehabReason = '월 소득이 인정 생계비보다 많고 채무액이 자산보다 커서, 개인회생 요건을 우선 검토해 볼 수 있는 상황입니다.';
         } else if (debt > assets && income > livingCost * 0.8) {
             rehabScore = 80;
-            rehabReason = '소득이 다소 경계선에 있으나, 추가 생계비 조정 및 가구원 수 소명을 통해 가용소득을 다듬으면 충분히 승인 가능성이 큽니다.';
+            rehabReason = '소득이 인정 생계비 경계선에 있습니다. 가구원 수와 추가 생계비 소명 여부에 따라 가용소득이 달라질 수 있어 변호사 검토가 필요합니다.';
         } else if (debt <= assets) {
             rehabScore = 40;
-            rehabReason = '보유 자산 평가액이 총 채무보다 많아 기각 위험 또는 월 변제금 상승 위험이 있습니다. 자산 저평가 사유 소명 대책을 변호사와 의논해야 합니다.';
+            rehabReason = '입력된 자산 평가액이 총 채무보다 많아, 청산가치 보장 원칙상 개인회생 요건 충족이 어려울 수 있습니다. 자산 평가 방법을 변호사와 확인해 보세요.';
         } else {
             rehabScore = 30;
-            rehabReason = '정기적인 월 소득이 최저생계비에 다소 미달하여 매달 고정 변제금을 납부하기 어렵습니다. 소득 증빙 보강이 우선 필요합니다.';
+            rehabReason = '월 소득이 인정 생계비에 미달하여 매달 변제금을 마련하기 어려운 상황으로 보입니다. 소득 현황과 다른 제도를 함께 검토해 보세요.';
         }
 
         // [개인파산]
@@ -235,10 +238,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         let bankruptcyReason = '';
         if (income <= livingCost && assets < 25000000 && debt >= 20000000) {
             bankruptcyScore = 92;
-            bankruptcyReason = '월 소득이 최저생계비 이하로 상환 능력이 없으며, 보유 자산 가치도 면제재산 한도 내로 매우 낮아 법적으로 원금 100% 면책을 받는 파산 신청이 매우 유력합니다.';
+            bankruptcyReason = '월 소득이 인정 생계비 이하이고 보유 자산도 적어, 개인파산·면책 절차를 우선 검토해 볼 수 있는 상황입니다. 면책 여부는 면책불허가사유 심사 등 법원 판단에 따릅니다.';
         } else if (income > livingCost) {
             bankruptcyScore = 15;
-            bankruptcyReason = '안정적이고 반복적인 직업 소득이 최저생계비를 상당 폭 상회하므로 파산이 기각되고 개인회생 절차로 유도될 것입니다.';
+            bankruptcyReason = '반복적인 소득이 인정 생계비를 넘어 변제 능력이 있다고 볼 수 있어, 파산보다 개인회생이 먼저 검토되는 경우가 많습니다.';
         } else if (assets >= debt) {
             bankruptcyScore = 10;
             bankruptcyReason = '채무보다 청산 가능한 재산이 많으므로 법적인 파산 원인(지급불능 상태)으로 판단되기 어렵습니다.';
@@ -252,19 +255,19 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         let workoutReason = '';
         if (debt < 25000000 && income > livingCost) {
             workoutScore = 85;
-            workoutReason = '채무 규모가 비교적 소액이고 소득이 확실하므로, 법원 절차의 복잡한 서류와 공적 기록 보존 리스크를 피해 신용회복위원회의 협약 채무 조정을 우선 검토하는 것이 효율적입니다.';
+            workoutReason = '채무 규모가 비교적 작고 소득이 인정 생계비보다 많아, 법원 절차 외에 신용회복위원회 채무조정(신속채무조정·개인워크아웃)도 함께 비교해 볼 수 있습니다.';
         } else if (debt >= 150000000) {
             workoutScore = 30;
-            workoutReason = '채무액이 매우 커 사적 조정(연체 유예 및 이자 감면)을 거쳐도 매달 납부할 원금 분할 상환액이 지나치게 높으므로 원금 감면이 가능한 개인회생이 정답입니다.';
+            workoutReason = '채무액이 커서 이자 감면·분할 상환만으로는 월 부담이 높을 수 있습니다. 원금 감면이 가능한 법원 절차와 함께 비교해 보세요.';
         } else {
             workoutScore = 60;
             workoutReason = '주요 채권사 비율과 연체 개월 수에 따라 이자 감면 및 장기 분할 상환을 목적으로 하는 프리워크아웃 또는 개인워크아웃 신청을 고려할 수 있습니다.';
         }
 
         return {
-            rehab: { status: rehabScore >= 85 ? '강력 추천' : rehabScore >= 65 ? '적합' : rehabScore >= 40 ? '검토 필요' : '부적합', score: rehabScore, reason: rehabReason, color: rehabScore >= 80 ? 'green' as const : rehabScore >= 60 ? 'cyan' as const : rehabScore >= 40 ? 'yellow' as const : 'red' as const },
-            bankruptcy: { status: bankruptcyScore >= 85 ? '강력 추천' : bankruptcyScore >= 65 ? '적합' : bankruptcyScore >= 40 ? '검토 필요' : '부적합', score: bankruptcyScore, reason: bankruptcyReason, color: bankruptcyScore >= 80 ? 'green' as const : bankruptcyScore >= 60 ? 'cyan' as const : bankruptcyScore >= 40 ? 'yellow' as const : 'red' as const },
-            workout: { status: workoutScore >= 85 ? '강력 추천' : workoutScore >= 65 ? '적합' : workoutScore >= 40 ? '검토 필요' : '부적합', score: workoutScore, reason: workoutReason, color: workoutScore >= 80 ? 'green' as const : workoutScore >= 60 ? 'cyan' as const : workoutScore >= 40 ? 'yellow' as const : 'red' as const }
+            rehab: { status: rehabScore >= 85 ? '우선 검토' : rehabScore >= 65 ? '적합' : rehabScore >= 40 ? '검토 필요' : '해당 가능성 낮음', score: rehabScore, reason: rehabReason, color: rehabScore >= 80 ? 'green' as const : rehabScore >= 60 ? 'cyan' as const : rehabScore >= 40 ? 'yellow' as const : 'red' as const },
+            bankruptcy: { status: bankruptcyScore >= 85 ? '우선 검토' : bankruptcyScore >= 65 ? '적합' : bankruptcyScore >= 40 ? '검토 필요' : '해당 가능성 낮음', score: bankruptcyScore, reason: bankruptcyReason, color: bankruptcyScore >= 80 ? 'green' as const : bankruptcyScore >= 60 ? 'cyan' as const : bankruptcyScore >= 40 ? 'yellow' as const : 'red' as const },
+            workout: { status: workoutScore >= 85 ? '우선 검토' : workoutScore >= 65 ? '적합' : workoutScore >= 40 ? '검토 필요' : '해당 가능성 낮음', score: workoutScore, reason: workoutReason, color: workoutScore >= 80 ? 'green' as const : workoutScore >= 60 ? 'cyan' as const : workoutScore >= 40 ? 'yellow' as const : 'red' as const }
         };
     }, [userInput, result]);
 
@@ -278,7 +281,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             return { 
                 level: '매우 위급 (상)', 
                 color: '#EF4444', 
-                desc: '국세/세금 체납이 존재하여 즉시 재산 압류가 예상되는 위급 상태입니다.', 
+                desc: '세금 체납은 별도 절차 없이 체납처분(압류)이 진행될 수 있고 개인회생에서도 우선 변제 대상이라, 빠른 상담을 권합니다.', 
                 bg: 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/40',
                 iconColor: 'text-red-500'
             };
@@ -1104,8 +1107,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <Shield className="w-3.5 h-3.5 text-[#10B981]" />
                                                 <span>📋 재산 평가 및 공제 상세 기준 안내</span>
                                             </div>
-                                            <ul className="text-[10.5px] text-slate-550 list-disc pl-4 space-y-1.5">
-                                                <li><strong>배우자 자산 반영:</strong> 부부 공동재산 추정으로 50% 가산하나, 서울/수원/부산회생법원 준칙을 적용받는 관할인 경우 원칙적으로 반영하지 않아 대단히 유리합니다.</li>
+                                            <ul className="text-[10.5px] text-slate-600 list-disc pl-4 space-y-1.5">
+                                                <li><strong>배우자 자산 반영:</strong> 일반적으로 배우자 명의 재산의 50%를 반영하나, 서울·수원·부산회생법원 등 일부 관할은 원칙적으로 반영하지 않습니다.</li>
                                                 <li><strong>퇴직연금 전액 면제 (0% 반영):</strong> 일반 퇴직금은 예상액의 50%가 반영되나, 근로자퇴직급여 보장법에 의해 완전히 압류가 금지된 퇴직연금(DB, DC, IRP)은 전액 제외됩니다.</li>
                                                 <li><strong>임차보증금 공제 (최우선변제금):</strong> 주택임대차보호법에 따라 지역별 서민 주거 보장 금액(서울 5,500만 원, 과밀억제권역 4,800만 원 등)만큼 청산가치에서 제외됩니다.</li>
                                             </ul>
@@ -1362,21 +1365,21 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             금지명령/중지명령 인용 가능성
                                         </h4>
                                         <div className="flex justify-between items-center py-2.5">
-                                            <span className="text-sm font-semibold text-slate-900">독촉 차단 금지명령 예상 인용도</span>
+                                            <span className="text-sm font-semibold text-slate-900">금지명령 신청 시 참고</span>
                                             <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
-                                                userInput.riskFactor === 'recent_loan' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                                                userInput.riskFactor === 'recent_loan' ? 'bg-amber-500/10 text-amber-700' : 'bg-slate-100 text-slate-700'
                                             }`}>
-                                                {userInput.riskFactor === 'recent_loan' ? '주의 (법원 보정 가능)' : '양호 (즉시 인용 기대)'}
+                                                {userInput.riskFactor === 'recent_loan' ? '주의 (보정 요구 가능)' : '일반 (법원 판단)'}
                                             </span>
                                         </div>
                                         <p className="text-[13px] text-slate-500 leading-relaxed">
-                                            ※ 과거 회생 면책 5년 이내 이력이 없고 최근 채무 남용이 아닌 경우, 법원 접수 후 평균 3~7일 내 금지명령이 인용되어 일체의 추심 및 압류 행위가 즉시 금지됩니다.
+                                            ※ 개인회생 신청과 함께 금지명령을 신청할 수 있으며, 법원이 인용하면 개시결정 전까지 강제집행·추심 행위가 금지됩니다. 인용 여부와 소요 기간은 사건과 법원에 따라 다릅니다.
                                         </p>
                                     </div>
 
                                     {/* 변호사 검토 checklist */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                    <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                             <FileText className="w-4 h-4 text-[#10B981]" />
                                             변호사용 실무 쟁점 체크리스트
                                         </h4>
@@ -1418,7 +1421,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                     {/* 법원 절차 타임라인 */}
                                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
-                                        <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                        <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                                             <Building2 className="w-4 h-4 text-[#2563EB]" />
                                             예상 진행 절차 소요 시간 ({result.courtName} 기준)
                                         </h4>
@@ -1438,7 +1441,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        2025년 서울회생법원 통계 기준 나의 위치
+                                        2025년 서울회생법원 통계 기준 나의 위치 (참고용)
                                     </h3>
 
                                     {/* 소득 비교 */}
@@ -1461,10 +1464,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         unit="원"
                                     />
 
-                                    {/* 탕감율 비교 */}
+                                    {/* 변제율 비교 — 통계 원자료가 변제율 분포이므로 변제율(100-탕감률)로 비교 */}
                                     <StatComparisonCard
-                                        title="예상 탕감율 비교"
-                                        userValue={result.debtReductionRate}
+                                        title="예상 변제율 비교"
+                                        userValue={Math.min(100, Math.max(0, 100 - result.debtReductionRate))}
                                         averageValue={AVERAGE_VALUES.debtReductionRate}
                                         percentile={calculateReductionRatePercentile(result.debtReductionRate)}
                                         icon={<Percent className="w-4 h-4" />}
@@ -1478,10 +1481,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         distribution={REHAB_STATISTICS_2025.debtAmountDistribution}
                                         highlightRange={(() => {
                                             const debt = userInput.totalDebt;
-                                            if (debt < 50000000) return '5천만원 이하';
-                                            if (debt < 100000000) return '5천만원 초과 1억원 이하';
-                                            if (debt < 200000000) return '1억원 초과 2억원 이하';
-                                            return '2억원 초과';
+                                            // rehabStatistics2025.debtAmountDistribution의 range 라벨과 정확히 일치해야 함
+                                            if (debt <= 50000000) return '5천만원 이하';
+                                            if (debt <= 100000000) return '5천만원 초과 1억 이하';
+                                            if (debt <= 200000000) return '1억 초과 2억 이하';
+                                            if (debt <= 300000000) return '2억 초과 3억 이하';
+                                            if (debt <= 400000000) return '3억 초과 4억 이하';
+                                            return '4억 초과';
                                         })()}
                                     />
 
@@ -1627,8 +1633,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                     {/* 채무 구성 분석 (V2.1) */}
                                     {result.debtComposition && result.debtComposition.length > 0 && (
-                                        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
-                                            <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                        <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                                 <BarChart3 className="w-3.5 h-3.5 text-[#7264FF]" />
                                                 채무 구성 분석
                                             </h4>
@@ -1644,7 +1650,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                                 {formatCurrency(comp.amount)} ({comp.percentage}%)
                                                             </span>
                                                         </div>
-                                                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                                             <motion.div
                                                                 initial={{ width: 0 }}
                                                                 animate={{ width: `${comp.percentage}%` }}
@@ -1661,8 +1667,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                     {/* 법적 조치 대응 가이드 (V2.1) */}
                                     {result.legalActionGuide && result.legalActionGuide.length > 0 && (
-                                        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
-                                            <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                        <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                                 <Shield className="w-3.5 h-3.5 text-amber-400" />
                                                 법적 조치 대응 가이드
                                             </h4>
@@ -1673,7 +1679,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         <span className="text-xs font-bold text-slate-900">{guide.title}</span>
                                                     </div>
                                                     <p className="text-[13px] text-slate-600 ml-7">{guide.response}</p>
-                                                    <p className="text-[12px] text-amber-400 ml-7">⏱ {guide.timeline}</p>
+                                                    <p className="text-[12px] text-amber-700 ml-7">⏱ {guide.timeline}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -1681,8 +1687,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                     {/* 요약 절약 카드 */}
                                     <div className="bg-[#7264FF]/10 border border-[#7264FF]/20 p-4 rounded-xl text-center">
-                                        <div className="text-[12px] text-slate-500 mb-1">{result.repaymentMonths}개월 후 잔여 채무</div>
-                                        <div className="text-lg font-bold text-[#7264FF]">전액 면책 🎉</div>
+                                        <div className="text-[12px] text-slate-600 mb-1">{result.repaymentMonths}개월 변제계획 이행 후</div>
+                                        <div className="text-lg font-bold text-[#7264FF]">변제 완료 시 면책 신청 가능</div>
                                         <div className="text-[13px] text-slate-500 mt-1">
                                             총 {formatCurrency(result.totalDebtReduction)} 탕감 · 월 {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))} 절약
                                         </div>

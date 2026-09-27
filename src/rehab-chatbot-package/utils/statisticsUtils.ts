@@ -30,8 +30,9 @@ function calculatePercentileFromDistribution(
         const { min, max } = getRangeValue(item.range);
 
         if (value >= min && value <= max) {
-            // 해당 구간 내에서의 위치 추정
-            const rangePosition = (value - min) / (max - min);
+            // 해당 구간 내에서의 위치 추정 (상한 없는 구간·폭 0 구간은 중앙값으로 처리)
+            const width = max - min;
+            const rangePosition = Number.isFinite(width) && width > 0 ? (value - min) / width : 0.5;
             userPercentile = cumulativePercentage + (item.percentage * rangePosition);
             break;
         }
@@ -96,23 +97,35 @@ export function calculateIncomePercentile(monthlyIncome: number): PercentileResu
 /**
  * 채무 규모 백분위 계산
  */
+/**
+ * "5천만원", "1억", "2억" 같은 한국어 금액 표기를 원 단위로 변환
+ * (기존: 숫자만 추출해 ×1천만 → "1억"이 1천만원으로 해석되는 버그)
+ */
+function parseKoreanAmount(text: string): number {
+    const eok = text.match(/(\d+)\s*억/);
+    const cheonman = text.match(/(\d+)\s*천만/);
+    const man = text.match(/(\d+)\s*만/);
+    let won = 0;
+    if (eok) won += parseInt(eok[1], 10) * 100_000_000;
+    if (cheonman) won += parseInt(cheonman[1], 10) * 10_000_000;
+    else if (man && !eok) won += parseInt(man[1], 10) * 10_000;
+    return won;
+}
+
 export function calculateDebtPercentile(totalDebt: number): PercentileResult {
     return calculatePercentileFromDistribution(
         totalDebt,
         REHAB_STATISTICS_2025.debtAmountDistribution,
         (range) => {
-            if (range.includes('이하')) {
-                const max = parseInt(range.replace(/[^0-9]/g, '')) * 10000000;
-                return { min: 0, max };
-            }
             if (range.includes('초과')) {
-                const parts = range.split('초과');
-                const min = parseInt(parts[0].replace(/[^0-9]/g, '')) * 10000000;
-                if (parts[1] && parts[1].includes('이하')) {
-                    const max = parseInt(parts[1].replace(/[^0-9]/g, '')) * 10000000;
-                    return { min, max };
-                }
-                return { min, max: Infinity };
+                const [minPart, maxPart = ''] = range.split('초과');
+                const min = parseKoreanAmount(minPart);
+                return maxPart.includes('이하')
+                    ? { min, max: parseKoreanAmount(maxPart) }
+                    : { min, max: Infinity };
+            }
+            if (range.includes('이하')) {
+                return { min: 0, max: parseKoreanAmount(range) };
             }
             return { min: 0, max: Infinity };
         }
@@ -120,28 +133,39 @@ export function calculateDebtPercentile(totalDebt: number): PercentileResult {
 }
 
 /**
- * 탕감률 백분위 계산
+ * 변제율(총 변제액 ÷ 총 채무) 백분위 계산
+ * 통계 원자료(debtReductionRateDistribution)는 "변제율" 분포이므로 변제율로 비교해야 한다.
+ * (기존: 탕감률을 변제율 분포에 대입해 결과가 역전되고, '이상~미만' 구간이 모두 {0, X}로 파싱되던 버그)
  */
-export function calculateReductionRatePercentile(reductionRate: number): PercentileResult {
+export function calculateRepaymentRatePercentile(repaymentRate: number): PercentileResult {
     return calculatePercentileFromDistribution(
-        reductionRate,
+        repaymentRate,
         REHAB_STATISTICS_2025.debtReductionRateDistribution,
         (range) => {
             const numbers = range.match(/\d+/g);
             if (!numbers) return { min: 0, max: 100 };
 
-            if (range.includes('미만')) {
-                return { min: 0, max: parseInt(numbers[0]) };
+            // '이상 … 미만' 복합 구간을 먼저 판별해야 한다
+            if (range.includes('이상') && range.includes('미만') && numbers.length >= 2) {
+                return { min: parseInt(numbers[0], 10), max: parseInt(numbers[1], 10) };
             }
-            if (range.includes('이상') && range.includes('미만')) {
-                return { min: parseInt(numbers[0]), max: parseInt(numbers[1]) };
+            if (range.includes('미만')) {
+                return { min: 0, max: parseInt(numbers[0], 10) };
             }
             if (range.includes('이상')) {
-                return { min: parseInt(numbers[0]), max: 100 };
+                return { min: parseInt(numbers[0], 10), max: 100 };
             }
             return { min: 0, max: 100 };
         }
     );
+}
+
+/**
+ * 탕감률 입력용 래퍼 — 변제율(100 - 탕감률)로 환산해 비교
+ */
+export function calculateReductionRatePercentile(reductionRate: number): PercentileResult {
+    const repaymentRate = Math.min(100, Math.max(0, 100 - reductionRate));
+    return calculateRepaymentRatePercentile(repaymentRate);
 }
 
 /**
@@ -214,25 +238,24 @@ export function generateStatisticalInsights(userData: {
 }): string[] {
     const insights: string[] = [];
 
+    // 결과 유불리·가능성을 단정하지 않고, 공개 통계상 위치만 중립적으로 서술한다.
+    const positionText = (p: number) =>
+        p >= 75 ? '높은 편' : p >= 50 ? '중간보다 약간 높은 편' : p >= 25 ? '중간 수준' : '낮은 편';
+
     // 소득 비교
     const incomePercentile = calculateIncomePercentile(userData.monthlyIncome);
-    if (incomePercentile.percentile >= 70) {
-        insights.push(`귀하의 소득은 신청자 중 ${incomePercentile.message}에 해당합니다`);
-    }
+    insights.push(`월 소득은 통계상 신청자 중 ${positionText(incomePercentile.percentile)}입니다.`);
 
-    // 탕감률 비교
-    const reductionPercentile = calculateReductionRatePercentile(userData.debtReductionRate);
-    if (reductionPercentile.percentile >= 60) {
-        insights.push(`예상 탕감률 ${userData.debtReductionRate}%는 ${reductionPercentile.message}로 유리한 편입니다`);
-    } else if (reductionPercentile.percentile < 40) {
-        insights.push(`탕감률이 평균보다 낮지만, 개인회생 신청은 여전히 유효합니다`);
-    }
+    // 변제율 비교 (통계 원자료는 변제율 분포)
+    const repaymentRate = Math.min(100, Math.max(0, 100 - userData.debtReductionRate));
+    const repaymentPercentile = calculateRepaymentRatePercentile(repaymentRate);
+    insights.push(`예상 변제율 약 ${repaymentRate}%는 통계상 신청자 중 ${positionText(repaymentPercentile.percentile)}입니다.`);
 
     // 채무 규모 비교
     const debtPercentile = calculateDebtPercentile(userData.totalDebt);
-    if (debtPercentile.percentile < 50) {
-        insights.push(`귀하의 채무 규모는 평균 이하로, 변제 가능성이 높습니다`);
-    }
+    insights.push(`총 채무 규모는 통계상 신청자 중 ${positionText(debtPercentile.percentile)}입니다.`);
+
+    insights.push('통계 비교는 참고용이며, 개인회생 가능 여부나 결과를 의미하지 않습니다.');
 
     return insights;
 }

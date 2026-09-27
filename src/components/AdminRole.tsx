@@ -16,6 +16,7 @@ import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessRevi
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
+import { setLawyerDbApproval } from '../services/lawyerAccountService';
 import { 
   issueTaxInvoice, 
   issueModifyTaxInvoice, 
@@ -857,6 +858,10 @@ export default function AdminRole({
       return next;
     });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
+    // DB 권한(lawyer_accounts.approved) 동기화 — 매핑이 없으면 변호사 첫 OAuth 로그인 후 다시 승인 필요
+    setLawyerDbApproval(lawyerId, true).then(linked => {
+      if (!linked) toast.info('DB 접근 권한은 해당 변호사가 소셜 로그인으로 계정을 연결한 뒤 다시 승인하면 활성화됩니다.');
+    });
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인 완료: ${lawyerId}`);
     toast.success('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
   };
@@ -888,6 +893,7 @@ export default function AdminRole({
       return next;
     });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
+    setLawyerDbApproval(lawyerId, false).catch(() => {});
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
     toast.success('대리인 라이선스 정지 처리가 완료되었습니다.');
   };
@@ -6016,6 +6022,7 @@ export default function AdminRole({
                 // If it is a lawyer/staff, also sync approved flag in lawyers state
                 if (current.role === 'LAWYER' || current.role === 'STAFF') {
                   setLawyers(prev => prev.map(l => l.id === memberId ? { ...l, approved: newStatus === 'active' } : l));
+                  setLawyerDbApproval(memberId, newStatus === 'active').catch(() => {});
                 }
 
                 onLogActivity(
