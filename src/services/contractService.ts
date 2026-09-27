@@ -3,7 +3,7 @@
 // Supabase 우선 + localStorage 폴백 하이브리드 동기화
 // ============================================================
 
-import type { ElectronicContract, ContractDocument, ContractDocType, ContractStatus, FeeInstallment } from '../types';
+import type { ElectronicContract, ContractDocument, ContractDocType, ContractStatus, FeeInstallment, CourtCosts, BankAccountInfo, SuccessFeeAgreement } from '../types';
 import { CONTRACT_DOC_TYPES } from '../types';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { 
@@ -19,8 +19,32 @@ function logSupabaseError(op: string, error: any) {
   console.error(`[Contract] ${op} 실패:`, error?.message || error);
 }
 
+/** CSPRNG 기반 소문자 영숫자 토큰 */
+function randomToken(length: number): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
+/**
+ * 제안서→계약 연동 확장 컬럼 (migration 015). 값이 있을 때만 전송해
+ * 마이그레이션 적용 전에도 일반 계약 저장이 실패하지 않도록 한다.
+ */
+function contractExtensionColumns(c: ElectronicContract): Record<string, unknown> {
+  const ext: Record<string, unknown> = {};
+  if (c.clientRefId) ext.client_ref_id = c.clientRefId;
+  if (c.realNameConversionPending !== undefined) ext.real_name_conversion_pending = c.realNameConversionPending;
+  if (c.consultRequestId) ext.consult_request_id = c.consultRequestId;
+  if (c.sourceProposalId) ext.source_proposal_id = c.sourceProposalId;
+  return ext;
+}
+
 function contractToRow(c: ElectronicContract) {
   return {
+    ...contractExtensionColumns(c),
     id: c.id,
     client_id: c.clientId || '',
     client_name: c.clientName || '',
@@ -90,6 +114,10 @@ function rowToContract(row: any): ElectronicContract {
     successFee: row.success_fee || undefined,
     caseCategory: row.case_category || 'individual_rehab',
     linkedDiagnosisId: row.linked_diagnosis_id || undefined,
+    clientRefId: row.client_ref_id || undefined,
+    realNameConversionPending: row.real_name_conversion_pending ?? undefined,
+    consultRequestId: row.consult_request_id || undefined,
+    sourceProposalId: row.source_proposal_id || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,7 +187,18 @@ export async function saveContracts(contracts: ElectronicContract[]): Promise<vo
   localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
   if (isSupabaseConfigured && contracts.length > 0) {
     try {
-      const { error } = await supabase.from('electronic_contracts').upsert(contracts.map(contractToRow), { onConflict: 'id' });
+      const rows = contracts.map(contractToRow);
+      let { error } = await supabase.from('electronic_contracts').upsert(rows, { onConflict: 'id' });
+      // migration 015 미적용 시 확장 컬럼 제외 후 재시도
+      if (error && (error.code === 'PGRST204' || /column/i.test(error.message || ''))) {
+        const extKeys = ['client_ref_id', 'real_name_conversion_pending', 'consult_request_id', 'source_proposal_id'];
+        const baseRows = rows.map(r => {
+          const copy: Record<string, unknown> = { ...r };
+          for (const k of extKeys) delete copy[k];
+          return copy;
+        });
+        ({ error } = await supabase.from('electronic_contracts').upsert(baseRows, { onConflict: 'id' }));
+      }
       if (error) logSupabaseError('saveContracts', error);
     } catch (e) { logSupabaseError('saveContracts (exception)', e); }
   }
@@ -293,7 +332,17 @@ export async function saveContract(contract: ElectronicContract): Promise<void> 
   // Supabase
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('electronic_contracts').upsert(contractToRow(contract), { onConflict: 'id' });
+      const row = contractToRow(contract);
+      let { error } = await supabase.from('electronic_contracts').upsert(row, { onConflict: 'id' });
+      // migration 015 미적용(확장 컬럼 없음) → 확장 컬럼 없이 재시도
+      if (error && (error.code === 'PGRST204' || /column/i.test(error.message || ''))) {
+        const ext = contractExtensionColumns(contract);
+        if (Object.keys(ext).length > 0) {
+          const baseRow: Record<string, unknown> = { ...row };
+          for (const k of Object.keys(ext)) delete baseRow[k];
+          ({ error } = await supabase.from('electronic_contracts').upsert(baseRow, { onConflict: 'id' }));
+        }
+      }
       if (error) logSupabaseError('saveContract', error);
     } catch (e) { logSupabaseError('saveContract (exception)', e); }
   }
@@ -344,9 +393,10 @@ export function createContract(data: {
   };
 }): ElectronicContract {
   const now = new Date().toISOString();
-  const localContracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const id = `EC-${new Date().getFullYear()}-${String(localContracts.length + 1).padStart(4, '0')}`;
-  const remoteSignToken = `sgn-${id.toLowerCase()}-${Math.random().toString(36).slice(2, 9)}`;
+  // 계약 ID·서명 토큰은 기기별 localStorage 개수가 아닌 CSPRNG로 생성한다.
+  // (기기마다 EC-2026-0001부터 시작하면 서버 upsert 시 다른 의뢰인의 계약서를 덮어쓴다)
+  const id = `EC-${new Date().getFullYear()}-${randomToken(8).toUpperCase()}`;
+  const remoteSignToken = `sgn-${randomToken(24)}`;
 
   // 기본 문서 세트 생성
   const documents = createDefaultDocuments(data.clientName, data.clientPhone, data.lawyerName, data.lawFirmName);

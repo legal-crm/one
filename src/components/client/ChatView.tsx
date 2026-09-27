@@ -10,9 +10,7 @@ import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../re
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
-import { createContract, saveContract } from '../../services/contractService';
-import { updateCrmClientExtension } from '../../services/crmService';
-import confetti from 'canvas-confetti';
+import { startContractFromProposal } from '../../services/proposalContractService';
 
 interface BannerProps {
   onClose: () => void;
@@ -24,15 +22,16 @@ function ChatPrivacyBanner({ onClose }: BannerProps) {
     <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
       <Shield className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
       <div>
-        <strong className="font-bold">🔒 법률상담 암호화 및 비밀 보장</strong>
-        <span className="block mt-0.5 text-indigo-600/90 dark:text-indigo-400/90 text-sm">
-          모든 1:1 대화와 재정 정보는 <strong>AES-256-GCM</strong>으로 암호화되어 저장됩니다. 운영자도 원문을 열람할 수 없으며, 필요 시 언제든지 <strong>'기록 자폭(완전삭제)'</strong>으로 서버에서 영구 파기할 수 있습니다.
+        <strong className="font-bold">🔒 법률상담 비밀 보호 안내</strong>
+        <span className="block mt-0.5 text-indigo-700 dark:text-indigo-300 text-sm">
+          1:1 대화와 재정 정보는 전송 구간(TLS)과 저장 시 암호화되며, 선택하신 변호사와 법령상 필요한 경우 외에는 열람·제공되지 않습니다. 필요하면 언제든지 <strong>'기록 완전삭제'</strong>로 상담 기록을 파기할 수 있습니다.
         </span>
       </div>
       <button 
+        type="button"
         onClick={onClose}
-        className="absolute top-3 right-3 p-1 rounded-lg text-indigo-500 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
-        title="닫기"
+        className="absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-indigo-500 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
+        aria-label="보안 안내 닫기"
       >
         <X className="w-4 h-4" />
       </button>
@@ -46,12 +45,13 @@ function ChatDisclaimer({ onClose }: BannerProps) {
     <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-amber-800 dark:text-amber-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
       <div className="text-sm sm:text-base">
-        <strong>주의사항:</strong> 대화 중 오가는 상담 내용은 강력하게 암호화되어 안전하게 보호됩니다. 공식 선임계약 체결 전의 법률 상담은 참고용으로만 효력을 지니며, 모든 선임비용 결제 및 계약은 본 플랫폼 외부에서 변호사와 직접 조율하여 안전하게 체결하여 주시기 바랍니다.
+        <strong>주의사항:</strong> 수임계약 체결 전의 상담과 제안서 내용은 제출 자료를 바탕으로 한 참고 의견이며, 실제 변제금·면책 여부는 법원 심리로 결정됩니다. 수임계약은 본인인증과 전자서명을 거쳐 체결되며, 계약서에 적힌 조건 외의 비용 요구가 있으면 고객센터로 알려 주세요.
       </div>
       <button 
+        type="button"
         onClick={onClose}
-        className="absolute top-3 right-3 p-1 rounded-lg text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
-        title="닫기"
+        className="absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-600 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
+        aria-label="주의사항 닫기"
       >
         <X className="w-4 h-4" />
       </button>
@@ -169,13 +169,15 @@ export default function ChatView({
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
   }, [activeChatReqId]);
 
-  // 제안서 조건으로 즉시 수임계약 체결 핸들러 (채팅방 내 원스톱 계약)
+  // 제안서 조건으로 전자 수임계약 시작 (채팅방 내 원스톱)
+  // 버튼 클릭만으로 '체결 완료'를 기록하지 않는다 — 서명 대기 계약서를 만든 뒤
+  // 본인인증·약관 동의·자필 서명 화면으로 이동한다.
   const handleAppointLawyerFromChat = async (proposal: ConsultProposal) => {
     if (!currentRequest) return;
     const confirmed = await dialog.confirm({
-      title: `${proposal.lawyerName} 변호사 수임계약 체결`,
-      message: `${proposal.lawyerName} 변호사의 제안 조건(예상 탕감률 ${proposal.reductionRate}%, 수임료 ${proposal.fee}만원, ${proposal.installment})으로 전자 수임계약을 진행하시겠습니까?\n\n계약 체결 후 본격적인 사건 절차 및 법원 서류 준비가 시작됩니다.`,
-      confirmText: '전자계약 체결하기',
+      title: `${proposal.lawyerName} 변호사 전자 수임계약 진행`,
+      message: `${proposal.lawyerName} 변호사의 제안 조건(수임료 ${proposal.fee}만원${proposal.installment ? `, ${proposal.installment}` : ''})으로 전자 수임계약서를 작성합니다.\n\n다음 화면에서 휴대폰 본인인증과 계약서 확인·서명을 마쳐야 계약이 체결됩니다. 본인인증 시 가명 대신 실명으로 계약서가 작성됩니다.`,
+      confirmText: '계약서 확인하러 가기',
       cancelText: '더 상담하기',
       variant: 'primary'
     });
@@ -183,38 +185,15 @@ export default function ChatView({
     if (!confirmed) return;
 
     try {
-      const newContract = createContract({
-        clientId: currentRequest.id,
-        clientRefId: currentRequest.id,
-        clientName: currentRequest.clientName || '의뢰인',
-        clientPhone: currentRequest.phone || '010-0000-0000',
-        lawyerName: proposal.lawyerName,
-        lawyerId: proposal.lawyerId,
-        totalFee: proposal.fee,
-        downPayment: Math.min(proposal.fee, 50),
-        installmentCount: 6,
-        caseType: '개인회생 정식 사건'
+      const { signUrl } = await startContractFromProposal({
+        request: currentRequest,
+        proposal,
+        clientDisplayName: currentRequest.stealthNickname || currentRequest.clientName || '의뢰인',
       });
-
-      newContract.signedAt = new Date().toISOString();
-      newContract.status = 'completed' as any;
-      newContract.clientSignature = '전자서명 완료(모바일 본인인증)';
-      await saveContract(newContract);
-
-      await updateCrmClientExtension(currentRequest.id, {
-        thirteenStage: 'contract_done',
-        contractSignedAt: new Date().toISOString(),
-        assignedLawyerName: proposal.lawyerName
-      });
-
-      currentRequest.status = 'contracted';
-      currentRequest.assignedLawyerId = proposal.lawyerId;
-
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      toast.success(`${proposal.lawyerName} 변호사님과의 정식 수임계약이 완료되었습니다!`);
       setSelectedProposalForReport(null);
+      window.location.assign(signUrl);
     } catch (err) {
-      toast.error('계약 체결 처리 중 오류가 발생했습니다.');
+      toast.error(err instanceof Error ? err.message : '계약서 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 
@@ -297,21 +276,39 @@ export default function ChatView({
   const isComparing = currentRequest?.status === 'comparing';
   const hasMultipleAccepted = (currentRequest?.acceptedLawyerIds || []).length > 1;
 
+  // 제안서: 의뢰인이 지정한 변호사의 제안만, 요청당 최대 3건 (LAWYER_MAX_SELECTIONS와 동일 한도)
+  const MAX_PROPOSALS = 3;
+  const proposals: ConsultProposal[] = React.useMemo(() => {
+    const all = currentRequest?.proposals || [];
+    const selectedIds = currentRequest?.selectedLawyerIds || [];
+    const scoped = selectedIds.length > 0 ? all.filter(p => selectedIds.includes(p.lawyerId)) : all;
+    return scoped.slice(0, MAX_PROPOSALS);
+  }, [currentRequest?.proposals, currentRequest?.selectedLawyerIds]);
+  const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
+
+  // 현재 대화 상대 변호사: 탭 선택 > 수임 확정 변호사 > 수락 변호사가 1명뿐인 경우 그 변호사
+  const acceptedIds = currentRequest?.acceptedLawyerIds || [];
+  const currentChatLawyerId: string | undefined =
+    activeChatLawyerId || currentRequest?.selectedLawyerId || (acceptedIds.length === 1 ? acceptedIds[0] : undefined) || (proposals.length === 1 ? proposals[0].lawyerId : undefined);
+  // 계약 대상 제안서는 현재 대화 상대의 제안서로만 한정 (다른 변호사 제안서로 폴백하지 않음)
+  const currentChatProposal = currentChatLawyerId ? (proposals.find(p => p.lawyerId === currentChatLawyerId) || null) : null;
+
+  // 변호사별 대화 격리: 다른 변호사의 메시지·그 변호사 대상 메시지는 절대 섞어 보여주지 않는다
   const activeChatMessages = messages.filter(m => {
     if (m.consultRequestId !== (currentRequest?.id || activeChatReqId)) return false;
-    if ((isComparing || currentRequest?.status === 'counseling') && hasMultipleAccepted && activeChatLawyerId) {
-      // 시스템 메시지: 'client-only'이거나 공통 메시지면 모든 탭 표시, targetLawyerId가 특정 변호사면 해당 변호사 탭만 표시
-      if (m.senderType === 'system' || m.senderId === 'system') {
-        if (m.targetLawyerId === 'client-only') return true;
-        if (m.targetLawyerId) return m.targetLawyerId === activeChatLawyerId;
-        return true;
-      }
-      // 변호사 메시지: 해당 변호사만 표시
-      if (m.senderType === 'lawyer') return m.senderId === activeChatLawyerId;
-      // 의뢰인 메시지: targetLawyerId가 있으면 해당 변호사 탭에서만, 없으면 모든 탭에서 표시 (하위 호환)
-      if (m.senderType === 'client') return !m.targetLawyerId || m.targetLawyerId === activeChatLawyerId;
+    const isSystem = m.senderType === 'system' || m.senderId === 'system';
+    if (isSystem) {
+      if (!m.targetLawyerId || m.targetLawyerId === 'client-only') return true;
+      return m.targetLawyerId === currentChatLawyerId;
     }
-    return true;
+    if (m.senderType === 'lawyer') return !!currentChatLawyerId && m.senderId === currentChatLawyerId;
+    if (m.senderType === 'client') {
+      // targetLawyerId 없는 과거 메시지는 대화 상대가 1명일 때만 표시 (하위 호환)
+      if (!m.targetLawyerId) return !hasMultipleAccepted;
+      return m.targetLawyerId === currentChatLawyerId;
+    }
+    // admin 등 기타 메시지는 특정 변호사 대상이면 해당 탭에서만
+    return !m.targetLawyerId || m.targetLawyerId === currentChatLawyerId;
   });
 
   useEffect(() => {
@@ -319,15 +316,12 @@ export default function ChatView({
       chatFeedRef.current.scrollTop = chatFeedRef.current.scrollHeight;
     }
   }, [activeChatMessages.length]);
-
-  const proposals: ConsultProposal[] = currentRequest?.proposals || [];
-  const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
-  const currentChatLawyerId = activeChatLawyerId || currentRequest?.selectedLawyerId || proposals[0]?.lawyerId;
-  const currentChatProposal = proposals.find(p => p.lawyerId === currentChatLawyerId) || (proposals.length > 0 ? proposals[0] : null);
   
   const totalDebt = Math.round(((activeResult?.totalRepayment || 0) + (activeResult?.totalDebtReduction || 0)) / 10000);
   const monthlyPayment = Math.round((activeResult?.monthlyPayment || 0) / 10000);
   const reductionRate = Math.round(activeResult?.debtReductionRate || 0);
+  const availableIncome = Math.max(0, Math.round((activeResult?.availableIncome || 0) / 10000));
+  const debtReductionAmount = Math.max(0, Math.round((activeResult?.totalDebtReduction || 0) / 10000));
   const isSelectedLawyer = !!currentRequest?.selectedLawyerId;
   const isAppointed = currentRequest?.selectedLawyerId === appointedLawyerId;
 
@@ -445,7 +439,7 @@ export default function ChatView({
             </div>
           ) : (
             /* 채무 현황 통계 카드 */
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {/* 총 채무액 */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 text-rose-500 mb-2">
@@ -468,34 +462,61 @@ export default function ChatView({
                 </div>
               </div>
 
+              {/* 월 가용소득 (소득 - 인정 생계비) */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 mb-2">
+                  <DollarSign className="w-4 h-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">월 가용소득</span>
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
+                  <CountUp end={availableIncome} suffix="만" />
+                </div>
+              </div>
+
+              {/* 예상 탕감액 */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 mb-2">
+                  <TrendingDown className="w-4 h-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">예상 탕감액</span>
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
+                  <CountUp end={debtReductionAmount} suffix="만" />
+                </div>
+              </div>
+
               {/* 예상 감면율 */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-indigo-500 mb-2">
-                  <TrendingDown className="w-4 h-4" />
-                  <span className="text-xs font-semibold text-slate-500">예상 감면율</span>
+                <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 mb-2">
+                  <Percent className="w-4 h-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">예상 감면율</span>
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
                   <CountUp end={reductionRate} suffix="%" />
                 </div>
               </div>
 
-              {/* 인가 가능성 */}
+              {/* 예비진단 결과 (법원 인가 여부를 단정하지 않음) */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 text-brand mb-2">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span className="text-xs font-semibold text-slate-500">인가 가능성</span>
+                  <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">예비진단 결과</span>
                 </div>
-                <div className={`text-xl md:text-2xl font-bold pt-1 ${
-                  activeResult.status === 'POSSIBLE' ? 'text-emerald-600 dark:text-emerald-400' :
-                  activeResult.status === 'DIFFICULT' ? 'text-amber-600 dark:text-amber-400' :
-                  'text-red-600 dark:text-red-400'
+                <div className={`text-lg md:text-xl font-bold pt-1 ${
+                  activeResult.status === 'POSSIBLE' ? 'text-emerald-700 dark:text-emerald-400' :
+                  activeResult.status === 'DIFFICULT' ? 'text-amber-700 dark:text-amber-400' :
+                  'text-red-700 dark:text-red-400'
                 }`}>
-                  {activeResult.status === 'POSSIBLE' ? '매우 높음' :
-                   activeResult.status === 'DIFFICULT' ? '보완 필요' :
-                   '불가'}
+                  {activeResult.status === 'POSSIBLE' ? '신청 가능성 있음' :
+                   activeResult.status === 'DIFFICULT' ? '보완 검토 필요' :
+                   '다른 제도 검토 필요'}
                 </div>
               </div>
             </div>
+          )}
+          {activeResult && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              입력하신 정보로 계산한 예비진단이며, 실제 변제금·인가 여부는 법원 심리와 제출 서류에 따라 달라질 수 있습니다.
+            </p>
           )}
         </div>
 
@@ -834,8 +855,8 @@ export default function ChatView({
                 <span className="text-xl">💬</span> 1:1 비밀 상담
               </h2>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
-                <ShieldCheck className="w-3 h-3" />
-                <span>AES-256 암호화</span>
+                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                <span className="whitespace-nowrap">암호화 저장</span>
               </span>
             </div>
 
@@ -844,11 +865,12 @@ export default function ChatView({
                 <button
                   type="button"
                   onClick={handlePurgeRecord}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 transition-all cursor-pointer active:scale-95"
+                  className="flex items-center gap-1.5 px-3 min-h-[44px] whitespace-nowrap rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-700 dark:text-rose-400 transition-all cursor-pointer active:scale-95"
                   title="해당 상담방의 모든 대화와 진단 데이터를 서버에서 즉시 영구 삭제합니다"
+                  aria-label="상담 기록 완전삭제"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">기록 자폭(완전삭제)</span>
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">기록 완전삭제</span>
                   <span className="sm:hidden">기록 삭제</span>
                 </button>
               )}
@@ -856,9 +878,9 @@ export default function ChatView({
                 <button
                   type="button"
                   onClick={() => setShowPhoneConsultModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 min-h-[44px] whitespace-nowrap rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Phone className="w-3.5 h-3.5" />
+                  <Phone className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>전화상담 신청</span>
                 </button>
               )}
@@ -905,19 +927,25 @@ export default function ChatView({
             <>
               {/* Lawyer Tabs for Comparing / Multiple Accepted */}
               {((currentRequest?.status === 'comparing' || currentRequest?.status === 'counseling') && hasMultipleAccepted) && (
-                <div className="flex bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" role="tablist" aria-label="상담 변호사 선택">
                   {currentRequest?.acceptedLawyerIds?.map(lawyerId => {
                     const lawyerName = proposals.find(p => p.lawyerId === lawyerId)?.lawyerName || '변호사';
                     const isSelected = currentRequest.status === 'counseling' && currentRequest.selectedLawyerId === lawyerId;
                     const isOther = currentRequest.status === 'counseling' && currentRequest.selectedLawyerId !== lawyerId;
+                    const isActiveTab = currentChatLawyerId === lawyerId;
                     return (
                       <button
                         key={lawyerId}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActiveTab}
                         onClick={() => !isOther && setActiveChatLawyerId(lawyerId)}
                         disabled={isOther}
-                        className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${
-                          activeChatLawyerId === lawyerId ? 'border-brand text-brand bg-white' : 'border-transparent text-slate-500 hover:text-slate-800 bg-slate-50'
-                        } ${isOther ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`flex-1 min-h-[44px] py-3 px-2 text-sm font-bold whitespace-nowrap truncate border-b-2 transition-colors ${
+                          isActiveTab
+                            ? 'border-brand text-brand bg-white dark:bg-slate-900 dark:text-blue-300'
+                            : 'border-transparent text-slate-600 hover:text-slate-900 bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white'
+                        } ${isOther ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         {isOther ? '🔒 상담 종료' : isSelected ? `🟢 ${lawyerName}` : `🟠 ${lawyerName}`}
                       </button>
@@ -942,11 +970,10 @@ export default function ChatView({
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-blue-200 flex items-center gap-1.5">
-                        <span>{currentChatProposal.lawyerName} 변호사님의 맞춤 법률의견서 도착</span>
-                        <span className="px-1.5 py-0.2 bg-emerald-500/30 text-emerald-300 text-[10px] rounded font-semibold">변호사 검수완료</span>
+                        <span className="truncate">{currentChatProposal.lawyerName} 변호사님의 제안서 도착</span>
                       </div>
-                      <div className="text-[11px] text-slate-300 truncate">
-                        월 변제금 {currentChatProposal.monthlyPayment}만원 · 감면율 {currentChatProposal.reductionRate}% · 변호사 직접검수 7p 정식 의견서
+                      <div className="text-[11px] text-slate-200 truncate">
+                        예상 월 변제금 {currentChatProposal.monthlyPayment}만원 · 예상 감면율 {currentChatProposal.reductionRate}% · 수임료 {currentChatProposal.fee}만원
                       </div>
                     </div>
                   </div>
@@ -954,7 +981,7 @@ export default function ChatView({
                     <button
                       type="button"
                       onClick={() => setSelectedProposalForReport(currentChatProposal)}
-                      className="px-3 py-1.5 bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 hover:text-white text-xs font-bold rounded-xl border border-blue-400/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                      className="px-3 min-h-[44px] whitespace-nowrap bg-blue-500/30 hover:bg-blue-500/50 text-blue-100 hover:text-white text-xs font-bold rounded-xl border border-blue-400/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                     >
                       <span>제안서 열람</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -963,10 +990,10 @@ export default function ChatView({
                       <button
                         type="button"
                         onClick={() => handleAppointLawyerFromChat(currentChatProposal)}
-                        className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                        className="px-3.5 min-h-[44px] whitespace-nowrap bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>수임계약 체결</span>
+                        <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>전자계약 진행</span>
                       </button>
                     )}
                   </div>
@@ -1010,8 +1037,8 @@ export default function ChatView({
                               onClick={() => setSelectedProposalForReport(currentChatProposal)}
                               className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-[#1E3A5F] dark:text-blue-300 hover:bg-blue-100 flex items-center justify-center gap-1.5 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer active:scale-98"
                             >
-                              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-                              <span>{currentChatProposal.lawyerName} 변호사 검수 법률의견서·7p 리포트 보기</span>
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
+                              <span>{currentChatProposal.lawyerName} 변호사 제안서 보기</span>
                             </button>
                           </div>
                         )}
@@ -1069,16 +1096,19 @@ export default function ChatView({
                     placeholder={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId ? '상담이 종료되었습니다.' : '담당 변호사에게 채무 고민 메시지 보내기...'} 
                     value={chatInput} 
                     onChange={(e) => onSetChatInput(e.target.value)} 
-                    onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(activeChatLawyerId || undefined); }} 
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) onSendChat(currentChatLawyerId || undefined); }} 
+                    aria-label="변호사에게 보낼 메시지"
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
                     className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-base focus:outline-none font-medium transition-all disabled:bg-slate-100 disabled:cursor-not-allowed" 
                   />
                   <button 
-                    onClick={() => onSendChat(activeChatLawyerId || undefined)} 
+                    type="button"
+                    onClick={() => onSendChat(currentChatLawyerId || undefined)} 
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
-                    className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3.5 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                    aria-label="메시지 보내기"
+                    className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3.5 min-w-[44px] min-h-[44px] rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -1143,11 +1173,44 @@ export default function ChatView({
 
       {/* Other Modals preserved */}
       {showPhoneConsultModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center space-y-4">
-            <h3 className="font-bold text-lg">전화상담 신청</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">등록하신 연락처로 변호사가 직접 안전하게 상담 전화를 드립니다.</p>
-            <button onClick={() => setShowPhoneConsultModal(false)} className="w-full py-2 bg-brand text-white rounded-lg font-bold">닫기</button>
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="phone-consult-title"
+          onClick={() => setShowPhoneConsultModal(false)}
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 id="phone-consult-title" className="font-bold text-lg text-slate-900 dark:text-white">전화상담 요청</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              담당 변호사에게 전화상담 요청을 보냅니다. 변호사가 이 채팅방에서 통화 가능한 시간을 여쭤본 뒤 연락드리며, 연락처는 직접 알려 주시기 전까지 공개되지 않습니다.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPhoneConsultModal(false)}
+                className="flex-1 min-h-[44px] whitespace-nowrap rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={!currentRequest || !currentChatLawyerId}
+                onClick={() => {
+                  if (!currentRequest || !currentChatLawyerId) return;
+                  onAddMessage(
+                    currentRequest.id,
+                    '[System] 📞 의뢰인이 전화상담을 요청했습니다. 채팅으로 통화 가능한 시간을 조율해 주세요.',
+                    'system', 'system', '시스템 안내', currentChatLawyerId
+                  );
+                  setShowPhoneConsultModal(false);
+                  toast.success('전화상담 요청을 보냈습니다. 변호사의 답변을 채팅에서 확인해 주세요.');
+                }}
+                className="flex-1 min-h-[44px] whitespace-nowrap rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                요청 보내기
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1350,7 +1413,7 @@ export default function ChatView({
                           setSelectedFavLawyers(prev => {
                             if (prev.includes(lawyer.id)) return prev.filter(x => x !== lawyer.id);
                             if (prev.length >= remainingSlots) { 
-                              alert(`현재 ${activeRequestedCount}명이 대기 중이므로 추가 ${remainingSlots}명까지만 선택 가능합니다.`); 
+                              toast.warning(`현재 ${activeRequestedCount}명이 대기 중이므로 추가 ${remainingSlots}명까지만 선택 가능합니다.`); 
                               return prev; 
                             }
                             return [...prev, lawyer.id];

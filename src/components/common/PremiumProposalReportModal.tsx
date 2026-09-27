@@ -27,6 +27,7 @@ import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../rehab-chatbot-packa
 import PrintableReportTemplate from '../client/PrintableReportTemplate';
 import PrintableLawyerOpinionTemplate from '../client/PrintableLawyerOpinionTemplate';
 import ModalPortal from './ModalPortal';
+import { getRecognizedLivingCost2026 } from '../../services/repayment/rehabLegalCore';
 
 export interface PremiumReportData {
   lawyerInfo?: {
@@ -162,26 +163,27 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     proposalProp?.attorneyReview?.reviewerName || 
     proposalProp?.lawyerName || 
     proposalProp?.lawyer?.name || 
-    '김회생 변호사';
+    '담당 변호사';
 
-  const lawyerFirmName = 
+  // 가짜 사무소명·사진·전화번호로 채우지 않는다 — 변호사가 입력한 정보만 표시
+  const lawyerFirmName: string = 
     reportData?.lawyerInfo?.firmName || 
     proposalProp?.attorneyReview?.firmName || 
     proposalProp?.firmName || 
     proposalProp?.lawyer?.firmName || 
-    '법무법인 케어';
+    '';
 
-  const lawyerAvatar = 
+  const lawyerAvatar: string = 
     reportData?.lawyerInfo?.avatar || 
     proposalProp?.lawyerAvatar || 
     proposalProp?.lawyer?.avatar || 
-    'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=200';
+    '';
 
-  const lawyerPhone = 
+  const lawyerPhone: string = 
     reportData?.lawyerInfo?.phone || 
     proposalProp?.lawyerPhone || 
     proposalProp?.lawyer?.phone || 
-    '02-1234-5678';
+    '';
 
   const clientName = 
     reportData?.clientName || 
@@ -210,14 +212,14 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     proposalProp?.totalDebt ?? 
     clientInfo?.totalDebt ?? 
     clientInfo?.financialProfile?.debtTotal ?? 
-    85000000;
+    0;
 
   const rawMonthlyPayment = 
     reportData?.diagnosis?.monthlyPayment ?? 
     proposalProp?.diagnosis?.monthlyPayment ?? 
     proposalProp?.monthlyPayment ?? 
     clientInfo?.monthlyPayment ?? 
-    400000;
+    0;
 
   const repaymentMonths = 
     reportData?.diagnosis?.repaymentMonths || 
@@ -250,11 +252,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   // Fees
   const rawFees = reportData?.fees || proposalProp?.fees || proposalProp || {};
-  const rawTotalFee = rawFees.totalFee ?? proposalProp?.totalFee ?? proposalProp?.fee ?? 1600000;
-  const rawDownPayment = rawFees.downPayment ?? proposalProp?.downPayment ?? 400000;
-  const rawMonthlyInstallment = rawFees.monthlyInstallment ?? proposalProp?.monthlyInstallment ?? 300000;
+  // 변호사가 입력하지 않은 수임료 항목은 0(미정)으로 두고 화면에서 '협의'로 표시한다
+  const rawTotalFee = rawFees.totalFee ?? proposalProp?.totalFee ?? proposalProp?.fee ?? 0;
+  const rawDownPayment = rawFees.downPayment ?? proposalProp?.downPayment ?? 0;
+  const rawMonthlyInstallment = rawFees.monthlyInstallment ?? proposalProp?.monthlyInstallment ?? 0;
   const rawCourtDeposit = rawFees.courtDeposit ?? proposalProp?.courtDeposit ?? 0;
-  const installments = rawFees.installments ?? proposalProp?.installments ?? 4;
+  const installments = rawFees.installments ?? proposalProp?.installments ?? 0;
   const additionalCostsNotice = rawFees.additionalCostsNotice || proposalProp?.additionalCostsNotice || proposalProp?.feeMemo;
 
   const totalFeeWon = normalizeToWon(rawTotalFee);
@@ -270,7 +273,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     proposalProp?.lawyerOpinion || 
     proposalProp?.opinion || 
     proposalProp?.remark || 
-    '의뢰인님의 소득 대비 부양가족 생계비와 채무 구조를 면밀히 분석한 결과, 개인회생 개시 요건을 충분히 갖추고 계십니다. 신청서 접수 즉시 금지·중지명령을 통해 빚 독촉과 압류를 원천 차단하고, 최적화된 변제계획안으로 인가 결정을 이끌어내겠습니다.';
+    '제출해 주신 소득·부양가족·채무 정보를 기준으로 개인회생 진행 방향을 검토했습니다. 신청 시 금지·중지명령을 함께 신청해 추심 부담을 줄이는 방안을 검토하고, 관할법원 실무에 맞는 변제계획안을 준비하겠습니다. 실제 개시·인가 여부는 법원 심리와 제출 서류에 따라 결정됩니다.';
 
   // Lawyer Editing State (isLawyerEditor mode)
   const [editMonthlyPayment, setEditMonthlyPayment] = useState(monthlyPayment);
@@ -314,9 +317,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   const specialNotes: string[] = 
     reportData?.specialNotes || 
     proposalProp?.specialNotes || [
-      '신청 접수 후 3~7일 이내 금지명령 결정을 목표로 신속 착수합니다.',
-      '최근 대출금 사용처 소명 자료(금융거래내역 등) 준비를 전담 지원합니다.',
-      '개시결정 시까지 법원 보정권고에 대해 전담 변호사가 직접 대응합니다.'
+      '서류가 준비되는 대로 신청서와 금지명령 신청을 함께 준비합니다.',
+      '최근 대출금 사용처 소명 자료(금융거래내역 등) 준비를 안내해 드립니다.',
+      '법원의 보정권고에는 담당 변호사가 검토 후 대응합니다.'
     ];
 
   const clientQnA: Array<{ question: string; answer: string }> = 
@@ -330,6 +333,14 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   // Calculation Result Fallback
   const clientInput = reportData?.clientInput || userInputProp;
   const calculationResult = reportData?.calculationResult || calcResultProp;
+
+  // 계산 결과가 없을 때의 보조값 — 2026 법원 인정 생계비 기준표(가구원 수) 사용
+  const fallbackFamilySize = Math.max(1, Number((clientInput as any)?.familySize) || 1);
+  const fallbackLivingCost = getRecognizedLivingCost2026(fallbackFamilySize);
+  const fallbackAdvice = useMemo(() => [
+    `${courtName} 실무준칙을 참고해 변제계획을 검토했습니다.`,
+    `예상 월 변제금 ${formatCurrency(monthlyPayment)}원, ${repaymentMonths}개월 기준 원금 약 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면이 예상됩니다. 실제 금액은 법원 심리에 따라 달라질 수 있습니다.`
+  ], [courtName, monthlyPayment, repaymentMonths, debtReductionRate, estimatedReduction]);
 
   const activeCalcResult: RehabCalculationResult = useMemo(() => {
     const cr = calculationResult as any;
@@ -349,17 +360,14 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         court: cr.court || courtName,
         courtDescription: cr.courtDescription || `${courtName} 실무준칙 종합 적용`,
         status: cr.status || 'POSSIBLE',
-        statusReason: cr.statusReason || '개인회생 개시 요건 양호 및 청산가치 충족',
+        statusReason: cr.statusReason || '변호사 제안 조건 기준 예상치',
         availableIncome: cr.availableIncome || monthlyPayment,
-        recognizedLivingCost: cr.recognizedLivingCost || 1538543,
-        baseLivingCost: cr.baseLivingCost || 1538543,
+        recognizedLivingCost: cr.recognizedLivingCost || fallbackLivingCost,
+        baseLivingCost: cr.baseLivingCost || fallbackLivingCost,
         additionalLivingCost: cr.additionalLivingCost || 0,
         liquidationValue: cr.liquidationValue || 0,
         processingMonths: cr.processingMonths || 6,
-        aiAdvice: cr.aiAdvice || [
-          `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
-          `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
-        ],
+        aiAdvice: cr.aiAdvice || fallbackAdvice,
         riskWarnings: cr.riskWarnings || [],
         exemptDeposit: cr.exemptDeposit || 0,
         regionGroup: cr.regionGroup || 'etc',
@@ -370,9 +378,10 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       ? calculateCurrentMonthlyBurden(clientInput as any)
       : Math.round(totalDebt * 0.04);
 
-    const monthlyIncome = normalizeToWon(clientInput?.monthlyIncome) || 2800000;
-    const recognizedLivingCost = normalizeToWon(clientInput?.monthlyIncome ? Math.round(clientInput.monthlyIncome * 0.6) : 1538543);
-    const availableIncome = Math.max(0, monthlyIncome - recognizedLivingCost) || monthlyPayment;
+    // 소득 미입력 시 임의 금액(280만)을 넣지 않는다. 생계비는 2026 법원 기준표(가구원 수)로만 산정.
+    const monthlyIncome = normalizeToWon(clientInput?.monthlyIncome);
+    const recognizedLivingCost = fallbackLivingCost;
+    const availableIncome = monthlyIncome > 0 ? Math.max(0, monthlyIncome - recognizedLivingCost) : monthlyPayment;
 
     return {
       monthlyPayment: monthlyPayment,
@@ -389,7 +398,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       courtName: courtName,
       courtDescription: `${courtName} 실무준칙 종합 적용`,
       status: 'POSSIBLE',
-      statusReason: '개인회생 개시 요건 양호 및 청산가치 충족',
+      statusReason: '변호사 제안 조건 기준 예상치',
       reasons: [],
       eligibleProcedures: ['individual_rehabilitation'],
       monthlyIncome: monthlyIncome,
@@ -400,16 +409,13 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       dependentsCount: clientInput?.dependentsCount || 1,
       liquidationValue: 0,
       processingMonths: 6,
-      aiAdvice: [
-        `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
-        `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
-      ],
+      aiAdvice: fallbackAdvice,
       riskWarnings: [],
       exemptDeposit: 0,
       regionGroup: 'etc',
       alerts: [],
     } as RehabCalculationResult;
-  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated]);
+  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated, fallbackLivingCost, fallbackAdvice]);
 
   const activeUserInput: RehabUserInput = useMemo(() => {
     if (clientInput) {
@@ -417,7 +423,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         ...clientInput,
         name: clientInput.name || clientName,
         totalDebt: clientInput.totalDebt || totalDebt,
-        monthlyIncome: clientInput.monthlyIncome || (activeCalcResult as any).monthlyIncome || 2800000,
+        monthlyIncome: clientInput.monthlyIncome || (activeCalcResult as any).monthlyIncome || 0,
         familySize: clientInput.familySize || ((activeCalcResult as any).dependentsCount || 1),
       };
     }
@@ -428,7 +434,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       deposit: 0,
       myAssets: 0,
       spouseAssets: 0,
-      monthlyIncome: (activeCalcResult as any).monthlyIncome || 2800000,
+      monthlyIncome: (activeCalcResult as any).monthlyIncome || 0,
       familySize: (activeCalcResult as any).dependentsCount || 1,
       totalDebt: totalDebt,
       name: clientName,
@@ -680,6 +686,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             monthlyInstallmentWon={monthlyInstallmentWon}
             installments={installments}
             additionalCostsNotice={additionalCostsNotice}
+            documentId={proposalId}
+            issuedAt={proposalProp?.createdAt || reportData?.createdAt}
           />
         )}
       </div>
@@ -698,13 +706,24 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             {/* Lawyer and Client Profile Badges */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <img 
-                  src={lawyerAvatar} 
-                  alt={lawyerName} 
-                  className={`w-13 h-13 rounded-full object-cover ring-2 shadow-md ${
-                    isAIPremium ? 'ring-amber-400/80' : 'ring-blue-500/60'
-                  }`}
-                />
+                {lawyerAvatar ? (
+                  <img 
+                    src={lawyerAvatar} 
+                    alt={lawyerName} 
+                    className={`w-13 h-13 rounded-full object-cover ring-2 shadow-md ${
+                      isAIPremium ? 'ring-amber-400/80' : 'ring-blue-500/60'
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`w-13 h-13 rounded-full bg-gradient-to-br from-blue-600 to-[#1E3A5F] text-white flex items-center justify-center font-black text-lg ring-2 shadow-md ${
+                      isAIPremium ? 'ring-amber-400/80' : 'ring-blue-500/60'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {lawyerName.charAt(0)}
+                  </div>
+                )}
                 <div className={`absolute -bottom-1 -right-1 p-0.5 rounded-full ring-2 ring-slate-950 ${
                   isAIPremium ? 'bg-amber-400 text-slate-950' : 'bg-emerald-500 text-slate-950'
                 }`}>
@@ -717,12 +736,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   {isAIPremium ? (
                     <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-amber-300 text-slate-950 shadow-sm flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-slate-900" />
-                      AI 7p 정밀 진단 & 공인 법률의견서 (유료 동봉판)
+                      AI 정밀 진단 & 변호사 제안서
                     </span>
                   ) : (
                     <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1.5">
                       <Scale className="w-3.5 h-3.5 text-blue-400" />
-                      변호사 직접 심사 공인 법률의견서
+                      변호사 검토 제안서
                     </span>
                   )}
                   <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -732,16 +751,16 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
                 
                 <h2 id="report-modal-title" className="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
-                  <span>{isAIPremium ? `${clientName}님의 개인회생 AI 7p 정밀 진단서` : `${clientName}님의 변호사 직접 검토 법률의견서`}</span>
-                  <span className="text-sm font-normal text-slate-400">· {lawyerName} ({lawyerFirmName})</span>
+                  <span>{isAIPremium ? `${clientName}님의 개인회생 정밀 진단서` : `${clientName}님을 위한 변호사 제안서`}</span>
+                  <span className="text-sm font-normal text-slate-300">· {lawyerName}{lawyerFirmName ? ` (${lawyerFirmName})` : ''}</span>
                 </h2>
                 
                 <p className="text-xs text-slate-400 mt-0.5">
                   수신: <span className="text-slate-200 font-semibold">{clientName}</span> 님 귀하 | 관할: <span className="text-slate-200 font-semibold">{courtName}</span>
                   {isAIPremium ? (
-                    <span className="text-amber-400 font-semibold ml-2">✦ AI 빅데이터 7p 심층 진단 동봉</span>
+                    <span className="text-amber-300 font-semibold ml-2">✦ 공개 통계 참고 진단 포함</span>
                   ) : (
-                    <span className="text-emerald-400 font-semibold ml-2">⚖️ 도산 전문 변호사 1:1 직접 심사 완료</span>
+                    <span className="text-emerald-300 font-semibold ml-2">⚖️ 담당 변호사 검토 의견</span>
                   )}
                 </p>
 
@@ -965,7 +984,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               }`}
             >
               <Percent className="w-4 h-4 text-purple-600" />
-              <span>사법연감 통계 백분위 (AI 전용)</span>
+              <span>통계 비교 (참고용)</span>
             </button>
           )}
 
@@ -1004,25 +1023,24 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                              공인 법률검토의견
+                              변호사 검토의견
                             </span>
                             <span className="text-xs text-slate-500 font-medium">
                               관할: <strong className="text-slate-700">{courtName}</strong>
                             </span>
                           </div>
                           <h3 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
-                            {lawyerName} 변호사의 직접 심사 총괄 소견
+                            {lawyerName} 변호사의 검토 소견
                           </h3>
                         </div>
                       </div>
 
-                      {/* 공인 날인 미니 뱃지 */}
-                      <div className="flex items-center gap-2 self-end sm:self-auto bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                        <span className="text-xs font-semibold text-slate-700">{lawyerFirmName}</span>
-                        <div className="w-6 h-6 rounded-full border border-red-500 text-red-600 flex items-center justify-center text-[8px] font-black leading-none rotate-[-5deg]">
-                          印
+                      {/* 작성 사무소 (가짜 인장 표시 없음) */}
+                      {lawyerFirmName && (
+                        <div className="flex items-center gap-2 self-end sm:self-auto bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                          <span className="text-xs font-semibold text-slate-700">{lawyerFirmName}</span>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* 핵심 변호사 코멘트 및 소견 */}
@@ -1030,7 +1048,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="flex items-start gap-2.5">
                         <span className="text-blue-600 text-2xl font-serif font-black leading-none select-none">“</span>
                         <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
-                          소득 요건 및 부채 규모를 법원 실무 기준에 맞추어 검토하였으며, 법원 보정권고에 가장 안전하게 통과될 수 있는 최적의 변제 계획안입니다.
+                          제출해 주신 소득 요건과 부채 규모를 관할법원 실무 기준에 맞추어 검토한 변제 계획안입니다.
                         </p>
                       </div>
                       <p className="text-sm text-slate-700 leading-relaxed pl-5 whitespace-pre-line">
@@ -1045,10 +1063,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5 text-emerald-600" />
                         <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
-                          법원 보정명령 최소화 및 직접 소명 3대 전략
+                          보정 대응 및 소명 준비 계획
                         </h4>
                       </div>
-                      <span className="text-xs text-slate-500">1:1 전담 대리</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1056,7 +1073,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
                           <div className="font-bold text-slate-900 flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="text-slate-900 font-extrabold">전략 0{idx + 1}</span>
+                            <span className="text-slate-900 font-extrabold">계획 {idx + 1}</span>
                           </div>
                           <p className="text-slate-600 leading-relaxed">{note}</p>
                         </div>
@@ -1064,15 +1081,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     </div>
                   </div>
 
-                  {/* 3. 의뢰인 안심 3대 법적 보증 */}
+                  {/* 3. 의뢰인 안내 사항 */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3 shadow-xs">
                       <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
                         <Shield className="w-5 h-5" />
                       </div>
                       <div>
-                        <h5 className="text-xs font-bold text-slate-900">100% 비밀보호 (스텔스)</h5>
-                        <p className="text-[11px] text-slate-500 mt-0.5">직장 및 가족에게 일체 통보 없이 안전하게 비공개 진행</p>
+                        <h5 className="text-xs font-bold text-slate-900">상담 비밀 보호</h5>
+                        <p className="text-[11px] text-slate-600 mt-0.5">계약 전까지 가명으로 상담하며, 상담 내용은 변호사 비밀유지의무로 보호됩니다</p>
                       </div>
                     </div>
 
@@ -1081,8 +1098,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Building2 className="w-5 h-5" />
                       </div>
                       <div>
-                        <h5 className="text-xs font-bold text-slate-900">변호사 1:1 직접 수행</h5>
-                        <p className="text-[11px] text-slate-500 mt-0.5">사무장 대리 없는 공인 변호사 책임 전담제</p>
+                        <h5 className="text-xs font-bold text-slate-900">담당 변호사 책임 수행</h5>
+                        <p className="text-[11px] text-slate-600 mt-0.5">수임 후 사건은 계약서에 기재된 담당 변호사가 책임지고 진행합니다</p>
                       </div>
                     </div>
 
@@ -1091,8 +1108,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Check className="w-4 h-4" />
                       </div>
                       <div>
-                        <h5 className="text-xs font-bold text-slate-900">환불 기준 사전 명시</h5>
-                        <p className="text-[11px] text-slate-500 mt-0.5">기각·중도 해지 시 환불 조건을 위임계약서에 미리 기재</p>
+                        <h5 className="text-xs font-bold text-slate-900">환불 조건 사전 확인</h5>
+                        <p className="text-[11px] text-slate-600 mt-0.5">중도 해지 시 환불 조건은 서명 전에 위임계약서에서 확인하실 수 있습니다</p>
                       </div>
                     </div>
                   </div>
@@ -1102,11 +1119,11 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-blue-600" />
                       <span className="font-semibold text-slate-800">
-                        변호사법 제109조 및 비밀유지 의무에 의거하여 작성된 정식 법률문서입니다.
+                        상담 내용은 변호사법 제26조(비밀유지의무)에 따라 보호됩니다. 본 제안서는 수임 전 참고 의견입니다.
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      {lawyerFirmName} · {lawyerName} 변호사 직접 공인 날인
+                    <span className="text-[11px] text-slate-600 font-medium">
+                      작성: {lawyerFirmName ? `${lawyerFirmName} · ` : ''}{lawyerName}{lawyerName.endsWith('변호사') ? '' : ' 변호사'}
                     </span>
                   </div>
                 </div>
@@ -1125,12 +1142,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <h4 className="text-base font-black text-slate-900">
                               AI 정밀 사건 브리핑: 부채 구조 및 사전 위험 진단
                             </h4>
-                            <p className="text-xs text-slate-500">빅데이터 회생 심사 엔진이 도출한 핵심 부채 분류 및 리스크 요인입니다.</p>
+                            <p className="text-xs text-slate-600">입력하신 부채 정보를 자동 분류한 결과와 검토가 필요한 위험 요인입니다.</p>
                           </div>
                         </div>
                         {rawAiInsights.reviewGrade && (
                           <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
-                            검토 등급: {rawAiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 정밀 검토 (A+)' : '표준 검토'}
+                            검토 수준: {rawAiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 검토' : rawAiInsights.reviewGrade === 'NORMAL_REVIEW' ? '일반 검토' : '정밀 검토'}
                           </span>
                         )}
                       </div>
@@ -1141,7 +1158,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                           <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
                             <div className="text-xs text-slate-500 font-medium mb-1">무담보 신용 채무</div>
                             <div className="text-base font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.unsecured)}</div>
-                            <div className="text-xs text-emerald-600 font-bold mt-1">원금 대폭 감면 대상 (주채무)</div>
+                            <div className="text-xs text-emerald-700 font-bold mt-1">변제계획에 따른 감면 대상</div>
                           </div>
                           <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
                             <div className="text-xs text-slate-500 font-medium mb-1">담보 대출 채무</div>
@@ -1161,7 +1178,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <div className="space-y-2 pt-2">
                           <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                             <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            <span>AI 사전 위험요인 감지 및 전담 변호사 방어 전략</span>
+                            <span>사전 검토가 필요한 위험 요인</span>
                           </div>
                           <div className="space-y-2">
                             {rawAiInsights.riskFlags.map((flag: any, idx: number) => (
@@ -1185,7 +1202,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         </div>
                         <div>
                           <h3 className="text-base font-bold text-slate-900">개인회생 신청 전후 재무 변화</h3>
-                          <p className="text-xs text-slate-500">법원 인가 시 법적으로 보장받는 채무 조정 결과입니다.</p>
+                          <p className="text-xs text-slate-600">제안 조건대로 인가될 경우의 예상 채무 조정 결과입니다. 실제 결과는 법원 심리에 따라 달라질 수 있습니다.</p>
                         </div>
                       </div>
                       <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1223,7 +1240,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-300 relative overflow-hidden shadow-sm">
                         <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          개인회생 인가 후 (법적 보호)
+                          개인회생 인가 시 (예상)
                         </div>
                         <div className="space-y-2.5 mt-3">
                           <div className="flex justify-between items-center text-sm">
@@ -1231,15 +1248,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span className="text-base font-black text-emerald-700">{formatCurrency(monthlyPayment)}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-600">이자 감면율</span>
-                            <span className="font-bold text-emerald-700">100% 전액 면제</span>
+                            <span className="text-slate-600">이자</span>
+                            <span className="font-bold text-emerald-700">원칙적으로 원금 기준 변제</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-600">총 변제 원금</span>
                             <span className="font-bold text-slate-900">{formatCurrency(totalRepaymentCalculated)}</span>
                           </div>
                           <div className="pt-2 border-t border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
-                            <span>총 탕감 금액 (면책)</span>
+                            <span>예상 탕감 금액 (변제 완료·면책 시)</span>
                             <span className="text-sm font-black text-emerald-700">{formatCurrency(estimatedReduction)}</span>
                           </div>
                         </div>
@@ -1256,7 +1273,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="flex-1">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <h3 className="text-base font-bold text-slate-900">
-                            {lawyerName} 변호사의 AI 심층 검토 종합 소견
+                            {lawyerName} 변호사의 종합 소견
                           </h3>
                           <span className="text-xs font-medium text-slate-500">
                             진단 기준 법원: {courtName}
@@ -1269,7 +1286,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                         {specialNotes && specialNotes.length > 0 && (
                           <div className="mt-4 space-y-2">
-                            <div className="text-xs font-bold text-slate-700">📌 사건 진행 시 핵심 주의사항 및 방어 전략</div>
+                            <div className="text-xs font-bold text-slate-700">📌 사건 진행 시 주의사항</div>
                             <ul className="space-y-1.5">
                               {specialNotes.map((note, idx) => (
                                 <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
@@ -1284,15 +1301,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     </div>
                   </div>
 
-                  {/* Legal Guarantees & Safe Notes */}
+                  {/* 의뢰인 안내 사항 */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
                       <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
                         <Shield className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">금지명령 신속 신청</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5">접수 후 3~7일 이내 채권 추심 및 가압류 전면 금지</p>
+                        <h4 className="text-xs font-bold text-slate-900">금지명령 함께 신청</h4>
+                        <p className="text-[11px] text-slate-600 mt-0.5">법원이 금지명령을 내리면 채권자의 추심·강제집행이 제한됩니다</p>
                       </div>
                     </div>
 
@@ -1301,8 +1318,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">직장 및 가족 비공개</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5">회사 통보 없이 안전하고 은밀하게 서류 진행</p>
+                        <h4 className="text-xs font-bold text-slate-900">상담 비밀 보호</h4>
+                        <p className="text-[11px] text-slate-600 mt-0.5">상담 내용은 변호사 비밀유지의무로 보호됩니다. 직장·가족 관련 유의사항은 상담 시 안내합니다</p>
                       </div>
                     </div>
 
@@ -1311,8 +1328,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         <Check className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">환불 기준 사전 명시</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5">기각·중도 해지 시 환불 조건을 위임계약서에 미리 기재</p>
+                        <h4 className="text-xs font-bold text-slate-900">환불 조건 사전 확인</h4>
+                        <p className="text-[11px] text-slate-600 mt-0.5">중도 해지 시 환불 조건은 서명 전에 위임계약서에서 확인하실 수 있습니다</p>
                       </div>
                     </div>
                   </div>
@@ -1342,21 +1359,21 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div className="text-xs text-slate-500 font-medium">월 평균 실수령 소득</div>
                     <div className="text-lg font-black text-slate-900 mt-1">
-                      {formatCurrency((activeCalcResult as any).monthlyIncome || 2800000)}
+                      {(activeCalcResult as any).monthlyIncome ? formatCurrency((activeCalcResult as any).monthlyIncome) : '미입력'}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">급여/사업 소득 공제 후</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">세금·4대보험 공제 후</div>
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium">법원 인정 최저생계비</div>
+                    <div className="text-xs text-slate-500 font-medium">법원 인정 생계비</div>
                     <div className="text-lg font-black text-blue-600 mt-1">
                       {formatCurrency(activeCalcResult.recognizedLivingCost)}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">기준 중위소득 60% 반영</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">2026 기준 중위소득 60% 기준</div>
                   </div>
 
                   <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                    <div className="text-xs text-emerald-700 font-medium">확정 월 가용소득 (변제금)</div>
+                    <div className="text-xs text-emerald-700 font-medium">예상 월 변제금</div>
                     <div className="text-lg font-black text-emerald-800 mt-1">
                       {formatCurrency(monthlyPayment)}
                     </div>
@@ -1366,8 +1383,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                 {/* Formula Bar */}
                 <div className="mt-5 p-4 rounded-xl bg-slate-100 text-xs text-slate-600 flex items-center justify-between flex-wrap gap-2">
-                  <span>📐 <strong>산정 공식</strong>: 월 소득({formatCurrency((activeCalcResult as any).monthlyIncome || 2800000)}) - 최저생계비({formatCurrency(activeCalcResult.recognizedLivingCost)}) = <strong>월 변제금({formatCurrency(monthlyPayment)})</strong></span>
-                  <span className="text-slate-400">※ 부양가족 추가 인정 시 월 변제금이 더 낮아질 수 있습니다.</span>
+                  <span>📐 <strong>산정 원리</strong>: 월 소득 − 인정 생계비 = 월 가용소득. 월 변제금은 가용소득을 기준으로 청산가치·최저변제액 요건을 함께 고려해 정해집니다.</span>
+                  <span className="text-slate-500">※ 추가 생계비(주거·의료 등) 인정 여부에 따라 달라질 수 있습니다.</span>
                 </div>
               </div>
 
@@ -1389,7 +1406,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                   <div>
                     <div className="flex justify-between text-xs font-medium mb-1">
-                      <span className="text-slate-500">개인회생 후 월 변제금 (이자 100% 면제)</span>
+                      <span className="text-slate-500">개인회생 인가 시 예상 월 변제금</span>
                       <span className="text-emerald-600 font-black">{formatCurrency(monthlyPayment)}</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
@@ -1414,9 +1431,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       </div>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl text-center col-span-2 sm:col-span-1">
-                      <div className="text-[11px] text-purple-700 font-bold">이자 상환액</div>
+                      <div className="text-[11px] text-purple-700 font-bold">변제 기간</div>
                       <div className="text-sm sm:text-base font-black text-purple-900 mt-0.5">
-                        0원 (완전 면제)
+                        {repaymentMonths}개월
                       </div>
                     </div>
                   </div>
@@ -1437,49 +1454,53 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
-                        2025/2026 사법연감 및 서울회생법원 통계 비교
+                        공개 통계 기준 참고 비교
                       </h3>
-                      <p className="text-xs text-slate-500">도산법원 실제 회생 신청자 빅데이터 대비 의뢰인의 소득·채무·탕감률 지표 분석입니다.</p>
+                      <p className="text-xs text-slate-600">공개된 개인회생 통계와 입력하신 소득·채무·예상 탕감률을 비교한 참고 자료입니다. 법원의 판단 기준이 아닙니다.</p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                    빅데이터 심층 비교
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
+                    참고용
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <StatComparisonCard
-                    title="월 소득 비교"
-                    userValue={activeUserInput.monthlyIncome || 2450000}
-                    averageValue={AVERAGE_VALUES.monthlyIncome}
-                    percentile={calculateIncomePercentile(activeUserInput.monthlyIncome || 2450000)}
-                    icon={<DollarSign className="w-4 h-4" />}
-                    unit="원"
-                  />
-                  <StatComparisonCard
-                    title="총 채무 비교"
-                    userValue={totalDebt || 85000000}
-                    averageValue={AVERAGE_VALUES.totalDebt}
-                    percentile={calculateDebtPercentile(totalDebt || 85000000)}
-                    icon={<CreditCard className="w-4 h-4" />}
-                    unit="원"
-                  />
+                  {activeUserInput.monthlyIncome > 0 && (
+                    <StatComparisonCard
+                      title="월 소득 비교"
+                      userValue={activeUserInput.monthlyIncome}
+                      averageValue={AVERAGE_VALUES.monthlyIncome}
+                      percentile={calculateIncomePercentile(activeUserInput.monthlyIncome)}
+                      icon={<DollarSign className="w-4 h-4" />}
+                      unit="원"
+                    />
+                  )}
+                  {totalDebt > 0 && (
+                    <StatComparisonCard
+                      title="총 채무 비교"
+                      userValue={totalDebt}
+                      averageValue={AVERAGE_VALUES.totalDebt}
+                      percentile={calculateDebtPercentile(totalDebt)}
+                      icon={<CreditCard className="w-4 h-4" />}
+                      unit="원"
+                    />
+                  )}
                   <StatComparisonCard
                     title="예상 탕감률 비교"
-                    userValue={debtReductionRate || 68}
+                    userValue={debtReductionRate}
                     averageValue={AVERAGE_VALUES.debtReductionRate}
-                    percentile={calculateReductionRatePercentile(debtReductionRate || 68)}
+                    percentile={calculateReductionRatePercentile(debtReductionRate)}
                     icon={<Percent className="w-4 h-4" />}
                     unit="%"
                   />
                 </div>
 
                 <DistributionBar
-                  title="2025 도산법원 원금 탕감률 분포 내 의뢰인 위치"
-                  userValue={debtReductionRate || 68}
+                  title="개인회생 원금 탕감률 분포 내 예상 위치 (참고)"
+                  userValue={debtReductionRate}
                   distribution={REHAB_STATISTICS_2025.debtReductionRateDistribution || []}
                   highlightRange={(() => {
-                    const rate = debtReductionRate || 68;
+                    const rate = debtReductionRate;
                     if (rate < 10) return '10% 미만';
                     if (rate >= 90) return '90% 이상';
                     const lower = Math.floor(rate / 10) * 10;
@@ -1489,8 +1510,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 />
 
                 <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-200 text-xs text-purple-900 leading-relaxed">
-                  💡 <strong>사법 통계 분석 소견</strong>: 의뢰인의 예상 탕감률({debtReductionRate}%)은 전체 도산법원 인가 결정 중 
-                  상위 백분위에 해당하며, {courtName}의 실무준칙에 부합하여 기각 위험 없이 원활한 인가 결정이 기대됩니다.
+                  💡 <strong>참고</strong>: 예상 탕감률({debtReductionRate}%)을 공개 통계 분포와 비교한 위치입니다. 
+                  통계 비교는 사건의 개시·인가 가능성을 보장하지 않으며, 실제 결과는 {courtName}의 심리와 제출 서류에 따라 달라집니다.
                 </div>
               </div>
             </div>
@@ -1504,39 +1525,41 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">투명한 수임료 및 분납 조건 안내</h3>
-                    <p className="text-xs text-slate-500">숨겨진 추가 비용 없이 계약서에 명시되는 확정 수임료 체계입니다.</p>
+                    <h3 className="text-base font-bold text-slate-900">수임료 및 분납 조건 안내</h3>
+                    <p className="text-xs text-slate-600">변호사가 제안한 수임료입니다. 최종 금액과 납부 일정은 위임계약서에 기재됩니다.</p>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    최대 {installments}개월 분납 가능
-                  </span>
+                  {installments > 0 && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                      {installments}회 분납
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="text-xs text-slate-500 font-medium">총 변호사 수임료</div>
                     <div className="text-xl font-black text-slate-900 mt-1">
-                      {formatCurrency(totalFeeWon)}
+                      {totalFeeWon > 0 ? formatCurrency(totalFeeWon) : '상담 후 확정'}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">사건 종결까지 전체 변호 비용</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">변호사 제안 기준</div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium">초기 착수금 (계약 시)</div>
+                    <div className="text-xs text-slate-500 font-medium">착수금 (계약 시)</div>
                     <div className="text-xl font-black text-slate-900 mt-1">
-                      {formatCurrency(downPaymentWon)}
+                      {downPaymentWon > 0 ? formatCurrency(downPaymentWon) : '협의'}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">금지명령 즉시 접수 착수</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">계약서에 기재된 일정에 따라 납부</div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
                     <div className="text-xs text-emerald-700 font-medium">
-                      월 분납액 ({installments}회 분할)
+                      월 분납액{installments > 0 ? ` (${installments}회 분할)` : ''}
                     </div>
                     <div className="text-xl font-black text-emerald-800 mt-1">
-                      {formatCurrency(monthlyInstallmentWon)}
+                      {monthlyInstallmentWon > 0 ? formatCurrency(monthlyInstallmentWon) : '협의'}
                     </div>
-                    <div className="text-[11px] text-emerald-600 mt-0.5">무이자 분납으로 부담 완화</div>
+                    <div className="text-[11px] text-emerald-700 mt-0.5">분납 조건은 변호사마다 다릅니다</div>
                   </div>
                 </div>
 
@@ -1548,14 +1571,14 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 )}
 
                 <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  * {additionalCostsNotice || '법원 예납비용 및 송달료 실비는 채권자 수에 따라 결정되며, 추가 수임료 요구는 일체 없습니다.'}
+                  * {additionalCostsNotice || '인지대·송달료 등 법원 실비는 채권자 수에 따라 별도로 정해집니다. 계약서에 없는 비용 요구가 있으면 고객센터로 알려 주세요.'}
                 </p>
               </div>
 
               {/* 5-Step Procedure Timeline */}
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                 <h3 className="text-base font-bold text-slate-900 mb-2">개인회생 5단계 진행 로드맵</h3>
-                <p className="text-xs text-slate-500 mb-6">신청서 접수부터 최종 탕감(면책)까지 전담 변호사가 밀착 동행합니다.</p>
+                <p className="text-xs text-slate-600 mb-6">신청서 접수부터 면책 결정까지의 일반적인 진행 순서입니다.</p>
 
                 <ProcedureTimeline currentStage={1} />
               </div>
@@ -1593,7 +1616,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         <div className="bg-white border-t border-slate-200 px-5 sm:px-8 py-4 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-500 flex items-center gap-1.5 self-start sm:self-auto">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>변호사법 제23조 및 비밀유지 서약에 따라 안전하게 보호됩니다.</span>
+            <span>상담 내용은 변호사법 제26조(비밀유지의무)에 따라 보호됩니다.</span>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1631,14 +1654,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             {(onAcceptProposal || onAppointLawyer) && (
               <button
                 onClick={handleAccept}
-                className={`flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md ${
+                type="button"
+                className={`flex items-center justify-center gap-1.5 px-6 min-h-[44px] whitespace-nowrap rounded-xl text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md cursor-pointer ${
                   isAIPremium 
                     ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
                     : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
                 }`}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>수임 제안 수락하기</span>
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                <span>이 조건으로 전자계약 진행</span>
               </button>
             )}
           </div>

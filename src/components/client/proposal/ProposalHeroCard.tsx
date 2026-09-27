@@ -24,7 +24,8 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
   onStartContract,
   isOnlyOne = true
 }) => {
-  const isAIPremium = Boolean(proposal.proposalData?.aiInsights);
+  // 리포트 모달(PremiumProposalReportModal)과 동일한 판정 기준
+  const isAIPremium = Boolean((proposal.proposalData?.aiInsights as any)?.isAIPremium);
   const totalDebtManWon = request?.financialProfile?.debtTotal || 0;
 
   return (
@@ -97,7 +98,7 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
                 <TrendingDown className="w-4 h-4 text-emerald-500" />
                 예상 채무 탕감률
               </span>
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">최대치 기준</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">예상치</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
               {proposal.reductionRate}%
@@ -124,7 +125,7 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
               월 {proposal.monthlyPayment}만원
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              가용소득 기반 법정 생계비 반영 완료
+              법원 기준 생계비를 반영한 예상액
             </p>
           </div>
 
@@ -133,15 +134,14 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-indigo-500" />
-                정찰제 수임료
+                제안 수임료
               </span>
-              <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">분납 지원</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white pt-0.5">
               {proposal.fee}만원
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              {proposal.installment || '무이자 분납 협의 가능'}
+              {proposal.installment || '납부 조건은 상담 시 확인'}
             </p>
           </div>
         </div>
@@ -166,12 +166,12 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
             onClick={() => onViewReport(proposal)}
             className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 hover:from-blue-800 hover:to-indigo-700 text-white font-black text-sm sm:text-base shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
           >
-            <FileText className="w-4 h-4" />
-            <span>맞춤 제안서 & 7p 정밀 진단서 전문 열람하기</span>
-            <ArrowRight className="w-4 h-4 text-white/80" />
+            <FileText className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{isAIPremium ? '제안서 & 정밀 진단서 전문 보기' : '제안서 전문 보기'}</span>
+            <ArrowRight className="w-4 h-4 text-white/80 shrink-0" aria-hidden="true" />
           </button>
-          <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-2">
-            변호사가 직접 검수한 탕감 계산식, 관할법원 분석표, 절차 타임라인이 포함되어 있습니다.
+          <p className="text-center text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+            변제금 계산 근거, 관할법원 참고 사항, 절차 안내가 담겨 있습니다. 실제 결과는 법원 심리에 따라 달라질 수 있습니다.
           </p>
         </div>
 
@@ -191,8 +191,8 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
               onClick={() => onNavigateToChat(request?.id)}
               className="min-h-[44px] px-4 py-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border-2 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98] shadow-xs"
             >
-              <MessageSquare className="w-4 h-4 text-blue-600" />
-              <span>제안서 내용으로 1:1 추가 상담하기</span>
+              <MessageSquare className="w-4 h-4 text-blue-600 shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">1:1 추가 상담하기</span>
             </button>
 
             {/* 액션 B: 즉시 계약 진행하기 */}
@@ -201,8 +201,8 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
               onClick={() => onStartContract(proposal)}
               className="min-h-[44px] px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98] shadow-md shadow-emerald-600/20"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>이 조건으로 즉시 수임계약 진행하기</span>
+              <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">이 조건으로 전자계약 진행</span>
             </button>
           </div>
         </div>

@@ -12,7 +12,8 @@ import { secureGetItem } from '../../utils/secureStorage';
 import { mockLawyers } from '../../data';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
-import { loadContractsLocal, createContract, saveContract } from '../../services/contractService';
+import { loadContractsLocal } from '../../services/contractService';
+import { startContractFromProposal } from '../../services/proposalContractService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
@@ -184,17 +185,20 @@ export default function MyPageView({
     return false;
   }, [clientContract, crmExt?.thirteenStage, activeRequest?.status, requests]);
 
-  // 제안서 조건으로 즉시 수임계약 체결 핸들러
+  // 제안서 조건으로 전자 수임계약 시작 — 서명 대기 계약서 생성 후 본인인증·서명 화면으로 이동
+  // (버튼 클릭만으로 '체결 완료'를 기록하지 않는다)
   const handleStartContractFromProposal = async (proposal: ConsultProposal) => {
-    const targetReq = requests.find(r => r.proposals?.some(p => p.id === proposal.id)) || activeRequest || requests[0];
-    const targetReqId = targetReq?.id || 'client-self';
-    const clientName = profile?.name || userAlias || '의뢰인';
-    const clientPhone = profile?.phone || targetReq?.phone || '010-0000-0000';
+    // 반드시 이 제안서가 실제로 도착한 요청을 사용 (다른 요청으로 폴백 금지)
+    const targetReq = requests.find(r => r.proposals?.some(p => p.id === proposal.id));
+    if (!targetReq) {
+      toast.error('이 제안서가 연결된 상담 요청을 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+      return;
+    }
 
     const confirmed = await dialog.confirm({
-      title: `${proposal.lawyerName} 변호사 수임계약 체결`,
-      message: `${proposal.lawyerName} 변호사의 제안 조건(예상 탕감률 ${proposal.reductionRate}%, 수임료 ${proposal.fee}만원, ${proposal.installment})으로 전자 수임계약을 진행하시겠습니까?\n\n계약 체결 후 법원 제출을 위한 필수 서류 수집 및 8대 서식 작성이 시작됩니다.`,
-      confirmText: '전자계약 체결하기',
+      title: `${proposal.lawyerName} 변호사 전자 수임계약 진행`,
+      message: `${proposal.lawyerName} 변호사의 제안 조건(수임료 ${proposal.fee}만원${proposal.installment ? `, ${proposal.installment}` : ''})으로 전자 수임계약서를 작성합니다.\n\n다음 화면에서 휴대폰 본인인증과 계약서 확인·서명을 마쳐야 계약이 체결됩니다. 본인인증 시 가명 대신 실명으로 계약서가 작성됩니다.`,
+      confirmText: '계약서 확인하러 가기',
       cancelText: '더 검토하기',
       variant: 'primary'
     });
@@ -202,44 +206,14 @@ export default function MyPageView({
     if (!confirmed) return;
 
     try {
-      // 1. 전자계약서 생성 또는 업데이트
-      const newContract = createContract({
-        clientId: targetReqId,
-        clientRefId: targetReqId,
-        clientName,
-        clientPhone,
-        lawyerName: proposal.lawyerName,
-        lawyerId: proposal.lawyerId,
-        totalFee: proposal.fee,
-        downPayment: Math.min(proposal.fee, 50),
-        installmentCount: 6,
-        caseType: '개인회생 정식 사건'
+      const { signUrl } = await startContractFromProposal({
+        request: targetReq,
+        proposal,
+        clientDisplayName: targetReq.stealthNickname || userAlias || targetReq.clientName || '의뢰인',
       });
-
-      // 2. 즉시 전자서명 완료 처리
-      newContract.signedAt = new Date().toISOString();
-      newContract.status = 'completed' as any;
-      newContract.clientSignature = '전자서명 완료(모바일 본인인증)';
-      await saveContract(newContract);
-
-      // 3. CRM 상태 업데이트 (contract_done)
-      await updateCrmClientExtension(targetReqId, {
-        thirteenStage: 'contract_done',
-        contractSignedAt: new Date().toISOString(),
-        assignedLawyerName: proposal.lawyerName
-      });
-
-      // 4. 의뢰인 요청 상태 변경
-      if (targetReq) {
-        targetReq.status = 'contracted';
-        targetReq.assignedLawyerId = proposal.lawyerId;
-      }
-
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      toast.success(`${proposal.lawyerName} 변호사님과의 정식 수임계약이 완료되었습니다!`);
-      setRefreshTick(t => t + 1);
+      window.location.assign(signUrl);
     } catch (err) {
-      toast.error('계약 체결 처리 중 오류가 발생했습니다.');
+      toast.error(err instanceof Error ? err.message : '계약서 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 

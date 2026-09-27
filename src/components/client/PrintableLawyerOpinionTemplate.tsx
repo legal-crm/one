@@ -26,29 +26,49 @@ interface PrintableLawyerOpinionTemplateProps {
   monthlyInstallmentWon?: number;
   installments?: number;
   additionalCostsNotice?: string;
+  /** 문서번호 생성 기준 (제안서 ID) — 동명이인 충돌 방지 */
+  documentId?: string;
+  /** 작성일 (제안서 생성일). 없으면 오늘 */
+  issuedAt?: string;
+  /** 변호사가 등록한 인감 이미지 (없으면 '(인)' 표기만) */
+  sealImageUrl?: string;
 }
 
+/** 문자열 → 안정적인 8자리 16진 해시 (FNV-1a) */
+function stableHash(input: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).toUpperCase().padStart(8, '0');
+}
+
+// 기본값은 모두 '미입력' 상태 — 테스트용 이름·금액을 기본값으로 두지 않는다
 export default function PrintableLawyerOpinionTemplate({
   result,
   userInput,
   proposal,
-  lawyerName = '테스트 6변호사',
-  lawyerFirmName = '테스트 법무법인 서초 분사무소',
+  lawyerName = '담당 변호사',
+  lawyerFirmName = '',
   clientName = '의뢰인',
-  courtName = '서울회생법원',
-  totalDebt = 60000000,
-  monthlyPayment = 420000,
-  debtReductionRate = 75,
-  estimatedReduction = 44880000,
+  courtName = '관할 회생법원',
+  totalDebt = 0,
+  monthlyPayment = 0,
+  debtReductionRate = 0,
+  estimatedReduction = 0,
   repaymentMonths = 36,
-  totalRepayment = 15120000,
+  totalRepayment = 0,
   lawyerOpinion,
   specialNotes = [],
-  totalFeeWon = 1500000,
-  downPaymentWon = 200000,
-  monthlyInstallmentWon = 325000,
-  installments = 4,
-  additionalCostsNotice = '착수금 부담 경감 4회 분납 지원 (인지·송달료 별도 실비)'
+  totalFeeWon = 0,
+  downPaymentWon = 0,
+  monthlyInstallmentWon = 0,
+  installments = 0,
+  additionalCostsNotice = '인지대·송달료 등 법원 실비는 별도입니다.',
+  documentId,
+  issuedAt,
+  sealImageUrl,
 }: PrintableLawyerOpinionTemplateProps) {
 
   const formatCurrency = (amount: number | undefined): string => {
@@ -64,19 +84,24 @@ export default function PrintableLawyerOpinionTemplate({
     return `${res}원`.trim();
   };
 
-  const today = new Date();
-  const dateString = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-  const docSerial = `ADV-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${Math.abs(clientName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 2048) % 9000 + 1000)}`;
+  const issued = issuedAt && !isNaN(new Date(issuedAt).getTime()) ? new Date(issuedAt) : new Date();
+  const dateString = `${issued.getFullYear()}년 ${issued.getMonth() + 1}월 ${issued.getDate()}일`;
+  const ymd = `${issued.getFullYear()}${String(issued.getMonth() + 1).padStart(2, '0')}${String(issued.getDate()).padStart(2, '0')}`;
+  // 제안서 ID 기반 문서번호 (같은 제안서 = 같은 번호, 다른 제안서끼리 충돌 없음)
+  const serialSource = documentId || proposal?.id || `${lawyerName}|${clientName}|${issued.toISOString()}`;
+  const docSerial = `ADV-${ymd}-${stableHash(String(serialSource))}`;
+
+  const years = repaymentMonths % 12 === 0 ? `${repaymentMonths / 12}년` : `${(repaymentMonths / 12).toFixed(1)}년`;
 
   const finalOpinion = lawyerOpinion || 
     proposal?.proposalData?.lawyerOpinion || 
     proposal?.remark || 
-    '담당 변호사가 의뢰인의 진술 내용과 현재 경제적 여건을 직접 검토하였습니다. 현재 채무에 대해 산출된 변제 계획안이 법원 심사관 관점에서 보정명령 없이 가장 빠르고 안전하게 통과될 수 있는 현실적 수치입니다. 신청 접수와 동시에 독촉 전면 금지명령을 신청하여 일상생활을 빠르게 안정시켜 드리겠습니다.';
+    '담당 변호사가 의뢰인이 제공한 소득·재산·채무 정보를 검토하였습니다. 아래 변제 계획은 관할법원 실무 기준을 참고한 예상안이며, 신청 시 금지·중지명령을 함께 신청하는 방안을 검토하겠습니다.';
 
   const notes = specialNotes.length > 0 ? specialNotes : [
-    '[변호사 직접 소명] 법원 보정명령 1회 이내 종결을 목표로 한 보수적·안전 변제계획안',
-    '[채권추심 즉시 차단] 접수 즉시 금지명령 신청으로 채권사 독촉 전화 및 급여 압류 차단',
-    '[1:1 전담 변호사 상담] 사무장이 아닌 변호사가 서류 작성부터 인가까지 직접 챙깁니다'
+    '제출 서류를 충실히 준비해 보정권고를 줄이는 방향으로 신청서를 작성합니다.',
+    '신청 시 금지·중지명령을 함께 신청해 추심 부담을 줄이는 방안을 검토합니다.',
+    '보정권고가 나오면 담당 변호사가 검토해 대응합니다.'
   ];
 
   // A4 Page Container (794px x 1123px @ 96DPI)
@@ -127,10 +152,10 @@ export default function PrintableLawyerOpinionTemplate({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '13px', fontWeight: 900, color: '#0f172a', letterSpacing: '0.5px' }}>
-              {lawyerFirmName}
+              {lawyerFirmName || `${lawyerName} 변호사`}
             </span>
             <span style={{ fontSize: '9.5px', fontWeight: 600, color: '#475569' }}>
-              도산·개인회생 전담 법률검토팀 · 담당 변호사 {lawyerName}
+              담당 변호사 {lawyerName}
             </span>
           </div>
         </div>
@@ -156,7 +181,7 @@ export default function PrintableLawyerOpinionTemplate({
             color: '#1e40af',
             border: '1px solid #bfdbfe'
           }}>
-            변호사 직접 검토 공인문서
+            수임 전 검토 의견
           </span>
         </div>
       </div>
@@ -180,7 +205,7 @@ export default function PrintableLawyerOpinionTemplate({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Lock size={11} color="#64748b" />
-          <span>본 법률의견서는 변호사법 제109조 및 비밀유지 의무에 의거하여 작성된 정식 법률문서입니다.</span>
+          <span>상담 내용은 변호사법 제26조(비밀유지의무)에 따라 보호됩니다. 본 문서는 수임 전 참고 의견입니다.</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#334155' }}>
           <span>{pageNumber}</span>
@@ -237,7 +262,7 @@ export default function PrintableLawyerOpinionTemplate({
           </div>
           <div>
             <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>소속 법무법인</div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lawyerFirmName}</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lawyerFirmName || '-'}</div>
           </div>
         </div>
 
@@ -256,17 +281,17 @@ export default function PrintableLawyerOpinionTemplate({
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #86efac', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>월 예상 변제금</div>
             <div style={{ fontSize: '17px', fontWeight: 900, color: '#15803d', marginTop: '2px' }}>{formatCurrency(monthlyPayment)}</div>
-            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>36개월 균등</div>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{repaymentMonths}개월 기준</div>
           </div>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>총 탕감 예상액</div>
             <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginTop: '3px' }}>{formatCurrency(estimatedReduction)}</div>
-            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>원금 면책 기준</div>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>변제 완료·면책 시</div>
           </div>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>이자 감면율</div>
-            <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginTop: '3px' }}>100% 면제</div>
-            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>장래이자 전액</div>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>총 변제 예정액</div>
+            <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginTop: '3px' }}>{formatCurrency(totalRepayment)}</div>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{repaymentMonths}개월 합계</div>
           </div>
         </div>
 
@@ -284,7 +309,7 @@ export default function PrintableLawyerOpinionTemplate({
             fontWeight: 800,
             marginBottom: '10px'
           }}>
-            <span>1. 담당 변호사 직접 심사 총괄 소견</span>
+            <span>1. 담당 변호사 검토 소견</span>
           </div>
           <div style={{
             padding: '14px 18px',
@@ -296,7 +321,7 @@ export default function PrintableLawyerOpinionTemplate({
             color: '#334155'
           }}>
             <p style={{ margin: '0 0 10px 0', fontWeight: 600, color: '#0f172a' }}>
-              "의뢰인의 소득 상황과 부채 발생 경위를 직접 면밀히 검토한 결과, 채무자 회생 및 파산에 관한 법률상 개인회생 개시 요건을 충분히 충족하고 있습니다."
+              의뢰인이 제공한 소득 상황과 부채 정보를 바탕으로 「채무자 회생 및 파산에 관한 법률」상 개인회생 신청 가능성을 검토하였습니다.
             </p>
             <p style={{ margin: 0 }}>
               {finalOpinion}
@@ -318,7 +343,7 @@ export default function PrintableLawyerOpinionTemplate({
             fontWeight: 800,
             marginBottom: '10px'
           }}>
-            <span>2. 보정명령 최소화 및 법적 방어 전략</span>
+            <span>2. 사건 진행 계획 및 유의사항</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {notes.map((note, idx) => (
@@ -354,35 +379,21 @@ export default function PrintableLawyerOpinionTemplate({
           justifyContent: 'space-between'
         }}>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{lawyerFirmName}</div>
+            {lawyerFirmName && (
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{lawyerFirmName}</div>
+            )}
             <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
               담당 변호사: <strong style={{ color: '#0f172a' }}>{lawyerName}</strong> (인)
             </div>
-            <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '2px' }}>
-              대한변호사협회 등록 도산(회생·파산) 전문
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>
+              작성일 {dateString} · 문서번호 {docSerial}
             </div>
           </div>
 
-          {/* 직인 도장 그래픽 */}
-          <div style={{
-            width: '56px',
-            height: '56px',
-            border: '2.5px solid #dc2626',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#dc2626',
-            fontSize: '9px',
-            fontWeight: 900,
-            textAlign: 'center',
-            lineHeight: 1.15,
-            padding: '4px',
-            transform: 'rotate(-5deg)',
-            opacity: 0.9
-          }}>
-            변호사<br />{lawyerName.slice(0, 3)}<br />之印
-          </div>
+          {/* 인감: 변호사가 등록한 이미지가 있을 때만 표시 (임의 도장 그래픽 생성 금지) */}
+          {sealImageUrl && (
+            <img src={sealImageUrl} alt={`${lawyerName} 변호사 인`} style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
+          )}
         </div>
       </PageWrapper>
 
@@ -428,25 +439,25 @@ export default function PrintableLawyerOpinionTemplate({
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>원금 탕감률</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right' }}>0% (전액 상환 의무)</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{debtReductionRate}%</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>법원 확정 탕감</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>인가·면책 시 예상</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>월 변제 부담금</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#dc2626' }}>매월 원리금 독촉</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{formatCurrency(monthlyPayment)} / 월</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>가계수지 최저생계비 보장</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>인정 생계비 공제 후 산정</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>변제 기간</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right' }}>기한 없음 (연체 누적)</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{repaymentMonths}개월 (3년)</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>종료 즉시 면책 효력</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{repaymentMonths}개월 ({years})</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>변제 완료 후 면책 신청</td>
               </tr>
               <tr style={{ borderBottom: '2px solid #0f172a' }}>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>이자 및 연체이자</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#dc2626' }}>연체이자 가산</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>0원 (100% 면제)</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>장래이자 전액 소멸</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>원금 기준 변제계획</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>개시 후 이자는 원칙적으로 후순위</td>
               </tr>
             </tbody>
           </table>
@@ -466,7 +477,7 @@ export default function PrintableLawyerOpinionTemplate({
             fontWeight: 800,
             marginBottom: '10px'
           }}>
-            <span>4. 투명한 수임료 및 무이자 분납 계획안</span>
+            <span>4. 제안 수임료 및 납부 조건</span>
           </div>
 
           <div style={{
@@ -481,16 +492,18 @@ export default function PrintableLawyerOpinionTemplate({
           }}>
             <div>
               <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>총 수임료</div>
-              <div style={{ fontSize: '14px', fontWeight: 900, color: '#0f172a', marginTop: '2px' }}>{formatCurrency(totalFeeWon)}</div>
+              <div style={{ fontSize: '14px', fontWeight: 900, color: '#0f172a', marginTop: '2px' }}>{totalFeeWon > 0 ? formatCurrency(totalFeeWon) : '상담 후 확정'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>초기 착수금</div>
-              <div style={{ fontSize: '14px', fontWeight: 900, color: '#1e40af', marginTop: '2px' }}>{formatCurrency(downPaymentWon)}</div>
+              <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>착수금</div>
+              <div style={{ fontSize: '14px', fontWeight: 900, color: '#1e40af', marginTop: '2px' }}>{downPaymentWon > 0 ? formatCurrency(downPaymentWon) : '협의'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>월 분납 조건</div>
+              <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>분납 조건</div>
               <div style={{ fontSize: '13px', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
-                {installments}회 무이자 ({formatCurrency(monthlyInstallmentWon)}/월)
+                {installments > 0 && monthlyInstallmentWon > 0
+                  ? `${installments}회 (${formatCurrency(monthlyInstallmentWon)}/월)`
+                  : '협의'}
               </div>
             </div>
           </div>
@@ -525,12 +538,12 @@ export default function PrintableLawyerOpinionTemplate({
             <div style={{ padding: '8px 6px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px' }}>
               <div style={{ fontSize: '9px', fontWeight: 800, color: '#15803d' }}>STEP 2</div>
               <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>신청·금지명령</div>
-              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>독촉 전면 중단</div>
+              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>추심 제한 신청</div>
             </div>
             <div style={{ padding: '8px 6px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '6px' }}>
               <div style={{ fontSize: '9px', fontWeight: 800, color: '#7e22ce' }}>STEP 3</div>
               <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>보정권고 대응</div>
-              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>변호사 직접 소명</div>
+              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>보정서 제출</div>
             </div>
             <div style={{ padding: '8px 6px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px' }}>
               <div style={{ fontSize: '9px', fontWeight: 800, color: '#b45309' }}>STEP 4</div>
@@ -540,7 +553,7 @@ export default function PrintableLawyerOpinionTemplate({
             <div style={{ padding: '8px 6px', backgroundColor: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: '6px' }}>
               <div style={{ fontSize: '9px', fontWeight: 800, color: '#be185d' }}>STEP 5</div>
               <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>인가 및 면책</div>
-              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>잔여 채무 소멸</div>
+              <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '2px' }}>변제 완료 후 면책</div>
             </div>
           </div>
         </div>
@@ -556,7 +569,7 @@ export default function PrintableLawyerOpinionTemplate({
           color: '#64748b',
           lineHeight: 1.5
         }}>
-          <strong style={{ color: '#0f172a' }}>법적 안내:</strong> 본 의견서는 의뢰인이 제공한 초기 정보를 토대로 도산 전문 변호사가 직접 산출한 예상 변제 계획입니다. 실제 인가 조건은 법원 심사 및 채권자 이의신청 과정에서 미세 조정될 수 있으며, 당 사무소는 법원의 보정권고에 대해 직접 완벽한 소명서를 대리 작성하여 의뢰인의 권익을 보호합니다.
+          <strong style={{ color: '#0f172a' }}>법적 안내:</strong> 본 의견서는 의뢰인이 제공한 초기 정보를 토대로 담당 변호사가 작성한 예상 변제 계획이며, 개시·인가·면책을 보장하지 않습니다. 실제 변제금과 변제 기간은 법원 심리, 제출 서류, 채권자 이의 등에 따라 달라질 수 있습니다.
         </div>
       </PageWrapper>
     </div>

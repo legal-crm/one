@@ -99,6 +99,53 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const handleIdentityVerification = async () => {
     if (!contract) return;
     setVerifying(true);
+
+    // ── 스텔스 가명 → 실명 전환 계약 (고객이 제안서에서 직접 시작한 계약) ──
+    // 계약서의 이름은 가명이므로 이름 대조 대신, 본인인증으로 확인된 실명·연락처를 계약 당사자로 확정한다.
+    if (contract.realNameConversionPending && !contract.isBusiness) {
+      const result = await requestIdentityVerification(undefined, authProvider);
+      setVerifying(false);
+      if (!result.success) {
+        toast.error(result.error || '본인인증에 실패했습니다.');
+        return;
+      }
+      const realName = (result.name || '').trim();
+      if (!realName || realName === '인증회원') {
+        toast.error('본인인증 결과에서 실명을 확인하지 못했습니다. 다른 인증 수단으로 다시 시도해 주세요.');
+        return;
+      }
+      const aliasName = contract.clientName;
+      const realPhone = result.phoneNumber || contract.clientPhone || '';
+      const replaceAlias = (text: string) =>
+        aliasName && aliasName !== realName ? text.split(aliasName).join(realName) : text;
+
+      let converted: ElectronicContract = {
+        ...contract,
+        clientName: realName,
+        clientPhone: realPhone,
+        documents: contract.documents.map(d => ({ ...d, content: replaceAlias(d.content) })),
+        identityVerification: result,
+        authorityStatus: 'REPRESENTATIVE_VERIFIED',
+        realNameConversionPending: false,
+      };
+      converted = addAuditLog(
+        converted,
+        `본인인증(${result.providerName || result.method}) 완료 — 가명 계약 당사자를 인증된 실명으로 전환`,
+        'client'
+      );
+      try {
+        await saveContract(converted);
+      } catch {
+        toast.error('인증 정보를 저장하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.');
+        return;
+      }
+      setContract(converted);
+      setRepMatchMessage(`${realName}님 명의로 계약서가 작성되었습니다.`);
+      setVerified(true);
+      toast.success('본인인증이 완료되었습니다. 계약서가 실명으로 작성되었습니다.');
+      return;
+    }
+
     const expectedName = contract.isBusiness 
       ? (contract.businessInfo?.representativeName || contract.clientName) 
       : contract.clientName;

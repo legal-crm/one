@@ -2341,6 +2341,12 @@ export interface ElectronicContract {
   id: string;
   clientId: string;
   clientRefId?: string;
+  /** 스텔스 가명 의뢰인이 제안서에서 계약을 시작한 경우 — 본인인증 시 인증된 실명·연락처로 전환 */
+  realNameConversionPending?: boolean;
+  /** 계약을 시작한 상담 요청 ID (제안서 기반 계약) */
+  consultRequestId?: string;
+  /** 계약 조건의 근거가 된 제안서 ID */
+  sourceProposalId?: string;
   clientName: string;
   clientPhone: string;
   clientAddress?: string;
