@@ -76,3 +76,55 @@ export interface BankStatementAuditData {
   lawyerReviewedAt?: string;
   lastUpdatedAt: string;
 }
+
+// ═══════════════════════════════════════════════
+// 사전 리스크 탐지 (보정 예방 시스템) 타입 정의
+// ═══════════════════════════════════════════════
+
+/** 리스크 탐지 항목 유형 */
+export type RiskDetectionType =
+  | 'LOAN_FLOW'           // 대출금 입금 후 자금 흐름 추적
+  | 'LARGE_WITHDRAWAL'    // 대액 출금 (100만원+ 기본)
+  | 'FAMILY_TRANSFER'     // 친인척 이체 (편파변제 의심)
+  | 'SPECULATION'         // 사행성 지출 (주식·코인·도박)
+  | 'LUXURY_SPENDING'     // 사치성 소비 (명품·유흥·골프)
+  | 'CASH_ADVANCE'        // 현금서비스·카드론 입금 패턴
+  | 'UNEXPLAINED_INCOME'; // 급여 외 정기 입금원
+
+/** 개별 리스크 탐지 결과 */
+export interface RiskDetectionItem {
+  id: string;
+  type: RiskDetectionType;
+  level: 'HIGH' | 'MEDIUM';        // 🔴 HIGH / ⚠️ MEDIUM
+  title: string;                    // "편파변제 의심 — 소명 필수"
+  message: string;                  // 변호사 안내 메시지 상세
+  transactions: AuditTransactionItem[];  // 해당 거래 목록
+  totalAmount: number;              // 합산 금액
+  suggestedAction: string;          // 권장 조치 (소명서 준비 등)
+  suggestedEvidence: string;        // 권장 증빙 자료
+  /** 대출금 추적 시: 원인이 된 대출 입금 건 */
+  sourceLoanTransaction?: AuditTransactionItem;
+}
+
+/** 리스크 탐지 리포트 요약 */
+export interface RiskReportSummary {
+  totalTransactions: number;        // 전체 거래 수
+  analyzedPeriod: string;           // 분석 기간 (예: "2025-09 ~ 2026-09")
+  flaggedCount: number;             // 플래그된 거래 수
+  highRiskCount: number;            // 🔴 높은 위험
+  mediumRiskCount: number;          // ⚠️ 중간 위험
+  highRiskAmount: number;           // 🔴 합산 금액
+  mediumRiskAmount: number;         // ⚠️ 합산 금액
+  estimatedCorrectionItems: number; // 예상 보정권고 항목 수
+}
+
+/** 전체 리스크 리포트 */
+export interface PreFilingRiskReport {
+  clientId: string;
+  clientName: string;
+  generatedAt: string;
+  summary: RiskReportSummary;
+  risks: RiskDetectionItem[];
+  /** 보정 예방 권고 메시지 (변호사 대시보드 표시용) */
+  overallAdvice: string;
+}

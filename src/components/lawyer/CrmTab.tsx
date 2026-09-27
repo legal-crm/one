@@ -6,7 +6,7 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -65,10 +65,12 @@ import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView'
 import ClientCommunicationSidePanel from './pipeline/ClientCommunicationSidePanel';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
+import { inspectPdfFile } from '../../services/pdfQualityService';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { syncCompanionWithCrmCase } from '../../services/companionService';
 import { detectClientIncomeType } from '../../utils/incomeTypeHelper';
 import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
+import PdfPreprocessorModal from '../common/PdfPreprocessorModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog, CrmActivityType,
@@ -306,6 +308,8 @@ export default function CrmTab({
   const [newDocRequestLabel, setNewDocRequestLabel] = useState('');
   const [newDocRequestDesc, setNewDocRequestDesc] = useState('');
   const [showDocScanner, setShowDocScanner] = useState(false);
+  const [showPdfPreprocessor, setShowPdfPreprocessor] = useState(false);
+  const [preprocessorTargetDoc, setPreprocessorTargetDoc] = useState<{ name: string; dataUrl: string } | undefined>(undefined);
   // ── 고객 자가진단 전수 상세 팝업 ──
   const [showIntakeDetailModal, setShowIntakeDetailModal] = useState(false);
   // ── 배정 지시 모달 ──
@@ -4455,6 +4459,17 @@ export default function CrmTab({
                               <Camera className="w-3.5 h-3.5 text-slate-500" />
                               서류 스캔
                             </button>
+                            <button 
+                              onClick={() => {
+                                setPreprocessorTargetDoc(undefined);
+                                setShowPdfPreprocessor(true);
+                              }} 
+                              className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-100 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
+                              title="가로 스캔 서류 세로 회전 및 빈 페이지 일괄 정리"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                              PDF 회전·정리
+                            </button>
                             <button onClick={() => setShowDocRequest(!showDocRequest)} className="text-xs font-bold text-brand bg-white px-3 py-2 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1">
                               📩 서류 요청
                             </button>
@@ -4469,6 +4484,29 @@ export default function CrmTab({
                                   toast.error(validation.error);
                                   return;
                                 }
+
+                                // PDF 파일인 경우 법원 제출 품질 자동 검수
+                                if (file.name.toLowerCase().endsWith('.pdf')) {
+                                  try {
+                                    const inspection = await inspectPdfFile(file);
+                                    const errors = inspection.items.filter(i => i.severity === 'error');
+                                    const warnings = inspection.items.filter(i => i.severity === 'warning');
+                                    
+                                    if (errors.length > 0) {
+                                      toast.error(`⛔ PDF 검수 실패: ${errors[0].message}`);
+                                      return; // 에러가 있으면 업로드 차단
+                                    }
+                                    if (warnings.length > 0) {
+                                      warnings.forEach(w => toast.warning(`📋 ${w.label}: ${w.message}`, { duration: 6000 }));
+                                    }
+                                    if (inspection.isDigitalPdf) {
+                                      toast.info('✅ 디지털 PDF 감지 — 텍스트 검색 가능, OCR 불필요', { duration: 3000 });
+                                    }
+                                  } catch (inspErr) {
+                                    console.warn('[PDF Inspection Error]', inspErr);
+                                  }
+                                }
+
                                 const reader = new FileReader();
                                 reader.onload = async () => {
                                   let dataUrl = reader.result as string;
@@ -4732,6 +4770,19 @@ export default function CrmTab({
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
+                                      {f.name.toLowerCase().endsWith('.pdf') && (
+                                        <button
+                                          onClick={() => {
+                                            setPreprocessorTargetDoc({ name: f.name, dataUrl: f.dataUrl });
+                                            setShowPdfPreprocessor(true);
+                                          }}
+                                          className="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer press-scale"
+                                          title="가로 스캔 세로 회전 및 빈 페이지 일괄 정리"
+                                        >
+                                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                                          <span>회전/정리</span>
+                                        </button>
+                                      )}
                                       <button 
                                         onClick={() => setViewingDoc(f)} 
                                         className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand/5 hover:bg-brand/10 border border-brand/15 transition-colors cursor-pointer press-scale"
@@ -4788,6 +4839,36 @@ export default function CrmTab({
                             };
                             await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
                             toast.success(`${scanned.name} 스캔 완료`);
+                          }}
+                        />
+
+                        {/* PDF 전처리 (회전 보정 / 빈 페이지 삭제) 모달 */}
+                        <PdfPreprocessorModal
+                          isOpen={showPdfPreprocessor}
+                          onClose={() => {
+                            setShowPdfPreprocessor(false);
+                            setPreprocessorTargetDoc(undefined);
+                          }}
+                          initialFile={preprocessorTargetDoc}
+                          clientName={selectedClient?.clientName || '신청인'}
+                          onSaveToCrm={async (preprocessed) => {
+                            const latestExt = getCrmExt(selectedId);
+                            const currentUploaded = latestExt.uploadedFiles || [];
+                            const newDoc: DocumentFile = {
+                              id: `doc-${Date.now()}`,
+                              name: preprocessed.name,
+                              category: 'other',
+                              uploadedAt: new Date().toISOString(),
+                              uploadedBy: activeLawyer.name,
+                              fileSize: preprocessed.fileSize,
+                              mimeType: 'application/pdf',
+                              dataUrl: preprocessed.dataUrl,
+                              uploadSource: 'lawyer',
+                              reviewStatus: 'approved',
+                            };
+                            await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: [...currentUploaded, newDoc] });
+                            toast.success(`${preprocessed.name} 서류가 CRM에 추가 저장되었습니다.`);
+                            setCrmData({ ...crmData });
                           }}
                         />
                       </div>

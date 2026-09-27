@@ -28,6 +28,13 @@ import {
   exportToCourtStandardExcel 
 } from '../../../services/bankAuditService';
 import type { BankStatementAuditData } from '../../../types/bankAuditTypes';
+import {
+  STANDARD_CORRECTION_TEMPLATES,
+  autoGenerateExplanationFromAudit,
+  autoAssignExhibitNumbers,
+  generateCourtAnnexHtml,
+  type StandardCorrectionTemplate
+} from '../../../services/correctionAutomationService';
 
 
 interface ComprehensiveCorrectionCenterProps {
@@ -186,6 +193,16 @@ export default function ComprehensiveCorrectionCenter({
   const [showBankAuditModal, setShowBankAuditModal] = useState(false);
   // 법원 공식 [별지: 100만 원 이상 출금 사용처 소명서] 인쇄 모달 상태
   const [showCourtPrintModal, setShowCourtPrintModal] = useState(false);
+  // 별지 소명서 (대출금 사용처 / 100만 원 이상 출금) A4 인쇄 모달 상태
+  const [annexModal, setAnnexModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    type: 'LOAN' | 'WITHDRAWAL';
+  }>({
+    isOpen: false,
+    title: '',
+    type: 'LOAN'
+  });
   
   // 의뢰인 작성 100만 원 이상 출금 소명표 실시간 동기화 상태
   const [clientAuditData, setClientAuditData] = useState<BankStatementAuditData>(() => 
@@ -232,6 +249,62 @@ export default function ComprehensiveCorrectionCenter({
     servedDate, dueDate, dDay, answers, recentLoans, creditCards, 
     highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests
   ]);
+
+  // 회생위원 7대 표준 보정명령 템플릿 적용
+  const handleApplyTemplate = (tpl: StandardCorrectionTemplate) => {
+    const text = tpl.debtorResponseTemplate({ clientName, courtName });
+    const existingIdx = answers.findIndex(a => a.courtInstruction === tpl.courtInstruction);
+    if (existingIdx >= 0) {
+      setAnswers(prev => prev.map((a, i) => i === existingIdx ? {
+        ...a,
+        courtInstruction: tpl.courtInstruction,
+        debtorResponse: text,
+        attachedEvidence: tpl.defaultAttachedEvidence
+      } : a));
+      toast.success(`'${tpl.badge}' 표준 문안으로 제${existingIdx + 1}항이 갱신되었습니다.`);
+    } else {
+      setAnswers(prev => [
+        ...prev,
+        {
+          pointNumber: prev.length + 1,
+          courtInstruction: tpl.courtInstruction,
+          debtorResponse: text,
+          attachedEvidence: tpl.defaultAttachedEvidence
+        }
+      ]);
+      toast.success(`'${tpl.badge}' 회생위원 표준 문안이 제${answers.length + 1}항에 추가되었습니다.`);
+    }
+  };
+
+  // 통장 거래내역 분석 데이터로부터 7대 소명표 원클릭 자동 완성
+  const handleAutoFillExplanationsFromAudit = () => {
+    const stored = getStoredBankAuditData(clientId, clientName);
+    const items = stored?.items?.length ? stored.items : clientAuditData.items;
+    if (!items || items.length === 0) {
+      toast.error('통장 거래내역 분석 데이터가 없습니다. [⚡ 통장·카드 소명기]에서 통장 엑셀을 먼저 업로드해주세요.');
+      return;
+    }
+    const result = autoGenerateExplanationFromAudit(items, null, clientName);
+    if (result.highValueTrans.length > 0) {
+      setHighValueTrans(result.highValueTrans);
+    }
+    if (result.recentLoans.length > 0) {
+      setRecentLoans(result.recentLoans);
+    }
+    if (result.creditCards.length > 0) {
+      setCreditCards(result.creditCards);
+    }
+    toast.success(`⚡ 통장 분석 데이터에서 출금 ${result.highValueTrans.length}건, 대출 ${result.recentLoans.length}건, 카드/투자 ${result.creditCards.length}건을 소명표에 자동 반영했습니다.`);
+  };
+
+  // 소갑 호증 일괄 자동 채번
+  const handleAutoAssignExhibits = () => {
+    const updated = autoAssignExhibitNumbers(fullBriefData);
+    setAnswers(updated.answers);
+    setRecentLoans(updated.recentLoans);
+    setHighValueTrans(updated.highValueTrans);
+    toast.success(`⚖️ 소갑 제1호증부터 제${updated.answers.length}호증까지 순차적으로 일괄 자동 채번되었습니다!`);
+  };
 
   // 기한 연장 신청서 작성 처리
   const handleRequestExtension = () => {
@@ -334,15 +407,30 @@ export default function ComprehensiveCorrectionCenter({
               <span>⚡ 통장·카드 소명기 (30만/50만)</span>
             </button>
 
+            {/* 법원 공식 대출금 사용처 소명서 [별지 1] 인쇄 */}
+            <button
+              type="button"
+              onClick={() => setAnnexModal({
+                isOpen: true,
+                title: '[별지 1] 최근 대출금 사용처 소명표',
+                type: 'LOAN'
+              })}
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+              title="법원 제출용 최근 대출금 사용처 소명서 [별지 1] A4 인쇄 / PDF 저장"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-700" />
+              <span>🏛️ 대출 소명서 [별지1]</span>
+            </button>
+
             {/* 법원 공식 100만 원 이상 출금 소명서 인쇄 및 엑셀 다운로드 */}
             <button
               type="button"
               onClick={() => setShowCourtPrintModal(true)}
               className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
-              title="법원 제출용 100만 원 이상 출금 사용처 소명서 [별지] A4 인쇄 / PDF 저장 / 엑셀 다운로드"
+              title="법원 제출용 100만 원 이상 출금 사용처 소명서 [별지 2] A4 인쇄 / PDF 저장 / 엑셀 다운로드"
             >
               <Printer className="w-3.5 h-3.5 text-blue-700" />
-              <span>🏛️ 100만 원 소명서 [별지]</span>
+              <span>🏛️ 100만 원 소명서 [별지2]</span>
             </button>
 
 
@@ -420,6 +508,76 @@ export default function ComprehensiveCorrectionCenter({
       {/* ══════════ [1탭] 작성하기 (7대 소명표) ══════════ */}
       {briefTab === 'write' && (
         <div className="space-y-4">
+          {/* ── 회생위원 7대 표준 보정명령 템플릿 라이브러리 ── */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 text-white shadow-md border border-indigo-900/50 space-y-3.5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">
+                    7
+                  </span>
+                  <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                    회생위원 7대 표준 보정명령 템플릿 라이브러리
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                    서울회생법원 실무준칙·판례 반영
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  회생위원이 가장 빈번하게 발령하는 보정명령과 채무자 대리인의 법률 소명 논리를 원클릭으로 보정서에 추가합니다.
+                </p>
+              </div>
+
+              {/* 퀵 액션 버튼 2종 */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleAutoFillExplanationsFromAudit}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                  title="통장 거래내역 분석 데이터로부터 100만 원 이상 출금·대출금 사용처 소명표를 즉시 채웁니다"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>⚡ 통장 데이터 소명표 완성</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAutoAssignExhibits}
+                  className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                  title="답변 항목과 증빙 서류에 소갑 제1호증부터 순차적으로 일괄 번호를 부여합니다"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>소갑 호증 일괄 채번</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 7개 템플릿 카드 그리드 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+              {STANDARD_CORRECTION_TEMPLATES.map((tpl, i) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => handleApplyTemplate(tpl)}
+                  className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-left transition-all cursor-pointer press-scale group flex flex-col justify-between"
+                  title={tpl.courtInstruction}
+                >
+                  <div className="flex items-center justify-between w-full mb-1.5">
+                    <span className="text-[10px] font-bold text-amber-300 font-mono">#{i + 1}</span>
+                    <Plus className="w-3 h-3 text-slate-400 group-hover:text-white transition-colors" />
+                  </div>
+                  <div className="text-xs font-extrabold text-white leading-tight">
+                    {tpl.badge}
+                  </div>
+                  <div className="text-[10px] text-slate-300/80 mt-1 truncate">
+                    {tpl.category === 'SPECULATION' ? '실무준칙 401호' : 
+                     tpl.category === 'SPOUSE' ? '특유재산 추정' : 
+                     tpl.category === 'INSURANCE' ? '150만 압류금지' : '표준 소명서식'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* 보정권고 항목별 답변 에디터 */}
           <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
@@ -536,20 +694,35 @@ export default function ComprehensiveCorrectionCenter({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-700">최근 1~2년 대출금 사용처 내역</span>
-                  <button
-                    onClick={() => setRecentLoans(prev => [...prev, {
-                      id: `loan-${Date.now()}`,
-                      loanDate: new Date().toISOString().split('T')[0],
-                      lenderName: '',
-                      amount: 10000000,
-                      usageCategory: 'LIVING',
-                      specificUsage: '',
-                      verified: false
-                    }])}
-                    className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> 대출건 추가
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAnnexModal({
+                        isOpen: true,
+                        title: '[별지 1] 최근 대출금 사용처 소명표',
+                        type: 'LOAN'
+                      })}
+                      className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                      title="별지 1 대출금 사용처 소명표를 법원 전자소송 제출용 규격으로 A4 인쇄 및 PDF 저장합니다"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>별지 1 소명표 A4 인쇄 →</span>
+                    </button>
+                    <button
+                      onClick={() => setRecentLoans(prev => [...prev, {
+                        id: `loan-${Date.now()}`,
+                        loanDate: new Date().toISOString().split('T')[0],
+                        lenderName: '',
+                        amount: 10000000,
+                        usageCategory: 'LIVING',
+                        specificUsage: '',
+                        verified: false
+                      }])}
+                      className="text-xs text-slate-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> 대출건 추가
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-2xl">
                   <table className="w-full text-xs text-left">
@@ -1150,6 +1323,97 @@ export default function ComprehensiveCorrectionCenter({
         thresholdAmount={clientAuditData.thresholdAmount || 1000000}
         isClientView={false}
       />
+
+      {/* 법원 공식 별지 소명서 (대출금 사용처 / 100만 원 이상 출금) A4 인쇄/PDF 모달 */}
+      {annexModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 px-6 border-b border-slate-200 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Printer className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">{annexModal.title}</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    사건번호: {caseNumber} · 신청인: {clientName} · 관할: {courtName}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const html = generateCourtAnnexHtml(annexModal.type, {
+                      clientName,
+                      caseNumber,
+                      courtName,
+                      loans: recentLoans,
+                      withdrawals: highValueTrans
+                    });
+                    const printWin = window.open('', '_blank');
+                    if (printWin) {
+                      printWin.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <meta charset="utf-8">
+                            <title>${annexModal.title}</title>
+                            <style>
+                              @page { size: A4 portrait; margin: 15mm; }
+                              body { margin: 0; font-family: 'Batang', serif; color: #111; }
+                              @media print {
+                                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            ${html}
+                            <script>
+                              window.onload = function() {
+                                window.print();
+                              };
+                            </script>
+                          </body>
+                        </html>
+                      `);
+                      printWin.document.close();
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>A4 인쇄 / PDF 저장</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnnexModal({ isOpen: false, title: '', type: 'LOAN' })}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content Preview */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-100/60">
+              <div 
+                className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-[210mm] mx-auto min-h-[297mm]"
+                dangerouslySetInnerHTML={{
+                  __html: generateCourtAnnexHtml(annexModal.type, {
+                    clientName,
+                    caseNumber,
+                    courtName,
+                    loans: recentLoans,
+                    withdrawals: highValueTrans
+                  })
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   DollarSign, FileText, Landmark, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { AuditTransactionItem, AuditRiskCategory } from '../../types/bankAuditTypes';
+import type { AuditTransactionItem, AuditRiskCategory, PreFilingRiskReport } from '../../types/bankAuditTypes';
 import { 
   AUDIT_PRESET_TEMPLATES, 
   generateSampleBankTransactions, 
@@ -15,6 +15,7 @@ import {
   parseRawBankStatementText,
   exportAuditStatementToExcel
 } from '../../services/bankAuditService';
+import { analyzePreFilingRisks, getRiskBadgeSummary } from '../../services/riskDetectionService';
 import ModalPortal from './ModalPortal';
 
 interface BankStatementAuditModalProps {
@@ -58,6 +59,10 @@ export default function BankStatementAuditModal({
   const [isPrintPreview, setIsPrintPreview] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 사전 리스크 탐지 리포트
+  const [riskReport, setRiskReport] = useState<PreFilingRiskReport | null>(null);
+  const [showRiskPanel, setShowRiskPanel] = useState(true);
 
   // 통계 계산
   const stats = useMemo(() => calculateAuditStats(items, thresholdAmount), [items, thresholdAmount]);
@@ -165,7 +170,17 @@ export default function BankStatementAuditModal({
 
       if (parsed.length > 0) {
         setItems(parsed);
-        toast.success(`총 ${parsed.length}건의 거래내역을 성공적으로 불러왔습니다!`);
+        // 사전 리스크 탐지 자동 실행
+        const report = analyzePreFilingRisks(parsed, 'upload', clientName);
+        setRiskReport(report);
+        const badge = getRiskBadgeSummary(report);
+        if (badge.color === 'red') {
+          toast.warning(`${badge.label} — 접수 전 소명 자료 준비가 필요합니다.`);
+        } else if (badge.color === 'yellow') {
+          toast.info(`${badge.label} — 사전 소명 준비를 권장합니다.`);
+        } else {
+          toast.success(`총 ${parsed.length}건의 거래내역을 성공적으로 불러왔습니다! ${badge.label}`);
+        }
       } else {
         toast.error('파일에서 유효한 거래내역을 추출하지 못했습니다. 형식을 확인해 주세요.');
       }
@@ -191,7 +206,11 @@ export default function BankStatementAuditModal({
 
   // 샘플 데이터 다시 로드
   const handleReloadSample = () => {
-    setItems(generateSampleBankTransactions());
+    const sample = generateSampleBankTransactions();
+    setItems(sample);
+    // 샘플 데이터에도 리스크 분석 실행
+    const report = analyzePreFilingRisks(sample, 'sample', clientName);
+    setRiskReport(report);
     toast.success('KB국민은행 및 신한카드 1년치 샘플 데이터(25건)를 불러왔습니다.');
   };
 
@@ -355,6 +374,131 @@ export default function BankStatementAuditModal({
           </div>
 
         </div>
+
+        {/* ═══ 2.5. 사전 리스크 탐지 리포트 패널 ═══ */}
+        {riskReport && riskReport.risks.length > 0 && (
+          <div className="border-b border-slate-200 dark:border-slate-800 print:hidden">
+            {/* 리포트 헤더 (접기/펴기) */}
+            <button
+              type="button"
+              onClick={() => setShowRiskPanel(!showRiskPanel)}
+              className="w-full p-3 px-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-xl ${
+                  riskReport.summary.highRiskCount > 0 
+                    ? 'bg-red-100 dark:bg-red-950' 
+                    : 'bg-amber-100 dark:bg-amber-950'
+                }`}>
+                  <ShieldAlert className={`w-4.5 h-4.5 ${
+                    riskReport.summary.highRiskCount > 0 
+                      ? 'text-red-600 dark:text-red-400' 
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    보정 예방 리스크 분석
+                  </span>
+                  <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    riskReport.summary.highRiskCount > 0
+                      ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                  }`}>
+                    {getRiskBadgeSummary(riskReport).label}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showRiskPanel ? 'rotate-90' : ''}`} />
+            </button>
+
+            {/* 리포트 바디 (접기 가능) */}
+            {showRiskPanel && (
+              <div className="px-4 pb-4 space-y-2.5">
+                {/* 종합 권고 메시지 */}
+                <div className={`p-3 rounded-xl text-xs font-medium ${
+                  riskReport.summary.highRiskCount > 0
+                    ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200'
+                    : 'bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200'
+                }`}>
+                  {riskReport.overallAdvice}
+                  <span className="block mt-1 text-[10px] opacity-70">
+                    분석 기간: {riskReport.summary.analyzedPeriod} · 
+                    전체 {riskReport.summary.totalTransactions}건 중 {riskReport.summary.flaggedCount}건 플래그
+                  </span>
+                </div>
+
+                {/* 개별 리스크 항목 */}
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {riskReport.risks.map((risk) => (
+                    <div 
+                      key={risk.id}
+                      className={`p-3 rounded-xl border text-xs ${
+                        risk.level === 'HIGH'
+                          ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900'
+                          : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg ${
+                            risk.level === 'HIGH'
+                              ? 'bg-red-600 text-white'
+                              : 'bg-amber-500 text-white'
+                          }`}>
+                            {risk.level === 'HIGH' ? '🔴 고위험' : '⚠️ 주의'}
+                          </span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {risk.title}
+                          </span>
+                        </div>
+                        <span className="font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {risk.totalAmount.toLocaleString()}원
+                        </span>
+                      </div>
+                      
+                      <p className="text-slate-600 dark:text-slate-400 mb-2 leading-relaxed">
+                        {risk.message}
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1 p-2 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block mb-0.5">
+                            📋 권장 조치
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">{risk.suggestedAction}</span>
+                        </div>
+                        <div className="flex-1 p-2 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                            📎 권장 증빙
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">{risk.suggestedEvidence}</span>
+                        </div>
+                      </div>
+
+                      {/* 해당 거래 미리보기 (최대 3건) */}
+                      {risk.transactions.length > 0 && (
+                        <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                          <span className="font-bold">해당 거래 ({risk.transactions.length}건):</span>
+                          {risk.transactions.slice(0, 3).map((tx, i) => (
+                            <span key={tx.id} className="ml-1">
+                              {tx.date} {tx.counterparty} {tx.amount.toLocaleString()}원{i < Math.min(risk.transactions.length, 3) - 1 ? ' ·' : ''}
+                            </span>
+                          ))}
+                          {risk.transactions.length > 3 && (
+                            <span className="ml-1 text-indigo-500 font-bold">
+                              외 {risk.transactions.length - 3}건
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ═══ 3. 컨트롤 툴바 (금액 필터, 검색, 파일 업로드) ═══ */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0 text-xs print:hidden">

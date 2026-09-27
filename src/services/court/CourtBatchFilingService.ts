@@ -11,6 +11,12 @@ import {
 import { 
   generateCourtOfficialFormPdf 
 } from './CourtFormPdfGenerator';
+import { 
+  splitPdfIfNeeded, 
+  formatFileSize, 
+  COURT_FILE_SIZE_LIMIT, 
+  COURT_TOTAL_SIZE_LIMIT 
+} from '../pdfQualityService';
 
 export interface FilingFileItem {
   name: string;
@@ -29,6 +35,33 @@ export interface FilingDocumentSlot {
   files?: FilingFileItem[];
   status: 'READY' | 'MISSING' | 'OPTIONAL_SKIPPED';
   notes?: string;
+}
+
+/** 법원 전자기록 뷰어 1:1 매칭 제출 패키지 매니페스트 항목 */
+export interface FilingPackageManifestItem {
+  order: number;
+  code: string;
+  title: string;
+  category: string;
+  fileName: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  pageCount?: number;
+  isSplit?: boolean;
+  pageRange?: string;
+  isDigitalPdf?: boolean;
+  status: 'READY' | 'MISSING' | 'GENERATED';
+}
+
+/** 법원 전자소송 제출 패키지 빌드 결과 */
+export interface FilingPackageResult {
+  zipBlob: Blob;
+  manifest: FilingPackageManifestItem[];
+  totalSizeBytes: number;
+  totalSizeFormatted: string;
+  totalFiles: number;
+  hasSplitFiles: boolean;
+  isWithinCourtLimit: boolean; // total <= 50MB
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -399,34 +432,260 @@ export class CourtBatchFilingService {
   }
 
   /**
-   * 2. 대법원 전자소송 순서별 개별 PDF ZIP 일괄 압축
+   * 2. 대법원 전자소송 순서별 개별 PDF ZIP 일괄 압축 (회생위원 전자기록 뷰어 1:1 매칭 표준 패키지)
+   * - 20MB 초과 파일은 _part1.pdf, _part2.pdf 등으로 자동 분할하여 업로드 오류 방지
+   * - 대법원 전자소송 채권자목록 UTF-8 BOM CSV 자동 동봉
+   * - 회생위원 뷰어 좌측 목차와 1:1 일치하는 01~14번 번호순 정렬
    */
-  static async createFilingZip(
+  static async buildFilingPackage(
     slots: FilingDocumentSlot[],
-    clientName: string
-  ): Promise<Blob> {
+    clientName: string,
+    formDataContext?: CourtFormDataContext,
+    options?: {
+      creditors?: RepaymentCreditor[];
+      isBankruptcy?: boolean;
+    }
+  ): Promise<FilingPackageResult> {
     const zip = new JSZip();
-    const folder = zip.folder(`전자소송제출_${clientName}_${new Date().toISOString().split('T')[0]}`) || zip;
+    const folderName = `전자소송제출_${clientName}_${new Date().toISOString().split('T')[0]}`;
+    const folder = zip.folder(folderName) || zip;
 
+    const manifest: FilingPackageManifestItem[] = [];
+
+    // 1. 대법원 규격 채권자목록 CSV 자동 동봉
+    if (options?.creditors && options.creditors.length > 0) {
+      const csvContent = options.isBankruptcy
+        ? this.generateBankruptcyCourtCreditorCsv(options.creditors, clientName)
+        : this.generateCourtCreditorCsv(options.creditors, clientName);
+      const csvName = `00_대법원전자소송_${clientName}_채권자목록_일괄등록양식.csv`;
+      folder.file(csvName, csvContent);
+      manifest.push({
+        order: 0,
+        code: 'CSV',
+        title: '대법원 규격 채권자목록 CSV (UTF-8 BOM)',
+        category: 'CORE_FORM',
+        fileName: csvName,
+        sizeBytes: new Blob([csvContent]).size,
+        sizeFormatted: formatFileSize(new Blob([csvContent]).size),
+        status: 'READY'
+      });
+    }
+
+    // 2. 14단계 표준 편철 슬롯별 파일 처리
     for (const slot of slots) {
       const paddedOrder = String(slot.order).padStart(2, '0');
       const cleanTitle = slot.title.replace(/[\/:*?"<>|]/g, '_').substring(0, 30);
-      const filename = `${paddedOrder}_${cleanTitle}_${clientName}.pdf`;
 
-      if (slot.file?.dataUrl) {
-        const bytes = dataUrlToUint8Array(slot.file.dataUrl);
-        folder.file(filename, bytes);
+      // 해당 슬롯 파일 수합
+      const targetFiles: FilingFileItem[] = [];
+      if (slot.files && slot.files.length > 0) {
+        targetFiles.push(...slot.files);
+      } else if (slot.file) {
+        targetFiles.push(slot.file);
+      }
+
+      if (targetFiles.length > 0) {
+        // A. 단일 파일인 경우
+        if (targetFiles.length === 1) {
+          const f = targetFiles[0];
+          let pdfBytes: Uint8Array | null = null;
+          const rawBytes = f.bytes || (f.dataUrl ? dataUrlToUint8Array(f.dataUrl) : null);
+
+          if (rawBytes) {
+            const mime = f.mimeType || '';
+            const isImage = mime.includes('jpeg') || mime.includes('jpg') || mime.includes('png') || f.name.match(/\.(jpg|jpeg|png)$/i);
+
+            if (isImage) {
+              try {
+                const imgDoc = await PDFDocument.create();
+                const image = (mime.includes('png') || f.name.endsWith('.png'))
+                  ? await imgDoc.embedPng(rawBytes)
+                  : await imgDoc.embedJpg(rawBytes);
+                const page = imgDoc.addPage([595.28, 841.89]);
+                const { width, height } = page.getSize();
+                const dims = image.scaleToFit(width - 50, height - 60);
+                page.drawImage(image, {
+                  x: (width - dims.width) / 2,
+                  y: (height - dims.height) / 2,
+                  width: dims.width,
+                  height: dims.height,
+                });
+                pdfBytes = await imgDoc.save();
+              } catch {
+                pdfBytes = rawBytes;
+              }
+            } else {
+              pdfBytes = rawBytes;
+            }
+
+            const baseName = `${paddedOrder}_${cleanTitle}_${clientName}.pdf`;
+            const splitParts = await splitPdfIfNeeded(pdfBytes, baseName, 19 * 1024 * 1024);
+
+            for (const part of splitParts) {
+              folder.file(part.filename, part.bytes);
+              manifest.push({
+                order: slot.order,
+                code: slot.code,
+                title: slot.title,
+                category: slot.category,
+                fileName: part.filename,
+                sizeBytes: part.bytes.byteLength,
+                sizeFormatted: formatFileSize(part.bytes.byteLength),
+                isSplit: part.isSplit,
+                pageRange: part.pageRange,
+                status: 'READY'
+              });
+            }
+          }
+        } 
+        // B. 슬롯 내 다중 파일인 경우 (예: 여러 부채증명서) -> 슬롯 단위 단일 PDF로 결합 후 20MB 검사
+        else {
+          try {
+            const mergedSlotPdf = await PDFDocument.create();
+            for (const f of targetFiles) {
+              const rawBytes = f.bytes || (f.dataUrl ? dataUrlToUint8Array(f.dataUrl) : null);
+              if (!rawBytes) continue;
+              const mime = f.mimeType || '';
+              const isImage = mime.includes('jpeg') || mime.includes('jpg') || mime.includes('png') || f.name.match(/\.(jpg|jpeg|png)$/i);
+
+              if (isImage) {
+                const imgDoc = await PDFDocument.create();
+                const image = (mime.includes('png') || f.name.endsWith('.png'))
+                  ? await imgDoc.embedPng(rawBytes)
+                  : await imgDoc.embedJpg(rawBytes);
+                const page = mergedSlotPdf.addPage([595.28, 841.89]);
+                const { width, height } = page.getSize();
+                const dims = image.scaleToFit(width - 50, height - 60);
+                page.drawImage(image, {
+                  x: (width - dims.width) / 2,
+                  y: (height - dims.height) / 2,
+                  width: dims.width,
+                  height: dims.height,
+                });
+              } else {
+                const srcPdf = await PDFDocument.load(rawBytes, { ignoreEncryption: true });
+                const pages = await mergedSlotPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+                pages.forEach(p => mergedSlotPdf.addPage(p));
+              }
+            }
+
+            const mergedBytes = await mergedSlotPdf.save();
+            const baseName = `${paddedOrder}_${cleanTitle}_${clientName}.pdf`;
+            const splitParts = await splitPdfIfNeeded(mergedBytes, baseName, 19 * 1024 * 1024);
+
+            for (const part of splitParts) {
+              folder.file(part.filename, part.bytes);
+              manifest.push({
+                order: slot.order,
+                code: slot.code,
+                title: slot.title,
+                category: slot.category,
+                fileName: part.filename,
+                sizeBytes: part.bytes.byteLength,
+                sizeFormatted: formatFileSize(part.bytes.byteLength),
+                isSplit: part.isSplit,
+                pageRange: part.pageRange,
+                status: 'READY'
+              });
+            }
+          } catch (mergeErr) {
+            // 결합 실패 시 개별 파일로 분리 저장
+            for (let idx = 0; idx < targetFiles.length; idx++) {
+              const f = targetFiles[idx];
+              const rawBytes = f.bytes || (f.dataUrl ? dataUrlToUint8Array(f.dataUrl) : null);
+              if (!rawBytes) continue;
+              const subName = `${paddedOrder}_${String(idx + 1).padStart(2, '0')}_${cleanTitle}_${f.name}`;
+              folder.file(subName, rawBytes);
+              manifest.push({
+                order: slot.order,
+                code: slot.code,
+                title: slot.title,
+                category: slot.category,
+                fileName: subName,
+                sizeBytes: rawBytes.byteLength,
+                sizeFormatted: formatFileSize(rawBytes.byteLength),
+                status: 'READY'
+              });
+            }
+          }
+        }
       } else {
-        folder.file(`${paddedOrder}_${cleanTitle}_간지.txt`, `[대법원 전자소송 제출용]
+        // 미첨부 슬롯인 경우 안내 간지 생성
+        const txtContent = `[대법원 전자소송 제출용 서류 슬롯]
 서류번호: ${slot.order}
 서류명: ${slot.title}
+슬롯코드: ${slot.code} (${slot.category})
 신청인: ${clientName}
-상태: 별도 제출 또는 소명 완료
-`);
+상태: ${slot.status === 'READY' ? '전산 데이터 연동 완료' : '미첨부 / 별도 소명 필요'}
+`;
+        const txtName = `${paddedOrder}_${cleanTitle}_안내간지.txt`;
+        folder.file(txtName, txtContent);
+        manifest.push({
+          order: slot.order,
+          code: slot.code,
+          title: slot.title,
+          category: slot.category,
+          fileName: txtName,
+          sizeBytes: new Blob([txtContent]).size,
+          sizeFormatted: formatFileSize(new Blob([txtContent]).size),
+          status: slot.status === 'READY' ? 'GENERATED' : 'MISSING'
+        });
       }
     }
 
-    return await zip.generateAsync({ type: 'blob' });
+    // 3. 법원 전자기록 뷰어 1:1 매칭 안내표 생성
+    const totalSizeBytes = manifest.reduce((sum, item) => sum + item.sizeBytes, 0);
+    const hasSplitFiles = manifest.some(item => item.isSplit);
+    const isWithinCourtLimit = totalSizeBytes <= COURT_TOTAL_SIZE_LIMIT;
+
+    const manifestText = `===================================================================
+대한민국 법원 전자기록 뷰어 1:1 표준 매칭 전자소송 제출 패키지
+===================================================================
+신청인: ${clientName}
+패키지 생성시각: ${new Date().toISOString()}
+총 파일 수: ${manifest.length}개
+총 용량: ${formatFileSize(totalSizeBytes)} (법원 1회 접수 한도 50MB 기준: ${isWithinCourtLimit ? '정상 접수 가능' : '한도 초과 주의'})
+20MB 초과 자동분할: ${hasSplitFiles ? '적용됨 (20MB 미만 자동분할 완료)' : '미발생 (전체 20MB 이내)'}
+
+[회생위원 전산 뷰어 좌측 목차 1:1 반영 서류 목록]
+-------------------------------------------------------------------
+${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.sizeFormatted}]${m.isSplit ? ` (자동분할: ${m.pageRange})` : ''}`).join('\r\n')}
+-------------------------------------------------------------------
+※ 법원 실무 유의사항:
+1. 본 패키지는 회생위원이 사용하는 법원 전자기록 뷰어 목차에 맞추어 번호순으로 정렬되었습니다.
+2. 모든 서류를 1개 대용량 PDF로 결합하지 않고 항목별로 분리 제출하여 목차 접근성을 극대화했습니다.
+3. 개별 파일 20MB 한도를 엄격히 준수하여 전자소송 업로드 거부를 사전에 방지합니다.
+`;
+
+    folder.file('00_법원전자기록뷰어_제출목록_안내표.txt', manifestText);
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+    return {
+      zipBlob,
+      manifest,
+      totalSizeBytes,
+      totalSizeFormatted: formatFileSize(totalSizeBytes),
+      totalFiles: manifest.length,
+      hasSplitFiles,
+      isWithinCourtLimit
+    };
+  }
+
+  /**
+   * 2. 대법원 전자소송 순서별 개별 PDF ZIP 일괄 압축 (Legacy 호환)
+   */
+  static async createFilingZip(
+    slots: FilingDocumentSlot[],
+    clientName: string,
+    formDataContext?: CourtFormDataContext,
+    options?: {
+      creditors?: RepaymentCreditor[];
+      isBankruptcy?: boolean;
+    }
+  ): Promise<Blob> {
+    const result = await this.buildFilingPackage(slots, clientName, formDataContext, options);
+    return result.zipBlob;
   }
 
   /**
