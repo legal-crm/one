@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Printer, Download, X, FileText, CheckCircle2, Shield } from 'lucide-react';
 import type { RepaymentPlanData } from '../../../services/repayment/repaymentTypes';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
+import { localYmd } from '../../../utils/localDate';
 
 interface PrintableRepaymentPlanModalProps {
   plan: RepaymentPlanData;
@@ -111,7 +112,7 @@ export default function PrintableRepaymentPlanModal({
               <div className="flex">
                 <span className="w-24 font-bold text-slate-700">사 건:</span>
                 <span className="font-semibold text-slate-900">
-                  {plan.caseNumber || '2026개회        호 개인회생'}
+                  {plan.caseNumber || '20    개회        호 개인회생'}
                 </span>
               </div>
               <div className="flex">
@@ -181,7 +182,7 @@ export default function PrintableRepaymentPlanModal({
                   {plan.isTwoStageRepayment && (plan.totalPriorityDebt || 0) > 0 && (
                     <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-950">
                       <strong>[우선권 채권 2단계 분할배분 특칙]</strong><br />
-                      국세, 지방세, 4대보험료 등 우선권 있는 개인회생채권(합계 <strong className="font-bold font-mono">{plan.totalPriorityDebt?.toLocaleString()}원</strong>)은 법원 실무준칙에 의하여 전체 변제기간의 1/2인 <strong>제1회부터 제{plan.stage1Months}회차까지</strong> 매월 우선 변제하여 전액 완제한다.
+                      국세, 지방세, 4대보험료 등 우선권 있는 개인회생채권(합계 <strong className="font-bold font-mono">{plan.totalPriorityDebt?.toLocaleString()}원</strong>)은 <strong>제1회부터 제{plan.stage1Months}회차까지</strong> 매월 우선 변제하여 전액 변제한다.
                     </div>
                   )}
                 </div>
@@ -294,7 +295,7 @@ export default function PrintableRepaymentPlanModal({
                     </tbody>
                   </table>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    * 서울회생법원 실무준칙에 의거 연 5% 복리할인 라이프니쯔식 현가 계수 {plan.leibnizFactor}(선적립 3개월 적용)를 반영함.
+                    * 연 5% 라이프니쯔식 현가 계수 {plan.leibnizFactor}({plan.months}개월)를 적용함.
                   </p>
                 </div>
               </section>
@@ -313,7 +314,7 @@ export default function PrintableRepaymentPlanModal({
             {/* 작성일자 및 날인란 */}
             <div className="mt-14 pt-8 text-center space-y-4 text-sm border-t border-slate-200">
               <p className="text-slate-800 font-semibold tracking-wider">
-                {plan.submissionDate || new Date().toISOString().slice(0, 10).replace(/-/g, '. ')}
+                {(plan.submissionDate || localYmd()).replace(/-/g, '. ')}
               </p>
               
               <div className="space-y-2 pt-2">
@@ -346,7 +347,7 @@ export default function PrintableRepaymentPlanModal({
                   개인회생채권 변제예정액표
                 </h2>
                 <p className="text-xs text-slate-600 mt-1">
-                  사건번호: {plan.caseNumber || '2026개회        호'} | 신청인: {plan.clientName}
+                  사건번호: {plan.caseNumber || '20    개회        호'} | 신청인: {plan.clientName}
                 </p>
               </div>
 
@@ -508,7 +509,7 @@ export default function PrintableRepaymentPlanModal({
 
               {/* 하단 법적 고지문 */}
               <div className="mt-4 text-[10px] text-slate-500 leading-relaxed space-y-0.5">
-                <p>* 본 변제예정액표는 「채무자 회생 및 파산에 관한 법률」 및 법원 개인회생 실무준칙에 따라 작성되었습니다.</p>
+                <p>* 본 변제예정액표는 「채무자 회생 및 파산에 관한 법률」에 따라 작성한 초안이며, 관할 법원 양식·실무에 맞는지 제출 전 확인이 필요합니다.</p>
                 <p>* 미확정 채권에 대한 변제예정액은 채권 확정 시까지 회생위원이 관리하는 공탁계좌에 매월 유보·적립됩니다.</p>
               </div>
             </div>

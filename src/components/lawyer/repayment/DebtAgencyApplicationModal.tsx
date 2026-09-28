@@ -32,6 +32,14 @@ interface DebtAgencyApplicationModalProps {
   activeLawyerName?: string;
 }
 
+const LEGACY_SEED_HASHES = new Set(['9o6ght', '9o6s70', '2eybw8', '2dgkas', '1yzvn3', 'eki609', '1fy3b86']);
+function isLegacySeedValue(v?: string): boolean {
+  if (!v) return false;
+  let x = 5381;
+  for (const c of v) x = ((x * 33) ^ (c.codePointAt(0) || 0)) >>> 0;
+  return LEGACY_SEED_HASHES.has(x.toString(36));
+}
+
 export default function DebtAgencyApplicationModal({
   isOpen,
   onClose,
@@ -42,14 +50,16 @@ export default function DebtAgencyApplicationModal({
   onSaveOrder,
   activeLawyerName,
 }: DebtAgencyApplicationModalProps) {
+  // 과거 데모 시드로 저장된 특정 사무소·직원 정보(이름·전화번호)를 걸러낸다.
+  // 실제 개인정보 문자열이 번들에 남지 않도록 해시값으로만 비교한다.
   const sanitizeAgencyData = (data: DebtAgencyApplicationData): DebtAgencyApplicationData => ({
     ...data,
-    officeName: (data.officeName === '법률사무소 보광' || data.officeName === '법률사무소 명경') ? '' : (data.officeName || ''),
-    caseManager: (data.caseManager === '박명국' || data.caseManager === '남윤국') ? '' : (data.caseManager || ''),
-    billingManager: (data.billingManager === '박명국' || data.billingManager === '남윤국') ? '' : (data.billingManager || ''),
-    tel: data.tel === '02-3492-4246' ? '' : (data.tel || ''),
-    fax: data.fax === '02-2179-8487' ? '' : (data.fax || ''),
-    hp: data.hp === '010-4064-4246' ? '' : (data.hp || ''),
+    officeName: isLegacySeedValue(data.officeName) ? '' : (data.officeName || ''),
+    caseManager: isLegacySeedValue(data.caseManager) ? '' : (data.caseManager || ''),
+    billingManager: isLegacySeedValue(data.billingManager) ? '' : (data.billingManager || ''),
+    tel: isLegacySeedValue(data.tel) ? '' : (data.tel || ''),
+    fax: isLegacySeedValue(data.fax) ? '' : (data.fax || ''),
+    hp: isLegacySeedValue(data.hp) ? '' : (data.hp || ''),
   });
 
   const [appData, setAppData] = useState<DebtAgencyApplicationData>(() => {
@@ -109,7 +119,7 @@ export default function DebtAgencyApplicationModal({
     };
     onSaveOrder(updatedOrder);
     saveDebtCertificateOrder(updatedOrder);
-    toast.success('부채증명서 대행 신청서 정보가 저장되었습니다.');
+    toast.success('대행 신청서 정보를 저장했습니다 (이 브라우저에 저장).');
   };
 
   // 🖨️ A4 고해상도 인쇄 실행
@@ -121,8 +131,13 @@ export default function DebtAgencyApplicationModal({
   // 📥 엑셀 신청서 다운로드
   const handleExportExcel = () => {
     handleSave();
-    exportAgencyApplicationExcel(appData);
-    toast.success('대행업체 제출용 엑셀 신청서가 다운로드되었습니다.');
+    try {
+      exportAgencyApplicationExcel(appData);
+      toast.success('대행업체 제출용 엑셀 신청서를 내려받았습니다.');
+    } catch (err) {
+      console.error(err);
+      toast.error('엑셀 신청서를 만들지 못했습니다.');
+    }
   };
 
   // 📤 커스텀 대행사 엑셀 폼 업로드
@@ -152,13 +167,15 @@ export default function DebtAgencyApplicationModal({
     handleSave();
     setIsZipping(true);
     try {
-      await exportDebtAgencyZipPackage(
+      const res = await exportDebtAgencyZipPackage(
         { ...order, agencyApplication: appData },
         crmExt?.uploadedFiles || []
       );
-      toast.success('대행사 전달용 ZIP 압축팩이 다운로드되었습니다.');
+      const missing = [!res.idIncluded && '신분증', !res.sealIncluded && '인감증명서'].filter(Boolean).join('·');
+      toast.success(`ZIP(의뢰서+위임장${res.idIncluded ? '+신분증' : ''}${res.sealIncluded ? '+인감증명서' : ''})을 내려받았습니다.${missing ? ` ${missing}은 서류함에 없어 빠졌습니다.` : ''} 공동인증서는 보안상 포함하지 않습니다.`);
     } catch (err) {
-      toast.error('ZIP 패키지 생성 실패');
+      console.error(err);
+      toast.error('ZIP 패키지를 만들지 못했습니다.');
     } finally {
       setIsZipping(false);
     }

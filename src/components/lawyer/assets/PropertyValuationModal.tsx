@@ -45,7 +45,8 @@ interface PropertyValuationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdateCrmExt: (updates: Partial<CrmClientExtension>) => Promise<void>;
-  onSyncToRepaymentPlan?: (syncedAssets: any[], totalLiquidation: number) => void;
+  /** 반환값 false = 반영 대상(변제계획안)이 없어 반영하지 못함 */
+  onSyncToRepaymentPlan?: (syncedAssets: any[], totalLiquidation: number) => boolean | void | Promise<boolean | void>;
 }
 
 type TabType = 'realestate' | 'vehicle' | 'deductions' | 'business' | 'verification';
@@ -105,22 +106,39 @@ export default function PropertyValuationModal({
 
   const handleSyncToRepayment = async () => {
     const recalculated = recalculateD5102Totals(data);
-    await onUpdateCrmExt({
-      propertyListD5102: recalculated
-    });
+    try {
+      await onUpdateCrmExt({
+        propertyListD5102: recalculated
+      });
+    } catch (err) {
+      console.error('[PropertyValuationModal] D5102 저장 실패', err);
+      toast.error('재산목록을 저장하지 못해 변제계획안에도 반영하지 않았습니다. 다시 시도해 주세요.');
+      return;
+    }
 
     const syncedAssets = syncD5102ToRepaymentAssets(recalculated);
 
-    if (onSyncToRepaymentPlan) {
-      onSyncToRepaymentPlan(syncedAssets, recalculated.totalLiquidationValue);
+    if (!onSyncToRepaymentPlan) {
+      toast.success('재산목록(D5102)을 저장했습니다. 이 화면에는 변제계획안 연결이 없어 계획안에는 반영하지 않았습니다.');
+      return;
     }
-
-    toast.success(`변제계획안에 총 ${syncedAssets.length}건의 자산과 청산가치 ${won(recalculated.totalLiquidationValue)}원이 실시간 동기화되었습니다!`);
+    try {
+      const ok = await onSyncToRepaymentPlan(syncedAssets, recalculated.totalLiquidationValue);
+      if (ok === false) {
+        toast.warning('재산목록은 저장했지만 아직 저장된 변제계획안이 없어 반영하지 못했습니다. 변제계획안 편집기에서 먼저 계획안을 저장하세요.');
+        return;
+      }
+      toast.success(`재산목록을 저장하고 변제계획안에 자산 ${syncedAssets.length}건(청산가치 ${won(recalculated.totalLiquidationValue)}원)을 반영했습니다.`);
+    } catch (err) {
+      console.error('[PropertyValuationModal] 변제계획안 반영 실패', err);
+      toast.error('재산목록은 저장했지만 변제계획안 반영에 실패했습니다. 다시 시도해 주세요.');
+    }
   };
 
-  // ── 5. 청산가치 vs 변제계획안 검증 ──
+  // ── 5. 청산가치 vs 변제계획안 검증 (청산가치 보장은 명목 총액이 아니라 현재가치로 비교) ──
   const currentPlanTotalRepayment = crmExt.repaymentPlan?.totalRepaymentAmount || 0;
-  const isLiquidationGuaranteed = currentPlanTotalRepayment >= data.totalLiquidationValue;
+  const currentPlanPresentValue = crmExt.repaymentPlan?.presentValue || 0;
+  const isLiquidationGuaranteed = currentPlanPresentValue >= data.totalLiquidationValue;
 
   return (
     <ModalPortal>
@@ -202,14 +220,14 @@ export default function PropertyValuationModal({
                 <p className="text-base font-black text-emerald-700 mt-0.5">{won(data.totalLiquidationValue)}원</p>
               </div>
               <div className="text-right">
-                {currentPlanTotalRepayment > 0 && (
+                {currentPlanPresentValue > 0 && (
                   <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isLiquidationGuaranteed ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
                     {isLiquidationGuaranteed ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
                     {isLiquidationGuaranteed ? '청산가치 보장 충족' : '청산가치 미달 주의'}
                   </span>
                 )}
                 <div className="text-[10px] text-slate-500 mt-0.5">
-                  변제계획안 총변제액: {won(currentPlanTotalRepayment)}원
+                  변제계획안 총변제액: {won(currentPlanTotalRepayment)}원 (현재가치 {won(currentPlanPresentValue)}원)
                 </div>
               </div>
             </div>
@@ -1614,10 +1632,10 @@ export default function PropertyValuationModal({
 
                   {/* 변제계획안 총 변제액 */}
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                    <div className="text-xs text-slate-600 font-bold">2. 변제계획안 총 변제예정액</div>
-                    <div className="text-2xl font-black text-indigo-900">{won(currentPlanTotalRepayment)}원</div>
+                    <div className="text-xs text-slate-600 font-bold">2. 변제계획안 총변제액의 현재가치</div>
+                    <div className="text-2xl font-black text-indigo-900">{won(currentPlanPresentValue)}원</div>
                     <p className="text-[11px] text-slate-500">
-                      현재 설정된 월 가용소득으로 36~60개월 동안 갚을 수 있는 변제 총액입니다.
+                      명목 총변제액 {won(currentPlanTotalRepayment)}원을 라이프니쯔 계수(연 5%)로 할인한 값입니다. 청산가치 보장은 이 현재가치로 판단합니다.
                     </p>
                   </div>
                 </div>
@@ -1636,13 +1654,13 @@ export default function PropertyValuationModal({
                   <div>
                     <h4 className="text-xs font-black">
                       {isLiquidationGuaranteed 
-                        ? '✅ 청산가치 보장의 원칙을 완벽히 충족합니다!' 
+                        ? '✅ 청산가치 보장 원칙 충족 (현재가치 기준)' 
                         : '⚠️ 청산가치 보장의 원칙 미달 (월 변제금 상향 또는 기간 연장 필요)'}
                     </h4>
                     <p className="text-[11px] mt-1 text-slate-700">
                       {isLiquidationGuaranteed
-                        ? `총 변제예정액(${won(currentPlanTotalRepayment)}원)이 청산가치(${won(data.totalLiquidationValue)}원)보다 ${won(currentPlanTotalRepayment - data.totalLiquidationValue)}원 많아 법원 인가 요건을 만족합니다.`
-                        : `총 변제예정액이 청산가치보다 ${won(data.totalLiquidationValue - currentPlanTotalRepayment)}원 부족합니다. 변제계획안 작성기에서 월 변제금을 상향하거나 변제기간을 60개월로 연장해야 합니다.`}
+                        ? `총변제액의 현재가치(${won(currentPlanPresentValue)}원)가 청산가치(${won(data.totalLiquidationValue)}원)보다 ${won(currentPlanPresentValue - data.totalLiquidationValue)}원 많습니다. 청산가치 보장 외 다른 인가 요건은 별도로 확인하세요.`
+                        : `총변제액의 현재가치가 청산가치보다 ${won(data.totalLiquidationValue - currentPlanPresentValue)}원 부족합니다. 변제계획안 작성기에서 월 변제금을 상향하거나 변제기간을 연장해야 합니다.`}
                     </p>
                   </div>
                 </div>

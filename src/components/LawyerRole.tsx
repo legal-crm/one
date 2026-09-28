@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
+import { parseLocalYmd } from '../utils/localDate';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
@@ -3583,7 +3584,7 @@ export default function LawyerRole({
               allExts.forEach((ext: any) => { if (ext.feeSchedule) { ext.feeSchedule.forEach((f: any) => { totalFeeAmount += f.amount || 0; if (f.status === 'paid') totalPaidAmount += f.amount || 0; if (f.status === 'overdue') overdueCount++; }); } });
               const receivable = totalFeeAmount - totalPaidAmount;
               const urgentCorrections: { title: string; dDay: number; deadline: string }[] = [];
-              allExts.forEach((ext: any) => { if (ext.correctionOrders) { ext.correctionOrders.forEach((co: any) => { if (co.status === 'pending') { const diff = Math.ceil((new Date(co.deadline).getTime() - Date.now()) / 86400000); if (diff <= 7) urgentCorrections.push({ title: co.title, dDay: diff, deadline: co.deadline }); } }); } });
+              allExts.forEach((ext: any) => { if (ext.correctionOrders) { ext.correctionOrders.forEach((co: any) => { if (co.status === 'pending') { const dl = parseLocalYmd(co.deadline || ''); if (!dl) return; const today0 = new Date(); today0.setHours(0, 0, 0, 0); const diff = Math.round((dl.getTime() - today0.getTime()) / 86400000); if (diff <= 7) urgentCorrections.push({ title: co.title, dDay: diff, deadline: co.deadline }); } }); } });
               urgentCorrections.sort((a, b) => a.dDay - b.dDay);
               return (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">

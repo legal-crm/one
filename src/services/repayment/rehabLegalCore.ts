@@ -46,7 +46,8 @@ export interface Special24Input {
   elderly?: boolean;
 }
 
-/** 24개월 단축 특례를 운영하는 관할 (PolicyConfig.courtTraits.allow24Months, constants.generateCourtConfigs와 동일) */
+/** 24개월 단축 특례를 운영하는 관할 — 3대 회생법원으로 확정 (2026-09-28 사용자 확인)
+ *  (PolicyConfig.courtTraits.allow24Months, constants.generateCourtConfigs와 동일) */
 export const COURTS_ALLOWING_24_MONTHS = ['서울회생법원', '수원회생법원', '부산회생법원'] as const;
 
 export function courtAllows24Months(courtName?: string): boolean {

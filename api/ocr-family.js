@@ -32,8 +32,8 @@ async function handler(req, res) {
     if (cfCheck.success) isAuthorized = true;
   }
 
-  // 개발 환경 로컬 테스트 편의 지원
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+  // 로컬 개발 우회는 명시적 플래그가 있고 Vercel 배포 환경이 아닐 때만 허용 (NODE_ENV만으로 인증을 건너뛰지 않음)
+  if (!isAuthorized && process.env.NODE_ENV === 'development' && process.env.ALLOW_UNAUTH_OCR_DEV === '1' && !process.env.VERCEL) {
     isAuthorized = true;
   }
 
@@ -135,10 +135,11 @@ async function handler(req, res) {
 
       for (const model of modelNames) {
         try {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          // API 키는 URL 쿼리가 아니라 헤더로 전달 (로그·프록시에 키가 남지 않도록)
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
           const response = await fetch(geminiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
             body: JSON.stringify({
               contents: [
                 {

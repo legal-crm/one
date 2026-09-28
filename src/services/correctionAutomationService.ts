@@ -17,6 +17,14 @@ import type {
   CorrectionBriefData
 } from '../types/correctionTypes';
 import type { AuditTransactionItem, PreFilingRiskReport } from '../types/bankAuditTypes';
+// 별지 HTML은 dangerouslySetInnerHTML / document.write로 출력되므로 모든 입력값을 이스케이프 (저장형 XSS 방지)
+import { escapeHtml as esc } from './court/CourtFormHtmlBuilder';
+
+/**
+ * ⚠️ 답변 템플릿 원칙: 의뢰인에 관한 **사실을 단정하지 않는다**.
+ *   [대괄호] 부분은 실제 소명자료를 확인한 뒤 담당자가 채워야 하는 빈칸이다.
+ *   (이전: '고금리 채무 변제에 전액 충당', '친정 부모 증여 자금', '편파변제 지적을 수용' 등 확인되지 않은 사실을 기본 문안으로 제공)
+ */
 
 // ══════════════════════════════════════════════════════════════════
 // 1. 회생위원 7대 표준 보정명령 템플릿 정의
@@ -40,8 +48,8 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '대출금 사용처',
     courtInstruction: '신청일 기준 최근 1년 이내에 발생한 신규 대출금의 구체적 사용처를 객관적 소명자료(금융거래내역, 이체확인증, 영수증 등)와 함께 [별지: 대출금 사용처 소명표]를 작성하여 제출할 것.',
     debtorResponseTemplate: ({ clientName }) => 
-      `신청인(${clientName})이 최근 1년 내 금융기관으로부터 차용한 대출금은 기존의 고금리 채무 변제 및 필수 생활비(임차료, 공과금, 의료비)에 전액 충당되었으며, 사치나 유흥 또는 재산 은닉의 목적으로 사용된 사실이 일체 없습니다. 별지 '최근 대출금 사용처 소명표' 및 금융기관 대환 송금 내역(소갑 제1호증)을 첨부하여 상세히 소명합니다.`,
-    defaultAttachedEvidence: '소갑 제1호증 (별지 대출금 사용처 소명표 및 대환 이체확인증 일체)'
+      `신청인(${clientName})이 최근 1년 내 금융기관으로부터 차용한 대출금의 사용처는 별지 '최근 대출금 사용처 소명표' 기재와 같습니다. [대출별 실제 사용처 요지 기재 — 예: ○○카드 대금 결제 ○○원, 임차료 ○○원]. 이를 확인할 수 있는 금융거래내역 및 이체확인증을 첨부하여 소명합니다.`,
+    defaultAttachedEvidence: '[호증 번호] (별지 대출금 사용처 소명표 및 이체확인증)'
   },
   {
     id: 'TPL_02_HIGH_VALUE_WITHDRAWAL',
@@ -50,8 +58,8 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '100만원 이상 출금',
     courtInstruction: '신청일 전 1년 내 계좌에서 1회 100만 원 이상 출금되거나 이체된 자금의 최종 귀속처 및 사용처를 [별지: 100만 원 이상 출금 소명서]에 기재하고 계좌이체확인증 등 객관적 증빙을 첨부할 것.',
     debtorResponseTemplate: ({ clientName }) =>
-      `신청인(${clientName})의 계좌에서 인출된 100만 원 이상 금원은 주거 임차보증금 잔금 지급, 직계가족 필수 치료비, 필수 생필품 구매 및 타 채무 상환에 지출되었음을 소명합니다. 편파변제나 자금 은닉의 의도는 일체 없었으며, 별지 소명서 및 이체증 일체(소갑 제2호증)를 첨부합니다.`,
-    defaultAttachedEvidence: '소갑 제2호증 (별지 100만 원 이상 출금 소명서 및 계좌이체확인증 일체)'
+      `신청인(${clientName})의 계좌에서 1회 100만 원 이상 출금·이체된 금원의 수취인과 사용처는 별지 '100만 원 이상 출금 소명서' 기재와 같습니다. [건별 사용처 요지 기재]. 이를 확인할 수 있는 계좌이체확인증·영수증 등을 첨부합니다.`,
+    defaultAttachedEvidence: '[호증 번호] (별지 100만 원 이상 출금 소명서 및 계좌이체확인증)'
   },
   {
     id: 'TPL_03_FAMILY_PREFERENTIAL',
@@ -60,18 +68,18 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '친인척 편파변제',
     courtInstruction: '신청 전 친인척 또는 지인에게 송금된 금원에 대하여 편파변제 여부를 소명하고, 부인권 대상 해당 시 청산가치에 반영하여 수정 변제계획안을 제출할 것.',
     debtorResponseTemplate: () =>
-      `해당 금원은 신청인이 과거 직계존비속 등으로부터 긴급 생계비 명목으로 차용하였던 차용원리금의 일부 변제였으나, 채무자 회생 및 파산에 관한 법률상 편파변제 지적을 겸허히 수용하여, 동 송금액 전액을 신청인의 재산목록 청산가치에 가산하고 최저변제액을 충족하는 수정 변제계획안을 함께 제출합니다.`,
-    defaultAttachedEvidence: '소갑 제3호증 (수정 재산목록 및 수정 변제계획안)'
+      `지적하신 송금 [일자·수취인·금액]은 [송금 사유 기재 — 예: 차용금 변제 / 생활비 지원 / 기타]입니다. [편파변제에 해당한다고 판단되는 경우: 해당 금액을 재산목록 청산가치에 가산하고 수정 변제계획안을 제출합니다. / 해당하지 않는다고 판단되는 경우: 그 근거와 소명자료를 기재합니다.]`,
+    defaultAttachedEvidence: '[호증 번호] (송금 내역 및 수정 재산목록·변제계획안)'
   },
   {
     id: 'TPL_04_SPECULATION_CRYPTO',
     category: 'SPECULATION',
-    title: '4. 가상자산/주식 손실금 소명 (실무준칙 제401호)',
+    title: '4. 가상자산/주식 손실금 소명',
     badge: '주식·코인 손실',
     courtInstruction: '가상자산, 주식 매매, 사행성 행위로 인하여 발생한 손실금 및 투자금의 구체적 규모를 소명하고, 투자 잔액 및 반환금을 재산목록에 반영할 것.',
     debtorResponseTemplate: ({ courtName }) =>
-      `신청인은 과거 무리한 투자로 손실을 입었으나, 이는 경제적 위기 상황에서 채무를 해결하고자 했던 판단 착오였으며, ${courtName || '서울회생법원'} 실무준칙 제401호(주식 또는 가상자산 투자 손실금의 청산가치 미반영 원칙)에 비추어 기왕에 소멸된 순손실금은 청산가치 산입 대상이 아님을 혜량하여 주시기 바랍니다. 현재 보유 중인 평가잔고 및 예수금은 전액 재산목록에 계상하였습니다.`,
-    defaultAttachedEvidence: '소갑 제4호증 (가상자산 거래소 거래원장 및 증권계좌 잔고증명서)'
+      `신청인의 주식·가상자산 거래 내역과 손실 규모는 첨부 거래원장 기재와 같습니다 [총 투자액 ○○원, 순손실 ○○원, 현재 평가잔고·예수금 ○○원]. 현재 보유 중인 평가잔고 및 예수금은 재산목록에 계상하였습니다. 손실금의 청산가치 반영 여부는 ${courtName || '관할 법원'}의 주식·가상자산 투자 손실금 처리 기준(서울회생법원 실무준칙 제408호 및 수원·부산회생법원의 같은 취지 기준)에 따라 판단하여 주시기 바랍니다.`,
+    defaultAttachedEvidence: '[호증 번호] (가상자산 거래소 거래원장 및 증권계좌 잔고증명서)'
   },
   {
     id: 'TPL_05_SPOUSE_ASSET',
@@ -80,8 +88,8 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '배우자 재산 소명',
     courtInstruction: '배우자 명의 부동산, 임차보증금, 차량 등의 취득 자금 출처를 소명하고, 채무자의 기여분을 청산가치에 반영할 것.',
     debtorResponseTemplate: () =>
-      `민법 제830조 제1항에 따라 부부 일방이 혼인 중 자기 명의로 취득한 재산은 특유재산으로 추정되며(대법원 2008스105 결정 등 참조), 배우자 명의 자산은 배우자 본인의 고유 소득과 친정 부모의 상속·증여 자금으로 취득된 것으로서 채무자의 소득이 유입된 바 없습니다. 이에 배우자의 소득원천징수 및 자금출처 소명자료(소갑 제5호증)를 제출합니다.`,
-    defaultAttachedEvidence: '소갑 제5호증 (배우자 소득금액증명원 및 친정 증여 입금증 일체)'
+      `배우자 명의 [재산 종류·취득일·취득가액]의 취득 자금은 [자금 출처 기재 — 예: 배우자 근로소득 ○○원, 증여·상속 ○○원]으로 마련되었습니다. [채무자 소득 유입 여부 및 기여분에 대한 설명 기재]. 민법 제830조 제1항(부부 일방이 혼인 중 자기 명의로 취득한 재산은 그 특유재산)을 참고하되, 자금 출처는 첨부 자료로 소명합니다.`,
+    defaultAttachedEvidence: '[호증 번호] (배우자 소득금액증명원 및 자금출처 자료)'
   },
   {
     id: 'TPL_06_INCOME_RECALCULATION',
@@ -90,8 +98,8 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '소득 재산정',
     courtInstruction: '최근 1년간 실제 수령한 급여 총액을 기초로 월평균 순소득을 재산정하고, 가용소득 변동에 따른 수정 변제계획안을 제출할 것.',
     debtorResponseTemplate: () =>
-      `최근 12개월간 급여통장 입금액 및 근로소득원천징수영수증 상의 기본급과 제수당을 월별로 상세히 분석하여 [별지: 최근 1년 소득 실수령액 산출표]를 작성하였습니다. 비정기 상여금과 연장수당 변동분을 반영한 합리적 월평균 순소득을 산출하고 이에 부합하는 수정 변제계획안을 제출합니다.`,
-    defaultAttachedEvidence: '소갑 제6호증 (별지 소득산정표 및 12개월 급여통장 사본)'
+      `최근 12개월간 급여통장 입금액 및 근로소득원천징수영수증을 기초로 [별지: 최근 1년 소득 실수령액 산출표]를 작성하였습니다. 재산정한 월평균 순소득은 [○○원]이며, 이에 맞춘 수정 변제계획안을 제출합니다.`,
+    defaultAttachedEvidence: '[호증 번호] (별지 소득산정표 및 12개월 급여통장 사본)'
   },
   {
     id: 'TPL_07_INSURANCE_SURRENDER',
@@ -100,8 +108,8 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
     badge: '보험환급금 공제',
     courtInstruction: '신청인 명의 모든 보장성 보험 해약환급금 내역을 제출하고, 압류금지액 150만 원을 초과하는 잔액을 청산가치에 반영할 것.',
     debtorResponseTemplate: () =>
-      `보험개발원 및 각 보험사 조회를 통하여 신청인 명의 모든 보험의 해약환급금을 전수 파악하였습니다. 민사집행법 시행령 제3조에 따른 압류금지액 150만 원을 공제한 잔여 환급금을 재산목록 청산가치에 정확히 반영하였으며, 이에 따른 수정 재산목록을 제출합니다.`,
-    defaultAttachedEvidence: '소갑 제7호증 (보험해약환급금 확인서 및 수정 재산목록)'
+      `신청인 명의 보험의 해약환급금은 첨부 확인서 기재와 같습니다 [보험사·상품별 환급금 ○○원]. 보장성보험 해약환급금 중 압류금지 금액(민사집행법 시행령 제6조 제1항 제3호, 150만 원)을 공제한 잔액을 재산목록 청산가치에 반영하였으며, 수정 재산목록을 제출합니다.`,
+    defaultAttachedEvidence: '[호증 번호] (보험해약환급금 확인서 및 수정 재산목록)'
   }
 ];
 
@@ -138,12 +146,13 @@ export function autoGenerateExplanationFromAudit(
       highValueTrans.push({
         id: item.id || `hvt-${idx + 1}`,
         transDate: item.date || (item as any).transDate || '',
-        bankName: item.bankOrCard || (item as any).bankName || '주거래은행',
+        // 계좌 분석 데이터에 없는 값은 빈칸 (이전: '주거래은행'·'생계비 및 필수 지출 충당' 같은 사용처를 지어냄)
+        bankName: item.bankOrCard || (item as any).bankName || '',
         transType: 'WITHDRAWAL',
         amount: item.amount,
-        counterparty: item.counterparty || '미기재',
-        purposeDetail: item.explanation || (item as any).usageExplanation || (item as any).notes || '생계비 및 필수 지출 충당',
-        evidenceDocName: item.evidenceDocIndex || item.evidenceType || `소갑 제2호증의 ${idx + 1}`
+        counterparty: item.counterparty || '',
+        purposeDetail: item.explanation || (item as any).usageExplanation || (item as any).notes || '',
+        evidenceDocName: item.evidenceDocIndex || item.evidenceType || ''
       });
     });
 
@@ -159,12 +168,13 @@ export function autoGenerateExplanationFromAudit(
     recentLoans.push({
       id: loan.id || `loan-${idx + 1}`,
       loanDate: loan.date || (loan as any).transDate || '',
-      lenderName: loan.counterparty || '금융기관',
+      lenderName: loan.counterparty || '',
       amount: loan.amount,
-      usageCategory: 'DEBT_REPAYMENT',
-      specificUsage: loan.explanation || (loan as any).usageExplanation || '기존 고금리 채무 대환 상환 및 생계비 충당',
-      evidenceDocName: loan.evidenceDocIndex || `소갑 제1호증의 ${idx + 1}`,
-      verified: true
+      usageCategory: 'OTHER',
+      specificUsage: loan.explanation || (loan as any).usageExplanation || '',
+      evidenceDocName: loan.evidenceDocIndex || '',
+      // 입금 내역만으로는 사용처가 확인되지 않으므로 항상 '미확인'으로 시작
+      verified: false
     });
   });
 
@@ -179,14 +189,12 @@ export function autoGenerateExplanationFromAudit(
       creditCards.push({
         id: item.id || `card-${idx + 1}`,
         transactionDate: item.date || (item as any).transDate || '',
-        cardCompany: item.bankOrCard || '신용카드',
-        merchantName: item.counterparty || '가맹점',
+        cardCompany: item.bankOrCard || '',
+        merchantName: item.counterparty || '',
         amount: item.amount,
-        purpose: item.riskCategory === 'DANGER_SPECULATION' 
-          ? '투자 손실 (실무준칙 제401호 적용 요망)' 
-          : item.explanation || '생활용품 및 생필품 결제',
+        purpose: item.explanation || (item.riskCategory === 'DANGER_SPECULATION' ? '[투자 관련 지출 — 사용처 확인 필요]' : ''),
         isLuxuryOrGambling: item.riskCategory === 'DANGER_SPECULATION' || item.riskCategory === 'DANGER_LUXURY',
-        evidenceNote: item.evidenceType || '카드 이용내역서 첨부'
+        evidenceNote: item.evidenceType || ''
       });
     });
 
@@ -203,16 +211,16 @@ export function autoGenerateExplanationFromAudit(
 
 export function autoAssignExhibitNumbers(briefData: CorrectionBriefData): CorrectionBriefData {
   let mainNumber = 1;
-  const updatedAnswers = [...briefData.answers];
-  const updatedHighValue = [...briefData.highValueTrans];
-  const updatedRecentLoans = [...briefData.recentLoans];
+  // 원본 state를 직접 수정하지 않도록 항목까지 복사 (이전: 배열만 복사하고 객체를 제자리 수정)
+  const updatedAnswers = briefData.answers.map((a) => ({ ...a }));
+  let updatedHighValue = briefData.highValueTrans.map((t) => ({ ...t }));
+  let updatedRecentLoans = briefData.recentLoans.map((l) => ({ ...l }));
 
   // 1. 대출금 사용처 소명표 채번
   if (updatedRecentLoans.length > 0) {
     const loanEvidence = `소갑 제${mainNumber}호증 (대출금 사용처 소명표 및 이체증)`;
-    updatedRecentLoans.forEach((loan, idx) => {
-      loan.evidenceDocName = `소갑 제${mainNumber}호증의 ${idx + 1}`;
-    });
+    const n = mainNumber;
+    updatedRecentLoans = updatedRecentLoans.map((loan, idx) => ({ ...loan, evidenceDocName: `소갑 제${n}호증의 ${idx + 1}` }));
 
     // 답변 중 대출 관련 항목 매핑
     const ansIdx = updatedAnswers.findIndex(a => 
@@ -230,9 +238,8 @@ export function autoAssignExhibitNumbers(briefData: CorrectionBriefData): Correc
   // 2. 100만 원 이상 출금 소명표 채번
   if (updatedHighValue.length > 0) {
     const withdrawalEvidence = `소갑 제${mainNumber}호증 (100만 원 이상 출금 소명서 및 이체확인증)`;
-    updatedHighValue.forEach((tx, idx) => {
-      tx.evidenceDocName = `소갑 제${mainNumber}호증의 ${idx + 1}`;
-    });
+    const n = mainNumber;
+    updatedHighValue = updatedHighValue.map((tx, idx) => ({ ...tx, evidenceDocName: `소갑 제${n}호증의 ${idx + 1}` }));
 
     const ansIdx = updatedAnswers.findIndex(a => 
       a.courtInstruction.includes('출금') || a.courtInstruction.includes('금융거래') || a.courtInstruction.includes('100만')
@@ -246,13 +253,13 @@ export function autoAssignExhibitNumbers(briefData: CorrectionBriefData): Correc
     mainNumber++;
   }
 
-  // 3. 기타 답변 항목에 순차 호증 채번
-  updatedAnswers.forEach((ans, idx) => {
-    if (!ans.attachedEvidence || ans.attachedEvidence.includes('호증')) {
-      if (!ans.attachedEvidence) {
-        ans.attachedEvidence = `소갑 제${mainNumber}호증 (관련 소명자료)`;
-        mainNumber++;
-      }
+  // 3. 호증 번호가 비어 있거나 '[호증 번호]' 빈칸인 답변에 순차 채번
+  updatedAnswers.forEach((ans) => {
+    const ev = ans.attachedEvidence || '';
+    if (!ev || ev.includes('[호증 번호]')) {
+      const rest = ev.replace('[호증 번호]', '').trim();
+      ans.attachedEvidence = `소갑 제${mainNumber}호증${rest ? ` ${rest}` : ' (관련 소명자료)'}`;
+      mainNumber++;
     }
   });
 
@@ -280,7 +287,10 @@ export function generateCourtAnnexHtml(
     incomes?: IncomeCalculationMonth[];
   }
 ): string {
-  const { clientName, caseNumber, courtName } = ctx;
+  const clientName = esc(ctx.clientName);
+  const caseNumber = esc(ctx.caseNumber);
+  const courtName = esc(ctx.courtName);
+  const won = (n: number) => esc((Number(n) || 0).toLocaleString());
 
   if (type === 'LOAN') {
     const loans = ctx.loans || [];
@@ -311,22 +321,22 @@ export function generateCourtAnnexHtml(
             ${loans.map((l, i) => `
               <tr>
                 <td style="border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${l.loanDate}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${l.lenderName}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: right;">${l.amount.toLocaleString()}원</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: left;">${l.specificUsage}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${l.evidenceDocName || '-'}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(l.loanDate)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(l.lenderName)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: right;">${won(l.amount)}원</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: left;">${esc(l.specificUsage)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(l.evidenceDocName || '-')}</td>
               </tr>
             `).join('')}
             <tr style="background: #f8fafc; font-weight: bold;">
               <td colspan="3" style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">합 계</td>
-              <td style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">${totalAmount.toLocaleString()}원</td>
-              <td colspan="2" style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">대환 및 필수생계비 소명 완료</td>
+              <td style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">${won(totalAmount)}원</td>
+              <td colspan="2" style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">총 ${loans.length}건</td>
             </tr>
           </tbody>
         </table>
         <p style="font-size: 11px; color: #64748b; margin-top: 15px;">
-          ※ 위 대출금은 사치·유흥이나 재산은닉에 사용된 바 없으며, 첨부된 금융거래확인서 및 이체증으로 입증합니다.
+          ※ 각 대출금의 사용처는 첨부한 금융거래확인서 및 이체증으로 소명합니다.
         </p>
       </div>
     `;
@@ -362,23 +372,23 @@ export function generateCourtAnnexHtml(
             ${withdrawals.map((w, i) => `
               <tr>
                 <td style="border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${w.transDate}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${w.bankName}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: right;">${w.amount.toLocaleString()}원</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${w.counterparty}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: left;">${w.purposeDetail}</td>
-                <td style="border: 1px solid #cbd5e1; padding: 6px;">${w.evidenceDocName || '-'}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(w.transDate)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(w.bankName)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: right;">${won(w.amount)}원</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(w.counterparty)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: left;">${esc(w.purposeDetail)}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px;">${esc(w.evidenceDocName || '-')}</td>
               </tr>
             `).join('')}
             <tr style="background: #f8fafc; font-weight: bold;">
               <td colspan="3" style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">총 출금액</td>
-              <td style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">${totalAmount.toLocaleString()}원</td>
-              <td colspan="3" style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">총 ${withdrawals.length}건 소명 완료</td>
+              <td style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">${won(totalAmount)}원</td>
+              <td colspan="3" style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">총 ${withdrawals.length}건</td>
             </tr>
           </tbody>
         </table>
         <p style="font-size: 11px; color: #64748b; margin-top: 15px;">
-          ※ 위 출금액은 편파변제나 자금 은닉의 목적이 없었음을 계좌이체증 및 영수증을 첨부하여 확인합니다.
+          ※ 각 출금의 수취인과 사용처는 첨부한 계좌이체확인증 및 영수증으로 소명합니다.
         </p>
       </div>
     `;

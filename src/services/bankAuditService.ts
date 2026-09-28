@@ -845,15 +845,15 @@ export function submitBankAuditToLawyer(clientId: string): BankStatementAuditDat
 }
 
 /** 변호사가 의뢰인 소명표 검토 완료 및 법원 제출 승인 */
-export function approveBankAuditByLawyer(clientId: string): BankStatementAuditData {
+export function approveBankAuditByLawyer(clientId: string, exhibitMainNumber?: number): BankStatementAuditData {
   const current = getStoredBankAuditData(clientId);
   current.status = 'lawyer_approved';
   current.lawyerReviewedAt = new Date().toISOString();
-  // 소갑 제O호증 자동 채번 (번호가 없는 건에 순차 부여)
+  // 호증 번호는 호출자가 본번을 넘긴 경우에만 부여 (이전: 모든 사건에 '소갑 제3호증'을 고정 부여)
   let subIndex = 1;
   current.items = current.items.map(item => {
     if (item.amount >= current.thresholdAmount) {
-      const docIdx = item.evidenceDocIndex || `소갑 제3호증의 ${subIndex++}`;
+      const docIdx = item.evidenceDocIndex || (exhibitMainNumber ? `소갑 제${exhibitMainNumber}호증의 ${subIndex++}` : '');
       return {
         ...item,
         status: 'lawyer_approved',

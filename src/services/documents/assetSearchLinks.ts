@@ -62,7 +62,7 @@ export const ASSET_SEARCH_PORTALS: Record<string, ExternalSearchPortal> = {
     category: 'public_registry',
     badge: '을구 근저당 확인',
     description: '부동산 등기사항전부증명서 및 근저당 채권최고액 확인',
-    url: 'http://www.iros.go.kr',
+    url: 'https://www.iros.go.kr',
     supportsSearchQuery: false,
   },
 
@@ -73,7 +73,7 @@ export const ASSET_SEARCH_PORTALS: Record<string, ExternalSearchPortal> = {
     category: 'vehicle',
     badge: '중고차 시세 1순위',
     description: '대표 중고차 거래 플랫폼 실매물 평균 시세 확인',
-    url: 'http://www.encar.com',
+    url: 'https://www.encar.com',
     supportsSearchQuery: true,
     getSearchUrl: (query: string) => `http://www.encar.com/dc/dc_carsearchlist.do?carSearch=${encodeURIComponent(query)}`,
   },
@@ -170,12 +170,10 @@ export async function openExternalSearchPortal(
     return { success: false, targetUrl: '' };
   }
 
-  let targetUrl = portal.url;
+  // 각 포털의 검색 딥링크 경로(getSearchUrl)는 공식 문서로 검증되지 않아 사용하지 않는다.
+  // 항상 포털 메인(검증된 도메인)을 열고, 검색어는 클립보드로 복사해 붙여넣게 한다.
+  const targetUrl = portal.url;
   const cleanQuery = query?.trim() || '';
-
-  if (cleanQuery && portal.supportsSearchQuery && portal.getSearchUrl) {
-    targetUrl = portal.getSearchUrl(cleanQuery);
-  }
 
   // 검색어가 있으면 클립보드에 복사하여 붙여넣기 편의성 제공
   let copiedQuery: string | undefined;

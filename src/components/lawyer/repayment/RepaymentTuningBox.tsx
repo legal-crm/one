@@ -1,11 +1,11 @@
 // src/components/lawyer/repayment/RepaymentTuningBox.tsx
 // ============================================================
-// [리걸플로 벤치마킹] 변제예정액 산정 7대 실무 튜닝박스 (Tuning Box)
-// 매뉴얼 p.61 ~ p.63 표준 실무 옵션 100% 대응
-// 1. 세금 등 우선권 있는 채권 (18회/30회 회차 분할)
+// 변제예정액 산정 실무 튜닝박스 (Tuning Box)
+// ※ 6(장래양육비)·7(성년도달 자녀)은 현재 기록용이며 엔진이 월 변제금에 자동 반영하지 않는다.
+// 1. 세금 등 우선권 있는 채권 (2단계 분할: 1단계 회차 자동 산정 = 내부 보수 기준 기간 1/2 이내, 직접 조정 가능)
 // 2. 별제권부 채권 (담보물 낙찰률 70%/100%/50% 및 예정부족액)
 // 3. 압류적립금 처리 (제3채무자 및 1회차 투입/제3채무자 수령)
-// 4. 재산처분에 의한 변제 (1년 내 1.1배, 2년 내 1.3배 법원 승수)
+// 4. 재산처분에 의한 변제 (처분 목표액 배수: 1년 내 1.1배, 2년 내 1.3배 — 시스템 기본값, 관할 실무 확인 필요)
 // 5. 원금과 이자 변제 (3대 변제 방식)
 // 6. 장래양육비 (양육권자 등록 및 부담조서 확정)
 // 7. 변제기 내 성년 도달 부양가족 (1단계/2단계 변제금 스텝업)
@@ -53,7 +53,7 @@ interface RepaymentTuningBoxProps {
   adultChild: AdultChildTransitionInfo;
   onUpdateAdultChild: (data: AdultChildTransitionInfo) => void;
 
-  // ── 투더코어 벤치마킹 서울회생법원 준칙 & 보정권고 튜닝 props ──
+  // ── 원금 조기완제형 · 변제율 표기 · 압류적립금 튜닝 props ──
   isSeoulPrincipalOnly?: boolean;
   onToggleSeoulPrincipalOnly?: (val: boolean) => void;
   garnishmentDepositFirstRound?: number;
@@ -106,7 +106,7 @@ export default function RepaymentTuningBox({
   const totalPrincipal = plan.totalPrincipal;
   const totalInterest = plan.totalInterest;
 
-  // 서울회생법원 원금형 36개월 내 완제 가능성 판정
+  // 원금 조기완제형: 현재 월 변제금으로 36개월 내 원금 완제 가능 여부
   const monthsToPayoff = plan.monthlyRepaymentTotal > 0
     ? Math.ceil(totalPrincipal / plan.monthlyRepaymentTotal)
     : 999;
@@ -125,11 +125,11 @@ export default function RepaymentTuningBox({
             <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
               실무 튜닝박스 (Tuning Box)
               <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
-                투더코어·리걸플로 9대 실무옵션
+                9개 실무 옵션
               </span>
             </h4>
             <p className="text-[11px] text-slate-400">
-              서울회생법원 원금형 준칙, 보정권고 오버라이드, 세금 우선권, 담보부족액, 압류적립금을 원클릭으로 튜닝합니다.
+              원금 조기완제형, 보정권고 오버라이드, 세금 우선권, 담보부족액, 압류적립금 등을 조정합니다. 적용 전 관할 법원 실무를 확인하세요.
             </p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function RepaymentTuningBox({
 
       {/* 9대 탭 네비게이션 버튼 (가로 스크롤 대응) */}
       <div className="flex items-center gap-1.5 overflow-x-auto py-2.5 scrollbar-none border-b border-slate-800/80">
-        {/* 서울회생법원 원금형 탭 (신규) */}
+        {/* 원금 조기완제형 탭 */}
         <button
           type="button"
           onClick={() => setActiveTab('seoul_principal')}
@@ -171,7 +171,7 @@ export default function RepaymentTuningBox({
           }`}
         >
           <Scale className="w-3.5 h-3.5 text-emerald-300" />
-          <span>서울법원 원금형</span>
+          <span>원금 조기완제형</span>
           {isSeoulPrincipalOnly && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
         </button>
 
@@ -301,14 +301,14 @@ export default function RepaymentTuningBox({
 
       {/* ── 탭별 상세 제어 패널 ── */}
       <div className="pt-3">
-        {/* [신규 1] 서울회생법원 원금형 실무준칙 */}
+        {/* [신규 1] 원금 조기완제형 */}
         {activeTab === 'seoul_principal' && (
           <div className="space-y-3 animate-fadeIn text-xs">
             <div className="bg-emerald-950/40 border border-emerald-800/60 p-3.5 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
-                    서울회생법원 2021 실무준칙 '원금형'
+                    원금 조기완제형 (이자 제외 · 기간 단축)
                   </span>
                   <span className="text-[11px] text-emerald-300 font-mono">
                     제422조 준용 특례
@@ -358,11 +358,11 @@ export default function RepaymentTuningBox({
               <div className="p-3 rounded-xl bg-slate-800/40 border border-emerald-500/30 flex items-start gap-2.5 text-emerald-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <div className="font-bold text-white">서울회생법원 원금형 적용 요건 충족!</div>
+                  <div className="font-bold text-white">36개월 내 원금 완제 가능</div>
                   <p className="text-[11px] text-slate-300 leading-normal">
                     현재 월 가용소득으로 <strong className="text-emerald-300">{monthsToPayoff}개월</strong> 만에 원금 100%가 완납됩니다.
-                    원금형을 켜면 36개월 중 잔여 {shortenedMonths}개월 동안 이자를 갚지 않고 변제기간이 <strong className="text-white">{monthsToPayoff}개월로 단축</strong>되며,
-                    총 이자 <strong className="text-amber-300">{totalInterest.toLocaleString()}원</strong>은 전액 면책 처리됩니다.
+                    적용하면 변제기간을 <strong className="text-white">{monthsToPayoff}개월로 단축</strong>(36개월 대비 {shortenedMonths}개월 단축)하고 이자 {' '}
+                    <strong className="text-amber-300">{totalInterest.toLocaleString()}원</strong>은 변제 대상에서 제외한 계획안을 만듭니다. 이자 면책 여부와 기간 단축 허용은 관할 법원 판단이므로 제출 전 확인하세요.
                   </p>
                 </div>
               </div>
@@ -370,7 +370,7 @@ export default function RepaymentTuningBox({
               <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-start gap-2.5 text-slate-400">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <div className="font-bold text-slate-300">원금형 요건 미달 (36개월 초과 필요)</div>
+                  <div className="font-bold text-slate-300">36개월 내 원금 완제 불가</div>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     현재 월 가용소득으로는 36개월 내 원금 100% 완제가 불가능(필요: {monthsToPayoff}회차)하므로, 일반 가용소득 변제(원금 일부 변제)로 진행됩니다.
                   </p>
@@ -519,7 +519,7 @@ export default function RepaymentTuningBox({
               <div>
                 <span className="text-xs font-bold text-slate-200 block">우선권 채권(국세/지방세/건보료) 2단계 분할 변제</span>
                 <span className="text-[11px] text-slate-400">
-                  총 {totalPriorityDebt.toLocaleString()}원 · 36회 기준 1/2(최대 18회) 이내 전액 완납 법원 실무 준칙 적용
+                  총 {totalPriorityDebt.toLocaleString()}원 · 변제계획 내 전액 우선 변제(제611조 제1항 제2호). 1단계 회차 자동값은 내부 보수 기준(기간 1/2 이내)
                 </span>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -549,7 +549,7 @@ export default function RepaymentTuningBox({
                 />
                 <div className="flex justify-between text-[10px] text-slate-400">
                   <span>1회차</span>
-                  <span>상한선 {Math.floor(totalMonths / 2)}회차 (총 {totalMonths}개월의 1/2)</span>
+                  <span>보수 기준 {Math.floor(totalMonths / 2)}회차 (총 {totalMonths}개월의 1/2, 법정 상한 아님)</span>
                 </div>
 
                 {/* 인가 타당성 경고 */}
@@ -763,7 +763,7 @@ export default function RepaymentTuningBox({
         {activeTab === 'interest' && (
           <div className="space-y-3 animate-fadeIn">
             <p className="text-xs text-slate-300">
-              변제율이 높거나 36개월 내 원금을 모두 변제할 수 있는 경우 이자 변제 방식을 선택합니다. (매뉴얼 p.63 그림 7-21)
+              변제율이 높거나 36개월 내 원금을 모두 변제할 수 있는 경우 이자 변제 방식을 선택합니다.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
@@ -822,9 +822,9 @@ export default function RepaymentTuningBox({
           <div className="space-y-3 animate-fadeIn">
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
-                <span className="text-xs font-bold text-white block">장래양육비 지급자 특례 (매뉴얼 p.63 그림 7-22)</span>
-                <span className="text-[11px] text-slate-400">
-                  전 배우자에게 정기 양육비를 지급해야 하는 경우 양육비부담조서에 준하여 추가생계비에 반영합니다.
+                <span className="text-xs font-bold text-white block">장래양육비 지급 정보 (기록용)</span>
+                <span className="text-[11px] text-amber-300">
+                  ⚠️ 이 값은 월 변제금 계산에 자동 반영되지 않습니다. 추가생계비로 인정받으려면 [소득·생계비] 섹션의 '기타 인정 생계비'에 직접 입력하세요.
                 </span>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -881,9 +881,9 @@ export default function RepaymentTuningBox({
           <div className="space-y-3 animate-fadeIn">
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
-                <span className="text-xs font-bold text-white block">변제기간 중 성년 도달 자녀 (매뉴얼 p.63 그림 7-23)</span>
-                <span className="text-[11px] text-slate-400">
-                  변제 도중 자녀가 만 19세에 도달할 경우, 부양가족 제외 시점에 맞춰 2단계 생계비 축소 및 변제금을 상향합니다.
+                <span className="text-xs font-bold text-white block">변제기간 중 성년 도달 자녀 (기록용)</span>
+                <span className="text-[11px] text-amber-300">
+                  ⚠️ 단계별 생계비 축소·변제금 상향은 아직 자동 계산되지 않습니다. 성년 도달 회차를 기록해 두고, 필요하면 수동 조정으로 반영하세요.
                 </span>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -931,7 +931,7 @@ export default function RepaymentTuningBox({
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-200">
-                  💡 1~{adultChild.transitionMonthIndex - 1}회차는 부양가족으로 인정받고, {adultChild.transitionMonthIndex}~{totalMonths}회차는 1인 가구 기준으로 생계비가 축소되어 월 변제금이 자동으로 상향 안분됩니다.
+                  💡 법원 실무상 1~{adultChild.transitionMonthIndex - 1}회차는 부양가족을 포함하고 {adultChild.transitionMonthIndex}~{totalMonths}회차는 가구원 수를 줄여 생계비를 다시 산정할 수 있습니다. 현재 계획안에는 자동 반영되지 않으니 수동으로 확인하세요.
                 </div>
               </div>
             )}

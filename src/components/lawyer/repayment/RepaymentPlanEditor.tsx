@@ -28,7 +28,9 @@ import {
   buildRepaymentPlan,
   calculateLivingExpenseAndDisposableIncome,
   calculateTotalLiquidationValue,
-  calculateAssetLiquidationValue
+  calculateAssetLiquidationValue,
+  getDefaultStatutoryDeduction,
+  getEffectiveStatutoryDeduction
 } from '../../../services/repayment/repaymentCalculationEngine';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
@@ -62,9 +64,10 @@ export default function RepaymentPlanEditor({
   activeLawyerName = '담당 변호사',
 }: RepaymentPlanEditorProps) {
   // ── 1. 기본 입력 상태 초기화 ──
+  // 상담 데이터가 없으면 0원으로 시작 (임의 소득값을 넣지 않음)
   const initialIncome = clientRequest.financialProfile?.income 
     ? clientRequest.financialProfile.income * 10000 
-    : 3500000;
+    : 0;
 
   const [incomeExpense, setIncomeExpense] = useState<IncomeAndExpenseInput>(() => {
     if (crmExt.repaymentPlan?.incomeExpense) {
@@ -73,9 +76,9 @@ export default function RepaymentPlanEditor({
     return {
       incomeType: 'salary',
       monthlyNetIncome: initialIncome,
-      householdSize: clientRequest.financialProfile?.dependents ? clientRequest.financialProfile.dependents + 1 : 2,
+      householdSize: clientRequest.financialProfile?.dependents ? clientRequest.financialProfile.dependents + 1 : 1,
       region: 'SEOUL',
-      actualHousingExpense: 600000,
+      actualHousingExpense: 0,
       actualMedicalExpense: 0,
       numberOfChildren: Math.max(0, (clientRequest.financialProfile?.dependents || 1) - 1),
       educationExpensePerChild: 0,
@@ -90,34 +93,19 @@ export default function RepaymentPlanEditor({
     if (crmExt.repaymentPlan?.assets && crmExt.repaymentPlan.assets.length > 0) {
       return crmExt.repaymentPlan.assets;
     }
+    // 상담 시 신고한 자산총액만 '미분류' 1건으로 가져온다 (임의 비율 분할·가짜 항목 생성 금지)
     const initialAssetTotal = (clientRequest.financialProfile?.assetsTotal || 0) * 10000;
+    if (initialAssetTotal <= 0) return [];
     return [
       {
-        id: 'asset_1',
-        category: 'DEPOSIT',
-        name: '예금/적금 잔액',
-        marketValue: Math.min(3000000, Math.round(initialAssetTotal * 0.3)),
+        id: 'asset_intake',
+        category: 'OTHER',
+        name: '상담 시 신고 자산총액 (세부 분류 필요)',
+        marketValue: initialAssetTotal,
         encumbrance: 0,
-        statutoryDeduction: 1850000,
-        liquidationValue: Math.max(0, Math.min(3000000, Math.round(initialAssetTotal * 0.3)) - 1850000),
-      },
-      {
-        id: 'asset_2',
-        category: 'INSURANCE',
-        name: '보장성보험 환급금',
-        marketValue: Math.min(2500000, Math.round(initialAssetTotal * 0.2)),
-        encumbrance: 0,
-        statutoryDeduction: 1500000,
-        liquidationValue: Math.max(0, Math.min(2500000, Math.round(initialAssetTotal * 0.2)) - 1500000),
-      },
-      {
-        id: 'asset_3',
-        category: 'HOUSING_DEPOSIT',
-        name: '주거 임차보증금',
-        marketValue: Math.max(0, initialAssetTotal - 5500000),
-        encumbrance: 0,
-        statutoryDeduction: 55000000,
-        liquidationValue: Math.max(0, Math.max(0, initialAssetTotal - 5500000) - 55000000),
+        statutoryDeduction: 0,
+        liquidationValue: initialAssetTotal,
+        note: '상담 설문 자산총액. 예금·보험·보증금 등으로 나눠 다시 입력하세요.',
       },
     ];
   });
@@ -133,76 +121,8 @@ export default function RepaymentPlanEditor({
       return convertDebtItemsToRepaymentCreditors(debtOrders[0].items);
     }
 
-    const totalDebt = (clientRequest.financialProfile?.debtTotal || 6000) * 10000;
-    const p1 = matchCreditorPreset('국민은행');
-    const p2 = matchCreditorPreset('신한카드');
-    const p3 = matchCreditorPreset('OK저축은행');
-
-    return [
-      {
-        id: 'cred_1',
-        creditorNumber: 1,
-        name: '국민은행',
-        principal: Math.round(totalDebt * 0.5),
-        interest: 0,
-        isSecured: false,
-        isUnconfirmed: false,
-        isPriority: false,
-        allocationRatio: 0.5,
-        monthlyRepayment: 0,
-        totalRepayment: 0,
-        repaymentRate: 0,
-        zipCode: p1?.zipCode || '07331',
-        address: p1?.address || '서울특별시 영등포구 의사당대로 141 (여의도동)',
-        serviceAddress: p1?.serviceAddress || '서울특별시 영등포구 의사당대로 141, 여의도영업부 (법원송달팀)',
-        representative: p1?.representative || '은행장 이재근',
-        bizNumber: p1?.bizNumber || '201-81-47789',
-        debtCauseDetail: '대여금 / 신용대출',
-        borrowedDate: '2023-05-15',
-      },
-      {
-        id: 'cred_2',
-        creditorNumber: 2,
-        name: '신한카드',
-        principal: Math.round(totalDebt * 0.3),
-        interest: 0,
-        isSecured: false,
-        isUnconfirmed: false,
-        isPriority: false,
-        allocationRatio: 0.3,
-        monthlyRepayment: 0,
-        totalRepayment: 0,
-        repaymentRate: 0,
-        zipCode: p2?.zipCode || '04543',
-        address: p2?.address || '서울특별시 중구 을지로 100, 파인에비뉴 A동 (을지로2가)',
-        serviceAddress: p2?.serviceAddress || '서울특별시 중구 을지로 100, 파인에비뉴 A동 사후관리팀',
-        representative: p2?.representative || '대표이사 문동권',
-        bizNumber: p2?.bizNumber || '202-81-48079',
-        debtCauseDetail: '신용카드 대금',
-        borrowedDate: '2023-08-20',
-      },
-      {
-        id: 'cred_3',
-        creditorNumber: 3,
-        name: 'OK저축은행',
-        principal: Math.round(totalDebt * 0.2),
-        interest: 0,
-        isSecured: false,
-        isUnconfirmed: false,
-        isPriority: false,
-        allocationRatio: 0.2,
-        monthlyRepayment: 0,
-        totalRepayment: 0,
-        repaymentRate: 0,
-        zipCode: p3?.zipCode || '04523',
-        address: p3?.address || '서울특별시 중구 세종대로 39, 대한서울상공회의소빌딩 10층',
-        serviceAddress: p3?.serviceAddress || '서울특별시 중구 세종대로 39, 상공회의소빌딩 10층 여신관리실',
-        representative: p3?.representative || '대표이사 정길호',
-        bizNumber: p3?.bizNumber || '214-81-88987',
-        debtCauseDetail: '금원차용(신용대출)',
-        borrowedDate: '2024-01-10',
-      },
-    ];
+    // 실제 채권자 정보가 없으면 빈 목록 (가짜 은행·금액·차용일 생성 금지)
+    return [];
   });
 
   // 채권자 송달주소 및 법인정보 편집 모달 상태
@@ -222,8 +142,9 @@ export default function RepaymentPlanEditor({
   const [adjusterMemo, setAdjusterMemo] = useState<string>(
     crmExt.repaymentPlan?.adjusterMemo || ''
   );
+  // 미지정이면 엔진이 '오늘 기준 3개월 뒤'로 추정 (고정 연월 하드코딩 금지)
   const [startYearMonth, setStartYearMonth] = useState<string>(
-    crmExt.repaymentPlan?.startYearMonth || '2026-12'
+    crmExt.repaymentPlan?.startYearMonth || ''
   );
   const [paymentDayOfMonth, setPaymentDayOfMonth] = useState<number>(
     crmExt.repaymentPlan?.paymentDayOfMonth || 25
@@ -253,7 +174,7 @@ export default function RepaymentPlanEditor({
   );
   const [selectedSecuredCreditor, setSelectedSecuredCreditor] = useState<RepaymentCreditor | null>(null);
 
-  // ── 리걸플로 7대 실무 튜닝박스 상태 ──
+  // ── 실무 튜닝박스 상태 ──
   const [garnishment, setGarnishment] = useState<GarnishmentDepositInfo>(() => {
     return crmExt.repaymentPlan?.garnishmentDeposit || {
       thirdPartyDebtor: '',
@@ -302,7 +223,7 @@ export default function RepaymentPlanEditor({
     };
   });
 
-  // ── 투더코어 벤치마킹 서울회생법원 준칙 & 보정권고 튜닝 상태 ──
+  // ── 원금 조기완제형 · 변제율 표기 · 압류적립금 튜닝 상태 ──
   const [isSeoulPrincipalOnly, setIsSeoulPrincipalOnly] = useState<boolean>(() => {
     return crmExt.repaymentPlan?.isSeoulPrincipalOnly || false;
   });
@@ -329,15 +250,16 @@ export default function RepaymentPlanEditor({
     const computed = buildRepaymentPlan({
       clientId,
       clientName: clientRequest.clientName || '의뢰인',
-      courtName: (clientRequest as any).court || clientRequest.financialProfile?.selectedCourt || '서울회생법원',
+      courtName: (clientRequest as any).court || clientRequest.financialProfile?.selectedCourt || '',
       caseNumber: crmExt.courtCase?.caseNumber || '',
-      startYearMonth,
+      startYearMonth: startYearMonth || undefined,
       paymentDayOfMonth,
       incomeExpense,
       assets,
       creditors,
       manualOverride: {
-        months: isManualMode ? manualMonths : (crmExt.repaymentPlan?.months || 36),
+        // 자동 모드에서는 기간을 넘기지 않아야 엔진의 24/36/60 순차 판정이 실행된다
+        months: isManualMode ? manualMonths : undefined,
         monthlyRepayment: isManualMode ? manualMonthlyRepayment : undefined,
         creditorMonthlyRepayments: Object.keys(customCreditorMonthly).length > 0 ? customCreditorMonthly : undefined,
         adjusterMemo,
@@ -365,7 +287,6 @@ export default function RepaymentPlanEditor({
     (clientRequest as any).court,
     clientRequest.financialProfile?.selectedCourt,
     crmExt.courtCase?.caseNumber,
-    crmExt.repaymentPlan?.months,
     startYearMonth,
     paymentDayOfMonth,
     incomeExpense,
@@ -451,8 +372,8 @@ export default function RepaymentPlanEditor({
     const newCred: RepaymentCreditor = {
       id: newId,
       creditorNumber: creditors.length + 1,
-      name: '신규 채권사',
-      principal: 10000000,
+      name: '',
+      principal: 0,
       interest: 0,
       isSecured: false,
       isUnconfirmed: false,
@@ -463,7 +384,7 @@ export default function RepaymentPlanEditor({
       repaymentRate: 0,
     };
     setCreditors((prev) => [...prev, newCred]);
-    toast.success('새 채권자가 추가되었습니다.');
+    toast.success('새 채권자 행이 추가되었습니다. 채권자명과 원금을 입력하세요.');
   };
 
   // ── 보증인(기관) 추가 (그림 3-4 가지번호 생성) ──
@@ -488,7 +409,7 @@ export default function RepaymentPlanEditor({
       parentCreditorId: parentId,
       isGuarantor: true,
       debtCauseDetail: '연대보증 / 보증채무',
-      borrowedDate: parent.borrowedDate || '2024-01-01',
+      borrowedDate: parent.borrowedDate || '',
     };
 
     const updated = [...creditors];
@@ -591,10 +512,6 @@ export default function RepaymentPlanEditor({
 
   // 채권자 삭제 (종속된 보증인도 함께 정리)
   const handleDeleteCreditor = (creditorId: string) => {
-    if (creditors.length <= 1) {
-      toast.error('최소 1개 이상의 채권자가 필요합니다.');
-      return;
-    }
     setCreditors((prev) =>
       prev
         .filter((c) => c.id !== creditorId && c.parentCreditorId !== creditorId)
@@ -610,65 +527,40 @@ export default function RepaymentPlanEditor({
     const newAsset: RepaymentAsset = {
       id: newId,
       category: 'DEPOSIT',
-      name: '새 예금/자산',
-      marketValue: 1000000,
+      name: '',
+      marketValue: 0,
       encumbrance: 0,
-      statutoryDeduction: 1850000,
+      statutoryDeduction: getDefaultStatutoryDeduction({ category: 'DEPOSIT', marketValue: 0 }, incomeExpense.region),
       liquidationValue: 0,
     };
     setAssets((prev) => [...prev, newAsset]);
-    setIsManualMode(true);
-    toast.success('새 재산 항목이 추가되었습니다.');
+    toast.success('새 재산 행이 추가되었습니다. 재산명과 금액을 입력하세요.');
   };
 
   // 재산 항목 삭제
   const handleDeleteAsset = (assetId: string) => {
-    if (assets.length <= 1) {
-      toast.error('최소 1개 이상의 재산 항목이 필요합니다.');
-      return;
-    }
     setAssets((prev) => prev.filter((a) => a.id !== assetId));
-    setIsManualMode(true);
     toast.info('재산 항목이 삭제되었습니다.');
   };
 
   // 재산 항목 필드 업데이트
+  // 공제액·청산가치는 엔진(calculateAssetLiquidationValue)과 동일 함수로 계산해 행 표시와 합계가 항상 일치
+  // (재산 수정은 '기간/월 변제금 수동 조정'이 아니므로 자동 산정 모드를 끄지 않는다)
   const handleUpdateAsset = (assetId: string, updates: Partial<RepaymentAsset>) => {
-    setIsManualMode(true);
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === assetId) {
-          const merged = { ...a, ...updates };
-
-          // 카테고리 변경 시 법정 공제액 자동 제안
-          if (updates.category && updates.category !== a.category) {
-            if (updates.category === 'DEPOSIT') {
-              merged.statutoryDeduction = 1850000;
-            } else if (updates.category === 'INSURANCE') {
-              merged.statutoryDeduction = 1500000;
-            } else if (updates.category === 'HOUSING_DEPOSIT') {
-              merged.statutoryDeduction = incomeExpense.region === 'SEOUL' ? 55000000 : 48000000;
-            } else if (updates.category === 'RETIREMENT') {
-              merged.statutoryDeduction = Math.round(merged.marketValue * 0.5);
-            } else {
-              merged.statutoryDeduction = 0;
-            }
+          const merged: RepaymentAsset = { ...a, ...updates };
+          if (updates.statutoryDeduction !== undefined) {
+            // 실무자가 공제액을 직접 입력 → 엔진도 그 값을 사용
+            merged.deductionOverridden = true;
+          } else if (updates.category && updates.category !== a.category) {
+            // 종류 변경 시 기본 공제액으로 복귀
+            merged.deductionOverridden = false;
           }
-
-          // 청산가치 계산: max(0, marketValue - encumbrance - statutoryDeduction)
-          let calculatedLiquidation = 0;
-          if (merged.category === 'RETIREMENT' && merged.isRetirementPension) {
-            calculatedLiquidation = 0;
-          } else if (merged.category === 'ADDITIONAL_INCLUSION') {
-            calculatedLiquidation = merged.marketValue;
-          } else {
-            calculatedLiquidation = Math.max(0, merged.marketValue - merged.encumbrance - merged.statutoryDeduction);
-          }
-
-          return {
-            ...merged,
-            liquidationValue: calculatedLiquidation,
-          };
+          merged.statutoryDeduction = getEffectiveStatutoryDeduction(merged, incomeExpense.region);
+          merged.liquidationValue = calculateAssetLiquidationValue(merged, incomeExpense.region);
+          return merged;
         }
         return a;
       })
@@ -680,8 +572,7 @@ export default function RepaymentPlanEditor({
     setIsManualMode(false);
     setManualMonthlyRepayment(undefined);
     setCustomCreditorMonthly({});
-    setManualMonths(plan.formType === 'D5110' && plan.months === 60 ? 60 : 36);
-    toast.success('2026년 법원 표준 알고리즘에 따른 자동 추천안으로 재계산되었습니다.');
+    toast.success('수동 조정을 해제했습니다. 변제기간은 청산가치·최저변제액 기준 24(특례)/36/60개월 순차 판정으로 다시 계산됩니다.');
   };
 
   // 60개월로 자동 연장 원클릭 적용
@@ -693,20 +584,26 @@ export default function RepaymentPlanEditor({
 
   // 청산가치 충족을 위한 최소 월 변제금 자동 상향 원클릭 적용
   const handleApplyMinTargetRepayment = () => {
+    if (!plan.leibnizFactor || plan.leibnizFactor <= 0) {
+      toast.error('변제기간이 0개월이라 현가계수를 계산할 수 없습니다. 기간을 먼저 입력하세요.');
+      return;
+    }
     const minTarget = Math.ceil(plan.totalLiquidationValue / plan.leibnizFactor);
     setIsManualMode(true);
+    setManualMonths(plan.months);
     setManualMonthlyRepayment(minTarget);
     setCustomCreditorMonthly({});
     toast.info(`청산가치 보장을 위해 월 변제금을 ${minTarget.toLocaleString()}원으로 상향 조정했습니다.`);
   };
 
-  // 우선권 채권 1/2 기한 충족을 위한 필요 가용소득 원클릭 적용
+  // 우선권 채권 내부 보수 기준(변제기간 1/2 내 완납) 충족을 위한 필요 월 변제금 원클릭 적용
   const handleApplyPriorityIncomeRaise = () => {
     if (plan.priorityFeasibility?.requiredDisposableForHalfPeriod) {
       setIsManualMode(true);
+      setManualMonths(plan.months);
       setManualMonthlyRepayment(plan.priorityFeasibility.requiredDisposableForHalfPeriod);
       setCustomCreditorMonthly({});
-      toast.info(`우선채권 1/2 기간 완납을 위해 월 변제금을 ${plan.priorityFeasibility.requiredDisposableForHalfPeriod.toLocaleString()}원으로 상향했습니다.`);
+      toast.info(`우선권 채권을 변제기간 1/2(내부 보수 기준) 안에 완납하도록 월 변제금을 ${plan.priorityFeasibility.requiredDisposableForHalfPeriod.toLocaleString()}원으로 상향했습니다. 소득으로 감당 가능한지 확인하세요.`);
     }
   };
 
@@ -720,7 +617,7 @@ export default function RepaymentPlanEditor({
     const syncedCreditors = convertDebtItemsToRepaymentCreditors(debtOrders[0].items);
     setCreditors(syncedCreditors);
     setCustomCreditorMonthly({});
-    toast.success(`부채증명서 발급 탭에서 ${syncedCreditors.length}개 채권사의 최신 원금·이자 내역을 불러왔습니다!`);
+    toast.success(`부채증명서 발급 탭에서 ${syncedCreditors.length}개 채권사의 원금·이자 내역을 불러왔습니다. 저장 버튼을 눌러야 사건에 반영됩니다.`);
   };
 
   // 간편인증 발굴 채권자 및 청산가치 자산 일괄 반영
@@ -772,9 +669,10 @@ export default function RepaymentPlanEditor({
       await onUpdateCrmExt({
         repaymentPlan: plan,
       });
-      toast.success('변제계획안이 CRM 사건 정보에 성공적으로 저장되었습니다.');
+      toast.success('변제계획안을 사건 정보에 저장했습니다.');
     } catch (err) {
-      toast.error('저장 중 오류가 발생했습니다.');
+      console.error('[RepaymentPlanEditor] 저장 실패', err);
+      toast.error('저장하지 못했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.');
     }
   };
 
@@ -809,7 +707,7 @@ export default function RepaymentPlanEditor({
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  관할: {plan.courtName} | 신청인: {plan.clientName} | 2026 법원 준칙 라이프니쯔 현가 검증
+                  관할: {plan.courtName || '(관할 법원 미지정)'} | 신청인: {plan.clientName} | 라이프니쯔 현가(연 5%) 청산가치 검증
                 </p>
               </div>
             </div>
@@ -1049,14 +947,19 @@ export default function RepaymentPlanEditor({
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs font-black text-amber-900">
-                    우선권 채권 변제기간 초과 위험 (세금 체납액 과다로 인가 불허 위험)
+                    {plan.priorityFeasibility.minRequiredMonths > plan.months
+                      ? '우선권 채권 변제기간 내 완납 불가 (인가 요건 미충족)'
+                      : '우선권 채권 완납 회차가 내부 보수 기준(변제기간 1/2)을 초과'}
                   </h4>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
-                    법원 실무준칙(1/2 기한 완납)
+                    {plan.priorityFeasibility.minRequiredMonths > plan.months ? '제611조 제1항 제2호' : '내부 보수 기준'}
                   </span>
                 </div>
                 <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                  우선권 채권(조세·공과금 합계 <strong className="font-bold underline">{(plan.totalPriorityDebt || 0).toLocaleString()}원</strong>)은 법원 실무상 총 변제기간의 1/2(<strong className="font-bold">{plan.priorityFeasibility.maxStage1Months}회차</strong>) 이내에 완납되어야 합니다. 현재 가용소득으로는 최소 <strong className="font-bold text-rose-700">{plan.priorityFeasibility.minRequiredMonths}회차</strong>가 소요되므로 변제기간 연장 또는 가용소득 상향 보정이 필수적입니다.
+                  우선권 채권(조세·공과금 합계 <strong className="font-bold underline">{(plan.totalPriorityDebt || 0).toLocaleString()}원</strong>)은 변제계획에서 전액 변제되어야 합니다(제611조 제1항 제2호). 이 시스템은 보수적으로 변제기간의 1/2(<strong className="font-bold">{plan.priorityFeasibility.maxStage1Months}회차</strong>) 이내 완납을 목표로 삼는데, 현재 월 변제금으로는 최소 <strong className="font-bold text-rose-700">{plan.priorityFeasibility.minRequiredMonths}회차</strong>가 필요합니다. 1/2 기준은 법정 요건이 아니므로 관할 법원·회생위원 실무를 확인하세요.
+                  {(plan.priorityShortfall || 0) > 0 && (
+                    <> 1단계 종료 시 우선권 채권 <strong className="font-bold text-rose-700">{(plan.priorityShortfall || 0).toLocaleString()}원</strong>이 남습니다.</>
+                  )}
                 </p>
               </div>
             </div>
@@ -1305,7 +1208,7 @@ export default function RepaymentPlanEditor({
                     </div>
                   ) : (
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      국세/지방세/건보료 채권이 있을 시 전체 변제기간의 1/2 내 우선 완납하도록 2단계로 자동 배분합니다.
+                      국세/지방세/건보료 채권이 있으면 1단계에서 우선 완납하고 2단계에서 일반채권에 배분합니다. 1단계 회차는 자동 산정(내부 보수 기준: 기간 1/2 이내)되며 직접 조정할 수 있습니다.
                     </p>
                   )}
                 </div>
@@ -1313,7 +1216,7 @@ export default function RepaymentPlanEditor({
               </div>
             </div>
 
-            {/* ── [리걸플로 p.64 벤치마킹] 청산가치 보장 3단 비교 및 라이프니쯔 현가 분할 산출 대시보드 ── */}
+            {/* ── 청산가치 보장 3단 비교 및 라이프니쯔 현가 분할 산출 대시보드 ── */}
             <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-indigo-900/50 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-800/60 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -1334,7 +1237,7 @@ export default function RepaymentPlanEditor({
                       </span>
                     </div>
                     <p className="text-xs text-indigo-200/80 mt-0.5">
-                      대법원 회생 실무준칙: 가용소득 총변제액의 라이프니쯔 현재가치(L)가 신청인의 총 청산가치(J) 이상이어야 합니다.
+                      청산가치 보장 원칙(채무자회생법 제614조 제1항 제4호): 총변제액의 현재가치(L, 라이프니쯔 연 5%)가 청산가치(J) 이상이어야 합니다.
                     </p>
                   </div>
                 </div>
@@ -1352,7 +1255,7 @@ export default function RepaymentPlanEditor({
                 </div>
               </div>
 
-              {/* 3대 핵심 지표 비교 그리드 (리걸플로 p.64 Figure 7-27 스타일) */}
+              {/* 3대 핵심 지표 비교 그리드 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* 1. 청산가치 (J) */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden">
@@ -1369,7 +1272,7 @@ export default function RepaymentPlanEditor({
                   <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-amber-400 rounded-full transition-all duration-500" 
-                      style={{ width: `${Math.min(100, Math.round((plan.totalLiquidationValue / Math.max(1, plan.totalRepaymentAmount)) * 100))}%` }} 
+                      style={{ width: `${Math.min(100, Math.round((plan.totalLiquidationValue / Math.max(1, plan.presentValue)) * 100))}%` }} 
                     />
                   </div>
                 </div>
@@ -1424,7 +1327,7 @@ export default function RepaymentPlanEditor({
                 </div>
               </div>
 
-              {/* 라이프니쯔 현가 분할 산출 계산식 (리걸플로 p.64 Figure 7-27 수식표) */}
+              {/* 라이프니쯔 현가 분할 산출 계산식 */}
               {plan.presentValueBreakdown && (
                 <div className="bg-slate-950/60 rounded-2xl p-4 border border-indigo-900/60 space-y-2">
                   <div className="flex items-center justify-between text-xs text-indigo-200 font-bold">
@@ -1489,7 +1392,7 @@ export default function RepaymentPlanEditor({
               )}
             </div>
 
-            {/* ── [리걸플로 & 투더코어 벤치마킹] 실무 튜닝 박스 ── */}
+            {/* ── 실무 튜닝 박스 ── */}
             <RepaymentTuningBox
               plan={plan}
               creditors={creditors}
@@ -1538,7 +1441,7 @@ export default function RepaymentPlanEditor({
                       {plan.isSeoulPrincipalOnly && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                          서울회생법원 2021 실무준칙 '원금형' 적용 (이자 면제 · {plan.months}회 조기단축)
+                          원금 조기완제형 적용 (이자 제외 · {plan.months}회로 단축 · 관할 실무 확인 필요)
                         </span>
                       )}
                       {plan.isTwoStageRepayment && (
@@ -1548,7 +1451,7 @@ export default function RepaymentPlanEditor({
                       )}
                     </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    서울회생법원 규칙에 따라 원 미만은 올림(Math.ceil) 처리되었습니다. 개별 채권자의 월 변제금과 우선권/공탁유보 여부를 직접 설정할 수 있습니다.
+                    채권자별 월 변제금은 원 단위로 안분하고 남는 원은 소수점이 큰 채권자부터 1원씩 배정해 합계가 월 변제금과 일치합니다(법원별 단수 처리 실무가 다르면 직접 수정). 개별 채권자의 월 변제금과 우선권/공탁유보 여부를 직접 설정할 수 있습니다.
                   </p>
                 </div>
 
@@ -1790,7 +1693,7 @@ export default function RepaymentPlanEditor({
                                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
                                     : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
                                 }`}
-                                title="국세, 지방세, 건강보험료 등 우선권 채권 (전체기간 1/2 내 우선완납)"
+                                title="국세, 지방세, 건강보험료 등 우선권 채권 (변제계획 내 전액 우선 변제)"
                               >
                                 {c.isPriority ? '★ 우선권(세금)' : '+ 세금'}
                               </button>
@@ -2221,7 +2124,7 @@ export default function RepaymentPlanEditor({
                 소득 및 2026년 기준 생계비 산정 설정
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                2026년 중위소득 60% 기초생계비와 서울회생법원 지역별 추가 주거비/의료비/교육비 준칙이 자동 연동됩니다.
+                2026년 기준 중위소득 60% 기초생계비와 지역별 추가 주거비·의료비·교육비 한도(repaymentConstants2026)가 연동됩니다. 관할 법원 기준과 다르면 직접 조정하세요.
               </p>
             </div>
 
@@ -2515,7 +2418,8 @@ export default function RepaymentPlanEditor({
                       <td className="py-2.5 px-3 text-right">
                         <input
                           type="number"
-                          value={a.statutoryDeduction}
+                          value={(plan.assets.find((p) => p.id === a.id) || a).statutoryDeduction}
+                          title={a.deductionOverridden ? '직접 입력한 공제액' : '종류·지역별 기본 공제액 (직접 수정 가능)'}
                           onChange={(e) => handleUpdateAsset(a.id, { statutoryDeduction: Number(e.target.value) || 0 })}
                           className="w-full px-2 py-1.5 text-right font-mono text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
                         />
@@ -2523,7 +2427,7 @@ export default function RepaymentPlanEditor({
 
                       {/* 청산가치 반영액 */}
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-900 text-sm">
-                        {a.liquidationValue.toLocaleString()}원
+                        {(plan.assets.find((p) => p.id === a.id) || a).liquidationValue.toLocaleString()}원
                       </td>
 
                       {/* 삭제 버튼 */}
@@ -2633,6 +2537,8 @@ export default function RepaymentPlanEditor({
           onSyncToRepaymentPlan={(syncedAssets) => {
             setAssets(syncedAssets);
             setIsD5102ModalOpen(false);
+            toast.info('변제계획안 편집기에 재산이 반영되었습니다. [저장]을 눌러야 사건 정보에 반영됩니다.');
+            return true;
           }}
         />
       )}

@@ -7,6 +7,8 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { DebtCertificateOrder } from './repaymentTypes';
+// 사용자 입력(채권자명·계좌번호·주소 등)은 innerHTML로 들어가므로 반드시 이스케이프 (저장형 XSS 방지)
+import { escapeHtml as esc } from '../court/CourtFormHtmlBuilder';
 
 /**
  * 위임장 HTML 템플릿 빌더
@@ -23,9 +25,9 @@ function buildPowerOfAttorneyHtml(order: DebtCertificateOrder): string {
       (item, idx) => `
       <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
         <td style="padding: 6px 8px; text-align: center; color: #64748b;">${idx + 1}</td>
-        <td style="padding: 6px 10px; font-weight: bold; color: #0f172a;">${item.creditorName}</td>
-        <td style="padding: 6px 10px; color: #334155; font-family: monospace;">${item.accountOrContractNo || '-'}</td>
-        <td style="padding: 6px 10px; color: #475569;">${item.branchName || '전 지점 / 본점'}</td>
+        <td style="padding: 6px 10px; font-weight: bold; color: #0f172a;">${esc(item.creditorName)}</td>
+        <td style="padding: 6px 10px; color: #334155; font-family: monospace;">${esc(item.accountOrContractNo || '-')}</td>
+        <td style="padding: 6px 10px; color: #475569;">${esc(item.branchName || '전 지점 / 본점')}</td>
         <td style="padding: 6px 8px; text-align: center; color: #2563eb; font-weight: bold;">부채증명서 발급</td>
       </tr>
     `
@@ -56,19 +58,19 @@ function buildPowerOfAttorneyHtml(order: DebtCertificateOrder): string {
           <tbody>
             <tr style="border-bottom: 1px solid #e2e8f0;">
               <td style="width: 120px; padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">성 &nbsp; &nbsp; &nbsp; 명</td>
-              <td style="padding: 7px 12px; font-weight: bold; color: #0f172a;">${order.clientName}</td>
+              <td style="padding: 7px 12px; font-weight: bold; color: #0f172a;">${esc(order.clientName)}</td>
               <td style="width: 120px; padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">주민등록번호</td>
-              <td style="padding: 7px 12px; font-family: monospace;">${order.clientRrnFront || '******'}-*******</td>
+              <td style="padding: 7px 12px; font-family: monospace;">${esc(order.clientRrnFront || '******')}-*******</td>
             </tr>
             <tr style="border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">연 &nbsp; 락 &nbsp; 처</td>
-              <td style="padding: 7px 12px; font-family: monospace;">${order.clientPhone || '-'}</td>
+              <td style="padding: 7px 12px; font-family: monospace;">${esc(order.clientPhone || '-')}</td>
               <td style="padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">용 &nbsp; &nbsp; &nbsp; 도</td>
               <td style="padding: 7px 12px; font-weight: bold; color: #2563eb;">개인회생사건 법원 제출용</td>
             </tr>
             <tr>
               <td style="padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">주 &nbsp; &nbsp; &nbsp; 소</td>
-              <td colspan="3" style="padding: 7px 12px; color: #1e293b;">${order.clientAddress || '주민등록등본상 주소지'}</td>
+              <td colspan="3" style="padding: 7px 12px; color: #1e293b;">${esc(order.clientAddress || '')}&nbsp;</td>
             </tr>
           </tbody>
         </table>
@@ -83,7 +85,7 @@ function buildPowerOfAttorneyHtml(order: DebtCertificateOrder): string {
           <tbody>
             <tr>
               <td style="width: 120px; padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">상호 (기관명)</td>
-              <td style="padding: 7px 12px; font-weight: bold; color: #0f172a;">${order.agencyName || '원클릭 부채증명발급센터'}</td>
+              <td style="padding: 7px 12px; font-weight: bold; color: #0f172a;">${esc(order.agencyName || '')}&nbsp;</td>
               <td style="width: 120px; padding: 7px 12px; background: #f8fafc; font-weight: bold; color: #334155;">위임 사무</td>
               <td style="padding: 7px 12px; color: #1e293b;">부채증명서 신청, 접수 및 수령 일체</td>
             </tr>
@@ -135,7 +137,7 @@ function buildPowerOfAttorneyHtml(order: DebtCertificateOrder): string {
 
         <div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 20px;">
           <div style="font-size: 14px; color: #0f172a;">
-            <strong>위 임 인 :</strong> &nbsp; <span style="font-size: 16px; font-weight: 900;">${order.clientName}</span>
+            <strong>위 임 인 :</strong> &nbsp; <span style="font-size: 16px; font-weight: 900;">${esc(order.clientName)}</span>
           </div>
           <div style="width: 50px; height: 50px; border: 1.5px dashed #94a3b8; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;">
             (인)

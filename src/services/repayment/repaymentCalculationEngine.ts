@@ -1,7 +1,8 @@
 /**
  * 2026년 기준 개인회생 핵심 계산 엔진 (Calculation Engine)
  * - 가용소득 산정 (중위소득 60% + 추가주거/의료/교육비)
- * - 서울회생법원 규칙 원 미만 올림(Math.ceil) 채권자 안분 배분
+ * - 채권자 안분 배분: 원 단위 내림 후 잔여 원을 소수점 큰 순서로 1원씩 배정(최대잉여법)
+ *   → 채권자별 월 변제액 합계 = 월 가용소득(정확히 일치). 법원별 단수 처리 실무가 다를 수 있으므로 제출 전 확인 필요
  * - 라이프니쯔 연 5% 복리할인 현가 검증 (36개월 33.3657 / 60개월 52.9907, rehabLegalCore 단일 표준)
  * - 전산양식 D5110 / D5111 자동 판정 및 상향 조정
  * - 실무자 수동 미세 조정(Fine-Tuning) 실시간 재계산 지원
@@ -25,6 +26,27 @@ import {
   LEIBNIZ_FACTORS,
 } from './repaymentConstants2026';
 import { getMinimumRepaymentThreshold } from './rehabLegalCore';
+import { localYmd } from '../../utils/localDate';
+
+/**
+ * 최대잉여법(largest remainder) 안분: 각 몫을 원 단위로 내림한 뒤
+ * 남은 원을 소수점 이하가 큰 순서대로 1원씩 배정해 합계를 total과 정확히 맞춘다.
+ */
+export function apportionByWeights(total: number, weights: number[]): number[] {
+  const t = Math.max(0, Math.floor(total));
+  const sumW = weights.reduce((s, w) => s + Math.max(0, w), 0);
+  if (t <= 0 || sumW <= 0) return weights.map(() => 0);
+  const raw = weights.map((w) => (t * Math.max(0, w)) / sumW);
+  const base = raw.map((r) => Math.floor(r));
+  let remain = t - base.reduce((s, b) => s + b, 0);
+  const order = raw
+    .map((r, i) => ({ i, frac: r - Math.floor(r) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (let k = 0; remain > 0 && k < order.length; k++, remain--) {
+    base[order[k].i] += 1;
+  }
+  return base;
+}
 
 import type {
   IncomeAndExpenseInput,
@@ -131,9 +153,41 @@ export function calculateLivingExpenseAndDisposableIncome(
 // STEP 2. 재산별 청산가치(J) 산정
 // ══════════════════════════════════════════════════════════════════
 
+type AssetRegion = 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS';
+
+/**
+ * 재산 종류별 기본 법정 공제액 (단일 출처: repaymentConstants2026)
+ * - 예금 185만(민사집행법 시행령 제7조), 보장성보험 150만, 주거용 임차보증금은 지역별 소액보증금 요건 충족 시
+ * - 퇴직금(연금 아님)은 1/2 공제
+ */
+export function getDefaultStatutoryDeduction(asset: Pick<RepaymentAsset, 'category' | 'marketValue'>, region: AssetRegion = 'SEOUL'): number {
+  switch (asset.category) {
+    case 'DEPOSIT':
+      return EXEMPT_DEPOSIT_LIMIT;
+    case 'INSURANCE':
+      return EXEMPT_INSURANCE_REFUND_LIMIT;
+    case 'HOUSING_DEPOSIT': {
+      const limitInfo = HOUSING_EXEMPT_DEPOSIT_LIMITS[region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
+      return asset.marketValue <= limitInfo.maxDeposit ? limitInfo.exemptAmount : 0;
+    }
+    case 'RETIREMENT':
+      return Math.round(Math.max(0, asset.marketValue) * 0.5);
+    default:
+      return 0;
+  }
+}
+
+/** 실제 적용되는 공제액: 실무자가 직접 입력(deductionOverridden)했으면 그 값, 아니면 기본값 */
+export function getEffectiveStatutoryDeduction(asset: RepaymentAsset, region: AssetRegion = 'SEOUL'): number {
+  if (asset.deductionOverridden && Number.isFinite(asset.statutoryDeduction)) {
+    return Math.max(0, asset.statutoryDeduction);
+  }
+  return getDefaultStatutoryDeduction(asset, region);
+}
+
 export function calculateAssetLiquidationValue(
   asset: RepaymentAsset,
-  region: 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS' = 'SEOUL'
+  region: AssetRegion = 'SEOUL'
 ): number {
   const { 
     category, 
@@ -144,72 +198,59 @@ export function calculateAssetLiquidationValue(
     spouseContributionRatio = 0.5,
   } = asset;
 
-  // [투더코어 벤치마킹 & 법원 도산 실무준칙]
-  // 배우자 명의 재산인 경우: 민사집행법상 압류금지 채권 공제(185만/150만 등)가 미공제(0원)되며,
-  // (시가 - 선순위담보)에 부부공유 기여도(기본 50%, 실무상 10~50% 소명치)를 곱해 청산가치 반영
+  // 배우자 명의 재산: 압류금지 공제 없이 (시가 - 선순위담보) × 기여도(기본 50%, 소명에 따라 조정)
   if (ownerType === 'SPOUSE') {
     const netSpouseEquity = Math.max(0, marketValue - encumbrance);
     const ratio = Math.min(1.0, Math.max(0.05, spouseContributionRatio));
     return Math.round(netSpouseEquity * ratio);
   }
 
-  let statutoryDeduction = 0;
+  // 퇴직연금(DB/DC/IRP)은 청산가치 0원
+  if (category === 'RETIREMENT' && isRetirementPension) return 0;
+  // 편파변제, 주식/코인 손실금, 도박 낭비액 등은 공제 없이 전액 합산
+  if (category === 'ADDITIONAL_INCLUSION') return Math.max(0, marketValue);
 
-  switch (category) {
-    case 'DEPOSIT':
-      // 예금: 185만 원 압류금지 공제
-      statutoryDeduction = EXEMPT_DEPOSIT_LIMIT;
-      break;
-
-    case 'INSURANCE':
-      // 보장성 보험: 150만 원 공제
-      statutoryDeduction = EXEMPT_INSURANCE_REFUND_LIMIT;
-      break;
-
-    case 'HOUSING_DEPOSIT': {
-      // 주거용 임차보증금: 소액보증금 공제
-      const limitInfo = HOUSING_EXEMPT_DEPOSIT_LIMITS[region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
-      if (marketValue <= limitInfo.maxDeposit) {
-        statutoryDeduction = limitInfo.exemptAmount;
-      }
-      break;
-    }
-
-    case 'RETIREMENT':
-      // 퇴직연금(DB/DC/IRP)은 청산가치 0원, 일반 퇴직금은 50% 반영 (1/2 공제)
-      if (isRetirementPension) {
-        return 0;
-      }
-      statutoryDeduction = Math.round(marketValue * 0.5);
-      break;
-
-    case 'ADDITIONAL_INCLUSION':
-      // 편파변제, 주식/코인 손실금, 도박 낭비액 등은 공제 없이 전액 합산
-      return marketValue;
-
-    case 'CAR':
-    case 'REAL_ESTATE':
-    case 'OTHER':
-    default:
-      statutoryDeduction = 0;
-      break;
-  }
-
+  const statutoryDeduction = getEffectiveStatutoryDeduction(asset, region);
   const net = marketValue - encumbrance - statutoryDeduction;
   return Math.max(0, net);
 }
 
+/**
+ * 재산 목록 전체의 공제액·청산가치를 행별로 산출.
+ * 예금 압류금지 공제(185만)는 **채무자 1인의 예금 합계**에 1회만 적용되므로,
+ * 공제액을 직접 입력하지 않은 본인 명의 예금 행들에 앞에서부터 잔여 한도를 나눠 적용한다.
+ */
+export function computeAssetBreakdown(
+  assets: RepaymentAsset[],
+  region: AssetRegion = 'SEOUL'
+): RepaymentAsset[] {
+  let depositPool = EXEMPT_DEPOSIT_LIMIT;
+  return assets.map((a) => {
+    const isAutoDeposit =
+      a.category === 'DEPOSIT' && !a.deductionOverridden && (a.ownerType || 'DEBTOR') === 'DEBTOR';
+    if (isAutoDeposit) {
+      const net = Math.max(0, a.marketValue - (a.encumbrance || 0));
+      const used = Math.min(depositPool, net);
+      depositPool -= used;
+      return { ...a, statutoryDeduction: used, liquidationValue: Math.max(0, net - used) };
+    }
+    return {
+      ...a,
+      statutoryDeduction: (a.ownerType === 'SPOUSE' || a.category === 'ADDITIONAL_INCLUSION') ? 0 : getEffectiveStatutoryDeduction(a, region),
+      liquidationValue: calculateAssetLiquidationValue(a, region),
+    };
+  });
+}
+
 export function calculateTotalLiquidationValue(
   assets: RepaymentAsset[],
-  region: 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS' = 'SEOUL'
+  region: AssetRegion = 'SEOUL'
 ): number {
-  return assets.reduce((sum, asset) => {
-    return sum + calculateAssetLiquidationValue(asset, region);
-  }, 0);
+  return computeAssetBreakdown(assets, region).reduce((sum, a) => sum + a.liquidationValue, 0);
 }
 
 // ══════════════════════════════════════════════════════════════════
-// STEP 3. 채권자별 안분 배분 엔진 (서울회생법원 원 미만 올림 준수)
+// STEP 3. 채권자별 안분 배분 엔진 (원 단위 최대잉여법, 합계 = 월 가용소득)
 // ══════════════════════════════════════════════════════════════════
 
 export function allocateCreditorRepayments(
@@ -246,8 +287,14 @@ export function allocateCreditorRepayments(
 
   let calculatedMonthlyTotal = 0;
   const resultCreditors: RepaymentCreditor[] = [];
+  // 합계가 월 가용소득과 정확히 일치하도록 최대잉여법으로 원 단위 안분
+  const shares = apportionByWeights(
+    monthlyDisposableIncome,
+    creditors.map((c) => (c.isSecured ? 0 : getClaimBasis(c)))
+  );
 
-  for (const creditor of creditors) {
+  for (let idx = 0; idx < creditors.length; idx++) {
+    const creditor = creditors[idx];
     if (creditor.isSecured) {
       resultCreditors.push({
         ...creditor,
@@ -261,8 +308,7 @@ export function allocateCreditorRepayments(
 
     const claim = getClaimBasis(creditor);
     const ratio = claim / totalBase;
-    // 법원 실무: 원 미만 무조건 '올림(Math.ceil)'
-    const monthlyRepay = Math.ceil(monthlyDisposableIncome * ratio);
+    const monthlyRepay = shares[idx];
     calculatedMonthlyTotal += monthlyRepay;
 
     const totalRepay = monthlyRepay * months;
@@ -280,7 +326,7 @@ export function allocateCreditorRepayments(
     });
   }
 
-  // 원 미만 올림에 따른 월 가용소득과의 차액
+  // 단수 처리 후 월 가용소득과의 차액 (최대잉여법이므로 원 단위 입력 시 0)
   const roundingDifference = calculatedMonthlyTotal - monthlyDisposableIncome;
 
   return {
@@ -314,11 +360,14 @@ export function calculateSecuredShortage(params: {
 }
 
 /**
- * 우선권 채권 1단계 변제 회차 및 인가 타당성 자동 산출 엔진 (Priority Claim Algorithm)
- * 1. M_max = Math.floor(totalMonths / 2) (36개월 플랜 시 18회차, 60개월 플랜 시 30회차)
- * 2. K = Math.ceil(T_priority / A)
- * 3. Case A (K <= M_max): 정상 2단계 변제 가능 (1단계 1~K회 완제, 잔여분 일반채권 안분)
- * 4. Case B (K > M_max): 가용소득 부족으로 1/2 기간 내 완납 불가능 -> 자동 보정 엔진(60개월 연장 or 가용소득 상향)
+ * 우선권 채권 1단계 변제 회차 산출 (Priority Claim Algorithm)
+ * ※ 법정 요건은 "변제계획에서 우선권 있는 개인회생채권 전액 변제"(채무자회생법 제611조 제1항 제2호)이다.
+ *   "변제기간 1/2 이내 완납"은 법조문·준칙상 요건이 아니라 이 시스템의 **내부 보수 기준(안전 목표)**이며,
+ *   실제 허용 범위는 관할 법원·회생위원 실무에 따라 다르다.
+ * 1. M_max = floor(totalMonths / 2)  (내부 보수 기준)
+ * 2. K = ceil(T_priority / A)
+ * 3. K <= M_max: 보수 기준 충족
+ * 4. K > M_max: 보수 기준 초과 경고 (K <= totalMonths면 법정 요건 자체는 충족 가능)
  */
 export function evaluatePriorityRepaymentFeasibility(
   totalMonths: number,
@@ -338,17 +387,14 @@ export function evaluatePriorityRepaymentFeasibility(
   let recommendedMonths: number | undefined;
 
   if (totalPriorityDebt > 0 && !canSettleWithinHalfPeriod) {
-    if (totalMonths < 60) {
-      const max60 = Math.floor(60 / 2); // 30
-      if (minRequiredMonths <= max60) {
-        riskWarning = `36개월 변제 시 1/2(${maxStage1Months}회차) 내 세금 완납 불가 (필요 회차: ${minRequiredMonths}회). 60개월로 변제기간 연장 시 정상 인가 가능합니다.`;
-        recommendedMonths = 60;
-      } else {
-        riskWarning = `세금 체납액 과다로 인가 불허 위험 (60개월 최장 연장 시에도 30회 내 완납 불가, 월 가용소득을 ${requiredDisposableForHalfPeriod.toLocaleString()}원 이상으로 상향 필요).`;
-        recommendedMonths = 60;
-      }
+    const withinPlan = minRequiredMonths <= totalMonths;
+    if (!withinPlan) {
+      // 법정 요건(제611조 제1항 제2호: 변제기간 내 전액 변제) 자체를 충족하지 못함
+      riskWarning = `우선권 채권(조세 등)을 ${totalMonths}개월 변제기간 내에 전액 변제할 수 없습니다 (필요 회차 ${minRequiredMonths}회). 인가 요건(제611조 제1항 제2호) 미충족 — 월 변제금 상향 또는 기간 조정이 필요합니다.`;
+      recommendedMonths = totalMonths < 60 ? 60 : undefined;
     } else {
-      riskWarning = `세금 체납액 과다로 인가 불허 위험 (최대 30회 내 완납 불가, 월 가용소득 ${Math.ceil(totalPriorityDebt / 30).toLocaleString()}원 이상 상향 필요).`;
+      riskWarning = `우선권 채권 완납에 ${minRequiredMonths}회가 필요해 내부 보수 기준(변제기간 1/2 = ${maxStage1Months}회)을 넘습니다. 법정 요건(기간 내 전액 변제)은 충족 가능하나, 관할 법원·회생위원 실무를 확인하세요.`;
+      recommendedMonths = totalMonths < 60 && minRequiredMonths <= 30 ? 60 : undefined;
     }
   }
 
@@ -378,8 +424,12 @@ export function allocateTwoStageRepayments(
   stage2MonthlyTotal: number;
   totalRepayment: number;
   stage2Months: number;
+  /** 1단계 동안 우선권 채권이 완납되지 못하는 금액 (0이면 완납) */
+  priorityShortfall: number;
 } {
-  const stage2Months = Math.max(1, totalMonths - stage1Months);
+  // 1단계 회차는 1 ~ totalMonths 범위로 제한 (초과 입력 시 가상의 추가 회차가 생기지 않도록)
+  const s1 = Math.min(Math.max(1, Math.floor(stage1Months) || 1), Math.max(1, totalMonths));
+  const stage2Months = Math.max(0, totalMonths - s1);
   const unsecured = creditors.filter((c) => !c.isSecured);
   const priorityList = unsecured.filter((c) => c.isPriority);
   const generalList = unsecured.filter((c) => !c.isPriority);
@@ -387,18 +437,24 @@ export function allocateTwoStageRepayments(
   const totalPriorityPrincipal = priorityList.reduce((s, c) => s + c.principal, 0);
   const totalGeneralPrincipal = generalList.reduce((s, c) => s + c.principal, 0);
 
-  // 1단계 우선권 채권 월 필요 변제액 (T_priority / stage1Months)
+  // 1단계 우선권 채권 월 필요 변제액 (T_priority / s1)
   const reqPriorityMonthly = totalPriorityPrincipal > 0 
-    ? Math.ceil(totalPriorityPrincipal / stage1Months) 
+    ? Math.ceil(totalPriorityPrincipal / s1) 
     : 0;
 
-  const actualPriorityMonthly = Math.min(monthlyDisposableIncome, reqPriorityMonthly);
-  const surplusForGeneralStage1 = Math.max(0, monthlyDisposableIncome - actualPriorityMonthly);
+  const actualPriorityMonthly = Math.min(Math.max(0, Math.floor(monthlyDisposableIncome)), reqPriorityMonthly);
+  const surplusForGeneralStage1 = Math.max(0, Math.floor(monthlyDisposableIncome) - actualPriorityMonthly);
+  const priorityShortfall = Math.max(0, totalPriorityPrincipal - actualPriorityMonthly * s1);
+
+  // 원 단위 최대잉여법 안분 (합계 = 투입액)
+  const prioShares = apportionByWeights(actualPriorityMonthly, creditors.map((c) => (!c.isSecured && c.isPriority ? c.principal : 0)));
+  const genS1Shares = apportionByWeights(surplusForGeneralStage1, creditors.map((c) => (!c.isSecured && !c.isPriority ? c.principal : 0)));
+  const genS2Shares = apportionByWeights(monthlyDisposableIncome, creditors.map((c) => (!c.isSecured && !c.isPriority ? c.principal : 0)));
 
   let stage1CalculatedTotal = 0;
   let stage2CalculatedTotal = 0;
 
-  const resultCreditors: RepaymentCreditor[] = creditors.map((creditor) => {
+  const resultCreditors: RepaymentCreditor[] = creditors.map((creditor, idx) => {
     if (creditor.isSecured) {
       return {
         ...creditor,
@@ -414,9 +470,9 @@ export function allocateTwoStageRepayments(
     if (creditor.isPriority) {
       // 우선권 채권자: 1단계에서 전액 우선 변제, 2단계는 0원
       const ratio = totalPriorityPrincipal > 0 ? creditor.principal / totalPriorityPrincipal : 0;
-      const stage1Monthly = Math.ceil(actualPriorityMonthly * ratio);
+      const stage1Monthly = prioShares[idx];
       const stage2Monthly = 0;
-      const totalRepay = stage1Monthly * stage1Months;
+      const totalRepay = stage1Monthly * s1;
       const repaymentRate = creditor.principal > 0 ? Math.round((totalRepay / creditor.principal) * 1000) / 10 : 100;
 
       stage1CalculatedTotal += stage1Monthly;
@@ -433,9 +489,9 @@ export function allocateTwoStageRepayments(
     } else {
       // 일반 채권자: 1단계 잔여분 안분 + 2단계 전액 안분
       const ratio = totalGeneralPrincipal > 0 ? creditor.principal / totalGeneralPrincipal : 0;
-      const stage1Monthly = surplusForGeneralStage1 > 0 ? Math.ceil(surplusForGeneralStage1 * ratio) : 0;
-      const stage2Monthly = Math.ceil(monthlyDisposableIncome * ratio);
-      const totalRepay = (stage1Monthly * stage1Months) + (stage2Monthly * stage2Months);
+      const stage1Monthly = genS1Shares[idx];
+      const stage2Monthly = stage2Months > 0 ? genS2Shares[idx] : 0;
+      const totalRepay = (stage1Monthly * s1) + (stage2Monthly * stage2Months);
       const repaymentRate = creditor.principal > 0 ? Math.round((totalRepay / creditor.principal) * 1000) / 10 : 0;
 
       stage1CalculatedTotal += stage1Monthly;
@@ -461,6 +517,7 @@ export function allocateTwoStageRepayments(
     stage2MonthlyTotal: stage2CalculatedTotal,
     totalRepayment: totalRepaySum,
     stage2Months,
+    priorityShortfall,
   };
 }
 
@@ -489,16 +546,13 @@ export function verifyLiquidationGuaranteeAndMinRepayment(
   const satisfiesLiquidationGuarantee = presentValue >= totalLiquidationValue;
   const liquidationShortage = Math.max(0, totalLiquidationValue - presentValue);
 
-  // 최저변제액 제공의 원칙 (총 채권 5,000만 원 기준)
-  let minimumRepaymentThreshold = 0;
-  if (totalPrincipal < 50000000) {
-    minimumRepaymentThreshold = Math.round(totalPrincipal * 0.05); // 5%
-  } else {
-    minimumRepaymentThreshold = Math.round(totalPrincipal * 0.03) + 1000000; // 3% + 100만 원
-  }
+  // 최저변제액 (단일 출처: rehabLegalCore.getMinimumRepaymentThreshold)
+  const minimumRepaymentThreshold = getMinimumRepaymentThreshold(totalPrincipal);
 
   const totalRepayment = monthlyRepaymentTotal * months;
-  const satisfiesMinimumRepayment = totalRepayment >= minimumRepaymentThreshold;
+  // 원금 전액 변제 시에는 최저변제액 요건도 충족 (rehabLegalCore.evaluatePlanAt와 동일)
+  const satisfiesMinimumRepayment =
+    totalRepayment >= minimumRepaymentThreshold || (totalPrincipal > 0 && totalRepayment >= totalPrincipal);
   const repaymentRate =
     totalPrincipal > 0
       ? Math.round((totalRepayment / totalPrincipal) * 1000) / 10
@@ -551,8 +605,8 @@ export interface BuildPlanOptions {
     childSupport?: ChildSupportInfo;
     adultChildTransition?: AdultChildTransitionInfo;
     clientSubmissionConsent?: ClientSubmissionConsent;
-    // ── 투더코어 벤치마킹 서울회생법원 준칙 및 실무 튜닝 옵션 ──
-    isSeoulPrincipalOnly?: boolean;      // 서울회생법원 2021 실무준칙 '원금형' (이자 삭제 및 변제기간 단축)
+    // ── 실무 튜닝 옵션 ──
+    isSeoulPrincipalOnly?: boolean;      // 원금 조기완제형 (이자 제외, 원금 완제 회차로 기간 단축) — 관할 실무 확인 필요
     garnishmentDepositFirstRound?: number; // 1회차 일시 투입 압류적립금
     decimalRepaymentRate?: boolean;       // 변제율 소수점 첫째자리 정밀 표기
   };
@@ -597,9 +651,9 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     planId = `plan_${Date.now()}`,
     clientId,
     clientName,
-    courtName = '서울회생법원',
+    courtName = '',
     caseNumber = '',
-    submissionDate = new Date().toISOString().slice(0, 10),
+    submissionDate = localYmd(),
     paymentDayOfMonth = 25,
     incomeExpense,
     assets,
@@ -693,7 +747,7 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
         formType = 'D5110';
       } else {
         // Step C: 60개월로도 미달 시 -> 월 변제금 최소 상향액 산출
-        // rehabLegalCore.determineRepaymentPlan Step C와 동일: 청산가치·최저변제액·우선채권(30회 내 완납) 중 최댓값
+        // rehabLegalCore.determineRepaymentPlan Step C와 동일: 청산가치·최저변제액·우선채권(내부 보수 기준 30회 내 완납) 중 최댓값
         const priorityForStepC = creditors
           .filter((c) => c.isPriority && !c.isSecured)
           .reduce((s, c) => s + c.principal, 0);
@@ -716,19 +770,19 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
           formType = 'D5111';
           const pv60 = Math.floor(monthlyRepaymentTarget * LEIBNIZ_FACTOR_60);
           const shortage = totalLiquidationValue - pv60;
-          requiredDisposalAmount = Math.ceil(shortage * 1.3); // 1년 내 처분 1.3배수
+          // 재산처분 목표액: 튜닝박스 기본값(1년 내 처분, 1.1배)과 동일 배수로 초안 산정 — 실무자가 튜닝박스에서 조정
+          requiredDisposalAmount = Math.ceil(shortage * 1.1);
         }
       }
     }
   }
 
-  // [서울회생법원 2021 실무준칙 '원금형' 준용]
-  // 36개월 이내 가용소득으로 원금 100% 완제 가능 시:
-  // 이자는 전액 면제하고, 변제기간을 원금 완제 회차로 조기 단축 (-이자변제기간 음수 지원)
+  // [원금 조기완제형] 가용소득으로 36개월 이내 원금 100% 완제 가능 시
+  // 이자를 제외하고 변제기간을 원금 완제 회차로 단축 (관할 법원 실무 확인 필요)
   if (isSeoulPrincipalOnly && monthlyRepaymentTarget > 0 && totalPrincipal > 0) {
     const monthsToPayoff = Math.ceil(totalPrincipal / monthlyRepaymentTarget);
     if (monthsToPayoff <= 36) {
-      months = Math.max(12, monthsToPayoff);
+      months = Math.max(1, monthsToPayoff);
     }
   }
 
@@ -755,15 +809,18 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     ? Math.max(1, priorityFeasibility.minRequiredMonths)
     : priorityFeasibility.maxStage1Months;
 
-  const stage1Months = manualOverride?.stage1Months || autoStage1Months;
-  const stage2Months = Math.max(1, months - stage1Months);
+  // 1단계 회차는 변제기간을 넘을 수 없음 (가상 회차 방지)
+  const stage1Months = Math.min(Math.max(1, manualOverride?.stage1Months || autoStage1Months), Math.max(1, months));
+  const stage2Months = Math.max(0, months - stage1Months);
+  let twoStageTotalRepayment: number | null = null;
+  let priorityShortfall = 0;
 
   let allocatedCreditors: RepaymentCreditor[] = [];
   let monthlyTotal = 0;
   let stage1MonthlyTotal = 0;
   let stage2MonthlyTotal = 0;
 
-  // 서울회생법원 원금형 활성화 시 기본 이자 변제 모드는 principal_only(이자 면제)
+  // 원금 조기완제형 활성화 시 이자 변제 모드는 principal_only(이자 제외)
   const interestRepaymentMode = isSeoulPrincipalOnly
     ? 'principal_only'
     : (manualOverride?.interestRepaymentMode || 'principal_only');
@@ -788,7 +845,10 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     allocatedCreditors = twoStageRes.allocatedCreditors;
     stage1MonthlyTotal = twoStageRes.stage1MonthlyTotal;
     stage2MonthlyTotal = twoStageRes.stage2MonthlyTotal;
-    monthlyTotal = Math.max(stage1MonthlyTotal, stage2MonthlyTotal);
+    // 대표 월 변제금은 1단계 합계(=월 가용소득). 총변제액은 단계별 실제 합계를 사용
+    monthlyTotal = stage2Months > 0 ? Math.max(stage1MonthlyTotal, stage2MonthlyTotal) : stage1MonthlyTotal;
+    twoStageTotalRepayment = twoStageRes.totalRepayment;
+    priorityShortfall = twoStageRes.priorityShortfall;
   } else {
     const singleRes = allocateCreditorRepayments(
       monthlyRepaymentTarget,
@@ -879,6 +939,19 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   // 현가 갱신
   verification.presentValue = totalCalculatedPresentValue;
   verification.satisfiesLiquidationGuarantee = totalCalculatedPresentValue >= totalLiquidationValue;
+  // 2단계 변제: 총변제액 = 단계별 실제 합계 (월 변제금 × 기간이 아님)
+  if (twoStageTotalRepayment !== null && !manualOverride?.creditorMonthlyRepayments) {
+    verification.totalRepayment = twoStageTotalRepayment;
+    verification.satisfiesMinimumRepayment =
+      twoStageTotalRepayment >= verification.minimumRepaymentThreshold ||
+      (totalPrincipal > 0 && twoStageTotalRepayment >= totalPrincipal);
+    verification.repaymentRate = totalPrincipal > 0 ? Math.round((twoStageTotalRepayment / totalPrincipal) * 1000) / 10 : 0;
+  }
+  // 1단계에서 우선권 채권이 완납되지 않으면 경고 (조용히 과소 변제하지 않음)
+  if (priorityShortfall > 0) {
+    const msg = `1단계(${stage1Months}회) 동안 우선권 채권 ${priorityShortfall.toLocaleString()}원이 변제되지 않습니다. 월 변제금 상향 또는 1단계 회차 조정이 필요합니다.`;
+    priorityFeasibility.riskWarning = priorityFeasibility.riskWarning ? `${priorityFeasibility.riskWarning} / ${msg}` : msg;
+  }
 
   // 7. 변제 시작월 및 종료월 자동 계산
   const now = new Date();
@@ -921,7 +994,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     paymentDayOfMonth,
     incomeExpense,
     calculatedLiving,
-    assets,
+    // 저장·출력되는 재산 목록의 공제액·청산가치를 엔진 계산값으로 정규화 (행 표시 = 합계)
+    assets: computeAssetBreakdown(assets, incomeExpense.region),
     totalLiquidationValue,
     creditors: allocatedCreditors,
     totalPrincipal,
@@ -945,6 +1019,7 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     totalPriorityDebt,
     totalUnconfirmedReserve,
     priorityFeasibility,
+    priorityShortfall,
     minimumRepaymentThreshold: verification.minimumRepaymentThreshold,
     satisfiesMinimumRepayment: verification.satisfiesMinimumRepayment,
     formType,
@@ -960,11 +1035,67 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     overrideMonthlyRepayment: manualOverride?.monthlyRepayment,
     overrideMonths: manualOverride?.months,
     adjusterMemo: manualOverride?.adjusterMemo,
-    // ── 투더코어 벤치마킹 고도화 실무 필드 ──
+    // ── 실무 튜닝 필드 ──
     isSeoulPrincipalOnly,
     requiresPostCommencementInterest,
     decimalRepaymentRate,
     garnishmentDepositFirstRound,
     lastSavedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 저장된 변제계획안의 입력값(소득·채권자·튜닝 옵션)은 유지하고 재산 목록만 바꿔 다시 계산한다.
+ * (재산만 교체하고 현재가치·청산가치 충족 여부 같은 파생값을 그대로 두면 화면·출력물이 서로 어긋난다)
+ */
+export function rebuildPlanWithAssets(
+  plan: RepaymentPlanData,
+  assets: RepaymentAsset[],
+  /** 채권자 목록도 교체할 때 전달 (이 경우 채권자별 수동 월 변제금은 초기화) */
+  replaceCreditors?: RepaymentCreditor[],
+  /** 소득·생계비 입력도 교체할 때 전달 */
+  replaceIncomeExpense?: IncomeAndExpenseInput
+): RepaymentPlanData {
+  const customMonthly: Record<string, number> = {};
+  if (!replaceCreditors) {
+    for (const c of plan.creditors || []) {
+      if (c.isManuallyAdjusted) customMonthly[c.id] = c.monthlyRepayment;
+    }
+  }
+  const rebuilt = buildRepaymentPlan({
+    planId: plan.planId,
+    clientId: plan.clientId,
+    clientName: plan.clientName,
+    courtName: plan.courtName,
+    caseNumber: plan.caseNumber,
+    submissionDate: plan.submissionDate,
+    startYearMonth: plan.startYearMonth,
+    paymentDayOfMonth: plan.paymentDayOfMonth,
+    incomeExpense: replaceIncomeExpense || plan.incomeExpense,
+    assets,
+    creditors: replaceCreditors || plan.creditors || [],
+    manualOverride: {
+      months: plan.isManuallyOverridden ? plan.months : undefined,
+      monthlyRepayment: plan.isManuallyOverridden ? plan.overrideMonthlyRepayment : undefined,
+      creditorMonthlyRepayments: Object.keys(customMonthly).length > 0 ? customMonthly : undefined,
+      formType: plan.isManuallyOverridden ? plan.formType : undefined,
+      adjusterMemo: plan.adjusterMemo,
+      isTwoStageRepayment: plan.isTwoStageRepayment,
+      stage1Months: plan.stage1Months,
+      garnishmentDeposit: plan.garnishmentDeposit,
+      propertyDisposal: plan.propertyDisposal,
+      interestRepaymentMode: plan.interestRepaymentMode,
+      childSupport: plan.childSupport,
+      adultChildTransition: plan.adultChildTransition,
+      clientSubmissionConsent: plan.clientSubmissionConsent,
+      isSeoulPrincipalOnly: plan.isSeoulPrincipalOnly,
+      garnishmentDepositFirstRound: plan.garnishmentDepositFirstRound,
+      decimalRepaymentRate: plan.decimalRepaymentRate,
+    },
+  });
+  return {
+    ...rebuilt,
+    debtGrowthReasons: plan.debtGrowthReasons,
+    debtGrowthNarrative: plan.debtGrowthNarrative,
   };
 }

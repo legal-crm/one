@@ -6,6 +6,7 @@
 import { toast } from 'sonner';
 import type { CourtCaseLink, CourtEvent, CorrectionOrder } from '../types';
 import { getAuthHeaders } from '../supabaseClient';
+import { addDaysYmd } from '../utils/localDate';
 
 export interface CourtDeliveryItem {
   id: string;
@@ -360,15 +361,18 @@ export function extractCorrectionOrdersFromCourt(deliveries: CourtDeliveryItem[]
   return deliveries
     .filter(d => d.isCorrectionOrder)
     .map(d => {
-      // 송달일로부터 14일 뒤 마감일 자동 계산
-      const issued = d.deliveryDate ? new Date(d.deliveryDate) : new Date();
-      const deadline = new Date(issued.getTime() + 14 * 86400000);
+      // 송달일(로컬 날짜) + 14일 = 참고 마감일. 'YYYY.MM.DD' 등 비ISO 형식도 정규화
+      // (이전: new Date()+UTC toISOString → 한국 오전 9시 전 하루 어긋남, 비ISO 날짜는 Invalid Date로 예외)
+      // 실제 보정기간은 보정권고서에 적힌 기간을 보정센터에서 확인·수정해야 한다.
+      const m = /(\d{4})\D?(\d{1,2})\D?(\d{1,2})/.exec(d.deliveryDate || '');
+      const issuedYmd = m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : '';
+      const deadlineYmd = issuedYmd ? addDaysYmd(issuedYmd, 14) : '';
 
       return {
         id: `court-corr-${d.id}`,
         title: `[법원송달] ${d.docName}`,
-        issuedDate: d.deliveryDate || new Date().toISOString().split('T')[0],
-        deadline: deadline.toISOString().split('T')[0],
+        issuedDate: issuedYmd,
+        deadline: deadlineYmd,
         status: 'pending',
         detail: `대법원 사건검색에서 자동 감지된 보정명령 송달 내역입니다. (송달대상: ${d.target}, 상태: ${d.status})`,
         content: `${d.docName}에 따른 소명자료 및 보정서 작성 필요`

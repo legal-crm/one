@@ -10,6 +10,13 @@
 
 import XLSX from 'xlsx-js-style';
 import type { RepaymentPlanData } from './repaymentTypes';
+import { localYmd } from '../../utils/localDate';
+
+/** 스프레드시트 수식 주입 방지: = + - @ 로 시작하는 문자열 앞에 ' 를 붙인다 */
+const safeText = (v: unknown): string => {
+  const s = String(v ?? '');
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+};
 
 export function exportCourtRepaymentScheduleExcel(plan: RepaymentPlanData): void {
   const wb = XLSX.utils.book_new();
@@ -152,8 +159,8 @@ export function exportCourtRepaymentScheduleExcel(plan: RepaymentPlanData): void
   // 1. 기초사항
   wsData.push(['1. 기초사항', '', '', '', '', '', '', '', '']);
   wsData.push([
-    '신청인(채무자)', plan.clientName, '', 
-    '관할법원', plan.courtName, '', 
+    '신청인(채무자)', safeText(plan.clientName), '', 
+    '관할법원', safeText(plan.courtName), '', 
     '양식구분', plan.formType === 'D5111' ? 'D5111 (재산처분 병행)' : 'D5110 (가용소득 전용)', '', ''
   ]);
   wsData.push([
@@ -230,8 +237,8 @@ export function exportCourtRepaymentScheduleExcel(plan: RepaymentPlanData): void
       : '일반회생채권';
 
     wsData.push([
-      c.creditorNumber,
-      c.name,
+      c.displayNumber || String(c.creditorNumber),
+      safeText(c.name),
       confirmedP,
       unconfirmedP,
       confirmedM,
@@ -286,8 +293,8 @@ export function exportCourtRepaymentScheduleExcel(plan: RepaymentPlanData): void
 
     unsecuredCreditors.forEach((c) => {
       wsData.push([
-        c.creditorNumber,
-        c.name,
+        c.displayNumber || String(c.creditorNumber),
+        safeText(c.name),
         c.isPriority ? '우선권(세금/보험)' : '일반회생채권',
         c.stage1MonthlyRepayment || (c.isPriority ? c.monthlyRepayment : 0),
         c.stage2MonthlyRepayment || (c.isPriority ? 0 : c.monthlyRepayment),
@@ -462,7 +469,7 @@ export function exportCourtRepaymentScheduleExcel(plan: RepaymentPlanData): void
   XLSX.utils.book_append_sheet(wb, ws, '변제예정액표(법원서식)');
 
   const safeClient = plan.clientName.replace(/[^a-zA-Z0-9가-힣]/g, '');
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = localYmd().replace(/-/g, '');
   const fileName = `[전자소송]_개인회생_변제예정액표_${safeClient}_${dateStr}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }

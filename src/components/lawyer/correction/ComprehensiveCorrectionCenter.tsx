@@ -35,6 +35,7 @@ import {
   generateCourtAnnexHtml,
   type StandardCorrectionTemplate
 } from '../../../services/correctionAutomationService';
+import { parseLocalYmd, localYmd, addDaysYmd } from '../../../utils/localDate';
 
 
 interface ComprehensiveCorrectionCenterProps {
@@ -46,23 +47,58 @@ interface ComprehensiveCorrectionCenterProps {
   onNavigateToRepayment?: () => void;
 }
 
-export default function ComprehensiveCorrectionCenter({
+/**
+ * 보정 차수(1~3차)별로 작업본을 따로 저장한다.
+ * (이전: 1·2·3차 탭이 하나의 작업본을 공유해 2차를 쓰면 1차 답변이 덮어써짐)
+ * 차수를 바꾸면 key가 바뀌어 편집기가 새로 마운트되고 해당 차수의 저장본을 불러온다.
+ */
+export default function ComprehensiveCorrectionCenter(props: ComprehensiveCorrectionCenterProps) {
+  const [activeRound, setActiveRound] = useState<number>(1);
+  return (
+    <CorrectionRoundEditor
+      key={activeRound}
+      {...props}
+      activeRound={activeRound}
+      setActiveRound={setActiveRound}
+    />
+  );
+}
+
+/** 주말이면 다음 월요일로 (민법 제161조: 기간 말일이 토요일·공휴일이면 그 익일 만료). 공휴일은 반영하지 않음 */
+function rollOverWeekend(ymd: string): { date: string; rolled: boolean } {
+  const d = parseLocalYmd(ymd);
+  if (!d) return { date: '', rolled: false };
+  let rolled = false;
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+    rolled = true;
+  }
+  return { date: localYmd(d), rolled };
+}
+
+function CorrectionRoundEditor({
   clientId,
   clientRequest,
   crmExt,
   onUpdateCrmExt,
   activeLawyerName = '담당 변호사',
-  onNavigateToRepayment
-}: ComprehensiveCorrectionCenterProps) {
+  onNavigateToRepayment,
+  activeRound,
+  setActiveRound,
+}: ComprehensiveCorrectionCenterProps & { activeRound: number; setActiveRound: (r: number) => void }) {
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
   const caseNumber = crmExt.courtCase?.caseNumber || '(사건번호 미입력)';
-  // 저장된 보정 작업본 (CRM 확장 데이터) — 이전에는 저장 기능이 없어 탭을 벗어나면 모두 사라졌고,
-  // 모든 의뢰인에게 가짜 보정명령·답변·소명표(신한저축은행 1,500만 원 등)가 채워져 있었음
-  const savedDraft = (crmExt as any).correctionBriefDraft as Partial<CorrectionBriefData> | undefined;
+  // 차수별 저장본 (correctionBriefDrafts[차수]). 1차는 구버전 단일 작업본(correctionBriefDraft)도 읽는다
+  const draftsByRound = ((crmExt as any).correctionBriefDrafts || {}) as Record<string, Partial<CorrectionBriefData>>;
+  const legacyDraft = (crmExt as any).correctionBriefDraft as Partial<CorrectionBriefData> | undefined;
+  const savedDraft: Partial<CorrectionBriefData> | undefined =
+    draftsByRound[String(activeRound)] ||
+    (activeRound === 1 && legacyDraft && (!legacyDraft.round || legacyDraft.round === 1) ? legacyDraft : undefined);
+  const crmExtRef = React.useRef(crmExt);
+  crmExtRef.current = crmExt;
 
   // 1. 현재 관리 중인 보정 데이터 (초기값 설정)
-  const [activeRound, setActiveRound] = useState<number>(1);
   const [briefTab, setBriefTab] = useState<'write' | 'docs' | 'plan_sync' | 'print'>('write');
   const [explanationSubTab, setExplanationSubTab] = useState<
     'loan' | 'card' | 'high_trans' | 'income' | 'insurance' | 'past_case' | 'family_asset'
@@ -72,21 +108,26 @@ export default function ComprehensiveCorrectionCenter({
   // 송달일은 보정권고 송달 후 직접 입력 (이전: 오늘 날짜로 자동 설정 → 기한·D-Day가 실제와 달라짐)
   const [servedDate, setServedDate] = useState<string>(() => savedDraft?.servedDate || '');
 
-  // 기한 계산 (송달일 + 14일)
-  const dueDate = useMemo(() => {
-    if (!servedDate) return '';
-    const d = new Date(servedDate + 'T00:00:00');
-    d.setDate(d.getDate() + 14);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, [servedDate]);
+  // 보정기간은 법원이 보정권고서에 정한 기간을 입력 (기본 14일 — 법정 고정 기간이 아님)
+  const [periodDays, setPeriodDays] = useState<number>(() => Number((savedDraft as any)?.periodDays) || 14);
 
-  // D-Day 계산
-  const dDay = useMemo(() => {
-    if (!dueDate) return Number.NaN;
-    const due = new Date(dueDate + 'T23:59:59').getTime();
-    const now = Date.now();
-    return Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-  }, [dueDate]);
+  // 기한 계산: 송달일 다음날부터 기산(초일 불산입) → 송달일 + N일, 말일이 주말이면 다음 월요일
+  const { dueDate, dueRolled } = useMemo(() => {
+    if (!servedDate) return { dueDate: '', dueRolled: false };
+    const raw = addDaysYmd(servedDate, Math.max(1, Math.floor(periodDays) || 14));
+    const r = rollOverWeekend(raw);
+    return { dueDate: r.date, dueRolled: r.rolled };
+  }, [servedDate, periodDays]);
+
+  // D-Day: 로컬 자정 기준 날짜 차이 (매 렌더 계산 — 날짜가 바뀌어도 갱신됨)
+  // 이전: 'T23:59:59' + Math.ceil로 하루 어긋나고, useMemo([dueDate])라 자정이 지나도 갱신되지 않음
+  const dDay = (() => {
+    const due = parseLocalYmd(dueDate);
+    if (!due) return Number.NaN;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / 86400000);
+  })();
 
   // 7대 소명표 상태값
   const [recentLoans, setRecentLoans] = useState<RecentLoanUsageItem[]>(() => savedDraft?.recentLoans || []);
@@ -168,23 +209,35 @@ export default function ComprehensiveCorrectionCenter({
     highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests
   ]);
 
-  // 작업본 자동 저장 (입력이 멈춘 뒤 1.5초)
+  // 작업본 자동 저장 (입력이 멈춘 뒤 1.5초, 차수별 저장). 차수 전환·화면 이탈 시 대기 중 저장은 즉시 실행
   const isFirstRenderRef = React.useRef(true);
+  const pendingSaveRef = React.useRef<null | (() => Promise<void>)>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   React.useEffect(() => {
     if (isFirstRenderRef.current) { isFirstRenderRef.current = false; return; }
     setSaveState('saving');
-    const t = setTimeout(async () => {
+    const snapshot = { ...fullBriefData, periodDays, updatedAt: new Date().toISOString() };
+    const doSave = async () => {
+      pendingSaveRef.current = null;
       try {
-        await onUpdateCrmExt({ correctionBriefDraft: { ...fullBriefData, updatedAt: new Date().toISOString() } } as any);
+        const prevDrafts = ((crmExtRef.current as any)?.correctionBriefDrafts || {}) as Record<string, unknown>;
+        await onUpdateCrmExt({
+          correctionBriefDrafts: { ...prevDrafts, [String(activeRound)]: snapshot },
+          correctionBriefDraft: snapshot, // 파이프라인 '작업본 있음' 표시용 (가장 최근 편집 차수)
+        } as any);
         setSaveState('saved');
       } catch {
         setSaveState('error');
       }
-    }, 1500);
+    };
+    pendingSaveRef.current = doSave;
+    const t = setTimeout(doSave, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servedDate, answers, recentLoans, creditCards, highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests]);
+  }, [servedDate, periodDays, answers, recentLoans, creditCards, highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests]);
+  React.useEffect(() => () => {
+    if (pendingSaveRef.current) void pendingSaveRef.current();
+  }, []);
 
   // 회생위원 7대 표준 보정명령 템플릿 적용
   const handleApplyTemplate = (tpl: StandardCorrectionTemplate) => {
@@ -197,7 +250,7 @@ export default function ComprehensiveCorrectionCenter({
         debtorResponse: text,
         attachedEvidence: tpl.defaultAttachedEvidence
       } : a));
-      toast.success(`'${tpl.badge}' 표준 문안으로 제${existingIdx + 1}항이 갱신되었습니다.`);
+      toast.success(`'${tpl.badge}' 기본 문안으로 제${existingIdx + 1}항을 바꿨습니다. [대괄호] 빈칸을 실제 내용으로 채워 주세요.`);
     } else {
       setAnswers(prev => [
         ...prev,
@@ -208,7 +261,7 @@ export default function ComprehensiveCorrectionCenter({
           attachedEvidence: tpl.defaultAttachedEvidence
         }
       ]);
-      toast.success(`'${tpl.badge}' 회생위원 표준 문안이 제${answers.length + 1}항에 추가되었습니다.`);
+      toast.success(`'${tpl.badge}' 기본 문안을 제${answers.length + 1}항에 추가했습니다. [대괄호] 빈칸을 실제 내용으로 채워 주세요.`);
     }
   };
 
@@ -230,7 +283,7 @@ export default function ComprehensiveCorrectionCenter({
     if (result.creditCards.length > 0) {
       setCreditCards(result.creditCards);
     }
-    toast.success(`⚡ 통장 분석 데이터에서 출금 ${result.highValueTrans.length}건, 대출 ${result.recentLoans.length}건, 카드/투자 ${result.creditCards.length}건을 소명표에 자동 반영했습니다.`);
+    toast.success(`통장 분석 데이터에서 출금 ${result.highValueTrans.length}건, 대출 입금 ${result.recentLoans.length}건, 카드/투자 ${result.creditCards.length}건을 소명표로 옮겼습니다. 사용처가 비어 있는 행은 직접 채워야 합니다.`);
   };
 
   // 소갑 호증 일괄 자동 채번
@@ -239,7 +292,11 @@ export default function ComprehensiveCorrectionCenter({
     setAnswers(updated.answers);
     setRecentLoans(updated.recentLoans);
     setHighValueTrans(updated.highValueTrans);
-    toast.success(`⚖️ 소갑 제1호증부터 제${updated.answers.length}호증까지 순차적으로 일괄 자동 채번되었습니다!`);
+    const numbers = updated.answers.map((a) => a.attachedEvidence?.match(/소갑 제(\d+)호증/)?.[1]).filter(Boolean).map(Number);
+    const maxNo = numbers.length ? Math.max(...numbers) : 0;
+    toast.success(maxNo > 0
+      ? `호증 번호를 소갑 제1호증 ~ 제${maxNo}호증으로 채번했습니다. 이미 번호가 있던 항목은 그대로 두었습니다.`
+      : '채번할 항목이 없습니다.');
   };
 
   // 기한 연장 신청서 작성 처리
@@ -269,7 +326,7 @@ ${new Date().getFullYear()}.  .  .
   const handleApproveBankAudit = () => {
     const approved = approveBankAuditByLawyer(clientId);
     setClientAuditData(approved);
-    toast.success('⚖️ 의뢰인 소명표에 대한 법률 검토가 완료되고 [소갑 제3호증]이 순차 채번되었습니다!');
+    toast.success('의뢰인 소명표를 변호사 검토 완료로 표시했습니다(이 브라우저에 저장). 호증 번호는 [소갑 호증 일괄 채번]으로 부여하세요.');
   };
 
   // 100만 원 소명표를 보정서 답변(answers) 본문 2항에 자동 결합
@@ -277,20 +334,36 @@ ${new Date().getFullYear()}.  .  .
     const targetItems = clientAuditData.items.filter(i => i.amount >= (clientAuditData.thresholdAmount || 1000000));
     const totalSum = targetItems.reduce((acc, curr) => acc + curr.amount, 0);
 
-    const summaryText = `신청인의 최근 금융거래 내역 중 1회 100만 원 이상 출금된 총 ${targetItems.length}건(총액: ${totalSum.toLocaleString()}원)에 대하여, 채무자 생계유지비(식비·생필품), 주거비(월세·관리비), 필수 질환 치료비 및 타 금융기관 부채 변제에 전액 충당되었음을 상세히 소명합니다(별지 '금융거래 100만 원 이상 출금 사용처 소명서' 참조). 편파변제 또는 재산은닉 의도는 일체 없음을 확인합니다.`;
+    if (targetItems.length === 0) {
+      toast.info('기준 금액 이상 출금 건이 없어 결합할 내용이 없습니다.');
+      return;
+    }
+    // 사실 단정 없이 건수·총액과 별지 참조만 기재 (이전: '생계비·주거비·치료비에 전액 충당', '은닉 의도 없음'을 단정)
+    const summaryText = `신청인의 최근 금융거래 내역 중 1회 ${(clientAuditData.thresholdAmount || 1000000).toLocaleString()}원 이상 출금된 ${targetItems.length}건(총 ${totalSum.toLocaleString()}원)의 수취인과 사용처는 별지 '금융거래 100만 원 이상 출금 사용처 소명서' 기재와 같습니다.`;
 
-    setAnswers(prev => prev.map((ans, idx) => {
-      if (idx === 1 || ans.courtInstruction.includes('출금') || ans.courtInstruction.includes('소명')) {
-        return {
-          ...ans,
-          debtorResponse: summaryText,
-          attachedEvidence: '소갑 제3호증의 1 내지 7 (별지 금융거래 100만 원 이상 출금 소명서 및 이체증)'
-        };
+    // 기존 답변을 덮어쓰지 않는다 (이전: 2항 또는 '소명'이 들어간 거의 모든 항목을 고정 문구로 교체)
+    const targetIdx = answers.findIndex(a => a.courtInstruction.includes('출금') || a.courtInstruction.includes('100만'));
+    if (targetIdx >= 0) {
+      const cur = answers[targetIdx];
+      if (cur.debtorResponse.includes(summaryText)) {
+        toast.info(`제${cur.pointNumber}항에 이미 같은 요약이 들어 있습니다.`);
+        return;
       }
-      return ans;
-    }));
-
-    toast.success('보정서 본문 [2. 금융거래 출금 소명] 항목에 소명 취지 및 소갑호증이 자동 결합되었습니다!');
+      setAnswers(prev => prev.map((a, i) => i === targetIdx ? {
+        ...a,
+        debtorResponse: a.debtorResponse.trim() ? `${a.debtorResponse.trim()}\n${summaryText}` : summaryText,
+        attachedEvidence: a.attachedEvidence || '[호증 번호] (별지 100만 원 이상 출금 소명서 및 이체확인증)',
+      } : a));
+      toast.success(`제${cur.pointNumber}항(출금 소명) 답변 끝에 건수·총액 요약을 덧붙였습니다. 기존 내용은 그대로 두었습니다.`);
+    } else {
+      setAnswers(prev => [...prev, {
+        pointNumber: prev.length + 1,
+        courtInstruction: '1회 100만 원 이상 출금·이체 사용처 소명',
+        debtorResponse: summaryText,
+        attachedEvidence: '[호증 번호] (별지 100만 원 이상 출금 소명서 및 이체확인증)',
+      }]);
+      toast.success(`출금 소명 항목이 없어 제${answers.length + 1}항으로 새로 추가했습니다. 법원 지시 문구를 보정권고서대로 고쳐 주세요.`);
+    }
   };
 
   // 법원 표준 엑셀 다운로드
@@ -301,7 +374,7 @@ ${new Date().getFullYear()}.  .  .
       courtName,
       thresholdAmount: clientAuditData.thresholdAmount || 1000000
     });
-    toast.success('대법원 전자소송 규격 엑셀 파일이 다운로드되었습니다.');
+    toast.success('100만 원 이상 출금 소명 엑셀을 내려받았습니다. 제출 전 관할 법원 양식과 맞는지 확인하세요.');
   };
 
 
@@ -420,14 +493,28 @@ ${new Date().getFullYear()}.  .  .
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
-            <span className="text-slate-500 font-medium">법정 제출기한 (14일):</span>
-            <span className="font-extrabold font-mono text-slate-900">{dueDate || '송달일 입력 필요'}</span>
+            <label className="text-slate-500 font-medium flex items-center gap-1" title="보정권고서에 적힌 보정기간을 입력하세요">
+              보정기간
+              <input
+                type="number"
+                min={1}
+                max={120}
+                value={periodDays}
+                onChange={(e) => setPeriodDays(Math.max(1, Math.min(120, Number(e.target.value) || 14)))}
+                aria-label="보정기간(일)"
+                className="w-12 font-bold text-slate-900 bg-white border border-slate-200 rounded px-1 text-right"
+              />
+              일 → 기한:
+            </label>
+            <span className="font-extrabold font-mono text-slate-900" title={dueRolled ? '말일이 주말이라 다음 월요일로 연장 (공휴일은 반영하지 않음 — 직접 확인)' : '공휴일은 반영하지 않음 — 직접 확인'}>
+              {dueDate ? `${dueDate}${dueRolled ? ' (주말→월)' : ''}` : '송달일 입력 필요'}
+            </span>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
             <span className="text-slate-500 font-medium">보정 소명 진행도:</span>
             <span className="font-bold text-blue-600">
-              소명항목 {answers.length}건 · 소명표 7종 작성완료
+              소명항목 {answers.length}건 · 입력된 소명표 {[recentLoans, creditCards, highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets].filter(a => a.length > 0).length}/7종
             </span>
           </div>
         </div>
@@ -473,11 +560,11 @@ ${new Date().getFullYear()}.  .  .
                     회생위원 7대 표준 보정명령 템플릿 라이브러리
                   </h4>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
-                    서울회생법원 실무준칙·판례 반영
+                    기본 문안 · 빈칸 직접 작성
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1">
-                  회생위원이 가장 빈번하게 발령하는 보정명령과 채무자 대리인의 법률 소명 논리를 원클릭으로 보정서에 추가합니다.
+                  자주 나오는 보정 지시 7가지의 기본 문안을 보정서에 추가합니다. 문안의 [대괄호] 부분은 실제 소명자료를 보고 채워야 하며, 인용 조문·준칙은 제출 전 확인하세요.
                 </p>
               </div>
 
@@ -522,8 +609,8 @@ ${new Date().getFullYear()}.  .  .
                     {tpl.badge}
                   </div>
                   <div className="text-[10px] text-slate-300/80 mt-1 truncate">
-                    {tpl.category === 'SPECULATION' ? '실무준칙 401호' : 
-                     tpl.category === 'SPOUSE' ? '특유재산 추정' : 
+                    {tpl.category === 'SPECULATION' ? '실무준칙 제408호' : 
+                     tpl.category === 'SPOUSE' ? '민법 제830조' : 
                      tpl.category === 'INSURANCE' ? '150만 압류금지' : '표준 소명서식'}
                   </div>
                 </button>
@@ -542,7 +629,7 @@ ${new Date().getFullYear()}.  .  .
                   pointNumber: prev.length + 1,
                   courtInstruction: '',
                   debtorResponse: '',
-                  attachedEvidence: `소갑 제${prev.length + 1}호증`
+                  attachedEvidence: '[호증 번호]'
                 }])}
                 className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 hover:bg-blue-100 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
               >
@@ -664,9 +751,9 @@ ${new Date().getFullYear()}.  .  .
                     <button
                       onClick={() => setRecentLoans(prev => [...prev, {
                         id: `loan-${Date.now()}`,
-                        loanDate: new Date().toISOString().split('T')[0],
+                        loanDate: '',
                         lenderName: '',
-                        amount: 10000000,
+                        amount: 0,
                         usageCategory: 'LIVING',
                         specificUsage: '',
                         verified: false
@@ -727,7 +814,8 @@ ${new Date().getFullYear()}.  .  .
                               <option value="LIVING">생활비 부족</option>
                               <option value="MEDICAL">의료비/병원비</option>
                               <option value="BUSINESS">사업운영자금</option>
-                              <option value="INVESTMENT">투자/기타</option>
+                              <option value="INVESTMENT">투자</option>
+                              <option value="OTHER">기타 / 미확인</option>
                             </select>
                           </td>
                           <td className="p-2">
@@ -796,7 +884,7 @@ ${new Date().getFullYear()}.  .  .
                       </span>
                       {clientAuditData.status === 'lawyer_approved' ? (
                         <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
-                          ✓ 변호사 승인 및 소갑호증 채번 완료
+                          ✓ 변호사 검토 완료
                         </span>
                       ) : clientAuditData.status === 'submitted' ? (
                         <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40 animate-pulse">
@@ -809,7 +897,7 @@ ${new Date().getFullYear()}.  .  .
                       )}
                     </div>
                     <p className="text-xs text-blue-200/80">
-                      의뢰인이 스마트폰에서 원터치 칩으로 작성한 소명 내용이 실시간 반영됩니다. 변호사가 청산가치 위험 문구를 방어하고 소갑호증을 부여합니다.
+                      의뢰인이 작성한 소명 내용은 현재 같은 브라우저(기기)에 저장된 경우에만 여기에 보입니다(서버 동기화 미지원). 내용을 검토한 뒤 호증 번호를 부여하세요.
                     </p>
                   </div>
 
@@ -821,14 +909,14 @@ ${new Date().getFullYear()}.  .  .
                       className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>검토완료 & 소갑호증 채번</span>
+                      <span>검토 완료 표시</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={handleSyncAuditToBriefAnswers}
                       className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                      title="소명 요약문을 보정서 답변 본문 2항에 자동 입력합니다"
+                      title="출금 건수·총액 요약을 '출금' 소명 항목 답변 끝에 덧붙입니다 (기존 답변은 유지)"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                       <span>보정서 본문 자동 결합</span>
@@ -1050,14 +1138,14 @@ ${new Date().getFullYear()}.  .  .
             {/* 6. 종전 사건 비교 */}
             {explanationSubTab === 'past_case' && (
               <div className="p-8 text-center bg-slate-50 rounded-2xl text-xs text-slate-400">
-                과거 5년/7년 이내 신청 이력이 없는 신규 사건입니다. (소명 불요)
+                종전 사건 비교표 입력 화면은 아직 없습니다. 종전 신청 이력 관련 보정이 있으면 위 답변 항목에 직접 작성하세요.
               </div>
             )}
 
             {/* 7. 친족 재산 출처 */}
             {explanationSubTab === 'family_asset' && (
               <div className="p-8 text-center bg-slate-50 rounded-2xl text-xs text-slate-400">
-                배우자 및 직계존비속 명의 고유재산에 대한 법원 권고 소명 사항이 없습니다.
+                친족 재산 출처 소명표 입력 화면은 아직 없습니다. 배우자·친족 명의 재산 관련 보정이 있으면 위 답변 항목(템플릿 #5)에 직접 작성하세요.
               </div>
             )}
           </div>
@@ -1135,26 +1223,36 @@ ${new Date().getFullYear()}.  .  .
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-              <span className="font-bold text-slate-700 block">청산가치 가산 반영 항목</span>
-              <div className="flex justify-between items-center py-1 border-b border-slate-200">
-                <span>보험 해약환급금 초과분</span>
-                <span className="font-mono font-bold text-slate-900">+700,000원</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="font-bold">보정 후 수정 총 청산가치</span>
-                <span className="font-mono font-bold text-emerald-600">4,200,000원</span>
-              </div>
-            </div>
+          {(() => {
+            // 실제 데이터만 표시 (이전: +700,000원 / 4,200,000원 / 44,880,000원 고정 숫자와 '인가 가능' 결론을 모든 사건에 표시)
+            const plan = crmExt.repaymentPlan;
+            const insuranceAdd = insurances.reduce((s, i) => s + (Number(i.liquidationInclusion) || 0), 0);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                  <span className="font-bold text-slate-700 block">보정 소명표 기준 청산가치 반영액</span>
+                  <div className="flex justify-between items-center py-1 border-b border-slate-200">
+                    <span>보험 해약환급금 청산가치 반영액 (⑤ 소명표 합계)</span>
+                    <span className="font-mono font-bold text-slate-900">{insuranceAdd.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span>저장된 변제계획안의 청산가치</span>
+                    <span className="font-mono font-bold text-slate-900">{plan ? `${plan.totalLiquidationValue.toLocaleString()}원` : '계획안 없음'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">소명표 값은 변제계획안에 자동 반영되지 않습니다. 변제계획안 에디터의 재산 목록에서 직접 수정하세요.</p>
+                </div>
 
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-2">
-              <span className="font-bold text-emerald-900 block">청산가치 보장의 원칙 재검증</span>
-              <p className="text-[11px] text-emerald-800 leading-relaxed">
-                현재 총변제예정액(44,880,000원)의 현재가치가 보정 후 수정 청산가치(4,200,000원)를 완벽히 상회하므로, 변제금 상향 없이 변제계획 인가가 가능합니다.
-              </p>
-            </div>
-          </div>
+                <div className={`p-4 rounded-2xl border space-y-2 ${!plan ? 'bg-slate-50 border-slate-200' : plan.satisfiesLiquidationGuarantee ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <span className="font-bold text-slate-900 block">청산가치 보장 원칙 (저장된 계획안 기준)</span>
+                  <p className="text-[11px] text-slate-700 leading-relaxed">
+                    {!plan
+                      ? '저장된 변제계획안이 없어 판단할 수 없습니다.'
+                      : `총변제액의 현재가치 ${plan.presentValue.toLocaleString()}원 / 청산가치 ${plan.totalLiquidationValue.toLocaleString()}원 → ${plan.satisfiesLiquidationGuarantee ? '충족' : `${(plan.totalLiquidationValue - plan.presentValue).toLocaleString()}원 부족`}. 보정으로 재산이 바뀌었다면 계획안을 다시 계산한 뒤 확인하세요.`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1166,10 +1264,10 @@ ${new Date().getFullYear()}.  .  .
           </div>
           <div>
             <h4 className="font-black text-base text-slate-900">
-              서울회생법원 실무 양식 보정서 출력 준비 완료
+              보정서 미리보기 · 인쇄
             </h4>
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              작성된 소명 요지와 소갑 제1호증 내지 제7호증이 자동 채번되어 법원 정규 보정서로 렌더링됩니다.
+              작성한 보정 지시·답변·첨부 호증으로 보정서 초안을 만듭니다. [대괄호] 빈칸이 남아 있지 않은지 확인하세요.
             </p>
           </div>
 
@@ -1219,7 +1317,7 @@ ${new Date().getFullYear()}.  .  .
                 취소
               </button>
               <button onClick={handleRequestExtension} className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs press-scale">
-                연장신청서 PDF 다운로드
+                연장신청서 문안 복사
               </button>
             </div>
           </div>
@@ -1234,9 +1332,14 @@ ${new Date().getFullYear()}.  .  .
         caseNumber={caseNumber}
         courtName={courtName}
         onSyncToCrmCorrection={(resolvedItems) => {
+          // 같은 거래를 여러 번 반영해도 중복되지 않도록 (원본 id 또는 일자|금액|상대방) 기준으로 걸러낸다
+          const keyOf = (d: string, amt: number, cp: string) => `${d}|${amt}|${(cp || '').trim()}`;
+          const existingHighKeys = new Set(highValueTrans.map(t => keyOf(t.transDate, t.amount, t.counterparty)));
+          const existingCardKeys = new Set(creditCards.map(c => keyOf(c.transactionDate, c.amount, c.merchantName)));
           // 고액 계좌 출금 건 반영
           const newHighTrans = resolvedItems
             .filter(i => i.transactionType === 'WITHDRAWAL' || i.transactionType === 'ATM_CASH')
+            .filter(i => !existingHighKeys.has(keyOf(i.date, i.amount, i.counterparty)))
             .map(i => ({
               id: `trans-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
               transDate: i.date,
@@ -1245,12 +1348,13 @@ ${new Date().getFullYear()}.  .  .
               amount: i.amount,
               counterparty: i.counterparty,
               purposeDetail: i.explanation,
-              evidenceDocName: i.evidenceType || '계좌이체확인증'
+              evidenceDocName: i.evidenceType || ''
             }));
 
           // 카드 결제 건 반영
           const newCards = resolvedItems
             .filter(i => i.transactionType === 'CARD_PAYMENT')
+            .filter(i => !existingCardKeys.has(keyOf(i.date, i.amount, i.counterparty)))
             .map(i => ({
               id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
               transactionDate: i.date,
@@ -1259,7 +1363,7 @@ ${new Date().getFullYear()}.  .  .
               amount: i.amount,
               purpose: i.explanation,
               isLuxuryOrGambling: i.riskCategory === 'DANGER_LUXURY' || i.riskCategory === 'DANGER_SPECULATION',
-              evidenceNote: i.evidenceType || '카드 영수증'
+              evidenceNote: i.evidenceType || ''
             }));
 
           if (newHighTrans.length > 0) {
@@ -1268,6 +1372,8 @@ ${new Date().getFullYear()}.  .  .
           if (newCards.length > 0) {
             setCreditCards(prev => [...prev, ...newCards]);
           }
+          const skipped = resolvedItems.length - newHighTrans.length - newCards.length;
+          toast.success(`출금 ${newHighTrans.length}건, 카드 ${newCards.length}건을 소명표에 추가했습니다.${skipped > 0 ? ` (이미 있거나 대상이 아닌 ${skipped}건 제외)` : ''}`);
         }}
       />
 

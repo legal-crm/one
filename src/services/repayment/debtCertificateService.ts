@@ -20,7 +20,8 @@ import type {
 import { getDebtPowerOfAttorneyPdfUint8Array } from './debtPowerOfAttorneyGenerator';
 import type { DocumentFile, ConsultRequest } from '../../types';
 import { matchCreditorPreset } from '../court/creditorAddressDirectory';
-import { loadCertificateVault } from '../vault/certificateVaultService';
+import { localYmd } from '../../utils/localDate';
+import { getOfficeProfile } from '../lawyer/officeProfile';
 
 const STORAGE_KEY_PREFIX = 'debt_cert_order_';
 
@@ -146,7 +147,7 @@ export function generateDebtAgencyExcelWorkbook(
   wsData.push([]);
 
   // 의뢰 정보
-  wsData.push(['의뢰일자', order.requestedAt || new Date().toISOString().slice(0, 10), '', '수신업체', order.agencyName || '발급대행사']);
+  wsData.push(['의뢰일자', order.requestedAt || localYmd(), '', '수신업체', order.agencyName || '']);
   wsData.push(['채무자 성명', order.clientName, '', '주민번호 앞자리', order.clientRrnFront || '-']);
   wsData.push(['연락처', order.clientPhone || '-', '', '의뢰건수', `${order.items.length}개 금융기관`]);
   wsData.push([]);
@@ -297,9 +298,10 @@ export function exportDebtAgencyExcel(
   preset: AgencyPresetType = 'standard'
 ): void {
   const wb = generateDebtAgencyExcelWorkbook(order, preset);
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = localYmd().replace(/-/g, '');
   const safeClient = order.clientName.replace(/[^a-zA-Z0-9가-힣]/g, '');
-  const fileName = `부채증명서_발급의뢰_${safeClient}_${order.agencyName || '대행사'}_${dateStr}.xlsx`;
+  const safeAgency = (order.agencyName || '대행사').replace(/[^a-zA-Z0-9가-힣]/g, '') || '대행사';
+  const fileName = `부채증명서_발급의뢰_${safeClient}_${safeAgency}_${dateStr}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
 
@@ -309,17 +311,21 @@ export function exportDebtAgencyExcel(
  * - 01_신분증사본_[고객명].[ext] (고객 서류함에 신분증이 있을 시)
  * - 02_인감증명서_[고객명].[ext] (고객 서류함에 인감이 있을 시)
  * - 03_부채증명서_발급위임장_[고객명].pdf (시스템 자동 생성)
+ *
+ * ⚠️ 보안: 공동인증서(NPKI) 인증서·개인키는 절대 ZIP에 넣지 않는다.
+ *   (이전: signCert.der / signPri.key를 암호화 없는 ZIP에 담아 제3자 대행사에 전달 → 제거)
+ *   ZIP 파일명에도 주민번호를 넣지 않는다.
+ * @returns 실제로 포함된 파일 요약 (안내 문구를 사실대로 만들기 위함)
  */
 export async function exportDebtAgencyZipPackage(
   order: DebtCertificateOrder,
   clientUploadedFiles: DocumentFile[] = [],
   preset: AgencyPresetType = 'standard'
-): Promise<void> {
+): Promise<{ idIncluded: boolean; sealIncluded: boolean }> {
   const zip = new JSZip();
   const safeClient = order.clientName.replace(/[^a-zA-Z0-9가-힣]/g, '');
-  const rrnFront = order.clientRrnFront || '880125';
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const agencyName = (order.agencyName || '대행사').replace(/부채대행|합동|대행사|사무소/g, '') || '원클릭';
+  const dateStr = localYmd().replace(/-/g, '');
+  const agencyName = ((order.agencyName || '').replace(/부채대행|합동|대행사|사무소/g, '').replace(/[^a-zA-Z0-9가-힣]/g, '')) || '대행사';
 
   // 1. 00_발급의뢰서_[채무자명]_[대행사명전용].xlsx
   const wb = generateDebtAgencyExcelWorkbook(order, preset);
@@ -337,16 +343,17 @@ export async function exportDebtAgencyZipPackage(
   for (const file of clientUploadedFiles) {
     const fileName = (file.name || '').toLowerCase();
     const isId = fileName.includes('신분증') || fileName.includes('주민등록') || file.category === 'id_doc';
-    const isSeal = fileName.includes('인감') || fileName.includes('본인서명') || file.category === 'other';
+    // 인감증명서는 파일명으로만 판별 ('기타' 분류 파일을 인감증명서로 오인해 넣지 않음)
+    const isSeal = fileName.includes('인감') || fileName.includes('본인서명');
     const fileContentUrl = file.dataUrl || (file as any).url;
 
     if (isId && !idDocFound && fileContentUrl) {
-      idDocFound = true;
       try {
         const ext = file.name.split('.').pop() || 'png';
         if (fileContentUrl.startsWith('data:')) {
           const base64Content = fileContentUrl.split(',')[1];
           zip.file(`01_신분증사본_${safeClient}.${ext}`, base64Content, { base64: true });
+          idDocFound = true; // 실제로 담았을 때만 true
         }
       } catch (err) {
         console.warn('Failed to embed ID image:', err);
@@ -354,12 +361,12 @@ export async function exportDebtAgencyZipPackage(
     }
 
     if (isSeal && !sealDocFound && fileContentUrl) {
-      sealDocFound = true;
       try {
         const ext = file.name.split('.').pop() || 'pdf';
         if (fileContentUrl.startsWith('data:')) {
           const base64Content = fileContentUrl.split(',')[1];
           zip.file(`02_인감증명서_${safeClient}.${ext}`, base64Content, { base64: true });
+          sealDocFound = true;
         }
       } catch (err) {
         console.warn('Failed to embed seal image:', err);
@@ -367,35 +374,18 @@ export async function exportDebtAgencyZipPackage(
     }
   }
 
-  // 3.5. 의뢰인 공동인증서(NPKI) 안전 금고 연동 파일 포함 (비밀번호 분리 발송 프로토콜)
-  try {
-    const vault = loadCertificateVault(order.clientId);
-    if (vault?.npki?.derBase64 && vault?.npki?.keyBase64 && vault.status !== 'shredded') {
-      const npkiFolder = zip.folder(`04_공동인증서_NPKI_${safeClient}`);
-      if (npkiFolder) {
-        npkiFolder.file('signCert.der', vault.npki.derBase64, { base64: true });
-        npkiFolder.file('signPri.key', vault.npki.keyBase64, { base64: true });
-        npkiFolder.file(
-          '보안안내_비밀번호_분리전송.txt',
-          `[보안 준칙 안내]\n\n본 폴더의 인증서는 개인정보보호법 및 전자서명법에 따라 보호됩니다.\n인증서 비밀번호는 금융보안 규정에 의거하여 대행사 담당자에게 카카오톡 알림톡/문자를 통해 별도 분리 발송됩니다.\n부채증명서 발급 완료 후 해당 인증서는 즉시 영구 폐기되어야 합니다.`
-        );
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to embed NPKI in zip package:', err);
-  }
-
   // 4. ZIP 압축 생성 및 브라우저 다운로드
-  // Naming: [채무자명_주민앞6자리]_부채발급의뢰_[대행사명]_[YYYYMMDD].zip
+  // Naming: [채무자명]_부채발급의뢰_[대행사명]_[YYYYMMDD].zip (주민번호 미포함)
   const zipBlob = await zip.generateAsync({ type: 'blob' });
   const zipUrl = URL.createObjectURL(zipBlob);
   const downloadLink = document.createElement('a');
   downloadLink.href = zipUrl;
-  downloadLink.download = `[${safeClient}_${rrnFront}]_부채발급의뢰_${agencyName}_${dateStr}.zip`;
+  downloadLink.download = `[${safeClient}]_부채발급의뢰_${agencyName}_${dateStr}.zip`;
   document.body.appendChild(downloadLink);
   downloadLink.click();
   document.body.removeChild(downloadLink);
   URL.revokeObjectURL(zipUrl);
+  return { idIncluded: idDocFound, sealIncluded: sealDocFound };
 }
 
 /**
@@ -491,13 +481,15 @@ export function createDefaultAgencyApplicationData(
     });
   }
 
+  // 사무소 정보는 [알림 및 설정 > 사업자 정보]에 저장된 값만 사용 (없으면 빈 값)
+  const office = getOfficeProfile(activeLawyerName);
   return {
     caseType: 'rehab',
-    officeName: '',
-    caseManager: '',
+    officeName: office.firmName,
+    caseManager: office.lawyerName,
     billingManager: '',
-    tel: '',
-    fax: '',
+    tel: office.phone,
+    fax: office.fax,
     directPhone: '',
     hp: '',
     clientName: order.clientName || clientRequest?.clientName || '',
@@ -911,7 +903,7 @@ export function exportAgencyApplicationExcel(
 ): void {
   const wb = generateAgencyApplicationExcelWorkbook(appData);
   const safeClient = (appData.clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣]/g, '');
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = localYmd().replace(/-/g, '');
   const fileName = `부채증명서_서류대행신청서_${safeClient}_${dateStr}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }

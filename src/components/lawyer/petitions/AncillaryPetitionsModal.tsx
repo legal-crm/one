@@ -27,7 +27,7 @@ function AncillaryPetitionsModalInner({
   onClose,
   clientRequest,
   crmExt,
-  activeLawyerName = '김변호'
+  activeLawyerName = ''
 }: AncillaryPetitionsModalProps) {
 
   const clientName = clientRequest.clientName || '신청인';

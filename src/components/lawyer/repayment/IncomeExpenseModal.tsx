@@ -28,6 +28,8 @@ import type {
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
 import { MIN_LIVING_EXPENSE_60_2026 } from '../../../services/repayment/repaymentConstants2026';
 import PrintableIncomeExpenseModal from './PrintableIncomeExpenseModal';
+import { rebuildPlanWithAssets } from '../../../services/repayment/repaymentCalculationEngine';
+import type { IncomeAndExpenseInput } from '../../../services/repayment/repaymentTypes';
 import ModalPortal from '../../common/ModalPortal';
 
 interface IncomeExpenseModalProps {
@@ -75,7 +77,7 @@ function IncomeExpenseModalInner({
   const handleAutoFillFromProfile = () => {
     const generated = createDefaultIncomeExpenseD5103(clientRequest, crmExt, activeLawyerName);
     setFormData(generated);
-    toast.success('✨ 의뢰인 상담 및 진단 데이터로부터 최신 2026 규격으로 자동 완성되었습니다!');
+    toast.success('상담 데이터에 있는 값(이름·월소득·가족 수 등)만 채웠습니다. 생년월일·직장·압류 사건 등 빈칸은 증빙을 보고 직접 입력하세요. [저장]해야 반영됩니다.');
   };
 
   // 값 변경 헬퍼: 변경 후 자동 재집계(recalculateD5103Data) 실행
@@ -99,13 +101,13 @@ function IncomeExpenseModalInner({
           const selfMember = prev.familyMembers.find(f => f.id === 'fam_self') || {
             id: 'fam_self',
             relationship: '본인(신청인)',
-            name: clientRequest.clientName || '신청인',
-            birthDate: '1988.05.12',
+            name: clientRequest.clientName || '',
+            birthDate: '',
             cohabitationStatus: '동거' as const,
-            cohabitationPeriod: '출생시부터',
+            cohabitationPeriod: '',
             isSupportedByDebtor: true,
             hasIncome: true,
-            jobAndIncomeDetail: '신청인 본인 (소득활동)',
+            jobAndIncomeDetail: '',
             isEligibleDependent: true,
           };
 
@@ -115,7 +117,7 @@ function IncomeExpenseModalInner({
             familyMembers: [selfMember, ...otherOcrMembers]
           };
         });
-        toast.success(`✨ ${result.docTitle} 자동 파싱 완료! 가족 구성원 및 생년월일이 자동 반영되었습니다.`);
+        toast.success(`${result.docTitle}에서 가족 ${result.extractedMembers.length}명을 읽었습니다. OCR 결과이므로 이름·생년월일을 원본과 대조하세요.`);
       } else {
         toast.error('서류에서 가족 정보를 명확히 인식하지 못했습니다. 수기로 입력해 주세요.');
       }
@@ -136,9 +138,11 @@ function IncomeExpenseModalInner({
       await onUpdateCrmExt({
         incomeExpenseD5103: formData
       });
-      toast.success('💾 수입 및 지출에 관한 목록(D5103)이 안전하게 저장되었습니다.');
+      toast.success('수입 및 지출에 관한 목록(D5103)을 저장했습니다.');
+      return true;
     } catch (err: any) {
-      toast.error('저장 중 오류가 발생했습니다: ' + (err?.message || ''));
+      toast.error('저장하지 못했습니다: ' + (err?.message || ''));
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -154,39 +158,48 @@ function IncomeExpenseModalInner({
       const med = formData.expenses.additionalMedical;
       const edu = formData.expenses.additionalEducation;
 
+      void rent; void med; void edu;
+      // 파생값(월 변제금·총변제액)을 직접 덮어쓰지 않고, 소득·생계비 입력을 바꾼 뒤 엔진으로 다시 계산한다.
+      // D5103의 추가생계비·기준생계비 조정분은 엔진의 '기타 인정 생계비'로 넘겨 이중 계산을 막는다.
       let updatedPlan = currentPlan;
-      if (updatedPlan) {
-        updatedPlan = {
-          ...updatedPlan,
-          calculatedLiving: {
-            ...updatedPlan.calculatedLiving,
-            baseLivingExpense: formData.expenses.statutoryBaseCost2026,
-            totalAdditionalExpense: formData.expenses.totalAdditionalExpenses,
-            finalTotalLivingExpense: formData.expenses.totalMonthlyExpense,
-            actualDisposableIncome: formData.disposableIncome.monthlyDisposableIncome,
-          },
-          monthlyRepaymentTotal: formData.disposableIncome.monthlyDisposableIncome,
-          months: formData.disposableIncome.repaymentMonths,
-          totalRepaymentAmount: formData.disposableIncome.totalDisposableIncome
+      if (currentPlan) {
+        const nextIncome: IncomeAndExpenseInput = {
+          ...currentPlan.incomeExpense,
+          monthlyNetIncome: monthlyNet,
+          householdSize: household,
+          actualHousingExpense: 0,
+          actualMedicalExpense: 0,
+          numberOfChildren: 0,
+          educationExpensePerChild: 0,
+          otherApprovedExpense:
+            (formData.expenses.claimedBaseCost - formData.expenses.statutoryBaseCost2026) +
+            formData.expenses.totalAdditionalExpenses,
         };
+        updatedPlan = rebuildPlanWithAssets(currentPlan, currentPlan.assets || [], undefined, nextIncome);
       }
 
       await onUpdateCrmExt({
         incomeExpenseD5103: formData,
-        repaymentPlan: updatedPlan
+        ...(updatedPlan ? { repaymentPlan: updatedPlan } : {}),
       });
-      toast.success('⚖️ D5103의 가용소득(월 변제예정액)이 변제계획안에 성공적으로 동기화되었습니다!');
+      toast.success(updatedPlan
+        ? `D5103 소득·생계비로 변제계획안을 다시 계산했습니다 (월 변제금 ${updatedPlan.monthlyRepaymentTotal.toLocaleString()}원, ${updatedPlan.months}개월).`
+        : 'D5103을 저장했습니다. 저장된 변제계획안이 없어 계획안에는 반영하지 않았습니다.');
     } catch (err: any) {
       toast.error('변제계획안 동기화 실패: ' + (err?.message || ''));
     }
   };
 
   // 전자소송 R08 슬롯 첨부
+  // 실제로 전자소송에 첨부하는 기능은 없다: 저장 후 일괄 제출 패키지 화면으로 이동해 R08 항목에서 확인
   const handleAttachToFiling = async () => {
-    await handleSave();
-    toast.success('📄 대법원 표준 D5103 서식이 전자소송 R08(수입 및 지출목록) 슬롯에 자동 첨부되었습니다.');
+    const ok = await handleSave();
+    if (!ok) return;
     if (onOpenBatchFiling) {
+      toast.info('저장했습니다. 일괄 제출 패키지 화면의 R08(수입 및 지출목록) 항목에서 이 서식이 포함되는지 확인하세요.');
       onOpenBatchFiling();
+    } else {
+      toast.info('저장했습니다. 전자소송 제출 패키지 화면에서 R08 항목으로 포함됩니다.');
     }
   };
 
@@ -633,14 +646,19 @@ function IncomeExpenseModalInner({
                           <button
                             type="button"
                             onClick={() => {
-                              const avgGross = Math.round(biz.annualGrossRevenue / 12) || 4000000;
-                              const avgCard = Math.round(avgGross * 0.75);
-                              const avgCash = avgGross - avgCard;
-                              const avgExp = Math.round(biz.annualOperatingExpenses / 12) || 2000000;
-                              const rent = 700000;
-                              const util = 150000;
-                              const elec = 150000;
-                              const baseOp = Math.max(0, avgExp - rent - util - elec);
+                              // 입력된 연매출·연경비를 12개월로 균등 분배만 한다 (임의 매출 400만·경비 200만·임차료 70만 등 주입 금지)
+                              const avgGross = Math.round((biz.annualGrossRevenue || 0) / 12);
+                              const avgExp = Math.round((biz.annualOperatingExpenses || 0) / 12);
+                              if (avgGross <= 0) {
+                                toast.error('연 매출액을 먼저 입력하세요. 원장은 입력한 매출·경비를 12개월로 나눠 만듭니다.');
+                                return;
+                              }
+                              const avgCard = 0;
+                              const avgCash = avgGross;
+                              const rent = 0;
+                              const util = 0;
+                              const elec = 0;
+                              const baseOp = avgExp;
 
                               const newLedger = generateMonthlyLedgerFromWizardInputs({
                                 avgMonthlyCard: avgCard,
@@ -652,7 +670,7 @@ function IncomeExpenseModalInner({
                                 dynamicExpenses: []
                               });
                               updateData(p => syncBusinessLedgerToD5103(p, newLedger));
-                              toast.success('현재 매출/경비 기준으로 12개월 수지표 원장이 자동 생성되었습니다.');
+                              toast.success('입력한 연 매출·경비를 12개월로 균등 분배한 원장을 만들었습니다. 월별 실제 금액과 카드/현금 구분은 직접 수정하세요.');
                             }}
                             className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1"
                           >
@@ -669,7 +687,7 @@ function IncomeExpenseModalInner({
                               d5103ClientStatus: 'lawyer_reviewed',
                               d5103LawyerReviewedAt: new Date().toISOString()
                             }));
-                            toast.success('수지표가 변호사 검토 완료로 승인되었습니다.');
+                            toast.success('변호사 검토 승인으로 표시했습니다. [저장]을 눌러야 사건에 반영됩니다.');
                           }}
                           className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs"
                         >
@@ -1101,7 +1119,7 @@ function IncomeExpenseModalInner({
                     rows={3}
                     value={exp.additionalReasonDetail}
                     onChange={e => updateData(p => ({ ...p, expenses: { ...p.expenses, additionalReasonDetail: e.target.value } }))}
-                    placeholder="추가 지출이 불가피한 사유를 구체적으로 기재하세요 (예: 서울 관내 월세 실거주 유지, 만성질환 약제비 발생 사유)..."
+                    placeholder="추가 지출이 불가피한 사유를 구체적으로 기재하세요 (예: 월세 실거주 유지, 만성질환 약제비 발생 사유)..."
                     className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 leading-relaxed resize-none"
                   />
                 </div>

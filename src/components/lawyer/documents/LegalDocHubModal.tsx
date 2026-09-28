@@ -5,6 +5,11 @@ import {
   Layers, Filter, Clock, ExternalLink, Smartphone, Copy, Plus, Printer, HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// 저장 경로(onUpdateCrmExt)가 없을 때: 조용히 성공한 척하지 않고 실패로 처리해 에디터가 '저장하지 못했습니다'를 표시하게 한다
+const noSavePath = async (): Promise<void> => {
+  throw new Error('이 화면에서는 사건 정보 저장이 연결되어 있지 않습니다. 사건 상세(CRM)에서 열어 저장하세요.');
+};
 import { 
   ALL_LEGAL_DOC_REGISTRY, 
   getSmartRecommendedDocs, 
@@ -46,7 +51,7 @@ function LegalDocHubModalInner({
   onClose,
   clientRequest,
   crmExt,
-  activeLawyerName = '김변호',
+  activeLawyerName = '',
   onOpenBatchFiling,
   onAttachDocToPackage,
   onUpdateCrmExt
@@ -808,7 +813,8 @@ function LegalDocHubModalInner({
             validityPeriod={guide?.validityPeriod}
             clientName={clientName}
             onUploadFile={(file) => {
-              toast.success(`'${selectedGuideDoc.title}' 파일이 성공적으로 접수되었습니다: ${file.name}`);
+              // 이 안내 화면은 파일을 저장하지 않는다 (이전: '성공적으로 접수' 안내만 표시)
+              toast.info(`'${file.name}'을 선택했습니다. 이 화면은 파일을 저장하지 않으니 [서류함]에서 업로드해 주세요.`);
               setSelectedGuideDoc(null);
             }}
           />
@@ -823,7 +829,7 @@ function LegalDocHubModalInner({
           clientId={clientRequest.id}
           clientRequest={clientRequest}
           crmExt={crmExt}
-          onUpdateCrmExt={onUpdateCrmExt || (async () => {})}
+          onUpdateCrmExt={onUpdateCrmExt || noSavePath}
         />
       ) : editingDoc && editingDoc.docCode === 'D5103' ? (
         <IncomeExpenseModal
@@ -832,7 +838,7 @@ function LegalDocHubModalInner({
           clientId={clientRequest.id}
           clientRequest={clientRequest}
           crmExt={crmExt}
-          onUpdateCrmExt={onUpdateCrmExt || (async () => {})}
+          onUpdateCrmExt={onUpdateCrmExt || noSavePath}
           activeLawyerName={activeLawyerName}
           onOpenBatchFiling={onOpenBatchFiling}
         />

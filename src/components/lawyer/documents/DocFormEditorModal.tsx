@@ -34,7 +34,7 @@ function DocFormEditorModalInner({
   docItem,
   clientRequest,
   crmExt,
-  activeLawyerName = '김변호',
+  activeLawyerName = '',
   onAttachToFilingPackage,
   onOpenMobileFillModal
 }: DocFormEditorModalProps) {

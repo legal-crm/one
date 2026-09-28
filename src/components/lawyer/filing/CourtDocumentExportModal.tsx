@@ -45,7 +45,7 @@ function CourtDocumentExportModalInner({
   clientRequest,
   crmExt,
   plan,
-  activeLawyerName = '김변호',
+  activeLawyerName = '',
   onOpenStatementPrint,
   onOpenRepaymentPrint,
   onOpenPowerOfAttorney,

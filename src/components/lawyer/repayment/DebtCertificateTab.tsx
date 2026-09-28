@@ -30,6 +30,8 @@ import CertificateVaultCard from '../vault/CertificateVaultCard';
 import DebtAgencyApplicationModal from './DebtAgencyApplicationModal';
 import { DebtIntakeRuleService } from '../../../services/repayment/debtIntakeRuleService';
 import ClientDebtIntakeWizardModal from '../../client/ClientDebtIntakeWizardModal';
+import { rebuildPlanWithAssets } from '../../../services/repayment/repaymentCalculationEngine';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -39,7 +41,6 @@ interface DebtCertificateTabProps {
   onNavigateToRepayment?: () => void;
 }
 
-const DEFAULT_AGENCIES = ['원클릭부채대행', '클린부채증명사무소', '윈행정사합동', '한국신용발급대행'];
 
 export default function DebtCertificateTab({
   clientId,
@@ -90,10 +91,12 @@ export default function DebtCertificateTab({
   const handleSendIntakeAlimtok = () => {
     const msg = DebtIntakeRuleService.generateIntakeNotificationMessage(
       clientRequest.clientName || '신청인',
-      '법률사무소'
+      getOfficeProfile().firmName || '담당 사무소'
     );
-    navigator.clipboard.writeText(msg);
-    toast.success('📱 의뢰인용 부채 세부확인(7대 실무) 알림톡 문구가 복사되었습니다!');
+    navigator.clipboard.writeText(msg).then(
+      () => toast.success('의뢰인용 부채 세부확인 안내 문구를 복사했습니다. 알림톡은 자동 발송되지 않으니 직접 전달하세요.'),
+      () => toast.error('클립보드 복사에 실패했습니다. 브라우저 권한을 확인하세요.')
+    );
   };
 
   // 의뢰인 모바일 7대 실무 입력 내역을 부채증명서 관리 목록에 동기화
@@ -177,8 +180,14 @@ export default function DebtCertificateTab({
 
   // 대행사 엑셀 의뢰서 내보내기
   const handleExportAgencyExcel = () => {
-    exportDebtAgencyExcel(order, agencyPreset);
-    toast.success('대행사 제출용 부채증명서 발급의뢰 엑셀이 다운로드되었습니다.');
+    try {
+      exportDebtAgencyExcel(order, agencyPreset);
+    } catch (err) {
+      console.error(err);
+      toast.error('엑셀 파일을 만들지 못했습니다.');
+      return;
+    }
+    toast.success('대행사 제출용 발급의뢰 엑셀을 내려받았습니다. 대기 중 항목은 "의뢰완료"로 표시됩니다(이 브라우저에만 저장).');
 
     // 상태를 의뢰완료로 일괄 전환할지 자동 반영
     const updatedItems = order.items.map((it) => ({
@@ -188,7 +197,7 @@ export default function DebtCertificateTab({
     handleSaveOrder({
       ...order,
       orderStatus: 'requested',
-      requestedAt: new Date().toISOString().slice(0, 10),
+      requestedAt: localYmd(),
       items: updatedItems,
       agencyPreset,
     });
@@ -198,8 +207,12 @@ export default function DebtCertificateTab({
   const handleExportZip = async () => {
     setIsZipping(true);
     try {
-      await exportDebtAgencyZipPackage(order, crmExt.uploadedFiles || [], agencyPreset);
-      toast.success('대행사 전달용 ZIP 압축팩(의뢰서+위임장+신분증)이 다운로드되었습니다!');
+      const res = await exportDebtAgencyZipPackage(order, crmExt.uploadedFiles || [], agencyPreset);
+      const parts = ['의뢰서', '위임장'];
+      if (res.idIncluded) parts.push('신분증');
+      if (res.sealIncluded) parts.push('인감증명서');
+      const missing = [!res.idIncluded && '신분증', !res.sealIncluded && '인감증명서'].filter(Boolean).join('·');
+      toast.success(`ZIP(${parts.join('+')})을 내려받았습니다.${missing ? ` ${missing}은 서류함에 없어 빠졌습니다.` : ''} 공동인증서는 보안상 포함하지 않습니다.`);
     } catch (err) {
       console.error(err);
       toast.error('압축팩 생성 중 오류가 발생했습니다.');
@@ -209,17 +222,22 @@ export default function DebtCertificateTab({
   };
 
   // 📄 부채증명서 발급 위임장 PDF 직접 다운로드
-  const handleDownloadPoa = () => {
-    downloadDebtPowerOfAttorneyPdf(order);
-    toast.success('부채증명원 발급 위임장 PDF가 다운로드되었습니다.');
+  const handleDownloadPoa = async () => {
+    try {
+      await downloadDebtPowerOfAttorneyPdf(order);
+      toast.success('부채증명원 발급 위임장 PDF를 내려받았습니다.');
+    } catch (err) {
+      console.error(err);
+      toast.error('위임장 PDF를 만들지 못했습니다.');
+    }
   };
 
   // 신규 채권자 추가
   const handleAddCreditor = () => {
     const newItem: DebtCertificateItem = {
       id: `item_${Date.now()}`,
-      creditorName: '신규 채권사',
-      expectedPrincipal: 10000000,
+      creditorName: '',
+      expectedPrincipal: 0,
       issueStatus: 'pending',
       agencyFee: 15000,
       issuanceFee: 2000,
@@ -230,7 +248,7 @@ export default function DebtCertificateTab({
     };
     handleSaveOrder(updated);
     setSelectedItemId(newItem.id);
-    toast.success('새 채권자가 추가되었습니다.');
+    toast.success('새 채권자 행을 추가했습니다. 채권자명과 예상 원금을 입력하세요.');
   };
 
   // 보증기관 가지번호 항목 추가 (그림 3-4 가지번호 생성)
@@ -362,17 +380,23 @@ export default function DebtCertificateTab({
   const handleSyncToRepayment = async () => {
     const repaymentCreditors = convertDebtItemsToRepaymentCreditors(order.items);
     
-    // CRM 확장에 동기화 저장 (기존 plan이 있는 경우 creditors도 함께 갱신)
+    // 기존 계획안이 있으면 채권자를 교체하고 엔진으로 재계산 (월 변제금·현재가치 등 파생값 갱신)
     const existingPlan = crmExt.repaymentPlan;
-    await onUpdateCrmExt({
-      debtCertificateOrders: [order],
-      repaymentPlan: existingPlan ? {
-        ...existingPlan,
-        creditors: repaymentCreditors,
-      } : undefined,
-    });
+    const updates: Partial<CrmClientExtension> = { debtCertificateOrders: [order] };
+    if (existingPlan) {
+      updates.repaymentPlan = rebuildPlanWithAssets(existingPlan, existingPlan.assets || [], repaymentCreditors);
+    }
+    try {
+      await onUpdateCrmExt(updates);
+    } catch (err) {
+      console.error('[DebtCertificateTab] 동기화 저장 실패', err);
+      toast.error('저장하지 못했습니다. 다시 시도해 주세요.');
+      return;
+    }
 
-    toast.success(`${repaymentCreditors.length}개 채권자의 부채증명서 데이터가 변제계획안으로 동기화되었습니다!`);
+    toast.success(existingPlan
+      ? `채권자 ${repaymentCreditors.length}곳을 변제계획안에 반영하고 다시 계산했습니다.`
+      : `부채증명 내역을 저장했습니다. 아직 저장된 변제계획안이 없어, 편집기를 열면 이 채권자 ${repaymentCreditors.length}곳으로 시작합니다.`);
     if (onNavigateToRepayment) {
       onNavigateToRepayment();
     }
@@ -408,17 +432,14 @@ export default function DebtCertificateTab({
           <div className="flex items-center gap-2.5 flex-wrap">
             <div className="flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
               <span className="text-slate-500 font-bold">발급 대행사:</span>
-              <select
+              <input
+                type="text"
                 value={order.agencyName}
                 onChange={(e) => handleSaveOrder({ ...order, agencyName: e.target.value })}
-                className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer"
-              >
-                {DEFAULT_AGENCIES.map((ag) => (
-                  <option key={ag} value={ag}>
-                    {ag}
-                  </option>
-                ))}
-              </select>
+                placeholder="거래 대행사명 입력"
+                aria-label="발급 대행사명"
+                className="bg-transparent font-bold text-slate-800 outline-none w-36"
+              />
             </div>
 
             <div className="flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">

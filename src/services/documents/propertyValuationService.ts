@@ -309,6 +309,7 @@ export function convertConsultRequestToD5102(
 
 export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): RepaymentAsset[] {
   const result: RepaymentAsset[] = [];
+  // D5102에서 산정한 항목별 공제액을 변제계획 엔진이 그대로 쓰도록 deductionOverridden 표시 (함수 끝에서 일괄 적용)
 
   // 부동산
   d5102.realEstates.forEach((re) => {
@@ -401,5 +402,5 @@ export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): Repaym
     });
   });
 
-  return result;
+  return result.map((a) => ({ ...a, deductionOverridden: true }));
 }

@@ -306,6 +306,8 @@ export interface RepaymentAsset {
   statutoryDeduction: number;      // 압류금지/면제재산 법정 공제액
   liquidationValue: number;        // 청산가치 = max(0, 시가 - 담보액 - 공제액)
   isRetirementPension?: boolean;   // 퇴직연금(DB/DC/IRP) 여부 (true시 0원)
+  /** 실무자가 공제액을 직접 입력했는지 여부 (false/미지정이면 엔진이 종류·지역별 기본 공제액 적용) */
+  deductionOverridden?: boolean;
   note?: string;
 
   // ── 투더코어 벤치마킹 재산 실무 룰 ──
@@ -419,6 +421,7 @@ export interface RepaymentPlanData {
   totalPriorityDebt?: number;        // 우선권 채무 총액
   totalUnconfirmedReserve?: number;  // 미확정 채권 공탁 유보금 총액
   priorityFeasibility?: PriorityFeasibilityInfo; // 1단계 우선변제 타당성 및 보정 경고
+  priorityShortfall?: number;        // 1단계 종료 시점 우선권 채권 미변제액 (0이면 완납)
 
   // 최저변제액 검증
   minimumRepaymentThreshold: number; // 법정 최저변제액 하한선

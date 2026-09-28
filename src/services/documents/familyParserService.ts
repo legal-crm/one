@@ -217,7 +217,7 @@ export async function parseFamilyDocument(file: File): Promise<FamilyOcrResult> 
             id: m.id || `fam_ocr_${Date.now()}_${idx}`,
             relationship: m.relationship || '자',
             name: m.name || `가족 ${idx + 1}`,
-            birthDate: ageInfo.birthDateFormatted || m.birthDate || '2015.01.01',
+            birthDate: ageInfo.birthDateFormatted || m.birthDate || '',
             cohabitationStatus: m.cohabitationStatus || '동거',
             cohabitationPeriod: m.cohabitationPeriod || '출생시부터',
             isSupportedByDebtor: m.isSupportedByDebtor !== undefined ? m.isSupportedByDebtor : true,
@@ -242,7 +242,8 @@ export async function parseFamilyDocument(file: File): Promise<FamilyOcrResult> 
           residenceAddress: json.result.residenceAddress,
           issueDate: json.result.issueDate,
           extractedMembers: enrichedMembers,
-          confidenceScore: json.result.confidenceScore || 0.95,
+          // 신뢰도는 서버가 준 값만 사용 (없으면 0 = 미확인. 이전: 95%로 가장)
+          confidenceScore: typeof json.result.confidenceScore === 'number' ? json.result.confidenceScore : 0,
           message: 'AI 비전 서류 판독 성공: 가족 구성원과 생년월일이 성공적으로 추출되었습니다.'
         };
       }

@@ -10,12 +10,23 @@ interface CorrectionBriefModalProps {
   data: CorrectionBriefData;
 }
 
+// 빈칸은 빈칸으로 출력 (이전: '홍길동'·'김변호'·'2026개회 00000호'·'2026. 00. 00.'·'서울회생법원 귀중' 같은 예시값이 법원 제출 서식에 인쇄됨)
+const BLANK = '\u00A0'.repeat(12);
+const fmtYmd = (ymd?: string) => (ymd && /^\d{4}-\d{2}-\d{2}/.test(ymd) ? ymd.slice(0, 10).replace(/-/g, '. ') + '.' : '');
+/** '홍길동 변호사' / '변호사 홍길동' → '홍길동' */
+const agentBareName = (n?: string) => (n || '').replace(/변호사/g, '').trim();
+
 export default function CorrectionBriefModal({
   isOpen,
   onClose,
   data
 }: CorrectionBriefModalProps) {
   if (!isOpen) return null;
+  const agent = agentBareName(data.agentName) === '담당' ? '' : agentBareName(data.agentName);
+  const caseNo = data.caseNumber && !data.caseNumber.includes('미입력') ? data.caseNumber : '';
+  // 첨부 소명자료 목록: 실제 답변에 적힌 호증만 (이전: 소갑 제1~7호증을 고정 번호로 나열)
+  const evidenceList = Array.from(new Set((data.answers || []).map(a => (a.attachedEvidence || '').trim()).filter(Boolean)));
+  const hasBlanks = (data.answers || []).some(a => /\[[^\]]+\]/.test(`${a.debtorResponse} ${a.attachedEvidence || ''}`));
 
   const handlePrint = () => {
     window.print();
@@ -41,7 +52,8 @@ export default function CorrectionBriefModal({
                 법원 제출용 정규 보정서 서식 인쇄 / PDF 출력
               </h3>
               <p className="text-[11px] text-slate-400">
-                사건번호: {data.caseNumber || '2026개회(접수예정)'} · 제{data.round}차 보정권고에 대한 소명
+                사건번호: {caseNo || '(미입력)'} · 제{data.round}차 보정권고에 대한 소명
+                {hasBlanks && <span className="ml-2 text-amber-300 font-bold">· [대괄호] 빈칸이 남아 있습니다</span>}
               </p>
             </div>
           </div>
@@ -59,7 +71,7 @@ export default function CorrectionBriefModal({
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>PDF 다운로드</span>
+              <span>PDF로 저장(인쇄)</span>
             </button>
             <button
               onClick={onClose}
@@ -78,7 +90,7 @@ export default function CorrectionBriefModal({
               보 &nbsp; 정 &nbsp; 서
             </h1>
             <p className="text-xs font-sans text-slate-500 pt-1">
-              (사건번호: {data.caseNumber || '2026개회 00000호'})
+              (사건번호: {caseNo || BLANK})
             </p>
           </div>
 
@@ -86,22 +98,22 @@ export default function CorrectionBriefModal({
           <div className="space-y-2 mb-8 text-sm font-sans">
             <div className="flex">
               <span className="w-24 font-bold text-slate-700">사 &nbsp; &nbsp; &nbsp; 건 :</span>
-              <span className="font-bold">{data.caseNumber || '2026개회 00000호 개인회생'}</span>
+              <span className="font-bold">{caseNo ? `${caseNo} 개인회생` : BLANK}</span>
             </div>
             <div className="flex">
               <span className="w-24 font-bold text-slate-700">신 &nbsp; 청 &nbsp; 인 :</span>
-              <span>{data.debtorName || '홍길동'}</span>
+              <span>{data.debtorName || BLANK}</span>
             </div>
             <div className="flex">
               <span className="w-24 font-bold text-slate-700">대 &nbsp; 리 &nbsp; 인 :</span>
-              <span>변호사 {data.agentName || '김변호'}</span>
+              <span>변호사 {agent || BLANK}</span>
             </div>
           </div>
 
           {/* 청구 및 제출 서문 */}
           <div className="mb-8 font-sans leading-relaxed text-justify">
             <p className="indent-4">
-              위 사건에 관하여 채무자의 대리인은 귀원의 {data.servedDate || '2026. 00. 00.'}자 제{data.round}차 보정권고에 대하여 다음과 같이 보정서를 제출합니다.
+              위 사건에 관하여 채무자의 대리인은 귀원의 {fmtYmd(data.servedDate) || BLANK}자 제{data.round}차 보정권고에 대하여 다음과 같이 보정서를 제출합니다.
             </p>
           </div>
 
@@ -141,25 +153,18 @@ export default function CorrectionBriefModal({
               【 첨 부 소 명 자 료 】
             </h3>
             <ul className="text-xs space-y-1.5 pl-4 list-decimal list-inside text-slate-700">
-              {data.recentLoans.length > 0 && (
-                <li>최근 1~2년 대출금 사용처 소명표 및 금융거래내역서 (소갑 제1호증의 1 내지 5)</li>
+              {evidenceList.map((ev) => (
+                <li key={ev}>{ev}</li>
+              ))}
+              {data.recentLoans.length > 0 && !evidenceList.some(e => e.includes('대출금')) && (
+                <li>[별지 1] 최근 대출금 사용처 소명표</li>
               )}
-              {data.creditCards.length > 0 && (
-                <li>신용카드 결제내역 및 생활필수지출 소명표 (소갑 제2호증)</li>
+              {data.highValueTrans.length > 0 && !evidenceList.some(e => e.includes('출금')) && (
+                <li>[별지 2] 금융거래 100만 원 이상 출금 사용처 소명서</li>
               )}
-              {data.highValueTrans.length > 0 && (
-                <li>[별지] 금융거래 100만 원 이상 출금 내역 및 사용처 소명서 (소갑 제3호증의 1 내지 O)</li>
+              {evidenceList.length === 0 && data.recentLoans.length === 0 && data.highValueTrans.length === 0 && (
+                <li className="list-none text-slate-400">첨부 소명자료가 입력되지 않았습니다.</li>
               )}
-              {data.monthlyIncomes.length > 0 && (
-                <li>최근 1년 소득 산정표 및 급여통장 사본 (소갑 제4호증)</li>
-              )}
-              {data.insurances.length > 0 && (
-                <li>보험 해약환급금 증명서 및 압류금지 150만 원 공제표 (소갑 제5호증)</li>
-              )}
-              {data.familyAssets.length > 0 && (
-                <li>배우자 및 친족 고유재산 취득자금 출처 소명서 (소갑 제6호증)</li>
-              )}
-              <li>수정 개인회생채권자목록 및 수정 변제계획안 (소갑 제7호증)</li>
             </ul>
           </div>
 
@@ -170,12 +175,12 @@ export default function CorrectionBriefModal({
             </p>
             <div className="flex justify-end pr-8">
               <div className="text-left space-y-1">
-                <p className="text-sm">채무자 신청인 : &nbsp; {data.debtorName || '홍길동'} &nbsp; (인)</p>
-                <p className="text-sm">채무자 대리인 : &nbsp; 변호사 {data.agentName || '김변호'} &nbsp; (인)</p>
+                <p className="text-sm">채무자 신청인 : &nbsp; {data.debtorName || BLANK} &nbsp; (인)</p>
+                <p className="text-sm">채무자 대리인 : &nbsp; 변호사 {agent || BLANK} &nbsp; (인)</p>
               </div>
             </div>
             <div className="pt-8 text-center font-bold text-lg tracking-wider text-slate-900">
-              {data.courtName || '서울회생법원 귀중'}
+              {data.courtName ? `${data.courtName} 귀중` : `${BLANK}법원 귀중`}
             </div>
           </div>
         </div>

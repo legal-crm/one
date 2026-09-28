@@ -52,7 +52,7 @@ import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
 import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
-import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
+import { buildRepaymentPlan, rebuildPlanWithAssets } from '../../services/repayment/repaymentCalculationEngine';
 import { checkSpecial24Eligibility, special24FromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import { computePipelineGates, pipelineLockReason, stageForStatus } from './pipeline/pipelineGates';
@@ -601,7 +601,7 @@ export default function CrmTab({
     return buildRepaymentPlan({
       clientId: selectedId || 'temp',
       clientName: selectedClient?.clientName || '신청인',
-      courtName: selectedExt?.courtCase?.courtName || '서울회생법원',
+      courtName: selectedExt?.courtCase?.courtName || '',
       caseNumber: selectedExt?.courtCase?.caseNumber || '',
       // 시작월: 다음 달(참고값). 소득·가구원 수는 상담 입력값만 사용 (임의 기본값 350만원·2인 제거)
       startYearMonth: (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })(),
@@ -622,7 +622,7 @@ export default function CrmTab({
       assets: [],
       creditors: [],
       special24Eligible: checkSpecial24Eligibility(special24FromCondition(
-        selectedExt?.courtCase?.courtName || '서울회생법원',
+        selectedExt?.courtCase?.courtName || '',
         selectedClient?.financialProfile?.age,
         selectedClient?.financialProfile?.specialCondition,
       )).eligible,
@@ -3312,7 +3312,8 @@ export default function CrmTab({
                       ] : [
                         { key: 'repayment', label: '변제계획안', icon: '⚖️', count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null }
                       ]),
-                      { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
+                      // 배지는 필터·파이프라인과 같은 correctionOrders 기준 (이전: 다른 필드 corrections를 세서 수가 어긋남)
+                      { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.correctionOrders || []).filter((o) => o.status !== 'submitted').length || null },
                       { key: 'court', label: '법원', icon: '🏛️', count: null },
                     ];
                   })().map(tab => (
@@ -4925,6 +4926,7 @@ export default function CrmTab({
                   {/* ══════════ [7] 보정 탭 (ComprehensiveCorrectionCenter) ══════════ */}
                   {detailTab === 'corrections' && selectedClient && (
                     <ComprehensiveCorrectionCenter
+                      key={selectedId}
                       clientId={selectedId}
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
@@ -5597,17 +5599,13 @@ export default function CrmTab({
           onUpdateCrmExt={async (updates) => {
             await saveOrThrow(selectedId, updates);
           }}
-          onSyncToRepaymentPlan={async (syncedAssets, totalLiquidation) => {
+          onSyncToRepaymentPlan={async (syncedAssets) => {
             const currentPlan = selectedExt.repaymentPlan;
-            if (currentPlan) {
-              await updateCrmExt(selectedId, {
-                repaymentPlan: {
-                  ...currentPlan,
-                  assets: syncedAssets,
-                  totalLiquidationValue: totalLiquidation,
-                }
-              });
-            }
+            // 저장된 계획안이 없으면 반영 대상이 없음 → 모달이 사실대로 안내
+            if (!currentPlan) return false;
+            // 재산만 교체하지 않고 엔진으로 다시 계산해 현재가치·충족 여부 등 파생값까지 갱신
+            await saveOrThrow(selectedId, { repaymentPlan: rebuildPlanWithAssets(currentPlan, syncedAssets) });
+            return true;
           }}
         />
       )}

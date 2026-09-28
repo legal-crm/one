@@ -32,8 +32,9 @@ function LitigationPowerOfAttorneyModalInner({
   onClose,
   clientRequest,
   crmExt,
-  activeLawyerName = '김변호',
-  firmName = '법률사무소 로앤윈'
+  // 기본값은 빈칸: 사무소명은 [사업자 정보](getOfficeProfile)에서만 가져온다 (이전: '법률사무소 로앤윈'·'김변호'가 법원 위임장에 인쇄)
+  activeLawyerName = '',
+  firmName = ''
 }: LitigationPowerOfAttorneyModalProps) {
 
   const printAreaRef = useRef<HTMLDivElement>(null);

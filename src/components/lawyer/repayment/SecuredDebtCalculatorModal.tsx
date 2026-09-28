@@ -106,7 +106,6 @@ export default function SecuredDebtCalculatorModal({
                 onClick={() => {
                   setCollateralType('car');
                   setAppraisalRate(0.7);
-                  setMarketValue(15000000);
                 }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer ${
                   collateralType === 'car'
@@ -123,8 +122,7 @@ export default function SecuredDebtCalculatorModal({
                 onClick={() => {
                   setCollateralType('real_estate');
                   setAppraisalRate(0.8);
-                  setMarketValue(300000000);
-                  setExemptDeposit(55000000);
+                  // 시세·소액임차보증금은 사건별로 직접 입력 (예시값 자동 주입 금지)
                 }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer ${
                   collateralType === 'real_estate'
