@@ -61,16 +61,15 @@ const FORM_TABS: FormTabMeta[] = [
   { code: 'R07', name: '첨부서류 일체 (4대 발급처 증빙)', shortName: 'R07 첨부서류', badge: '체크리스트' },
 ];
 
-export default function CourtFormPreviewModal({
+function CourtFormPreviewModalInner({
   isOpen,
   onClose,
   initialFormCode = 'R01',
   clientRequest,
   crmExt,
-  activeLawyerName = '정충원',
+  activeLawyerName = '',
   onOpenEditModal
 }: CourtFormPreviewModalProps) {
-  if (!isOpen) return null;
 
   const [activeCode, setActiveCode] = useState<string>(initialFormCode);
   const [zoomLevel, setZoomLevel] = useState<number>(0.9); // 기본 배율 90%
@@ -82,7 +81,7 @@ export default function CourtFormPreviewModal({
       crmExt,
       creditors: crmExt.repaymentPlan?.creditors || [],
       lawyerName: crmExt.petitionInfo?.lawyerName || activeLawyerName,
-      firmName: crmExt.petitionInfo?.firmName || '법률사무소 보광',
+      firmName: crmExt.petitionInfo?.firmName || '',
       courtName: crmExt.petitionInfo?.courtName || crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원',
     };
   }, [clientRequest, crmExt, activeLawyerName]);
@@ -297,4 +296,10 @@ export default function CourtFormPreviewModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function CourtFormPreviewModal(props: React.ComponentProps<typeof CourtFormPreviewModalInner>) {
+  if (!props.isOpen) return null;
+  return <CourtFormPreviewModalInner {...props} />;
 }

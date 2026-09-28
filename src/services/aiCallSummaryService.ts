@@ -143,48 +143,7 @@ export const parseAiTranscript = (rawText: string | null | undefined): ParsedAiS
   };
 };
 
-/**
- * 지능형 도메인 Mock 생성기 (API 키가 없거나 실패할 때 실제 통화 기반으로 생성)
- */
-export const generateSmartMockSummary = (file: File, context?: CallSummaryContext): string => {
-  const cName = context?.customerName || '고객';
-  const cPhone = context?.phone || '010-0000-0000';
-  const mName = context?.managerName || '진성훈 사무장';
-  const caseType = context?.caseType || '개인회생';
 
-  return `[1. 상담 요약]
-* 담당자 : ${mName}
-* 고객이름 : ${cName}
-* 연락처 : ${cPhone}
-* 상담 분야 : ${caseType} 신청 적격성 검토
-* 직업 및 소득 : 중소기업 사무직 (월 실수령액 265만원, 4대보험 가입)
-* 부양가족 : 배우자 및 미성년 자녀 1명 (총 3인 가구)
-* 거주 형태 : 보증부 월세 (보증금 2,000만원, 월세 65만원, 서울 관악구)
-* 자산 현황 : 2018년식 아반떼 차량 1대 (시세 약 750만원, 담보대출 잔액 300만원)
-* 채무 현황 : 총 채무 원금 약 7,800만원 (1금융권 3,500만원, 저축은행 2,800만원, 대부업체 1,500만원)
-* 월 상환액 : 현재 매월 약 240만원 상환 중으로 심각한 지급불능 위기
-* 과거 이력 : 과거 회생/파산/신복위 이력 없음 (최초 신청)
-* 특이사항 및 결론 :
-- 최근 1년 내 생활비 및 대출 돌려막기로 채무 급증함 (최근 채무 소명 필요)
-- 월 소득 265만원에서 2인 최저생계비(약 220만원) 적용 시 월 예상 변제금 약 45~55만원선 예상
-- 급여 통장 및 가압류 위험 대비하여 서류 완비 후 즉시 법원에 금지명령 신청 권유함
-- 내일 오전 중 주민센터 발급 서류 및 부채증명서 발급 안내 문자 발송 예정
-
-[2. 전체 대화록]
-[00:02] 상담원: 네, 안녕하십니까. 법률사무소 회생파산 전담팀 ${mName}입니다.
-[00:07] 고객: 네, 안녕하세요. 인터넷 보고 연락드렸는데요, 빚이 너무 많아서 감당이 안 돼서 개인회생 상담 좀 받아보려고요.
-[00:15] 상담원: 네, ${cName} 고객님 반갑습니다. 정말 힘든 상황이실 텐데 잘 연락주셨습니다. 현재 대략적인 총 채무액과 월 소득이 어떻게 되실까요?
-[00:26] 고객: 지금 대출이 여러 군데 나뉘어 있는데 다 합치면 원금만 한 7,800만원 정도 되는 것 같아요. 매달 이자랑 원금 갚는 것만 240만원이 넘게 나가서요.
-[00:39] 상담원: 매달 240만원이면 사실상 일상 생활이 불가능한 수준이시네요. 현재 직장이나 소득 활동은 하고 계신가요?
-[00:47] 고객: 네, 일반 중소기업 다니고 있고 세금 다 떼고 통장에 실제로 들어오는 월급은 한 265만원 정도 돼요. 4대 보험은 들어가 있고요.
-[00:58] 상담원: 4대 보험이 가입되어 있으시고 매월 안정적인 소득이 있으시다면 개인회생 신청 요건에 아주 잘 부합하십니다. 가족관계는 어떻게 되시나요?
-[01:09] 고객: 아내랑 초등학생 아이 한 명 이렇게 셋이 살고 있습니다.
-[01:17] 상담원: 그렇군요. 미성년 자녀를 부양가족으로 인정받으실 수 있어서 2인 내지 3인 생계비를 인정받게 되면, 고객님의 월 변제금은 약 45만원에서 50만원 수준으로 대폭 낮아질 수 있습니다.
-[01:32] 고객: 정말 그렇게 줄어들 수 있나요? 지금 당장 다음 주부터 연체될 것 같아서 독촉 전화 올까 봐 너무 무섭거든요.
-[01:41] 상담원: 법원에 개인회생 접수와 동시에 금지명령을 함께 신청하면 1~2주 내에 법원에서 채권자들의 모든 독촉과 압류를 법적으로 전면 중지시킵니다. 저희가 빠른 접수 준비해 드리겠습니다.
-[01:56] 상담원: 제가 지금 고객님 스마트폰으로 필요 서류 목록 안내 문자를 발송해 드릴 테니, 확인하시고 준비되시는 대로 서류 사진을 보내주시면 바로 검토 착수하겠습니다.
-[02:08] 고객: 네, 선생님 정말 감사합니다. 문자 꼭 부탁드립니다.`;
-};
 
 /**
 /**
@@ -203,14 +162,9 @@ export const generateAiCallSummary = async (
   const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
   const apiKey = userKey || envKey || '';
 
-  // 2. 키가 없는 경우 지능형 Mock 생성
+  // 2. 키가 없으면 실패로 처리 (이전: 실제 녹음과 무관한 가짜 상담 요약·대화록을 생성해 저장)
   if (!apiKey || apiKey.trim() === '') {
-    console.info('[aiCallSummaryService] Gemini API Key not found. Generating intelligent domain Mock.');
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(generateSmartMockSummary(file, context));
-      }, 1200);
-    });
+    throw new Error('AI 통화 요약 API 키가 설정되지 않았습니다. [알림 및 설정]에서 Gemini API 키를 등록해 주세요.');
   }
 
   // 3. 모델 라인업 및 Fallback 설정 (기본: gemini-3.5-transcribe, fallback: gemini-3.5-flash)
@@ -302,10 +256,10 @@ ${customPrompt || DEFAULT_AI_PROMPT}
       }
     }
 
-    return generateSmartMockSummary(file, context);
-  } catch (error) {
-    console.warn('[aiCallSummaryService] Gemini API call threw exception, falling back to smart mock:', error);
-    return generateSmartMockSummary(file, context);
+    throw new Error('AI 모델이 결과를 반환하지 않았습니다. 잠시 후 다시 시도해 주세요.');
+  } catch (error: any) {
+    console.warn('[aiCallSummaryService] Gemini API call failed:', error);
+    throw error instanceof Error ? error : new Error('AI 통화 요약 생성에 실패했습니다.');
   }
 };
 

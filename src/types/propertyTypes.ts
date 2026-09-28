@@ -101,7 +101,7 @@ export interface FinancialAssetItem {
   institutionName: string;                 // 은행/증권사/거래소명
   description: string;                     // 계좌번호 또는 종목명
   marketValue: number;                     // 잔액 또는 평가액
-  statutoryDeduction: number;              // 예금 250만원 한도 등 공제
+  statutoryDeduction: number;              // 예금 압류금지 공제 (EXEMPT_DEPOSIT_LIMIT)
   liquidationValue: number;                // 청산가치
   isLossExcluded?: boolean;                // 과거 주식/코인 손실금 청산가치 배제 특례 여부
   note?: string;

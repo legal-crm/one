@@ -5,13 +5,21 @@ import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype poll
 import { CRM_STATUS_CONFIG, INTAKE_CHANNEL_CONFIG } from '../../types';
 import type { ConsultRequest, CrmClientExtension, CrmStatus, IntakeChannel } from '../../types';
 import ModalPortal from '../common/ModalPortal';
+import { localYmd } from '../../utils/localDate';
+import { localYmd } from '../../utils/localDate';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   requests: ConsultRequest[];
   getCrmExt: (id: string) => CrmClientExtension;
+  /** 계약 전 가명·마스킹 규칙이 적용된 표시값 (내보내기에도 동일 적용) */
+  getDisplayClientName?: (r: ConsultRequest) => string;
+  getDisplayPhoneNumber?: (r: ConsultRequest) => string;
 }
+
+/** 엑셀 수식 주입 방지: =,+,-,@ 로 시작하는 셀은 앞에 ' 추가 */
+const safeCell = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
 
 const EXPORT_COLUMNS = [
   { key: 'clientName', label: '고객명', checked: true },
@@ -29,7 +37,7 @@ const EXPORT_COLUMNS = [
 
 type ColumnKey = typeof EXPORT_COLUMNS[number]['key'];
 
-export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt }: Props) {
+export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt, getDisplayClientName, getDisplayPhoneNumber }: Props) {
   const [dateMode, setDateMode] = useState<'all' | 'month' | 'custom'>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -81,8 +89,8 @@ export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt 
 
       activeColumns.forEach(col => {
         switch (col.key) {
-          case 'clientName': row.push(r.clientName || ''); break;
-          case 'phone': row.push(r.phone || ''); break;
+          case 'clientName': row.push(getDisplayClientName ? getDisplayClientName(r) : (r.clientName || '')); break;
+          case 'phone': row.push(getDisplayPhoneNumber ? getDisplayPhoneNumber(r) : (r.phone || '')); break;
           case 'status': {
             const status = ext.crmStatus as CrmStatus;
             row.push(CRM_STATUS_CONFIG[status]?.label || status);
@@ -101,7 +109,7 @@ export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt 
           case 'assignee': row.push(ext.assigneeId || ext.assignedLawyerId || ''); break;
           case 'memo': {
             const lastNote = ext.notes?.[ext.notes.length - 1];
-            row.push(lastNote?.content || '');
+            row.push(safeCell(lastNote?.content || ''));
             break;
           }
           default: row.push('');
@@ -117,7 +125,7 @@ export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'CRM 데이터');
 
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = localYmd().replace(/-/g, '');
     XLSX.writeFile(wb, `마이김변_CRM_내보내기_${today}.xlsx`);
     toast.success(`${filtered.length}건 엑셀 다운로드 완료`);
     onClose();

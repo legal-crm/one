@@ -9,6 +9,7 @@ import { saveCrmClient, createDefaultCrmExtension, loadCrmData } from '../../ser
 import { addClientNotification } from '../../services/clientNotificationService';
 import ModalPortal from '../common/ModalPortal';
 import { newRemoteSignToken } from '../../utils/secureToken';
+import { localYmd, addMonthsClamped } from '../../utils/localDate';
 
 interface Props {
   request: ConsultRequest;
@@ -19,7 +20,7 @@ interface Props {
   onAddMessage?: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
 }
 
-export default function ContractConversionModal({
+function ContractConversionModalInner({
   request,
   activeLawyer,
   isOpen,
@@ -27,7 +28,6 @@ export default function ContractConversionModal({
   onSuccess,
   onAddMessage
 }: Props) {
-  if (!isOpen) return null;
 
   // 계약 방식: 전자계약 (비대면) vs 대면계약 (사무실 방문)
   const [contractMethod, setContractMethod] = useState<'electronic' | 'in_person'>('electronic');
@@ -36,11 +36,11 @@ export default function ContractConversionModal({
     request.title.includes('파산') ? 'individual_bankruptcy' : 'individual_rehab'
   );
   // 총 수임료 (만 원)
-  const [totalFee, setTotalFee] = useState<number>(150);
+  const [totalFee, setTotalFee] = useState<number>(() => Number((request.proposals || []).find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0);
   // 착수금 (만 원)
-  const [initialFee, setInitialFee] = useState<number>(50);
+  const [initialFee, setInitialFee] = useState<number>(0);
   // 분납 횟수
-  const [installmentCount, setInstallmentCount] = useState<number>(3);
+  const [installmentCount, setInstallmentCount] = useState<number>(1);
   // 법원 실비 (인지대/송달료) 별도 여부
   const [courtCostsSeparate, setCourtCostsSeparate] = useState<boolean>(true);
   // 서류 준비 패키지 동시 발송 체크
@@ -52,11 +52,31 @@ export default function ContractConversionModal({
   const remainingFee = Math.max(0, totalFee - initialFee);
   const monthlyInstallment = installmentCount > 1 ? Math.round(remainingFee / (installmentCount - 1)) : 0;
 
+  // 계약서·알림에 쓰는 사무소명 (없으면 임의 명칭을 넣지 않음)
+  const firmLabel = (activeLawyer as any).firmName || activeLawyer.firm || '';
+  const firmPrefix = firmLabel ? `${firmLabel} ` : '';
+  const hasClientPhone = Boolean(request.phone && !request.phone.includes('*'));
+  const knownCreditorCount = request.financialProfile?.creditorCount || 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!(totalFee > 0)) {
+      toast.error('총 수임료를 입력해 주세요.');
+      return;
+    }
+    if (installmentCount < 1) {
+      toast.error('분납 횟수는 1회 이상이어야 합니다.');
+      return;
+    }
+    if (initialFee > totalFee) {
+      toast.error('착수금이 총 수임료보다 클 수 없습니다.');
+      return;
+    }
+
     try {
       const now = new Date();
+      const todayYmd = localYmd(now);
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
 
       // 1. 분납 스케줄 객체 구성 (단위: 만원)
@@ -66,24 +86,24 @@ export default function ContractConversionModal({
       feeSchedule.push({
         id: `fee-${Date.now()}-1`,
         round: 1,
-        dueDate: now.toISOString().split('T')[0],
+        dueDate: todayYmd,
         amount: initialFee,
-        status: contractMethod === 'in_person' ? 'paid' : 'pending',
-        paidDate: contractMethod === 'in_person' ? now.toISOString().split('T')[0] : undefined,
+        // 대면 계약이라도 착수금 수납은 [수임료] 탭에서 확인 처리 (입금 확인 없이 '납부 완료'로 기록하지 않음)
+        status: 'pending',
         memo: '계약 착수금'
       });
 
       // 잔여 분납
       if (installmentCount > 1 && remainingFee > 0) {
         for (let i = 2; i <= installmentCount; i++) {
-          const nextDueDate = new Date(now.getFullYear(), now.getMonth() + (i - 1), now.getDate());
+          const nextDueDate = addMonthsClamped(now, i - 1); // 1/31 → 2/28 (말일 보정)
           const amount = i === installmentCount 
             ? (remainingFee - monthlyInstallment * (installmentCount - 2)) 
             : monthlyInstallment;
           feeSchedule.push({
             id: `fee-${Date.now()}-${i}`,
             round: i,
-            dueDate: nextDueDate.toISOString().split('T')[0],
+            dueDate: localYmd(nextDueDate),
             amount,
             status: 'pending',
             memo: `${i}회차 분납금`
@@ -92,17 +112,18 @@ export default function ContractConversionModal({
       }
 
       // 2. ElectronicContract 생성 및 저장 (CRM과 100% 매칭되도록 clientId: request.id)
-      const creditorCount = request.financialProfile?.creditorCount || 5;
+      // 채권자 수를 모르면 0으로 두고 계약 마법사에서 입력 (이전: 임의로 5곳 가정해 법원비용 산정)
+      const creditorCount = knownCreditorCount;
       const courtCosts = calculateCourtCosts(creditorCount);
 
       const newContract = createContract({
         clientId: request.id,
         clientRefId: request.clientId || undefined,
         clientName: request.clientName,
-        clientPhone: request.phone || '010-0000-0000',
+        clientPhone: hasClientPhone ? request.phone : '',
         clientAddress: request.financialProfile?.residenceRegion || '',
         lawyerName: activeLawyer.name,
-        lawFirmName: activeLawyer.firm || '법무법인',
+        lawFirmName: firmLabel,
         assignedLawyerId: activeLawyer.id,
         totalFee: totalFee,
         courtCosts: {
@@ -126,31 +147,36 @@ export default function ContractConversionModal({
       // 대면 계약 vs 비대면 전자계약 상태 처리
       if (contractMethod === 'in_person') {
         newContract.status = 'completed';
-        newContract.contractDate = now.toISOString().split('T')[0];
+        newContract.contractDate = todayYmd;
         newContract.auditTrail.push({
           action: '대면 계약 체결 완료 (서면 서명 확인)',
           actor: 'lawyer',
           timestamp: now.toISOString(),
-          ip: '127.0.0.1'
-        });
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        } as any);
       } else {
         newContract.status = 'pending_sign';
         newContract.auditTrail.push({
-          action: '전자 계약서 모바일 전자서명 발송',
+          action: '전자 계약서 모바일 전자서명 링크 생성',
           actor: 'lawyer',
           timestamp: now.toISOString(),
-          ip: '127.0.0.1'
-        });
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        } as any);
       }
 
-      await saveContract(newContract);
+      const contractSaved = await saveContract(newContract);
+      if (!contractSaved) {
+        // 서버에 계약서가 없으면 의뢰인 서명 링크가 열리지 않음 → 진행 중단
+        toast.error('계약서를 서버에 저장하지 못했습니다. 네트워크 확인 후 다시 시도해 주세요. (이 기기에는 임시 저장됨)');
+        return;
+      }
 
       // 3. Case 사건 대장 데이터 생성
       const newCase: Case = {
         id: `case-${Date.now()}`,
         clientId: request.id,
         clientName: request.clientName,
-        phone: request.phone || '010-0000-0000',
+        phone: hasClientPhone ? request.phone : '',
         status: 'document',
         assignedLawyerId: activeLawyer.id,
         assignedLawyerName: activeLawyer.name,
@@ -161,7 +187,7 @@ export default function ContractConversionModal({
         notes: [
           `[${contractMethod === 'electronic' ? '전자계약 발송' : '대면계약 체결'}] 총 수임료 ${totalFee}만 원 (${installmentCount}회 분납 약정)`,
           `가계 채무 분석서(${request.financialProfile?.debtTotal?.toLocaleString() || 0}만 원) 데이터 이관 완료`,
-          sendDocPackage ? '📋 필수 제출 서류 15종 가이드 및 체크리스트 발송 완료' : '서류 준비 착수 지시'
+          sendDocPackage ? '📋 필수 제출 서류 안내 (채팅·앱 알림)' : '서류 준비 착수 지시'
         ]
       };
 
@@ -176,7 +202,7 @@ export default function ContractConversionModal({
         assigneeId: activeLawyer.id,
         assignedLawyerId: activeLawyer.id,
         totalFee: totalFee,
-        contractDate: now.toISOString().split('T')[0],
+        contractDate: todayYmd,
         contractAmount: totalFee,
         feeSchedule,
         lastActivityAt: now.toISOString(),
@@ -189,19 +215,19 @@ export default function ContractConversionModal({
             actorName: activeLawyer.name,
             actorRole: 'OWNER',
             type: 'contract_signed',
-            description: `${contractMethod === 'electronic' ? '전자계약서 발송 (서명 대기)' : '대면 수임계약 체결'} 완료 (총 수임료 ${totalFee}만 원, ${nextCrmStatus === 'document' ? '서류 수집 단계 승격' : '수임 계약 단계'})`,
+            description: `${contractMethod === 'electronic' ? '전자계약서 서명 링크 생성 (서명 대기)' : '대면 수임계약 체결'} (총 수임료 ${totalFee}만 원, ${nextCrmStatus === 'document' ? '서류 수집 단계 승격' : '수임 계약 단계'})`,
             createdAt: now.toISOString()
           }
         ]
       };
-      await saveCrmClient(request.id, updatedCrmExt);
+      const crmSaved = await saveCrmClient(request.id, updatedCrmExt);
 
       // 4. 채팅 대화방에 시스템/변호사 안내 메시지 자동 전송 (실제 클릭 가능한 전자서명 링크 포함)
       if (onAddMessage) {
         if (contractMethod === 'electronic') {
           onAddMessage(
             request.id,
-            `[수임 계약 안내] ${request.clientName}님, ${activeLawyer.firm || '법무법인'} ${activeLawyer.name} 변호사와의 사건 수임 계약서가 전자서명으로 발송되었습니다.\n\n` +
+            `[수임 계약 안내] ${request.clientName}님, ${firmPrefix}${activeLawyer.name} 변호사와의 사건 수임 계약서가 전자서명으로 발송되었습니다.\n\n` +
             `• 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n` +
             `• 계약 방식: 비대면 모바일 전자서명 (아래 링크 클릭 후 스마트폰 본인인증 및 서명 진행)\n\n` +
             `🔗 [모바일 전자서명 바로가기]\n${signUrl}\n\n` +
@@ -214,7 +240,7 @@ export default function ContractConversionModal({
         } else {
           onAddMessage(
             request.id,
-            `[수임 계약 완료] ${request.clientName}님, ${activeLawyer.firm || '법무법인'} ${activeLawyer.name} 변호사와의 정식 대면 수임 계약이 체결되었습니다.\n\n` +
+            `[수임 계약 완료] ${request.clientName}님, ${firmPrefix}${activeLawyer.name} 변호사와의 정식 대면 수임 계약이 체결되었습니다.\n\n` +
             `• 약정 수임료: ${totalFee.toLocaleString()}만 원 (${installmentCount}회 분납)\n` +
             `• 진행 단계: 서류 준비 및 관할 법원 접수 준비 착수\n\n` +
             (sendDocPackage ? `📂 필수 서류 목록을 확인하시고 서류가 준비되는 대로 업로드 부탁드립니다.` : ''),
@@ -230,8 +256,8 @@ export default function ContractConversionModal({
         type: 'status_change',
         title: contractMethod === 'electronic' ? '사건 수임 전자계약서가 도착했습니다' : '수임계약 체결 완료 안내',
         body: contractMethod === 'electronic' 
-          ? `${activeLawyer.firm || '법무법인'} ${activeLawyer.name} 변호사와의 수임 계약서에 모바일 전자서명을 진행해 주세요. (약정 수임료: ${totalFee.toLocaleString()}만 원)`
-          : `${activeLawyer.firm || '법무법인'} ${activeLawyer.name} 변호사와의 사건 수임 계약이 완료되어 서류 수집 단계로 전환되었습니다.`,
+          ? `${firmPrefix}${activeLawyer.name} 변호사와의 수임 계약서에 모바일 전자서명을 진행해 주세요. (약정 수임료: ${totalFee.toLocaleString()}만 원)`
+          : `${firmPrefix}${activeLawyer.name} 변호사와의 사건 수임 계약이 완료되어 서류 수집 단계로 전환되었습니다.`,
         emoji: contractMethod === 'electronic' ? '✍️' : '📝',
         linkTab: 'contracts'
       });
@@ -246,16 +272,19 @@ export default function ContractConversionModal({
         });
       }
 
-      // 6. 알림톡 / 문자 자동 전송 기록 (선택 시)
-      if (shouldSendAlimtok) {
+      // 6. 알림톡 / 문자 자동 전송 (선택 시) — 실제 발송 결과를 확인
+      let alimtokNotice = '';
+      if (shouldSendAlimtok && !hasClientPhone) {
+        alimtokNotice = ' (의뢰인 연락처가 공개되지 않아 알림톡은 보내지 않았습니다)';
+      } else if (shouldSendAlimtok) {
         try {
-          const clientPhone = request.phone || '010-0000-0000';
+          const clientPhone = request.phone;
           const alimtokText = contractMethod === 'electronic'
-            ? `[${activeLawyer.firm || '법무법인'}] ${activeLawyer.name} 변호사\n\n${request.clientName}님, 사건 수임 계약서가 모바일 전자서명으로 발송되었습니다.\n\n📌 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n📌 서명 기한: 발송 후 72시간 이내\n\n아래 안전 서명 링크에 접속하시어 내용을 확인하신 후 스마트폰 본인인증 및 전자서명을 진행해 주세요.\n\n▶ 모바일 전자서명 링크:\n${signUrl}`
+            ? `${firmLabel ? `[${firmLabel}] ` : ''}${activeLawyer.name} 변호사\n\n${request.clientName}님, 사건 수임 계약서가 모바일 전자서명으로 발송되었습니다.\n\n📌 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n📌 서명 기한: 발송 후 72시간 이내\n\n아래 안전 서명 링크에 접속하시어 내용을 확인하신 후 스마트폰 본인인증 및 전자서명을 진행해 주세요.\n\n▶ 모바일 전자서명 링크:\n${signUrl}`
             : undefined;
 
-          sendAlimtok(clientPhone, 'contract_signed', {
-            firmName: activeLawyer.firm || '법무법인',
+          const sendRes = await sendAlimtok(clientPhone, 'contract_signed', {
+            firmName: firmLabel,
             lawyerName: activeLawyer.name,
             clientName: request.clientName,
             date: new Date().toLocaleDateString('ko-KR'),
@@ -266,10 +295,12 @@ export default function ContractConversionModal({
               { name: '전자계약서 서명하기', url: signUrl, urlMobile: signUrl, urlPc: signUrl }
             ]
           });
+          if (!sendRes.ok) alimtokNotice = ` (알림톡 발송 실패: ${sendRes.error || '원인 불명'} — 채팅 링크로 안내하세요)`;
+          else if (sendRes.mock) alimtokNotice = ' (알림톡 서비스가 설정되지 않아 실제 발송되지 않았습니다)';
 
           if (sendDocPackage) {
             sendAlimtok(clientPhone, 'document_request', {
-              firmName: activeLawyer.firm || '법무법인',
+              firmName: firmLabel,
               lawyerName: activeLawyer.name,
               clientName: request.clientName,
               deadline: '계약일로부터 7일 이내',
@@ -277,14 +308,24 @@ export default function ContractConversionModal({
               trackingUrl: `${origin}?tab=documents`
             });
           }
-        } catch {}
+        } catch {
+          alimtokNotice = ' (알림톡 발송 중 오류가 발생했습니다)';
+        }
       }
 
-      toast.success(
-        contractMethod === 'electronic'
-          ? `${request.clientName} 의뢰인께 전자계약서(서명 링크)와 서류 준비 가이드가 발송되었습니다.`
-          : `${request.clientName} 의뢰인의 대면 수임계약이 완료되고 서류 준비 단계로 전환되었습니다.`
-      );
+      const baseMsg = contractMethod === 'electronic'
+        ? `${request.clientName} 의뢰인 채팅방에 전자계약서 서명 링크를 보냈습니다.`
+        : `${request.clientName} 의뢰인의 대면 수임계약을 기록하고 서류 준비 단계로 전환했습니다.`;
+      if (!crmSaved) {
+        toast.warning(`${baseMsg} 단, CRM 정보는 서버 저장에 실패해 이 기기에만 저장되었습니다.${alimtokNotice}`);
+      } else if (alimtokNotice) {
+        toast.warning(baseMsg + alimtokNotice);
+      } else {
+        toast.success(baseMsg + (shouldSendAlimtok ? ' 알림톡도 발송되었습니다.' : ''));
+      }
+      if (knownCreditorCount === 0) {
+        toast.info('채권자 수가 입력되지 않아 법원비용(송달료)은 0원으로 잡혔습니다. 계약 관리에서 채권자 수를 입력해 주세요.');
+      }
 
       onSuccess(newCase, newContract);
       onClose();
@@ -525,4 +566,10 @@ export default function ContractConversionModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function ContractConversionModal(props: React.ComponentProps<typeof ContractConversionModalInner>) {
+  if (!props.isOpen) return null;
+  return <ContractConversionModalInner {...props} />;
 }

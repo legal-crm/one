@@ -12,6 +12,10 @@ import {
 } from '../../../services/vault/certificateVaultService';
 import CertificateVaultModal from './CertificateVaultModal';
 
+/** 과거 버전이 자동 생성한 가짜 시연 금고 판별 */
+const isMockVault = (v: CertificateVaultData) =>
+  Boolean(v?.npki?.derBase64?.includes('MOCK_') || v?.npki?.keyBase64?.includes('MOCK_'));
+
 interface CertificateVaultCardProps {
   clientId: string;
   clientRequest: ConsultRequest;
@@ -29,25 +33,28 @@ export default function CertificateVaultCard({
 }: CertificateVaultCardProps) {
   const [vault, setVault] = useState<CertificateVaultData>(() => {
     // 1) crmExt에서 확인
-    if (crmExt?.certificateVault) return crmExt.certificateVault;
+    if (crmExt?.certificateVault && !isMockVault(crmExt.certificateVault)) return crmExt.certificateVault;
     // 2) 로컬스토리지에서 확인
     const loaded = loadCertificateVault(clientId);
     if (loaded) return loaded;
-    // 3) 초기 시드 생성
-    const seeded = generateSeedVaultData(
-      clientId, 
-      clientRequest.clientName || '의뢰인',
-      clientRequest.phone || '010-0000-0000'
-    );
-    saveCertificateVault(seeded);
-    return seeded;
+    // 3) 등록된 인증서가 없으면 빈 금고 (이전: 가짜 공동인증서·금융인증서·동의서명·열람기록을 생성해 저장)
+    const now = new Date().toISOString();
+    return {
+      id: `vault_${clientId}`,
+      clientId,
+      clientName: clientRequest.clientName || '',
+      status: 'active',
+      accessLogs: [],
+      createdAt: now,
+      updatedAt: now,
+    } as CertificateVaultData;
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 동기화
   useEffect(() => {
-    if (crmExt?.certificateVault) {
+    if (crmExt?.certificateVault && !isMockVault(crmExt.certificateVault)) {
       setVault(crmExt.certificateVault);
     }
   }, [crmExt?.certificateVault]);
@@ -68,13 +75,20 @@ export default function CertificateVaultCard({
   const isExpiringSoon = npki ? daysRemaining <= 30 && daysRemaining > 0 : false;
   const isExpired = npki ? npki.isExpired || daysRemaining <= 0 : false;
 
-  const handleSendRenewalAlimtok = () => {
-    toast.success(`${clientRequest.clientName} 님께 [공동인증서 만료 갱신 안내 알림톡]을 즉시 발송했습니다.`);
+  // 알림톡 연동 전: 안내 문구만 복사 (이전: 아무것도 보내지 않고 '발송했습니다' 표시)
+  const handleSendRenewalAlimtok = async () => {
+    const text = `[${clientRequest.clientName}님] 등록하신 공동인증서가 곧 만료됩니다. 갱신 후 다시 제출해 주세요.`;
+    try { await navigator.clipboard.writeText(text); toast.success('인증서 갱신 안내 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
+    catch { toast.error('클립보드 복사에 실패했습니다.'); }
   };
 
-  const handleSendRequestAlimtok = () => {
-    toast.success(`${clientRequest.clientName} 님께 [인증서 안전 금고 제출 마법사 링크]가 알림톡으로 전송되었습니다.`);
+  const handleSendRequestAlimtok = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `[${clientRequest.clientName}님] 부채증명서 발급·전자소송 진행을 위해 마이페이지 > 인증서 제출에서 공동인증서를 등록해 주세요. ${origin}/?tab=mypage`;
+    try { await navigator.clipboard.writeText(text); toast.success('인증서 제출 요청 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
+    catch { toast.error('클립보드 복사에 실패했습니다.'); }
   };
+  const hasAnyCert = Boolean(vault.npki || vault.financial);
 
   if (compact) {
     return (
@@ -101,7 +115,7 @@ export default function CertificateVaultCard({
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">미등록</span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400">부채증명서 발급 및 전자소송용 E2EE 암호화 보관</p>
+              <p className="text-[11px] text-slate-400">부채증명서 발급 및 전자소송용 · 이 브라우저에 암호화 보관</p>
             </div>
           </div>
           <button
@@ -139,21 +153,25 @@ export default function CertificateVaultCard({
               <div className="flex items-center gap-2">
                 <h4 className="text-sm md:text-base font-bold text-white flex items-center gap-1.5">
                   의뢰인 인증서 안전 금고
-                  <span className="text-[11px] font-normal text-slate-400">(AES-256 E2EE)</span>
+                  <span className="text-[11px] font-normal text-slate-400">(브라우저 로컬 보관)</span>
                 </h4>
                 {isShredded ? (
                   <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-semibold">
                     영구 파기 완료
                   </span>
-                ) : (
+                ) : hasAnyCert ? (
                   <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    안전 보관중
+                    보관중
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-semibold">
+                    미등록
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                부채증명서 발급 대행 및 대법원 전자소송(ECFS) 진행 전용 종단간 암호화 금고
+                부채증명서 발급 대행 및 대법원 전자소송(ECFS) 진행용 보관함 · 비밀번호는 브라우저 암호화, 인증서 파일은 이 기기에만 저장
               </p>
             </div>
           </div>
@@ -213,7 +231,7 @@ export default function CertificateVaultCard({
                   </div>
                   <div className="flex justify-between text-slate-400">
                     <span>비밀번호 보안:</span>
-                    <span className="text-emerald-400 font-mono font-medium">AES-256 암호화 (마스킹)</span>
+                    <span className="text-emerald-400 font-mono font-medium">브라우저 암호화 (마스킹)</span>
                   </div>
                 </div>
               ) : (

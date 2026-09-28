@@ -280,51 +280,9 @@ export function convertConsultRequestToD5102(
   const severances: SeveranceItem[] = [];
   const financialAssets: FinancialAssetItem[] = [];
 
-  // 기본 주택/보증금 슬롯 생성
-  if (assetsTotal > 0) {
-    // 3,000만 원 초과 시 임차보증금 가산
-    if (assetsTotal >= 30000000) {
-      leaseDeposits.push({
-        id: 'ld-init-1',
-        address: request.address || '서울특별시 마포구 백범로 (임차 주택)',
-        depositAmount: Math.min(assetsTotal, 80000000),
-        unpaidRent: 0,
-        pledgeLoanAmount: 0,
-        region,
-        statutoryExemption: 55000000,
-        liquidationValue: Math.max(0, Math.min(assetsTotal, 80000000) - 55000000),
-        leaseType: 'housing',
-        hasFixedDate: true,
-        note: '확정일자부 임대차계약서 구비',
-      });
-    }
-
-    // 예금 슬롯
-    financialAssets.push({
-      id: 'fa-init-1',
-      category: 'deposit',
-      institutionName: '국민은행',
-      description: '주거래 급여통장',
-      marketValue: Math.min(3000000, Math.round(assetsTotal * 0.1)),
-      statutoryDeduction: EXEMPT_DEPOSIT_LIMIT_2026,
-      liquidationValue: Math.max(0, Math.min(3000000, Math.round(assetsTotal * 0.1)) - EXEMPT_DEPOSIT_LIMIT_2026),
-      note: '압류금지 250만 원 공제 반영',
-    });
-
-    // 보험 슬롯
-    insurances.push({
-      id: 'ins-init-1',
-      companyName: '삼성생명',
-      policyName: '보장성 통합건강보험',
-      isSecurityInsurance: true,
-      surrenderValue: Math.min(2500000, Math.round(assetsTotal * 0.08)),
-      policyLoanBalance: 0,
-      statutoryDeduction: EXEMPT_INSURANCE_REFUND_LIMIT,
-      liquidationValue: Math.max(0, Math.min(2500000, Math.round(assetsTotal * 0.08)) - EXEMPT_INSURANCE_REFUND_LIMIT),
-      note: '보장성보험 150만 원 법정 공제',
-    });
-  }
-
+  // 상담 시 입력한 "총 재산액"만으로 임차보증금·예금(국민은행)·보험(삼성생명) 항목을 임의로 나눠 만들지 않는다.
+  // (이전: 총액을 8천만/10%/8% 비율로 쪼개 가공 재산 3건을 생성 → 재산목록·청산가치에 그대로 반영됨)
+  // 재산 항목은 재산목록 편집기에서 실제 자료로 입력한다.
   const initialData: PropertyListD5102Data = {
     id: `D5102-${request.id}`,
     clientId: request.id,

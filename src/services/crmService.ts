@@ -545,7 +545,8 @@ export function createDefaultCrmExtension(
   caseType: 'individual_rehab' | 'bankruptcy' = 'individual_rehab',
   incomeType?: 'EMPLOYEE' | 'BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME'
 ): CrmClientExtension {
-  const predefined = PREDEFINED_AMJONE_PROFILES[clientId] || {};
+  // 시연용 사전 프로필은 DEV 빌드에서만 적용 (운영에서는 가짜 사건번호·수임료·메모가 실제 고객처럼 저장되던 문제)
+  const predefined = (import.meta.env.DEV ? PREDEFINED_AMJONE_PROFILES[clientId] : undefined) || {};
   const effectiveCaseType = (predefined.caseType as any) || caseType;
   const docs = getStandardDocumentsForClient(effectiveCaseType, incomeType);
   
@@ -554,16 +555,8 @@ export function createDefaultCrmExtension(
     caseType: effectiveCaseType,
     documents: predefined.documents || (docs || []).map((d: any) => ({ ...d, reviewStatus: d.reviewStatus || 'not_submitted' })),
     notes: predefined.notes || [],
-    activities: predefined.activities || [{
-      id: `act-init-${Date.now()}`,
-      clientId,
-      actorId: 'system',
-      actorName: '시스템',
-      actorRole: 'OWNER' as StaffRole,
-      type: 'created' as CrmActivityType,
-      description: '상담 신청이 접수되었습니다.',
-      createdAt: new Date().toISOString(),
-    }],
+    // 실제 접수 시각을 모르는 상태에서 '지금' 날짜의 가짜 접수 이력을 만들지 않음
+    activities: predefined.activities || [],
     lastActivityAt: predefined.lastActivityAt || new Date().toISOString(),
     intakeChannel: predefined.intakeChannel || 'mykim',
     intakeChannelDetail: predefined.intakeChannelDetail,

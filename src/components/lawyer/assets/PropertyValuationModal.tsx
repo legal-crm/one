@@ -351,15 +351,15 @@ export default function PropertyValuationModal({
                       const newRe: RealEstateItem = {
                         id: `re-${Date.now()}`,
                         type: 'villa_multi',
-                        address: '서울특별시 마포구 ',
+                        address: '',
                         valuationMethod: 'public_price_130',
-                        officialPublicPrice: 200000000,
-                        marketValue: 260000000,
-                        mortgageBalance: 150000000,
-                        liquidationValue: 110000000,
+                        officialPublicPrice: 0,
+                        marketValue: 0,
+                        mortgageBalance: 0,
+                        liquidationValue: 0,
                         ownerType: 'self',
                         shareRatio: 1.0,
-                        note: '공시가격 130% 환산 적용'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -622,15 +622,15 @@ export default function PropertyValuationModal({
                       const newV: VehicleItem = {
                         id: `v-${Date.now()}`,
                         type: 'car',
-                        modelName: '현대 아반떼 CN7',
-                        plateNumber: '12가 3456',
-                        year: 2022,
+                        modelName: '',
+                        plateNumber: '',
+                        year: new Date().getFullYear(),
                         valuationMethod: 'used_avg',
-                        marketValue: 16000000,
-                        loanBalance: 9000000,
-                        liquidationValue: 7000000,
+                        marketValue: 0,
+                        loanBalance: 0,
+                        liquidationValue: 0,
                         ownerType: 'self',
-                        note: '출퇴근 및 생계용 차량'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -860,16 +860,16 @@ export default function PropertyValuationModal({
                     onClick={() => {
                       const newLd: LeaseDepositItem = {
                         id: `ld-${Date.now()}`,
-                        address: '서울특별시 마포구 ',
-                        depositAmount: 70000000,
+                        address: '',
+                        depositAmount: 0,
                         unpaidRent: 0,
                         pledgeLoanAmount: 0,
                         region: 'SEOUL',
-                        statutoryExemption: 55000000,
-                        liquidationValue: 15000000,
+                        statutoryExemption: 0,
+                        liquidationValue: 0,
                         leaseType: 'housing',
-                        hasFixedDate: true,
-                        note: '확정일자부 임대차계약서'
+                        hasFixedDate: false,
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -976,12 +976,12 @@ export default function PropertyValuationModal({
                     onClick={() => {
                       const newSev: SeveranceItem = {
                         id: `sev-${Date.now()}`,
-                        workplaceName: '재직 직장명',
-                        isRetirementPension: true,
-                        expectedAmount: 30000000,
-                        statutoryDeduction: 30000000,
+                        workplaceName: '',
+                        isRetirementPension: false,
+                        expectedAmount: 0,
+                        statutoryDeduction: 0,
                         liquidationValue: 0,
-                        note: 'DC형 퇴직연금 가입 (압류금지 전액 면제)'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -1084,14 +1084,14 @@ export default function PropertyValuationModal({
                       onClick={() => {
                         const newIns: InsuranceItem = {
                           id: `ins-${Date.now()}`,
-                          companyName: '삼성생명',
-                          policyName: '통합건강보험',
+                          companyName: '',
+                          policyName: '',
                           isSecurityInsurance: true,
-                          surrenderValue: 2500000,
+                          surrenderValue: 0,
                           policyLoanBalance: 0,
-                          statutoryDeduction: 1500000,
-                          liquidationValue: 1000000,
-                          note: '보장성보험 150만원 공제'
+                          statutoryDeduction: 0,
+                          liquidationValue: 0,
+                          note: ''
                         };
                         updateData(prev => ({
                           ...prev,
@@ -1162,19 +1162,19 @@ export default function PropertyValuationModal({
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="font-bold text-slate-900 flex items-center gap-1.5">
                       <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                      예금 및 주식 (예금 250만 원 공제)
+                      예금 및 주식 (예금 {Math.round(EXEMPT_DEPOSIT_LIMIT_2026 / 10000)}만 원 공제)
                     </span>
                     <button
                       onClick={() => {
                         const newFa: FinancialAssetItem = {
                           id: `fa-${Date.now()}`,
                           category: 'deposit',
-                          institutionName: '국민은행',
-                          description: '급여통장',
-                          marketValue: 3000000,
-                          statutoryDeduction: EXEMPT_DEPOSIT_LIMIT_2026,
-                          liquidationValue: 500000,
-                          note: '예금 압류금지 250만원 공제'
+                          institutionName: '',
+                          description: '',
+                          marketValue: 0,
+                          statutoryDeduction: 0,
+                          liquidationValue: 0,
+                          note: ''
                         };
                         updateData(prev => ({
                           ...prev,
@@ -1280,14 +1280,14 @@ export default function PropertyValuationModal({
                       const newBa = {
                         id: `ba-${Date.now()}`,
                         type: 'equipment' as const,
-                        name: '사업장 영업설비 및 비품',
-                        description: '냉난방기, 컴퓨터, 집기 등',
-                        bookValue: 5000000,
-                        marketValue: 2000000,
+                        name: '',
+                        description: '',
+                        bookValue: 0,
+                        marketValue: 0,
                         encumbrance: 0,
-                        liquidationValue: 2000000,
+                        liquidationValue: 0,
                         recoveryStatus: 'normal' as const,
-                        note: '감가상각 잔존가치 반영'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,

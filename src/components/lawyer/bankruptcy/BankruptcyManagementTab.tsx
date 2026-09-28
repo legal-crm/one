@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { saveBankruptcyCase } from '../../../services/companionService';
 import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
+import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 import type { 
   BankruptcyFullCaseData, 
   BankruptcyPetition, 
@@ -43,8 +44,10 @@ export default function BankruptcyManagementTab({
 }: BankruptcyManagementTabProps) {
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const rawDebt = (clientRequest.financialProfile?.debtTotal || 8000) * 10000;
-  const rawIncome = (clientRequest.financialProfile?.income || 80) * 10000;
+  // 상담 입력값만 사용 (이전: 미입력 시 채무 8,000만 원·소득 80만 원을 가정)
+  const rawDebt = (clientRequest.financialProfile?.debtTotal || 0) * 10000;
+  const rawIncome = (clientRequest.financialProfile?.income || 0) * 10000;
+  const todayLocal = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
 
   // 6대 서브탭
   const [activeSubTab, setActiveSubTab] = useState<'petition' | 'statement' | 'creditors' | 'assets' | 'living' | 'docs'>('petition');
@@ -58,28 +61,29 @@ export default function BankruptcyManagementTab({
       id: `pet-${clientId}`,
       clientId,
       debtorName: clientName,
-      debtorRrn: '820415-1******',
-      debtorAddress: (clientRequest.financialProfile?.residenceRegion || clientRequest.region) ? `${clientRequest.financialProfile?.residenceRegion || clientRequest.region} 거주` : '서울특별시 마포구 마포대로 123',
-      registeredDomicile: '서울특별시 중구 세종대로 110',
-      serviceAddress: '대리인 법률사무소 (서울특별시 서초구 서초대로 456, 501호)',
+      // 신청서 기본값은 비워두고 변호사가 입력 (이전: 가짜 주민번호·주소·등록기준지·송달장소, 이자 15% 가정, 재산 500만 원 가정)
+      debtorRrn: '',
+      debtorAddress: '',
+      registeredDomicile: '',
+      serviceAddress: '',
       courtName,
-      filingDate: new Date().toISOString().split('T')[0],
+      filingDate: todayLocal,
       attorneyName: activeLawyerName,
       totalDebtPrincipal: rawDebt,
-      totalDebtInterest: Math.round(rawDebt * 0.15),
-      totalAssetsValue: 5000000,
-      netExemptAssets: 5000000,
+      totalDebtInterest: 0,
+      totalAssetsValue: 0,
+      netExemptAssets: 0,
       liquidationValue: 0,
       monthlyNetIncome: rawIncome,
-      householdMembersCount: 1,
-      minimumLivingCost: 1400000,
+      householdMembersCount: (clientRequest.financialProfile?.dependents || 0) + 1,
+      minimumLivingCost: getLivingExpense((clientRequest.financialProfile?.dependents || 0) + 1),
       petitionRelief: {
         bankruptcy: '1. 채무자를 파산자에 처한다.',
         discharge: '2. 채무자를 면책한다.',
         orderStay: true
       },
       insolvencyCause: 'LIVING_COST_SHORTAGE',
-      insolvencyCauseDetail: '과거 실직 및 만성 질환으로 인한 병원비 지출과 소득 급감으로 장기간 생활비가 누적되었으며, 현재 근로능력 부족으로 채무 변제가 전면 불가능한 상태입니다.'
+      insolvencyCauseDetail: ''
     };
   });
 
@@ -87,13 +91,12 @@ export default function BankruptcyManagementTab({
   const [statement, setStatement] = useState<BankruptcyStatement>(() => {
     if (savedBk?.statement) return savedBk.statement;
     return {
-      finalEducation: '고등학교 졸업',
-      pastJobHistory: [
-        { period: '2016.03 ~ 2021.10', companyName: '동네 마트/식당', position: '단기 일용직/조리', reasonForLeaving: '건강 악화' }
-      ],
-      livingHistory: '최저생계비 미만의 불규칙한 소득으로 일상생활을 유지하던 중 카드 돌려막기와 소액 대출이 누적되어 지급불능에 이름.',
-      debtorStoryRaw: clientRequest.memo || clientRequest.preferredTime || '',
-      debtorStoryPolished: '채무자는 과거 소규모 요식업 및 일용직에 종사하며 성실히 생활하여 왔으나, 만성 질환으로 인한 치료비 지출과 소득 중단으로 인해 일상 생계비 부족이 심화되었습니다. 금융기관 대출 및 신용카드를 통해 채무를 변제하고자 노력하였으나 결국 원리금 상환 불능 상태에 이르렀으며, 현재 고령 및 질환으로 인해 객관적 근로능력을 상실하여 향후 채무를 변제할 가능성이 전무합니다.',
+      // 진술서는 의뢰인 원문·변호사 작성분만 (이전: 학력·경력·채무 경위를 가공한 문장으로 채움)
+      finalEducation: '',
+      pastJobHistory: [],
+      livingHistory: '',
+      debtorStoryRaw: clientRequest.memo || '',
+      debtorStoryPolished: '',
       disallowanceScreening: {
         gamblingOrSpeculation: false,
         fraudulentLoan: false,
@@ -121,55 +124,8 @@ export default function BankruptcyManagementTab({
   // 3. 채권자목록 & 소송/가압류 이력
   const [creditors, setCreditors] = useState<BankruptcyCreditorItem[]>(() => {
     if (savedBk?.creditors && savedBk.creditors.length > 0) return savedBk.creditors;
-    return [
-      {
-        id: 'c-1',
-        creditorName: '신한카드(주)',
-        debtCause: 'CREDIT_CARD',
-        debtCauseDetail: '신용카드 대금 및 단기 카드대출',
-        borrowedDate: '2021-04-15',
-        principal: Math.round(rawDebt * 0.35),
-        interest: Math.round(rawDebt * 0.05),
-        isNonDischargeable: false,
-        lawsuitInfo: {
-          hasLawsuit: true,
-          lawsuitType: 'PAYMENT_ORDER',
-          courtName: '서울중앙지방법원',
-          caseNumber: '2023차전10293',
-          statusText: '지급명령 확정'
-        }
-      },
-      {
-        id: 'c-2',
-        creditorName: '국민은행',
-        debtCause: 'CASH_LOAN',
-        debtCauseDetail: '생계자금 신용대출',
-        borrowedDate: '2020-11-20',
-        principal: Math.round(rawDebt * 0.45),
-        interest: Math.round(rawDebt * 0.06),
-        isNonDischargeable: false,
-        lawsuitInfo: {
-          hasLawsuit: true,
-          lawsuitType: 'SEIZURE_COLLECTION',
-          courtName: '서울서부지방법원',
-          caseNumber: '2024타채5512',
-          statusText: '통장 압류 결정'
-        }
-      },
-      {
-        id: 'c-3',
-        creditorName: '마포세무서',
-        debtCause: 'OTHER',
-        debtCauseDetail: '종합소득세 및 부가가치세 체납',
-        borrowedDate: '2022-05-31',
-        principal: Math.round(rawDebt * 0.1),
-        interest: 0,
-        isNonDischargeable: true, // 조세채권 비면책
-        lawsuitInfo: {
-          hasLawsuit: false
-        }
-      }
-    ];
+    // 채권자는 부채증명서·의뢰인 입력으로 등록 (이전: 가짜 신한카드 지급명령·국민은행 압류 사건번호·마포세무서 체납 생성)
+    return [];
   });
 
   // 4. 파산관재인 5대 심층 조사재산 (리걸플로 벤치마킹 핵심)
@@ -202,44 +158,8 @@ export default function BankruptcyManagementTab({
   // 5. 기본 파산 재산목록 (1,110만 원 면제재산 계산기)
   const [assets, setAssets] = useState<BankruptcyAssetItem[]>(() => {
     if (savedBk?.assets && savedBk.assets.length > 0) return savedBk.assets;
-    return [
-      {
-        id: 'ast-1',
-        assetName: '주거용 임차보증금 (월세)',
-        assetCategory: 'HOUSING_DEPOSIT',
-        marketValue: 15000000,
-        seniorLien: 0,
-        statutoryExemption: 15000000, // 서울 소액보증금 5,500만 한도 내 전액 공제
-        appliedExemptionType: 'SMALL_HOUSING_DEPOSIT',
-        liquidationValue: 0,
-        isExcludedFromEstate: true,
-        evidenceDocName: '임대차계약서 및 확정일자'
-      },
-      {
-        id: 'ast-2',
-        assetName: '보장성 보험 해약환급금',
-        assetCategory: 'INSURANCE',
-        marketValue: 1200000,
-        seniorLien: 0,
-        statutoryExemption: 1200000, // 150만 원 한도 내 전액 압류금지
-        appliedExemptionType: 'INSURANCE_150',
-        liquidationValue: 0,
-        isExcludedFromEstate: true,
-        evidenceDocName: '보험해약환급금 확인서'
-      },
-      {
-        id: 'ast-3',
-        assetName: '은행 예금 잔고',
-        assetCategory: 'CASH_DEPOSIT',
-        marketValue: 450000,
-        seniorLien: 0,
-        statutoryExemption: 450000, // 185만 원 압류금지
-        appliedExemptionType: 'DEPOSIT_185',
-        liquidationValue: 0,
-        isExcludedFromEstate: true,
-        evidenceDocName: '계좌잔액증명서'
-      }
-    ];
+    // 재산은 재산목록 입력 후 반영 (이전: 임차보증금 1,500만·보험 120만·예금 45만 원 가정)
+    return [];
   });
 
   // 6. 주거 6분류 및 조세 체납표 & 가계수지표
@@ -247,11 +167,11 @@ export default function BankruptcyManagementTab({
     if (savedBk?.livingCondition?.residence) return savedBk.livingCondition.residence;
     return {
       residenceType: 'RENT_LEASE' as BankruptcyResidenceType,
-      startDate: '2022-03-01',
-      deposit: 15000000,
-      monthlyRent: 400000,
-      ownerName: '임대인',
-      ownerRelation: '소유자(타인)',
+      startDate: '',
+      deposit: 0,
+      monthlyRent: 0,
+      ownerName: '',
+      ownerRelation: '',
       freeStayReason: ''
     };
   });
@@ -259,13 +179,13 @@ export default function BankruptcyManagementTab({
   const [taxArrears, setTaxArrears] = useState(() => {
     if (savedBk?.livingCondition?.taxArrears) return savedBk.livingCondition.taxArrears;
     return {
-      incomeTax: 2500000,
-      localIncomeTax: 250000,
+      incomeTax: 0,
+      localIncomeTax: 0,
       propertyTax: 0,
-      healthInsurance: 1200000,
-      nationalPension: 800000,
+      healthInsurance: 0,
+      nationalPension: 0,
       otherTax: 0,
-      totalArrears: 4750000
+      totalArrears: 0
     };
   });
 
@@ -273,21 +193,21 @@ export default function BankruptcyManagementTab({
     if (savedBk?.livingCondition?.budgetLedger) return savedBk.livingCondition.budgetLedger;
     return {
       earnedIncome: rawIncome,
-      pensionOrWelfare: 200000,
+      pensionOrWelfare: 0,
       familySupport: 0,
-      totalIncome: rawIncome + 200000,
+      totalIncome: rawIncome,
 
-      housingRent: 400000,
-      foodAndDailySupplies: 450000,
-      medicalExpenses: 150000,
-      utilitiesAndCommunication: 120000,
+      housingRent: 0,
+      foodAndDailySupplies: 0,
+      medicalExpenses: 0,
+      utilitiesAndCommunication: 0,
       educationExpenses: 0,
-      transportation: 80000,
-      clothingExpenses: 50000,
-      totalLivingExpense: 1250000,
+      transportation: 0,
+      clothingExpenses: 0,
+      totalLivingExpense: 0,
 
-      disposableIncome: (rawIncome + 200000) - 1250000,
-      isDisposableZeroOrNegative: ((rawIncome + 200000) - 1250000) <= 0
+      disposableIncome: rawIncome,
+      isDisposableZeroOrNegative: rawIncome <= 0
     };
   });
 
@@ -367,16 +287,16 @@ export default function BankruptcyManagementTab({
 
   // 모바일 의뢰인 진술서 CRM 로드 핸들러
   const handleLoadClientStory = () => {
-    const clientStory = clientRequest.memo || clientRequest.preferredTime || '';
+    // 상담 접수 메모만 불러옴 (이전: 선호 연락시간을 사연으로 쓰거나, 메모가 없으면 가공 사연을 채움)
+    const clientStory = clientRequest.memo || '';
     if (!clientStory) {
-      toast.info('의뢰인의 접수 메모 데이터가 비어있어 기본 법률 진술문 템플릿을 생성합니다.');
-    } else {
-      toast.success('의뢰인이 사전 접수한 상담 사연을 성공적으로 불러왔습니다.');
+      toast.info('의뢰인의 접수 메모가 없습니다. 의뢰인 진술 내용을 직접 입력해 주세요.');
+      return;
     }
+    toast.success('의뢰인이 사전 접수한 상담 사연을 불러왔습니다.');
     setStatement(prev => ({
       ...prev,
-      debtorStoryRaw: clientStory || '의뢰인 작성: 생활비 부족과 병원비 지출로 부채가 누적되었으며 현재 소득이 없어 변제가 불가능함.',
-      debtorStoryPolished: prev.debtorStoryPolished || `채무자는 과거 성실히 생활하여 왔으나, 급작스러운 소득 중단과 만성 질환으로 인한 치료비 지출로 일상생활비가 누적되어 불가피하게 지급불능 상태에 이르게 되었습니다.`
+      debtorStoryRaw: clientStory,
     }));
   };
 
@@ -385,7 +305,7 @@ export default function BankruptcyManagementTab({
     const newItem: DisposedAssetItem = {
       id: `disp-${Date.now()}`,
       itemTitle: '',
-      disposedDate: new Date().toISOString().split('T')[0],
+      disposedDate: '',
       disposedAmount: 0,
       counterparty: '',
       usageDetail: ''
@@ -408,7 +328,7 @@ export default function BankruptcyManagementTab({
     const newItem: ReturnedDepositItem = {
       id: `ret-${Date.now()}`,
       housingAddress: '',
-      returnedDate: new Date().toISOString().split('T')[0],
+      returnedDate: '',
       returnedAmount: 0,
       usageDetail: ''
     };

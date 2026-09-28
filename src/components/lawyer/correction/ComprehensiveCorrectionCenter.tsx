@@ -56,7 +56,10 @@ export default function ComprehensiveCorrectionCenter({
 }: ComprehensiveCorrectionCenterProps) {
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || '2026개회(접수대기)';
+  const caseNumber = crmExt.courtCase?.caseNumber || '(사건번호 미입력)';
+  // 저장된 보정 작업본 (CRM 확장 데이터) — 이전에는 저장 기능이 없어 탭을 벗어나면 모두 사라졌고,
+  // 모든 의뢰인에게 가짜 보정명령·답변·소명표(신한저축은행 1,500만 원 등)가 채워져 있었음
+  const savedDraft = (crmExt as any).correctionBriefDraft as Partial<CorrectionBriefData> | undefined;
 
   // 1. 현재 관리 중인 보정 데이터 (초기값 설정)
   const [activeRound, setActiveRound] = useState<number>(1);
@@ -66,124 +69,39 @@ export default function ComprehensiveCorrectionCenter({
   >('loan');
 
   // 송달일 및 기한 관리 (기본 14일)
-  const [servedDate, setServedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  // 송달일은 보정권고 송달 후 직접 입력 (이전: 오늘 날짜로 자동 설정 → 기한·D-Day가 실제와 달라짐)
+  const [servedDate, setServedDate] = useState<string>(() => savedDraft?.servedDate || '');
 
   // 기한 계산 (송달일 + 14일)
   const dueDate = useMemo(() => {
-    const d = new Date(servedDate);
+    if (!servedDate) return '';
+    const d = new Date(servedDate + 'T00:00:00');
     d.setDate(d.getDate() + 14);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [servedDate]);
 
   // D-Day 계산
   const dDay = useMemo(() => {
+    if (!dueDate) return Number.NaN;
     const due = new Date(dueDate + 'T23:59:59').getTime();
     const now = Date.now();
     return Math.ceil((due - now) / (1000 * 60 * 60 * 24));
   }, [dueDate]);
 
   // 7대 소명표 상태값
-  const [recentLoans, setRecentLoans] = useState<RecentLoanUsageItem[]>([
-    {
-      id: 'loan-1',
-      loanDate: '2025-08-15',
-      lenderName: '신한저축은행',
-      amount: 15000000,
-      usageCategory: 'DEBT_REPAYMENT',
-      specificUsage: '기존 국민카드 및 삼성카드 연체 대금 상환에 전액 충당',
-      evidenceDocName: '금융거래확인서 및 대환송금증',
-      verified: true
-    }
-  ]);
-
-  const [creditCards, setCreditCards] = useState<CreditCardUsageItem[]>([
-    {
-      id: 'card-1',
-      transactionDate: '2025-10-02',
-      cardCompany: '현대카드',
-      merchantName: '이마트 및 동네마트',
-      amount: 450000,
-      purpose: '4인 가족 기본 생필품 및 식료품 구매',
-      isLuxuryOrGambling: false,
-      evidenceNote: '카드 이용내역서 및 영수증'
-    }
-  ]);
-
-  const [highValueTrans, setHighValueTrans] = useState<HighValueTransactionItem[]>([
-    {
-      id: 'trans-1',
-      transDate: '2025-09-10',
-      bankName: '국민은행',
-      transType: 'WITHDRAWAL',
-      amount: 1200000,
-      counterparty: '홍길동(모)',
-      purposeDetail: '어머니 병원 입원 및 수술비 지원 (진단서 첨부)',
-      evidenceDocName: '계좌이체확인증'
-    }
-  ]);
-
-  const [monthlyIncomes, setMonthlyIncomes] = useState<IncomeCalculationMonth[]>([
-    { month: '2025-11', grossPay: 3200000, statutoryDeductions: 450000, netPay: 2750000, note: '기본급' },
-    { month: '2025-12', grossPay: 3350000, statutoryDeductions: 470000, netPay: 2880000, note: '연말 성과급 일부' },
-    { month: '2026-01', grossPay: 3200000, statutoryDeductions: 450000, netPay: 2750000, note: '기본급' }
-  ]);
-
-  const [insurances, setInsurances] = useState<InsuranceSurrenderItem[]>([
-    {
-      id: 'ins-1',
-      insurerName: '삼성생명',
-      policyNumber: '112-9984-21',
-      insuredPerson: clientName,
-      contractorName: clientName,
-      surrenderRefund: 2200000,
-      loanAgainstPolicy: 0,
-      netRefund: 2200000,
-      statutoryExemption: 1500000,
-      liquidationInclusion: 700000,
-      isEssentialMedical: true
-    }
-  ]);
-
-  const [pastCases, setPastCases] = useState<PastCaseComparisonItem[]>([]);
-  const [familyAssets, setFamilyAssets] = useState<FamilyAssetOriginItem[]>([]);
+  const [recentLoans, setRecentLoans] = useState<RecentLoanUsageItem[]>(() => savedDraft?.recentLoans || []);
+  const [creditCards, setCreditCards] = useState<CreditCardUsageItem[]>(() => savedDraft?.creditCards || []);
+  const [highValueTrans, setHighValueTrans] = useState<HighValueTransactionItem[]>(() => savedDraft?.highValueTrans || []);
+  const [monthlyIncomes, setMonthlyIncomes] = useState<IncomeCalculationMonth[]>(() => savedDraft?.monthlyIncomes || []);
+  const [insurances, setInsurances] = useState<InsuranceSurrenderItem[]>(() => savedDraft?.insurances || []);
+  const [pastCases, setPastCases] = useState<PastCaseComparisonItem[]>(() => savedDraft?.pastCases || []);
+  const [familyAssets, setFamilyAssets] = useState<FamilyAssetOriginItem[]>(() => savedDraft?.familyAssets || []);
 
   // 의뢰인 추가 소명서류 요청 목록
-  const [docRequests, setDocRequests] = useState<CorrectionDocumentRequestItem[]>([
-    {
-      id: 'req-1',
-      docTitle: '최근 1년 주거래은행 전체 입출금거래내역서 (엑셀/PDF)',
-      targetTarget: '본인',
-      description: '50만 원 이상 거래내역에 마커 표기하여 제출 요망',
-      status: 'SUBMITTED',
-      evidenceNumber: '소갑 제1호증의 1'
-    },
-    {
-      id: 'req-2',
-      docTitle: '보험 해약환급금 증명서 및 예상해약환급금 확인서',
-      targetTarget: '본인',
-      description: '생명/손해보험협회 조회결과 및 각 보험사 환급금 내역',
-      status: 'APPROVED',
-      evidenceNumber: '소갑 제2호증'
-    }
-  ]);
+  const [docRequests, setDocRequests] = useState<CorrectionDocumentRequestItem[]>(() => (savedDraft as any)?.docRequests || []);
 
   // 보정 답변 항목
-  const [answers, setAnswers] = useState<{ pointNumber: number; courtInstruction: string; debtorResponse: string; attachedEvidence?: string }[]>([
-    {
-      pointNumber: 1,
-      courtInstruction: '최근 1년 이내에 발생한 채무(신한저축은행 대출금 1,500만 원)의 구체적 사용처를 소명하고 통장거래내역 등 객관적 자료를 제출할 것.',
-      debtorResponse: '신한저축은행 대출금 1,500만 원은 기존 고금리 카드대금(국민카드 800만 원, 삼성카드 700만 원)을 대환 상환하는 데 전액 충당되었으며, 사치나 유흥 또는 재산 은닉에 사용된 바가 전혀 없습니다. 이에 대환 상환 이체증을 첨부하여 소명합니다.',
-      attachedEvidence: '소갑 제1호증 (대환 상환 계좌이체확인증)'
-    },
-    {
-      pointNumber: 2,
-      courtInstruction: '보험 해약환급금 합계액 중 150만 원을 초과하는 금액은 청산가치에 반영하여 수정 재산목록 및 수정 변제계획안을 제출할 것.',
-      debtorResponse: '삼성생명 보장성 보험의 순 해약환급금 220만 원 중 법정 압류금지액 150만 원을 공제한 잔여액 70만 원을 청산가치에 성실히 반영하였으며, 이에 따른 수정 재산목록 및 수정 변제계획안을 함께 제출합니다.',
-      attachedEvidence: '소갑 제2호증 (수정 변제계획안 및 재산목록)'
-    }
-  ]);
+  const [answers, setAnswers] = useState<{ pointNumber: number; courtInstruction: string; debtorResponse: string; attachedEvidence?: string }[]>(() => savedDraft?.answers || []);
 
   // 보정서 인쇄 모달 상태
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -250,6 +168,24 @@ export default function ComprehensiveCorrectionCenter({
     highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests
   ]);
 
+  // 작업본 자동 저장 (입력이 멈춘 뒤 1.5초)
+  const isFirstRenderRef = React.useRef(true);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  React.useEffect(() => {
+    if (isFirstRenderRef.current) { isFirstRenderRef.current = false; return; }
+    setSaveState('saving');
+    const t = setTimeout(async () => {
+      try {
+        await onUpdateCrmExt({ correctionBriefDraft: { ...fullBriefData, updatedAt: new Date().toISOString() } } as any);
+        setSaveState('saved');
+      } catch {
+        setSaveState('error');
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servedDate, answers, recentLoans, creditCards, highValueTrans, monthlyIncomes, insurances, pastCases, familyAssets, docRequests]);
+
   // 회생위원 7대 표준 보정명령 템플릿 적용
   const handleApplyTemplate = (tpl: StandardCorrectionTemplate) => {
     const text = tpl.debtorResponseTemplate({ clientName, courtName });
@@ -307,9 +243,26 @@ export default function ComprehensiveCorrectionCenter({
   };
 
   // 기한 연장 신청서 작성 처리
-  const handleRequestExtension = () => {
+  // 기한연장신청서: 문안 복사 (이전: 아무것도 만들지 않고 '생성되었습니다' 표시)
+  const handleRequestExtension = async () => {
+    const text = `기한연장신청서
+
+사건: ${caseNumber}
+채무자: ${clientName}
+
+위 사건에 관하여 채무자는 보정권고(송달일 ${servedDate || '(미입력)'})에 따른 보정서 제출기한(${dueDate || '(미입력)'})을 1개월 연장하여 주실 것을 신청합니다.
+
+신청이유: 보정에 필요한 자료(금융거래내역 등) 발급에 시일이 소요되고 있습니다.
+
+${new Date().getFullYear()}.  .  .
+채무자 대리인 ${activeLawyerName}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('기한연장신청서 문안이 복사되었습니다. 전자소송 서식에 붙여넣어 제출해 주세요.');
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+    }
     setShowExtensionModal(false);
-    toast.success('📅 1개월 보정기한 연장신청서(기한연장신청서)가 법원 전자소송 제출 규격으로 생성되었습니다!');
   };
 
   // 100만 원 소명표 변호사 일괄 승인 및 소갑호증 채번
@@ -371,7 +324,7 @@ export default function ComprehensiveCorrectionCenter({
                     ? 'bg-rose-100 text-rose-700 border-rose-300 animate-pulse' 
                     : 'bg-amber-100 text-amber-800 border-amber-300'
                 }`}>
-                  {dDay < 0 ? `🚨 기한 초과 (${Math.abs(dDay)}일 경과)` : dDay === 0 ? '🚨 오늘 제출 마감 (D-Day)' : `⏳ D-${dDay}일 남음`}
+                  {Number.isNaN(dDay) ? '송달일 미입력' : dDay < 0 ? `🚨 기한 초과 (${Math.abs(dDay)}일 경과)` : dDay === 0 ? '🚨 오늘 제출 마감 (D-Day)' : `⏳ D-${dDay}일 남음`}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -468,7 +421,7 @@ export default function ComprehensiveCorrectionCenter({
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
             <span className="text-slate-500 font-medium">법정 제출기한 (14일):</span>
-            <span className="font-extrabold font-mono text-slate-900">{dueDate}</span>
+            <span className="font-extrabold font-mono text-slate-900">{dueDate || '송달일 입력 필요'}</span>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
@@ -1119,11 +1072,17 @@ export default function ComprehensiveCorrectionCenter({
               <span>📁 의뢰인 추가 소명서류 요청 및 승인/반려</span>
             </h4>
             <button
-              onClick={() => toast.success(`📱 ${clientName} 의뢰인에게 카카오 알림톡으로 보정서류 제출 안내가 발송되었습니다.`)}
+              onClick={async () => {
+                // 알림톡 연동 전: 안내 문구 복사 (이전: 실제 발송 없이 '발송되었습니다' 표시)
+                const pending = docRequests.filter(r => r.status !== 'APPROVED').map(r => `- ${r.docTitle}`).join('\n');
+                const text = `[${clientName}님] 법원 보정에 필요한 추가 서류를 마이페이지 서류함에 제출해 주세요.${pending ? '\n' + pending : ''}${dueDate ? `\n제출 기한: ${dueDate}` : ''}`;
+                try { await navigator.clipboard.writeText(text); toast.success('보정서류 제출 안내 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
+                catch { toast.error('클립보드 복사에 실패했습니다.'); }
+              }}
               className="text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-xl border border-amber-300 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
             >
               <Send className="w-3.5 h-3.5 text-amber-800" />
-              카카오 알림톡 재요청
+              제출 안내 문구 복사
             </button>
           </div>
 
@@ -1253,7 +1212,7 @@ export default function ComprehensiveCorrectionCenter({
             <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 font-mono text-slate-700">
               <div>사건번호: {caseNumber}</div>
               <div>기존기한: {dueDate}</div>
-              <div className="text-blue-600 font-bold">연장요청기한: 2026. 04. 15. (1개월 연장)</div>
+              <div className="text-blue-600 font-bold">연장요청: 기존 기한으로부터 1개월</div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowExtensionModal(false)} className="px-3 py-1.5 text-xs text-slate-500">

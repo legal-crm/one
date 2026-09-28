@@ -433,7 +433,7 @@ const CUSTOM_TEMPLATES_KEY = 'lawyer_custom_contract_templates';
 export function applyTemplatePlaceholders(content: string, vars: PlaceholderVariables): string {
   if (!content) return '';
   const clientName = vars.clientName || '의뢰인';
-  const clientPhone = vars.clientPhone || '010-0000-0000';
+  const clientPhone = vars.clientPhone || '';
   const clientAddress = vars.clientAddress || '주소 미입력';
   const lawyerName = vars.lawyerName || '담당 변호사';
   const lawFirmName = vars.lawFirmName || '법무법인';

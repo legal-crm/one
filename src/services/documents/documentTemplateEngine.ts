@@ -4,6 +4,7 @@
  */
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import { ALL_LEGAL_DOC_REGISTRY, type LegalDocItem } from './legalDocRegistry';
+import { getOfficeProfile } from '../lawyer/officeProfile';
 
 export interface BoundDocumentData {
   docCode: string;
@@ -36,13 +37,13 @@ export function bindDocumentVariables(
   const courtCase = crmExt?.courtCase;
 
   const clientName = client.clientName || profile?.name || '신청인';
-  const courtName = courtCase?.courtName || profile?.selectedCourt || client.court || '서울회생법원';
-  const caseNumber = courtCase?.caseNumber || (doc.caseScope === 'BANKRUPTCY' ? '2026하면 10482호' : '2026개회 50284호');
-  
-  // 주민번호 (기본 목업 마스킹 처리)
-  const debtorRrn = (profile as any)?.rrn || '820415-1******';
-  const debtorPhone = client.phone || profile?.phone || '010-0000-0000';
-  const debtorAddress = profile?.address || '서울특별시 서초구 서초대로 250';
+  // 미입력 항목은 빈 값으로 둔다 (이전: 가짜 사건번호·주민번호·주소·연락처가 법원 서식에 채워짐)
+  const courtName = courtCase?.courtName || profile?.selectedCourt || client.court || '';
+  const caseNumber = courtCase?.caseNumber || '';
+  const debtorRrn = (profile as any)?.rrn || '';
+  const debtorPhone = client.phone || profile?.phone || '';
+  const debtorAddress = profile?.address || '';
+  const office = getOfficeProfile(lawyerName);
 
   // 1. 기본 신청취지
   let purpose = doc.defaultPurpose || '';
@@ -93,7 +94,7 @@ export function bindDocumentVariables(
     debtorPhone,
     debtorAddress,
     agentLawyerName: lawyerName,
-    agentLawfirm: '법무법인 리걸케어 (담당변호사: ' + lawyerName + ')',
+    agentLawfirm: office.firmName ? `${office.firmName} (담당변호사: ${lawyerName})` : `담당변호사: ${lawyerName}`,
     purpose,
     reason,
     evidenceList,
@@ -101,9 +102,9 @@ export function bindDocumentVariables(
     customFields: {
       monthlyIncome: profile?.income || 0,
       totalDebt: profile?.debtTotal || 0,
-      jobType: profile?.jobType || profile?.employmentType || '급여소득자',
-      companyName: profile?.companyName || '주식회사 한국상사',
-      creditorCount: profile?.creditorCount || 5
+      jobType: profile?.jobType || profile?.employmentType || '',
+      companyName: profile?.companyName || '',
+      creditorCount: profile?.creditorCount || 0
     }
   };
 }

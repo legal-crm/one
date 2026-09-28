@@ -10,12 +10,11 @@ interface PrintableBankruptcyPetitionModalProps {
   data: BankruptcyFullCaseData;
 }
 
-export default function PrintableBankruptcyPetitionModal({
+function PrintableBankruptcyPetitionModalInner({
   isOpen,
   onClose,
   data
 }: PrintableBankruptcyPetitionModalProps) {
-  if (!isOpen) return null;
 
   const [activeSection, setActiveSection] = useState<'all' | 'petition' | 'statement' | 'creditors' | 'assets' | 'living' | 'docs' | 'power'>('all');
 
@@ -724,4 +723,10 @@ export default function PrintableBankruptcyPetitionModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function PrintableBankruptcyPetitionModal(props: React.ComponentProps<typeof PrintableBankruptcyPetitionModalInner>) {
+  if (!props.isOpen) return null;
+  return <PrintableBankruptcyPetitionModalInner {...props} />;
 }

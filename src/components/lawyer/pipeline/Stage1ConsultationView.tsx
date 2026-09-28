@@ -264,14 +264,14 @@ export default function Stage1ConsultationView({
                     🎉 고객 제안서 확인 & 전화 상담 요청 완료!
                   </span>
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-500/40">
-                    연락처 공개 완료: {clientRequest.phone || '010-6623-7195'}
+                    연락처 공개 완료: {clientRequest.phone || '미등록'}
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
                   의뢰인({realName}님)이 제안서를 확인하고 1:1 전화 상담을 요청했습니다
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-                  고객이 변호사님의 제안서를 확인하고 본인의 실명(<strong>{realName}</strong>)과 연락처(<strong>{clientRequest.phone || '010-6623-7195'}</strong>)를 제공하였습니다. 이제 우측 소통창의 전화 걸기 또는 상담을 통해 정식 수임계약을 체결하세요.
+                  고객이 변호사님의 제안서를 확인하고 본인의 실명(<strong>{realName}</strong>)과 연락처(<strong>{clientRequest.phone || '미등록'}</strong>)를 제공하였습니다. 이제 우측 소통창의 전화 걸기 또는 상담을 통해 정식 수임계약을 체결하세요.
                 </p>
               </div>
             </div>

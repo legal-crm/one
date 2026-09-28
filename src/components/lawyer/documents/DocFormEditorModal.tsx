@@ -28,7 +28,7 @@ interface DocFormEditorModalProps {
   onOpenMobileFillModal?: (token: string) => void;
 }
 
-export default function DocFormEditorModal({
+function DocFormEditorModalInner({
   isOpen,
   onClose,
   docItem,
@@ -38,7 +38,6 @@ export default function DocFormEditorModal({
   onAttachToFilingPackage,
   onOpenMobileFillModal
 }: DocFormEditorModalProps) {
-  if (!isOpen) return null;
 
   const [boundData, setBoundData] = useState<BoundDocumentData>(() => {
     return bindDocumentVariables(docItem, clientRequest, crmExt, activeLawyerName);
@@ -78,7 +77,7 @@ export default function DocFormEditorModal({
     const req = ClientMobileDocService.createRequest(
       clientRequest.id,
       clientRequest.clientName || '신청인',
-      clientRequest.phone || '010-0000-0000',
+      clientRequest.phone || '',
       docItem.docCode,
       docItem.title
     );
@@ -416,4 +415,10 @@ export default function DocFormEditorModal({
       </div>
     </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function DocFormEditorModal(props: React.ComponentProps<typeof DocFormEditorModalInner>) {
+  if (!props.isOpen) return null;
+  return <DocFormEditorModalInner {...props} />;
 }

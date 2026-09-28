@@ -19,7 +19,7 @@ interface RepealDefensePetitionModalProps {
   totalOverdueAmount?: number;
 }
 
-export default function RepealDefensePetitionModal({
+function RepealDefensePetitionModalInner({
   isOpen,
   onClose,
   petitionType,
@@ -29,7 +29,6 @@ export default function RepealDefensePetitionModal({
   overdueCount = 3,
   totalOverdueAmount = 1440000
 }: RepealDefensePetitionModalProps) {
-  if (!isOpen) return null;
 
   const [copied, setCopied] = useState(false);
   const clientName = clientRequest.clientName || '신청인';
@@ -44,7 +43,7 @@ export default function RepealDefensePetitionModal({
 사   건 : ${caseNumber} 개인회생
 신 청 인(채무자) : ${clientName}
 주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || '010-0000-0000'}
+연 락 처 : ${clientRequest.phone || ''}
 대 리 인 : 변호사 ${activeLawyerName}
 
 신  청  취  지
@@ -86,7 +85,7 @@ ${courtName} 귀중`;
 사   건 : ${caseNumber} 개인회생
 신 청 인(채무자) : ${clientName}
 주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || '010-0000-0000'}
+연 락 처 : ${clientRequest.phone || ''}
 대 리 인 : 변호사 ${activeLawyerName}
 
 신  청  취  지
@@ -133,7 +132,7 @@ ${courtName} 귀중`;
 사   건 : ${caseNumber} 개인회생
 항 고 인(채무자) : ${clientName}
 주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || '010-0000-0000'}
+연 락 처 : ${clientRequest.phone || ''}
 대 리 인 : 변호사 ${activeLawyerName}
 
 원 결 정 : ${courtName} 2026. OO. OO.자 개인회생절차폐지결정
@@ -306,4 +305,10 @@ ${courtName} 귀중`;
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function RepealDefensePetitionModal(props: React.ComponentProps<typeof RepealDefensePetitionModalInner>) {
+  if (!props.isOpen) return null;
+  return <RepealDefensePetitionModalInner {...props} />;
 }

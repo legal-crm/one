@@ -138,12 +138,12 @@ export function generateAll8AutoDrafts(
   const now = new Date().toISOString();
 
   const creditors = crmExt?.repaymentPlan?.creditors || [];
-  const creditorCount = creditors.length || Number(clientRequest.creditorCount) || 3;
-  const totalPrincipal = crmExt?.repaymentPlan?.totalPrincipal || (creditorCount * 12000000);
+  const creditorCount = creditors.length || Number(clientRequest.creditorCount) || 0;
+  const totalPrincipal = crmExt?.repaymentPlan?.totalPrincipal || 0;
   // 청산가치 0원도 정상 반영되도록 널 병합 연산자(??) 사용
-  const totalLiquidation = crmExt?.repaymentPlan?.totalLiquidationValue ?? 8500000;
-  const monthlyIncome = crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 3500000;
-  const livingExpense = crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 1500000;
+  const totalLiquidation = crmExt?.repaymentPlan?.totalLiquidationValue ?? 0;
+  const monthlyIncome = crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 0;
+  const livingExpense = crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 0;
   const monthlyRepayment = Math.max(0, monthlyIncome - livingExpense);
   const months = crmExt?.repaymentPlan?.months || 36;
   const totalRepayment = monthlyRepayment * months;
@@ -152,7 +152,7 @@ export function generateAll8AutoDrafts(
   const unsecuredPrincipal = (crmExt?.repaymentPlan as any)?.unsecuredPrincipal || Math.max(1, totalPrincipal - securedAmount);
   const repaymentRate = (crmExt?.repaymentPlan as any)?.totalRepaymentRate ?? 
     (unsecuredPrincipal > 0 ? Math.min(100, Math.round((totalRepayment / unsecuredPrincipal) * 100)) : 0);
-  const lawyerName = crmExt?.petitionInfo?.lawyerName || '정충원 변호사';
+  const lawyerName = crmExt?.petitionInfo?.lawyerName || '';
 
   const forms: Record<string, AutoDraftFormItem> = {};
 
@@ -169,10 +169,10 @@ export function generateAll8AutoDrafts(
 
     switch (def.code) {
       case 'R01':
-        note = `${courtName} 관할 접수 · 신청인 ${clientName} · 환급계좌: ${crmExt?.petitionInfo?.refundBank || '우체국'}`;
+        note = `${courtName} 관할 접수 · 신청인 ${clientName} · 환급계좌: ${crmExt?.petitionInfo?.refundBank || ''}`;
         draftPayload.courtName = courtName;
         draftPayload.clientName = clientName;
-        draftPayload.applicantRrn = (clientRequest as any).rrn || '820415-1******';
+        draftPayload.applicantRrn = (clientRequest as any).rrn || '';
         draftPayload.totalPrincipal = totalPrincipal;
         draftPayload.totalLiquidation = totalLiquidation;
         draftPayload.creditorCount = creditorCount;

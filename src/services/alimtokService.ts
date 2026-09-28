@@ -92,36 +92,36 @@ export const sendAlimtok = async (
     }
 
     if (response.status === 404) {
-      return { 
-        ok: true, 
-        mock: true, 
+      // 로컬 개발 서버 등 API 경로가 없는 환경: 발송되지 않았음을 명확히 반환
+      return {
+        ok: false,
+        mock: true,
         channel: 'mock_alimtalk',
-        receiptNum: `MOCK-${Date.now()}`,
+        error: '알림톡 발송 API를 찾을 수 없습니다 (발송되지 않음).',
         sentAt: new Date().toISOString(),
-        rendered 
+        rendered
       };
     }
 
     const data = await response.json();
     return { 
-      ok: data.ok !== undefined ? data.ok : response.ok, 
+      // 서버가 팝빌 미설정으로 모의 응답(mock)을 주면 실제 발송이 아니므로 실패로 취급
+      ok: (data.ok !== undefined ? data.ok : response.ok) && !data.mock,
+      error: data.mock ? (data.notice || '알림톡 서비스(팝빌)가 설정되지 않아 발송되지 않았습니다.') : data.error,
       mock: data.mock,
       channel: data.channel,
       receiptNum: data.receiptNum,
       sentAt: data.sentAt,
       notice: data.notice,
-      error: data.error, 
       rendered 
     };
   } catch (error: any) {
-    // 네트워크 실패나 개발환경 데모 모드 지원
-    return { 
-      ok: true, 
-      mock: true, 
-      channel: 'mock_alimtalk',
-      receiptNum: `MOCK-${Date.now()}`,
+    // 네트워크 실패: 발송 실패로 반환 (이전: 성공으로 반환해 '발송 완료'가 표시됨)
+    return {
+      ok: false,
+      error: '네트워크 오류로 알림톡을 발송하지 못했습니다.',
       sentAt: new Date().toISOString(),
-      rendered 
+      rendered
     };
   }
 };
@@ -332,8 +332,8 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
   };
   saveAlimtokLog(params.clientId, log);
 
-  // 의뢰인 마이페이지 인앱 알림 동시 적재
-  try {
+  // 의뢰인 마이페이지 인앱 알림 동시 적재 (실제 발송된 경우만)
+  if (res.ok) try {
     const config = ALIMTOK_MILESTONE_CONFIG[params.milestone];
     addClientNotification({
       type: 'fee_reminder',

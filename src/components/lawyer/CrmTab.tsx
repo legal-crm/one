@@ -6,7 +6,8 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud, SlidersHorizontal
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud, SlidersHorizontal,
+  Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -66,6 +67,7 @@ import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView'
 import ClientCommunicationSidePanel from './pipeline/ClientCommunicationSidePanel';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
+import { localYmd } from '../../utils/localDate';
 import { inspectPdfFile } from '../../services/pdfQualityService';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { syncCompanionWithCrmCase } from '../../services/companionService';
@@ -345,23 +347,23 @@ export default function CrmTab({
     setPeriodFilter(val);
     const now = new Date();
     if (val === 'today') {
-      const t = now.toISOString().slice(0, 10);
+      const t = localYmd(now);
       setDateFrom(t);
       setDateTo(t);
     } else if (val === 'week') {
       const d = now.getDay();
       const mon = new Date(now);
       mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
-      setDateFrom(mon.toISOString().slice(0, 10));
-      setDateTo(now.toISOString().slice(0, 10));
+      setDateFrom(localYmd(mon));
+      setDateTo(localYmd(now));
     } else if (val === 'month') {
       setDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
-      setDateTo(now.toISOString().slice(0, 10));
+      setDateTo(localYmd(now));
     } else if (val === '3month') {
       const ago = new Date(now);
       ago.setMonth(ago.getMonth() - 3);
-      setDateFrom(ago.toISOString().slice(0, 10));
-      setDateTo(now.toISOString().slice(0, 10));
+      setDateFrom(localYmd(ago));
+      setDateTo(localYmd(now));
     } else {
       setDateFrom('');
       setDateTo('');
@@ -401,22 +403,31 @@ export default function CrmTab({
     });
   }, [activeLawyer.id, activeLawyer.name]);
 
+  // ── 이 변호사(또는 같은 사무소)가 담당·참여 중인 요청만 CRM 대상 ──
+  // (이전: requestType === 'open'이면 누구의 요청이든 모든 변호사 CRM·엑셀 내보내기에 포함됨)
+  const isMine = useCallback((r: ConsultRequest): boolean => {
+    if (!activeLawyer.id) return false;
+    const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) ||
+                        r.selectedLawyerId === activeLawyer.id ||
+                        r.acceptedLawyerIds?.includes(activeLawyer.id) ||
+                        r.assignedLawyerId === activeLawyer.id ||
+                        (r as any).createdByLawyerId === activeLawyer.id ||
+                        (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
+                        (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id)) ||
+                        // 이 변호사가 CRM에서 직접 등록한 외부 의뢰인
+                        (r.id.startsWith('ext-') && Boolean(crmData[r.id]));
+    const sameFirmMatch = Boolean(activeLawyer.lawFirmId) && r.selectedLawyerIds?.some(id => {
+      const targetLawyer = lawyers.find(l => l.id === id);
+      return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+    });
+    return Boolean(directMatch || sameFirmMatch);
+  }, [activeLawyer.id, activeLawyer.email, activeLawyer.lawFirmId, lawyers, crmData]);
+  const myRequests = useMemo(() => requests.filter(isMine), [requests, isMine]);
+
   // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 (현재 변호사 관련 요청만) ──
   useEffect(() => {
     requests.forEach(r => {
-      // 현재 변호사에게 관련된 요청만 동기화
-      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
-                          r.selectedLawyerId === activeLawyer.id ||
-                          r.acceptedLawyerIds?.includes(activeLawyer.id) ||
-                          r.assignedLawyerId === activeLawyer.id ||
-                          (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                          (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
-      const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-        const targetLawyer = lawyers.find(l => l.id === id);
-        return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-      });
-      const openMatch = r.requestType === 'open';
-      if (!directMatch && !sameFirmMatch && !openMatch) return;
+      if (!isMine(r)) return;
 
       if (r.status === 'cancelled') {
         const ext = crmData[r.id] || createDefaultCrmExtension(r.id);
@@ -451,12 +462,28 @@ export default function CrmTab({
     return crmData[clientId] || createDefaultCrmExtension(clientId);
   }, [crmData]);
 
-  const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>) => {
+  /** @returns 서버 저장 성공 여부 (실패 시 이 기기에만 저장된 상태) */
+  const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> => {
     const current = getCrmExt(clientId);
     const updated = { ...current, ...updates, lastActivityAt: new Date().toISOString() };
     setCrmData(prev => ({ ...prev, [clientId]: updated }));
-    await saveCrmClient(clientId, updated);
+    return saveCrmClient(clientId, updated);
   }, [getCrmExt]);
+
+  /** 하위 탭용 저장: 서버 저장 실패 시 오류 안내 후 예외 → 하위 컴포넌트의 '저장 완료' 안내가 뜨지 않게 함 */
+  const saveOrThrow = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<void> => {
+    const ok = await updateCrmExt(clientId, updates);
+    if (!ok) {
+      toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+      throw new Error('서버 저장 실패 (이 기기에만 임시 저장됨)');
+    }
+  }, [updateCrmExt]);
+
+  /** 저장 결과에 따라 성공/실패 토스트 */
+  const notifySaved = useCallback((ok: boolean, successMsg: string) => {
+    if (ok) toast.success(successMsg);
+    else toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+  }, []);
 
   // ── 현재 권한 확인 ──
   const currentPermissions = activeStaff?.permissions || DEFAULT_PERMISSIONS.OWNER;
@@ -465,18 +492,7 @@ export default function CrmTab({
   const filteredRequests = useMemo(() => {
     let result = requests.filter(r => {
       // 현재 변호사에게 관련된 요청만 표시 (지정, 수락, 배정, 제안서 발송 포함)
-      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
-                          r.selectedLawyerId === activeLawyer.id ||
-                          r.acceptedLawyerIds?.includes(activeLawyer.id) ||
-                          r.assignedLawyerId === activeLawyer.id ||
-                          (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                          (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
-      const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-        const targetLawyer = lawyers.find(l => l.id === id);
-        return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-      });
-      const openMatch = r.requestType === 'open';
-      if (!directMatch && !sameFirmMatch && !openMatch) return false;
+      if (!isMine(r)) return false;
 
       const ext = getCrmExt(r.id);
 
@@ -487,9 +503,12 @@ export default function CrmTab({
         if (ext.deletedAt) return false; // 일반 뷰에서는 삭제된 건 숨김
       }
 
-      const matchSearch = 
-        r.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        r.phone.includes(search);
+      // 검색은 화면에 표시되는 값(계약 전 가명·마스킹 번호) 기준 — 마스킹된 실명·번호로 역검색 불가
+      const q = search.trim().toLowerCase();
+      const shownPhone = getDisplayPhoneNumber(r);
+      const matchSearch = !q ||
+        getDisplayClientName(r).toLowerCase().includes(q) ||
+        (!shownPhone.includes('*') && shownPhone.replace(/-/g, '').includes(q.replace(/-/g, '')));
       
       const matchStatus = statusFilter === 'all' ||
         (statusFilter === 'consulting' ? ['requested','consulting'].includes(ext.crmStatus) :
@@ -542,8 +561,10 @@ export default function CrmTab({
         case 'debtTotal': cmp = a.financialProfile.debtTotal - b.financialProfile.debtTotal; break;
         case 'income': cmp = a.financialProfile.income - b.financialProfile.income; break;
         case 'lastActivity': {
-          const aLast = getCrmExt(a.id).activities.length > 0 ? new Date(getCrmExt(a.id).activities[getCrmExt(a.id).activities.length - 1].timestamp).getTime() : new Date(a.createdAt).getTime();
-          const bLast = getCrmExt(b.id).activities.length > 0 ? new Date(getCrmExt(b.id).activities[getCrmExt(b.id).activities.length - 1].timestamp).getTime() : new Date(b.createdAt).getTime();
+          const aActs = getCrmExt(a.id).activities || [];
+          const bActs = getCrmExt(b.id).activities || [];
+          const aLast = aActs.length > 0 ? new Date(aActs[aActs.length - 1].createdAt).getTime() : new Date(a.createdAt).getTime();
+          const bLast = bActs.length > 0 ? new Date(bActs[bActs.length - 1].createdAt).getTime() : new Date(b.createdAt).getTime();
           cmp = aLast - bLast; break;
         }
         case 'reminderCount': {
@@ -561,7 +582,7 @@ export default function CrmTab({
     });
 
     return result;
-  }, [requests, search, statusFilter, hideCompleted, assigneeFilter, channelFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers, showTrash, dateFrom, dateTo, starFilter]);
+  }, [requests, search, statusFilter, hideCompleted, assigneeFilter, channelFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, isMine, showTrash, dateFrom, dateTo, starFilter, getDisplayClientName, getDisplayPhoneNumber]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / perPage));
   const pagedRequests = filteredRequests.slice((page - 1) * perPage, page * perPage);
@@ -570,7 +591,7 @@ export default function CrmTab({
   useEffect(() => { if (page > totalPages) setPage(1); }, [totalPages, page]);
 
   // ── 선택 변경 시 편집 필드 동기화 ──
-  const selectedClient = requests.find(r => r.id === selectedId);
+  const selectedClient = myRequests.find(r => r.id === selectedId);
   const selectedExt = selectedId ? getCrmExt(selectedId) : null;
 
   const activeRepaymentPlan = useMemo(() => {
@@ -580,12 +601,13 @@ export default function CrmTab({
       clientName: selectedClient?.clientName || '신청인',
       courtName: selectedExt?.courtCase?.courtName || '서울회생법원',
       caseNumber: selectedExt?.courtCase?.caseNumber || '',
-      startYearMonth: '2026-12',
+      // 시작월: 다음 달(참고값). 소득·가구원 수는 상담 입력값만 사용 (임의 기본값 350만원·2인 제거)
+      startYearMonth: (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })(),
       paymentDayOfMonth: 25,
       incomeExpense: {
         incomeType: 'salary',
-        monthlyNetIncome: (selectedClient?.financialProfile?.income || 350) * 10000,
-        householdSize: 2,
+        monthlyNetIncome: (selectedClient?.financialProfile?.income || 0) * 10000,
+        householdSize: (selectedClient?.financialProfile?.dependents || 0) + 1,
         region: 'SEOUL',
         actualHousingExpense: 0,
         actualMedicalExpense: 0,
@@ -941,15 +963,10 @@ export default function CrmTab({
       selectedId, actor.id, actor.name, actor.role, 'note_added',
       `메모 추가 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${finalContent.slice(0, 30)}...`
     )];
-    await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
-    
-    if (hasReminder && hasNoteContent) {
-      toast.success('상담 메모 및 리마인더 일정이 저장되었습니다.');
-    } else if (hasReminder) {
-      toast.success('리마인더 일정이 캘린더에 저장되었습니다.');
-    } else {
-      toast.success('상담 메모가 추가되었습니다.');
-    }
+    const ok = await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
+    notifySaved(ok, hasReminder && hasNoteContent
+      ? '상담 메모 및 리마인더 일정이 저장되었습니다.'
+      : hasReminder ? '리마인더 일정이 캘린더에 저장되었습니다.' : '상담 메모가 추가되었습니다.');
 
     setNewNoteContent('');
     setNewNoteOutcome('');
@@ -958,6 +975,20 @@ export default function CrmTab({
     setReminderAction('');
     setReminderTime('');
     setReminderMemo('');
+  };
+
+  /** 소통 패널 등에서 전달된 텍스트를 바로 메모로 저장 (이전: 인자를 무시하고 입력창 상태를 읽어 항상 실패) */
+  const handleAddQuickNote = async (text: string, category: CrmNoteCategory = 'consult') => {
+    if (!selectedId || !text.trim()) return;
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const ext = getCrmExt(selectedId);
+    const note = createCrmNote(category, text.trim(), actor.id, actor.name);
+    const activities = [...ext.activities, createActivityLog(
+      selectedId, actor.id, actor.name, actor.role, 'note_added',
+      `메모 추가 [${CRM_NOTE_CATEGORIES[category]?.label || '일반'}]: ${text.trim().slice(0, 30)}...`
+    )];
+    const ok = await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
+    notifySaved(ok, '메모가 추가되었습니다.');
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -1263,14 +1294,20 @@ export default function CrmTab({
       ext.preInfo = data.specialMemo;
     }
     setCrmData(prev => ({ ...prev, [newId]: ext }));
-    saveCrmClient(newId, ext);
     setIsNewCaseModalOpen(false);
-    toast.success(`${data.clientName} 건이 등록되었습니다.`);
-  }, [setRequests]);
+    saveCrmClient(newId, ext).then(ok => notifySaved(ok, `${data.clientName} 건이 등록되었습니다.`));
+  }, [setRequests, notifySaved]);
 
   /** 대량 업로드 핸들러 */
-  const handleBulkImport = useCallback((cases: ImportedCase[]) => {
-    let successCount = 0;
+  const handleBulkImport = useCallback(async (cases: ImportedCase[]) => {
+    const saves: Promise<boolean>[] = [];
+    // 템플릿의 한글 사건유형 → 내부 코드
+    const mapCaseType = (v?: string): CrmClientExtension['caseType'] => {
+      const t = (v || '').replace(/\s/g, '');
+      if (t.includes('파산')) return 'bankruptcy';
+      if (t.includes('회생') || t === 'individual_rehab') return 'individual_rehab';
+      return undefined;
+    };
     cases.forEach(c => {
       const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const newRequest: ConsultRequest = {
@@ -1299,14 +1336,16 @@ export default function CrmTab({
       ext.crmStatus = 'requested';
       ext.intakeChannel = c.intakeChannel;
       ext.isExternalClient = true;
-      ext.caseType = c.caseType as any;
+      ext.caseType = mapCaseType(c.caseType as any) || ext.caseType;
       ext.region = c.region;
       setCrmData(prev => ({ ...prev, [newId]: ext }));
-      saveCrmClient(newId, ext);
-      successCount++;
+      saves.push(saveCrmClient(newId, ext));
     });
     setIsImportModalOpen(false);
-    toast.success(`${successCount}건 일괄 등록 완료`);
+    const results = await Promise.all(saves);
+    const failed = results.filter(ok => !ok).length;
+    if (failed === 0) toast.success(`${results.length}건 일괄 등록 완료`);
+    else toast.warning(`${results.length}건 중 ${failed}건은 서버 저장에 실패해 이 기기에만 저장되었습니다.`);
   }, [setRequests]);
 
   /** 이탈 사유 확정 핸들러 */
@@ -1322,11 +1361,10 @@ export default function CrmTab({
     updateCrmExt(dropOffTargetId, {
       crmStatus: 'cancelled', notes: [...ext.notes, note], activities,
       dropOffReason: reason, dropOffDetail: detail,
-    });
+    }).then(ok => notifySaved(ok, '이탈 사유가 기록되었습니다.'));
     setIsDropOffModalOpen(false);
     setDropOffTargetId('');
-    toast.success('이탈 사유가 기록되었습니다.');
-  }, [dropOffTargetId, getCrmExt, activeStaff, activeLawyer, updateCrmExt]);
+  }, [dropOffTargetId, getCrmExt, activeStaff, activeLawyer, updateCrmExt, notifySaved]);
 
   /** 즐겨찾기 토글 */
   const handleToggleStar = useCallback(async (clientId: string) => {
@@ -1356,12 +1394,11 @@ export default function CrmTab({
   /** 휴지통 복원 */
   const handleRestore = useCallback(async (clientId: string) => {
     await restoreCrmClient(clientId);
-    const store = { ...crmData };
-    if (store[clientId]) {
-      delete store[clientId].deletedAt;
-      store[clientId].crmStatus = 'requested';
-      setCrmData(store);
-    }
+    setCrmData(prev => {
+      if (!prev[clientId]) return prev;
+      const { deletedAt: _d, ...rest } = prev[clientId];
+      return { ...prev, [clientId]: { ...rest, crmStatus: 'requested' } as CrmClientExtension };
+    });
     toast.success('복원되었습니다.');
   }, [crmData]);
 
@@ -1922,7 +1959,7 @@ export default function CrmTab({
                         {/* 1. 의뢰인 정보 */}
                         <td className="p-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-slate-900 text-sm md:text-base truncate">{r.clientName}</span>
+                            <span className="font-bold text-slate-900 text-sm md:text-base truncate">{getDisplayClientName(r)}</span>
                             {isNewCase(r.createdAt) && <NewBadge />}
                           </div>
                           <div 
@@ -2068,9 +2105,8 @@ export default function CrmTab({
                                           ],
                                         };
                                         setCrmData(prev => ({ ...prev, [r.id]: updated }));
-                                        saveCrmClient(r.id, updated);
                                         setQuickStatusMenuId(null);
-                                        toast.success(`[${r.clientName}] 상태가 [${CRM_STATUS_CONFIG[st].label}]로 변경되었습니다.`);
+                                        saveCrmClient(r.id, updated).then(ok => notifySaved(ok, `[${getDisplayClientName(r)}] 상태가 [${CRM_STATUS_CONFIG[st].label}]로 변경되었습니다.`));
                                       }}
                                       className={`w-full text-left px-2 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
                                         ext.crmStatus === st ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50'
@@ -3132,7 +3168,7 @@ export default function CrmTab({
                           }}
                           onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
                           onUpdateCrmExt={async (patch) => {
-                            await updateCrmExt(selectedId, patch);
+                            await saveOrThrow(selectedId, patch);
                           }}
                         />
                       )}
@@ -3231,7 +3267,7 @@ export default function CrmTab({
                               crmExt={selectedExt}
                               activeLawyer={activeLawyer}
                               pipelineStage={pipelineStage}
-                              onAddNote={(text) => handleAddNote(text, 'general')}
+                              onAddNote={(text) => handleAddQuickNote(text, 'consult')}
                               onClose={() => setShowCommPanel(false)}
                               onUpdateExt={(updated) => {
                                 setCrmData(prev => ({ ...prev, [selectedId]: updated }));
@@ -4282,9 +4318,10 @@ export default function CrmTab({
                               amount: Number(amtEl.value), dueDate: dateEl.value, status: 'pending',
                               memo: labelEl.value,
                             };
-                            await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
+                            if (!(Number(amtEl.value) > 0)) { toast.error('금액은 0보다 커야 합니다.'); return; }
+                            const ok = await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
                             amtEl.value = ''; dateEl.value = '';
-                            toast.success(`${labelEl.value} ${Number(amtEl.value || newInst.amount).toLocaleString()}만원 추가`);
+                            notifySaved(ok, `${labelEl.value} ${newInst.amount.toLocaleString()}만원 추가`);
                           }} className="w-full py-2.5 text-xs font-bold text-white bg-brand rounded-xl hover:bg-brand/90 transition-all press-scale whitespace-nowrap shadow-xs">스케줄 추가</button>
                         </div>
 
@@ -4293,7 +4330,9 @@ export default function CrmTab({
                           <div className="space-y-2">
                             <p className="text-xs font-bold text-slate-700">📋 분납 스케줄 ({schedule.length}건)</p>
                             {schedule.map(inst => {
-                              const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
+                              // 납부일 당일은 연체가 아님 (로컬 날짜 문자열 비교 — UTC 변환 시 당일 09시부터 연체로 표시되던 문제)
+                              const todayYmd = localYmd(new Date());
+                              const isPast = inst.status === 'pending' && inst.dueDate < todayYmd;
                               return (
                                 <div key={inst.id} className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all shadow-xs ${inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}>
                                   <div className="flex-1 min-w-0">
@@ -4317,26 +4356,30 @@ export default function CrmTab({
                                   {inst.status === 'pending' && (
                                     <>
                                       <button 
-                                        onClick={() => setFeeAlimtokModalConfig({ isOpen: true, installment: inst, initialMilestone: isPast ? 'fee_overdue' : (new Date(inst.dueDate).getTime() - new Date().getTime() <= 24 * 60 * 60 * 1000 ? 'fee_due' : 'fee_upcoming') })} 
+                                        onClick={() => setFeeAlimtokModalConfig({ isOpen: true, installment: inst, initialMilestone: isPast ? 'fee_overdue' : (inst.dueDate === todayYmd ? 'fee_due' : 'fee_upcoming') })} 
                                         className="text-[11px] font-bold text-yellow-800 bg-yellow-100 px-2.5 py-1.5 rounded-xl border border-yellow-200 hover:bg-yellow-200 press-scale whitespace-nowrap"
                                       >
                                         💬 안내 발송
                                       </button>
                                       <button onClick={async () => {
                                         const latestExt = getCrmExt(selectedId);
-                                        const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
-                                        await updateCrmExt(selectedId, updated);
-                                        toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
-                                        if (feeSettings.sendReceiptOnPaid) {
-                                          setFeeAlimtokModalConfig({ isOpen: true, installment: { ...inst, status: 'paid', paidDate: new Date().toISOString().split('T')[0] }, initialMilestone: 'fee_receipt' });
+                                        const paidYmd = localYmd(new Date());
+                                        const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: paidYmd } : f) };
+                                        const ok = await updateCrmExt(selectedId, updated);
+                                        notifySaved(ok, `${inst.memo || inst.round + '차'} 납부 확인`);
+                                        if (ok && feeSettings.sendReceiptOnPaid) {
+                                          setFeeAlimtokModalConfig({ isOpen: true, installment: { ...inst, status: 'paid', paidDate: paidYmd }, initialMilestone: 'fee_receipt' });
                                         }
                                       }} className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-200 press-scale whitespace-nowrap">💳 납부 확인</button>
                                     </>
                                   )}
                                   <button onClick={async () => {
                                     const latestExt = getCrmExt(selectedId);
+                                    const confirmed = await dialog.confirm({ title: '분납 항목 삭제', message: `${inst.memo || inst.round + '차'} 항목을 삭제하시겠습니까?`, confirmText: '삭제', variant: 'danger' });
+                                    if (!confirmed) return;
                                     const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).filter(f => f.id !== inst.id) };
-                                    await updateCrmExt(selectedId, updated);
+                                    const ok = await updateCrmExt(selectedId, updated);
+                                    notifySaved(ok, '분납 항목이 삭제되었습니다.');
                                   }} className="text-slate-300 hover:text-rose-500 transition-colors p-1" title="삭제"><Trash2 className="w-3.5 h-3.5" /></button>
                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
                                     {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 연체' : '⏳ 대기'}
@@ -4360,7 +4403,7 @@ export default function CrmTab({
                       activeLawyer={activeLawyer}
                       activeStaff={activeStaff}
                       onUpdateCrmExt={async (patch) => {
-                        await updateCrmExt(selectedId, patch);
+                        await saveOrThrow(selectedId, patch);
                       }}
                     />
                   )}
@@ -4411,7 +4454,7 @@ export default function CrmTab({
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           onUpdateCrmExt={async (patch) => {
-                            await updateCrmExt(selectedId, patch);
+                            await saveOrThrow(selectedId, patch);
                           }}
                         />
 
@@ -4540,8 +4583,10 @@ export default function CrmTab({
                                     mimeType, dataUrl,
                                     uploadSource: 'lawyer'
                                   };
-                                  await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
-                                  toast.success(`${file.name} 보안 워터마크 합성 및 업로드 완료`);
+                                  // 비동기 처리 동안 바뀐 내용을 덮어쓰지 않도록 저장 직전 최신 데이터를 사용
+                                  const latest = getCrmExt(selectedId);
+                                  const ok = await updateCrmExt(selectedId, { ...latest, uploadedFiles: [...(latest.uploadedFiles || []), newDoc] });
+                                  notifySaved(ok, file.type.startsWith('image/') && dataUrl !== reader.result ? `${file.name} 워터마크 합성 후 업로드 완료` : `${file.name} 업로드 완료`);
                                 };
                                 reader.readAsDataURL(file);
                               }} />
@@ -4560,6 +4605,7 @@ export default function CrmTab({
                                 if (!newDocRequestLabel.trim()) return toast.error('서류명을 입력해주세요');
                                 const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
                                 await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true });
+                                const savedReq = await loadCrmData().then(d => d[selectedId]).catch(() => undefined);
                                 addClientNotification({
                                   type: 'document_request',
                                   title: '추가 서류 제출 요청',
@@ -4570,8 +4616,8 @@ export default function CrmTab({
                                 setShowDocRequest(false);
                                 setNewDocRequestLabel('');
                                 setNewDocRequestDesc('');
-                                toast.success('서류 요청이 발송되었습니다.');
-                                setCrmData({ ...crmData }); // refresh trigger
+                                if (savedReq) setCrmData(prev => ({ ...prev, [selectedId]: savedReq }));
+                                toast.success('서류 요청이 등록되었습니다. 의뢰인 마이페이지 서류함에 표시됩니다.');
                               }} className="px-3 py-1.5 text-xs font-bold text-white bg-brand hover:bg-brand-hover rounded-xl press-scale transition-colors shadow-sm">요청 보내기</button>
                             </div>
                           </div>
@@ -4591,6 +4637,8 @@ export default function CrmTab({
                               <button
                                 type="button"
                                 onClick={async () => {
+                                  const confirmed = await dialog.confirm({ title: '서류 목록 초기화', message: '현재 서류 목록의 제출·검토 상태가 모두 초기화됩니다. 계속하시겠습니까?', confirmText: '초기화', variant: 'warning' });
+                                  if (!confirmed) return;
                                   const targetDocs = isBankruptcyCase ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
                                   await updateCrmExt(selectedId, {
                                     documents: targetDocs.map(d => ({ ...d, reviewStatus: 'not_submitted' as DocumentReviewStatus }))
@@ -4797,8 +4845,8 @@ export default function CrmTab({
                                       </button>
                                       <button onClick={async () => {
                                         const latestExt = getCrmExt(selectedId);
-                                        await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
-                                        toast.success('파일이 삭제되었습니다.');
+                                        const ok = await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
+                                        notifySaved(ok, '파일이 삭제되었습니다.');
                                       }} className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="삭제">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -4841,8 +4889,9 @@ export default function CrmTab({
                               uploadSource: 'lawyer',
                               reviewStatus: 'approved',
                             };
-                            await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
-                            toast.success(`${scanned.name} 스캔 완료`);
+                            const latest = getCrmExt(selectedId);
+                            const ok = await updateCrmExt(selectedId, { ...latest, uploadedFiles: [...(latest.uploadedFiles || []), newDoc] });
+                            notifySaved(ok, `${scanned.name} 스캔 완료`);
                           }}
                         />
 
@@ -4870,9 +4919,8 @@ export default function CrmTab({
                               uploadSource: 'lawyer',
                               reviewStatus: 'approved',
                             };
-                            await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: [...currentUploaded, newDoc] });
-                            toast.success(`${preprocessed.name} 서류가 CRM에 추가 저장되었습니다.`);
-                            setCrmData({ ...crmData });
+                            const ok = await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: [...currentUploaded, newDoc] });
+                            notifySaved(ok, `${preprocessed.name} 서류가 CRM에 추가 저장되었습니다.`);
                           }}
                         />
                       </div>
@@ -4886,7 +4934,7 @@ export default function CrmTab({
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
                     />
@@ -4899,7 +4947,7 @@ export default function CrmTab({
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
                       onNavigateToRepayment={() => {
@@ -4915,8 +4963,11 @@ export default function CrmTab({
                       clientId={selectedId}
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
+                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                      actorId={activeStaff?.id || activeLawyer.id}
+                      actorRole={activeStaff?.role || 'OWNER'}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
                     />
@@ -4930,7 +4981,7 @@ export default function CrmTab({
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
                         onUpdateCrmExt={async (updates) => {
-                          await updateCrmExt(selectedId, updates);
+                          await saveOrThrow(selectedId, updates);
                         }}
                       />
                     </div>
@@ -4943,7 +4994,7 @@ export default function CrmTab({
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       onNavigateToRepayment={() => setDetailTab('repayment')}
                     />
@@ -4956,7 +5007,7 @@ export default function CrmTab({
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
                     />
@@ -4969,7 +5020,7 @@ export default function CrmTab({
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
                       onUpdateCrmExt={async (updates) => {
-                        await updateCrmExt(selectedId, updates);
+                        await saveOrThrow(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
                       onOpenBatchFiling={() => setShowBatchFilingModal(true)}
@@ -5030,7 +5081,7 @@ export default function CrmTab({
                         }`}>
                           {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                         </span>
-                        <span className="text-sm font-bold text-slate-900">{r.clientName}</span>
+                        <span className="text-sm font-bold text-slate-900">{getDisplayClientName(r)}</span>
                         {isNewCase(r.createdAt) && <NewBadge />}
                       </div>
                       <span className="bg-rose-50 text-rose-600 font-bold text-[10px] px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
@@ -5179,7 +5230,7 @@ export default function CrmTab({
                           className={`bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-brand/40 cursor-pointer transition-all hover:shadow-md group ${draggedId === r.id ? 'opacity-50 scale-95' : ''}`}>
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
+                              <span className="text-sm font-bold text-slate-900 truncate">{getDisplayClientName(r)}</span>
                               {isNewCase(r.createdAt) && <NewBadge />}
                             </div>
                             <GripVertical className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 shrink-0" />
@@ -5286,19 +5337,21 @@ export default function CrmTab({
         isOpen={isNewCaseModalOpen}
         onClose={() => setIsNewCaseModalOpen(false)}
         onRegister={handleNewCaseRegister}
-        existingRequests={requests}
+        existingRequests={myRequests}
       />
       <ImportCasesModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleBulkImport}
-        existingRequests={requests}
+        existingRequests={myRequests}
       />
       <ExportCasesModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         requests={filteredRequests}
         getCrmExt={getCrmExt}
+        getDisplayClientName={getDisplayClientName}
+        getDisplayPhoneNumber={getDisplayPhoneNumber}
       />
       <CrmSettingsModal
         isOpen={isMasterSettingsModalOpen}
@@ -5343,7 +5396,7 @@ export default function CrmTab({
           installment={feeAlimtokModalConfig.installment}
           totalFeeManwon={selectedExt.totalFee || 0}
           totalPaidManwon={(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0)}
-          firmName="법무법인 로앤"
+          firmName={activeLawyer.firmName || (activeLawyer as any).firm || ''}
           lawyerName={activeLawyer.name}
           initialMilestone={feeAlimtokModalConfig.initialMilestone}
           onSent={(milestone) => {
@@ -5485,7 +5538,7 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
           activeLawyerName={activeLawyer.name}
         />
@@ -5500,29 +5553,14 @@ export default function CrmTab({
           crmExt={selectedExt}
           activeLawyerName={activeLawyer.name}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
           onOpenBatchFiling={() => {
             setShowBatchFilingModal(true);
           }}
           onAttachDocToPackage={async (docTitle) => {
-            const newDoc: DocumentFile = {
-              id: `doc-${Date.now()}`,
-              name: `[완성본]_${docTitle}_${selectedClient.clientName || '신청인'}.pdf`,
-              category: 'court_filing',
-              uploadedAt: new Date().toISOString(),
-              uploadedBy: activeLawyer.name,
-              fileSize: 1024 * 50,
-              mimeType: 'application/pdf',
-              uploadSource: 'lawyer',
-              dataUrl: `data:application/pdf;base64,mock_${Date.now()}`
-            };
-            const currentFiles = selectedExt.uploadedFiles || [];
-            await updateCrmExt(selectedId, {
-              ...selectedExt,
-              uploadedFiles: [...currentFiles, newDoc]
-            });
-            toast.success(`'${docTitle}'이(가) 사건 제출 서류함에 저장되었습니다.`);
+            // 이전: 내용 없는 가짜 PDF(data:...mock_)를 '완성본'으로 저장 → 제거
+            toast.info(`'${docTitle}' 서식을 인쇄 → PDF로 저장한 뒤 [문서] 탭의 '직접 업로드'로 첨부해 주세요.`);
           }}
         />
       )}
@@ -5537,7 +5575,7 @@ export default function CrmTab({
           initialTab={courtDocSuiteInitialTab}
           activeLawyerName={activeLawyer.name}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
         />
       )}
@@ -5557,7 +5595,7 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
           activeLawyerName={activeLawyer.name}
           onOpenBatchFiling={() => {
@@ -5575,7 +5613,7 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
           onSyncToRepaymentPlan={async (syncedAssets, totalLiquidation) => {
             const currentPlan = selectedExt.repaymentPlan;
@@ -5618,7 +5656,7 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
         />
       )}
@@ -5644,7 +5682,7 @@ export default function CrmTab({
           crmExt={selectedExt}
           activeLawyerName={activeLawyer.name}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
         />
       )}
@@ -5658,7 +5696,7 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           onUpdateCrmExt={async (updates) => {
-            await updateCrmExt(selectedId, updates);
+            await saveOrThrow(selectedId, updates);
           }}
         />
       )}

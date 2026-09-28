@@ -65,10 +65,12 @@ export default function ClientContractSubTab({
 
   const handleStartNewContract = () => {
     const lawyerName = activeLawyer.name || '담당 변호사';
-    const lawFirmName = activeLawyer.lawFirmName || '법무법인 로앤';
-    
-    const initialFee = crmExt.totalFee || client.proposals?.[0]?.fee || 200;
-    const creditorCount = client.financialProfile?.creditorCount || 5;
+    const lawFirmName = (activeLawyer as any).firmName || activeLawyer.lawFirmName || '';
+
+    // 이 변호사의 제안서 금액 → CRM 약정액 순. 없으면 0 (이전: 임의 200만원·채권자 5곳 가정)
+    const myProposalFee = Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0;
+    const initialFee = crmExt.totalFee || myProposalFee || 0;
+    const creditorCount = client.financialProfile?.creditorCount || 0;
     const costs = calculateCourtCosts(creditorCount);
 
     const newContract = createContract({
@@ -102,7 +104,7 @@ export default function ClientContractSubTab({
   };
 
   const handleWizardSave = async (saved: ElectronicContract) => {
-    saveContract(saved);
+    const serverOk = await saveContract(saved);
     
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     await syncContractToCrm(client.id, saved, actor);
@@ -112,6 +114,10 @@ export default function ClientContractSubTab({
     setIsWizardOpen(false);
     setEditingContract(null);
 
+    if (!serverOk) {
+      toast.error('전자계약서를 서버에 저장하지 못했습니다. 이 기기에만 임시 저장되었으며, 의뢰인 서명 링크가 열리지 않을 수 있습니다.');
+      return;
+    }
     if (saved.status === 'completed') {
       await onUpdateCrmExt({
         crmStatus: 'contracted',
@@ -125,6 +131,9 @@ export default function ClientContractSubTab({
   };
 
   const handlePrintContract = (contract: ElectronicContract) => {
+    // 계약서 본문·성명은 의뢰인 입력값이 섞일 수 있으므로 HTML로 해석되지 않게 이스케이프
+    const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] as string));
+    const safeImg = (src?: string) => (src && /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : '');
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.');
@@ -136,21 +145,21 @@ export default function ClientContractSubTab({
       .map((d, i) => `
         <div style="page-break-after: always; padding: 40px; font-family: sans-serif; line-height: 1.6; color: #1e293b;">
           <h2 style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 24px; font-size: 20px;">
-            [제${i + 1}호 서식] ${d.title}
+            [제${i + 1}호 서식] ${esc(d.title)}
           </h2>
           <div style="white-space: pre-wrap; font-size: 13px; min-height: 500px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
-${d.content}
+${esc(d.content)}
           </div>
           <div style="margin-top: 40px; border-top: 1px solid #cbd5e1; padding-top: 20px; display: flex; justify-content: space-between;">
             <div style="font-size: 12px;">
-              <p><strong>위임인 (의뢰인):</strong> ${contract.clientName}</p>
-              ${d.clientSignature ? `<img src="${d.clientSignature}" style="max-height: 48px; border: 1px dashed #94a3b8; padding: 2px;" alt="의뢰인 서명" />` : '<span style="color: #94a3b8;">(서명 대기)</span>'}
-              ${d.clientSignedAt ? `<p style="font-size: 10px; color: #64748b;">서명일시: ${d.clientSignedAt}</p>` : ''}
+              <p><strong>위임인 (의뢰인):</strong> ${esc(contract.clientName)}</p>
+              ${safeImg(d.clientSignature) ? `<img src="${safeImg(d.clientSignature)}" style="max-height: 48px; border: 1px dashed #94a3b8; padding: 2px;" alt="의뢰인 서명" />` : '<span style="color: #94a3b8;">(서명 대기)</span>'}
+              ${d.clientSignedAt ? `<p style="font-size: 10px; color: #64748b;">서명일시: ${esc(d.clientSignedAt)}</p>` : ''}
             </div>
             <div style="font-size: 12px; text-align: right;">
-              <p><strong>수임인 (담당변호사):</strong> ${contract.lawFirmName} ${contract.lawyerName}</p>
-              ${d.lawyerSignature ? `<img src="${d.lawyerSignature}" style="max-height: 48px; border: 1px dashed #94a3b8; padding: 2px;" alt="변호사 서명" />` : '<span style="color: #94a3b8;">(변호사 날인)</span>'}
-              ${d.lawyerSignedAt ? `<p style="font-size: 10px; color: #64748b;">서명일시: ${d.lawyerSignedAt}</p>` : ''}
+              <p><strong>수임인 (담당변호사):</strong> ${esc(contract.lawFirmName)} ${esc(contract.lawyerName)}</p>
+              ${safeImg(d.lawyerSignature) ? `<img src="${safeImg(d.lawyerSignature)}" style="max-height: 48px; border: 1px dashed #94a3b8; padding: 2px;" alt="변호사 서명" />` : '<span style="color: #94a3b8;">(변호사 날인)</span>'}
+              ${d.lawyerSignedAt ? `<p style="font-size: 10px; color: #64748b;">서명일시: ${esc(d.lawyerSignedAt)}</p>` : ''}
             </div>
           </div>
         </div>
@@ -160,7 +169,7 @@ ${d.content}
       <!DOCTYPE html>
       <html>
         <head>
-          <title>전자계약서 전문 - ${contract.clientName} (${contract.id})</title>
+          <title>전자계약서 전문 - ${esc(contract.clientName)} (${esc(contract.id)})</title>
           <style>
             @media print {
               body { margin: 0; }
@@ -223,15 +232,15 @@ ${d.content}
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
                 <span className="text-[10px] text-slate-400 block font-medium">상담 약정 수임료</span>
-                <span className="font-bold text-brand font-mono">{(crmExt.totalFee || client.proposals?.[0]?.fee || 200).toLocaleString()}만원</span>
+                <span className="font-bold text-brand font-mono">{(crmExt.totalFee || Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0) ? `${(crmExt.totalFee || Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee)).toLocaleString()}만원` : '미입력 (작성 시 입력)'}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
                 <span className="text-[10px] text-slate-400 block font-medium">담당 변호사</span>
-                <span className="font-bold text-slate-800">{activeLawyer.lawFirmName || '법무법인'} {activeLawyer.name}</span>
+                <span className="font-bold text-slate-800">{(activeLawyer as any).firmName || activeLawyer.lawFirmName || ''} {activeLawyer.name}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
                 <span className="text-[10px] text-slate-400 block font-medium">채권자 수 / 예상법원비용</span>
-                <span className="font-bold text-slate-800">{client.financialProfile?.creditorCount || 5}개소 (자동산출)</span>
+                <span className="font-bold text-slate-800">{client.financialProfile?.creditorCount ? `${client.financialProfile.creditorCount}개소 (자동산출)` : '미입력 (작성 시 입력)'}</span>
               </div>
             </div>
           </div>
@@ -348,7 +357,8 @@ ${d.content}
             </span>
           </div>
           <p className="text-[11px] text-slate-500">
-            법원비용 합계: <strong className="font-mono text-slate-700">{((contract.courtCosts.deliveryFee + contract.courtCosts.stampFee + contract.courtCosts.miscFee)).toLocaleString()}원</strong>
+            법원비용 합계: <strong className="font-mono text-slate-700">{((contract.courtCosts.deliveryFee || 0) + (contract.courtCosts.stampFee || 0) + (contract.courtCosts.miscFee || 0) + (contract.courtCosts.debtCertFee || 0) + (contract.courtCosts.provisionalDeposit || 0)).toLocaleString()}원</strong>
+            <span className="text-slate-400"> (송달료·인지대·부채증명·예납금 포함)</span>
           </p>
         </div>
 

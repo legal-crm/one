@@ -21,14 +21,13 @@ interface AncillaryPetitionsModalProps {
   activeLawyerName?: string;
 }
 
-export default function AncillaryPetitionsModal({
+function AncillaryPetitionsModalInner({
   isOpen,
   onClose,
   clientRequest,
   crmExt,
   activeLawyerName = '김변호'
 }: AncillaryPetitionsModalProps) {
-  if (!isOpen) return null;
 
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
@@ -374,4 +373,10 @@ export default function AncillaryPetitionsModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function AncillaryPetitionsModal(props: React.ComponentProps<typeof AncillaryPetitionsModalInner>) {
+  if (!props.isOpen) return null;
+  return <AncillaryPetitionsModalInner {...props} />;
 }

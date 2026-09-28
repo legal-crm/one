@@ -26,7 +26,7 @@ interface LitigationPowerOfAttorneyModalProps {
   firmName?: string;
 }
 
-export default function LitigationPowerOfAttorneyModal({
+function LitigationPowerOfAttorneyModalInner({
   isOpen,
   onClose,
   clientRequest,
@@ -34,12 +34,11 @@ export default function LitigationPowerOfAttorneyModal({
   activeLawyerName = '김변호',
   firmName = '법률사무소 로앤윈'
 }: LitigationPowerOfAttorneyModalProps) {
-  if (!isOpen) return null;
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   const clientName = clientRequest.clientName || '신청인';
-  const clientPhone = clientRequest.phone || '010-0000-0000';
+  const clientPhone = clientRequest.phone || '';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
   const caseNumber = crmExt.courtCase?.caseNumber || '2026개회 (신청 접수예정)';
 
@@ -303,4 +302,10 @@ export default function LitigationPowerOfAttorneyModal({
     </div>
   </ModalPortal>
 );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function LitigationPowerOfAttorneyModal(props: React.ComponentProps<typeof LitigationPowerOfAttorneyModalInner>) {
+  if (!props.isOpen) return null;
+  return <LitigationPowerOfAttorneyModalInner {...props} />;
 }

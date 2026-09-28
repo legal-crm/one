@@ -14,6 +14,7 @@
  */
 
 import { DELIVERY_UNIT_FEE_KRW } from './courtFees';
+import { getLivingExpense } from '../repayment/repaymentConstants2026';
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
 
@@ -54,8 +55,8 @@ const TABLE_BORDER_STYLE = `
 export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
   const p = ctx.crmExt.petitionInfo;
   const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
-  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
-  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '';
+  const firmName = p?.firmName || ctx.firmName || '';
   const courtName = p?.courtName || ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
   const creditorCount = Math.max(1, ctx.creditors.length);
 
@@ -161,31 +162,29 @@ export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
 export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): string {
   const p = ctx.crmExt.petitionInfo;
   const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
-  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
-  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '';
+  const firmName = p?.firmName || ctx.firmName || '';
   const clientRrn = p?.rrnFront 
     ? `${p.rrnFront}-${p.rrnBack || '*******'}`
     : ((ctx.clientRequest as any).rrnFront 
       ? `${(ctx.clientRequest as any).rrnFront}-*******` 
-      : '710812-*******');
-  const residentAddress = p?.residentAddress || (ctx.clientRequest as any).address || '서울특별시 구로구 개봉로11길 46-25, 201호';
-  const residentPostcode = p?.residentPostcode || '08349';
+      : '');
+  const residentAddress = p?.residentAddress || (ctx.clientRequest as any).address || '';
+  const residentPostcode = p?.residentPostcode || '';
   const currentAddress = p?.currentAddress || residentAddress;
   const currentPostcode = p?.currentPostcode || residentPostcode;
-  const companyAddress = p?.companyAddress || ((ctx.clientRequest as any).companyName 
-    ? `서울특별시 마포구 마포대로 20, 7층 (${(ctx.clientRequest as any).companyName})` 
-    : '서울특별시 마포구 마포대로 20, 7층 (마포동)');
-  const companyPostcode = p?.companyPostcode || '04175';
-  const firmAddress = p?.firmAddress || '서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호';
-  const firmPostcode = p?.servicePlacePostcode || '01323';
-  const firmPhone = p?.firmPhone || '02-955-8488';
-  const firmFax = p?.firmFax || 'FAX 02-2179-8487';
-  const firmEmail = p?.firmEmail || 'lawyer@lawfirm.co.kr';
+  const companyAddress = p?.companyAddress || '';
+  const companyPostcode = p?.companyPostcode || '';
+  const firmAddress = p?.firmAddress || '';
+  const firmPostcode = p?.servicePlacePostcode || '';
+  const firmPhone = p?.firmPhone || '';
+  const firmFax = p?.firmFax || '';
+  const firmEmail = p?.firmEmail || '';
 
   const serviceAddress = p?.servicePlaceType === 'client' ? currentAddress : (p?.servicePlaceAddress || firmAddress);
   const servicePostcode = p?.servicePlaceType === 'client' ? currentPostcode : firmPostcode;
   const serviceRecipient = p?.serviceRecipient || `변호사 ${lawyerName}`;
-  const clientPhone = p?.phone || ctx.clientRequest.phone || '010-3107-3310';
+  const clientPhone = p?.phone || ctx.clientRequest.phone || '';
   const clientTel = p?.tel || '-';
   const incomeType = p?.incomeType || 'salary';
   const petitionReason = p?.petitionReasonDetail || '1. 신청인은, 첨부한 개인회생채권자목록 기재와 같은 채무를 부담하고 있으나, 수입 및 재산이 별지 수입 및 지출에 관한 목록과 재산목록에 기재된 바와 같으므로, 파산의 원인사실이 발생하였습니다(파산의 원인사실이 생길 염려가 있습니다).';
@@ -300,16 +299,16 @@ export function buildCourtApplicationBody1Html(ctx: CourtFormDataContext): strin
 export function buildCourtApplicationBody2Html(ctx: CourtFormDataContext): string {
   const p = ctx.crmExt.petitionInfo;
   const clientName = p?.clientName || ctx.clientRequest.clientName || '신청인';
-  const lawyerName = p?.lawyerName || ctx.lawyerName || '정충원';
-  const firmName = p?.firmName || ctx.firmName || '법률사무소 보광';
+  const lawyerName = p?.lawyerName || ctx.lawyerName || '';
+  const firmName = p?.firmName || ctx.firmName || '';
   const courtName = p?.courtName || ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
-  const clientPhone = p?.phone || ctx.clientRequest.phone || '010-3107-3310';
+  const clientPhone = p?.phone || ctx.clientRequest.phone || '';
   const smsPhone = p?.smsNotificationPhone || clientPhone;
 
-  const monthlyRepayment = (ctx.crmExt.repaymentPlan as any)?.monthlyRepaymentTotal || (ctx.crmExt.repaymentPlan as any)?.monthlyRepayment || 314801;
+  const monthlyRepayment = (ctx.crmExt.repaymentPlan as any)?.monthlyRepaymentTotal || (ctx.crmExt.repaymentPlan as any)?.monthlyRepayment || 0;
   const totalRepayment = (ctx.crmExt.repaymentPlan as any)?.totalRepaymentAmount || (ctx.crmExt.repaymentPlan as any)?.totalRepayment || monthlyRepayment * 36;
-  const refundBank = p?.refundBank || (ctx.crmExt.repaymentPlan as any)?.bankName || '우체국';
-  const refundAccount = p?.refundAccount || (ctx.crmExt.repaymentPlan as any)?.accountNumber || '110-0122-33536';
+  const refundBank = p?.refundBank || (ctx.crmExt.repaymentPlan as any)?.bankName || '';
+  const refundAccount = p?.refundAccount || (ctx.crmExt.repaymentPlan as any)?.accountNumber || '';
   const refundHolder = p?.refundAccountHolder || clientName;
 
   const today = new Date();
@@ -412,11 +411,11 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
       <td style="padding: 6px; text-align: center; font-weight: bold; border-right: 1px solid #000000;">${idx + 1}</td>
       <td style="padding: 6px 8px; font-weight: bold; border-right: 1px solid #000000;">
         ${c.name}<br>
-        <span style="font-size: 10px; color: #000000; font-weight: normal;">${c.address || '주소 등록 완료'}</span>
+        <span style="font-size: 10px; color: #000000; font-weight: normal;">${c.address || '(미입력)'}</span>
       </td>
       <td style="padding: 6px 8px; border-right: 1px solid #000000;">
-        ${c.borrowedDate || '2023-01-01'} 신용대출금<br>
-        <span style="font-size: 10px; color: #333333;">${c.debtCauseDetail || '대여금 및 리볼빙 채무'}</span>
+        ${c.borrowedDate || '(미입력)'} ${c.debtCauseDetail ? '' : ''}<br>
+        <span style="font-size: 10px; color: #333333;">${c.debtCauseDetail || ''}</span>
       </td>
       <td style="padding: 6px 8px; text-align: right; font-weight: bold; border-right: 1px solid #000000;">
         ${Math.round(c.principal || 0).toLocaleString()}원<br>
@@ -500,13 +499,13 @@ export function buildCourtCreditorListHtml(ctx: CourtFormDataContext): string {
 /** 5. 금지명령 신청서 (Stay Order) */
 export function buildCourtStayOrderHtml(ctx: CourtFormDataContext): string {
   const clientName = ctx.clientRequest.clientName || '신청인';
-  const lawyerName = ctx.lawyerName || '정충원';
-  const firmName = ctx.firmName || '법률사무소 보광';
+  const lawyerName = ctx.lawyerName || '';
+  const firmName = ctx.firmName || '';
   const courtName = ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
   const clientRrn = (ctx.clientRequest as any).rrnFront 
     ? `${(ctx.clientRequest as any).rrnFront}-*******` 
     : '710812-*******';
-  const residentAddress = (ctx.clientRequest as any).address || '서울특별시 구로구 개봉로11길 46-25, 201호';
+  const residentAddress = (ctx.clientRequest as any).address || '';
 
   const today = new Date();
   const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
@@ -571,8 +570,8 @@ export function buildCourtPropertyListHtml(ctx: CourtFormDataContext): string {
   const fp = ctx.clientRequest.financialProfile;
 
   // 고객이 입력한 재산 데이터가 있는 경우 동적 행 구성
-  let depositAmount = prop?.deposit || 129843;
-  let insuranceAmount = prop?.insurance || 23353;
+  let depositAmount = prop?.deposit || 0;
+  let insuranceAmount = prop?.insurance || 0;
   let vehicleAmount = prop?.vehicle || 0;
   let leaseAmount = prop?.realEstate || 0;
   let totalLiquidation = prop?.totalLiquidationValue ?? 0;
@@ -581,8 +580,8 @@ export function buildCourtPropertyListHtml(ctx: CourtFormDataContext): string {
   if (!prop && fp?.properties) {
     leaseAmount = fp.properties.deposit || 0;
     vehicleAmount = fp.properties.vehicle || 0;
-    depositAmount = fp.properties.savings || 129843;
-    insuranceAmount = fp.properties.insurance || 23353;
+    depositAmount = fp.properties.savings || 0;
+    insuranceAmount = fp.properties.insurance || 0;
     totalLiquidation = Math.max(0, (leaseAmount > 55000000 ? leaseAmount - 55000000 : 0) + vehicleAmount);
   }
 
@@ -666,10 +665,10 @@ export function buildCourtIncomeExpenseHtml(ctx: CourtFormDataContext): string {
   const inc = ctx.crmExt.incomeExpenseD5103;
   const fp = ctx.clientRequest.financialProfile;
 
-  const companyName = (inc as any)?.companyName || (ctx.clientRequest as any).companyName || '주식회사 아이비케이서비스';
-  const jobTitle = (inc as any)?.jobTitle || (inc as any)?.jobDetail || '사원 (근속 3년 9개월)';
-  const monthlyIncome = (inc as any)?.netMonthlyIncome || (fp?.monthlyIncome ? fp.monthlyIncome * 10000 : 1850000);
-  const livingCost = (inc as any)?.standardLivingCost || 1535199;
+  const companyName = (inc as any)?.companyName || (ctx.clientRequest as any).companyName || '';
+  const jobTitle = (inc as any)?.jobTitle || (inc as any)?.jobDetail || '';
+  const monthlyIncome = (inc as any)?.netMonthlyIncome || (fp?.monthlyIncome ? fp.monthlyIncome * 10000 : (fp?.income ? fp.income * 10000 : 0));
+  const livingCost = (inc as any)?.standardLivingCost || getLivingExpense((fp?.dependents || 0) + 1);
   const monthlyDisposable = Math.max(0, monthlyIncome - livingCost);
   const dependentText = fp?.dependents ? `${fp.dependents + 1}인 가구 (본인 + 부양 ${fp.dependents}인)` : '1인 가구 (신청인 본인)';
 
@@ -734,13 +733,13 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
   const clientName = ctx.clientRequest.clientName || '신청인';
   const stmt = ctx.crmExt.courtStatement;
 
-  const education = stmt?.applicant?.education || '고등학교 졸업';
+  const education = stmt?.applicant?.education || '';
   const jobText = (stmt?.jobHistory && stmt.jobHistory.length > 0)
     ? stmt.jobHistory.map(j => `${j.startDate} ~ ${j.endDate || '현재'}: ${j.companyName} (${j.jobTitle || '사원'})`).join('<br>')
-    : '2021년 2월 ~ 현재: 회사 근무';
+    : '';
 
-  const detailCause = stmt?.story?.initialCauseDetail || stmt?.story?.aiGeneratedStatement || 
-    '신청인은 성실히 직장생활을 영위하며 생활비를 충당해 왔으나, 급격한 물가 상승 및 가족의 예기치 못한 의료비 지출 등으로 인해 기존 소득만으로는 최저생계를 유지하기 어려워 신용카드 리볼빙 및 은행 대출을 이용하게 되었습니다. 이후 원리금 상환 부담이 눈덩이처럼 불어나 돌려막기에 이르게 되었고, 결국 지급불능 상태에 도달하였습니다.';
+  // 진술서 본문은 의뢰인·변호사가 작성한 내용만 사용 (임의 채무 경위 문장을 넣지 않음)
+  const detailCause = stmt?.story?.initialCauseDetail || stmt?.story?.aiGeneratedStatement || '(미입력)';
 
   return `
   <div style="${A4_PAGE_STYLE}">
@@ -780,7 +779,7 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
     <div style="font-size: 12px; line-height: 2; padding: 14px 18px; border: 1px solid #000000; border-radius: 0; text-align: justify; height: 420px; overflow: hidden;">
       ${detailCause}
       <br><br>
-      현재 신청인은 과거의 미숙한 재정 관리를 뼈저리게 반성하고 있으며, 정기적인 소득을 통해 향후 36개월간 인가된 변제계획을 단 하루도 어기지 않고 성실히 수행할 것을 굳게 다짐하고 있습니다. 부디 법원의 너그러운 선처로 새출발(Rebirth)의 기회를 허락하여 주시기를 간곡히 앙망합니다.
+      현재 신청인은 과거의 미숙한 재정 관리를 뼈저리게 반성하고 있으며, 정기적인 소득으로 인가된 변제계획을 성실히 수행할 것을 다짐합니다. 새출발의 기회를 허락하여 주시기 바랍니다.
     </div>
 
     <div style="text-align: right; margin-top: 24px; font-size: 13px; font-weight: bold;">
@@ -793,10 +792,10 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
 /** 9. 변제계획안 (D5110) */
 export function buildCourtRepaymentPlanHtml(ctx: CourtFormDataContext): string {
   const clientName = ctx.clientRequest.clientName || '신청인';
-  const monthlyRepayment = (ctx.crmExt.repaymentPlan as any)?.monthlyRepaymentTotal || (ctx.crmExt.repaymentPlan as any)?.monthlyRepayment || 314801;
+  const monthlyRepayment = (ctx.crmExt.repaymentPlan as any)?.monthlyRepaymentTotal || (ctx.crmExt.repaymentPlan as any)?.monthlyRepayment || 0;
   const totalRepayment = (ctx.crmExt.repaymentPlan as any)?.totalRepaymentAmount || (ctx.crmExt.repaymentPlan as any)?.totalRepayment || monthlyRepayment * 36;
-  const totalPrincipal = ctx.creditors.reduce((sum, c) => sum + (c.principal || 0), 0) || 86238122;
-  const repaymentRate = Math.round((totalRepayment / totalPrincipal) * 1000) / 10;
+  const totalPrincipal = ctx.creditors.reduce((sum, c) => sum + (c.principal || 0), 0);
+  const repaymentRate = totalPrincipal > 0 ? Math.round((totalRepayment / totalPrincipal) * 1000) / 10 : 0;
 
   return `
   <div style="${A4_PAGE_STYLE}">
@@ -848,8 +847,8 @@ export function buildCourtRepaymentPlanHtml(ctx: CourtFormDataContext): string {
 /** 10. 소송위임장 및 경유확인서 */
 export function buildCourtPowerOfAttorneyHtml(ctx: CourtFormDataContext): string {
   const clientName = ctx.clientRequest.clientName || '신청인';
-  const lawyerName = ctx.lawyerName || '정충원';
-  const firmName = ctx.firmName || '법률사무소 보광';
+  const lawyerName = ctx.lawyerName || '';
+  const firmName = ctx.firmName || '';
   const courtName = ctx.courtName || ctx.crmExt.courtCase?.courtName || '서울회생법원';
 
   const today = new Date();

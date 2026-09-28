@@ -248,7 +248,7 @@ export default function AlimtalkSendConfirmModal({
       const cleanPhone = clientPhone.replace(/[^0-9]/g, '');
 
       // 1. 팝빌 알림톡 연동 API 호출 (팝빌 승인 템플릿 코드 및 치환 완료 텍스트 전달)
-      await sendAlimtok(
+      const sendRes = await sendAlimtok(
         cleanPhone,
         milestone,
         {
@@ -265,6 +265,11 @@ export default function AlimtalkSendConfirmModal({
           buttons: selectedTemplate?.buttons,
         }
       );
+
+      if (!sendRes.ok) {
+        toast.error(`알림톡 발송 실패: ${sendRes.error || '원인 불명'}`);
+        return;
+      }
 
       // 2. 의뢰인 포털 모바일 알림 동기화
       addClientNotification({

@@ -13,10 +13,10 @@ import {
 } from './services/consultService';
 import { 
   mockLawyers, 
-  initialConsultRequests, 
-  mockTestProposals,
-  initialConsultMessages, 
-  initialCases,
+  initialConsultRequests as SEED_CONSULT_REQUESTS, 
+  mockTestProposals as SEED_TEST_PROPOSALS,
+  initialConsultMessages as SEED_CONSULT_MESSAGES, 
+  initialCases as SEED_CASES,
   mockNewsArticles,
   initialQAs,
   initialReviews,
@@ -46,6 +46,20 @@ import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
 // [SECURITY] 진짜 관리자 전용 경로 (환경변수 VITE_ADMIN_SECRET_PATH로 분기, 뻔한 ?role=admin은 허니팟으로 유인)
 export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_9k7q';
+
+// ── 시연용 시드 (DEV 전용) ──
+// 운영 빌드에서는 가상 상담 요청(req-mock-*, req-amjone-*)·가상 제안서·가상 사건을 주입하지 않는다.
+// (이전에는 모든 브라우저에 주입되어 변호사 CRM에 실제 의뢰인처럼 표시되고 DB로 동기화됐으며,
+//  테스트 변호사를 선택한 실제 의뢰인 요청에 가짜 제안서가 자동으로 붙었음)
+const initialConsultRequests: ConsultRequest[] = import.meta.env.DEV ? SEED_CONSULT_REQUESTS : [];
+const mockTestProposals = import.meta.env.DEV ? SEED_TEST_PROPOSALS : [];
+const initialConsultMessages: ConsultMessage[] = import.meta.env.DEV ? SEED_CONSULT_MESSAGES : [];
+const initialCases: Case[] = import.meta.env.DEV ? SEED_CASES : [];
+const SEED_REQUEST_IDS = new Set(SEED_CONSULT_REQUESTS.map(r => r.id));
+const SEED_CASE_IDS = new Set(SEED_CASES.map(c => c.id));
+/** 운영 환경에서 과거에 저장된 시연 데이터 식별 */
+const isProdSeedRequest = (id: string) => import.meta.env.PROD && SEED_REQUEST_IDS.has(id);
+const isProdSeedCase = (id: string) => import.meta.env.PROD && SEED_CASE_IDS.has(id);
 
 /** [SECURITY] 로컬 저장소·시드에서 과거 평문 비밀번호 필드를 제거 (변호사 인증은 Supabase Auth 전용) */
 function stripLawyerSecrets(list: LawyerType[]): LawyerType[] {
@@ -276,7 +290,7 @@ export default function App() {
         // 동적으로 생성된 요청 중, 테스트 변호사 5 또는 6에게 요청을 보낸 상태(또는 proposals가 비어있는 대기 상태)인 경우
         // 테스트 5변호사(AI 정밀 진단형)와 테스트 6변호사(직접 검토형)의 가상 제안서를 자동 연동
         const hasTestLawyerRequested = item.selectedLawyerIds?.some(id => id === 'test-lawyer-5' || id === 'test-lawyer-6');
-        const shouldInjectTestProposals = hasTestLawyerRequested && (!item.proposals || item.proposals.length === 0);
+        const shouldInjectTestProposals = import.meta.env.DEV && hasTestLawyerRequested && (!item.proposals || item.proposals.length === 0);
 
         map.set(item.id, {
           ...item,
@@ -309,7 +323,7 @@ export default function App() {
       }
     });
 
-    return Array.from(map.values()).filter(r => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
+    return Array.from(map.values()).filter(r => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3' && !isProdSeedRequest(r.id));
   }, []);
 
   // ── Helper: Smart merge for messages ──
@@ -318,7 +332,7 @@ export default function App() {
     existingList.forEach(m => map.set(m.id, m));
     incomingList.forEach(m => map.set(m.id, m));
     return Array.from(map.values())
-      .filter(m => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3')
+      .filter(m => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3' && !isProdSeedRequest(m.consultRequestId))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, []);
 
@@ -356,7 +370,7 @@ export default function App() {
     try {
       const saved = secureGetItem('legal_crm_messages');
       if (saved) {
-        return JSON.parse(saved).filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
+        return JSON.parse(saved).filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3' && !isProdSeedRequest(m.consultRequestId));
       }
     } catch {}
     return [];
@@ -433,7 +447,7 @@ export default function App() {
   const [cases, setCases] = useState<Case[]>(() => {
     try {
       const saved = secureGetItem('legal_crm_cases');
-      return saved ? JSON.parse(saved) : initialCases;
+      return saved ? (JSON.parse(saved) as Case[]).filter(c => !isProdSeedCase(c.id)) : initialCases;
     } catch {
       return initialCases;
     }
@@ -586,7 +600,7 @@ export default function App() {
     // requests와 messages는 lazy initializer에서 이미 로드됨
 
     if (savedCases) {
-      setCases(JSON.parse(savedCases));
+      setCases((JSON.parse(savedCases) as Case[]).filter(c => !isProdSeedCase(c.id)));
     } else {
       setCases(initialCases);
     }

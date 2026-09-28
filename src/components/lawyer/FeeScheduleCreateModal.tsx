@@ -55,17 +55,17 @@ export default function FeeScheduleCreateModal({
     const remainingAmount = totalFeeWon - downPaymentWon;
     const schedule: FeeInstallment[] = [];
 
-    // 1. 착수금 (선납 완료 상태)
+    // 1. 착수금 — 입금 확인 전에는 '대기' (이전: 입금 확인 없이 계좌이체 '납부 완료'로 기록)
     if (downPaymentWon > 0) {
+      const d = new Date();
+      const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       schedule.push({
         id: `inst-${Date.now()}-0`,
         round: 1,
         amount: downPaymentWon,
-        dueDate: new Date().toISOString().split('T')[0],
-        paidDate: new Date().toISOString().split('T')[0],
-        status: 'paid',
-        memo: '착수금 (계약 선납)',
-        paymentMethod: '계좌이체',
+        dueDate: todayYmd,
+        status: 'pending',
+        memo: '착수금',
       });
     }
 

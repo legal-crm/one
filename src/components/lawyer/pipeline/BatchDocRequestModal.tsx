@@ -4,6 +4,7 @@ import {
   Smartphone, Clock, Sparkles, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 
 export interface BatchDocItem {
   id: string;
@@ -93,6 +94,10 @@ export default function BatchDocRequestModal({
   const targetDeadlineDate = new Date();
   targetDeadlineDate.setDate(targetDeadlineDate.getDate() + deadlineDays);
   const deadlineStr = `${targetDeadlineDate.getMonth() + 1}월 ${targetDeadlineDate.getDate()}일`;
+  // 미리보기 사무소 정보: [설정 > 사업자 정보] 값 (이전: 다른 사무소 이름·주소 하드코딩)
+  const office = getOfficeProfile();
+  const officeName = office.firmName || '사무소명 미설정';
+  const officeAddress = office.address || '사무소 주소 미설정 — [알림 및 설정 > 사업자 정보]에서 입력';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
@@ -297,7 +302,7 @@ export default function BatchDocRequestModal({
             </div>
             <div className="bg-white p-3 rounded-xl border border-amber-200 text-slate-700 leading-relaxed text-[11px] font-mono whitespace-pre-line">
               {selectedPhase === 1 ? (
-`[법률사무소 보광 회생전담센터]
+`[${officeName}]
 ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠른등기 안내입니다.
 
 금융기관 부채증명서 발급 대행(약 7일 소요)을 위해 아래 실물 서류를 빠른 등기우편으로 발송해 주세요.
@@ -309,13 +314,13 @@ ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠�
 4. 인감증명서 ${creditorCount + 5}부 (채권사 ${creditorCount}곳 + 5부)
 5. 지방세 세목별 과세증명서 (최근 5년)
 
-📮 등기 주소: 서울시 도봉구 마들로 760, 한발법조타워 301호
-수신: 법률사무소 보광 회생전담팀 앞
+📮 등기 주소: ${officeAddress}
+수신: ${officeName} 앞
 제출 기한: ${deadlineStr}까지
 
 [1차 서류 상세 가이드 및 등기주소 복사]`
               ) : selectedPhase === 2 ? (
-`[법률사무소 보광 회생전담센터]
+`[${officeName}]
 ${clientName}님, 1차 서류 수령 확인 완료! 부채증명서 발급(약 7일 소요)에 착수했습니다.
 
 부채증명서가 발급되는 동안 아래 [2차 서류]를 스마트폰으로 촬영하여 올려주시면 가장 빠른 접수가 가능합니다.
@@ -326,7 +331,7 @@ ${clientName}님, 1차 서류 수령 확인 완료! 부채증명서 발급(약 7
 
 [모바일 원클릭 2차 서류함 열기]`
               ) : (
-`[법률사무소 보광 개인회생 전담센터]
+`[${officeName}]
 ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니다.
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})

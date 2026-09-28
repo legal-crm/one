@@ -8,6 +8,7 @@ import {
   Sparkles, Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import ModalPortal from '../../common/ModalPortal';
 import { 
   CourtBatchFilingService, 
@@ -35,7 +36,7 @@ interface BatchFilingPackagingModalProps {
   onOpenPropertyModal?: () => void;
 }
 
-export default function BatchFilingPackagingModal({
+function BatchFilingPackagingModalInner({
   isOpen,
   onClose,
   clientRequest,
@@ -45,7 +46,6 @@ export default function BatchFilingPackagingModal({
   onOpenIncomeExpenseModal,
   onOpenPropertyModal,
 }: BatchFilingPackagingModalProps) {
-  if (!isOpen) return null;
 
   const clientName = clientRequest.clientName || '신청인';
   const caseTypeTitle = isBankruptcy ? '개인파산 및 면책' : '개인회생';
@@ -234,8 +234,8 @@ export default function BatchFilingPackagingModal({
         clientRequest,
         crmExt,
         creditors,
-        lawyerName: '정충원',
-        firmName: '법률사무소 보광',
+        lawyerName: crmExt?.petitionInfo?.lawyerName || '',
+        firmName: crmExt?.petitionInfo?.firmName || getOfficeProfile().firmName,
         courtName,
       };
 
@@ -273,8 +273,8 @@ export default function BatchFilingPackagingModal({
         clientRequest,
         crmExt,
         creditors,
-        lawyerName: '정충원',
-        firmName: '법률사무소 보광',
+        lawyerName: crmExt?.petitionInfo?.lawyerName || '',
+        firmName: crmExt?.petitionInfo?.firmName || getOfficeProfile().firmName,
         courtName,
       };
 
@@ -892,4 +892,10 @@ export default function BatchFilingPackagingModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function BatchFilingPackagingModal(props: React.ComponentProps<typeof BatchFilingPackagingModalInner>) {
+  if (!props.isOpen) return null;
+  return <BatchFilingPackagingModalInner {...props} />;
 }

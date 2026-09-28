@@ -312,13 +312,13 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
       const updated: CrmClientExtension = {
         ...crmExt,
         recordings: updatedRecordings,
-        aiSummary: aiResult.rawTranscript,
+        aiSummary: aiResult,
         lastActivityAt: new Date().toISOString()
       };
 
       onUpdateExt(updated);
       setPlayingRecording(newRecording);
-      toast.success('통화 녹취 업로드 및 Gemini 3.5 AI 대화록 생성이 완료되었습니다.');
+      toast.success('통화 녹취 업로드 및 AI 대화록 생성이 완료되었습니다.');
     } catch (err: any) {
       console.error(err);
       toast.error(`녹음 분석 실패: ${err.message || '오류 발생'}`);

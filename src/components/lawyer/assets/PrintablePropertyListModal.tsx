@@ -133,7 +133,7 @@ export default function PrintablePropertyListModal({
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
               <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">1·2</span>
-              현금 및 예금 (압류금지 250만 원 한도 공제)
+              현금 및 예금 (압류금지 185만 원 한도 공제)
             </h3>
             <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
               <thead className="bg-slate-100 font-bold text-slate-700">

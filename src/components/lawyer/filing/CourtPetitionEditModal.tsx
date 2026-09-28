@@ -50,16 +50,15 @@ const MAJOR_BANKS = [
   'SC제일은행', '수협은행', '신협', '새마을금고', '부산은행', '대구은행'
 ];
 
-export default function CourtPetitionEditModal({
+function CourtPetitionEditModalInner({
   isOpen,
   onClose,
   clientId,
   clientRequest,
   crmExt,
   onUpdateCrmExt,
-  activeLawyerName = '정충원'
+  activeLawyerName = ''
 }: CourtPetitionEditModalProps) {
-  if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<'applicant' | 'court_claim' | 'service' | 'refund_sms'>('applicant');
   const [isSaving, setIsSaving] = useState(false);
@@ -68,37 +67,37 @@ export default function CourtPetitionEditModal({
   const [formData, setFormData] = useState<CourtPetitionData>(() => {
     const p = crmExt.petitionInfo;
     const clientName = p?.clientName || clientRequest.clientName || '신청인';
-    const clientPhone = p?.phone || clientRequest.phone || '010-3107-3310';
+    const clientPhone = p?.phone || clientRequest.phone || '';
     const courtName = p?.courtName || crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-    const residentAddress = p?.residentAddress || (clientRequest as any).address || '서울특별시 구로구 개봉로11길 46-25, 201호';
+    const residentAddress = p?.residentAddress || (clientRequest as any).address || '';
 
     return {
       courtName,
       clientName,
-      rrnFront: p?.rrnFront || (clientRequest as any).rrnFront || '710812',
-      rrnBack: p?.rrnBack || (clientRequest as any).rrnBack || '1234567',
+      rrnFront: p?.rrnFront || (clientRequest as any).rrnFront || '',
+      rrnBack: p?.rrnBack || (clientRequest as any).rrnBack || '',
       phone: clientPhone,
       tel: p?.tel || '',
       residentAddress,
-      residentPostcode: p?.residentPostcode || '08349',
+      residentPostcode: p?.residentPostcode || '',
       currentAddress: p?.currentAddress || residentAddress,
-      currentPostcode: p?.currentPostcode || '08349',
-      companyName: p?.companyName || (clientRequest as any).companyName || '주식회사 한국테크',
-      companyAddress: p?.companyAddress || '서울특별시 마포구 마포대로 20, 7층',
-      companyPostcode: p?.companyPostcode || '04175',
+      currentPostcode: p?.currentPostcode || '',
+      companyName: p?.companyName || (clientRequest as any).companyName || '',
+      companyAddress: p?.companyAddress || '',
+      companyPostcode: p?.companyPostcode || '',
       incomeType: p?.incomeType || 'salary',
       servicePlaceType: p?.servicePlaceType || 'firm',
-      servicePlaceAddress: p?.servicePlaceAddress || '서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호',
-      servicePlacePostcode: p?.servicePlacePostcode || '01323',
+      servicePlaceAddress: p?.servicePlaceAddress || '',
+      servicePlacePostcode: p?.servicePlacePostcode || '',
       serviceRecipient: p?.serviceRecipient || `변호사 ${activeLawyerName}`,
       lawyerName: p?.lawyerName || activeLawyerName,
-      firmName: p?.firmName || '법률사무소 보광',
-      firmAddress: p?.firmAddress || '서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호',
-      firmPhone: p?.firmPhone || '02-955-8488',
-      firmFax: p?.firmFax || '02-2179-8487',
-      firmEmail: p?.firmEmail || 'lawyer@lawfirm.co.kr',
-      refundBank: p?.refundBank || (crmExt.repaymentPlan as any)?.bankName || '우체국',
-      refundAccount: p?.refundAccount || (crmExt.repaymentPlan as any)?.accountNumber || '110-0122-33536',
+      firmName: p?.firmName || '',
+      firmAddress: p?.firmAddress || '',
+      firmPhone: p?.firmPhone || '',
+      firmFax: p?.firmFax || '',
+      firmEmail: p?.firmEmail || '',
+      refundBank: p?.refundBank || (crmExt.repaymentPlan as any)?.bankName || '',
+      refundAccount: p?.refundAccount || (crmExt.repaymentPlan as any)?.accountNumber || '',
       refundAccountHolder: p?.refundAccountHolder || clientName,
       smsNotificationConsent: p?.smsNotificationConsent !== undefined ? p.smsNotificationConsent : true,
       smsNotificationPhone: p?.smsNotificationPhone || clientPhone,
@@ -540,7 +539,7 @@ export default function CourtPetitionEditModal({
                     type="text"
                     value={formData.serviceRecipient || ''}
                     onChange={(e) => handleChange('serviceRecipient', e.target.value)}
-                    placeholder="변호사 정충원"
+                    placeholder="예: 변호사 홍길동"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
@@ -551,7 +550,7 @@ export default function CourtPetitionEditModal({
                     maxLength={5}
                     value={formData.servicePlacePostcode || ''}
                     onChange={(e) => handleChange('servicePlacePostcode', e.target.value)}
-                    placeholder="01323"
+                    placeholder="우편번호 5자리"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-900 focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
@@ -563,7 +562,7 @@ export default function CourtPetitionEditModal({
                   type="text"
                   value={formData.servicePlaceAddress || ''}
                   onChange={(e) => handleChange('servicePlaceAddress', e.target.value)}
-                  placeholder="서울특별시 도봉구 마들로 760 (도봉동, 한밭법조타워) 301호"
+                  placeholder="송달받을 사무소 주소"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:border-blue-500 focus:outline-hidden"
                 />
               </div>
@@ -650,7 +649,7 @@ export default function CourtPetitionEditModal({
                   <div>
                     <label className="block text-slate-700 font-bold mb-1">은행명 *</label>
                     <select
-                      value={formData.refundBank || '우체국'}
+                      value={formData.refundBank || ''}
                       onChange={(e) => handleChange('refundBank', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white focus:border-blue-500 focus:outline-hidden"
                     >
@@ -745,4 +744,10 @@ export default function CourtPetitionEditModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function CourtPetitionEditModal(props: React.ComponentProps<typeof CourtPetitionEditModalInner>) {
+  if (!props.isOpen) return null;
+  return <CourtPetitionEditModalInner {...props} />;
 }

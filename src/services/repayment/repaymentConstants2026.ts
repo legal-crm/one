@@ -164,7 +164,7 @@ export const MAX_ADDITIONAL_SPECIAL_EDUCATION = 500000;    // 특수 교육비 �
 // ==============================================================================
 // 4. 압류금지 채권 및 재산 공제 한도 (민사집행법 및 주임법 소액보증금)
 // ==============================================================================
-export const EXEMPT_DEPOSIT_LIMIT = 1850000;              // 예금 압류금지 기본 공제액
+export const EXEMPT_DEPOSIT_LIMIT = DEPOSIT_EXEMPTION_KRW;  // 예금 압류금지 기본 공제액 (단일 출처: 상단 DEPOSIT_EXEMPTION_KRW)
 export const EXEMPT_INSURANCE_REFUND_LIMIT = 1500000;      // 보장성 보험 해약환급금 압류금지 공제액
 export const EXEMPT_PROPERTY_LIVING_LIMIT = 11100000;      // 6개월간 생계비 법정 한도
 

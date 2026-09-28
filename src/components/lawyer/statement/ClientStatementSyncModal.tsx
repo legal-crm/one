@@ -28,7 +28,7 @@ interface ClientStatementSyncModalProps {
   onStatementSynced?: (statement: CourtStatementData) => void;
 }
 
-export default function ClientStatementSyncModal({
+function ClientStatementSyncModalInner({
   isOpen,
   onClose,
   clientId,
@@ -37,10 +37,9 @@ export default function ClientStatementSyncModal({
   onUpdateCrmExt,
   onStatementSynced
 }: ClientStatementSyncModalProps) {
-  if (!isOpen) return null;
 
   const clientName = clientRequest.clientName || '신청인';
-  const phone = clientRequest.phone || '010-0000-0000';
+  const phone = clientRequest.phone || '';
   const statement = crmExt.courtStatement;
   const isCompleted = statement?.status === 'submitted' || statement?.status === 'lawyer_reviewed';
 
@@ -221,4 +220,10 @@ export default function ClientStatementSyncModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function ClientStatementSyncModal(props: React.ComponentProps<typeof ClientStatementSyncModalInner>) {
+  if (!props.isOpen) return null;
+  return <ClientStatementSyncModalInner {...props} />;
 }

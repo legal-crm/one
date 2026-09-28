@@ -21,6 +21,7 @@ function logSupabaseError(op: string, error: any) {
 
 import { randomToken, newRemoteSignToken } from '../utils/secureToken';
 import { calcCourtFees, DELIVERY_UNIT_FEE_KRW } from './court/courtFees';
+import { localYmd, parseLocalYmd, addMonthsClamped } from '../utils/localDate';
 
 /**
  * 제안서→계약 연동 확장 컬럼 (migration 015). 값이 있을 때만 전송해
@@ -637,8 +638,10 @@ export function generateFeeSchedule(
   firstInstallmentDate: string
 ): FeeInstallment[] {
   const schedule: FeeInstallment[] = [];
-  const remaining = totalFee - downPayment;
-  const perInstallment = Math.round(remaining / installmentCount);
+  const remaining = Math.max(0, totalFee - Math.max(0, downPayment));
+  // 분납 0회: 잔액이 사라지지 않도록 착수금 외 잔액을 1회로 묶음
+  const count = Math.max(remaining > 0 ? 1 : 0, Math.floor(installmentCount) || 0);
+  const perInstallment = count > 0 ? Math.round(remaining / count) : 0;
 
   // 착수금
   schedule.push({
@@ -650,17 +653,16 @@ export function generateFeeSchedule(
     memo: '계약금(착수금)',
   });
 
-  // 분할납부
-  const startDate = new Date(firstInstallmentDate);
-  for (let i = 0; i < installmentCount; i++) {
-    const d = new Date(startDate);
-    d.setMonth(d.getMonth() + i);
-    const isLast = i === installmentCount - 1;
+  // 분할납부 (로컬 날짜, 말일 보정: 1/31 → 2/28)
+  const startDate = parseLocalYmd(firstInstallmentDate) || new Date();
+  for (let i = 0; i < count; i++) {
+    const d = addMonthsClamped(startDate, i);
+    const isLast = i === count - 1;
     schedule.push({
       id: `fee-${Date.now()}-${i + 1}`,
       round: i + 1,
-      amount: isLast ? remaining - perInstallment * (installmentCount - 1) : perInstallment,
-      dueDate: d.toISOString().split('T')[0],
+      amount: isLast ? remaining - perInstallment * (count - 1) : perInstallment,
+      dueDate: localYmd(d),
       status: 'pending',
       memo: isLast ? '잔금' : `${i + 1}차 분할`,
     });
@@ -678,8 +680,8 @@ export function addAuditLog(contract: ElectronicContract, action: string, actor:
       action,
       timestamp: new Date().toISOString(),
       actor,
-      ip: '127.0.0.1',
-      userAgent: navigator.userAgent,
+      // 브라우저에서는 실제 공인 IP를 알 수 없으므로 임의 값(127.0.0.1)을 기록하지 않음
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
     }],
     updatedAt: new Date().toISOString(),
   };

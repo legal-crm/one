@@ -6,6 +6,8 @@ import {
   MapPin, Search, Check, CornerDownRight, AlertOctagon, Minus, Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { validateUploadFile } from '../../../utils/fileSecurity';
+import { localYmd } from '../../../utils/localDate';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { 
   DebtCertificateOrder, 
@@ -51,70 +53,19 @@ export default function DebtCertificateTab({
     const loaded = loadDebtCertificateOrder(clientId);
     if (loaded) return loaded;
 
-    // 초기 상담 데이터에서 채권자 추정치 시드 (주소 프리셋 자동 매핑)
-    const initialDebt = clientRequest.financialProfile?.debtTotal || 0;
-    const p1 = matchCreditorPreset('국민은행');
-    const p2 = matchCreditorPreset('신한카드');
-    const p3 = matchCreditorPreset('OK저축은행');
-
-    const initialItems: DebtCertificateItem[] = [
-      {
-        id: 'item_1',
-        creditorName: '국민은행',
-        expectedPrincipal: Math.round(initialDebt * 10000 * 0.4),
-        issueStatus: 'pending',
-        agencyFee: 15000,
-        issuanceFee: 2000,
-        zipCode: p1?.zipCode || '07331',
-        address: p1?.address || '서울특별시 영등포구 의사당대로 141 (여의도동)',
-        serviceAddress: p1?.serviceAddress || '서울특별시 영등포구 의사당대로 141, 여의도영업부 (법원송달팀)',
-        representative: p1?.representative || '은행장 이재근',
-        bizNumber: p1?.bizNumber || '201-81-47789',
-        debtCauseDetail: '대여금 / 신용대출',
-        borrowedDate: '2023-05-15',
-      },
-      {
-        id: 'item_2',
-        creditorName: '신한카드',
-        expectedPrincipal: Math.round(initialDebt * 10000 * 0.35),
-        issueStatus: 'pending',
-        agencyFee: 15000,
-        issuanceFee: 2000,
-        zipCode: p2?.zipCode || '04543',
-        address: p2?.address || '서울특별시 중구 을지로 100, 파인에비뉴 A동 (을지로2가)',
-        serviceAddress: p2?.serviceAddress || '서울특별시 중구 을지로 100, 파인에비뉴 A동 사후관리팀',
-        representative: p2?.representative || '대표이사 문동권',
-        bizNumber: p2?.bizNumber || '202-81-48079',
-        debtCauseDetail: '신용카드 대금',
-        borrowedDate: '2023-08-20',
-      },
-      {
-        id: 'item_3',
-        creditorName: 'OK저축은행',
-        expectedPrincipal: Math.round(initialDebt * 10000 * 0.25),
-        issueStatus: 'pending',
-        agencyFee: 15000,
-        issuanceFee: 2000,
-        zipCode: p3?.zipCode || '04523',
-        address: p3?.address || '서울특별시 중구 세종대로 39, 대한서울상공회의소빌딩 10층',
-        serviceAddress: p3?.serviceAddress || '서울특별시 중구 세종대로 39, 상공회의소빌딩 10층 여신관리실',
-        representative: p3?.representative || '대표이사 정길호',
-        bizNumber: p3?.bizNumber || '214-81-88987',
-        debtCauseDetail: '금원차용(신용대출)',
-        borrowedDate: '2024-01-10',
-      },
-    ];
-
+    // 저장된 주문이 없으면 빈 목록으로 시작 (이전: 국민은행·신한카드·OK저축은행을 채무 비율 40/35/25%와
+    //  가짜 차용일로 자동 생성하고, 대행업체 '원클릭부채대행'을 지정)
+    // 채권자는 [의뢰인 7대 실무 입력 동기화]·[채권자 조회]·직접 추가로 등록한다.
     return {
       orderId: `order_${clientId}`,
       clientId,
-      clientName: clientRequest.clientName || '의뢰인',
+      clientName: clientRequest.clientName || '',
       clientPhone: clientRequest.phone || '',
-      agencyName: '원클릭부채대행',
+      agencyName: '',
       orderStatus: 'draft',
-      items: initialItems,
+      items: [],
       createdAt: new Date().toISOString(),
-      totalAgencyCost: initialItems.length * 17000,
+      totalAgencyCost: 0,
     };
   });
 
@@ -384,6 +335,12 @@ export default function DebtCertificateTab({
       toast.error('PDF 문서 또는 이미지 파일(JPG, PNG)만 등록 가능합니다.');
       return;
     }
+    const validation = validateUploadFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -393,7 +350,7 @@ export default function DebtCertificateTab({
         docName: file.name,
         docType: isPdf ? 'pdf' : 'image',
         issueStatus: 'issued',
-        issueDate: new Date().toISOString().slice(0, 10),
+        issueDate: localYmd(),
       });
       toast.success(`${file.name} 부채증명서가 등록되었습니다.`);
     };
@@ -1197,7 +1154,7 @@ export default function DebtCertificateTab({
         isOpen={isDiscoveryModalOpen}
         onClose={() => setIsDiscoveryModalOpen(false)}
         clientName={order.clientName || clientRequest.clientName || '의뢰인'}
-        clientPhone={order.clientPhone || clientRequest.phone || '010-0000-0000'}
+        clientPhone={order.clientPhone || clientRequest.phone || ''}
         onImportToDebtCertificates={handleImportFromDiscovery}
       />
 
@@ -1221,7 +1178,7 @@ export default function DebtCertificateTab({
           onClose={() => setIsDebtIntakeModalOpen(false)}
           clientId={clientId}
           clientName={clientRequest.clientName || '신청인'}
-          clientPhone={clientRequest.phone || '010-0000-0000'}
+          clientPhone={clientRequest.phone || ''}
           onComplete={() => {
             handleSyncDebtIntake();
           }}

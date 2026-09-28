@@ -104,17 +104,16 @@ export function formCodeToDocTabId(code: string): DocTabId {
   }
 }
 
-export default function CourtDocSuiteViewerModal({
+function CourtDocSuiteViewerModalInner({
   isOpen,
   onClose,
   clientRequest,
   crmExt,
-  activeLawyerName = '변호사 정충원',
+  activeLawyerName = '',
   initialTab,
   initialFormCode,
   onUpdateCrmExt
 }: CourtDocSuiteViewerModalProps) {
-  if (!isOpen) return null;
 
   const resolveInitialTab = (): DocTabId => {
     if (initialTab) return initialTab;
@@ -709,4 +708,10 @@ export default function CourtDocSuiteViewerModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function CourtDocSuiteViewerModal(props: React.ComponentProps<typeof CourtDocSuiteViewerModalInner>) {
+  if (!props.isOpen) return null;
+  return <CourtDocSuiteViewerModalInner {...props} />;
 }

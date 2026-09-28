@@ -8,6 +8,7 @@ import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
 import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
 import { DELIVERY_UNIT_FEE_KRW } from '../court/courtFees';
+import { getOfficeProfile } from '../lawyer/officeProfile';
 
 // 법원 송달료 1회분 — 퀵독·전자계약과 같은 단일 상수 사용 (이전: 5,500원으로 불일치)
 export const COURT_SERVICE_FEE_UNIT = DELIVERY_UNIT_FEE_KRW;
@@ -477,7 +478,7 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
 export function buildCourtFilingMasterData(
   request: ConsultRequest,
   crmExt?: CrmClientExtension,
-  activeLawyerName: string = '변호사 정충원'
+  activeLawyerName: string = ''
 ): CourtFilingMasterData {
   const profile = request.financialProfile || {};
   const crmClient = crmExt?.clientInfo;
@@ -485,13 +486,16 @@ export function buildCourtFilingMasterData(
   const repaymentPlan = crmExt?.repaymentPlan;
 
   const debtorName = request.clientName || '신청인';
-  const residentNumber = crmClient?.residentNumber || '771230-1******';
-  const address = crmClient?.address || '서울특별시 서초구 서초대로 254';
-  const phone = request.phone || '010-0000-0000';
+  // 미입력 항목은 빈 값으로 둔다 (이전: 가짜 주민번호·주소·전화번호로 채움)
+  const residentNumber = crmClient?.residentNumber || '';
+  const address = crmClient?.address || '';
+  const phone = request.phone && !request.phone.includes('*') ? request.phone : '';
+  const office = getOfficeProfile(activeLawyerName);
 
   const courtName = courtInfo?.courtName || request.court || '서울회생법원';
   const courtJurisdiction = detectCourtJurisdiction(courtName);
-  const caseNumber = courtInfo?.caseNumber || `2026개회 ${Math.floor(100000 + Math.random() * 900000)}`;
+  // 사건번호는 접수 후 부여되므로 없으면 비워둔다 (이전: 무작위 가짜 사건번호 생성)
+  const caseNumber = courtInfo?.caseNumber || '';
 
   const today = new Date();
   const applicationDateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}`;
@@ -501,90 +505,23 @@ export function buildCourtFilingMasterData(
   const firstRepayDateStr = `${firstRepayDate.getFullYear()}. ${String(firstRepayDate.getMonth() + 1).padStart(2, '0')}. 25`;
 
   const rawCreditors = repaymentPlan?.creditors || [];
-  const creditors: RepaymentCreditor[] = rawCreditors.length > 0 
-    ? rawCreditors 
-    : [
-        {
-          id: 'c1',
-          name: '주식회사 국민은행',
-          debtType: 'UNSECURED_CREDIT',
-          originalAmount: 35000000,
-          currentPrincipal: 32000000,
-          currentInterest: 450000,
-          totalDebt: 32450000,
-          annexDocTypes: ['ANNEX_4_GUARANTOR'],
-          interestRate: 6.8,
-          creditorAddress: '서울특별시 중구 남대문로 84',
-          creditorPhone: '1588-9999',
-          principalCalculationBasis: '부채증명서 참조',
-          interestCalculationBasis: '연체이자 계산서 참조'
-        },
-        {
-          id: 'c2',
-          name: '신한카드 주식회사',
-          debtType: 'UNSECURED_CARD',
-          originalAmount: 15000000,
-          currentPrincipal: 14200000,
-          currentInterest: 180000,
-          totalDebt: 14380000,
-          annexDocTypes: ['ANNEX_3_ASSIGNMENT'],
-          interestRate: 15.2,
-          creditorAddress: '서울특별시 중구 을지로 100',
-          creditorPhone: '1544-7000',
-          principalCalculationBasis: '부채증명서 참조',
-          interestCalculationBasis: '연체이자 계산서 참조'
-        }
-      ];
+  // 채권자는 변제계획안(부채증명서 동기화)에 입력된 것만 사용 — 없으면 빈 목록 (이전: 국민은행·신한카드 샘플)
+  const creditors: RepaymentCreditor[] = rawCreditors;
 
-  const stayCases: StayExecutionCase[] = [
-    {
-      id: 'stay-1',
-      creditorName: creditors[0]?.name || '주식회사 국민은행',
-      courtName: courtName,
-      caseType: '채권압류및추심',
-      caseNumber: `${today.getFullYear()}타채 ${Math.floor(1000 + Math.random() * 9000)}`,
-      thirdPartyDebtor: '주식회사 위노스(급여 사용자)',
-      seizureTarget: '신청인의 급여채권 및 퇴직금',
-      servedDate: `${today.getFullYear()}-05-12`,
-      isConfirmed: true
-    }
-  ];
+  // 중지명령 대상 강제집행 사건은 CRM에 등록된 것만 (이전: 무작위 타채 번호·가상 제3채무자 '주식회사 위노스'를 확정 사건으로 생성)
+  const stayCases: StayExecutionCase[] = Array.isArray((crmExt as any)?.stayCases) ? (crmExt as any).stayCases : [];
 
-  const monthlyNetIncome = (profile.income || 300) * 10000;
+  const monthlyNetIncome = ((profile as any).income || 0) * 10000;
   const householdSize = (profile.dependents || 0) + 1;
-  const baseMedian = MEDIAN_INCOMES_2026[householdSize] || (2564238 * householdSize * 0.7);
+  const baseMedian = MEDIAN_INCOMES_2026[householdSize] || MEDIAN_INCOMES_2026[Math.min(8, Math.max(1, householdSize))] || 0;
   const monthlyLivingCost = STATUTORY_LIVING_COST_60_2026[householdSize] || Math.round(baseMedian * 0.6);
 
-  // 12개월 급여 명세표
-  const monthlyLedger: MonthlyIncomeLedgerRow[] = [];
-  const baseSalaryMonthly = Math.round(monthlyNetIncome * 0.85);
-  const bonusMonthly = Math.round(monthlyNetIncome * 0.15);
-  const incTax = Math.round(monthlyNetIncome * 0.03);
-  const locTax = Math.round(incTax * 0.1);
-  const hlthIns = Math.round(monthlyNetIncome * 0.035);
-  const natPen = Math.round(monthlyNetIncome * 0.045);
-  const empIns = Math.round(monthlyNetIncome * 0.009);
-  const careIns = Math.round(hlthIns * 0.12);
-
-  for (let m = 1; m <= 12; m++) {
-    monthlyLedger.push({
-      monthLabel: `${m}월`,
-      baseSalary: baseSalaryMonthly,
-      bonus: bonusMonthly,
-      incomeTax: incTax,
-      localTax: locTax,
-      healthInsurance: hlthIns,
-      nationalPension: natPen,
-      employmentInsurance: empIns,
-      longTermCare: careIns
-    });
-  }
-
-  const annualTotalIncome = (baseSalaryMonthly + bonusMonthly) * 12;
-  const singleMonthDeduction = incTax + locTax + hlthIns + natPen + empIns + careIns;
-  const annualTotalDeductions = singleMonthDeduction * 12;
+  // 12개월 급여 명세표: 실제 급여명세서 입력 전에는 빈 표 (이전: 월소득에 고정 비율을 곱한 가공 명세 12개월 생성)
+  const monthlyLedger: MonthlyIncomeLedgerRow[] = Array.isArray((crmExt as any)?.monthlyIncomeLedger) ? (crmExt as any).monthlyIncomeLedger : [];
+  const annualTotalIncome = monthlyLedger.reduce((sum, r) => sum + (r.baseSalary || 0) + (r.bonus || 0), 0);
+  const annualTotalDeductions = monthlyLedger.reduce((sum, r) => sum + (r.incomeTax || 0) + (r.localTax || 0) + (r.healthInsurance || 0) + (r.nationalPension || 0) + (r.employmentInsurance || 0) + (r.longTermCare || 0), 0);
   const annualNetIncome = annualTotalIncome - annualTotalDeductions;
-  const monthlyAverageIncome = Math.round(annualNetIncome / 12);
+  const monthlyAverageIncome = monthlyLedger.length > 0 ? Math.round(annualNetIncome / monthlyLedger.length) : 0;
 
   const initialData: CourtFilingMasterData = {
     courtJurisdiction,
@@ -597,25 +534,25 @@ export function buildCourtFilingMasterData(
       serviceRecipient: debtorName,
       phone,
       homePhone: '',
-      refundBank: '국민은행',
-      refundAccount: '352-63476-7478',
+      refundBank: '',
+      refundAccount: '',
       applicationType: '주채무자',
       employmentType: '급여소득자',
       hasAdditionalIncome: false,
-      workplaceName: '주식회사 위노스',
-      workplaceAddress: '서울특별시 영등포구 여의대로 24',
-      workplacePhone: '02-780-1234',
-      workplaceCeo: '김대표',
-      jobTitle: '과장',
-      tenureYearsMonths: '3년 6개월'
+      workplaceName: (profile as any).companyName || '',
+      workplaceAddress: '',
+      workplacePhone: '',
+      workplaceCeo: '',
+      jobTitle: '',
+      tenureYearsMonths: ''
     },
     lawyer: {
-      firmName: '법률사무소 보광',
+      firmName: office.firmName,
       lawyerName: activeLawyerName.replace('담당 ', ''),
-      address: '서울특별시 서초구 서초대로 254 (서초동, 오퓨런스빌딩) 7층',
-      phone: '02-955-8488',
-      fax: '02-2179-8487',
-      email: 'bokwang_law@daum.net'
+      address: office.address,
+      phone: office.phone,
+      fax: office.fax,
+      email: office.email
     },
     court: {
       courtName,
@@ -646,7 +583,7 @@ export function buildCourtFilingMasterData(
       monthlyLivingCost,
       additionalLivingCost: 0,
       monthlyDisposableIncome: Math.max(0, monthlyNetIncome - monthlyLivingCost),
-      repaymentMonths: 36,
+      repaymentMonths: (repaymentPlan as any)?.months || 36,
       totalRepaymentAmount: 0,
       liquidationValue: (profile.assetsTotal || 0) * 10000,
       repaymentRatio: 0,
@@ -657,9 +594,10 @@ export function buildCourtFilingMasterData(
       meetsStatutoryMinimum: true,
       statutoryWarningMessage: null
     },
+    // 회생위원 계좌는 개시결정 후 사건별로 부여 — 임의 계좌 기재 금지
     trusteeAccount: {
-      bank: '신한은행',
-      accountNumber: '100-032-948123'
+      bank: '',
+      accountNumber: ''
     },
     specialClauses: DEFAULT_SPECIAL_CLAUSES,
     creditors,
@@ -672,16 +610,17 @@ export function buildCourtFilingMasterData(
     disputedCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_2_DISPUTED')),
     assignmentCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_3_ASSIGNMENT')),
     guarantyCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_4_GUARANTOR')),
+    // 재산은 재산목록(D5102) 입력 전에는 0원·빈 항목 (이전: 아반떼 차량·삼성생명 보험·임차보증금·퇴직금 등 가공 재산)
     assets: {
-      cash: 100000,
-      bankAccounts: [{ bankName: '국민은행', accountNumber: '123-45-67890', balance: 1200000 }],
-      bankDeduction: 2500000,
-      insurance: [{ companyName: '삼성생명', policyNumber: '10928374', refundAmount: 1800000 }],
-      insuranceDeduction: 2500000,
-      vehicle: { modelYear: '아반떼 2019년형', estimatedValue: 8000000, securedLoan: 5000000, netValue: 3000000 },
-      leaseDeposit: { address: address, deposit: 10000000, monthlyRent: 550000, exemptDeposit: 55000000, netValue: 0 },
+      cash: 0,
+      bankAccounts: [],
+      bankDeduction: 0,
+      insurance: [],
+      insuranceDeduction: 0,
+      vehicle: { modelYear: '', estimatedValue: 0, securedLoan: 0, netValue: 0 },
+      leaseDeposit: { address: '', deposit: 0, monthlyRent: 0, exemptDeposit: 0, netValue: 0 },
       realEstate: { address: '', area: '', marketValue: 0, mortgage: 0, netValue: 0 },
-      severancePay: { company: '주식회사 위노스', amount: 15000000, exemptAmount: 7500000, netValue: 7500000 }
+      severancePay: { company: '', amount: 0, exemptAmount: 0, netValue: 0 }
     },
     stayCases,
     monthlyLedger,
@@ -691,15 +630,16 @@ export function buildCourtFilingMasterData(
       annualNetIncome,
       monthlyAverageIncome
     },
+    // 진술서는 의뢰인·변호사가 작성한 내용만 (이전: 학력·주거·채무경위 문장을 가공해 채움)
     statement: {
-      education: '대학교 졸업',
-      maritalHistory: '해당사항 없음 (미혼)',
-      housingType: '임차(전월세) 주택',
-      housingDetail: '보증금 1,000만원 / 월세 55만원',
-      housingStartDate: '2023. 10. 05',
-      hasLitigationOrSeizure: true,
-      debtCauses: ['생활비 부족', '고금리 대출 이자 누적', '취업 준비 기간 장기화'],
-      detailedReasonEssay: `신청인은 성실히 직장에 재직하며 홀로 생계를 유지해 왔으나, 지속적인 물가 상승과 급격한 금리 인상으로 인하여 기존 금융권 채무의 이자 부담이 급증하였습니다. 부족한 생활비를 메우기 위해 카드를 사용하고 신용대출을 추가로 실행하였으나, 원리금 상환액이 월 가용소득을 초과하게 되었고 급기야 급여 가압류 및 압류 추심에 직면하여 더 이상 자력으로 채무를 변제할 수 없는 지급불능 상태에 이르게 되었습니다. 이에 채무자 회생 및 파산에 관한 법률에 따른 개인회생절차를 통하여 성실히 채무를 분할 변제하고 사회의 건전한 구성원으로 갱생하고자 본 신청에 이르렀습니다.`
+      education: '',
+      maritalHistory: '',
+      housingType: '' as any,
+      housingDetail: '',
+      housingStartDate: '',
+      hasLitigationOrSeizure: stayCases.length > 0,
+      debtCauses: [],
+      detailedReasonEssay: ''
     },
     evidenceList: getEvidenceListForJurisdiction(courtJurisdiction)
   };

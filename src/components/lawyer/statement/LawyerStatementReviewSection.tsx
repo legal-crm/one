@@ -56,8 +56,16 @@ export default function LawyerStatementReviewSection({
   };
 
   // 고객에게 진술서 작성 안내 요청 발송
-  const handleRequestClientStatement = () => {
-    toast.success(`[알림톡 발송] ${clientName}님께 법원 진술서 간편 작성 링크가 전송되었습니다.`);
+  // 알림톡 연동 전: 안내 문구 복사 (이전: 아무것도 보내지 않고 '전송되었습니다' 표시)
+  const handleRequestClientStatement = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `[${clientName}님] 법원 제출용 진술서 작성을 부탁드립니다. 마이페이지 > 서류 작성 > 진술서에서 작성하실 수 있습니다. ${origin}/?tab=mypage`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('진술서 작성 요청 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.');
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+    }
   };
 
   // 진술서가 아직 없는 경우: 빈 상태
@@ -82,7 +90,7 @@ export default function LawyerStatementReviewSection({
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>고객에게 진술서 작성 요청 알림톡 발송</span>
+            <span>진술서 작성 요청 문구 복사</span>
           </button>
         </div>
       </div>

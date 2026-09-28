@@ -30,7 +30,7 @@ interface CreditorManagementModalProps {
   onUpdateCrmExt: (updates: Partial<CrmClientExtension>) => Promise<void>;
 }
 
-export default function CreditorManagementModal({
+function CreditorManagementModalInner({
   isOpen,
   onClose,
   clientId,
@@ -38,7 +38,6 @@ export default function CreditorManagementModal({
   crmExt,
   onUpdateCrmExt,
 }: CreditorManagementModalProps) {
-  if (!isOpen) return null;
 
   const clientName = clientRequest.clientName || '신청인';
   const currentPlan = crmExt.repaymentPlan;
@@ -1136,4 +1135,10 @@ export default function CreditorManagementModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function CreditorManagementModal(props: React.ComponentProps<typeof CreditorManagementModalInner>) {
+  if (!props.isOpen) return null;
+  return <CreditorManagementModalInner {...props} />;
 }

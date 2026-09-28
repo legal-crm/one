@@ -233,7 +233,7 @@ export default function ClientCommunicationSidePanel({
       const updated: CrmClientExtension = {
         ...crmExt,
         recordings: updatedRecordings,
-        aiSummary: aiRes.rawTranscript,
+        aiSummary: aiRes,
         lastActivityAt: new Date().toISOString()
       };
 

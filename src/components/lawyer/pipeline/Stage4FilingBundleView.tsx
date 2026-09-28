@@ -91,7 +91,7 @@ export default function Stage4FilingBundleView({
       name: '개인회생절차 개시신청서 본안', 
       isReady: true, 
       badge: 'D5101',
-      note: `${courtName} 접수 · 신청인 ${clientName} (${crmExt?.petitionInfo?.incomeType === 'business' ? '영업소득자' : '급여소득자'}) · 환급: ${crmExt?.petitionInfo?.refundBank || (crmExt?.repaymentPlan as any)?.bankName || '우체국'}`
+      note: `${courtName} 접수 · 신청인 ${clientName} (${crmExt?.petitionInfo?.incomeType === 'business' ? '영업소득자' : '급여소득자'}) · 환급: ${crmExt?.petitionInfo?.refundBank || (crmExt?.repaymentPlan as any)?.bankName || ''}`
     },
     { 
       code: 'R02', 
@@ -133,7 +133,7 @@ export default function Stage4FilingBundleView({
       name: '소송위임장', 
       isReady: true, 
       badge: '대리권',
-      note: `대리인 변호사 ${crmExt?.petitionInfo?.lawyerName || '정충원'} · 8대 소송대리 수권 및 경유확인서 완료`
+      note: `대리인 변호사 ${crmExt?.petitionInfo?.lawyerName || ''} · 8대 소송대리 수권 및 경유확인서 완료`
     },
     { 
       code: 'R07', 
@@ -161,7 +161,7 @@ export default function Stage4FilingBundleView({
   ];
 
   const clientId = clientRequest.id || clientRequest.clientName || 'default_client';
-  const lawyerName = crmExt?.petitionInfo?.lawyerName || '정충원 변호사';
+  const lawyerName = crmExt?.petitionInfo?.lawyerName || '';
 
   // AI 자동 초안 상태 (옵션 A 관리: 8대 서식 전수 검토 필수)
   const [draftSuite, setDraftSuite] = useState<AutoDraftSuiteState>(() => {
@@ -373,7 +373,7 @@ export default function Stage4FilingBundleView({
             {/* 사건 기본 정보 요약 바 */}
             <div className="pt-1 flex items-center gap-3 text-xs text-slate-300 flex-wrap font-mono">
               <span className="bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
-                사건: <strong className="text-white">{crmExt?.courtCase?.caseNumber || '2026개회104921'}</strong>
+                사건: <strong className="text-white">{crmExt?.courtCase?.caseNumber || '접수 전'}</strong>
               </span>
               <span className="bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
                 신청인: <strong className="text-white">{clientName}</strong>

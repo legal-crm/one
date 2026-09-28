@@ -348,7 +348,13 @@ export function loadCertificateVault(clientId: string): CertificateVaultData | n
   try {
     const raw = localStorage.getItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed: CertificateVaultData = JSON.parse(raw);
+    // 과거 버전이 자동 생성한 가짜 시연 금고(MOCK_ 인증서) 폐기
+    if (parsed?.npki?.derBase64?.includes('MOCK_') || parsed?.npki?.keyBase64?.includes('MOCK_')) {
+      localStorage.removeItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`);
+      return null;
+    }
+    return parsed;
   } catch (err) {
     console.error('Failed to load certificate vault:', err);
     return null;
@@ -369,6 +375,7 @@ export function saveCertificateVault(vault: CertificateVaultData): void {
 /**
  * 초기 시드 데이터 생성기 (기존 고객에 대한 실감형 데모 금고 데이터)
  */
+/** @deprecated DEV 시연 전용 — 운영 코드에서 호출하지 말 것 (가짜 인증서·동의 서명·열람 기록 생성) */
 export function generateSeedVaultData(clientId: string, clientName: string = '홍길동', phone: string = '010-5291-8842'): CertificateVaultData {
   const now = new Date();
   const validTo = new Date(now.getTime() + 184 * 86400000).toISOString(); // 약 6개월 후 만료

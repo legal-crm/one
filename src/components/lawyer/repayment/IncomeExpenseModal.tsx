@@ -41,7 +41,7 @@ interface IncomeExpenseModalProps {
   onOpenBatchFiling?: () => void;
 }
 
-export default function IncomeExpenseModal({
+function IncomeExpenseModalInner({
   isOpen,
   onClose,
   clientId,
@@ -51,7 +51,6 @@ export default function IncomeExpenseModal({
   activeLawyerName = '담당 변호사',
   onOpenBatchFiling
 }: IncomeExpenseModalProps) {
-  if (!isOpen) return null;
 
   // 1. 초기 데이터 로딩: CRM에 저장된 데이터가 있으면 로드, 없으면 상담 프로필에서 자동 생성
   const [formData, setFormData] = useState<IncomeExpenseD5103Data>(() => {
@@ -1582,4 +1581,10 @@ export default function IncomeExpenseModal({
       </div>
     </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function IncomeExpenseModal(props: React.ComponentProps<typeof IncomeExpenseModalInner>) {
+  if (!props.isOpen) return null;
+  return <IncomeExpenseModalInner {...props} />;
 }

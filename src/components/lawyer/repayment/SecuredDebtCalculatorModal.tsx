@@ -18,12 +18,13 @@ export default function SecuredDebtCalculatorModal({
   onApply,
 }: SecuredDebtCalculatorModalProps) {
   const [collateralType, setCollateralType] = useState<'real_estate' | 'car' | 'other'>('car');
-  const [marketValue, setMarketValue] = useState<number>(15000000); // 1,500만원
+  // 담보물 시세·채권액은 직접 입력 (이전: 시세 1,500만·원금 1,300만·이자 100만 원 예시값이 그대로 적용됨)
+  const [marketValue, setMarketValue] = useState<number>(0);
   const [seniorEncumbrance, setSeniorEncumbrance] = useState<number>(0);
   const [exemptDeposit, setExemptDeposit] = useState<number>(0); // 부동산인 경우 서울 5,500만
   const [appraisalRate, setAppraisalRate] = useState<number>(0.7); // 70%
-  const [principalDebt, setPrincipalDebt] = useState<number>(initialTotalDebt || 13000000);
-  const [interestDebt, setInterestDebt] = useState<number>(1000000);
+  const [principalDebt, setPrincipalDebt] = useState<number>(initialTotalDebt || 0);
+  const [interestDebt, setInterestDebt] = useState<number>(0);
 
   // 채권현재액 총계 (C)
   const totalDebtClaim = principalDebt + interestDebt;

@@ -24,6 +24,7 @@ import { addClientNotification } from '../../../services/clientNotificationServi
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
 
 interface Stage3DocumentsHubViewProps {
@@ -80,7 +81,8 @@ export default function Stage3DocumentsHubView({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   // 채권자 수 및 인감증명서 부수
-  const creditorCount = Number(clientRequest.creditorCount || crmExt?.creditorCount || 5);
+  // 채권자 수 미입력 시 임의값(이전: 5) 대신 부채증명 주문 항목 수 → 0 순으로 사용
+  const creditorCount = Number(clientRequest.creditorCount || crmExt?.creditorCount || loadDebtCertificateOrder(clientRequest.id)?.items?.length || 0);
   const requiredSealCount = ApplicationDocTemplateService.getRequiredSealCertCount(creditorCount);
 
   // 1차 실물 등기 및 배송추적 상태 (우체국, 편의점 택배 등)
@@ -91,9 +93,19 @@ export default function Stage3DocumentsHubView({
   const [inputTracking, setInputTracking] = useState<string>(postalTrackingNumber);
 
   // 인감 보관 및 부채증명서 대행 진행 상태
-  const [isSealKeptInSafe, setIsSealKeptInSafe] = useState<boolean>(true);
-  const [isDebtDispatched, setIsDebtDispatched] = useState<boolean>(true); // 대행업체에 신청서/인감 발송 완료 여부
-  const [debtCertElapsedDays, setDebtCertElapsedDays] = useState<number>(3); // 3일차/7일
+  // 이전: 기본값이 '보관중·발주완료·3일차'로 고정되어 실제 진행과 무관한 상태가 표시됨 → 저장된 주문 기준으로 산출
+  const [isSealKeptInSafe, setIsSealKeptInSafe] = useState<boolean>(false);
+  const [isDebtDispatched, setIsDebtDispatched] = useState<boolean>(() => {
+    const o = loadDebtCertificateOrder(clientRequest.id);
+    return !!o && o.orderStatus !== 'draft';
+  }); // 대행업체에 신청서/인감 발송 완료 여부
+  const [debtCertElapsedDays, setDebtCertElapsedDays] = useState<number>(() => {
+    const o = loadDebtCertificateOrder(clientRequest.id);
+    if (!o || o.orderStatus === 'draft' || !o.requestedAt) return 0;
+    const t = new Date(o.requestedAt).getTime();
+    if (!Number.isFinite(t)) return 0;
+    return Math.max(1, Math.floor((Date.now() - t) / 86_400_000) + 1);
+  }); // 발주 후 경과일(1일차부터)
 
   // 모달 상태
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -111,36 +123,12 @@ export default function Stage3DocumentsHubView({
       clientId: clientRequest.id,
       clientName: clientRequest.clientName || '의뢰인',
       clientPhone: clientRequest.phone || '',
-      agencyName: '원클릭부채대행',
+      // 이전: 가짜 채권사 3곳(국민은행·신한카드·OK저축은행)·임의 채무액·대행사명이 기본 주입됨
+      agencyName: '',
       orderStatus: 'draft',
-      items: [
-        {
-          id: 'item_1',
-          creditorName: '국민은행',
-          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.4),
-          issueStatus: 'pending',
-          agencyFee: 15000,
-          issuanceFee: 2000,
-        },
-        {
-          id: 'item_2',
-          creditorName: '신한카드',
-          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.35),
-          issueStatus: 'pending',
-          agencyFee: 15000,
-          issuanceFee: 2000,
-        },
-        {
-          id: 'item_3',
-          creditorName: 'OK저축은행',
-          expectedPrincipal: Math.round((clientRequest.financialProfile?.debtTotal || 5000) * 10000 * 0.25),
-          issueStatus: 'pending',
-          agencyFee: 15000,
-          issuanceFee: 2000,
-        },
-      ],
+      items: [],
       createdAt: new Date().toISOString(),
-      totalAgencyCost: 51000,
+      totalAgencyCost: 0,
     };
   });
 
@@ -344,6 +332,10 @@ export default function Stage3DocumentsHubView({
   const handleConfirmDebtDispatched = () => {
     setIsDebtDispatched(true);
     setDebtCertElapsedDays(1);
+    // 발주 상태를 주문 데이터에 기록 (새로고침 후에도 유지)
+    const nextOrder: DebtCertificateOrder = { ...debtOrder, orderStatus: 'requested', requestedAt: new Date().toISOString() };
+    setDebtOrder(nextOrder);
+    saveDebtCertificateOrder(nextOrder);
     toast.success('부채증명서 대행업체 전달 및 발주가 완료되었습니다. (약 7영업일 소요 시작)');
     addClientNotification({
       type: 'status_change',
@@ -353,44 +345,62 @@ export default function Stage3DocumentsHubView({
     });
   };
 
+  // 사무소 정보: [설정 > 사업자 정보] 값 사용 (이전: 다른 사무소 이름·주소가 하드코딩되어 의뢰인에게 발송됨)
+  const office = getOfficeProfile((clientRequest as any).assignedLawyerName);
+  const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/?tab=mypage` : '';
+  const ensureOffice = (): boolean => {
+    if (!office.firmName || !office.address) {
+      toast.error('사무소명·주소가 설정되지 않았습니다. [알림 및 설정 > 사업자 정보]를 먼저 입력해 주세요.');
+      return false;
+    }
+    return true;
+  };
+  const reportSend = (res: { ok: boolean; error?: string }, label: string) => {
+    if (res.ok) toast.success(`${clientRequest.clientName}님께 [${label}] 알림톡이 발송되었습니다.`);
+    else toast.error(`[${label}] 알림톡 발송 실패: ${res.error || '원인 불명'}`);
+  };
+
   // 1차 등기요청 알림톡 발송
-  const handleSendPhase1Alimtalk = () => {
-    sendAlimtok(clientRequest.phone, 'doc_request_phase1', {
+  const handleSendPhase1Alimtalk = async () => {
+    if (!ensureOffice()) return;
+    const res = await sendAlimtok(clientRequest.phone, 'doc_request_phase1', {
       clientName: clientRequest.clientName,
       creditorCount: `${requiredSealCount}부`,
       creditorNum: `${creditorCount}`,
-      firmAddress: '서울시 도봉구 마들로 760, 한발법조타워 301호',
-      firmName: '법률사무소 보광',
-      lawyerName: '대표 변호사',
-      trackingUrl: 'https://mykim.kr/my',
+      firmAddress: office.address,
+      firmName: office.firmName,
+      lawyerName: office.lawyerName || '담당 변호사',
+      trackingUrl,
     });
-    toast.success(`${clientRequest.clientName}님께 [1차 기본서류 빠른등기 발송 안내] 알림톡이 발송되었습니다.`);
+    reportSend(res, '1차 기본서류 빠른등기 발송 안내');
   };
 
   // 2차 간편제출 알림톡 발송
-  const handleSendPhase2Alimtalk = () => {
-    sendAlimtok(clientRequest.phone, 'doc_request_phase2', {
+  const handleSendPhase2Alimtalk = async () => {
+    if (!ensureOffice()) return;
+    const res = await sendAlimtok(clientRequest.phone, 'doc_request_phase2', {
       clientName: clientRequest.clientName,
-      firmName: '법률사무소 보광',
-      lawyerName: '대표 변호사',
-      trackingUrl: 'https://mykim.kr/my',
+      firmName: office.firmName,
+      lawyerName: office.lawyerName || '담당 변호사',
+      trackingUrl,
     });
-    toast.success(`${clientRequest.clientName}님께 [2차 서류 모바일 간편제출 안내] 알림톡이 발송되었습니다.`);
+    reportSend(res, '2차 서류 모바일 간편제출 안내');
   };
 
   // 2차 마감 리마인더 발송
-  const handleSendPhase2Reminder = () => {
+  const handleSendPhase2Reminder = async () => {
+    if (!ensureOffice()) return;
     const unsubmittedPhase2 = docList.filter(d => d.phase === 2 && d.status !== 'APPROVED' && d.isRequired);
-    sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', {
+    const res = await sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', {
       clientName: clientRequest.clientName,
       unsubmittedCount: `${unsubmittedPhase2.length}`,
       unsubmittedDocNames: unsubmittedPhase2.slice(0, 3).map(d => d.name).join(', ') + (unsubmittedPhase2.length > 3 ? ' 외' : ''),
       deadline: '이번 주 금요일 18:00',
-      firmName: '법률사무소 보광',
-      lawyerName: '대표 변호사',
-      trackingUrl: 'https://mykim.kr/my',
+      firmName: office.firmName,
+      lawyerName: office.lawyerName || '담당 변호사',
+      trackingUrl,
     });
-    toast.success(`${clientRequest.clientName}님께 [2차 서류 마감 리마인더] 알림톡이 발송되었습니다.`);
+    reportSend(res, '2차 서류 마감 리마인더');
   };
 
   // 서류 승인 핸들러
@@ -586,7 +596,7 @@ export default function Stage3DocumentsHubView({
                   }`}
                   title="클릭하여 보관 상태 토글"
                 >
-                  {isSealKeptInSafe ? '보관중 (금고 A-03)' : '미수령'}
+                  {isSealKeptInSafe ? '보관중' : '미수령'}
                 </button>
               </div>
 
@@ -753,11 +763,11 @@ export default function Stage3DocumentsHubView({
                 <>
                   <div className="flex items-center justify-between text-slate-600">
                     <span>의뢰 대행업체:</span>
-                    <span className="font-bold text-slate-800">원클릭부채대행</span>
+                    <span className="font-bold text-slate-800">{debtOrder.agencyName || '미지정'}</span>
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
                     <span>의뢰 대상 채권기관:</span>
-                    <span className="font-bold text-indigo-700 font-mono">총 {creditorCount}개 금융기관 (누락없음)</span>
+                    <span className="font-bold text-indigo-700 font-mono">{creditorCount > 0 ? `총 ${creditorCount}개 금융기관` : '채권자 수 미입력'}</span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100">
@@ -1029,7 +1039,8 @@ export default function Stage3DocumentsHubView({
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard?.writeText('서울시 도봉구 마들로 760, 한발법조타워 301호 법률사무소 보광 회생전담팀 앞');
+                if (!ensureOffice()) return;
+                navigator.clipboard?.writeText(`${office.address} ${office.firmName} 앞`);
                 toast.success('사무소 등기 발송 주소가 클립보드에 복사되었습니다.');
               }}
               className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer"

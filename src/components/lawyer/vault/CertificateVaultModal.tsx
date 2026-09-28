@@ -239,7 +239,7 @@ export default function CertificateVaultModal({
                 ) : (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" />
-                    AES-256 E2EE 보호중
+                    브라우저 암호화 보관
                   </span>
                 )}
               </div>
@@ -368,7 +368,7 @@ export default function CertificateVaultModal({
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">보안 규격</span>
-                        <span className="text-emerald-400 font-semibold">Web Crypto AES-256</span>
+                        <span className="text-emerald-400 font-semibold">Web Crypto AES-GCM (앱 내장 키 — 서버 KMS 전환 필요)</span>
                       </div>
                     </div>
                   </div>

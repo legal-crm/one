@@ -20,12 +20,11 @@ interface ApplicationDocSettingsModalProps {
   onSaved?: () => void;
 }
 
-export default function ApplicationDocSettingsModal({
+function ApplicationDocSettingsModalInner({
   isOpen,
   onClose,
   onSaved
 }: ApplicationDocSettingsModalProps) {
-  if (!isOpen) return null;
 
   const [activeCategory, setActiveCategory] = useState<DocCategoryKey>('REHAB_SALARIED');
   const [searchQuery, setSearchQuery] = useState('');
@@ -624,4 +623,10 @@ export default function ApplicationDocSettingsModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function ApplicationDocSettingsModal(props: React.ComponentProps<typeof ApplicationDocSettingsModalInner>) {
+  if (!props.isOpen) return null;
+  return <ApplicationDocSettingsModalInner {...props} />;
 }

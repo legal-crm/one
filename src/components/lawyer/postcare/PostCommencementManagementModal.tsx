@@ -20,7 +20,7 @@ interface PostCommencementManagementModalProps {
   activeLawyerName?: string;
 }
 
-export default function PostCommencementManagementModal({
+function PostCommencementManagementModalInner({
   isOpen,
   onClose,
   clientRequest,
@@ -28,7 +28,6 @@ export default function PostCommencementManagementModal({
   onUpdateCrmExt,
   activeLawyerName = '김변호'
 }: PostCommencementManagementModalProps) {
-  if (!isOpen) return null;
 
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
@@ -734,4 +733,10 @@ export default function PostCommencementManagementModal({
     </div>
   </ModalPortal>
   );
+}
+
+/** 닫힌 상태에서는 내부 훅을 실행하지 않도록 바깥에서 먼저 분기 (Rules of Hooks: 조건부 return을 훅보다 앞에 두지 않음) */
+export default function PostCommencementManagementModal(props: React.ComponentProps<typeof PostCommencementManagementModalInner>) {
+  if (!props.isOpen) return null;
+  return <PostCommencementManagementModalInner {...props} />;
 }

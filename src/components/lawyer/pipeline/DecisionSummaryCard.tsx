@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { DecisionSummaryData } from '../../../types';
+import { localYmd } from '../../../utils/localDate';
 
 interface DecisionSummaryCardProps {
   clientName: string;
@@ -19,19 +20,19 @@ export default function DecisionSummaryCard({
   onSave,
   readOnly = false,
 }: DecisionSummaryCardProps) {
-  // 기본 Mock/초기 데이터 산출
-  const defaultTotalDebt = data?.totalDebt || 12000; // 만 원 (1억 2천만 원)
-  const defaultTotalRepay = data?.totalRepayment || 2160; // 만 원 (2,160만 원)
-  const defaultMonths = data?.repaymentMonths || 36;
-  const defaultMonthly = data?.monthlyPayment || Math.round((defaultTotalRepay / defaultMonths) * 10000); // 60만 원
-  const defaultDischarged = Math.max(0, defaultTotalDebt - defaultTotalRepay); // 9,840만 원
-  const defaultDischargeRate = defaultTotalDebt > 0 ? Math.round((defaultDischarged / defaultTotalDebt) * 100) : 82;
-  const defaultRepayRate = 100 - defaultDischargeRate;
+  // 초기값: 저장된 결정 데이터만 사용 (이전: 채무 1.2억·변제 2,160만·가짜 사건번호·가상계좌가 기본 표시됨)
+  const defaultTotalDebt = data?.totalDebt || 0; // 만 원
+  const defaultTotalRepay = data?.totalRepayment || 0; // 만 원
+  const defaultMonths = data?.repaymentMonths || 0;
+  const defaultMonthly = data?.monthlyPayment || (defaultMonths > 0 ? Math.round((defaultTotalRepay / defaultMonths) * 10000) : 0);
+  const defaultDischarged = Math.max(0, defaultTotalDebt - defaultTotalRepay);
+  const defaultDischargeRate = defaultTotalDebt > 0 ? Math.round((defaultDischarged / defaultTotalDebt) * 100) : 0;
+  const defaultRepayRate = defaultTotalDebt > 0 ? 100 - defaultDischargeRate : 0;
 
   const [form, setForm] = useState<DecisionSummaryData>({
-    courtName: data?.courtName || '서울회생법원',
-    caseNumber: data?.caseNumber || '2025개회104921',
-    commencementDate: data?.commencementDate || new Date().toISOString().slice(0, 10),
+    courtName: data?.courtName || '',
+    caseNumber: data?.caseNumber || '',
+    commencementDate: data?.commencementDate || localYmd(),
     totalDebt: defaultTotalDebt,
     totalRepayment: defaultTotalRepay,
     repaymentRate: defaultRepayRate,
@@ -39,28 +40,38 @@ export default function DecisionSummaryCard({
     dischargeRate: defaultDischargeRate,
     monthlyPayment: defaultMonthly,
     repaymentMonths: defaultMonths,
-    virtualAccountBank: data?.virtualAccountBank || '신한은행',
-    virtualAccountNumber: data?.virtualAccountNumber || '562-901-883921 (서울회생법원)',
-    firstPaymentDate: data?.firstPaymentDate || '2025-04-25',
-    specialMemo: data?.specialMemo || '1회차 납입일 전 유선 해피콜 완료. 자동이체 등록 확인 필요.',
+    virtualAccountBank: data?.virtualAccountBank || '',
+    virtualAccountNumber: data?.virtualAccountNumber || '',
+    firstPaymentDate: data?.firstPaymentDate || '',
+    specialMemo: data?.specialMemo || '',
   });
 
   const [isEditing, setIsEditing] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
-  const handleCopyAccount = () => {
-    const text = `${form.virtualAccountBank} ${form.virtualAccountNumber}`;
-    navigator.clipboard.writeText(text);
-    setCopiedAccount(true);
-    toast.success('법원 가상계좌번호가 복사되었습니다.');
-    setTimeout(() => setCopiedAccount(false), 2000);
+  const handleCopyAccount = async () => {
+    if (!form.virtualAccountNumber) {
+      toast.info('등록된 법원 가상계좌가 없습니다.');
+      return;
+    }
+    const text = `${form.virtualAccountBank} ${form.virtualAccountNumber}`.trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedAccount(true);
+      toast.success('법원 가상계좌번호가 복사되었습니다.');
+      setTimeout(() => setCopiedAccount(false), 2000);
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+    }
   };
 
   const handleSave = () => {
-    if (onSave) {
-      onSave(form);
-    }
     setIsEditing(false);
+    if (!onSave) {
+      toast.info('이 화면에서는 저장이 지원되지 않습니다.');
+      return;
+    }
+    onSave(form);
     toast.success('개시결정 요약 정보가 저장되었습니다.');
   };
 
@@ -85,7 +96,7 @@ export default function DecisionSummaryCard({
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              {form.courtName} · 사건번호: <span className="font-mono text-slate-200 font-bold">{form.caseNumber}</span>
+              {form.courtName || '관할법원 미입력'} · 사건번호: <span className="font-mono text-slate-200 font-bold">{form.caseNumber || '미입력'}</span>
             </p>
           </div>
         </div>
@@ -176,7 +187,9 @@ export default function DecisionSummaryCard({
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <span className="text-[11px] text-slate-400 font-bold block mb-1">변제 기간</span>
               <span className="text-base sm:text-lg font-black text-white tabular-nums">
-                {form.repaymentMonths}개월 (3년)
+                {form.repaymentMonths > 0
+                  ? `${form.repaymentMonths}개월${form.repaymentMonths % 12 === 0 ? ` (${form.repaymentMonths / 12}년)` : ''}`
+                  : '미입력'}
               </span>
             </div>
 
@@ -196,7 +209,7 @@ export default function DecisionSummaryCard({
               <span className="text-[11px] text-slate-400 font-bold block mb-1">1회차 납입 개시일</span>
               <span className="text-sm font-bold text-slate-200 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                {form.firstPaymentDate}
+                {form.firstPaymentDate || '미입력'}
               </span>
             </div>
           </div>
@@ -208,7 +221,7 @@ export default function DecisionSummaryCard({
               <div className="min-w-0">
                 <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider block">법원 변제금 전용 가상계좌</span>
                 <p className="text-xs sm:text-sm font-mono font-bold text-white truncate">
-                  {form.virtualAccountBank} {form.virtualAccountNumber}
+                  {form.virtualAccountNumber ? `${form.virtualAccountBank} ${form.virtualAccountNumber}` : '미등록'}
                 </p>
               </div>
             </div>

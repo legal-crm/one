@@ -2653,7 +2653,7 @@ export default function RepaymentPlanEditor({
         isOpen={isDiscoveryModalOpen}
         onClose={() => setIsDiscoveryModalOpen(false)}
         clientName={plan.clientName || clientRequest.clientName || '의뢰인'}
-        clientPhone={clientRequest.phone || '010-0000-0000'}
+        clientPhone={clientRequest.phone || ''}
         onImportToRepaymentPlan={handleImportFromDiscovery}
       />
 

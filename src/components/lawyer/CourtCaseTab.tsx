@@ -21,6 +21,10 @@ interface CourtCaseTabProps {
   crmExt: CrmClientExtension;
   onUpdateCrmExt: (updates: Partial<CrmClientExtension>) => Promise<void>;
   activeLawyerName?: string;
+  /** 캘린더 등록용 (사무소/변호사 tenant, 작성자) */
+  tenantId?: string;
+  actorId?: string;
+  actorRole?: string;
 }
 
 const COURTS = [
@@ -45,7 +49,10 @@ export default function CourtCaseTab({
   clientRequest,
   crmExt,
   onUpdateCrmExt,
-  activeLawyerName = '담당 변호사'
+  activeLawyerName = '담당 변호사',
+  tenantId,
+  actorId,
+  actorRole = 'OWNER'
 }: CourtCaseTabProps) {
   // 기본 법원 및 사건번호 세팅 (기존 저장값 또는 신청 데이터에서 추출)
   const defaultCourt = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
@@ -68,32 +75,22 @@ export default function CourtCaseTab({
     statusColor: string;
   }
 
-  const [relatedCases, setRelatedCases] = useState<RelatedCourtCase[]>([
-    {
-      id: 'rc-1',
-      type: '본안',
-      court: defaultCourt,
-      caseNo: defaultCaseNumber || '2025개회108492',
-      statusBadge: '접수/심리중',
-      statusColor: 'bg-blue-100 text-blue-800 border-blue-200'
-    },
-    {
-      id: 'rc-2',
-      type: '금지',
-      court: defaultCourt,
-      caseNo: '2025개금5012',
-      statusBadge: '인용결정',
-      statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-    },
-    {
-      id: 'rc-3',
-      type: '타채(압류)',
-      court: '서울동부지방법원',
-      caseNo: '2025타채54321',
-      statusBadge: '중지신청완료',
-      statusColor: 'bg-amber-100 text-amber-800 border-amber-200'
+  // 관련사건 목록: CRM에 저장된 것만 (이전: 모든 의뢰인에게 가짜 금지·타채 사건 3건 표시)
+  const [relatedCases, setRelatedCases] = useState<RelatedCourtCase[]>(() => {
+    const saved = (crmExt as any)?.relatedCourtCases as RelatedCourtCase[] | undefined;
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+    if (defaultCaseNumber) {
+      return [{
+        id: 'rc-1',
+        type: '본안',
+        court: defaultCourt,
+        caseNo: defaultCaseNumber,
+        statusBadge: '등록됨',
+        statusColor: 'bg-blue-100 text-blue-800 border-blue-200'
+      }];
     }
-  ]);
+    return [];
+  });
   const [selectedCaseId, setSelectedCaseId] = useState<string>('rc-1');
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
   const [newCaseType, setNewCaseType] = useState<'본안' | '금지' | '중지' | '타채(압류)' | '종전'>('중지');
@@ -126,6 +123,12 @@ export default function CourtCaseTab({
         forceRefresh: force
       });
 
+      // 실시간 연동이 아닌 응답(시연·모의 데이터)은 사건 기록으로 저장하지 않음
+      if ((detail as any).isMock || !detail.isB2BLive) {
+        toast.warning('대법원 실시간 조회가 연동되지 않아 결과를 저장하지 않았습니다. 대법원 "나의 사건검색"에서 직접 확인해 주세요.');
+        return;
+      }
+
       setCourtDetail(detail);
 
       const updatedCourtCase = {
@@ -147,11 +150,7 @@ export default function CourtCaseTab({
         syncCompanionWithCrmCase(clientId, { ...crmExt, courtCase: updatedCourtCase }, clientName);
       } catch { /* ignore */ }
 
-      toast.success(
-        detail.isB2BLive
-          ? '🎉 대법원 전산망 실시간 동기화 완료!'
-          : '✨ 법원 사건 데이터가 성공적으로 동기화되었습니다.'
-      );
+      toast.success('대법원 사건 정보가 동기화되었습니다.');
     } catch (err: any) {
       toast.error(err.message || '대법원 사건 정보를 불러오지 못했습니다.');
     } finally {
@@ -160,26 +159,36 @@ export default function CourtCaseTab({
   };
 
   // 기일을 CRM 캘린더에 자동 등록
-  const handleAddToCalendar = (dateItem: any) => {
+  // 이전: createEvent(tenantId, data)에 인자 1개만 넘겨 등록이 실패하는데도 '등록되었습니다' 표시
+  const handleAddToCalendar = async (dateItem: any) => {
     const cleanDate = (dateItem.date || '').split(' ')[0];
     if (!cleanDate) {
       toast.error('유효한 기일 날짜가 없습니다.');
       return;
     }
-
-    createCalendarEvent({
-      clientId,
-      clientName,
-      title: `[법원기일] ${clientName} - ${dateItem.type}`,
-      description: `사건번호: ${caseNumber} (${courtName})\n장소: ${dateItem.place}\n결과: ${dateItem.result}`,
-      date: cleanDate,
-      time: dateItem.date.includes(' ') ? dateItem.date.split(' ')[1] : '14:00',
-      category: 'court',
-      notifyBeforeHours: 24,
-      isLawyerOnly: false
-    });
-
-    toast.success(`📅 '${dateItem.type}'이 마이김변 캘린더에 등록되었습니다!`);
+    if (!tenantId || !actorId) {
+      toast.error('로그인 정보를 확인할 수 없어 캘린더에 등록하지 못했습니다.');
+      return;
+    }
+    try {
+      await createCalendarEvent(tenantId, {
+        title: `[법원기일] ${clientName} - ${dateItem.type}`,
+        date: cleanDate,
+        startTime: dateItem.date.includes(' ') ? dateItem.date.split(' ')[1] : undefined,
+        type: 'court',
+        visibility: 'firm',
+        recurrence: 'none',
+        reminder: '1day',
+        description: `사건번호: ${caseNumber} (${courtName})\n장소: ${dateItem.place || '-'}\n결과: ${dateItem.result || '-'}`,
+        clientName,
+        createdBy: actorId,
+        createdByName: activeLawyerName,
+        createdByRole: actorRole,
+      });
+      toast.success(`'${dateItem.type}' 기일이 캘린더에 등록되었습니다.`);
+    } catch (err: any) {
+      toast.error(err?.message || '캘린더 등록에 실패했습니다.');
+    }
   };
 
   // 감지된 보정명령을 CRM 보정 탭에 자동 추가
@@ -360,7 +369,12 @@ export default function CourtCaseTab({
                     statusBadge: '등록완료',
                     statusColor: 'bg-indigo-100 text-indigo-800 border-indigo-200'
                   };
-                  setRelatedCases(prev => [...prev, newEntry]);
+                  setRelatedCases(prev => {
+                    const next = [...prev, newEntry];
+                    // CRM 확장 데이터에 저장 (새로고침·다른 기기에서도 유지)
+                    onUpdateCrmExt({ relatedCourtCases: next } as any);
+                    return next;
+                  });
                   setSelectedCaseId(newEntry.id);
                   setCourtName(newCaseCourt);
                   setCaseNumber(newCaseNo.trim());

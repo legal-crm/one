@@ -242,11 +242,16 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
     toast.info('Gemini 3.5가 통화 녹음을 화자분리 대화록으로 정밀 분석하고 있습니다...');
 
     try {
-      const fileToAnalyze = selectedFile || new File(['mock'], activeFileName, { type: 'audio/mp3' });
+      // 실제 녹음 파일이 있을 때만 분석 (이전: 'mock' 문자열로 만든 가짜 파일을 분석 요청)
+      if (!selectedFile) {
+        toast.error('분석할 녹음 파일을 선택해 주세요.');
+        return;
+      }
+      const fileToAnalyze = selectedFile;
       const context = {
         customerName: lead.customerName,
         phone: lead.phone,
-        managerName: lead.assigneeName || '진성훈 사무장',
+        managerName: lead.assigneeName || '',
         caseType: lead.caseType || '개인회생'
       };
 
@@ -281,9 +286,9 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
       setEditedSummary(resultText);
       setSelectedFile(null);
       toast.success('Gemini 3.5 통화 요약 및 대화록 작성이 완료되었습니다! (누적 아카이빙 저장)');
-    } catch (err) {
+    } catch (err: any) {
       console.error('AI summary error:', err);
-      toast.error('AI 분석 중 오류가 발생했습니다.');
+      toast.error(err?.message || 'AI 분석 중 오류가 발생했습니다.');
     } finally {
       setIsAiLoading(false);
     }
