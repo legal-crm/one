@@ -20,6 +20,7 @@ function logSupabaseError(op: string, error: any) {
 }
 
 import { randomToken, newRemoteSignToken } from '../utils/secureToken';
+import { calcCourtFees, DELIVERY_UNIT_FEE_KRW } from './court/courtFees';
 
 /**
  * 제안서→계약 연동 확장 컬럼 (migration 015). 값이 있을 때만 전송해
@@ -460,10 +461,10 @@ export function createContract(data: {
       miscFee: data.courtCosts.miscFee ?? 0,
       debtCertFee: data.courtCosts.debtCertFee ?? 0,
       debtCertUnitFee: data.courtCosts.debtCertUnitFee ?? 15000,
-      deliveryUnitFee: data.courtCosts.deliveryUnitFee ?? 5200,
+      deliveryUnitFee: data.courtCosts.deliveryUnitFee ?? DELIVERY_UNIT_FEE_KRW,
       provisionalDeposit: data.courtCosts.provisionalDeposit ?? 0,
       isCustomized: data.courtCosts.isCustomized ?? false,
-    } : { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0, debtCertFee: 0, debtCertUnitFee: 15000, deliveryUnitFee: 5200, provisionalDeposit: 0 },
+    } : { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0, debtCertFee: 0, debtCertUnitFee: 15000, deliveryUnitFee: DELIVERY_UNIT_FEE_KRW, provisionalDeposit: 0 },
     feeSchedule: data.feeSchedule ?? [],
     vatIncluded: data.vatIncluded ?? false,
     feeAccount: data.feeAccount,
@@ -606,10 +607,14 @@ ${firmName}은 위임 사무 처리를 위해 아래 의뢰인의 신분증 사�
 export function calculateCourtCosts(
   creditorCount: number,
   debtCertUnitFee: number = 15000,
-  deliveryUnitFee: number = 5200,
+  deliveryUnitFee: number = DELIVERY_UNIT_FEE_KRW,
   baseStampFee: number = 30000
 ): { deliveryFee: number; stampFee: number; debtCertFee: number; total: number; courtOnlyTotal: number } {
-  const deliveryFee = creditorCount * deliveryUnitFee; // 2026년 기준 송달료 (채권자당 5,200원 기본, 사무실별 수정 가능)
+  // 송달료: 퀵독 비용 계산기와 같은 회생 예납 산식 (기본 10회 + 채권자수 × 8회) × 1회분 단가
+  //  (이전: 채권자수 × 1회분만 계산해 실제 예납액보다 크게 적게 안내됨)
+  const deliveryFee = creditorCount > 0
+    ? calcCourtFees({ caseType: 'rehab', creditorCount, deliveryUnitFee }).deliveryFee
+    : 0;
   const stampFee = baseStampFee; // 2026년 기준 인지대 (30,000원 기본, 전자소송 27,000원 등 수정 가능)
   const debtCertFee = creditorCount * debtCertUnitFee; // 부채증명서 발급 대행비 (채권자당 기본 15,000원, 수정 가능)
   const courtOnlyTotal = deliveryFee + stampFee;

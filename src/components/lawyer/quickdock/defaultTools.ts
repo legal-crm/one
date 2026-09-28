@@ -93,8 +93,8 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
   },
   {
     id: 'extraExpense',
-    title: '추가생계비 실무준칙',
-    subtitle: '주거비·의료비·교육비 한도',
+    title: '추가생계비 검토 참고',
+    subtitle: '주거비·의료비·교육비 소명 포인트',
     category: 'standards',
     iconName: 'Scale',
     colorClass: {
@@ -122,8 +122,8 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
   },
   {
     id: 'courtGuidelines',
-    title: '전국 법원별 실무성향',
-    subtitle: '코인·주식 준칙 & 금지명령 기간',
+    title: '법원별 실무 참고 (비공식)',
+    subtitle: '코인·주식 손실금 준칙 확인',
     category: 'standards',
     badge: '실무',
     iconName: 'Landmark',

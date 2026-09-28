@@ -1,5 +1,5 @@
 // ============================================================
-// ?�앱 ?�림 ?�터 ?�비??// Supabase DB + localStorage ?�백
+// ?�앱 ?�림 ?�터 ?�비??// Supabase DB + localStorage ?�백
 // ============================================================
 
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
@@ -22,7 +22,7 @@ function generateId(): string {
   return `notif-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 }
 
-/** ?�림 ?�성 */
+/** ?�림 ?�성 */
 export async function createNotification(
   tenantId: string,
   recipientId: string,
@@ -68,7 +68,7 @@ export async function createNotification(
       });
       if (error) throw error;
     } catch (err) {
-      console.warn('Supabase ?�림 ?�???�패, localStorage ?�백:', err);
+      console.warn('Supabase ?�림 ?�???�패, localStorage ?�백:', err);
       const all = loadFromStorage(tenantId, recipientId);
       all.unshift(notif);
       saveToStorage(tenantId, recipientId, all);
@@ -82,7 +82,7 @@ export async function createNotification(
   return notif;
 }
 
-/** ???�림 목록 조회 */
+/** ???�림 목록 조회 */
 export async function getNotifications(
   tenantId: string,
   recipientId: string,
@@ -117,7 +117,7 @@ export async function getNotifications(
   return all.slice(0, limit);
 }
 
-/** ?��? ?��? ?�림 ??*/
+/** ?��? ?��? ?�림 ??*/
 export async function getUnreadCount(tenantId: string, recipientId: string): Promise<number> {
   if (isSupabaseConfigured) {
     try {
@@ -135,18 +135,21 @@ export async function getUnreadCount(tenantId: string, recipientId: string): Pro
   return loadFromStorage(tenantId, recipientId).filter(n => !n.isRead).length;
 }
 
-/** ?�림 ?�음 처리 */
+/** ?�림 ?�음 처리 */
 export async function markAsRead(tenantId: string, notificationId: string, recipientId: string): Promise<void> {
   const now = new Date().toISOString();
 
   if (isSupabaseConfigured) {
     try {
-      await supabase
+      // 본인 수신 알림만 읽음 처리 (recipient_id 조건 추가)
+      const { error } = await supabase
         .from('in_app_notifications')
         .update({ is_read: true, read_at: now })
         .eq('id', notificationId)
-        .eq('tenant_id', tenantId);
-      return;
+        .eq('tenant_id', tenantId)
+        .eq('recipient_id', recipientId);
+      if (!error) return;
+      console.warn('[notification] 읽음 처리 실패:', error.message);
     } catch { /* fallthrough */ }
   }
 
@@ -158,19 +161,20 @@ export async function markAsRead(tenantId: string, notificationId: string, recip
   }
 }
 
-/** 모든 ?�림 ?�음 처리 */
+/** 모든 ?�림 ?�음 처리 */
 export async function markAllAsRead(tenantId: string, recipientId: string): Promise<void> {
   const now = new Date().toISOString();
 
   if (isSupabaseConfigured) {
     try {
-      await supabase
+      const { error } = await supabase
         .from('in_app_notifications')
         .update({ is_read: true, read_at: now })
         .eq('tenant_id', tenantId)
         .eq('recipient_id', recipientId)
         .eq('is_read', false);
-      return;
+      if (!error) return;
+      console.warn('[notification] 전체 읽음 처리 실패:', error.message);
     } catch { /* fallthrough */ }
   }
 

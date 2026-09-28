@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../../services/court/courtFees';
 import React, { useState } from 'react';
 import { 
   FileCheck2, Calculator, Send, CheckCircle2, AlertTriangle, 
@@ -50,8 +51,8 @@ export default function Stage1ContractView({
   // 법원 실비 계산 공식 (2026 전자소송 기준)
   // 1) 인지대: 28,800원 고정 (개시 27,000 + 금지명령 1,800)
   const stampFee = 28800;
-  // 2) 송달료: 5,200원 * (기본 10회 + 채권자수 * 8회)
-  const deliveryFee = 5200 * (10 + (creditorCount * 8));
+  // 2) 송달료: 1회분 단가 * (기본 10회 + 채권자수 * 8회)
+  const deliveryFee = DELIVERY_UNIT_FEE_KRW * (10 + (creditorCount * 8));
   // 3) 외부회생위원 선임 예납금: 영업소득자 150,000원
   const trusteeDeposit = isBusinessDebtor ? 150000 : 0;
   // 총 법원 비용
@@ -268,7 +269,7 @@ export default function Stage1ContractView({
                 <span className="font-mono font-bold text-slate-900">{stampFee.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>송달료 (5,200원 × [10회 + {creditorCount}곳 × 8회 = {10 + creditorCount * 8}회])</span>
+                <span>송달료 ({DELIVERY_UNIT_FEE_KRW.toLocaleString()}원 × [10회 + {creditorCount}곳 × 8회 = {10 + creditorCount * 8}회])</span>
                 <span className="font-mono font-bold text-slate-900">{deliveryFee.toLocaleString()}원</span>
               </div>
               {trusteeDeposit > 0 && (

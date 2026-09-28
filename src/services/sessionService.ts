@@ -22,104 +22,11 @@ try {
   // BroadcastChannel 미지원 환경 폴백
 }
 
-/**
- * 초기 모의 세션 시드 데이터 생성 (실감나는 데모 및 체험 지원)
- */
-function createInitialMockSessions(): UserSession[] {
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  return [
-    {
-      id: 'mock-session-lawyer1-mobile',
-      userId: 'lawyer-1',
-      userName: '김동훈 변호사',
-      userEmail: 'kimlaw@mykim.kr',
-      userRole: 'LAWYER',
-      firmName: '법무법인 정론',
-      device: {
-        deviceType: 'mobile',
-        os: 'iOS 17.5',
-        browser: 'Apple Safari 17',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)',
-        ipAddress: '112.170.82.41',
-        location: '대한민국 서울특별시 서초구',
-      },
-      isCurrentSession: false,
-      status: 'active',
-      createdAt: yesterday,
-      lastActiveAt: oneHourAgo,
-      expiresAt: expires,
-    },
-    {
-      id: 'mock-session-lawyer1-home',
-      userId: 'lawyer-1',
-      userName: '김동훈 변호사',
-      userEmail: 'kimlaw@mykim.kr',
-      userRole: 'LAWYER',
-      firmName: '법무법인 정론',
-      device: {
-        deviceType: 'desktop',
-        os: 'macOS Sonoma',
-        browser: 'Google Chrome 124',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-        ipAddress: '220.73.19.102',
-        location: '대한민국 경기도 성남시',
-      },
-      isCurrentSession: false,
-      status: 'active',
-      createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      lastActiveAt: yesterday,
-      expiresAt: expires,
-    },
-    {
-      id: 'mock-session-admin-office',
-      userId: 'pipj601@gmail.com',
-      userName: '대표 관리자',
-      userEmail: 'pipj601@gmail.com',
-      userRole: 'ADMIN',
-      firmName: 'my김변 본사 관제센터',
-      device: {
-        deviceType: 'desktop',
-        os: 'Windows 11',
-        browser: 'Google Chrome 125',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        ipAddress: '211.234.120.85',
-        location: '대한민국 서울특별시 강남구',
-      },
-      isCurrentSession: false,
-      status: 'active',
-      createdAt: yesterday,
-      lastActiveAt: oneHourAgo,
-      expiresAt: expires,
-    },
-    {
-      id: 'mock-session-suspicious-staff',
-      userId: 'staff-9',
-      userName: '이상 접속 의심 계정',
-      userEmail: 'staff9@testfirm.com',
-      userRole: 'STAFF',
-      firmName: '열린 법률사무소',
-      device: {
-        deviceType: 'desktop',
-        os: 'Linux',
-        browser: 'Mozilla Firefox 120',
-        userAgent: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64)',
-        ipAddress: '185.220.101.5',
-        location: '네덜란드 암스테르담 (VPN 의심)',
-      },
-      isCurrentSession: false,
-      status: 'active',
-      createdAt: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-      lastActiveAt: new Date(now.getTime() - 2 * 60 * 1000).toISOString(),
-      expiresAt: expires,
-      isSuspicious: true,
-      suspiciousReason: '국내 로펌 계정이 비인가 해외 VPN IP 대역에서 로그인됨',
-    },
-  ];
-}
+/** 같은 기기의 이전 세션을 '유령 세션'으로 보고 정리하기까지의 무활동 시간 (다른 탭을 끊지 않도록 충분히 길게) */
+const STALE_SAME_DEVICE_MS = 30 * 60 * 1000;
+/** 하트비트 저장 최소 간격 (입력 이벤트마다 localStorage 전체 재기록 방지) */
+const HEARTBEAT_THROTTLE_MS = 30 * 1000;
+let lastHeartbeatAt = 0;
 
 /**
  * 로컬에 저장된 모든 세션 목록 로드
@@ -128,12 +35,14 @@ function loadStoredSessions(): UserSession[] {
   try {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: UserSession[] = JSON.parse(raw);
+      // 과거 버전이 심어둔 가짜 시연 세션(mock-session-*) 정리
+      const cleaned = parsed.filter(s => !String(s.id).startsWith('mock-session-'));
+      if (cleaned.length !== parsed.length) saveStoredSessions(cleaned);
+      return cleaned;
     }
   } catch {}
-  const defaults = createInitialMockSessions();
-  saveStoredSessions(defaults);
-  return defaults;
+  return [];
 }
 
 /**
@@ -196,6 +105,7 @@ export async function registerSession(params: {
     if (
       s.userId === params.userId &&
       s.status === 'active' &&
+      now.getTime() - new Date(s.lastActiveAt).getTime() > STALE_SAME_DEVICE_MS &&
       s.device.os === deviceInfo.os &&
       s.device.browser === deviceInfo.browser &&
       s.device.ipAddress === deviceInfo.ipAddress &&
@@ -245,7 +155,7 @@ export async function registerSession(params: {
   // Supabase 연동 시 서버 DB에 비동기 저장
   if (isSupabaseConfigured) {
     try {
-      await supabase.from('user_sessions').insert({
+      const { error } = await supabase.from('user_sessions').insert({
         id: sessionId,
         user_id: params.userId,
         user_name: params.userName,
@@ -263,6 +173,7 @@ export async function registerSession(params: {
         last_active_at: now.toISOString(),
         expires_at: expiresAt,
       });
+      if (error) console.warn('[SESSION] 서버 세션 등록 실패 (이 브라우저에서만 관리됨):', error.message);
     } catch (err) {
       console.warn('[SESSION] Supabase session sync warning:', err);
     }
@@ -309,7 +220,8 @@ export async function getActiveSessions(userId: string): Promise<UserSession[]> 
     .forEach(s => {
       const key = `${s.device.os}__${s.device.browser}__${s.device.ipAddress}__${s.device.deviceType}`;
       if (s.id === currentSessionId) return;
-      if (seenDevices.has(key)) {
+      // 같은 기기라도 최근 활동 중인 세션(다른 탭)은 유지 — 오래된 잔여 세션만 정리
+      if (seenDevices.has(key) && now - new Date(s.lastActiveAt).getTime() > STALE_SAME_DEVICE_MS) {
         s.status = 'expired';
         s.revokeReason = '동일 기기 중복 세션 자동 통합 정리';
         changed = true;
@@ -322,7 +234,14 @@ export async function getActiveSessions(userId: string): Promise<UserSession[]> 
     saveStoredSessions(allSessions);
   }
 
-  return allSessions
+  // 서버에 등록된 다른 기기 세션 병합 (Supabase 설정 + 019 RLS 적용 시)
+  const merged = [...allSessions];
+  const remote = await fetchRemoteActiveSessions(userId);
+  for (const r of remote) {
+    if (!merged.some(m => m.id === r.id)) merged.push(r);
+  }
+
+  return merged
     .filter(s => s.userId === userId && s.status === 'active')
     .map(s => ({
       ...s,
@@ -359,9 +278,21 @@ export async function revokeSession(
 ): Promise<boolean> {
   const now = new Date().toISOString();
   const allSessions = loadStoredSessions();
-  const target = allSessions.find(s => s.id === sessionId);
+  let target = allSessions.find(s => s.id === sessionId);
 
-  if (!target) return false;
+  if (!target) {
+    // 다른 기기 세션(서버에만 존재)
+    if (!isSupabaseConfigured) return false;
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({ status: 'revoked', revoked_at: now, revoked_by: revokedBy, revoke_reason: reason || '원격 로그아웃 요청' })
+      .eq('id', sessionId);
+    if (error) {
+      console.warn('[SESSION] 원격 세션 종료 실패:', error.message);
+      return false;
+    }
+    return true;
+  }
 
   target.status = 'revoked';
   target.revokedAt = now;
@@ -399,7 +330,7 @@ export async function revokeSession(
   // Supabase 연동 시 DB 업데이트
   if (isSupabaseConfigured) {
     try {
-      await supabase
+      const { error } = await supabase
         .from('user_sessions')
         .update({
           status: 'revoked',
@@ -408,6 +339,7 @@ export async function revokeSession(
           revoke_reason: target.revokeReason,
         })
         .eq('id', sessionId);
+      if (error) console.warn('[SESSION] 서버 세션 종료 반영 실패:', error.message);
     } catch (err) {
       console.warn('[SESSION] Supabase revoke error:', err);
     }
@@ -447,6 +379,23 @@ export async function revokeAllOtherSessions(userId: string, currentSessionId?: 
   });
 
   saveStoredSessions(allSessions);
+
+  // 서버 세션(다른 기기) 일괄 종료
+  if (isSupabaseConfigured && curId) {
+    const { data, error } = await supabase
+      .from('user_sessions')
+      .update({ status: 'revoked', revoked_at: now, revoked_by: 'user', revoke_reason: '다른 모든 기기에서 일괄 로그아웃 실행' })
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .neq('id', curId)
+      .select('id');
+    if (error) {
+      console.warn('[SESSION] 서버 세션 일괄 종료 실패:', error.message);
+    } else if (data) {
+      const localIds = new Set(allSessions.map(s => s.id));
+      revokedCount += data.filter((r: any) => !localIds.has(r.id)).length;
+    }
+  }
 
   // 감사 로그
   writeAuditLog({
@@ -490,6 +439,15 @@ export async function revokeAllUserSessionsByAdmin(userId: string, reason: strin
 
   saveStoredSessions(allSessions);
 
+  if (isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({ status: 'revoked', revoked_at: now, revoked_by: 'admin', revoke_reason: reason || '관리자 긴급 보안 조치' })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    if (error) console.warn('[SESSION] 서버 세션 차단 실패:', error.message);
+  }
+
   writeAuditLog({
     actor_id: 'admin',
     actor_role: 'admin',
@@ -531,7 +489,67 @@ export async function checkSessionValidity(sessionId?: string): Promise<{ valid:
     return { valid: false, session, reason: '세션 유효기간이 만료되었습니다.' };
   }
 
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('user_sessions')
+        .select('status, revoke_reason')
+        .eq('id', id)
+        .maybeSingle();
+      // 조회 실패·행 없음(서버 미등록)은 로컬 판정 유지 — 네트워크 장애로 강제 로그아웃하지 않음
+      if (!error && data && data.status === 'revoked') {
+        session.status = 'revoked';
+        session.revokeReason = data.revoke_reason || '다른 기기 또는 관리자에 의해 세션이 종료되었습니다.';
+        saveStoredSessions(allSessions);
+        return { valid: false, session, reason: session.revokeReason };
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return { valid: true, session };
+}
+
+/** 서버(user_sessions)에 등록된 사용자의 활성 세션 (다른 기기 포함) */
+async function fetchRemoteActiveSessions(userId: string): Promise<UserSession[]> {
+  if (!isSupabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('user_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .order('last_active_at', { ascending: false })
+      .limit(20);
+    if (error || !data) return [];
+    return data.map((r: any): UserSession => ({
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      userEmail: r.user_email || undefined,
+      userRole: r.user_role,
+      firmName: r.firm_name || undefined,
+      device: {
+        deviceType: r.device_type,
+        os: r.os,
+        browser: r.browser,
+        userAgent: r.user_agent || '',
+        ipAddress: r.ip_address,
+        location: r.location || '',
+      },
+      isCurrentSession: false,
+      status: r.status,
+      createdAt: r.created_at,
+      lastActiveAt: r.last_active_at,
+      expiresAt: r.expires_at,
+      isSuspicious: r.is_suspicious || undefined,
+      suspiciousReason: r.suspicious_reason || undefined,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -540,6 +558,9 @@ export async function checkSessionValidity(sessionId?: string): Promise<{ valid:
 export function touchSessionHeartbeat(sessionId?: string): void {
   const id = sessionId || getCurrentSessionId();
   if (!id) return;
+  const nowMs = Date.now();
+  if (nowMs - lastHeartbeatAt < HEARTBEAT_THROTTLE_MS) return;
+  lastHeartbeatAt = nowMs;
 
   const allSessions = loadStoredSessions();
   const session = allSessions.find(s => s.id === id);
@@ -576,56 +597,6 @@ export function getLoginAuditHistory(userId: string): LoginAuditEntry[] {
     if (userEntries.length > 0) return userEntries;
   } catch {}
 
-  // 기본 목 데이터 생성
-  const now = Date.now();
-  return [
-    {
-      id: 'hist-1',
-      userId,
-      userName: '사용자',
-      userRole: 'LAWYER',
-      device: {
-        deviceType: 'desktop',
-        os: 'Windows 11',
-        browser: 'Google Chrome 124',
-        userAgent: '',
-        ipAddress: '211.234.120.85',
-        location: '대한민국 서울특별시 서초구',
-      },
-      status: 'SUCCESS',
-      timestamp: new Date(now - 10 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'hist-2',
-      userId,
-      userName: '사용자',
-      userRole: 'LAWYER',
-      device: {
-        deviceType: 'mobile',
-        os: 'iOS 17.5',
-        browser: 'Apple Safari 17',
-        userAgent: '',
-        ipAddress: '112.170.82.41',
-        location: '대한민국 서울특별시 서초구',
-      },
-      status: 'SUCCESS',
-      timestamp: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'hist-3',
-      userId,
-      userName: '사용자',
-      userRole: 'LAWYER',
-      device: {
-        deviceType: 'desktop',
-        os: 'Windows 11',
-        browser: 'Edge 123',
-        userAgent: '',
-        ipAddress: '121.134.50.22',
-        location: '대한민국 경기도 수원시',
-      },
-      status: 'SUCCESS',
-      timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ];
+  // 기록이 없으면 빈 목록 (가짜 이력을 만들지 않음)
+  return [];
 }

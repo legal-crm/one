@@ -40,6 +40,17 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // 새 알림 반영: 60초 주기 + 탭 복귀 시 갱신 (백그라운드 탭에서는 폴링 생략)
+  useEffect(() => {
+    const tick = () => { if (document.visibilityState === 'visible') refresh(); };
+    const timer = setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [refresh]);
+
   // 외부 클릭 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {

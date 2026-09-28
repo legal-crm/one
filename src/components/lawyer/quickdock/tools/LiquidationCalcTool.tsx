@@ -5,9 +5,9 @@ import { toast } from 'sonner';
 export default function LiquidationCalcTool() {
   // 자산 항목들 (만원 단위)
   const [realEstate, setRealEstate] = useState<number>(0);
-  const [vehicle, setVehicle] = useState<number>(300);
-  const [severance, setSeverance] = useState<number>(500); // 퇴직금 예상액의 1/2
-  const [savingsInsurance, setSavingsInsurance] = useState<number>(200); // 185만원 초과분
+  const [vehicle, setVehicle] = useState<number>(0);
+  const [severance, setSeverance] = useState<number>(0); // 퇴직금 예상액의 1/2
+  const [savingsInsurance, setSavingsInsurance] = useState<number>(0); // 압류금지 예금(185만원) 초과분
   const [otherAssets, setOtherAssets] = useState<number>(0);
 
   // 변제 계획 (만원 단위)
@@ -126,7 +126,7 @@ export default function LiquidationCalcTool() {
               <AlertTriangle className="w-4 h-4 text-rose-600" />
             )}
             <span className={`font-bold ${isSatisfied ? 'text-emerald-900' : 'text-rose-900'}`}>
-              {isSatisfied ? '청산가치 보장 충족 (인가 가능)' : '청산가치 미달 (보정명령 위험)'}
+              {isSatisfied ? '청산가치 요건 충족 (참고)' : '청산가치 미달 (보정 가능성)'}
             </span>
           </div>
         </div>

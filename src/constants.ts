@@ -1,3 +1,4 @@
+import { DEPOSIT_EXEMPTION_KRW } from './services/repayment/repaymentConstants2026';
 import { AppSettings, CourtRegionMapItem, RegionKey, DepositRule, YearlyPolicy, CourtConfig, HousingCostRule, PermissionConfig, StatusConfig } from './types';
 
 export const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx_YOUR_SCRIPT_ID_HERE/exec'; 
@@ -42,7 +43,7 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             4: { additionalLimit: 418037, includedInMedian: 651242, totalLimit: 1069279 }
         }
     };
-    const baseAssetExemptions = { deposit: 1850000, insurance: 1500000 };
+    const baseAssetExemptions = { deposit: DEPOSIT_EXEMPTION_KRW, insurance: 1500000 };
     const baseEducationCost = { additionalLimit: 190000, includedInMedian: 84149, totalLimit: 274149 };
     const baseSpecialEducationCost = { additionalLimit: 500000, includedInMedian: 84149, totalLimit: 584149 };
     const baseMedicalCostIncluded = { 1: 60279, 2: 99103, 3: 126639, 4: 153664 };

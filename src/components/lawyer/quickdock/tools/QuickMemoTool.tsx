@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Copy, Trash2, Check, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-
-const STORAGE_KEY = 'legal_dock_scratchpad_memo';
+import { useDialog } from '../../../common/DialogProvider';
+import { QUICK_MEMO_KEY as STORAGE_KEY, purgeLegacyDockMemos } from '../dockStorage';
 
 const TEMPLATE_CONSULT = `[의뢰인 상담 요약]
 • 성명/연락처: 
@@ -16,10 +16,12 @@ const TEMPLATE_CONSULT = `[의뢰인 상담 요약]
 export default function QuickMemoTool() {
   const [memo, setMemo] = useState('');
   const [copied, setCopied] = useState(false);
+  const dialog = useDialog();
 
   useEffect(() => {
+    purgeLegacyDockMemos();
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) setMemo(saved);
     } catch {
       // ignore
@@ -30,7 +32,7 @@ export default function QuickMemoTool() {
     const val = e.target.value;
     setMemo(val);
     try {
-      localStorage.setItem(STORAGE_KEY, val);
+      sessionStorage.setItem(STORAGE_KEY, val);
     } catch {
       // ignore
     }
@@ -47,11 +49,12 @@ export default function QuickMemoTool() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleClear = () => {
-    if (window.confirm('작성 중인 메모를 모두 지우시겠습니까?')) {
+  const handleClear = async () => {
+    const ok = await dialog.confirm({ title: '메모 비우기', message: '작성 중인 메모를 모두 지우시겠습니까?', confirmText: '비우기', variant: 'warning' });
+    if (ok) {
       setMemo('');
       try {
-        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_KEY);
       } catch {
         // ignore
       }
@@ -63,7 +66,7 @@ export default function QuickMemoTool() {
     const next = memo ? `${memo}\n\n${TEMPLATE_CONSULT}` : TEMPLATE_CONSULT;
     setMemo(next);
     try {
-      localStorage.setItem(STORAGE_KEY, next);
+      sessionStorage.setItem(STORAGE_KEY, next);
     } catch {
       // ignore
     }
@@ -75,7 +78,7 @@ export default function QuickMemoTool() {
       <div className="flex items-center justify-between text-[11px] text-slate-500">
         <span className="flex items-center gap-1 font-bold text-slate-700">
           <FileText className="w-3.5 h-3.5 text-emerald-600" />
-          실시간 상담 메모 (자동 저장됨)
+          상담 메모 (이 탭에만 임시 저장 · 로그아웃 시 삭제)
         </span>
         <button
           type="button"

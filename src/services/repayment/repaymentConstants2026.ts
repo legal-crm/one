@@ -4,6 +4,31 @@
  */
 
 // ==============================================================================
+// 0. 민사집행법 압류금지 기준 (단일 출처) — 개정 시 이 값만 수정
+//    ⚠️ 2026년 상향(250만원) 여부는 확인되지 않아 현행 185만원 유지 (출시 전 시행령 확인 필요)
+// ==============================================================================
+/** 압류금지 예금 (개인별 잔액 합계, 민사집행법 시행령 제7조) */
+export const DEPOSIT_EXEMPTION_KRW = 1_850_000;
+/** 압류금지 최저 급여액 (민사집행법 시행령 제3조) */
+export const WAGE_EXEMPTION_MIN_KRW = 1_850_000;
+/** 표준적 가구 생계비 기준 압류금지 상한 기준액 (민사집행법 시행령 제4조) */
+export const WAGE_EXEMPTION_CAP_BASE_KRW = 3_000_000;
+
+/**
+ * 월 급여(세후) 중 압류금지 금액 (민사집행법 제246조 제1항 제4호)
+ *  - 원칙: 급여의 1/2
+ *  - 1/2이 185만원 미만이면 185만원 (급여가 185만원 이하이면 전액)
+ *  - 1/2이 300만원 초과이면 300만원 + (급여/2 − 300만원)/2
+ */
+export function wageExemptAmount(monthlyWage: number): number {
+  const w = Math.max(0, Number(monthlyWage) || 0);
+  const half = w / 2;
+  if (half < WAGE_EXEMPTION_MIN_KRW) return Math.min(w, WAGE_EXEMPTION_MIN_KRW);
+  if (half > WAGE_EXEMPTION_CAP_BASE_KRW) return Math.floor(WAGE_EXEMPTION_CAP_BASE_KRW + (half - WAGE_EXEMPTION_CAP_BASE_KRW) / 2);
+  return Math.floor(half);
+}
+
+// ==============================================================================
 // 1. 2026년 / 2025년 가구원 수별 기준 중위소득 및 기초생계비 (중위소득 60%)
 // ==============================================================================
 export const MEDIAN_INCOME_100_2026: Record<number, number> = {

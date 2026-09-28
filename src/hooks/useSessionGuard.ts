@@ -20,9 +20,17 @@ export function useSessionGuard({
 }: UseSessionGuardProps) {
   const dialog = useDialog();
   const isHandlingLogout = useRef(false);
+  // 호출부가 인라인 콜백을 넘겨도 매 렌더마다 리스너·폴링이 재설치되지 않도록 ref로 보관
+  const onForceLogoutRef = useRef(onForceLogout);
+  onForceLogoutRef.current = onForceLogout;
+  const dialogRef = useRef(dialog);
+  dialogRef.current = dialog;
 
   useEffect(() => {
     if (!isLoggedIn) return;
+    isHandlingLogout.current = false;
+    const onForceLogout = (reason?: string) => onForceLogoutRef.current(reason as any);
+    const dialog = dialogRef.current;
 
     // 1. 세션 유효성 즉각 검증 함수
     const verifyCurrentSession = async () => {
@@ -99,5 +107,5 @@ export function useSessionGuard({
         channel.close();
       }
     };
-  }, [isLoggedIn, userId, onForceLogout, dialog]);
+  }, [isLoggedIn, userId]);
 }

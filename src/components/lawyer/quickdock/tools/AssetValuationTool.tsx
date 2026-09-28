@@ -54,7 +54,7 @@ export default function AssetValuationTool() {
       summary = `[주택/아파트 자산가치 산정 보고]
 • 대상/주소: ${houseAddress || '주택/아파트'}
 • 기준 공시가격: ${housePublicPrice.toLocaleString()}만 원
-• 법원 인정 시세(130%): ${houseValuation130.toLocaleString()}만 원 (KB시세 우선)
+• 참고 시세(공시가×130% 환산): ${houseValuation130.toLocaleString()}만 원 (KB시세·실거래가 확인 우선)
 • 담보대출(근저당): ${houseMortgage.toLocaleString()}만 원
 • 소액임차보증금 등: ${houseDeposit.toLocaleString()}만 원
 • 순 청산가치 반영액: ${houseLiquidation.toLocaleString()}만 원`;
@@ -63,7 +63,7 @@ export default function AssetValuationTool() {
 • 소재지 지번: ${landAddress || '토지/임야'}
 • 개별공시지가: ${landUnitJiga.toLocaleString()}원/㎡
 • 토지 면적: ${landAreaM2}㎡ (약 ${(landAreaM2 * 0.3025).toFixed(1)}평)
-• 법원 인정 시세(공시지가×130%): ${landValuation130Manwon.toLocaleString()}만 원
+• 참고 시세(공시지가×130% 환산): ${landValuation130Manwon.toLocaleString()}만 원
 • 담보대출(근저당): ${landMortgage.toLocaleString()}만 원
 • 순 청산가치 반영액: ${landLiquidation.toLocaleString()}만 원`;
     } else {
@@ -196,7 +196,7 @@ export default function AssetValuationTool() {
             </div>
           </div>
 
-          {/* 법원 인정가 및 청산가치 간이 산정기 */}
+          {/* 참고 시세 및 청산가치 간이 산정기 (법원 기준 아님) */}
           <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
             <span className="font-extrabold text-emerald-950 flex items-center gap-1">
               <Calculator className="w-3.5 h-3.5 text-emerald-700" />
@@ -238,7 +238,7 @@ export default function AssetValuationTool() {
 
             <div className="p-2 bg-white rounded-lg border border-emerald-200 space-y-1 text-[11px]">
               <div className="flex justify-between text-slate-600">
-                <span>법원 인정 시세 (공시가 130%):</span>
+                <span>참고 시세 (공시가×130% 환산):</span>
                 <span className="font-bold text-slate-900">{houseValuation130.toLocaleString()}만 원</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-slate-100 font-extrabold text-emerald-800">
@@ -336,7 +336,7 @@ export default function AssetValuationTool() {
 
             <div className="p-2 bg-white rounded-lg border border-emerald-200 space-y-1 text-[11px]">
               <div className="flex justify-between text-slate-600">
-                <span>법원 인정 토지가액 (130%):</span>
+                <span>참고 토지가액 (공시지가×130% 환산):</span>
                 <span className="font-bold text-slate-900">{landValuation130Manwon.toLocaleString()}만 원</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-slate-100 font-extrabold text-emerald-800">
@@ -373,7 +373,7 @@ export default function AssetValuationTool() {
               >
                 <div>
                   <span className="block text-[11px]">🚗 보험개발원 기준가</span>
-                  <span className="text-[9px] text-rose-700 font-normal">법원 인정 공식가액</span>
+                  <span className="text-[9px] text-rose-700 font-normal">차량 기준가액 조회</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-rose-600 group-hover:translate-x-0.5 transition-transform" />
               </button>
@@ -397,7 +397,7 @@ export default function AssetValuationTool() {
               >
                 <div>
                   <span className="block text-[11px]">🚙 KB차차차 국민시세</span>
-                  <span className="text-[9px] text-amber-700 font-normal">공인 감정가 확인</span>
+                  <span className="text-[9px] text-amber-700 font-normal">중고 시세 참고 (감정가 아님)</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
               </button>

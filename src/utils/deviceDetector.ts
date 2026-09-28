@@ -98,9 +98,9 @@ export function generateUUID(): string {
 export async function getClientDeviceInfo(): Promise<DeviceInfo> {
   const baseInfo = detectDeviceInfo();
   
-  // 기본 폴백 정보 (국내 법률 특화 기본값)
-  let ipAddress = '211.234.120.85';
-  let location = '대한민국 서울특별시';
+  // 조회 실패 시 임의 IP·지역을 만들지 않음 (위치는 IP 지오로케이션을 하지 않으므로 표시하지 않음)
+  let ipAddress = '확인 불가';
+  const location = '';
 
   try {
     // 3초 타임아웃으로 빠른 IP 조회 시도

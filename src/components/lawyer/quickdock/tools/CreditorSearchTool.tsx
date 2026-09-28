@@ -54,7 +54,8 @@ export default function CreditorSearchTool() {
 • 대표자: ${item.representative}
 • 법인/사업자등록번호: ${item.bizNumber}
 • 법원 송달장소: (${item.zipCode}) ${item.serviceAddress}
-• 대표전화: ${item.phone || '해당 없음'}`;
+• 대표전화: ${item.phone || '해당 없음'}
+※ 참고용 주소록입니다. 대표자·본점 주소는 법인등기사항증명서로 최신 여부를 확인하세요.`;
 
     navigator.clipboard.writeText(text);
     setCopiedId(item.id);
@@ -64,6 +65,9 @@ export default function CreditorSearchTool() {
 
   return (
     <div className="p-3.5 space-y-3 text-xs text-slate-800">
+      <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 leading-snug">
+        참고용 주소록입니다. 대표자 변경·본점 이전이 잦으므로 채권자목록 작성 전 법인등기사항증명서로 반드시 확인하세요.
+      </p>
       {/* ── 상단 검색창 ── */}
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

@@ -44,7 +44,7 @@ import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCor
 import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
   testTelegramConnection, sendEmailNotification, formatEmailConsultHtml,
-  requestBrowserPushPermission, sendBrowserPushNotification,
+  requestBrowserPushPermission, sendBrowserPushNotification, getBrowserNotificationPermission, notifyAllChannels,
   notifyAdminNewAdOrder,
 } from '../services/notificationService';
 import type { NotificationSettings, NotificationLog } from '../types';
@@ -59,8 +59,38 @@ const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalett
 import ContractConversionModal from './lawyer/ContractConversionModal';
 import { loadAdOrders, saveNewAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 import LegalQuickDock from './lawyer/LegalQuickDock';
+import { clearDockSensitiveData } from './lawyer/quickdock/dockStorage';
 import LawyerSealManagerModal from './lawyer/LawyerSealManagerModal';
 import SealStudioModal from './lawyer/branding/SealStudioModal';
+
+/** 로컬(KST 등 사용자 시간대) 기준 YYYY-MM-DD — toISOString()은 UTC라 자정~09시에 하루 밀림 */
+function localDateStr(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD'(또는 ISO) 마감일까지 남은 일수 (오늘 = 0). 해석 불가 시 null */
+function daysUntilLocalDate(dateStr: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+  if (!m) return null;
+  const target = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date();
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((target.getTime() - base.getTime()) / 86400000);
+}
+
+/** 모바일 '더보기' 메뉴 (사이드바와 동일한 탭·권한 키) */
+const MOBILE_MORE_TABS: Array<{ id: string; label: string; perm?: string }> = [
+  { id: 'sales-leads', label: '영업관리', perm: 'sales-leads' },
+  { id: 'tasks-schedule', label: '일정 / 할일' },
+  { id: 'contracts', label: '전자 계약' },
+  { id: 'fee-settlement', label: '수임료 정산', perm: 'fee-settlement' },
+  { id: 'case-copilot', label: 'AI 사건 분석', perm: 'case-copilot' },
+  { id: 'qna-answer', label: '고민상담 Q&A' },
+  { id: 'billing', label: '요금제 / 빌링', perm: 'billing' },
+  { id: 'staff-management', label: '직원 관리', perm: 'staff-management' },
+  { id: 'inquiry-to-admin', label: '마이김변 문의' },
+  { id: 'settings', label: '알림 및 설정', perm: 'settings' },
+];
 
 /** DEV 빌드 전용 데모 로그인 세션 키 (PROD에서는 읽지도 쓰지도 않음) */
 const DEV_LAWYER_SESSION_KEY = 'legal_crm_lawyer_dev_session';
@@ -220,6 +250,7 @@ export default function LawyerRole({
   const [isExternalClientModalOpen, setIsExternalClientModalOpen] = useState(false);
   const [isSealModalOpen, setIsSealModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
 
   
   // Mobile UI navigation controls
@@ -321,7 +352,7 @@ export default function LawyerRole({
       sessionStorage.removeItem('legal_crm_active_lawyer');
       sessionStorage.removeItem('pending_lawyer_oauth');
       if (import.meta.env.DEV) sessionStorage.removeItem(DEV_LAWYER_SESSION_KEY);
-      verifiedAccountRef.current = null;
+      verifiedAccountRef.current = null; clearDockSensitiveData();
       if (isSupabaseConfigured) supabase.auth.signOut().catch(() => {});
       setIsLoggedIn(false);
       setActiveStaffMember(null);
@@ -339,7 +370,8 @@ export default function LawyerRole({
   // ── Cmd+K 전역 검색 단축키 (기능 유지) ──
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      // e.code 기준: 한글 입력기(ㅏ)·Caps Lock(K) 상태에서도 동작
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyK' || e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
       }
@@ -464,7 +496,7 @@ export default function LawyerRole({
           dialog.alert({ title: '계정 상태 안내', message: msg, variant: 'danger' });
           sessionStorage.removeItem('legal_crm_lawyer_session');
           if (import.meta.env.DEV) sessionStorage.removeItem(DEV_LAWYER_SESSION_KEY);
-          verifiedAccountRef.current = null;
+          verifiedAccountRef.current = null; clearDockSensitiveData();
           if (isSupabaseConfigured) supabase.auth.signOut().catch(() => {});
           setIsLoggedIn(false);
           setActiveLawyer(EMPTY_LAWYER);
@@ -487,7 +519,7 @@ export default function LawyerRole({
             } else {
               sessionStorage.removeItem('legal_crm_lawyer_session');
               if (import.meta.env.DEV) sessionStorage.removeItem(DEV_LAWYER_SESSION_KEY);
-              verifiedAccountRef.current = null;
+              verifiedAccountRef.current = null; clearDockSensitiveData();
               if (isSupabaseConfigured) supabase.auth.signOut().catch(() => {});
               setIsLoggedIn(false);
               setActiveLawyer(EMPTY_LAWYER);
@@ -905,7 +937,7 @@ export default function LawyerRole({
         const member = members.find(m => m.id === profile.id);
         if (member && (member.status === 'suspended' || member.status === 'withdrawn')) {
           await supabase.auth.signOut().catch(() => {});
-          verifiedAccountRef.current = null;
+          verifiedAccountRef.current = null; clearDockSensitiveData();
           sessionStorage.removeItem('legal_crm_lawyer_session');
           setLoginError(member.status === 'withdrawn'
             ? '탈퇴 완료된 계정입니다. 해당 계정은 더 이상 사용할 수 없습니다.'
@@ -1010,7 +1042,7 @@ export default function LawyerRole({
         processOAuthSession(session, `onAuthStateChange(${event})`);
       } else if (event === 'SIGNED_OUT' && verifiedAccountRef.current) {
         // 서버 세션 종료(만료·다른 기기에서 전체 로그아웃 등) → 즉시 포털 잠금
-        verifiedAccountRef.current = null;
+        verifiedAccountRef.current = null; clearDockSensitiveData();
         sessionStorage.removeItem('legal_crm_lawyer_session');
         setIsLoggedIn(false);
         setActiveLawyer(EMPTY_LAWYER);
@@ -1048,7 +1080,7 @@ export default function LawyerRole({
       return;
     }
     onLogActivity(activeLawyer.id, activeLawyer.name, activeLawyer.role as MemberRole, 'LOGIN', '모든 기기 세션 종료');
-    verifiedAccountRef.current = null;
+    verifiedAccountRef.current = null; clearDockSensitiveData();
     sessionStorage.removeItem('legal_crm_lawyer_session');
     setIsLoggedIn(false);
     setActiveLawyer(EMPTY_LAWYER);
@@ -1169,7 +1201,7 @@ export default function LawyerRole({
       sessionStorage.removeItem('legal_crm_active_lawyer');
       sessionStorage.removeItem('pending_lawyer_oauth');
       if (import.meta.env.DEV) sessionStorage.removeItem(DEV_LAWYER_SESSION_KEY);
-      verifiedAccountRef.current = null;
+      verifiedAccountRef.current = null; clearDockSensitiveData();
       if (isSupabaseConfigured) {
         await supabase.auth.signOut().catch(() => {});
       }
@@ -1445,7 +1477,7 @@ export default function LawyerRole({
 
     // 알림 발송
     createNotification(
-      activeLawyer.firmName || 'default',
+      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
       supervisingId,
       {
         type: 'REVIEW_REQUESTED',
@@ -1479,7 +1511,7 @@ export default function LawyerRole({
 
     // 직원에게 승인 알림
     createNotification(
-      activeLawyer.firmName || 'default',
+      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
       pending.staffId,
       {
         type: 'REVIEW_APPROVED',
@@ -1504,7 +1536,7 @@ export default function LawyerRole({
 
     // 직원에게 반려 알림
     createNotification(
-      activeLawyer.firmName || 'default',
+      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
       pending.staffId,
       {
         type: 'REVIEW_REJECTED',
@@ -1627,20 +1659,61 @@ export default function LawyerRole({
       const targetLawyer = lawyers.find(l => l.id === id);
       return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
     });
-    const openMatch = r.requestType === 'open';
+    // 오픈 요청은 '신규 상담(매칭 대기)'에만 포함 — 진행 중 건은 담당 변호사 본인 것만
+    const openMatch = r.requestType === 'open' && r.status === 'requested';
     return directMatch || sameFirmMatch || openMatch;
   };
+  /** 본인(또는 같은 사무소)이 담당·참여 중인 요청만 (오픈 매칭 대기 제외) */
+  const isOwnRequest = (r: ConsultRequest) => {
+    if (!activeLawyer.id) return false;
+    return Boolean(
+      r.selectedLawyerIds?.includes(activeLawyer.id) ||
+      r.selectedLawyerId === activeLawyer.id ||
+      r.acceptedLawyerIds?.includes(activeLawyer.id) ||
+      r.assignedLawyerId === activeLawyer.id ||
+      (r as any).createdByLawyerId === activeLawyer.id ||
+      (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email)))
+    );
+  };
+  const ownRequests = requests.filter(isOwnRequest);
+  const ownRequestIds = new Set(ownRequests.map(r => r.id));
   const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
-  const activeChatsCount = requests.filter(r => r.status === 'counseling' && (
-    r.selectedLawyerId === activeLawyer.id || 
-    r.selectedLawyerIds?.includes(activeLawyer.id) || 
-    r.requestType === 'open'
-  )).length;
-  const totalCasesCount = cases.length;
-  const directCounselingCount = requests.filter(r => r.status === 'responding' && (
-    r.selectedLawyerId === activeLawyer.id || 
-    r.selectedLawyerIds?.includes(activeLawyer.id)
-  )).length;
+  const activeChatsCount = ownRequests.filter(r => r.status === 'counseling').length;
+  const ownCases = cases.filter(c => !c.assignedLawyerId || c.assignedLawyerId === activeLawyer.id || ownRequestIds.has(c.clientId));
+  const totalCasesCount = ownCases.length;
+  const directCounselingCount = ownRequests.filter(r => r.status === 'responding').length;
+
+  // ── 신규 상담 접수 알림 (설정 탭의 텔레그램·이메일·브라우저 알림 채널) ──
+  // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 들어온 '매칭 대기' 요청만 1회 발송.
+  // CRM이 열려 있는 브라우저에서만 동작한다 (서버 푸시 아님).
+  const notifiedRequestIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!isLoggedIn || !activeLawyer.id) {
+      notifiedRequestIdsRef.current = null;
+      return;
+    }
+    const candidates = requests.filter(r => r.status === 'requested' && isRelevantRequest(r));
+    if (notifiedRequestIdsRef.current === null) {
+      notifiedRequestIdsRef.current = new Set(candidates.map(r => r.id));
+      return;
+    }
+    const seen = notifiedRequestIdsRef.current;
+    const fresh = candidates.filter(r => !seen.has(r.id));
+    if (fresh.length === 0) return;
+    fresh.forEach(r => seen.add(r.id));
+    const settings = notifSettings;
+    fresh.slice(0, 5).forEach(r => {
+      const fp: any = r.financialProfile || {};
+      notifyAllChannels(settings, {
+        type: r.entryCategory?.label || r.title || '회생·파산 상담',
+        region: fp.residenceRegion || '지역 미기재',
+        debt: fp.debtTotal ? `${Number(fp.debtTotal).toLocaleString()}만원` : '미기재',
+        income: fp.income ? `${Number(fp.income).toLocaleString()}만원` : '미기재',
+        tags: [],
+      }).then(() => setNotifLogs(loadNotificationLogs())).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, isLoggedIn, activeLawyer.id]);
 
   const currentChatRequest = requests.find(r => r.id === activeChatReqId);
   const currentChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
@@ -2468,14 +2541,14 @@ export default function LawyerRole({
                 >
                   <Users className="w-5 h-5 shrink-0" />
                   {!sidebarCollapsed && <span className="truncate">고객관리</span>}
-                  {requests.length > 0 && (
+                  {ownRequests.length > 0 && (
                     sidebarCollapsed ? (
                       <span className="absolute top-1.5 right-1.5 bg-slate-700 text-slate-200 rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
-                        {requests.length > 99 ? '99+' : requests.length}
+                        {ownRequests.length > 99 ? '99+' : ownRequests.length}
                       </span>
                     ) : (
                       <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">
-                        {requests.length}
+                        {ownRequests.length}
                       </span>
                     )
                   )}
@@ -2523,8 +2596,8 @@ export default function LawyerRole({
                   {(() => {
                     const crmMap = loadCrmExtMap();
                     let alertCount = 0;
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    requests.forEach(r => {
+                    const todayStr = localDateStr();
+                    ownRequests.forEach(r => {
                       const ext = crmMap[r.id] || getCrmExt(r.id);
                       (ext.feeSchedule || []).forEach(inst => {
                         if (inst.status === 'overdue' || (inst.status === 'pending' && inst.dueDate <= todayStr)) {
@@ -2570,7 +2643,7 @@ export default function LawyerRole({
                     !sidebarCollapsed && <span className="ml-auto bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-md px-1.5 py-0.5 text-[10px] font-bold">유료</span>
                   ) : (
                     (() => { 
-                      const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; 
+                      const n = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && isRelevantRequest(r)).length; 
                       if (n === 0) return null;
                       return sidebarCollapsed ? (
                         <span className="absolute top-1.5 right-1.5 bg-brand text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
@@ -2718,10 +2791,39 @@ export default function LawyerRole({
             <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'client-crm' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <Users className="w-5 h-5" /><span className="text-xs font-bold">CRM</span>
             </button>
-            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','tasks-schedule','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+            <button
+              onClick={() => setIsMobileMoreOpen(prev => !prev)}
+              aria-expanded={isMobileMoreOpen}
+              aria-haspopup="menu"
+              className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}
+            >
               <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
             </button>
           </div>
+
+          {/* ── 모바일 '더보기' 메뉴 시트 (사이드바와 동일한 권한 기준) ── */}
+          {isMobileMoreOpen && (
+            <div className="lg:hidden fixed inset-0 z-[45]" onClick={() => setIsMobileMoreOpen(false)}>
+              <div className="absolute inset-0 bg-slate-900/40" aria-hidden="true" />
+              <div
+                role="menu"
+                aria-label="전체 메뉴"
+                className="absolute bottom-16 left-2 right-2 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 grid grid-cols-3 gap-1.5"
+                onClick={e => e.stopPropagation()}
+              >
+                {MOBILE_MORE_TABS.filter(t => !t.perm || permissionCtx.canAccessTab(t.perm as any)).map(t => (
+                  <button
+                    key={t.id}
+                    role="menuitem"
+                    onClick={() => { setActiveTab(t.id as any); setIsMobileMoreOpen(false); }}
+                    className={`min-h-[48px] px-2 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${activeTab === t.id ? 'bg-brand text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
@@ -2771,26 +2873,29 @@ export default function LawyerRole({
             {/* ═══ 섹션 0: 리걸플로형 법원 사건 지휘 본부 (Command Center) 4열 브리핑 & 원형 게이지 ═══ */}
             {(() => {
               const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
-              const allExts = Object.values(crmStore) as any[];
+              // 본인 담당 의뢰인의 CRM 확장 데이터만 집계 (다른 변호사 사건 합산 금지)
+              const allExts = Object.entries(crmStore)
+                .filter(([reqId]) => ownRequestIds.has(reqId))
+                .map(([, ext]) => ext) as any[];
 
-              // 1. 금지명령 심리 중
-              const pendingStayCount = Math.max(1, requests.filter(r => r.status === 'filed').length + allExts.filter((e: any) => e.crmStatus === 'filed').length);
+              // 1. 금지·중지명령 심리 중 (CRM 상태 '신청 접수' 기준)
+              const pendingStayCount = allExts.filter((e: any) => e.crmStatus === 'filed').length;
 
               // 2. 보정명령 D-Day 7일 이내
               let urgentCorrectionCount = 0;
               allExts.forEach((ext: any) => {
                 if (ext.correctionOrders) {
                   ext.correctionOrders.forEach((co: any) => {
-                    if (co.status === 'pending') {
-                      const diff = Math.ceil((new Date(co.deadline).getTime() - Date.now()) / 86400000);
-                      if (diff <= 7) urgentCorrectionCount++;
+                    if (co.status === 'pending' && co.deadline) {
+                      const diff = daysUntilLocalDate(co.deadline);
+                      if (diff !== null && diff <= 7) urgentCorrectionCount++;
                     }
                   });
                 }
               });
 
               // 3. 이번달 채권자 집회
-              const currentMonthStr = new Date().toISOString().slice(0, 7);
+              const currentMonthStr = localDateStr().slice(0, 7);
               let thisMonthHearingCount = 0;
               allExts.forEach((ext: any) => {
                 if (ext.courtCase?.events) {
@@ -2801,16 +2906,18 @@ export default function LawyerRole({
                   });
                 }
               });
-              const displayHearingCount = Math.max(1, thisMonthHearingCount);
+              const displayHearingCount = thisMonthHearingCount;
 
-              // 4. 개시 & 인가결정 누적
-              const commencedCount = Math.max(4, allExts.filter((e: any) => ['commenced', 'repaying', 'discharged'].includes(e.crmStatus)).length + cases.filter(c => ['commencement', 'approval', 'discharge'].includes(c.status)).length);
+              // 4. 개시 & 인가결정 누적 (CRM 상태 기준 — 같은 의뢰인 이중 집계 방지)
+              const commencedCount = allExts.filter((e: any) => ['commenced', 'repaying', 'discharged'].includes(e.crmStatus)).length;
 
-              // 5. 게이지 파라미터 (평균 탕감율 83%)
-              const avgDischargeRate = 83;
+              // 5. 게이지: 담당 상담 대비 수임 전환율 (실데이터)
+              const ownTotal = ownRequests.length;
+              const ownContracted = ownRequests.filter(r => r.status === 'contracted' || r.status === 'document' || (r.status as string) === 'filed').length;
+              const conversionRate = ownTotal > 0 ? Math.round((ownContracted / ownTotal) * 100) : 0;
               const radius = 38;
               const circumference = 2 * Math.PI * radius;
-              const strokeOffset = circumference - (avgDischargeRate / 100) * circumference;
+              const strokeOffset = circumference - (conversionRate / 100) * circumference;
 
               return (
                 <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 text-white rounded-3xl border border-slate-700/80 shadow-xl p-5 sm:p-6 relative overflow-hidden">
@@ -2935,23 +3042,21 @@ export default function LawyerRole({
                           />
                         </svg>
                         <div className="absolute flex flex-col items-center justify-center text-center">
-                          <span className="text-lg font-black text-emerald-400 leading-none tabular-nums">{avgDischargeRate}%</span>
-                          <span className="text-[9px] text-slate-400 font-bold mt-0.5">평균 탕감</span>
+                          <span className="text-lg font-black text-emerald-400 leading-none tabular-nums">{ownTotal > 0 ? `${conversionRate}%` : '—'}</span>
+                          <span className="text-[9px] text-slate-400 font-bold mt-0.5">수임 전환율</span>
                         </div>
                       </div>
 
                       <div className="space-y-1.5 min-w-0 flex-1 text-xs">
                         <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400 text-[11px]">평균 변제율</span>
-                          <span className="font-bold text-white tabular-nums">17%</span>
+                          <span className="text-slate-400 text-[11px]">담당 상담</span>
+                          <span className="font-bold text-white tabular-nums">{ownTotal}건</span>
                         </div>
                         <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400 text-[11px]">이달 수임 목표</span>
-                          <span className="font-bold text-blue-400 tabular-nums">92% 달성</span>
+                          <span className="text-slate-400 text-[11px]">수임(계약) 전환</span>
+                          <span className="font-bold text-blue-400 tabular-nums">{ownContracted}건</span>
                         </div>
-                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
-                          <div className="bg-blue-500 h-full rounded-full" style={{ width: '92%' }} />
-                        </div>
+                        <p className="text-[10px] text-slate-500 leading-snug pt-0.5">이 계정에 배정·참여된 상담 기준</p>
                       </div>
                     </div>
                   </div>
@@ -2969,11 +3074,9 @@ export default function LawyerRole({
                 const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(' ');
                 return (<svg width={width} height={height} className="mt-1 opacity-60"><polyline fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={points} /></svg>);
               };
-              // 주간 트렌드 데이터 (최근 7일 기준 mock - 실데이터 누적 시 대체)
+              // 최근 7일 신규 상담 추세 (실데이터: 본인 관련 요청의 접수일 기준)
               const now = Date.now(); const dayMs = 86400000;
-              const weeklyNew = Array.from({ length: 7 }, (_, i) => requests.filter(r => { const d = new Date(r.createdAt).getTime(); return d >= now - (7 - i) * dayMs && d < now - (6 - i) * dayMs; }).length);
-              const weeklyChat = Array.from({ length: 7 }, (_, i) => Math.max(0, activeChatsCount + Math.round((Math.sin(i) * 2))));
-              const weeklyCase = Array.from({ length: 7 }, (_, i) => Math.max(0, totalCasesCount + Math.round((Math.cos(i) * 1.5))));
+              const weeklyNew = Array.from({ length: 7 }, (_, i) => requests.filter(r => { if (!isRelevantRequest(r)) return false; const d = new Date(r.createdAt).getTime(); return d >= now - (7 - i) * dayMs && d < now - (6 - i) * dayMs; }).length);
               return (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* 1. 신규 상담 (신규 건수 있을 때 단독 펄스 애니메이션 적용) */}
@@ -3024,7 +3127,6 @@ export default function LawyerRole({
                 <div className="space-y-1">
                   <span className="text-xs text-slate-500 font-bold tracking-tight block">진행 중 상담</span>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{activeChatsCount}</span>
-                  <Sparkline data={weeklyChat} color="#3b82f6" />
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <MessageSquare className="w-5 h-5" />
@@ -3036,7 +3138,6 @@ export default function LawyerRole({
                 <div className="space-y-1">
                   <span className="text-xs text-slate-500 font-bold tracking-tight block">수임 전환</span>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalCasesCount}</span>
-                  <Sparkline data={weeklyCase} color="#10b981" />
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <FolderHeart className="w-5 h-5" />
@@ -3162,7 +3263,7 @@ export default function LawyerRole({
                   })}
               </div>
 
-              {requests.filter(r => r.status === 'requested').length === 0 && (
+              {totalOpenRequestsCount === 0 && (
                 <div className="py-12 text-center space-y-2">
                   <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="text-sm text-slate-700 font-bold">현재 대기 중인 신규 상담 요청이 없습니다.</p>
@@ -3170,7 +3271,7 @@ export default function LawyerRole({
                 </div>
               )}
 
-              {requests.filter(r => r.status === 'requested').length > 0 && (
+              {totalOpenRequestsCount > 0 && (
                 <div className="flex justify-center pt-1">
                   <button
                     onClick={() => setActiveTab('client-crm')}
@@ -3234,7 +3335,9 @@ export default function LawyerRole({
                 {(() => {
                   const activeAds = adOrders.filter(o => o.status === 'active');
                   const monthlyAdTotal = activeAds.reduce((s, o) => s + o.monthlyPrice, 0);
-                  const currentPlan = platformPlans[1] || platformPlans[0];
+                  // 구독 계약 정보는 아직 계정에 저장되지 않음 → 임의 요금제를 '이용 중'으로 표시하지 않음
+                  const currentPlanName: string | undefined = (activeLawyer as any).subscriptionPlanName;
+                  const currentPlan = currentPlanName ? platformPlans.find(pl => pl.name === currentPlanName) : undefined;
                   return (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
@@ -3247,11 +3350,11 @@ export default function LawyerRole({
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
                         <div className="text-[11px] text-slate-500 font-bold mb-1">구독 요금제</div>
-                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : 'Pro'}</div>
+                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : '미등록'}</div>
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
                         <div className="text-[11px] text-slate-500 font-bold mb-1">월 구독료</div>
-                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? currentPlan.price : '월 80만원'}</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? currentPlan.price : '—'}</div>
                       </div>
                     </div>
                   );
@@ -3321,7 +3424,7 @@ export default function LawyerRole({
                 </div>
                 {(() => {
                   // 오늘 일정 로드
-                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const todayStr = localDateStr();
                   const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
                   const allEvts: { title: string; date: string; type: string }[] = [];
                   try {
@@ -4758,7 +4861,19 @@ export default function LawyerRole({
                         {plan.features.map((feat, i) => (<li key={i} className="flex gap-2 items-start"><Check className="w-4 h-4 text-[#1E3A5F] shrink-0 mt-0.5" /><span className="leading-tight">{feat}</span></li>))}
                       </ul>
                     </div>
-                    <button className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${plan.name === 'Pro' ? 'bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-xs active:scale-[0.98]' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 active:scale-[0.98]'}`}>{plan.name === 'Pro' ? '✅ 현재 이용 중' : '요금제 업그레이드 문의'}</button>
+                    {(() => {
+                      const isCurrent = (activeLawyer as any).subscriptionPlanName === plan.name;
+                      return (
+                        <button
+                          type="button"
+                          disabled={isCurrent}
+                          onClick={() => setActiveTab('inquiry-to-admin')}
+                          className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all ${isCurrent ? 'bg-[#1E3A5F] text-white cursor-default' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 cursor-pointer active:scale-[0.98]'}`}
+                        >
+                          {isCurrent ? '✅ 현재 이용 중' : '요금제 도입 문의'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -5719,12 +5834,19 @@ export default function LawyerRole({
                 <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${notifSettings.browserPush.enabled ? 'border-amber-500/40 bg-amber-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">🔔 브라우저 Push</span>
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${notifSettings.browserPush.enabled ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                        {notifSettings.browserPush.enabled ? '🟢 허용됨' : '⚪ 미허용'}
-                      </span>
+                      <span className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">🔔 브라우저 알림</span>
+                      {(() => {
+                        // 저장된 설정이 아니라 브라우저의 실제 권한 상태로 표시 (사용자가 브라우저에서 권한을 끈 경우 반영)
+                        const perm = getBrowserNotificationPermission();
+                        const on = notifSettings.browserPush.enabled && perm === 'granted';
+                        return (
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${on ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                            {on ? '🟢 사용 중' : perm === 'denied' ? '⛔ 브라우저에서 차단됨' : '⚪ 미사용'}
+                          </span>
+                        );
+                      })()}
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">데스크탑 브라우저 알림으로 즉시 팝업</p>
+                    <p className="text-[11px] text-slate-500 font-medium">CRM 탭이 열려 있을 때 데스크톱 알림 표시 (창을 닫으면 수신되지 않음)</p>
                   </div>
                   <div className="pt-3">
                     <button onClick={async () => {
@@ -5733,14 +5855,18 @@ export default function LawyerRole({
                         const updated = { ...notifSettings, browserPush: { enabled: true, permission: 'granted' } };
                         setNotifSettings(updated);
                         saveNotificationSettings(updated);
-                        sendBrowserPushNotification('🔔 알림 테스트', '브라우저 Push 알림이 활성화되었습니다!');
+                        const shown = sendBrowserPushNotification('🔔 알림 테스트', '브라우저 알림이 활성화되었습니다.');
                         setNotifLogs(loadNotificationLogs());
+                        if (!shown) toast.error('알림 표시에 실패했습니다. 브라우저·운영체제 알림 설정을 확인해 주세요.');
                       } else {
+                        const updated = { ...notifSettings, browserPush: { enabled: false, permission: perm } };
+                        setNotifSettings(updated);
+                        saveNotificationSettings(updated);
                         toast.error('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
                       }
                     }}
                       className="w-full py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
-                      {notifSettings.browserPush.enabled ? '🔔 테스트 알림' : '🔔 권한 허용하기'}
+                      {notifSettings.browserPush.enabled && getBrowserNotificationPermission() === 'granted' ? '🔔 테스트 알림' : '🔔 권한 허용하기'}
                     </button>
                   </div>
                 </div>
@@ -6395,7 +6521,18 @@ export default function LawyerRole({
       {/* ── 전역 검색 팔레트 (Cmd+K) ── */}
       <React.Suspense fallback={null}>
         {isSearchOpen && (
-          <GlobalSearchPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} requests={requests} lawyers={lawyers} onNavigate={(tab) => { setActiveTab(tab as any); setIsSearchOpen(false); }} />
+          <GlobalSearchPalette
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            requests={requests.filter(r => isOwnRequest(r) || (r.requestType === 'open' && r.status === 'requested'))}
+            getDisplayName={getDisplayClientName}
+            getDisplayPhone={getDisplayPhoneNumber}
+            onNavigate={(tab, id) => {
+              if (tab === 'client-crm' && id) setCrmTargetClientId(id);
+              setActiveTab(tab as any);
+              setIsSearchOpen(false);
+            }}
+          />
         )}
       </React.Suspense>
 

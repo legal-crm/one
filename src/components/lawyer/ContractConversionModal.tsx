@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState } from 'react';
 import { FileSignature, Smartphone, Users, CheckCircle2, FileText, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -111,7 +112,7 @@ export default function ContractConversionModal({
           miscFee: 0,
           debtCertFee: courtCosts.debtCertFee,
           debtCertUnitFee: 15000,
-          deliveryUnitFee: 5200,
+          deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
           provisionalDeposit: 0,
         },
         feeSchedule

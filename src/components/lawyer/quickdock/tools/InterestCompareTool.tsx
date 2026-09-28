@@ -22,7 +22,7 @@ export default function InterestCompareTool() {
 • 36개월간 순수 이자 총액: 약 ${(totalInterest36 / 10000).toLocaleString()}만 원 발생 예정
 -------------------------------------------
 • 개인회생 신청 시 월 변제금: ${(rehabMonthly / 10000).toLocaleString()}만 원 (원금만 분할상환)
-• 혜택: 향후 모든 이자 100% 면제 + 원금 일부 탕감
+• 참고: 변제계획 인가 후 성실히 변제하고 면책결정을 받으면 잔존 채무(비면책채권 제외)의 책임이 면제됩니다
 • 매월 실질 납입 절감: 월 약 ${(monthlySaving / 10000).toLocaleString()}만 원 절감 효과`;
 
     navigator.clipboard.writeText(text);
@@ -87,7 +87,7 @@ export default function InterestCompareTool() {
         <div className="pt-2 border-t border-cyan-200 flex items-center justify-between">
           <div>
             <span className="font-extrabold text-cyan-950 block">개인회생 인가 후</span>
-            <span className="text-[10px] text-cyan-800">이자 100% 면책 & 원금 상환</span>
+            <span className="text-[10px] text-cyan-800">변제계획에 따른 분할 변제 (면책 시 잔존채무 면제)</span>
           </div>
           <span className="text-base font-black text-cyan-700 font-mono">
             월 {(rehabMonthly / 10000).toLocaleString()}만 원

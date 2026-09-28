@@ -73,8 +73,16 @@ export default function FloatingToolWindow({
   const windowRef = useRef<HTMLDivElement>(null);
 
   // 초기 윈도우 위치 계산 (저장된 좌표 or 도크 인근 스마트 배치)
+  // 창이 새로 열릴 때(null → 도구)만 계산 — 탭 전환·도크 이동 시 창 위치를 유지
+  const isOpen = Boolean(activeToolId);
+  const dockPosRef = useRef(dockPosition);
+  dockPosRef.current = dockPosition;
   useEffect(() => {
-    if (!activeToolId) return;
+    if (!isOpen) {
+      setWinPos(null);
+      return;
+    }
+    const dockPosition = dockPosRef.current;
 
     try {
       const saved = localStorage.getItem(WINDOW_STORAGE_KEY);
@@ -109,7 +117,7 @@ export default function FloatingToolWindow({
     }
 
     setWinPos({ x: initialX, y: initialY });
-  }, [activeToolId, dockPosition]);
+  }, [isOpen]);
 
   // 창 리사이즈 시 화면 밖 방지
   useEffect(() => {
@@ -206,6 +214,7 @@ export default function FloatingToolWindow({
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
+        onPointerCancel={handleHeaderPointerUp}
         className="bg-slate-900 text-white px-3.5 py-2.5 flex items-center justify-between cursor-move select-none border-b border-slate-800 touch-none active:bg-slate-800"
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -229,6 +238,7 @@ export default function FloatingToolWindow({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setIsMinimized(prev => !prev)}
+            aria-label={isMinimized ? '창 펼치기' : '창 접기'}
             className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
             title={isMinimized ? '창 펼치기' : '창 최소화 (접기)'}
           >
@@ -236,6 +246,7 @@ export default function FloatingToolWindow({
           </button>
           <button
             onClick={onClose}
+            aria-label="창 닫기"
             className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
             title="창 닫기"
           >

@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../../services/court/courtFees';
 import React, { useState, useMemo } from 'react';
 import { 
   X, FileText, Download, CheckCircle2, AlertCircle, 
@@ -90,7 +91,7 @@ export default function BatchFilingPackagingModal({
   // 실제 법원 인지액 및 송달료 자동 계산 (실서류 4종 전수분석 반영)
   const stampFee = 32000;
   const creditorCount = Math.max(1, creditors.length);
-  const serviceFee = 55000 + creditorCount * 8 * 5500;
+  const serviceFee = (10 + creditorCount * 8) * DELIVERY_UNIT_FEE_KRW;
 
   // 1. 초기 슬롯 데이터 매핑 (14단계 표준 편철 순서 + 스마트 다중 파일 매핑)
   const standardTemplates = isBankruptcy ? BANKRUPTCY_10_STANDARD_ORDER : REHAB_14_STANDARD_ORDER;

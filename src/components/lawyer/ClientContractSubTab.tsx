@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileSignature, CheckCircle2, Clock, Plus, Eye, Printer, 
@@ -86,7 +87,7 @@ export default function ClientContractSubTab({
         miscFee: 0,
         debtCertFee: costs.debtCertFee,
         debtCertUnitFee: 15000,
-        deliveryUnitFee: 5200,
+        deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: 0,
       },
     });

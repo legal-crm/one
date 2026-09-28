@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { Users, Calculator, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../../../../services/repayment/repaymentConstants2026';
 
-// 2026년도 기준중위소득 및 60% 법정 최저생계비 고시 기준
-const MEDIAN_INCOME_2026 = [
-  { size: 1, full: 2392013, min60: 1435208 },
-  { size: 2, full: 3932828, min60: 2359697 },
-  { size: 3, full: 5025354, min60: 3015212 },
-  { size: 4, full: 6097773, min60: 3658664 },
-  { size: 5, full: 7114976, min60: 4268986 },
-  { size: 6, full: 8079849, min60: 4847909 },
-];
+// 2026년 기준중위소득(100%) 및 60% 생계비 — 단일 출처(repaymentConstants2026)에서 가져옴
+// (이전 표는 2025년 수치를 2026년으로 표기하고 있었음)
+const MEDIAN_INCOME_2026 = [1, 2, 3, 4, 5, 6].map(size => ({
+  size,
+  full: MEDIAN_INCOME_100_2026[size],
+  min60: MIN_LIVING_EXPENSE_60_2026[size],
+}));
 
 export default function MedianIncomeTool() {
   const [familySize, setFamilySize] = useState<number>(1);
-  const [myIncome, setMyIncome] = useState<number>(2500000);
+  const [myIncome, setMyIncome] = useState<number>(0);
   const [copied, setCopied] = useState(false);
 
   const selectedMedian = MEDIAN_INCOME_2026.find(m => m.size === familySize) || MEDIAN_INCOME_2026[0];
@@ -25,7 +24,8 @@ export default function MedianIncomeTool() {
 • 가구원수: ${familySize}인 가구
 • 법정 최저생계비(60%): ${selectedMedian.min60.toLocaleString()}원
 • 의뢰인 월 소득: ${myIncome.toLocaleString()}원
-• 예상 월 가용소득(변제금): ${calculatedDisposable.toLocaleString()}원`;
+• 예상 월 가용소득: ${calculatedDisposable.toLocaleString()}원
+※ 주거비·의료비 등 추가생계비 인정 전 참고값입니다.`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -77,7 +77,7 @@ export default function MedianIncomeTool() {
         
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">부양가족 수</label>
+            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">가구원 수 (본인 포함)</label>
             <select
               value={familySize}
               onChange={e => setFamilySize(Number(e.target.value))}
@@ -94,7 +94,7 @@ export default function MedianIncomeTool() {
               type="number"
               step={50000}
               value={myIncome}
-              onChange={e => setMyIncome(Number(e.target.value))}
+              onChange={e => setMyIncome(Math.max(0, Number(e.target.value) || 0))}
               className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 tabular-nums"
             />
           </div>
@@ -103,7 +103,7 @@ export default function MedianIncomeTool() {
         <div className="p-2.5 bg-white rounded-lg border border-teal-200 flex items-center justify-between">
           <div>
             <span className="text-[10px] text-slate-400 block font-medium">소득 - 60% 생계비</span>
-            <span className="text-xs font-bold text-slate-700">예상 월 변제금</span>
+            <span className="text-xs font-bold text-slate-700">예상 월 가용소득 (추가생계비 반영 전)</span>
           </div>
           <span className="text-sm font-black text-teal-700 tabular-nums">
             월 {calculatedDisposable.toLocaleString()}원

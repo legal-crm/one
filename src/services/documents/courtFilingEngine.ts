@@ -6,9 +6,11 @@
 
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
+import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
+import { DELIVERY_UNIT_FEE_KRW } from '../court/courtFees';
 
-// 2026년 기준 법원 송달료 1회당 기준액
-export const COURT_SERVICE_FEE_UNIT = 5500;
+// 법원 송달료 1회분 — 퀵독·전자계약과 같은 단일 상수 사용 (이전: 5,500원으로 불일치)
+export const COURT_SERVICE_FEE_UNIT = DELIVERY_UNIT_FEE_KRW;
 
 // 4대 관할법원 구분
 export type CourtJurisdiction = 'NATIONWIDE' | 'GANGNEUNG' | 'DAEJEON' | 'CHEONGJU';
@@ -389,23 +391,9 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
 /**
  * 2026년 기준 가구원수별 기준중위소득표 (보건복지부 고시)
  */
-export const MEDIAN_INCOMES_2026: Record<number, number> = {
-  1: 2564238,
-  2: 4210000,
-  3: 5400000,
-  4: 6500000,
-  5: 7556718,
-  6: 8555951
-};
-
-export const STATUTORY_LIVING_COST_60_2026: Record<number, number> = {
-  1: 1538543,
-  2: 2519575,
-  3: 3215422,
-  4: 3896843,
-  5: 4534031,
-  6: 5133571
-};
+// 단일 출처(repaymentConstants2026)에서 가져옴 — 이전 값(2인 421만, 3인 540만, 4인 650만 등)은 반올림된 오류값이었음
+export const MEDIAN_INCOMES_2026: Record<number, number> = MEDIAN_INCOME_100_2026;
+export const STATUTORY_LIVING_COST_60_2026: Record<number, number> = MIN_LIVING_EXPENSE_60_2026;
 
 /**
  * 마스터 데이터 전체 재계산 함수
@@ -420,7 +408,7 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
   const stayStamp = 2000 * stayCaseCount;
   const totalStamp = mainStamp + prohibitionStamp + stayStamp;
 
-  const mainServiceFee = 55000 + (creditorCount * 8 * COURT_SERVICE_FEE_UNIT);
+  const mainServiceFee = (10 * COURT_SERVICE_FEE_UNIT) + (creditorCount * 8 * COURT_SERVICE_FEE_UNIT);
   const prohibitionServiceFee = creditorCount * 2 * COURT_SERVICE_FEE_UNIT;
   const stayServiceFee = stayCaseCount * 2 * COURT_SERVICE_FEE_UNIT;
   const totalServiceFee = mainServiceFee + prohibitionServiceFee + stayServiceFee;
@@ -642,7 +630,7 @@ export function buildCourtFilingMasterData(
       prohibitionStamp: 2000,
       stayStamp: 2000,
       totalStamp: 34000,
-      mainServiceFee: 55000 + (creditors.length * 8 * COURT_SERVICE_FEE_UNIT),
+      mainServiceFee: (10 * COURT_SERVICE_FEE_UNIT) + (creditors.length * 8 * COURT_SERVICE_FEE_UNIT),
       prohibitionServiceFee: creditors.length * 2 * COURT_SERVICE_FEE_UNIT,
       stayServiceFee: stayCases.length * 2 * COURT_SERVICE_FEE_UNIT,
       totalServiceFee: 0,

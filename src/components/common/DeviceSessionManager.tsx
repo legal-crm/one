@@ -172,7 +172,7 @@ export default function DeviceSessionManager({
     try {
       const currentId = getCurrentSessionId() || undefined;
       const count = await revokeAllOtherSessions(userId, currentId);
-      toast.success(`다른 모든 기기(${count}대)에서 안전하게 로그아웃되었습니다.`);
+      toast.success(count > 0 ? `다른 기기 세션 ${count}개를 종료했습니다. 해당 기기는 다음 세션 확인(최대 15초) 시 로그아웃됩니다.` : '종료할 다른 기기 세션이 없습니다.');
       await fetchSessionData();
     } catch {
       toast.error('일괄 로그아웃 처리 중 오류가 발생했습니다.');
@@ -192,11 +192,11 @@ export default function DeviceSessionManager({
             </div>
             <h2 className="text-lg md:text-xl font-bold tracking-tight">로그인 기기 & 세션 보안 센터</h2>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              보안 암호화 적용 중
+              세션 관리
             </span>
           </div>
           <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
-            {userName} ({userRole === 'ADMIN' ? '통합 관리자' : `${firmName || '법률사무소'} 변호사`}) 계정으로 접속 중인 모든 기기를 실시간 모니터링하고 원격으로 안전하게 제어합니다.
+            {userName} ({userRole === 'ADMIN' ? '통합 관리자' : `${firmName || '법률사무소'} 변호사`}) 계정으로 로그인된 기기 목록을 확인하고 원격으로 로그아웃할 수 있습니다. (서버 세션 기록 기준, 이 브라우저 기록 포함)
           </p>
         </div>
 
@@ -289,7 +289,7 @@ export default function DeviceSessionManager({
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Globe className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{currentSession.device.location} ({currentSession.device.ipAddress})</span>
+                          <span>{currentSession.device.location ? `${currentSession.device.location} ` : ''}({currentSession.device.ipAddress})</span>
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
@@ -352,7 +352,7 @@ export default function DeviceSessionManager({
                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Globe className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{s.device.location} ({s.device.ipAddress})</span>
+                            <span>{s.device.location ? `${s.device.location} ` : ''}({s.device.ipAddress})</span>
                           </span>
                           <span>•</span>
                           <span>최근 활동: {formatRelativeTime(s.lastActiveAt)}</span>
@@ -456,7 +456,7 @@ export default function DeviceSessionManager({
               <p className="font-bold text-amber-950">보안 관리자 주의사항</p>
               <p className="mt-0.5 text-amber-800">
                 공용 PC나 카페 등 외부 환경에서 접속 후 로그아웃하지 않은 세션이 있다면 반드시 <b>[원격 로그아웃]</b>을 실행해 주세요.
-                의뢰인의 회생·파산 개인정보 및 법률 상담 내역을 보호하기 위해 30분 동안 활동이 없으면 자동 잠금 처리됩니다.
+                의뢰인의 회생·파산 개인정보 및 법률 상담 내역 보호를 위해 사용을 마치면 반드시 로그아웃해 주세요.
               </p>
             </div>
           </div>
@@ -520,7 +520,7 @@ export default function DeviceSessionManager({
                       {item.device.ipAddress}
                     </td>
                     <td className="py-3 px-3 text-slate-600">
-                      {item.device.location}
+                      {item.device.location || '-'}
                     </td>
                   </tr>
                 ))}

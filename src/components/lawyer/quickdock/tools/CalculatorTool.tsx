@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { calcCourtFees, DELIVERY_UNIT_FEE_KRW } from '../../../../services/court/courtFees';
 
 export default function CalculatorTool() {
   const [caseType, setCaseType] = useState<'rehab' | 'bankruptcy'>('rehab');
@@ -10,44 +11,15 @@ export default function CalculatorTool() {
   const [isElectronic, setIsElectronic] = useState<boolean>(true); // 전자소송 10% 감액
   const [copied, setCopied] = useState(false);
 
-  // 2025/2026 법원 송달료 1회분 = 5,200원
-  const UNIT_DELIVERY_FEE = 5200;
-
-  const calculateFees = () => {
-    const c = Math.max(1, creditorCount || 1);
-    let deliveryRounds = 0;
-    let stampFee = 0;
-
-    if (caseType === 'rehab') {
-      // 회생: 기본 10회 + (채권자수 × 8회)
-      deliveryRounds = 10 + (c * 8);
-      if (hasProhibition) deliveryRounds += (c * 2);
-      if (hasStay) deliveryRounds += (c * 2);
-      
-      // 인지대: 회생 30,000원 + 금지 2,000원 + 중지 2,000원
-      stampFee = 30000;
-      if (hasProhibition) stampFee += 2000;
-      if (hasStay) stampFee += 2000;
-    } else {
-      // 파산: 기본 8회 + (채권자수 × 6회)
-      deliveryRounds = 8 + (c * 6);
-      stampFee = 2000;
-    }
-
-    if (isElectronic) {
-      stampFee = Math.floor(stampFee * 0.9);
-    }
-
-    const totalDeliveryFee = deliveryRounds * UNIT_DELIVERY_FEE;
-    return {
-      deliveryRounds,
-      totalDeliveryFee,
-      stampFee,
-      totalCost: totalDeliveryFee + stampFee,
-    };
-  };
-
-  const fees = calculateFees();
+  // 전자계약 법원비용과 같은 공용 산식 (services/court/courtFees.ts)
+  const r = calcCourtFees({
+    caseType,
+    creditorCount,
+    withProhibition: caseType === 'rehab' && hasProhibition,
+    withStay: caseType === 'rehab' && hasStay,
+    electronic: isElectronic,
+  });
+  const fees = { deliveryRounds: r.deliveryRounds, totalDeliveryFee: r.deliveryFee, stampFee: r.stampFee, totalCost: r.total };
 
   const handleCopy = () => {
     const text = `[법원비용 안내]
@@ -55,7 +27,8 @@ export default function CalculatorTool() {
 • 채권자수: ${creditorCount}곳
 • 총 송달료(${fees.deliveryRounds}회): ${fees.totalDeliveryFee.toLocaleString()}원
 • 인지대: ${fees.stampFee.toLocaleString()}원 (${isElectronic ? '전자소송 10% 감액' : '서면'})
-• 합계: ${fees.totalCost.toLocaleString()}원`;
+• 합계: ${fees.totalCost.toLocaleString()}원
+※ 송달료 1회분 ${DELIVERY_UNIT_FEE_KRW.toLocaleString()}원 기준 예상액이며, 관할 법원 예납명령 금액이 우선합니다.`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -105,13 +78,24 @@ export default function CalculatorTool() {
             min={1}
             max={100}
             value={creditorCount}
-            onChange={e => setCreditorCount(Math.max(1, Number(e.target.value)))}
+            onChange={e => setCreditorCount(Math.min(100, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
             className="w-16 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs font-bold text-slate-900"
           />
         </div>
       </div>
 
       {/* 부가 옵션 */}
+      {caseType === 'bankruptcy' && (
+        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <input
+            type="checkbox"
+            checked={isElectronic}
+            onChange={e => setIsElectronic(e.target.checked)}
+            className="rounded accent-blue-600"
+          />
+          전자소송 접수 (인지대 10% 감액)
+        </label>
+      )}
       {caseType === 'rehab' && (
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2 text-xs">
           <span className="font-bold text-slate-700 block">부가 신청 및 전자소송</span>
@@ -161,6 +145,7 @@ export default function CalculatorTool() {
           <span className="font-black text-slate-800 text-xs">법원 보관금 합계</span>
           <span className="font-black text-base text-blue-700 tabular-nums">{fees.totalCost.toLocaleString()}원</span>
         </div>
+        <p className="text-[10px] text-slate-500 leading-snug">송달 회차는 일반적인 예납 기준입니다. 실제 금액은 관할 법원 예납명령을 따르세요.</p>
       </div>
 
       <button

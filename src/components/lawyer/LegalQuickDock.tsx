@@ -60,6 +60,20 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
   const [activeToolId, setActiveToolId] = useState<QuickToolId | null>(null);
   const [enabledToolIds, setEnabledToolIds] = useState<QuickToolId[]>(DEFAULT_ENABLED_TOOL_IDS);
   const [visibilityMode, setVisibilityMode] = useState<DockVisibilityMode>('normal');
+  const visibilityRef = useRef<DockVisibilityMode>('normal');
+  visibilityRef.current = visibilityMode;
+
+  /** 가시성 변경 + 저장. 숨기거나 접으면 열린 도구 창·메뉴도 닫음 */
+  const applyVisibility = (mode: DockVisibilityMode) => {
+    setVisibilityMode(mode);
+    setIsMenuOpen(false);
+    if (mode !== 'normal') setActiveToolId(null);
+    try {
+      localStorage.setItem(STORAGE_VISIBILITY_KEY, mode);
+    } catch {
+      // ignore
+    }
+  };
 
   // 로컬스토리지에서 가시성 및 도구 목록 불러오기
   useEffect(() => {
@@ -72,8 +86,11 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
       const saved = localStorage.getItem(STORAGE_TOOLS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setEnabledToolIds(parsed);
+        // 삭제·변경된 도구 ID는 버림 (개수 배지 부풀림 방지)
+        const known = new Set(ALL_QUICK_TOOLS.map(t => t.id));
+        const valid = Array.isArray(parsed) ? parsed.filter((id: any) => known.has(id)) : [];
+        if (valid.length > 0) {
+          setEnabledToolIds(valid);
         }
       }
     } catch {
@@ -84,22 +101,16 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
   // 전역 단축키 Alt + Q 리스너 (기능 유지)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && (e.key === 'q' || e.key === 'Q' || e.code === 'KeyQ')) {
-        e.preventDefault();
-        setVisibilityMode(prev => {
-          const next = prev === 'hidden' ? 'normal' : 'hidden';
-          try {
-            localStorage.setItem(STORAGE_VISIBILITY_KEY, next);
-          } catch {
-            // ignore
-          }
-          if (next === 'hidden') {
-            toast.info('퀵툴이 숨겨졌습니다.');
-          } else {
-            toast.success('퀵툴이 다시 표시되었습니다.');
-          }
-          return next;
-        });
+      // AltGr(=Ctrl+Alt, 유럽 자판 '@' 입력)·Meta 조합·키 반복은 무시
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.repeat) return;
+      if (e.code !== 'KeyQ' && e.key !== 'q' && e.key !== 'Q') return;
+      e.preventDefault();
+      const next = visibilityRef.current === 'hidden' ? 'normal' : 'hidden';
+      applyVisibility(next);
+      if (next === 'hidden') {
+        toast.info('퀵툴이 숨겨졌습니다. (Alt+Q로 다시 표시)');
+      } else {
+        toast.success('퀵툴이 다시 표시되었습니다.');
       }
     };
 
@@ -109,13 +120,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
 
   // 가시성 모드 변경 핸들러
   const handleSetVisibility = (mode: DockVisibilityMode) => {
-    setVisibilityMode(mode);
-    setIsMenuOpen(false);
-    try {
-      localStorage.setItem(STORAGE_VISIBILITY_KEY, mode);
-    } catch {
-      // ignore
-    }
+    applyVisibility(mode);
     if (mode === 'hidden') {
       toast.info('퀵툴이 숨겨졌습니다. (우측 하단 아이콘으로 언제든 켤 수 있습니다)');
     } else if (mode === 'minimized') {
@@ -379,7 +384,10 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
             onClick={handleButtonClick}
+            aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolIds.length}개)`}
+            aria-expanded={isMenuOpen}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold shadow-2xl transition-all press-scale cursor-grab active:cursor-grabbing ${
               isDragging
                 ? 'scale-105 ring-2 ring-blue-400 shadow-blue-500/30'
@@ -406,7 +414,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
 
       {/* ── Non-modal 플로팅 윈도우 (배경 사이트와 100% 동시 작업 가능) ── */}
       <FloatingToolWindow
-        activeToolId={activeToolId}
+        activeToolId={visibilityMode === 'normal' ? activeToolId : null}
         enabledToolIds={enabledToolIds}
         onSelectTool={setActiveToolId}
         onClose={() => setActiveToolId(null)}

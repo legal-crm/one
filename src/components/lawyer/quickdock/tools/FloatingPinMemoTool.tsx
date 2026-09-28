@@ -4,6 +4,7 @@ import {
   Trash2, Copy, Check, Upload, Sparkles, Plus, AlertCircle 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PIN_MEMO_KEY, pinImageCache, purgeLegacyDockMemos, PIN_IMAGE_MAX_BYTES } from '../dockStorage';
 
 interface MemoSlot {
   id: string;
@@ -15,20 +16,43 @@ interface MemoSlot {
   rotation: number; // 0, 90, 180, 270
 }
 
-const STORAGE_KEY = 'legal_dock_pin_memo_slots_v1';
+const STORAGE_KEY = PIN_MEMO_KEY;
+
+/** 텍스트·설정만 sessionStorage에 저장 (이미지 원본은 메모리 캐시에만 보관) */
+function persistSlots(slots: MemoSlot[]) {
+  slots.forEach(s => {
+    if (s.imageDataUrl) pinImageCache.set(s.id, s.imageDataUrl);
+    else pinImageCache.delete(s.id);
+  });
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(slots.map(({ imageDataUrl: _img, ...rest }) => rest)));
+  } catch {
+    // ignore
+  }
+}
+
+function isEditableOutside(container: HTMLElement | null): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  const editable = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+  return editable && !(container && container.contains(el));
+}
 
 const DEFAULT_SLOTS: MemoSlot[] = [
-  { id: 'slot-1', title: '메모 1', type: 'text', text: '의뢰인과의 상담 메모 또는 체크할 서류 번호를 적어두세요.', zoom: 1, rotation: 0 },
+  { id: 'slot-1', title: '메모 1', type: 'text', text: '', zoom: 1, rotation: 0 },
   { id: 'slot-2', title: '서류 이미지 2', type: 'image', zoom: 1, rotation: 0 },
 ];
 
 export default function FloatingPinMemoTool() {
   const [slots, setSlots] = useState<MemoSlot[]>(() => {
+    purgeLegacyDockMemos();
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((s: MemoSlot) => ({ ...s, imageDataUrl: pinImageCache.get(s.id) }));
+        }
       }
     } catch {}
     return DEFAULT_SLOTS;
@@ -45,14 +69,7 @@ export default function FloatingPinMemoTool() {
   const updateCurrentSlot = (updates: Partial<MemoSlot>) => {
     setSlots(prev => {
       const next = prev.map(s => s.id === activeSlotId ? { ...s, ...updates } : s);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch (e) {
-        // 용량 초과 시 알림
-        if (updates.imageDataUrl) {
-          toast.warning('이미지 용량이 커서 브라우저 임시 메모리에만 보존됩니다.');
-        }
-      }
+      persistSlots(next);
       return next;
     });
   };
@@ -60,12 +77,19 @@ export default function FloatingPinMemoTool() {
   // 클립보드 붙여넣기 (Ctrl + V) 이벤트 리스너
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
+      // 다른 입력창(채팅·CRM 폼 등)에 붙여넣는 중이면 가로채지 않음
+      if (isEditableOutside(containerRef.current)) return;
       const items = e.clipboardData?.items;
       if (!items) return;
 
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
           const blob = items[i].getAsFile();
+          if (blob && blob.size > PIN_IMAGE_MAX_BYTES) {
+            toast.error('이미지가 5MB를 넘어 핀 메모에 띄울 수 없습니다.');
+            e.preventDefault();
+            return;
+          }
           if (blob) {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -96,6 +120,16 @@ export default function FloatingPinMemoTool() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('이미지 파일만 등록할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > PIN_IMAGE_MAX_BYTES) {
+      toast.error('이미지가 5MB를 넘어 등록할 수 없습니다.');
+      e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -144,9 +178,7 @@ export default function FloatingPinMemoTool() {
     const next = [...slots, newSlot];
     setSlots(next);
     setActiveSlotId(newId);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {}
+    persistSlots(next);
     toast.success(`'${newSlot.title}' 슬롯이 추가되었습니다.`);
   };
 
@@ -162,9 +194,7 @@ export default function FloatingPinMemoTool() {
     if (activeSlotId === id) {
       setActiveSlotId(next[0].id);
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {}
+    persistSlots(next);
   };
 
   // 텍스트 복사

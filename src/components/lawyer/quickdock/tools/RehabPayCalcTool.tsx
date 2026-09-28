@@ -19,7 +19,7 @@ export default function RehabPayCalcTool() {
 • 월 변제금: ${(monthlyPay / 10000).toLocaleString()}만 원 × ${periodMonths}개월
 • 총 변제액: ${(totalRepayment / 10000).toLocaleString()}만 원 (변제율: ${repaymentRate.toFixed(1)}%)
 • 원금 탕감액: ${(forgivenAmount / 10000).toLocaleString()}만 원 (탕감률: ${forgivenessRate.toFixed(1)}% 탕감)
-* 이자는 전액(100%) 면책 처리됩니다.`;
+* 변제 완료 후 면책결정을 받으면 잔존 원금·이자 책임이 면제됩니다 (비면책채권 제외).`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);

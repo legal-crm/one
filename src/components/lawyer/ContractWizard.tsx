@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useRef } from 'react';
 import { 
   ArrowLeft, ArrowRight, User, CreditCard, FileText, Shield, 
@@ -59,7 +60,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const [c, setC] = useState<ElectronicContract>(() => {
     const creditorCount = initialContract.courtCosts?.creditorCount ?? 5;
     const debtCertUnitFee = initialContract.courtCosts?.debtCertUnitFee ?? 15000;
-    const deliveryUnitFee = initialContract.courtCosts?.deliveryUnitFee ?? 5200;
+    const deliveryUnitFee = initialContract.courtCosts?.deliveryUnitFee ?? DELIVERY_UNIT_FEE_KRW;
     const initialCosts = calculateCourtCosts(creditorCount, debtCertUnitFee, deliveryUnitFee);
 
     return {
@@ -272,7 +273,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
       const finalCreditors = foundCreditorCount || c.courtCosts.creditorCount || 6;
       const unitFee = c.courtCosts.debtCertUnitFee || 15000;
-      const deliveryUnitFee = c.courtCosts.deliveryUnitFee || 5200;
+      const deliveryUnitFee = c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
       const computed = calculateCourtCosts(finalCreditors, unitFee, deliveryUnitFee, c.courtCosts.stampFee || 30000);
       const caseCat = foundCaseType || c.caseCategory || 'individual_rehab';
 
@@ -304,7 +305,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const handleAddCourtCostItem = () => {
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
-    const delUnitFee = c.courtCosts?.deliveryUnitFee || 5200;
+    const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
     const calculatedCourt = (c.courtCosts?.deliveryFee ?? costs.deliveryFee) + (c.courtCosts?.stampFee ?? costs.stampFee) + (c.courtCosts?.debtCertFee ?? costs.debtCertFee) + (c.courtCosts?.miscFee ?? 0) + (c.courtCosts?.provisionalDeposit ?? 0);
 
@@ -707,7 +708,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const renderFeeSchedule = () => {
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
-    const delUnitFee = c.courtCosts?.deliveryUnitFee || 5200;
+    const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
 
     const deliveryFee = c.courtCosts?.deliveryFee ?? costs.deliveryFee;
@@ -974,14 +975,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     <button
                       type="button"
                       onClick={() => {
-                        const auto = calculateCourtCosts(credCount, 15000, 5200, 30000);
+                        const auto = calculateCourtCosts(credCount, 15000, DELIVERY_UNIT_FEE_KRW, 30000);
                         update({
                           courtCosts: {
                             ...c.courtCosts,
                             deliveryFee: auto.deliveryFee,
                             stampFee: auto.stampFee,
                             debtCertFee: auto.debtCertFee,
-                            deliveryUnitFee: 5200,
+                            deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
                             debtCertUnitFee: 15000,
                             isCustomized: false,
                           }
@@ -995,14 +996,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-[10px] text-slate-500 block">송달료 1곳당 단가</span>
+                      <span className="text-[10px] text-slate-500 block">송달료 1회분 단가</span>
                       <input 
                         type="number"
-                        value={c.courtCosts.deliveryUnitFee || 5200}
+                        value={c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW}
                         onChange={e => {
                           const unit = Math.max(0, +e.target.value);
                           update({
-                            courtCosts: { ...c.courtCosts, deliveryUnitFee: unit, deliveryFee: credCount * unit, isCustomized: true }
+                            courtCosts: { ...c.courtCosts, deliveryUnitFee: unit, deliveryFee: calculateCourtCosts(credCount, 15000, unit).deliveryFee, isCustomized: true }
                           });
                         }}
                         className="w-full px-2 py-1 bg-white border rounded text-xs font-bold"
@@ -1041,13 +1042,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         value={c.courtCosts.creditorCount}
                         onChange={e => {
                           const num = Math.max(0, +e.target.value);
-                          const unitDel = c.courtCosts.deliveryUnitFee || 5200;
+                          const unitDel = c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
                           const unitDebt = c.courtCosts.debtCertUnitFee || 15000;
                           update({
                             courtCosts: {
                               ...c.courtCosts,
                               creditorCount: num,
-                              deliveryFee: num * unitDel,
+                              deliveryFee: calculateCourtCosts(num, unitDebt, unitDel).deliveryFee,
                               debtCertFee: num * unitDebt,
                             }
                           });
@@ -2396,7 +2397,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const includedDocs = c.documents.filter(d => d.included);
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
-    const delUnitFee = c.courtCosts?.deliveryUnitFee || 5200;
+    const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
 
     const deliveryFee = c.courtCosts?.deliveryFee ?? costs.deliveryFee;

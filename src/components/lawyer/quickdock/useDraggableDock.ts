@@ -9,6 +9,7 @@ export function useDraggableDock() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ startX: number; startY: number; initPosX: number; initPosY: number } | null>(null);
   const hasMovedRef = useRef(false);
+  const lastPosRef = useRef<Position | null>(null);
 
   // 초기 위치 로드 (저장된 좌표 또는 기본 우측 하단)
   useEffect(() => {
@@ -84,9 +85,10 @@ export function useDraggableDock() {
       const nextY = dragStartRef.current.initPosY + deltaY;
 
       // 뷰포트 클램핑
-      const clampedX = Math.min(Math.max(PADDING, nextX), window.innerWidth - 150);
-      const clampedY = Math.min(Math.max(PADDING, nextY), window.innerHeight - 70);
+      const clampedX = Math.min(Math.max(PADDING, nextX), window.innerWidth - 140);
+      const clampedY = Math.min(Math.max(PADDING, nextY), window.innerHeight - 60);
 
+      lastPosRef.current = { x: clampedX, y: clampedY };
       setPosition({ x: clampedX, y: clampedY });
     }
   }, [isDragging]);
@@ -104,10 +106,11 @@ export function useDraggableDock() {
     setIsDragging(false);
     dragStartRef.current = null;
 
-    // 위치 저장
-    if (position && hasMovedRef.current) {
+    // 위치 저장 (마지막으로 계산된 좌표 — 렌더 지연으로 한 프레임 전 값이 저장되는 문제 방지)
+    const finalPos = lastPosRef.current || position;
+    if (finalPos && hasMovedRef.current) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalPos));
       } catch {
         // ignore
       }

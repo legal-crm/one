@@ -13,6 +13,7 @@
  * - 서울회생법원 필수자료제출목록
  */
 
+import { DELIVERY_UNIT_FEE_KRW } from './courtFees';
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
 
@@ -60,8 +61,8 @@ export function buildCourtCoverHtml(ctx: CourtFormDataContext): string {
 
   // 법정 인지액: 32,000원 (신청 30,000원 + 금지명령 2,000원)
   const stampFee = 32000;
-  // 법정 송달료: 기본 10회분(55,000원) + 채권자수 × 8회분 × 5,500원
-  const serviceFee = 55000 + creditorCount * 8 * 5500;
+  // 송달료: (기본 10회 + 채권자수 × 8회) × 1회분 단가 (services/court/courtFees.ts)
+  const serviceFee = (10 + creditorCount * 8) * DELIVERY_UNIT_FEE_KRW;
 
   return `
   <div style="${A4_PAGE_STYLE}">

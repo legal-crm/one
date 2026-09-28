@@ -1,20 +1,27 @@
 import React, { useState } from 'react';
 import { ShieldAlert, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { DEPOSIT_EXEMPTION_KRW, wageExemptAmount } from '../../../../services/repayment/repaymentConstants2026';
+
+const manwon = (v: number) => `${Math.round(v / 10000).toLocaleString()}만 원`;
 
 export default function SeizureLimitsTool() {
   const [tab, setTab] = useState<'deposit' | 'housing'>('deposit');
   const [copied, setCopied] = useState(false);
+  const [wage, setWage] = useState<number>(0);
+  const wageExempt = wageExemptAmount(wage);
 
   const handleCopy = () => {
     const text = `[민사집행법 & 주택임대차 압류금지 기준]
-1. 압류금지 예금: 1인당 전 금융기관 합산 월 185만 원
-2. 압류금지 급여: 월 185만 원 이하 전액 보호 (300만원 초과는 1/2 보호)
+1. 압류금지 예금: 개인별 전 금융기관 잔액 합산 ${manwon(DEPOSIT_EXEMPTION_KRW)}
+2. 압류금지 급여: 급여의 1/2 (최저 185만 원 보장, 급여 185만 원 이하는 전액)
+   · 급여 600만 원 초과 시: 300만 원 + (급여/2 − 300만 원)/2 보호
 3. 최우선변제금(소액임차보증금):
   • 서울: 1억 6,500만 원 이하 중 최대 5,500만 원 보호
-  • 과밀억제권역/세종/용인/화성: 1억 4,500만 원 이하 중 최대 4,800만 원 보호
+  • 과밀억제권역/세종/용인/화성/김포: 1억 4,500만 원 이하 중 최대 4,800만 원 보호
   • 광역시: 8,500만 원 이하 중 최대 2,800만 원 보호
-  • 기타 지역: 7,500만 원 이하 중 최대 2,500만 원 보호`;
+  • 기타 지역: 7,500만 원 이하 중 최대 2,500만 원 보호
+※ 담보물권 설정일 기준으로 적용 기준이 달라질 수 있으니 등기사항증명서를 확인하세요.`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -49,23 +56,41 @@ export default function SeizureLimitsTool() {
           <div className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/60 space-y-1">
             <span className="font-bold text-slate-800 flex items-center justify-between">
               <span>💳 통장 예금 잔액</span>
-              <span className="text-amber-700 font-extrabold">월 185만 원 보호</span>
+              <span className="text-amber-700 font-extrabold">{manwon(DEPOSIT_EXEMPTION_KRW)} 보호</span>
             </span>
             <p className="text-[11px] text-slate-600">
-              전 금융기관 합산 185만 원까지는 압류명령이 도달해도 인출 가능 (압류금지채권범위변경 신청).
+              개인별 전 금융기관 예금 잔액 합계 {manwon(DEPOSIT_EXEMPTION_KRW)}까지 압류 금지 (민사집행법 시행령 제7조). 금융기관이 지급을 막으면 압류금지채권 범위변경 신청을 검토하세요.
             </p>
           </div>
 
           <div className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/60 space-y-1">
             <span className="font-bold text-slate-800 flex items-center justify-between">
               <span>💼 근로소득 (월급)</span>
-              <span className="text-amber-700 font-extrabold">하한 185만 원</span>
+              <span className="text-amber-700 font-extrabold">1/2 보호 (최저 185만 원)</span>
             </span>
             <p className="text-[11px] text-slate-600">
               • 월 185만 원 이하: 전액 압류 금지<br/>
-              • 월 185만 ~ 300만 원: 185만 원 제외한 나머지 압류 가능<br/>
-              • 월 300만 ~ 600만 원: 급여의 1/2 압류 가능
+              • 월 185만 ~ 370만 원: 185만 원 보호, 나머지 압류 가능<br/>
+              • 월 370만 ~ 600만 원: 급여의 1/2 보호<br/>
+              • 월 600만 원 초과: 300만 원 + (급여/2 − 300만 원)/2 보호
             </p>
+            <div className="flex items-center gap-2 pt-1">
+              <label htmlFor="seizure-wage" className="text-[10px] text-slate-500 font-semibold shrink-0">세후 월급(원)</label>
+              <input
+                id="seizure-wage"
+                type="number"
+                min={0}
+                step={100000}
+                value={wage || ''}
+                onChange={e => setWage(Math.max(0, Number(e.target.value) || 0))}
+                className="flex-1 min-w-0 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold tabular-nums"
+              />
+            </div>
+            {wage > 0 && (
+              <p className="text-[11px] font-bold text-amber-800 tabular-nums">
+                압류금지 {wageExempt.toLocaleString()}원 · 압류 가능 {Math.max(0, wage - wageExempt).toLocaleString()}원
+              </p>
+            )}
           </div>
 
           <div className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/60 space-y-1">
@@ -75,7 +100,7 @@ export default function SeizureLimitsTool() {
             </span>
             <p className="text-[11px] text-slate-600">
               • 사망보험금 1,000만 원 이하 / 보장성 해약환급금 150만 원 이하<br/>
-              • 퇴직금 및 퇴직연금: 퇴직금의 1/2 압류 금지 (DC형 연금은 전액 금지)
+              • 퇴직금: 1/2 압류 금지 / 퇴직연금 수급권: 원칙적으로 압류 금지 (근로자퇴직급여보장법 제7조)
             </p>
           </div>
         </div>
@@ -91,12 +116,12 @@ export default function SeizureLimitsTool() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               <tr className="hover:bg-slate-50">
-                <td className="py-1.5 px-2.5 font-bold">서울특별시대</td>
+                <td className="py-1.5 px-2.5 font-bold">서울특별시</td>
                 <td className="py-1.5 px-2.5">1억 6,500만 이하</td>
                 <td className="py-1.5 px-2.5 font-extrabold text-amber-700 bg-amber-50/40">5,500만 원</td>
               </tr>
               <tr className="hover:bg-slate-50">
-                <td className="py-1.5 px-2.5 font-bold">수도권 과밀/세종/용인/화성</td>
+                <td className="py-1.5 px-2.5 font-bold">수도권 과밀/세종/용인/화성/김포</td>
                 <td className="py-1.5 px-2.5">1억 4,500만 이하</td>
                 <td className="py-1.5 px-2.5 font-extrabold text-amber-700 bg-amber-50/40">4,800만 원</td>
               </tr>

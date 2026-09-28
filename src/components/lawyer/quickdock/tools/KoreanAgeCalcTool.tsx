@@ -100,7 +100,7 @@ export default function KoreanAgeCalcTool() {
     }
 
     const text = `[만나이 및 도산 실무 자격 판정]
-• 생년월일: ${birthDate.toISOString().slice(0, 10)}
+• 생년월일: ${birthDate.getFullYear()}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}
 • 만 나이: 만 ${internationalAge}세 (${isBirthdayPassed ? '올해 생일 지남' : `생일 전, D-${nextBirthdayDday}`})
 • 연 나이 / 세는나이: ${yearAge}세 / ${countingAge}세
 -------------------------------------------
@@ -234,7 +234,7 @@ export default function KoreanAgeCalcTool() {
                 </div>
                 <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
                   {isYouthUnder29 
-                    ? '서울·수원·부산회생법원 실무준칙에 따라 변제기간을 24개월로 1년 단축 신청 가능!' 
+                    ? '일부 회생법원 실무준칙상 청년 채무자 변제기간 단축(예: 24개월) 검토 대상 — 소득·재산 요건과 관할 법원 기준 확인 필요' 
                     : isYouthUnder34 
                     ? '관할 법원에 따라 청년 지원 정책으로 변제기간 단축 대상 여부 확인 권장.' 
                     : '일반 채무자로 기본 36개월(청산가치 초과 시 최장 60개월) 변제계획안 작성.'}

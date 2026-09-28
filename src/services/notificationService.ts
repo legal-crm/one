@@ -289,8 +289,14 @@ export function formatEmailConsultHtml(data: {
 // 브라우저 Push 알림
 // ═══════════════════════════════════════════════════════
 
+/** 현재 브라우저 알림 권한 (미지원 환경은 'denied') */
+export function getBrowserNotificationPermission(): NotificationPermission {
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
+  return Notification.permission;
+}
+
 export async function requestBrowserPushPermission(): Promise<NotificationPermission> {
-  if (!('Notification' in window)) return 'denied';
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
   const perm = await Notification.requestPermission();
   return perm;
 }
@@ -298,22 +304,23 @@ export async function requestBrowserPushPermission(): Promise<NotificationPermis
 export function sendBrowserPushNotification(
   title: string,
   body: string,
-  icon?: string
+  icon?: string,
+  logType: NotificationLog['type'] = 'test'
 ): boolean {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return false;
   
   try {
     new Notification(title, {
       body,
       icon: icon || '/favicon.ico',
       badge: '/favicon.ico',
-      tag: `crm-notification-${Date.now()}`,
+      tag: `crm-notification-${title}-${body}`.slice(0, 120),
     });
     
     const log: NotificationLog = {
       id: createLogId(),
       channel: 'browser_push',
-      type: 'test',
+      type: logType,
       sentAt: new Date().toISOString(),
       status: 'sent',
       detail: title,
@@ -375,10 +382,12 @@ export async function notifyAllChannels(
   }
 
   // Browser Push
-  if (settings.browserPush.enabled && typeof window !== 'undefined' && Notification.permission === 'granted') {
+  if (settings.browserPush.enabled && getBrowserNotificationPermission() === 'granted') {
     const ok = sendBrowserPushNotification(
       '🔔 신규 상담 요청',
-      `${consultData.region} | 채무 ${consultData.debt}`
+      `${consultData.region} | 채무 ${consultData.debt}`,
+      undefined,
+      'new_consult' as NotificationLog['type']
     );
     results.push({ channel: 'browser_push', ok });
   }

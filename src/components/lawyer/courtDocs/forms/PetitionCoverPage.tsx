@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../../../services/court/courtFees';
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
 
 interface CourtFormProps {
@@ -19,10 +20,10 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
   
   // 인지: 기본 30,000원 + 금지명령 2,000원 = 32,000원
   const stampFee = court?.stampFee ?? 32000;
-  // 송달료: 55,000 + (5,500 × 채권자수 × 8회)
-  const serviceFeePer = 5500;
+  // 송달료: 10회분 + (1회분 × 채권자수 × 8회)
+  const serviceFeePer = DELIVERY_UNIT_FEE_KRW;
   const serviceFeeRounds = 8;
-  const serviceFeeBase = 55000;
+  const serviceFeeBase = 10 * DELIVERY_UNIT_FEE_KRW;
   const serviceFeeTotal = serviceFeeBase + (serviceFeePer * creditorCount * serviceFeeRounds);
 
   // 변호사명 중복 방지 (예: '김우진 변호사' -> '김우진')

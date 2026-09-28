@@ -1,3 +1,4 @@
+import { DELIVERY_UNIT_FEE_KRW } from '../../../services/court/courtFees';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileCheck2, Calculator, Send, CheckCircle2, AlertTriangle, 
@@ -194,7 +195,7 @@ export default function Stage2ContractRetainerView({
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)
   const stampFee = 28800; // 인지대: 개시 27,000 + 금지명령 1,800
-  const deliveryFee = 5200 * (10 + (creditorCount * 8)); // 송달료
+  const deliveryFee = DELIVERY_UNIT_FEE_KRW * (10 + (creditorCount * 8)); // 송달료
   const trusteeDeposit = isBusinessDebtor ? 150000 : 0; // 외부회생위원 선임 예납금
   const totalCourtCost = stampFee + deliveryFee + trusteeDeposit;
 
@@ -253,7 +254,7 @@ export default function Stage2ContractRetainerView({
               miscFee: 0,
               debtCertFee: 0,
               debtCertUnitFee: 15000,
-              deliveryUnitFee: 5200,
+              deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
               provisionalDeposit: trusteeDeposit,
               isCustomized: true,
             },
@@ -289,7 +290,7 @@ export default function Stage2ContractRetainerView({
         miscFee: 0,
         debtCertFee: 0,
         debtCertUnitFee: 15000,
-        deliveryUnitFee: 5200,
+        deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: trusteeDeposit,
         isCustomized: true,
       },
@@ -456,7 +457,7 @@ export default function Stage2ContractRetainerView({
         miscFee: 0,
         debtCertFee: 0,
         debtCertUnitFee: 15000,
-        deliveryUnitFee: 5200,
+        deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: trusteeDeposit,
         isCustomized: true,
       },
