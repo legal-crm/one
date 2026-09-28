@@ -70,9 +70,16 @@ function ClientStatementSyncModalInner({
     }
   };
 
-  // 고객에게 모바일 알림톡 재발송
-  const handleSendReminder = () => {
-    toast.success(`📱 ${clientName}님 (${phone})께 모바일 진술서 작성 안내 알림톡이 재발송되었습니다.`);
+  // 진술서 작성 안내: 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 재발송되었습니다' 표시)
+  const handleSendReminder = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `[${clientName}님] 법원 제출용 진술서 작성이 필요합니다. 마이페이지 > 진술서에서 작성해 주세요. ${origin}/?tab=mypage`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('진술서 작성 안내 문구가 복사되었습니다. 자동 발송되지 않으니 카카오톡·문자로 전달해 주세요.');
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+    }
   };
 
   return (
@@ -89,7 +96,7 @@ function ClientStatementSyncModalInner({
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 고객 진술서 확인 및 동기화 (STEP 6)
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  리걸플로 p.67 양식
+                  진술서 동기화
                 </span>
               </h3>
               <p className="text-xs text-slate-300">
@@ -160,7 +167,7 @@ function ClientStatementSyncModalInner({
                 <div className="space-y-1">
                   <span className="font-bold text-amber-700 block">과거 신청/소송 이력 있음</span>
                   <p className="text-slate-600">
-                    사건유형: {statement.pastCourtHistory.caseType || '지급명령/압류'} · 법원: {statement.pastCourtHistory.courtOrAgency || '서울중앙지방법원'}
+                    사건유형: {statement.pastCourtHistory.caseType || '미입력'} · 법원: {statement.pastCourtHistory.courtOrAgency || '미입력'}
                   </p>
                 </div>
               ) : (

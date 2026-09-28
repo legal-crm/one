@@ -18,7 +18,8 @@ export const CARRIER_LIST: CarrierOption[] = [
     name: '우체국 빠른등기 / 택배',
     category: 'EPOST',
     badge: '📮 우체국 (추천)',
-    urlGenerator: (no) => `https://service.epost.go.kr/trace.RetrieveDomRcvTraceList.comm?sid1=${encodeURIComponent(no)}`,
+    // 국내 등기·소포 배송조회 (이전: RetrieveDomRcvTraceList — 잘못된 경로)
+    urlGenerator: (no) => `https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm?sid1=${encodeURIComponent(no)}`,
   },
   {
     code: 'GS25',
@@ -92,8 +93,9 @@ export function getCarrierTrackingUrl(carrierCode: string | undefined, trackingN
   const cleanNumber = trackingNumber.replace(/[^0-9]/g, '');
   if (!cleanNumber) return null;
 
-  const targetCarrier = CARRIER_LIST.find(c => c.code === carrierCode) || CARRIER_LIST[0]; // 기본값: 우체국
-  if (!targetCarrier.urlGenerator) return null;
+  // 택배사를 모르면 링크를 만들지 않음 (이전: 우체국으로 간주해 엉뚱한 조회 링크 생성)
+  const targetCarrier = CARRIER_LIST.find(c => c.code === carrierCode);
+  if (!targetCarrier?.urlGenerator) return null;
 
   return targetCarrier.urlGenerator(cleanNumber);
 }
@@ -102,7 +104,7 @@ export function getCarrierTrackingUrl(carrierCode: string | undefined, trackingN
  * 배송사 코드로 라벨/뱃지 텍스트 반환
  */
 export function getCarrierLabel(carrierCode: string | undefined): string {
-  if (!carrierCode) return '우체국 빠른등기';
+  if (!carrierCode) return '택배사 미지정';
   const found = CARRIER_LIST.find(c => c.code === carrierCode);
   return found ? found.name : carrierCode;
 }

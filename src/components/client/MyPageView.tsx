@@ -25,6 +25,8 @@ import { LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES } from '../../types
 import CreditorMeetingGuideModal from './companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from './vault/ClientCertificateSubmissionModal';
 import { loadCertificateVault, saveCertificateVault, shredCertificateVault, formatVaultDday, formatLocalDate } from '../../services/vault/certificateVaultService';
+import { feeAmountWon, feeTotalWon } from '../../services/alimtokService';
+import { localYmd } from '../../utils/localDate';
 const Fast2ndDocHubModal = React.lazy(() => import('./Fast2ndDocHubModal'));
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
@@ -2032,13 +2034,14 @@ export default function MyPageView({
               const feeSchedule: FeeInstallment[] = (Array.isArray(crmExt?.feeSchedule) && crmExt.feeSchedule.length > 0)
                 ? crmExt.feeSchedule 
                 : (clientContract?.feeSchedule || []);
-              const totalFee: number = crmExt?.totalFee || clientContract?.totalFee || 0;
+              // 원 단위로 통일 (이전: 원·만원이 섞인 값을 그대로 '만원'으로 표시 → '1,000,000만원' 가능)
+              const totalFee: number = feeTotalWon(crmExt?.totalFee || clientContract?.totalFee || 0);
               const checklist: DocumentCheckItem[] = Array.isArray(crmExt?.documents) ? crmExt.documents : [];
               const uploadedFiles: DocumentFile[] = Array.isArray(crmExt?.uploadedFiles) ? crmExt.uploadedFiles : [];
               const docRequests: DocumentRequest[] = Array.isArray(crmExt?.documentRequests) ? crmExt.documentRequests : [];
               const totalPaid = feeSchedule
                 .filter((f: FeeInstallment) => f && f.status === 'paid')
-                .reduce((s: number, f: FeeInstallment) => s + (f.amount || 0), 0);
+                .reduce((s: number, f: FeeInstallment) => s + feeAmountWon(f), 0);
 
               const handleFileUpload = async (files: FileList | null, linkedDocId?: string) => {
                 if (!files || files.length === 0 || !reqId) return false;
@@ -3140,24 +3143,32 @@ export default function MyPageView({
                         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl space-y-3">
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500 dark:text-slate-400">총 수임료</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{totalFee.toLocaleString()}만원</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{totalFee.toLocaleString()}원</span>
                           </div>
                           <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${(totalPaid / totalFee) * 100}%` }} />
                           </div>
                           <div className="flex justify-between text-xs">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">납부 완료 {totalPaid.toLocaleString()}만원</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">납부 완료 {totalPaid.toLocaleString()}원</span>
                             <span className={`font-bold ${totalFee - totalPaid > 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                              잔여 {(totalFee - totalPaid).toLocaleString()}만원
+                              잔여 {Math.max(0, totalFee - totalPaid).toLocaleString()}원
                             </span>
                           </div>
                         </div>
 
                         {/* 로펌 입금 계좌 안내 및 원클릭 복사 */}
                         {(() => {
-                          const bankInfo = feeSettings?.bankInfo || { bankName: '신한은행', accountNumber: '110-542-897612', accountHolder: '법무법인 로앤' };
-                          const { bankName = '신한은행', accountNumber = '110-542-897612', accountHolder = '법무법인 로앤' } = bankInfo;
-                          const fullAccount = `${bankName} ${accountNumber} (${accountHolder})`;
+                          // 입금계좌는 사무소 설정값만 사용 (이전: 설정이 없으면 가짜 계좌 '신한은행 110-542-897612 (법무법인 로앤)'을 의뢰인에게 표시)
+                          // 주의: 사무소 설정은 사무소 브라우저에 저장되므로 의뢰인 화면에는 보통 비어 있음 → 안내 문구 표시
+                          const { bankName = '', accountNumber = '', accountHolder = '' } = feeSettings?.bankInfo || {};
+                          if (!bankName.trim() || !accountNumber.trim()) {
+                            return (
+                              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-xs text-slate-600 dark:text-slate-300">
+                                입금 계좌는 담당 사무소가 직접 안내한 계좌를 확인해 주세요. 사무소 안내와 다른 계좌로 입금을 요청받으면 사무소에 먼저 확인해 주세요.
+                              </div>
+                            );
+                          }
+                          const fullAccount = `${bankName} ${accountNumber}${accountHolder ? ` (${accountHolder})` : ''}`;
                           return (
                             <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                               <div className="space-y-0.5">
@@ -3184,7 +3195,7 @@ export default function MyPageView({
                         {feeSchedule.length > 0 && (
                           <div className="space-y-2">
                             {feeSchedule.map((inst: FeeInstallment) => {
-                              const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
+                              const isPast = String(inst.dueDate || '') < localYmd() && inst.status === 'pending';
                               return (
                                 <div key={inst.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
                                   inst.status === 'paid' ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20' :
@@ -3201,7 +3212,7 @@ export default function MyPageView({
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-black text-slate-600 dark:text-slate-300">{(inst as any).memo || `${inst.round}차`}</span>
-                                      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{inst.amount.toLocaleString()}만원</span>
+                                      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{feeAmountWon(inst).toLocaleString()}원</span>
                                     </div>
                                     <p className="text-[10px] text-slate-400 mt-0.5">
                                       📅 {inst.dueDate}

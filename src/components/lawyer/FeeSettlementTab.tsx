@@ -16,6 +16,9 @@ import FeeAlimtokModal from './FeeAlimtokModal';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeScheduleCreateModal from './FeeScheduleCreateModal';
 import FeeSettlementCalendarView from './FeeSettlementCalendarView';
+import { feeAmountWon, feeTotalWon, loadFeeNotificationSettings } from '../../services/alimtokService';
+import { localYmd, parseLocalYmd, addMonthsClamped } from '../../utils/localDate';
+import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 
 interface Props {
   requests: ConsultRequest[];
@@ -71,15 +74,9 @@ export default function FeeSettlementTab({
   });
 
   // 오늘 날짜 계산 (자정 기준)
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  const todayStr = useMemo(() => {
-    return today.toISOString().split('T')[0];
-  }, [today]);
+  // 로컬 날짜 기준 (이전: 로컬 자정 → toISOString()이라 한국에서는 항상 '어제' 날짜 → 납부일·연체 판정이 하루씩 밀림)
+  const todayStr = localYmd();
+  const today = useMemo(() => parseLocalYmd(todayStr)!, [todayStr]);
 
   // CRM 확장 데이터 및 수임료 요약 집계
   const settlementList: FeeSettlementSummary[] = useMemo(() => {
@@ -91,12 +88,13 @@ export default function FeeSettlementTab({
       const ext = crmMap[req.id] || getCrmExt(req.id);
       const schedule: FeeInstallment[] = ext.feeSchedule || [];
       
-      const totalFee = ext.totalFee || ext.contractAmount || (schedule.reduce((s, i) => s + (i.amount >= 10000 ? i.amount : i.amount * 10000), 0)) || 0;
+      // 총 수임료는 원 단위로 환산 (계약 동기화분은 만원(예: 300)으로 저장돼 '₩300'·첫 납부 후 '완납'으로 표시되던 문제)
+      const totalFee = feeTotalWon(ext.totalFee || ext.contractAmount) || (schedule.reduce((s, i) => s + feeAmountWon(i), 0)) || 0;
       
-      // 기납부액 계산
+      // 기납부액 계산 (분납표가 있으면 분납표 기준)
       const paidInstallments = schedule.filter(i => i.status === 'paid');
-      const totalPaidFromSchedule = paidInstallments.reduce((s, i) => s + (i.amount >= 10000 ? i.amount : i.amount * 10000), 0);
-      const totalPaid = ext.totalPaid !== undefined ? ext.totalPaid : totalPaidFromSchedule;
+      const totalPaidFromSchedule = paidInstallments.reduce((s, i) => s + feeAmountWon(i), 0);
+      const totalPaid = schedule.length > 0 ? totalPaidFromSchedule : feeTotalWon(ext.totalPaid);
       const remainingFee = Math.max(0, totalFee - totalPaid);
 
       const totalInstallments = schedule.length || (ext.contractAmount ? 1 : 0);
@@ -106,11 +104,11 @@ export default function FeeSettlementTab({
       // 다음 납부 대상 회차 (미납 또는 대기 중인 첫 번째 회차)
       const pendingItems = schedule
         .filter(i => i.status === 'pending' || i.status === 'overdue')
-        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+        .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
       
       const nextDueItem = pendingItems[0];
       const nextDueDate = nextDueItem?.dueDate;
-      const nextDueAmount = nextDueItem ? (nextDueItem.amount >= 10000 ? nextDueItem.amount : nextDueItem.amount * 10000) : undefined;
+      const nextDueAmount = nextDueItem ? feeAmountWon(nextDueItem) : undefined;
       const nextDueRound = nextDueItem?.round;
 
       // 연체 및 D-Day 판정
@@ -128,8 +126,7 @@ export default function FeeSettlementTab({
           overdueRoundsCount++;
         }
         if (item.status !== 'paid' && item.dueDate) {
-          const due = new Date(item.dueDate);
-          due.setHours(0, 0, 0, 0);
+          const due = (parseLocalYmd(item.dueDate) || new Date(NaN));
           const diffDays = Math.round((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays > 0) {
             isOverdue = true;
@@ -157,8 +154,7 @@ export default function FeeSettlementTab({
       } else if (isDueToday) {
         status = 'due_today';
       } else if (nextDueDate) {
-        const nextDue = new Date(nextDueDate);
-        nextDue.setHours(0, 0, 0, 0);
+        const nextDue = (parseLocalYmd(nextDueDate) || new Date(NaN));
         const daysUntil = Math.round((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         if (daysUntil >= 0 && daysUntil <= 7) {
           status = 'upcoming';
@@ -179,7 +175,7 @@ export default function FeeSettlementTab({
         clientId: req.id,
         clientName: stealthNickname,
         realClientName,
-        phone: req.phone || (req as any).userPhone || '010-****-****',
+        phone: req.phone || (req as any).userPhone || '',
         caseType: ext.caseType || req.caseType || (req.bankruptcyReason ? 'bankruptcy' : 'individual_rehab'),
         caseNumber: ext.courtCase?.caseNumber,
         courtName: ext.courtCase?.courtName,
@@ -230,7 +226,7 @@ export default function FeeSettlementTab({
       }
 
       item.feeSchedule.forEach(inst => {
-        const amountWon = inst.amount >= 10000 ? inst.amount : inst.amount * 10000;
+        const amountWon = feeAmountWon(inst);
         
         // 당월 대상 여부
         if (inst.dueDate && inst.dueDate.startsWith(currentYearMonth)) {
@@ -253,7 +249,7 @@ export default function FeeSettlementTab({
 
         // 이번 주 마감 (오늘 ~ D+7)
         if (inst.status !== 'paid' && inst.dueDate >= todayStr) {
-          const due = new Date(inst.dueDate);
+          const due = parseLocalYmd(inst.dueDate) || new Date(NaN);
           const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays <= 7) {
             upcomingWeekCount++;
@@ -353,7 +349,7 @@ export default function FeeSettlementTab({
 
     const newPaidAmount = updatedSchedule
       .filter(i => i.status === 'paid')
-      .reduce((sum, i) => sum + (i.amount >= 10000 ? i.amount : i.amount * 10000), 0);
+      .reduce((sum, i) => sum + feeAmountWon(i), 0);
 
     await updateCrmExt(item.clientId, {
       ...ext,
@@ -363,11 +359,11 @@ export default function FeeSettlementTab({
     });
 
     setScheduleRefreshKey(k => k + 1);
-    toast.success(`${item.realClientName || item.clientName} 의뢰인 [${instToPay.round}차 / ₩${(instToPay.amount >= 10000 ? instToPay.amount : instToPay.amount * 10000).toLocaleString()}] 입금 처리가 완료되었습니다.`);
+    toast.success(`${item.realClientName || item.clientName} 의뢰인 [${instToPay.round}차 / ₩${feeAmountWon(instToPay).toLocaleString()}] 입금 처리가 완료되었습니다.`);
 
-    // 입금 확인 영수증 알림톡 모달 자동 호출
+    // 입금 확인 영수증 알림톡 발송 창 (설정에서 끄면 열지 않음)
     const targetReq = requests.find(r => r.id === item.clientId);
-    if (targetReq) {
+    if (targetReq && loadFeeNotificationSettings().sendReceiptOnPaid) {
       setAlimtokModalConfig({
         isOpen: true,
         client: targetReq,
@@ -420,15 +416,22 @@ export default function FeeSettlementTab({
   // 신규 분납 스케줄 저장 핸들러
   const handleSaveSchedule = async (clientId: string, totalFee: number, schedule: FeeInstallment[]) => {
     const ext = getCrmExt(clientId);
-    const totalPaid = schedule
+    // 기존 납부 기록이 있으면 덮어쓰기 전에 확인 (이전: 확인 없이 납부 완료 회차·납부일이 사라짐)
+    const paidBefore = (ext.feeSchedule || []).filter(i => i.status === 'paid').length;
+    if (paidBefore > 0 && !window.confirm(`이미 납부 처리된 회차가 ${paidBefore}건 있습니다. 새 일정으로 바꾸면 기존 납부 기록이 지워집니다. 계속할까요?`)) {
+      throw new Error('사용자가 취소했습니다.');
+    }
+    const wonSchedule = schedule.map(i => ({ ...i, amountUnit: 'won' as const }));
+    const totalPaid = wonSchedule
       .filter(i => i.status === 'paid')
-      .reduce((sum, i) => sum + (i.amount >= 10000 ? i.amount : i.amount * 10000), 0);
+      .reduce((sum, i) => sum + feeAmountWon(i), 0);
 
     await updateCrmExt(clientId, {
       ...ext,
-      totalFee,
+      // 계약·위임장 화면은 totalFee를 만원 단위로 읽으므로 만원으로 나누어떨어지면 만원으로 저장 (아니면 원 그대로, 읽는 쪽은 feeTotalWon으로 환산)
+      totalFee: totalFee % 10000 === 0 ? totalFee / 10000 : totalFee,
       totalPaid,
-      feeSchedule: schedule,
+      feeSchedule: wonSchedule,
       lastActivityAt: new Date().toISOString(),
     });
 
@@ -481,7 +484,7 @@ export default function FeeSettlementTab({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('CSV 엑셀 파일이 다운로드되었습니다.');
+    toast.success('CSV 파일이 다운로드되었습니다. (엑셀에서 열 수 있음)');
   };
 
   // 일괄 알림톡 발송
@@ -492,9 +495,10 @@ export default function FeeSettlementTab({
     }
 
     const targetList = settlementList.filter(item => selectedClientIds.has(item.clientId));
-    toast.info(`선택된 ${targetList.length}명의 의뢰인에게 납부 안내 알림톡 일괄 발송을 진행합니다.`);
-    
-    // 대표 첫 의뢰인의 모달을 띄워 템플릿 검토 후 일괄 전송
+    // 일괄 발송 기능은 없음 → 첫 의뢰인 발송 창만 연다 (이전: 'N명에게 일괄 발송을 진행합니다' 안내 후 1명만 처리)
+    if (targetList.length > 1) {
+      toast.info(`일괄 발송은 지원하지 않습니다. ${targetList[0].realClientName || targetList[0].clientName}님부터 한 명씩 확인 후 발송해 주세요.`, { duration: 6000 });
+    }
     const firstItem = targetList[0];
     const targetReq = requests.find(r => r.id === firstItem.clientId);
     const firstPending = firstItem.feeSchedule.find(i => i.status === 'pending' || i.status === 'overdue') || firstItem.feeSchedule[0];
@@ -574,7 +578,7 @@ export default function FeeSettlementTab({
             className="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span>엑셀 다운로드</span>
+            <span>CSV 다운로드</span>
           </button>
           <button
             type="button"
@@ -716,13 +720,12 @@ export default function FeeSettlementTab({
             });
           }}
           onOpenDeferModal={(client, inst) => {
-            const d = new Date(inst.dueDate);
-            d.setMonth(d.getMonth() + 1);
+            const d = addMonthsClamped(parseLocalYmd(inst.dueDate) || new Date(), 1);
             setDeferModalConfig({
               isOpen: true,
               client,
               installment: inst,
-              newDueDate: d.toISOString().split('T')[0],
+              newDueDate: localYmd(d),
               reason: '의뢰인 급여일 변경 요청',
             });
           }}
@@ -897,7 +900,7 @@ export default function FeeSettlementTab({
                 className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-1.5 shadow-xs transition-all press-scale cursor-pointer"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                <span>선택 {selectedClientIds.size}명 납부 알림톡 발송</span>
+                <span>선택 의뢰인 알림톡 (1명씩 발송)</span>
               </button>
               <button
                 type="button"
@@ -1091,8 +1094,7 @@ export default function FeeSettlementTab({
                             </div>
                             <div className="text-[10px]">
                               {(() => {
-                                const due = new Date(item.nextDueDate);
-                                due.setHours(0, 0, 0, 0);
+                                const due = (parseLocalYmd(item.nextDueDate) || new Date(NaN));
                                 const diff = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                 if (diff < 0) {
                                   return (
@@ -1230,13 +1232,12 @@ export default function FeeSettlementTab({
                                 const targetReq = requests.find(r => r.id === item.clientId);
                                 const targetInst = item.feeSchedule.find(i => i.status === 'pending' || i.status === 'overdue');
                                 if (targetReq && targetInst) {
-                                  const d = new Date(targetInst.dueDate);
-                                  d.setMonth(d.getMonth() + 1);
+                                  const d = addMonthsClamped(parseLocalYmd(targetInst.dueDate) || new Date(), 1);
                                   setDeferModalConfig({
                                     isOpen: true,
                                     client: targetReq,
                                     installment: targetInst,
-                                    newDueDate: d.toISOString().split('T')[0],
+                                    newDueDate: localYmd(d),
                                     reason: '의뢰인 급여일 변경 요청',
                                   });
                                 }
@@ -1293,10 +1294,10 @@ export default function FeeSettlementTab({
             phone: alimtokModalConfig.client.phone || '',
           }}
           installment={alimtokModalConfig.installment}
-          totalFeeManwon={Math.round(alimtokModalConfig.totalFee / 10000)}
-          totalPaidManwon={Math.round(alimtokModalConfig.totalPaid / 10000)}
-          firmName={activeLawyer.firmName || activeLawyer.firm || '법무법인'}
-          lawyerName={activeLawyer.name || '담당 변호사'}
+          totalFeeWon={alimtokModalConfig.totalFee}
+          totalPaidWon={alimtokModalConfig.totalPaid}
+          firmName={getOfficeProfile(activeLawyer.name).firmName || activeLawyer.firmName || ''}
+          lawyerName={activeLawyer.name || ''}
           initialMilestone={alimtokModalConfig.initialMilestone}
           onSent={() => {
             setScheduleRefreshKey(k => k + 1);
@@ -1329,7 +1330,7 @@ export default function FeeSettlementTab({
                   {deferModalConfig.client.realClientName || deferModalConfig.client.clientName} 의뢰인
                 </div>
                 <div className="text-slate-500">
-                  대상: {deferModalConfig.installment.round}회차 (₩{(deferModalConfig.installment.amount >= 10000 ? deferModalConfig.installment.amount : deferModalConfig.installment.amount * 10000).toLocaleString()}원)
+                  대상: {deferModalConfig.installment.round}회차 (₩{feeAmountWon(deferModalConfig.installment).toLocaleString()}원)
                 </div>
                 <div className="text-slate-500">
                   기존 납부일: <span className="font-bold text-slate-700">{deferModalConfig.installment.dueDate}</span>

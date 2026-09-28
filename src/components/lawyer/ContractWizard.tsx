@@ -204,7 +204,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         isBusiness: true,
         businessInfo: {
           businessNumber: bizNumber.replace(/\D/g, ''),
-          companyName: bizCompany || `${bizRepName} 상호`,
+          companyName: bizCompany || '',
           representativeName: bizRepName,
           openingDate: bizOpenDate.replace(/\D/g, ''),
           ntsStatus: 'VALID',

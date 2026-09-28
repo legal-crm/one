@@ -162,7 +162,7 @@ function ApplicationDocSettingsModalInner({
 
   // 기본 표준 데이터셋 복원
   const handleReset = () => {
-    if (confirm('모든 신청서류 템플릿을 신우법무사/리걸플로 표준 기본 데이터셋(22종)으로 초기화하시겠습니까? (직접 추가한 커스텀 항목은 초기화됩니다)')) {
+    if (confirm('모든 신청서류 템플릿을 기본 데이터셋(22종)으로 초기화하시겠습니까? (직접 추가한 커스텀 항목은 초기화됩니다)')) {
       ApplicationDocTemplateService.resetToDefaults();
       toast.success('표준 신청서류 데이터셋으로 복원되었습니다.');
       refreshList();
@@ -201,7 +201,7 @@ function ApplicationDocSettingsModalInner({
             <button
               onClick={handleReset}
               className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-all flex items-center gap-1 cursor-pointer press-scale"
-              title="리걸플로 표준 템플릿으로 초기화"
+              title="기본 템플릿으로 초기화"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>표준 복원</span>

@@ -4,7 +4,13 @@
 
 import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './_lib/popbill-service.js';
 import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { verifyAuth } from './_lib/auth-middleware.js';
+
+// [SECURITY] 발신번호는 서버에 등록된 번호만 사용 (이전: 요청 본문의 sender를 그대로 사용 → 임의 발신번호 지정 가능)
+// 버튼 링크는 https만 허용 (피싱 링크 삽입 방지)
+const isSafeButtonUrl = (u) => typeof u === 'string' && /^https:\/\/[^\s]+$/i.test(u) && u.length <= 500;
+// 한글 2바이트 기준 SMS 90바이트 판정 (이전: 글자 수 90자 → 한글 90자(180바이트)도 SMS로 보내 잘림/실패)
+const byteLengthKR = (s) => { let n = 0; for (const ch of String(s)) n += ch.charCodeAt(0) > 0x7f ? 2 : 1; return n; };
 
 // 마일스톤별 기본 카카오 알림톡 템플릿 코드 매핑
 const MILESTONE_TEMPLATE_CODES = {
@@ -71,22 +77,25 @@ export default async function handler(req, res) {
   // ─────────────────────────────────────────────────────────────
   // A. [STATUS / 템플릿 / 관리URL 조회] 팝빌 연동 상태 및 승인 템플릿 목록
   // ─────────────────────────────────────────────────────────────
+  // [SECURITY] 모든 요청은 로그인 세션 필수 (이전: Authorization 헤더가 '있기만' 하면 통과 → 누구나 문자 발송·사업자정보 조회 가능)
+  try {
+    req.user = await verifyAuth(req);
+  } catch (authErr) {
+    return res.status(401).json({ ok: false, error: authErr.message || '로그인이 필요합니다.' });
+  }
+
   if (isStatus) {
     if (!POPBILL_CONFIG.isConfigured) {
       return res.status(200).json({
         ok: true,
         configured: false,
         isTest: POPBILL_CONFIG.isTest,
-        corpNum: POPBILL_CONFIG.corpNum,
-        userId: POPBILL_CONFIG.userId,
-        plusFriendId: POPBILL_CONFIG.plusFriendId,
-        senderPhone: POPBILL_CONFIG.senderPhone,
         balance: 0,
         partnerBalance: 0,
         channelStatus: 'UNCONFIGURED',
-        statusMessage: '팝빌 API 인증키(POPBILL_LINK_ID, POPBILL_SECRET_KEY) 미등록 상태 (현재 모의 발송 모드 작동 중)',
-        senders: [POPBILL_CONFIG.senderPhone],
-        plusFriends: [{ plusFriendID: POPBILL_CONFIG.plusFriendId, state: 'READY' }],
+        statusMessage: '팝빌 API 인증키(POPBILL_LINK_ID, POPBILL_SECRET_KEY) 미등록 — 알림톡·문자가 발송되지 않습니다.',
+        senders: [],
+        plusFriends: [],
         templates: [],
         templateMgtUrl: 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE',
       });
@@ -190,28 +199,36 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: '수신번호(phone)는 필수입니다.' });
   }
 
-  // [BOT DEFENSE] Cloudflare Turnstile 토큰 검증 (비로그인 요청 시 필수화)
-  const cfToken = req.body?.turnstileToken || req.body?.cfToken;
-  if (cfToken) {
-    const cfCheck = await verifyTurnstileToken(cfToken, ip);
-    if (!cfCheck.success) {
-      console.warn(`[SECURITY Turnstile Bot Blocked] IP: ${ip}, Error: ${cfCheck.error}`);
-      return res.status(403).json({ ok: false, error: cfCheck.error || '비정상적인 접근(봇)으로 감지되었습니다.' });
-    }
-  } else if (!req.headers.authorization) {
-    return res.status(403).json({ ok: false, error: '보안 정책에 따라 봇 방지 인증(Turnstile Token)이 필요합니다.' });
-  }
-
-  // 전화번호 정규화 (하이픈 제거) 및 엄격 검증
+  // 전화번호 정규화 (하이픈 제거) 및 엄격 검증 (010·011·016~019, 10~11자리)
   const cleanPhone = String(phone).replace(/[^0-9]/g, '');
-  if (cleanPhone.length < 10 || cleanPhone.length > 11 || !cleanPhone.startsWith('01')) {
+  if (!/^01[016789]\d{7,8}$/.test(cleanPhone)) {
     return res.status(400).json({ ok: false, error: '유효한 국내 휴대폰 번호(010...)가 아닙니다.' });
   }
 
-  const cleanSender = String(sender || POPBILL_CONFIG.senderPhone).replace(/[^0-9]/g, '');
-  const content = (customText && customText.trim() !== '') ? customText.trim() : (template || '');
-  if (content.length > 2000) {
+  const registeredSender = String(POPBILL_CONFIG.senderPhone || '').replace(/[^0-9]/g, '');
+  const requestedSender = String(sender || '').replace(/[^0-9]/g, '');
+  if (requestedSender && requestedSender !== registeredSender) {
+    return res.status(400).json({ ok: false, error: '등록된 발신번호만 사용할 수 있습니다.' });
+  }
+  const cleanSender = registeredSender;
+  const content = (typeof customText === 'string' && customText.trim() !== '') ? customText.trim() : (typeof template === 'string' ? template.trim() : '');
+  if (!content) {
+    return res.status(400).json({ ok: false, error: '메시지 내용이 비어 있습니다.' });
+  }
+  if (content.length > 2000 || (altContent && String(altContent).length > 2000)) {
     return res.status(400).json({ ok: false, error: '메시지 내용이 너무 깁니다. (최대 2,000자)' });
+  }
+  if ((receiverName && String(receiverName).length > 50) || (altSubject && String(altSubject).length > 60)) {
+    return res.status(400).json({ ok: false, error: '수신자명 또는 제목이 너무 깁니다.' });
+  }
+  if (reserveTime && !/^\d{14}$/.test(String(reserveTime))) {
+    return res.status(400).json({ ok: false, error: '예약일시 형식이 올바르지 않습니다 (YYYYMMDDHHmmss).' });
+  }
+  if (reqTemplateCode && !/^[A-Za-z0-9_]{1,30}$/.test(String(reqTemplateCode))) {
+    return res.status(400).json({ ok: false, error: '템플릿 코드 형식이 올바르지 않습니다.' });
+  }
+  if (Array.isArray(buttons) && buttons.some(b => [b?.url, b?.urlMobile, b?.urlPc, b?.u1, b?.u2].some(u => u !== undefined && u !== null && u !== '' && !isSafeButtonUrl(u)))) {
+    return res.status(400).json({ ok: false, error: '버튼 링크는 https 주소만 허용됩니다.' });
   }
 
   const finalTemplateCode = reqTemplateCode || (milestone ? MILESTONE_TEMPLATE_CODES[milestone] : null) || 'MYKIM_ATS_01';
@@ -219,23 +236,15 @@ export default async function handler(req, res) {
   const finalAltSubject = altSubject || '[my김변 법률센터] 안내';
   const finalAltContent = altContent || content;
 
-  // 1. 팝빌 환경변수 미등록 시 모의(Mock) 발송 지원
+  // 1. 팝빌 환경변수 미등록: 발송하지 않았음을 명확히 반환 (이전: ok:true + MOCK 접수번호 → 일부 화면이 '발송 완료'로 표시)
   if (!POPBILL_CONFIG.isConfigured) {
-    console.log('[Alimtok Mock Send]', {
-      phone: cleanPhone,
-      receiverName: finalReceiverName,
-      templateCode: finalTemplateCode,
-      content,
-      isConfigured: false
-    });
-
+    console.log('[Alimtok Not Configured] send skipped', { templateCode: finalTemplateCode });
     return res.status(200).json({
-      ok: true,
+      ok: false,
       mock: true,
+      simulated: true,
       channel: 'mock_alimtalk',
-      receiptNum: `MOCK-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      sentAt: new Date().toISOString(),
-      message: '팝빌 API 키 미설정 상태로 모의 발송되었습니다. Vercel 환경변수(POPBILL_LINK_ID, POPBILL_SECRET_KEY) 등록 시 실발송 전환됩니다.',
+      error: '알림톡 서비스(팝빌)가 설정되지 않아 발송되지 않았습니다.',
       rendered: content,
     });
   }
@@ -284,7 +293,7 @@ export default async function handler(req, res) {
 
     // 3. 카카오 템플릿 미승인/불일치 시 팝빌 LMS/SMS로 무중단 자동 대체 발송
     try {
-      const isShort = content.length <= 90; // 90바이트 이하는 SMS 가능, 긴 문장은 LMS
+      const isShort = byteLengthKR(content) <= 90; // 90바이트(한글 2바이트) 이하만 SMS, 나머지 LMS
       const lmsReceiptNum = await new Promise((resolve, reject) => {
         if (isShort) {
           messageService.sendSMS(
@@ -326,7 +335,7 @@ export default async function handler(req, res) {
         sentAt: new Date().toISOString(),
         phone: cleanPhone,
         receiverName: finalReceiverName,
-        notice: `알림톡 발송 중 (${atsError.message || atsError.code}), 안내 문자(LMS/SMS)로 즉시 100% 정상 대체 발송되었습니다.`,
+        notice: `알림톡이 접수되지 않아(${atsError.message || atsError.code}) 문자(${isShort ? 'SMS' : 'LMS'})로 대체 접수했습니다. 실제 수신 여부는 팝빌 전송내역에서 확인하세요.`,
       });
     } catch (msgError) {
       console.error('[Alimtok & Message Fallback Both Failed]:', msgError);

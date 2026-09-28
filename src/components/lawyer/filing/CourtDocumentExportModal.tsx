@@ -57,15 +57,16 @@ function CourtDocumentExportModalInner({
   const caseNumber = crmExt.courtCase?.caseNumber || '';
 
   // 모바일 제출 동의 상태 (기존 저장값 또는 신청 시점 기준)
+  // 저장된 동의 기록이 없으면 '미동의'로 시작 (이전: 모든 의뢰인이 '2026-05-12 14:32 동의 완료'로 표시됨)
   const consent = plan.clientSubmissionConsent || {
-    isConsented: true,
-    consentedAt: '2026-05-12T14:32:00.000Z',
+    isConsented: false,
+    consentedAt: '',
     clientName,
-    consentStampText: `${clientName}님의 법원신청문서 - 2026-05-12 14:32:00 의뢰인 법원신청문서 제출에 동의하였습니다.`
+    consentStampText: '',
   };
 
-  const [hasConsent, setHasConsent] = useState(consent.isConsented);
-  const [consentDate, setConsentDate] = useState(consent.consentedAt || new Date().toISOString());
+  const [hasConsent] = useState(Boolean(consent.isConsented && consent.consentedAt));
+  const [consentDate] = useState(consent.consentedAt || '');
 
   // 8대 법원문서 메타 정의 (매뉴얼 p.68 그림 7-34)
   const courtDocs = [
@@ -75,7 +76,7 @@ function CourtDocumentExportModalInner({
       desc: '개인회생절차 개시신청서 본안 (사건의 표시, 신청 취지 및 원인)',
       badge: '필수 기본서식',
       hasCsv: false,
-      action: () => toast.success('개시 신청서 인쇄 미리보기가 준비되었습니다.')
+      action: () => toast.info('개시 신청서는 이 화면에서 출력되지 않습니다. [전자소송 일괄 패키징 센터]에서 생성해 주세요.')
     },
     {
       order: 1,
@@ -95,7 +96,7 @@ function CourtDocumentExportModalInner({
       desc: `총 청산가치 ${plan.totalLiquidationValue.toLocaleString()}원 (예금, 보험, 임차보증금 등)`,
       badge: '필수 서식',
       hasCsv: false,
-      action: () => toast.success('재산목록 A4 법원양식 인쇄가 실행됩니다.')
+      action: () => toast.info('재산목록은 이 화면에서 출력되지 않습니다. [재산 평가] 화면에서 출력해 주세요.')
     },
     {
       order: 3,
@@ -103,7 +104,7 @@ function CourtDocumentExportModalInner({
       desc: `월 실수령 소득 ${plan.incomeExpense.monthlyNetIncome.toLocaleString()}원 · 최종 생계비 ${plan.calculatedLiving.finalTotalLivingExpense.toLocaleString()}원`,
       badge: '필수 서식',
       hasCsv: false,
-      action: () => toast.success('수입 및 지출 목록(가용소득 산출표) 인쇄가 실행됩니다.')
+      action: () => toast.info('수입 및 지출 목록은 이 화면에서 출력되지 않습니다. [수입·지출 목록] 화면에서 출력해 주세요.')
     },
     {
       order: 4,
@@ -113,7 +114,7 @@ function CourtDocumentExportModalInner({
       hasCsv: false,
       action: () => {
         if (onOpenStatementPrint) onOpenStatementPrint();
-        else toast.success('진술서 A4 인쇄창이 열립니다.');
+        else toast.info('진술서 출력 화면이 연결되어 있지 않습니다. [진술서] 탭에서 출력해 주세요.');
       }
     },
     {
@@ -124,7 +125,7 @@ function CourtDocumentExportModalInner({
       hasCsv: false,
       action: () => {
         if (onOpenRepaymentPrint) onOpenRepaymentPrint();
-        else toast.success('변제계획안 및 변제예정액표 인쇄창이 열립니다.');
+        else toast.info('변제계획안 출력 화면이 연결되어 있지 않습니다. [변제계획안] 탭에서 출력해 주세요.');
       }
     },
     {
@@ -135,7 +136,7 @@ function CourtDocumentExportModalInner({
       hasCsv: false,
       action: () => {
         if (onOpenPowerOfAttorney) onOpenPowerOfAttorney();
-        else toast.success('소송위임장 발급창이 열립니다.');
+        else toast.info('위임장 출력 화면이 연결되어 있지 않습니다. [전자계약] 메뉴에서 출력해 주세요.');
       }
     },
     {
@@ -144,26 +145,22 @@ function CourtDocumentExportModalInner({
       desc: '급여·통장 압류 및 빚 독촉 원천 차단 (신청 후 3~7일 내 결정)',
       badge: '원클릭 신청서',
       hasCsv: false,
-      action: () => toast.success('금지명령 신청서 인쇄본이 생성되었습니다.')
+      action: () => toast.info('금지명령·중지명령 신청서는 이 화면에서 출력되지 않습니다. [기타 법원 신청서]에서 작성해 주세요.')
     }
   ];
 
-  // 알림톡 요청 발송
-  const handleSendConsentAlimtalk = () => {
-    toast.success(`📱 ${clientName}님께 모바일 신청서 최종 검토 및 제출동의 요청 알림톡이 전송되었습니다.`);
-  };
-
-  // 즉시 동의 테스트 시뮬레이션
-  const handleToggleConsentSimulation = () => {
-    const next = !hasConsent;
-    setHasConsent(next);
-    if (next) {
-      setConsentDate(new Date().toISOString());
-      toast.success('🎉 의뢰인 모바일 제출동의가 완료되었습니다. 인쇄본 상단에 인증 스탬프가 자동 합성됩니다.');
-    } else {
-      toast.info('제출동의 상태가 미동의(대기)로 변경되었습니다.');
+  // 제출동의 요청: 안내 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 전송되었습니다' 표시)
+  const handleSendConsentAlimtalk = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `[${clientName}님] 법원에 제출할 신청서류 초안이 준비되었습니다. 마이페이지에서 내용을 확인하시고 이상이 없으면 제출에 동의해 주세요. ${origin}/?tab=mypage`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('제출동의 요청 문구가 복사되었습니다. 자동 발송되지 않으니 카카오톡·문자로 전달해 주세요.');
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
+  // (삭제) '동의 완료 시뮬레이션' 버튼 — 변호사 클릭만으로 의뢰인 동의를 만들어 내던 기능
 
   return (
     <ModalPortal>
@@ -179,7 +176,7 @@ function CourtDocumentExportModalInner({
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 법원문서 8종 일괄출력 센터 (STEP 8)
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  리걸플로 p.68 그림 7-34
+                  초안 출력 허브
                 </span>
               </h3>
               <p className="text-xs text-slate-300">
@@ -205,13 +202,10 @@ function CourtDocumentExportModalInner({
                     {clientName} 님의 법원신청문서 제출 동의 완료
                   </h5>
                   <p className="text-[11px] text-emerald-400 font-mono">
-                    {new Date(consentDate).toLocaleString()} 의뢰인이 법원신청문서 최종 제출에 동의하였습니다.
+                    {new Date(consentDate).toLocaleString('ko-KR')} 의뢰인이 법원신청문서 최종 제출에 동의하였습니다.
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold self-start sm:self-auto shrink-0">
-                인쇄본 상단 스탬프 자동 반영
-              </span>
             </div>
           ) : (
             <div className="bg-amber-950/40 border border-amber-500/40 p-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -222,7 +216,7 @@ function CourtDocumentExportModalInner({
                 <div>
                   <h5 className="font-extrabold text-amber-200">의뢰인 모바일 제출동의 대기 중</h5>
                   <p className="text-[11px] text-amber-300">
-                    의뢰인이 스마트폰에서 신청서 요약을 확인하고 동의해야 법원 제출본에 전자확약 스탬프가 찍힙니다.
+                    저장된 의뢰인 제출동의 기록이 없습니다. 제출 전에 의뢰인의 확인을 받아 주세요.
                   </p>
                 </div>
               </div>
@@ -232,14 +226,7 @@ function CourtDocumentExportModalInner({
                   onClick={handleSendConsentAlimtalk}
                   className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 press-scale"
                 >
-                  <Send className="w-3 h-3" /> 알림톡 요청
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggleConsentSimulation}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold border border-slate-700"
-                >
-                  동의 완료 시뮬레이션
+                  <Send className="w-3 h-3" /> 요청 문구 복사
                 </button>
               </div>
             </div>
@@ -252,7 +239,7 @@ function CourtDocumentExportModalInner({
             <span className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
               <span>📁</span> 법원 제출 일괄출력 문서 목록
             </span>
-            <span className="text-slate-500 text-[11px]">8종 법원 규격 완비</span>
+            <span className="text-slate-500 text-[11px]">관할 법원 서식과 대조 후 사용</span>
           </div>
 
           <div className="space-y-2">

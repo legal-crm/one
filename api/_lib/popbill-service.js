@@ -42,16 +42,33 @@ export const POPBILL_CONFIG = {
 
 // 서비스 인스턴스
 export const taxinvoiceService = popbill.TaxinvoiceService();
+// 사업자 휴폐업 조회는 TaxinvoiceService가 아니라 ClosedownService에 있음 (이전: taxinvoiceService.checkCorpNum 호출 → 항상 실패)
+export const closedownService = popbill.ClosedownService();
 export const kakaoService = popbill.KakaoService();
 export const messageService = popbill.MessageService();
 
-// 오늘 날짜 문자열 (YYYYMMDD)
+// 오늘 날짜 문자열 (YYYYMMDD, 한국 시간)
+// (이전: 서버 로컬 시간 — Vercel은 UTC라 한국 00:00~08:59에 작성일자가 '어제'로 발행됨)
 export function getTodayStr() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
+  const kst = new Date(Date.now() + 9 * 3600 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
   return `${y}${m}${d}`;
+}
+
+// 팝빌 세금계산서 설정 여부 (LinkID·SecretKey 모두 필요)
+export const isTaxinvoiceConfigured = Boolean(process.env.POPBILL_LINK_ID && process.env.POPBILL_SECRET_KEY);
+
+// 사업자등록번호 체크섬 검증 (10자리)
+export function isValidCorpNum(num) {
+  const n = String(num || '').replace(/[^0-9]/g, '');
+  if (!/^\d{10}$/.test(n)) return false;
+  const w = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(n[i]) * w[i];
+  sum += Math.floor((Number(n[8]) * 5) / 10);
+  return (10 - (sum % 10)) % 10 === Number(n[9]);
 }
 
 // CORS 헤더 설정

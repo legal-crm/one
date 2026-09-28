@@ -201,7 +201,9 @@ export const INTAKE_CHANNEL_CONFIG: Record<IntakeChannel, { label: string; emoji
 export interface FeeInstallment {
   id: string;
   round: number;
+  /** 금액. 단위는 amountUnit (없으면 과거 데이터 — feeAmountWon()이 10,000 미만을 만원으로 간주) */
   amount: number;
+  amountUnit?: 'won' | 'manwon';
   dueDate: string;
   paidDate?: string;
   status: 'pending' | 'paid' | 'overdue';

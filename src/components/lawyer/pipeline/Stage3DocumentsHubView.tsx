@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, Home, Briefcase, CreditCard, ShieldCheck, 
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
@@ -64,6 +64,21 @@ export interface DocItemModel {
   supplementReason?: string;
 }
 
+// ── 서류 진행 상태 저장 (의뢰인별, 이 브라우저) ──
+type Stage3DocState = Pick<DocItemModel, 'status' | 'requestedAt' | 'submittedAt' | 'approvedAt' | 'supplementReason'>;
+interface Stage3SavedState { docs?: Record<string, Stage3DocState>; postalCarrier?: string; postalTrackingNumber?: string }
+const stage3Key = (clientId: string) => `legal_crm_stage3_docs_${clientId}`;
+function loadStage3State(clientId: string): Stage3SavedState | null {
+  try { const raw = localStorage.getItem(stage3Key(clientId)); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function saveStage3State(clientId: string, patch: Stage3SavedState): boolean {
+  try {
+    const cur = loadStage3State(clientId) || {};
+    localStorage.setItem(stage3Key(clientId), JSON.stringify({ ...cur, ...patch }));
+    return true;
+  } catch { return false; }
+}
+
 type AgencyTab = 'all' | 'gov' | 'tax' | 'work' | 'finance' | 'personal';
 type StatusFilter = 'all' | 'unsubmitted' | 'review' | 'supplement' | 'approved';
 type PhaseTab = 'all' | 1 | 'debt' | 2;
@@ -87,8 +102,10 @@ export default function Stage3DocumentsHubView({
   const requiredSealCount = ApplicationDocTemplateService.getRequiredSealCertCount(creditorCount);
 
   // 1차 실물 등기 및 배송추적 상태 (우체국, 편의점 택배 등)
-  const [postalCarrier, setPostalCarrier] = useState<string>(crmExt?.postalCarrier || 'GS25');
-  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>(crmExt?.postalTrackingNumber || '682910385921');
+  // 저장된 서류 진행 상태·송장 (이전: 모든 의뢰인에게 'GS25 682910385921' 가짜 송장이 기본 표시되고, 저장 버튼도 새로고침하면 사라짐)
+  const savedStage3 = loadStage3State(clientRequest.id);
+  const [postalCarrier, setPostalCarrier] = useState<string>(crmExt?.postalCarrier || savedStage3?.postalCarrier || '');
+  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>(crmExt?.postalTrackingNumber || savedStage3?.postalTrackingNumber || '');
   const [isEditingPostal, setIsEditingPostal] = useState<boolean>(false);
   const [inputCarrier, setInputCarrier] = useState<string>(postalCarrier);
   const [inputTracking, setInputTracking] = useState<string>(postalTrackingNumber);
@@ -134,88 +151,19 @@ export default function Stage3DocumentsHubView({
   });
 
   // 로펌 실무 기준 서류 목록 초기화 (1차 서류 9종 + 2차 서류 17종)
+  // 상태는 실제 기록에서만 가져옴: 저장된 진행 상태 → 업로드된 파일(제출됨) → 요청 전
+  // (이전: 모든 의뢰인에게 '1차 6건 승인·16건 요청(2026.09.12)·11번째 제출(오늘 15:40)·15번째 보완 필요' 같은 가짜 상태를 생성)
   const [docList, setDocList] = useState<DocItemModel[]>(() => {
     const uploaded = crmExt?.uploadedFiles || [];
+    const saved = loadStage3State(clientRequest.id)?.docs || {};
     const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest)
       .sort(compareDocItemsPriority);
 
-    return masterTemplates.map((rawItem, idx) => {
+    return masterTemplates.map((rawItem) => {
       // 인감 관련 서류(인감증명서, 인감도장)는 부채증명서 발급 대행을 위해 무조건 1차 서류 보장
       const isSeal = rawItem.name.includes('인감');
       const item = isSeal ? { ...rawItem, phase: 1 as DocPhase, isRequired: true } : rawItem;
-
-      // 1차 서류 기본 시뮬레이션 상태
-      if (item.phase === 1) {
-        // 인감도장/등본 등 초기 1차 수령 시뮬레이션
-        const isApproved = idx < 6;
-        return {
-          id: item.id,
-          name: item.name,
-          order: item.order,
-          phase: item.phase,
-          submissionMethod: item.submissionMethod,
-          agency: item.agency,
-          isRequired: item.isRequired,
-          notes: item.tips,
-          isThirdPartyMaskingRequired: item.isThirdPartyMasking,
-          isCreditorMultiplier: item.isCreditorMultiplier,
-          targetParty: item.targetParty,
-          status: isApproved ? 'APPROVED' : 'SUBMITTED',
-          approvedAt: isApproved ? '2026.09.12' : undefined,
-          submittedAt: !isApproved ? '오늘 11:20' : undefined,
-        };
-      }
-
-      // 2차 서류 시뮬레이션 상태
-      const match = uploaded.find(f => f.name.includes(item.name.slice(0, 3)));
-      if (match) {
-        return {
-          id: item.id,
-          name: item.name,
-          order: item.order,
-          phase: item.phase,
-          submissionMethod: item.submissionMethod,
-          agency: item.agency,
-          isRequired: item.isRequired,
-          notes: item.tips,
-          isThirdPartyMaskingRequired: item.isThirdPartyMasking,
-          isCreditorMultiplier: item.isCreditorMultiplier,
-          targetParty: item.targetParty,
-          status: 'APPROVED',
-          approvedAt: '2026.09.13',
-        };
-      }
-
-      if (idx === 10) {
-        return {
-          id: item.id,
-          name: item.name,
-          order: item.order,
-          phase: item.phase,
-          submissionMethod: item.submissionMethod,
-          agency: item.agency,
-          isRequired: item.isRequired,
-          notes: item.tips,
-          status: 'SUBMITTED',
-          submittedAt: '오늘 15:40',
-        };
-      }
-      if (idx === 14) {
-        return {
-          id: item.id,
-          name: item.name,
-          order: item.order,
-          phase: item.phase,
-          submissionMethod: item.submissionMethod,
-          agency: item.agency,
-          isRequired: item.isRequired,
-          notes: item.tips,
-          status: 'SUPPLEMENT_NEEDED',
-          supplementReason: '마스킹 미처리 또는 유효기간 경과',
-        };
-      }
-
-      return {
+      const base: DocItemModel = {
         id: item.id,
         name: item.name,
         order: item.order,
@@ -227,11 +175,26 @@ export default function Stage3DocumentsHubView({
         isThirdPartyMaskingRequired: item.isThirdPartyMasking,
         isCreditorMultiplier: item.isCreditorMultiplier,
         targetParty: item.targetParty,
-        status: idx < 16 ? 'REQUESTED' : 'NOT_REQUESTED',
-        requestedAt: idx < 16 ? '2026.09.12' : undefined,
+        status: 'NOT_REQUESTED',
       };
+      const st = saved[item.id];
+      if (st?.status) return { ...base, ...st };
+      const match = uploaded.find(f => f.name.includes(item.name.slice(0, 3)));
+      if (match) return { ...base, status: 'SUBMITTED' as const, submittedAt: match.uploadedAt ? localYmd(new Date(match.uploadedAt)) : undefined };
+      return base;
     }).sort(compareDocItemsPriority);
   });
+
+  // 서류 진행 상태가 바뀔 때마다 의뢰인별로 저장 (이전: 새로고침하면 요청·승인·보완 기록이 모두 사라짐)
+  useEffect(() => {
+    const docs: Record<string, Stage3DocState> = {};
+    docList.forEach(d => {
+      if (d.status !== 'NOT_REQUESTED' || d.requestedAt) {
+        docs[d.id] = { status: d.status, requestedAt: d.requestedAt, submittedAt: d.submittedAt, approvedAt: d.approvedAt, supplementReason: d.supplementReason };
+      }
+    });
+    saveStage3State(clientRequest.id, { docs });
+  }, [docList, clientRequest.id]);
 
   // 상태별 및 차수별 서류 집계
   const stats = useMemo(() => {
@@ -326,7 +289,9 @@ export default function Stage3DocumentsHubView({
     setPostalCarrier(inputCarrier);
     setPostalTrackingNumber(inputTracking.trim());
     setIsEditingPostal(false);
-    toast.success(`배송 정보가 저장되었습니다: [${getCarrierLabel(inputCarrier)}] ${inputTracking.trim() || '미등록'}`);
+    const ok = saveStage3State(clientRequest.id, { postalCarrier: inputCarrier, postalTrackingNumber: inputTracking.trim() });
+    if (ok) toast.success(`배송 정보를 이 브라우저에 저장했습니다: [${getCarrierLabel(inputCarrier)}] ${inputTracking.trim() || '미등록'}`);
+    else toast.error('배송 정보를 저장하지 못했습니다 (저장공간 오류).');
   };
 
   // 대행업체 발송 완료 마킹 핸들러
@@ -452,18 +417,39 @@ export default function Stage3DocumentsHubView({
   };
 
   // 일괄 요청 확인 핸들러
-  const handleConfirmBatchSend = (selectedDocIds: string[]) => {
+  // 실제 알림톡을 보내고 결과를 모달에 돌려줌 (이전: 상태만 바꾸고 모달이 '전송되었습니다' 표시)
+  const handleConfirmBatchSend = async (
+    selectedDocIds: string[],
+    deadlineDays: number,
+    requestType: 'phase1' | 'phase2' | 'custom',
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const today = localYmd();
+    // 요청 기록은 발송 성공 여부와 별개로 남김 (실패 시 모달이 안내 문구를 복사해 직접 전달)
     setDocList(prev => prev.map(d => 
       selectedDocIds.includes(d.id) 
-        ? { ...d, status: 'REQUESTED', requestedAt: '방금 전' } 
+        ? { ...d, status: 'REQUESTED', requestedAt: today } 
         : d
     ));
-    addClientNotification({
-      type: 'status_change',
-      title: `[서류 일괄요청] ${clientRequest.clientName}님, 법원 제출용 필수 서류 ${selectedDocIds.length}건 발급 안내가 도착했습니다.`,
-      emoji: '📑',
-      linkTab: 'diagnosis',
-    });
+    if (!ensureOffice()) return { ok: false, error: '사무소명·주소 미설정' };
+    if (!clientRequest.phone) return { ok: false, error: '의뢰인 연락처가 없습니다.' };
+    const due = new Date(); due.setDate(due.getDate() + deadlineDays);
+    const deadline = `${due.getMonth() + 1}월 ${due.getDate()}일`;
+    const names = docList.filter(d => selectedDocIds.includes(d.id)).map(d => d.name);
+    const base = { clientName: clientRequest.clientName, firmName: office.firmName, lawyerName: office.lawyerName || '담당 변호사', trackingUrl };
+    const res = requestType === 'phase1'
+      ? await sendAlimtok(clientRequest.phone, 'doc_request_phase1', { ...base, creditorCount: `${requiredSealCount}부`, creditorNum: `${creditorCount}`, firmAddress: office.address })
+      : requestType === 'phase2'
+      ? await sendAlimtok(clientRequest.phone, 'doc_request_phase2', base)
+      : await sendAlimtok(clientRequest.phone, 'document_request', { ...base, documentList: names.map((n, i) => `${i + 1}. ${n}`).join('\n'), deadline });
+    if (res.ok) {
+      addClientNotification({
+        type: 'status_change',
+        title: `[서류 요청] ${clientRequest.clientName}님, 법원 제출용 서류 ${selectedDocIds.length}건 제출 요청이 도착했습니다.`,
+        emoji: '📑',
+        linkTab: 'diagnosis',
+      });
+    }
+    return { ok: res.ok, error: res.error };
   };
 
   return (
@@ -1419,6 +1405,7 @@ export default function Stage3DocumentsHubView({
 
       {/* 모달 렌더링 */}
       <BatchDocRequestModal
+        key={`${clientRequest.id}-${batchPresetPhase || 'all'}-${showBatchModal ? 'open' : 'closed'}`}
         isOpen={showBatchModal}
         onClose={() => setShowBatchModal(false)}
         clientName={clientRequest.clientName}

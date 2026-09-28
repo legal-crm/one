@@ -3,6 +3,7 @@
  * 알림톡/문자 발송 ➔ 모바일 웹 작성 ➔ 전자서명 ➔ CRM 자동 접수 및 전자소송 슬롯 연계
  */
 import { randomToken } from '../../utils/secureToken';
+import { getOfficeProfile } from '../lawyer/officeProfile';
 
 export interface MobileDocRequestItem {
   id: string;
@@ -20,6 +21,8 @@ export interface MobileDocRequestItem {
   signatureDataUrl?: string;
 }
 
+// 주의: 요청은 이 브라우저(localStorage)에만 저장됨 → 의뢰인 휴대폰에서 링크를 열면 요청을 찾을 수 없음.
+// 서버(Supabase) 저장 전까지 기기 간 모바일 작성 흐름은 동작하지 않는다.
 const STORAGE_KEY = 'LEGAL_CRM_MOBILE_DOC_REQUESTS';
 
 export class ClientMobileDocService {
@@ -105,8 +108,11 @@ export class ClientMobileDocService {
   /**
    * 카카오톡 알림톡/문자 안내 문구 생성
    */
-  static generateNotificationMessage(req: MobileDocRequestItem, lawfirmName: string = '법무법인 리걸케어'): string {
-    return `[${lawfirmName} 법원 전자소송 서류 작성 안내]
+  static generateNotificationMessage(req: MobileDocRequestItem, lawfirmName: string = ''): string {
+    // 사무소명·주소는 설정값만 사용 (이전: '법무법인 리걸케어' 기본값, 'legal-crm.kr' 고정 도메인)
+    const firm = lawfirmName || getOfficeProfile().firmName || '담당 법률사무소';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `[${firm} 법원 전자소송 서류 작성 안내]
 
 안녕하세요, ${req.clientName} 님.
 진행 중이신 법원 사건의 원활한 접수를 위해 [${req.docTitle}] 작성이 필요합니다.
@@ -114,9 +120,9 @@ export class ClientMobileDocService {
 아래 모바일 전용 보안 링크에 접속하시어 간단한 사실관계 확인 후 자필 전자서명을 완료해주시기 바랍니다.
 
 ▶ 모바일 간편 작성 링크:
-https://legal-crm.kr/mobile-doc?token=${req.token}
+${origin}/mobile-doc?token=${req.token}
 
-※ 본 링크는 본인 인증용 암호화 링크이며 타인에게 양도할 수 없습니다.
-※ 문의: ${lawfirmName} 담당 변호사 사무실`;
+※ 본인만 사용해 주세요. 링크를 다른 사람에게 전달하지 마세요.
+※ 문의: ${firm}`;
   }
 }

@@ -732,10 +732,10 @@ export async function syncContractToCrm(
   ext.contractAmount = contract.totalFee;
   
   if (contract.feeSchedule && contract.feeSchedule.length > 0) {
+    // 계약서 분납액(원)을 그대로 보관하고 단위를 명시 (이전: 만원으로 반올림 → 1,234,567원이 123만원으로 저장되는 손실)
     ext.feeSchedule = contract.feeSchedule.map(f => ({
       ...f,
-      // 분납 금액이 원 단위인 경우 만원 단위로 정규화 (10000 이상이면 / 10000)
-      amount: f.amount >= 10000 ? Math.round(f.amount / 10000) : f.amount,
+      amountUnit: f.amountUnit || (f.amount >= 10000 ? 'won' : 'manwon'),
     }));
   }
 

@@ -196,7 +196,7 @@ ${firm} ${lawyer} 변호사`
   };
 
   // 대표 의뢰인 이름으로 치환된 미리보기 텍스트
-  const sampleClientName = targetClients[0]?.clientName || '홍길동';
+  const sampleClientName = targetClients[0]?.clientName || '의뢰인';
   const previewReplacedMessage = customMessage.replace(/#\{의뢰인명\}/g, sampleClientName);
 
   return (

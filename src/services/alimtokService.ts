@@ -4,7 +4,14 @@ import {
   FeeAutoNotificationRule, FeeInstallment 
 } from '../types';
 import { addClientNotification } from './clientNotificationService';
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { supabase, isSupabaseConfigured, getAuthHeaders } from '../supabaseClient';
+import { localYmd, parseLocalYmd } from '../utils/localDate';
+
+/** /api/alimtok 호출용 헤더 (서버가 로그인 세션을 요구함) */
+const apiHeaders = async (json = false): Promise<Record<string, string>> => ({
+  ...(json ? { 'Content-Type': 'application/json' } : {}),
+  ...(await getAuthHeaders()),
+});
 
 function logSupabaseError(op: string, error: any) {
   console.error(`[Alimtok] ${op} 실패:`, error?.message || error);
@@ -18,8 +25,10 @@ export const renderTemplate = (milestone: AlimtokMilestone, vars: Record<string,
   const config = ALIMTOK_MILESTONE_CONFIG[milestone];
   if (!config) return '';
   let template = config.template;
+  // 변수명 정규식 이스케이프 + 치환 함수 사용 ('$&'·'$1'이 값에 있어도 그대로 들어가게)
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   for (const [key, value] of Object.entries(vars)) {
-    template = template.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+    template = template.replace(new RegExp(`\\{\\{${esc(key)}\\}\\}`, 'g'), () => value || '');
   }
   return template;
 };
@@ -65,7 +74,7 @@ export const sendAlimtok = async (
   try {
     const response = await fetch('/api/alimtok', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await apiHeaders(true),
       body: JSON.stringify({ 
         phone, 
         receiverName: options.receiverName || vars.clientName || '',
@@ -103,11 +112,15 @@ export const sendAlimtok = async (
       };
     }
 
+    if (response.status === 401) {
+      return { ok: false, error: '로그인 세션이 없어 발송하지 못했습니다. 다시 로그인해 주세요.', sentAt: new Date().toISOString(), rendered };
+    }
+
     const data = await response.json();
     return { 
       // 서버가 팝빌 미설정으로 모의 응답(mock)을 주면 실제 발송이 아니므로 실패로 취급
       ok: (data.ok !== undefined ? data.ok : response.ok) && !data.mock,
-      error: data.mock ? (data.notice || '알림톡 서비스(팝빌)가 설정되지 않아 발송되지 않았습니다.') : data.error,
+      error: data.mock ? (data.error || data.notice || '알림톡 서비스(팝빌)가 설정되지 않아 발송되지 않았습니다.') : data.error,
       mock: data.mock,
       channel: data.channel,
       receiptNum: data.receiptNum,
@@ -168,8 +181,9 @@ export const saveAlimtokLog = async (clientId: string, log: AlimtokLog) => {
 
 // ── 4. 수임료 스마트 알림 설정 (기본값 및 로드/저장) ──
 
+// 주의: 규칙을 읽어 예약 발송하는 스케줄러(서버 cron)는 아직 없음 → 규칙은 저장만 되고 자동 발송되지 않는다.
 export const getDefaultFeeNotificationSettings = (): FeeNotificationSettings => ({
-  autoTriggerEnabled: true,
+  autoTriggerEnabled: false,
   rules: [
     {
       id: 'rule-upcoming',
@@ -208,10 +222,11 @@ export const getDefaultFeeNotificationSettings = (): FeeNotificationSettings => 
       label: '2차 연체 독촉 고지',
     },
   ],
+  // 입금계좌는 사무소가 직접 입력해야 함 (이전: 가짜 계좌 '신한은행 110-542-897612 (법무법인 로앤)'이 기본값 → 의뢰인에게 가짜 계좌로 입금 안내 가능)
   bankInfo: {
-    bankName: '신한은행',
-    accountNumber: '110-542-897612',
-    accountHolder: '법무법인 로앤',
+    bankName: '',
+    accountNumber: '',
+    accountHolder: '',
   },
   sendReceiptOnPaid: true,
 });
@@ -221,6 +236,10 @@ export const loadFeeNotificationSettings = (): FeeNotificationSettings => {
     const raw = localStorage.getItem(FEE_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      // 과거 버전이 저장한 가짜 기본 계좌는 폐기
+      if (parsed?.bankInfo?.accountNumber === '110-542-897612') {
+        parsed.bankInfo = { bankName: '', accountNumber: '', accountHolder: '' };
+      }
       return { ...getDefaultFeeNotificationSettings(), ...parsed };
     }
   } catch { /* ignore */ }
@@ -245,7 +264,9 @@ export interface SendFeeAlimtokParams {
   lawyerName: string;
   milestone: AlimtokMilestone;
   installment: FeeInstallment;
+  /** @deprecated 만원 단위 (반올림 오차) — remainingFeeWon 사용 */
   remainingFeeManwon?: number;
+  remainingFeeWon?: number;
   bankInfo?: { bankName: string; accountNumber: string; accountHolder: string };
   trackingUrl?: string;
   customMessage?: string;
@@ -260,21 +281,22 @@ export interface SendFeeAlimtokParams {
 export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok: boolean; rendered: string; error?: string }> => {
   const settings = loadFeeNotificationSettings();
   const bank = params.bankInfo || settings.bankInfo;
-  const bankAccountStr = `${bank.bankName} ${bank.accountNumber} (예금주: ${bank.accountHolder})`;
+  const hasBank = Boolean(bank?.bankName?.trim() && bank?.accountNumber?.trim());
+  // 계좌가 필요한 안내(예정·당일·연체)는 계좌 미설정 시 발송하지 않음
+  if (!hasBank && params.milestone !== 'fee_receipt') {
+    return { ok: false, rendered: '', error: '입금계좌가 설정되지 않았습니다. [수임료 알림 설정]에서 사무소 입금계좌를 먼저 입력해 주세요.' };
+  }
+  const bankAccountStr = hasBank ? `${bank.bankName} ${bank.accountNumber}${bank.accountHolder ? ` (예금주: ${bank.accountHolder})` : ''}` : '';
 
-  // 금액 변환: 만원 단위인 경우 원 단위로 변환 표시 (100 -> 1,000,000)
-  const amountWon = params.installment.amount >= 10000 
-    ? params.installment.amount 
-    : params.installment.amount * 10000;
-  
-  const remainingWon = (params.remainingFeeManwon || 0) * 10000;
+  const amountWon = feeAmountWon(params.installment);
+  // 잔여금: 원 단위 값 우선 (이전: 만원 반올림 값 × 10000 → 1,166,667원이 1,170,000원으로 안내됨)
+  const remainingWon = params.remainingFeeWon !== undefined ? params.remainingFeeWon : (params.remainingFeeManwon || 0) * 10000;
 
-  // D-Day 계산
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(params.installment.dueDate);
-  due.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  // D-Day 계산 (로컬 날짜 기준)
+  const todayYmd = localYmd();
+  const dueD = parseLocalYmd(params.installment.dueDate);
+  const todayD = parseLocalYmd(todayYmd)!;
+  const diffDays = dueD ? Math.round((dueD.getTime() - todayD.getTime()) / 86400000) : 0;
   const daysLeft = diffDays > 0 ? String(diffDays) : '0';
 
   const baseVars: Record<string, string> = {
@@ -284,7 +306,7 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
     feeRound: params.installment.memo || `${params.installment.round}차 분납`,
     feeAmount: amountWon.toLocaleString(),
     dueDate: params.installment.dueDate,
-    paidDate: params.installment.paidDate || new Date().toISOString().split('T')[0],
+    paidDate: params.installment.paidDate || todayYmd,
     remainingFee: remainingWon.toLocaleString(),
     bankAccount: bankAccountStr,
     daysLeft,
@@ -301,7 +323,7 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
     '마감기한': `${params.installment.dueDate}${daysLeft !== '0' ? ` (${daysLeft}일 남음)` : ''}`,
     '납부기한': `${params.installment.dueDate}${daysLeft !== '0' ? ` (${daysLeft}일 남음)` : ''}`,
     '남은일수': daysLeft,
-    '입금일시': params.installment.paidDate || new Date().toISOString().split('T')[0],
+    '입금일시': params.installment.paidDate || todayYmd,
     '잔여금액': `${remainingWon.toLocaleString()}원`,
     '남은잔금': `${remainingWon.toLocaleString()}원`,
     '안내링크': params.trackingUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/my`,
@@ -347,25 +369,55 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
   return { ok: res.ok, rendered: res.rendered, error: res.error };
 };
 
+/**
+ * 분납 회차 금액을 원 단위로 반환.
+ * - amountUnit이 있으면 그대로 따름 (신규 저장분은 'won')
+ * - 없으면 과거 데이터 호환: 10,000 미만이면 만원 단위로 저장된 것으로 간주
+ */
+export const feeAmountWon = (inst: Pick<FeeInstallment, 'amount'> & { amountUnit?: 'won' | 'manwon' }): number => {
+  const a = Number(inst.amount) || 0;
+  if (inst.amountUnit === 'won') return a;
+  if (inst.amountUnit === 'manwon') return a * 10000;
+  return a >= 10000 ? a : a * 10000;
+};
+
+/** 총 수임료를 원 단위로 반환 (과거 계약 동기화분은 만원 단위(예: 300)로 저장됨) */
+export const feeTotalWon = (total: number | undefined | null): number => {
+  const t = Number(total) || 0;
+  return t > 0 && t < 10000 ? t * 10000 : t;
+};
+
 // ── 6. CRM 단계 변경 시 기존 자동 알림 ──
+
+export type StatusAlimtokOutcome =
+  | { attempted: false; reason: 'no_milestone' | 'disabled' | 'same_status' | 'no_phone' | 'missing_vars'; missing?: string[] }
+  | { attempted: true; ok: boolean; error?: string; milestone: AlimtokMilestone };
 
 export const triggerAlimtokOnStatusChange = async (
   prevStatus: CrmStatus,
   newStatus: CrmStatus,
-  clientData: { clientName: string; phone: string; firmName: string; lawyerName: string },
+  clientData: { clientId: string; clientName: string; phone: string; firmName: string; lawyerName: string; extraVars?: Record<string, string> },
   settings: { autoTrigger: boolean; enabledMilestones: AlimtokMilestone[] }
-) => {
+): Promise<StatusAlimtokOutcome> => {
   const milestone = STATUS_TO_MILESTONE[newStatus];
-  if (!milestone) return false;
+  if (!milestone) return { attempted: false, reason: 'no_milestone' };
+  if (prevStatus === newStatus) return { attempted: false, reason: 'same_status' };
+  if (!settings.autoTrigger || !settings.enabledMilestones.includes(milestone)) return { attempted: false, reason: 'disabled' };
+  if (!clientData.phone) return { attempted: false, reason: 'no_phone' };
 
-  if (settings.autoTrigger && settings.enabledMilestones.includes(milestone)) {
-    const vars = {
+  {
+    const vars: Record<string, string> = {
       clientName: clientData.clientName,
       firmName: clientData.firmName,
       lawyerName: clientData.lawyerName,
       date: new Date().toLocaleDateString('ko-KR'),
-      trackingUrl: '#',
+      trackingUrl: typeof window !== 'undefined' ? `${window.location.origin}/my` : '',
+      ...(clientData.extraVars || {}),
     };
+    // 채워지지 않은 {{변수}}가 남으면 그대로 의뢰인에게 가므로 발송하지 않음 (이전: '{{caseNumber}}' 등이 문구에 그대로 노출)
+    const rendered = renderTemplate(milestone, vars);
+    const missing = Array.from(new Set((rendered.match(/\{\{([^}]+)\}\}/g) || []).map(m => m.replace(/[{}]/g, ''))));
+    if (missing.length > 0) return { attempted: false, reason: 'missing_vars', missing };
     const { ok, error } = await sendAlimtok(clientData.phone, milestone, vars);
     
     const log: AlimtokLog = {
@@ -378,10 +430,10 @@ export const triggerAlimtokOnStatusChange = async (
       errorMessage: error,
     };
     
-    saveAlimtokLog(clientData.clientName, log);
-    return ok;
+    // 로그 키는 의뢰인 ID (이전: 이름을 ID로 써서 사건 화면에서 조회되지 않음)
+    await saveAlimtokLog(clientData.clientId, log);
+    return { attempted: true, ok, error, milestone };
   }
-  return false;
 };
 
 // ── 7. 팝빌 알림톡 서버 연동 상태 확인 ──
@@ -406,7 +458,7 @@ export interface PopbillServerStatus {
 
 export const checkAlimtokServerStatus = async (): Promise<PopbillServerStatus> => {
   try {
-    const res = await fetch('/api/alimtok?action=status');
+    const res = await fetch('/api/alimtok?action=status', { headers: await apiHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err: any) {
@@ -433,10 +485,10 @@ export const testSendAlimtok = async (params: {
   try {
     const response = await fetch('/api/alimtok', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await apiHeaders(true),
       body: JSON.stringify({
         phone: params.phone,
-        receiverName: params.receiverName || '테스트 수신자',
+        receiverName: params.receiverName || '',
         template: params.text,
         customText: params.text,
         milestone: params.milestone || 'general_announcement',
@@ -445,7 +497,8 @@ export const testSendAlimtok = async (params: {
     });
     const data = await response.json();
     return {
-      ok: data.ok,
+      // 팝빌 미설정(mock) 응답은 발송 실패로 취급
+      ok: Boolean(data.ok) && !data.mock,
       mock: data.mock,
       channel: data.channel,
       receiptNum: data.receiptNum,
@@ -524,29 +577,29 @@ export interface PopbillAlimtokTemplate {
   memo?: string;
 }
 
+// 로컬 기본 문안 (팝빌 승인 여부 미확인 → 대기). 실제 승인 템플릿은 fetchPopbillLiveTemplates로 서버에서 받아 옴.
+// (이전: 모두 승인 상태와 가짜 심사일자를 달아 승인된 것처럼 표시)
+// 로컬 기본 문안 (팝빌 승인 여부 미확인 → 대기). 실제 승인 템플릿은 fetchPopbillLiveTemplates로 서버에서 받아 옴.
+// (이전: 모두 승인 상태와 가짜 심사일자를 달아 승인된 것처럼 표시)
 export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
   // Stage 01: 상담 및 적격 검토
   {
     templateCode: '026090000408',
     templateName: '신청 적격 판정 결과 안내',
     template: `[#{법무법인}] 신청 적격 판정 결과 안내\n\n#{고객명}님, 제출해주신 정보를 검토한 결과 #{사건유형} 신청 적격 요건을 충족하셨습니다.\n\n■ 담당 변호사: #{담당변호사}\n■ 사건 유형: #{사건유형}\n■ 다음 절차: #{다음절차}\n\n아래 링크에서 상세 진단 결과와 향후 절차를 확인하실 수 있습니다.\n▶ 확인 링크: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 1,
     category: '상담·적격',
     buttons: [{ name: '적격 진단결과 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-01',
-    reviewedAt: '2026-08-03',
   },
   {
     templateCode: 'MYKIM_ATS_01',
     templateName: '상담 일정 및 준비사항 안내',
     template: `[#{법무법인}] 상담 일정 및 준비사항 안내\n\n#{고객명}님, 정밀 채무 진단을 위한 변호사 상담 일정이 조율되었습니다.\n\n■ 상담 일시: #{상담일시}\n■ 상담 방식: #{상담방식}\n■ 준비 사항: #{준비사항}\n\n원활한 상담을 위해 일정을 확인해 주시기 바랍니다.\n▶ 예약 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 1,
     category: '상담·적격',
     buttons: [{ name: '상담 예약 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-05',
-    reviewedAt: '2026-08-07',
   },
 
   // Stage 02: 계약 체결 및 착수
@@ -554,56 +607,46 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
     templateCode: 'MYKIM_ATS_04',
     templateName: '모바일 전자계약 서명 요청',
     template: `[#{법무법인}] 모바일 전자계약 서명 요청\n\n#{고객명}님, 사건 위임을 위한 모바일 전자계약서가 준비되었습니다.\n\n■ 계약명: #{사건유형} 사건 수임계약\n■ 약정 수임료: #{수임료}\n■ 서명 기한: #{마감기한}\n\n아래 보안 링크에서 대표자 본인인증(PASS/문자) 후 서명을 완료해 주시기 바랍니다.\n▶ 전자서명 링크: #{서명링크}`,
-    state: '승인',
+    state: '대기',
     stage: 2,
     category: '계약·착수',
     buttons: [{ name: '1분 간편 전자서명', type: 'WL', urlMobile: 'https://mykim.kr?view=sign', urlPc: 'https://mykim.kr?view=sign' }],
-    registeredAt: '2026-08-10',
-    reviewedAt: '2026-08-12',
   },
   {
     templateCode: 'MYKIM_ATS_12',
     templateName: '수임료 분납 예정 및 계좌 안내 (D-3)',
     template: `[#{법무법인}] 수임료 분납 예정 안내\n\n#{고객명}님, 사건 착수 및 수임료 분납 일정을 안내해 드립니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n■ 입금 기한: #{마감기한}\n\n원활한 사건 진행을 위해 기한 내 입금 부탁드립니다.\n▶ 납부 현황 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 2,
     category: '정산·수임료',
     buttons: [{ name: '계좌 및 영수증 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-10',
-    reviewedAt: '2026-08-12',
   },
   {
     templateCode: 'MYKIM_ATS_13',
     templateName: '수임료 당일 납부 리마인드 (D-Day)',
     template: `[#{법무법인}] 수임료 당일 납부 안내\n\n#{고객명}님, 오늘은 약정된 수임료 납부일입니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n\n입금 확인 후 마이페이지에서 납부 확인증을 조회하실 수 있습니다.\n▶ 납부 현황 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 2,
     category: '정산·수임료',
     buttons: [{ name: '납부 현황 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-10',
-    reviewedAt: '2026-08-12',
   },
   {
     templateCode: 'MYKIM_ATS_14',
     templateName: '수임료 연체 미납 안내 및 조율',
     template: `[#{법무법인}] 수임료 연체 미납 안내\n\n#{고객명}님, 약정된 수임료 납부기한(#{마감기한})이 경과되어 안내드립니다.\n\n■ 미납 항목: #{납부항목}\n■ 미납 금액: #{입금금액}\n■ 입금 계좌: #{입금계좌}\n\n납부 일정 조율이나 상담이 필요하신 경우 사무소로 연락 부탁드립니다.\n▶ 납부 및 문의: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 2,
     category: '정산·수임료',
     buttons: [{ name: '납부 및 상담 문의', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-10',
-    reviewedAt: '2026-08-12',
   },
   {
     templateCode: 'MYKIM_ATS_15',
     templateName: '수임료 정상 입금 확인 영수증',
     template: `[#{법무법인}] 수임료 정상 입금 확인\n\n#{고객명}님의 약정 수임료가 정상 입금 확인되었습니다.\n\n■ 납부 항목: #{납부항목}\n■ 입금 금액: #{입금금액}\n■ 입금 일시: #{입금일시}\n■ 잔여 미수금: #{잔여금액}\n\n신속하고 성실하게 사건을 진행하겠습니다. 감사합니다.\n▶ 사건 진행상황 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 2,
     category: '정산·수임료',
     buttons: [{ name: '입금 영수증 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-10',
-    reviewedAt: '2026-08-12',
   },
 
   // Stage 03: 고객정보 및 서류수집
@@ -611,67 +654,55 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
     templateCode: 'MYKIM_ATS_05_P1',
     templateName: '[1차] 착수 기본서류 빠른등기 발송 안내',
     template: `[#{법무법인}] 개인회생 신속 착수 [1차 기본서류] 빠른등기 안내\n\n#{고객명}님, 금융기관 부채증명서 발급 대행(약 7일 소요)을 위해 아래 실물 서류를 사무소로 빠른 등기 발송해 주세요.\n\n■ 1차 준비 서류 목록\n1. 주민등록등본 1부 (전체 포함)\n2. 주민등록초본 1부 (주소이력 포함)\n3. 가족관계증명서 1부 (상세)\n4. 혼인관계증명서 1부 (상세)\n5. 신분증 사본 (앞/뒤)\n6. 인감도장 (서명대체 불가)\n7. 인감증명서 #{인감부수} (채권사 #{채권사수}곳 + 5부 / 주민센터 본인발급)\n8. 세목별과세증명서 1부 (최근 5년, 본인/배우자)\n9. 자동차등록원부 갑/을 (차량 소유 시)\n\n📮 등기 발송 주소: #{등기주소}\n수신: #{법무법인} 회생전담팀 앞\n▶ 1차 서류 발급 가이드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '등기 주소 복사 및 가이드', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-09-10',
-    reviewedAt: '2026-09-12',
   },
   {
     templateCode: 'MYKIM_ATS_05_P2',
     templateName: '[2차] 1차 수령 확인 및 부채증명서 발급중 2차 안내',
     template: `[#{법무법인}] 1차 서류 수령 완료 & 2차 서류 간편제출 안내\n\n#{고객명}님, 보내주신 1차 서류(인감 등)가 안전하게 도착하여 각 금융기관 부채증명서 발급(약 7일 소요)에 착수했습니다.\n\n부채증명서가 발급되는 동안 아래 2차 서류를 스마트폰으로 촬영하여 간편하게 업로드해 주시기 바랍니다.\n\n■ 2차 준비 서류\n- 주거래 통장 1년 입출금 거래내역\n- 보험가입내역 및 예상 해약환급금 확인서\n- 건강보험 자격득실확인서 & 납부확인서\n- 지적전산자료(스마트국토정보 무소유증명)\n- 재직증명서 & 최근 6개월 급여명세서\n- 개인회생 진술서 및 임대차계약서\n\n▶ 2차 서류 스마트폰 업로드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '모바일 2차 서류함 업로드', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-09-10',
-    reviewedAt: '2026-09-12',
   },
   {
     templateCode: 'MYKIM_ATS_05_P2R',
     templateName: '[2차] 부채증명서 완료 임박 2차 서류 마감 리마인더',
     template: `[#{법무법인}] ⏰ 부채증명서 발급 완료 임박! 2차 서류 마감 안내\n\n#{고객명}님, 금융기관 부채증명서 발급이 이번 주 중 완료될 예정입니다.\n완료 즉시 법원 회생신청서 및 금지명령을 접수할 수 있도록 미제출 2차 서류(#{미제출건수}건)의 업로드를 부탁드립니다.\n\n■ 미제출 서류: #{미제출서류목록}\n■ 마감 기한: #{마감기한}\n▶ 2차 서류 모바일 즉시 업로드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '모바일 서류 즉시 제출', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-09-10',
-    reviewedAt: '2026-09-12',
   },
   {
     templateCode: 'MYKIM_ATS_05',
     templateName: '미제출 서류 간편발급함 안내 (공통)',
     template: `[#{법무법인}] 필수 서류 간편 발급 안내\n\n#{고객명}님, 법원 제출에 필요한 서류 목록이 모바일 서류함에 업데이트되었습니다.\n\n■ 미제출 서류: #{미제출서류목록}\n■ 제출 마감: #{마감기한}\n\n정부24 및 홈택스 모바일 간편 발급 링크를 통해 스마트폰으로 바로 촬영/업로드해 주시기 바랍니다.\n▶ 모바일 서류함: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '모바일 서류함 바로가기', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-15',
-    reviewedAt: '2026-08-17',
   },
   {
     templateCode: 'MYKIM_ATS_05B',
     templateName: '채무경위 진술서 모바일 작성 안내',
     template: `[#{법무법인}] 채무경위 진술서 모바일 작성 안내\n\n#{고객명}님, 법원에 제출할 채무 증대 경위서(진술서) 작성을 요청드립니다.\n\n스마트폰에서 10문 10답 가이드를 따라 간편하게 작성하실 수 있습니다.\n■ 작성 마감: #{마감기한}\n▶ 진술서 작성 링크: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '진술서 간편 작성하기', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-15',
-    reviewedAt: '2026-08-17',
   },
   {
     templateCode: 'MYKIM_ATS_05C',
     templateName: '서류 보완(재발급) 요청 안내',
     template: `[#{법무법인}] 서류 보완(재발급) 요청 안내\n\n#{고객명}님, 제출해주신 서류 중 법원 기준에 맞춘 보완이 필요합니다.\n\n■ 대상 서류: #{대상서류}\n■ 보완 사유: #{보완사유}\n■ 마감 기한: #{마감기한}\n\n가족 주민번호 뒷자리 마스킹(******) 여부를 확인하신 후 다시 업로드해 주세요.\n▶ 서류 재업로드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 3,
     category: '서류수집',
     buttons: [{ name: '서류 재업로드하기', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-20',
-    reviewedAt: '2026-08-22',
   },
 
   // Stage 04: 신청서 작성 및 법원 접수
@@ -679,23 +710,19 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
     templateCode: 'MYKIM_ATS_06',
     templateName: '법원 개시신청서 접수완료 안내',
     template: `[#{법무법인}] 법원 개시신청서 정식 접수 완료\n\n#{고객명}님, 대법원 전자소송을 통해 #{사건유형} 신청서가 정식 접수되었습니다.\n\n■ 관할 법원: #{관할법원}\n■ 사건 번호: #{사건번호}\n■ 다음 단계: #{다음단계}\n\n▶ 나의사건 진행현황: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 4,
     category: '법원접수',
     buttons: [{ name: '대법원 나의사건 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-20',
-    reviewedAt: '2026-08-22',
   },
   {
     templateCode: 'MYKIM_ATS_07',
     templateName: '법원 금지명령 인용 통보',
     template: `[#{법무법인}] 법원 금지명령 인용 결정 안내\n\n#{고객명}님, 법원에서 채권자 추심 금지명령이 인용 결정되었습니다.\n\n■ 결정 일자: #{결정일자}\n■ 법적 효력: 급여/통장 압류 및 빚 독촉 전화 전면 금지\n■ 대응 요령: 채권자 연락 시 사건번호(#{사건번호}) 및 대리인 선임 사실 고지\n\n▶ 결정문 상세 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 4,
     category: '법원접수',
     buttons: [{ name: '금지명령 결정문 열람', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-25',
-    reviewedAt: '2026-08-27',
   },
 
   // Stage 05: 법원대응 및 보정
@@ -703,22 +730,18 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
     templateCode: 'MYKIM_ATS_08',
     templateName: '법원 보정권고 소명자료 제출 요청',
     template: `[#{법무법인}] 법원 보정권고에 따른 소명자료 요청\n\n#{고객명}님, 법원 회생위원 보정요구에 따른 추가 소명자료 제출이 필요합니다.\n\n■ 보정 내용: #{보정요구내용}\n■ 제출 기한: #{마감기한}\n\n기한 내 소명자료가 미제출될 경우 사건 기각 위험이 있으니 빠른 업로드 부탁드립니다.\n▶ 소명자료 업로드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 5,
     category: '보정대응',
     buttons: [{ name: '소명자료 간편 업로드', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-08-25',
-    reviewedAt: '2026-08-27',
   },
   {
     templateCode: 'MYKIM_ATS_08B',
     templateName: '법원 보정기한 마감 임박 긴급 리마인더',
     template: `[#{법무법인}] 🚨 [긴급] 법원 보정서 제출 기한 임박 안내\n\n#{고객명}님, 법원 보정서 제출 마감일(#{마감기한})이 얼마 남지 않았습니다.\n\n서류 제출이 지연되면 사건이 기각될 수 있습니다. 확인 즉시 담당자에게 연락 바랍니다.\n■ 담당 변호사: #{담당변호사}\n■ 직통 번호: #{직통전화}`,
-    state: '승인',
+    state: '대기',
     stage: 5,
     category: '보정대응',
-    registeredAt: '2026-08-28',
-    reviewedAt: '2026-08-30',
   },
 
   // Stage 06: 사후관리 및 면책
@@ -726,23 +749,19 @@ export const DEFAULT_POPBILL_TEMPLATES: PopbillAlimtokTemplate[] = [
     templateCode: 'MYKIM_ATS_09',
     templateName: '개시결정 축하 & 가상계좌 스케줄 안내',
     template: `[#{법무법인}] 🎉 개인회생 개시결정 통보\n\n#{고객명}님, 축하드립니다! 법원 개인회생 개시결정이 내려졌습니다.\n\n■ 월 변제금: #{월변제금}\n■ 1회차 납부일: #{1회차납부일}\n■ 법원 가상계좌: #{법원가상계좌}\n\n인가 전 적립금을 성실히 납부하셔야 최종 인가결정이 내려집니다.\n▶ 변제금 납부 가이드: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 6,
     category: '사후관리',
     buttons: [{ name: '가상계좌 적립금 확인', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-09-01',
-    reviewedAt: '2026-09-03',
   },
   {
     templateCode: 'MYKIM_ATS_10',
     templateName: '채권자집회 출석 지도 및 유의사항',
     template: `[#{법무법인}] 법원 채권자집회 기일 출석 안내\n\n#{고객명}님, 법원 채권자집회 기일이 지정되어 안내드립니다.\n\n■ 집회 일시: #{집회일시}\n■ 법정 장소: #{법정장소}\n■ 지참물: 주민등록증 원본 필수 (15분 전 입실)\n\n원활한 참석을 위해 사전에 진행 요령을 안내해 드립니다.\n▶ 집회 유의사항 확인: #{안내링크}`,
-    state: '승인',
+    state: '대기',
     stage: 6,
     category: '사후관리',
     buttons: [{ name: '집회 장소 및 유의사항', type: 'WL', urlMobile: 'https://mykim.kr/my', urlPc: 'https://mykim.kr/my' }],
-    registeredAt: '2026-09-01',
-    reviewedAt: '2026-09-03',
   },
 ];
 
@@ -781,7 +800,7 @@ export const registerNewTemplateForReview = (newTemplate: PopbillAlimtokTemplate
     filtered.unshift({
       ...newTemplate,
       state: '심사중',
-      registeredAt: new Date().toISOString().split('T')[0],
+      registeredAt: localYmd(),
     });
     localStorage.setItem(LOCAL_STORAGE_TEMPLATES_KEY, JSON.stringify(filtered));
   } catch (err) {
@@ -797,11 +816,25 @@ export const fetchPopbillLiveTemplates = async (): Promise<{
   templateMgtUrl: string;
 }> => {
   try {
-    const res = await fetch('/api/alimtok?action=templates');
+    const res = await fetch('/api/alimtok?action=templates', { headers: await apiHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    // 팝빌 ListATSTemplate는 승인된 템플릿만 반환 → 서버에서 받은 것만 '승인'으로 표시하고, 분류 정보는 로컬 목록에서 보충
+    const local = loadPopbillTemplates();
+    const live: PopbillAlimtokTemplate[] = Array.isArray(data.templates)
+      ? data.templates.map((t: any) => {
+          const base = local.find(l => l.templateCode === t.templateCode);
+          return {
+            ...(base || { stage: 0, category: '팝빌 등록' }),
+            templateCode: t.templateCode,
+            templateName: t.templateName || base?.templateName || t.templateCode,
+            template: t.template || base?.template || '',
+            state: '승인' as const,
+          } as PopbillAlimtokTemplate;
+        })
+      : [];
     return {
-      templates: Array.isArray(data.templates) && data.templates.length > 0 ? data.templates : loadPopbillTemplates(),
+      templates: live.length > 0 ? live : local,
       templateMgtUrl: data.templateMgtUrl || 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE',
     };
   } catch {

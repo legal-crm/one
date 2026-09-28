@@ -361,7 +361,7 @@ export default function Fast2ndDocHubModal({
             <button
               type="button"
               onClick={() => {
-                toast.success('대법원 표준 규격 A4 인쇄 미리보기를 준비합니다.');
+                // 현재 화면을 브라우저 인쇄 (법원 서식 변환 아님)
                 window.print();
               }}
               className="flex-1 sm:flex-initial px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-300 dark:border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"

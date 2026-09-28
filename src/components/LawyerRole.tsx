@@ -39,6 +39,7 @@ import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus,
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
 import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
 import { loadStaffMembers, loadCrmExtMap, getCrmExt } from '../services/crmService';
+import { feeAmountWon } from '../services/alimtokService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { createNotification } from '../services/notificationCenterService';
 import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, getTaxInvoicePdfUrl, type LawyerBusinessInfo } from '../services/taxInvoiceService';
@@ -623,19 +624,28 @@ export default function LawyerRole({
     }
     setCheckingFirmNts(true);
     try {
+      // 개업일자·대표자명은 사업자등록증 기준으로 직접 입력받음 (이전: 개업일 '20200101' 고정 → 실제 조회는 항상 불일치)
+      const openDate = (window.prompt('사업자등록증의 개업연월일을 입력하세요 (YYYYMMDD)') || '').replace(/\D/g, '');
+      const repName = (window.prompt('사업자등록증의 대표자 성명을 입력하세요', activeLawyer?.name || '') || '').trim();
+      if (openDate.length !== 8 || !repName) {
+        setCheckingFirmNts(false);
+        toast.error('개업일자(8자리)와 대표자 성명이 필요합니다.');
+        return;
+      }
       const { validateBusinessRegistration } = await import('../services/ntsService');
       const result = await validateBusinessRegistration({
         businessNumber: cleanNum,
-        openingDate: '20200101',
-        representativeName: activeLawyer?.name || '대표자',
+        openingDate: openDate,
+        representativeName: repName,
       });
       setCheckingFirmNts(false);
-      if (result.success && result.status !== 'CLOSED') {
+      // 일치 + 계속사업자일 때만 확인 완료 (이전: 불일치·휴업도 CLOSED만 아니면 '확인 완료')
+      if (result.success && result.isValid && result.status === 'VALID') {
         setSignupNtsStatus('VALID');
         toast.success(`국세청 진위확인 완료: ${result.statusName} (${result.taxType || '정상 사업자'})`);
       } else {
         setSignupNtsStatus(result.status);
-        toast.warning(`국세청 상태: ${result.statusName}`);
+        toast.warning(result.error || `국세청 상태: ${result.statusName}`);
       }
     } catch (err: any) {
       setCheckingFirmNts(false);
@@ -3581,7 +3591,7 @@ export default function LawyerRole({
               const totalClients = allExts.length || 1;
               const channelEntries = Object.entries(INTAKE_CHANNEL_CONFIG).map(([key, cfg]) => ({ key, ...cfg, count: channelCounts[key] || 0 })).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
               let totalFeeAmount = 0; let totalPaidAmount = 0; let overdueCount = 0;
-              allExts.forEach((ext: any) => { if (ext.feeSchedule) { ext.feeSchedule.forEach((f: any) => { totalFeeAmount += f.amount || 0; if (f.status === 'paid') totalPaidAmount += f.amount || 0; if (f.status === 'overdue') overdueCount++; }); } });
+              allExts.forEach((ext: any) => { if (ext.feeSchedule) { ext.feeSchedule.forEach((f: any) => { const w = feeAmountWon(f); totalFeeAmount += w; if (f.status === 'paid') totalPaidAmount += w; if (f.status === 'overdue') overdueCount++; }); } });
               const receivable = totalFeeAmount - totalPaidAmount;
               const urgentCorrections: { title: string; dDay: number; deadline: string }[] = [];
               allExts.forEach((ext: any) => { if (ext.correctionOrders) { ext.correctionOrders.forEach((co: any) => { if (co.status === 'pending') { const dl = parseLocalYmd(co.deadline || ''); if (!dl) return; const today0 = new Date(); today0.setHours(0, 0, 0, 0); const diff = Math.round((dl.getTime() - today0.getTime()) / 86400000); if (diff <= 7) urgentCorrections.push({ title: co.title, dDay: diff, deadline: co.deadline }); } }); } });
@@ -3602,10 +3612,10 @@ export default function LawyerRole({
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="flex items-center gap-2 mb-4"><span className="text-lg">💰</span><span className="font-bold text-slate-800 text-sm">수임료 현황</span></div>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">총 약정액</span><span className="font-bold text-slate-800 text-sm">{totalFeeAmount.toLocaleString()}만원</span></div>
-                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">수금 완료</span><span className="font-bold text-emerald-600 text-sm">{totalPaidAmount.toLocaleString()}만원</span></div>
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">총 약정액</span><span className="font-bold text-slate-800 text-sm">{totalFeeAmount.toLocaleString()}원</span></div>
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">수금 완료</span><span className="font-bold text-emerald-600 text-sm">{totalPaidAmount.toLocaleString()}원</span></div>
                       <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: totalFeeAmount > 0 ? `${(totalPaidAmount / totalFeeAmount) * 100}%` : '0%' }} /></div>
-                      <div className="flex justify-between items-center pt-1 border-t border-slate-100"><span className="text-xs text-slate-500">미수금</span><span className={`font-bold text-sm ${receivable > 0 ? 'text-red-500' : 'text-slate-400'}`}>{receivable.toLocaleString()}만원</span></div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100"><span className="text-xs text-slate-500">미수금</span><span className={`font-bold text-sm ${receivable > 0 ? 'text-red-500' : 'text-slate-400'}`}>{receivable.toLocaleString()}원</span></div>
                       {overdueCount > 0 && <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-medium">⚠️ 연체 {overdueCount}건</div>}
                       {totalFeeAmount === 0 && <p className="text-xs text-slate-400 text-center py-2">수임료를 등록하면 현황이 표시됩니다.</p>}
                     </div>
@@ -5098,7 +5108,7 @@ export default function LawyerRole({
                       <label className="text-sm font-bold text-slate-700 block mb-1.5">사업자등록번호 *</label>
                       <div className="flex gap-2">
                         <input type="text" value={bizForm.corpNum} onChange={e => setBizForm(p => ({...p, corpNum: e.target.value}))} placeholder="000-00-00000" maxLength={12} className="flex-1 p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); setBizCheckResult(r.ok ? '✅ 정상 사업자' : `❌ ${r.error}`); }} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-xl transition-colors whitespace-nowrap cursor-pointer">확인</button>
+                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); const st = (r.data as any)?.state; setBizCheckResult(!r.ok ? `❌ ${r.error || '확인 실패'}` : st === '1' || st === 1 ? '✅ 사업 중 (팝빌 휴폐업 조회)' : st === '2' || st === 2 ? '⚠️ 폐업' : st === '3' || st === 3 ? '⚠️ 휴업' : `조회 결과 상태: ${st ?? '확인 불가'}`); }} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-xl transition-colors whitespace-nowrap cursor-pointer">확인</button>
                       </div>
                       {bizCheckResult && <p className="text-xs mt-1.5 font-bold text-slate-500">{bizCheckResult}</p>}
                     </div>

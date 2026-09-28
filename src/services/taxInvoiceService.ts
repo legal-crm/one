@@ -4,6 +4,8 @@ import * as XLSX from 'xlsx-js-style';
 import type { AdOrder } from '../types';
 import { supabase } from '../supabaseClient';
 
+import { localYmd } from '../utils/localDate';
+
 const API_BASE = '/api/invoice';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -106,40 +108,11 @@ export async function issueTaxInvoice(data: TaxInvoiceIssueRequest): Promise<{
       return await res.json();
     }
     const errData = await res.json().catch(() => ({}));
-    if (res.status === 401 || res.status === 403) {
-      // 어드민 세션이 아직 연동되지 않은 로컬/모의 모드일 때 모의 승인 번호로 안전하게 통과
-      console.warn('[issueTaxInvoice] Auth skipped/fallback to Mock for local demo');
-      return {
-        ok: true,
-        data: {
-          ntsConfirmNum: `NTS-${Date.now().toString().slice(-8)}`,
-          itemKey: `popbill-${Date.now()}`,
-          orderId: data.orderId,
-          issuedAt: new Date().toISOString(),
-          supplyCost: data.supplyCost,
-          tax: data.tax || Math.round(data.supplyCost * 0.1),
-          totalAmount: data.totalAmount || (data.supplyCost + (data.tax || Math.round(data.supplyCost * 0.1))),
-          mock: true,
-        }
-      };
-    }
+    // 인증 실패·네트워크 오류는 실패로 반환 (이전: 가짜 국세청승인번호 'NTS-…'/'DEMO-…'와 ok:true를 돌려줘 발행된 것처럼 저장됨)
     return { ok: false, error: errData.error || `발행 실패 (HTTP ${res.status})` };
   } catch (err: any) {
-    // 네트워크 연결 불가 시 모의 발행 지원
-    console.warn('[issueTaxInvoice Mock Fallback]', err);
-    return {
-      ok: true,
-      data: {
-        ntsConfirmNum: `DEMO-${Date.now().toString().slice(-8)}`,
-        itemKey: `popbill-mock-${Date.now()}`,
-        orderId: data.orderId,
-        issuedAt: new Date().toISOString(),
-        supplyCost: data.supplyCost,
-        tax: data.tax || Math.round(data.supplyCost * 0.1),
-        totalAmount: data.totalAmount || (data.supplyCost + (data.tax || Math.round(data.supplyCost * 0.1))),
-        mock: true,
-      }
-    };
+    console.warn('[issueTaxInvoice] network error', err);
+    return { ok: false, error: '네트워크 오류로 세금계산서를 발행하지 못했습니다.' };
   }
 }
 
@@ -171,41 +144,10 @@ export async function issueModifyTaxInvoice(data: ModifyTaxInvoiceRequest): Prom
       return await res.json();
     }
     const errData = await res.json().catch(() => ({}));
-    if (res.status === 401 || res.status === 403) {
-      console.warn('[issueModifyTaxInvoice] Fallback to Mock for local demo');
-      return {
-        ok: true,
-        data: {
-          ntsConfirmNum: `MOD-${Date.now().toString().slice(-8)}`,
-          itemKey: `popbill-mod-${Date.now()}`,
-          orderId: data.orderId,
-          modifyCode: data.modifyCode,
-          modifyReason: data.modifyReason || '계약의 해제',
-          issuedAt: new Date().toISOString(),
-          supplyCost: -Math.abs(data.refundSupplyCost),
-          tax: -Math.abs(data.refundTax || Math.round(data.refundSupplyCost * 0.1)),
-          totalAmount: -Math.abs(data.refundTotalAmount || (data.refundSupplyCost + (data.refundTax || Math.round(data.refundSupplyCost * 0.1)))),
-          mock: true,
-        }
-      };
-    }
+    // (이전: 401/403·네트워크 오류 시 가짜 승인번호 'MOD-…'로 ok:true 반환)
     return { ok: false, error: errData.error || `수정발행 실패 (HTTP ${res.status})` };
   } catch (err: any) {
-    return {
-      ok: true,
-      data: {
-        ntsConfirmNum: `MOD-DEMO-${Date.now().toString().slice(-8)}`,
-        itemKey: `popbill-mod-mock-${Date.now()}`,
-        orderId: data.orderId,
-        modifyCode: data.modifyCode,
-        modifyReason: data.modifyReason || '계약의 해제',
-        issuedAt: new Date().toISOString(),
-        supplyCost: -Math.abs(data.refundSupplyCost),
-        tax: -Math.abs(data.refundTax || Math.round(data.refundSupplyCost * 0.1)),
-        totalAmount: -Math.abs(data.refundTotalAmount || (data.refundSupplyCost + (data.refundTax || Math.round(data.refundSupplyCost * 0.1)))),
-        mock: true,
-      }
-    };
+    return { ok: false, error: '네트워크 오류로 수정세금계산서를 발행하지 못했습니다.' };
   }
 }
 
@@ -218,7 +160,7 @@ export async function resendTaxInvoiceEmail(itemKey: string, receiverEmail: stri
   try {
     const res = await fetch(`${API_BASE}/resend`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ itemKey, receiverEmail }),
     });
     return await res.json();
@@ -236,7 +178,7 @@ export async function checkCorpNum(corpNum: string): Promise<{
   try {
     const res = await fetch(`${API_BASE}/check-corp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ corpNum }),
     });
     return await res.json();
@@ -265,7 +207,7 @@ export async function listTaxInvoices(params: {
       page: String(params.page || 1),
       perPage: String(params.perPage || 20),
     });
-    const res = await fetch(`${API_BASE}/list?${query}`);
+    const res = await fetch(`${API_BASE}/list?${query}`, { headers: await getAuthHeaders() });
     return await res.json();
   } catch (err) {
     return { ok: false, error: '네트워크 오류: 목록 조회 실패' };
@@ -279,7 +221,7 @@ export async function getTaxInvoicePdfUrl(itemKey: string): Promise<{
   error?: string;
 }> {
   try {
-    const res = await fetch(`${API_BASE}/pdf?itemKey=${encodeURIComponent(itemKey)}`);
+    const res = await fetch(`${API_BASE}/pdf?itemKey=${encodeURIComponent(itemKey)}`, { headers: await getAuthHeaders() });
     return await res.json();
   } catch (err) {
     return { ok: false, error: '네트워크 오류: PDF URL 조회 실패' };
@@ -346,7 +288,7 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
       rows.push({
         '순번': seq++,
         '발행구분': '정발행(매출)',
-        '작성일자': order.taxInvoice.issuedAt ? order.taxInvoice.issuedAt.slice(0, 10) : '',
+        '작성일자': order.taxInvoice.issuedAt ? localYmd(new Date(order.taxInvoice.issuedAt)) : '',
         '공급자상호': '몬스터랩',
         '공급자사업자번호': '521-39-01355',
         '공급자대표': '진성호',
@@ -358,7 +300,8 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
         '세액(VAT)': order.taxInvoice.tax,
         '합계금액': order.taxInvoice.totalAmount,
         '국세청승인번호': order.taxInvoice.ntsConfirmNum || '',
-        '상태': order.modifiedTaxInvoice ? '수정발행됨' : '국세청전송완료',
+        // 국세청 전송 상태는 조회하지 않음 (이전: 항상 '국세청전송완료' 기재)
+        '상태': order.modifiedTaxInvoice ? '수정발행됨' : '발행 (국세청 전송상태 미확인)',
         '비고': `주문번호: ${order.id}`,
       });
     }
@@ -370,7 +313,7 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
       rows.push({
         '순번': seq++,
         '발행구분': `수정발행 [${modReasonLabel}]`,
-        '작성일자': mod.issuedAt ? mod.issuedAt.slice(0, 10) : '',
+        '작성일자': mod.issuedAt ? localYmd(new Date(mod.issuedAt)) : '',
         '공급자상호': '몬스터랩',
         '공급자사업자번호': '521-39-01355',
         '공급자대표': '진성호',
@@ -382,7 +325,7 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
         '세액(VAT)': mod.tax,           // 음수
         '합계금액': mod.totalAmount,    // 음수
         '국세청승인번호': mod.ntsConfirmNum || '',
-        '상태': '국세청전송완료(차감)',
+        '상태': '수정발행 (국세청 전송상태 미확인)',
         '비고': `사유: ${mod.modifyReason || modReasonLabel} (당초: ${order.taxInvoice?.ntsConfirmNum || ''})`,
       });
     }
@@ -414,7 +357,7 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '세금계산서 매출내역');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localYmd();
   const actualFilename = filename || `마이김변_세금계산서_부가세신고용_${today}.xlsx`;
   XLSX.writeFile(wb, actualFilename);
 }

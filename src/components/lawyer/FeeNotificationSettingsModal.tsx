@@ -49,7 +49,7 @@ export default function FeeNotificationSettingsModal({ isOpen, onClose }: Props)
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">수임료 안내 발송 설정</h2>
-              <p className="text-xs text-slate-500">자동 알림톡 발송 규칙 및 계좌정보 관리</p>
+              <p className="text-xs text-slate-500">발송 규칙(저장만 됨) 및 입금계좌 관리</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 transition-colors">
@@ -61,8 +61,8 @@ export default function FeeNotificationSettingsModal({ isOpen, onClose }: Props)
           {/* 전체 자동 발송 스위치 */}
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
             <div>
-              <h3 className="font-bold text-slate-800 text-sm">전체 자동 발송 사용</h3>
-              <p className="text-xs text-slate-500 mt-1">이 기능을 끄면 모든 수임료 안내가 자동으로 발송되지 않습니다.</p>
+              <h3 className="font-bold text-slate-800 text-sm">자동 발송 규칙 사용 (준비 중)</h3>
+              <p className="text-xs text-amber-700 mt-1">예약 발송 기능이 아직 없어 켜 두어도 자동으로 발송되지 않습니다. 수임료 화면에서 직접 발송해 주세요.</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input 
@@ -156,7 +156,7 @@ export default function FeeNotificationSettingsModal({ isOpen, onClose }: Props)
                 className="w-4 h-4 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500 cursor-pointer mt-0.5"
               />
               <label htmlFor="sendReceipt" className="text-sm font-bold text-emerald-900 cursor-pointer">
-                납부 확인(입금) 시 자동 영수증 안내 발송
+                입금 처리 시 영수증 안내 발송 창 열기
               </label>
           </div>
 

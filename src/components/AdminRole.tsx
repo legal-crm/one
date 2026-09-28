@@ -156,10 +156,11 @@ export default function AdminRole({
     if (invoiceConfirmOrder) {
       setConfirmDepositorVerified(true);
       setConfirmIssueTaxInvoice(true);
-      setConfirmCorpNum(invoiceConfirmOrder.buyerCorpNum || '120-81-47521');
+      // 가짜 기본값 제거 (이전: '120-81-47521'·'tax@lawyer.example.com' → 제3자 사업자번호로 세금계산서가 발행될 수 있었음)
+      setConfirmCorpNum(invoiceConfirmOrder.buyerCorpNum || '');
       setConfirmCorpName(invoiceConfirmOrder.buyerCorpName || `${invoiceConfirmOrder.lawyerName} 법률사무소`);
       setConfirmCEOName(invoiceConfirmOrder.buyerCEOName || invoiceConfirmOrder.lawyerName);
-      setConfirmEmail(invoiceConfirmOrder.buyerEmail || 'tax@lawyer.example.com');
+      setConfirmEmail(invoiceConfirmOrder.buyerEmail || '');
       setConfirmTaxEmail2(invoiceConfirmOrder.buyerTaxEmail2 || '');
       setInvoiceResult(null);
     }
@@ -3091,7 +3092,7 @@ export default function AdminRole({
                                     type="email"
                                     value={confirmEmail}
                                     onChange={e => setConfirmEmail(e.target.value)}
-                                    placeholder="tax@lawyer.example.com"
+                                    placeholder="세금계산서 수신 이메일"
                                     className="w-full p-2 rounded-lg bg-[#111622] border border-[#1E293B] text-white outline-none focus:border-indigo-500"
                                   />
                                 </div>
@@ -3126,16 +3127,21 @@ export default function AdminRole({
 
                               // 1. 세금계산서 발행 옵션이 켜져있을 경우
                               if (confirmIssueTaxInvoice) {
+                                if (!confirmCorpNum.trim() || !confirmCorpName.trim() || !confirmCEOName.trim()) {
+                                  setInvoiceResult({ ok: false, message: '공급받는자 사업자번호·상호·대표자명을 입력해 주세요.' });
+                                  setInvoiceIssuing(false);
+                                  return;
+                                }
                                 const res = await issueTaxInvoice({
                                   orderId: order.id,
                                   itemName: `${order.productName} (${order.contractMonths}개월)`,
                                   supplyCost,
                                   tax,
                                   totalAmount: order.totalPrice,
-                                  buyerCorpNum: confirmCorpNum || '120-81-47521',
-                                  buyerCorpName: confirmCorpName || `${order.lawyerName} 법률사무소`,
-                                  buyerCEOName: confirmCEOName || order.lawyerName,
-                                  buyerEmail: confirmEmail || 'tax@lawyer.example.com',
+                                  buyerCorpNum: confirmCorpNum.trim(),
+                                  buyerCorpName: confirmCorpName.trim(),
+                                  buyerCEOName: confirmCEOName.trim(),
+                                  buyerEmail: confirmEmail.trim() || undefined,
                                   buyerTaxEmail2: confirmTaxEmail2 || undefined,
                                 });
 
@@ -3143,7 +3149,7 @@ export default function AdminRole({
                                   invoiceData = {
                                     itemKey: res.data.itemKey,
                                     ntsConfirmNum: res.data.ntsConfirmNum,
-                                    issuedAt: res.data.issuedAt,
+                                    issuedAt: res.data.issuedAt || new Date().toISOString(),
                                     supplyCost: res.data.supplyCost,
                                     tax: res.data.tax,
                                     totalAmount: res.data.totalAmount,
@@ -3338,16 +3344,21 @@ export default function AdminRole({
                               const targetSupply = Math.round(targetTotal / 1.1);
                               const targetTax = targetTotal - targetSupply;
 
+                              // 당초 승인번호·사업자번호가 없으면 수정발행 불가 (이전: 'MOCK-…'·'0000000000'으로 요청)
+                              if (!order.taxInvoice?.ntsConfirmNum || !order.buyerCorpNum) {
+                                setModifyResult({ ok: false, message: '당초 국세청승인번호 또는 공급받는자 사업자번호가 없어 수정세금계산서를 발행할 수 없습니다.' });
+                                return;
+                              }
                               const res = await issueModifyTaxInvoice({
                                 orderId: order.id,
-                                orgNTSConfirmNum: order.taxInvoice?.ntsConfirmNum || `MOCK-${Date.now()}`,
+                                orgNTSConfirmNum: order.taxInvoice.ntsConfirmNum,
                                 modifyCode,
                                 modifyReason,
                                 refundSupplyCost: targetSupply,
                                 refundTax: targetTax,
                                 refundTotalAmount: targetTotal,
                                 itemName: order.productName,
-                                buyerCorpNum: order.buyerCorpNum || '0000000000',
+                                buyerCorpNum: order.buyerCorpNum,
                                 buyerCorpName: order.buyerCorpName,
                                 buyerCEOName: order.buyerCEOName,
                                 buyerEmail: order.buyerEmail,
@@ -3371,8 +3382,9 @@ export default function AdminRole({
                                 };
                                 updateAdOrder(cancelledOrder);
                                 setAdminAdOrders(loadAdOrders());
-                                setModifyResult({ ok: true, message: '✅ 마이너스 수정세금계산서가 국세청으로 발행되었습니다!' });
-                                toast.success('광고 취소 및 수정세금계산서가 국세청에 발행되었습니다.');
+                                // 발행 ≠ 국세청 전송 완료 (전송은 팝빌이 이후 처리)
+                                setModifyResult({ ok: true, message: '✅ 수정세금계산서가 발행되었습니다. 국세청 전송 상태는 팝빌에서 확인하세요.' });
+                                toast.success('광고 취소 및 수정세금계산서 발행이 완료되었습니다.');
                                 setTimeout(() => setModifyModalOrder(null), 1800);
                               } else {
                                 setModifyResult({ ok: false, message: `발행 실패: ${res.error}` });
@@ -3527,7 +3539,8 @@ export default function AdminRole({
                                       <button
                                         onClick={async () => {
                                           if (!order.taxInvoice?.itemKey) return;
-                                          const targetEmail = order.buyerEmail || 'tax@lawfirm.com';
+                                          const targetEmail = order.buyerEmail || '';
+                                          if (!targetEmail) { toast.error('공급받는자 이메일이 없습니다.'); return; }
                                           const confirmed = await dialog.confirm({
                                             title: '전자세금계산서 메일 재발송',
                                             message: `[${order.buyerCorpName || order.lawyerName}]\n${targetEmail} 주소로 국세청 승인 세금계산서 안내 메일을 재발송하시겠습니까?`,
@@ -3538,7 +3551,7 @@ export default function AdminRole({
                                           setResendingOrderId(order.id);
                                           const res = await resendTaxInvoiceEmail(order.taxInvoice.itemKey, targetEmail);
                                           if (res.ok) {
-                                            toast.success(`${targetEmail} 주소로 세금계산서 메일이 재발송되었습니다.`);
+                                            toast.success(`${targetEmail} 주소로 세금계산서 메일 재발송이 접수되었습니다.`);
                                           } else {
                                             toast.error(res.error || '메일 재발송 실패');
                                           }

@@ -119,19 +119,42 @@ export async function validateBusinessRegistration(params: NtsValidateParams): P
         status,
         statusCode,
         statusName,
-        taxType: item.status?.tax_type || (isValid ? '부가가치세 일반과세자' : '-'),
-        txId: `NTS-TX-${Date.now()}-${cleanBizNum.slice(-4)}`,
+        taxType: item.status?.tax_type || '-',
+        // 국세청 API는 거래번호를 주지 않음 → 조회 시각 기반 내부 참조값임을 명시 (이전: 'NTS-TX-…'로 공식 번호처럼 표시)
+        txId: `LOCAL-REF-${Date.now()}`,
         checkedAt: new Date().toISOString(),
         error: isValid ? undefined : (item.valid_msg || '국세청에 등록된 대표자명 또는 개업일자와 일치하지 않습니다.'),
       };
     } catch (err: any) {
-      console.warn('[NTS Service] API 호출 실패, 데모 모드로 폴백:', err.message);
-      // 오류 발생 시 개발 편의를 위해 시뮬레이션으로 폴백
+      // 실제 조회 실패는 실패로 반환 (이전: 시뮬레이션으로 폴백 → 장애 중에도 '계속사업자(정상)' 표시)
+      console.warn('[NTS Service] API 호출 실패:', err.message);
+      return {
+        success: false,
+        isValid: false,
+        status: 'INVALID',
+        statusCode: '',
+        statusName: '국세청 조회 실패',
+        txId: '',
+        checkedAt: new Date().toISOString(),
+        error: '국세청 사업자 상태 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      };
     }
   }
 
-  // 데모/시뮬레이션 모드 (API 키 미설정 또는 실패 시)
-  return simulateDemoNtsValidation(cleanBizNum, cleanDate, cleanRepName);
+  // 키 미설정: 개발 환경에서만 시뮬레이션 (이전: 운영에서도 모든 번호를 '계속사업자(정상)'·가짜 거래번호로 통과)
+  if (import.meta.env.DEV) {
+    return simulateDemoNtsValidation(cleanBizNum, cleanDate, cleanRepName);
+  }
+  return {
+    success: false,
+    isValid: false,
+    status: 'INVALID',
+    statusCode: '',
+    statusName: '국세청 조회 미설정',
+    txId: '',
+    checkedAt: new Date().toISOString(),
+    error: '국세청 사업자 진위확인 서비스가 설정되지 않아 확인하지 못했습니다.',
+  };
 }
 
 /**
@@ -178,7 +201,7 @@ async function simulateDemoNtsValidation(bNo: string, startDt: string, pNm: stri
     statusCode: '01',
     statusName: '계속사업자 (정상)',
     taxType: '부가가치세 일반과세자',
-    txId: `NTS-GOV-${Date.now()}-${bNo.slice(-4)}`,
+    txId: `DEV-SIM-${Date.now()}`,
     checkedAt: new Date().toISOString(),
   };
 }

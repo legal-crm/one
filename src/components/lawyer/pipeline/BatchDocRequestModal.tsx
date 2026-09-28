@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, Send, CheckSquare, Square, Calendar, ShieldCheck, 
   Smartphone, Clock, Sparkles, CheckCircle2, AlertCircle
@@ -23,7 +23,8 @@ interface BatchDocRequestModalProps {
   creditorCount?: number;
   initialPhase?: 1 | 2;
   unsubmittedDocs: BatchDocItem[];
-  onConfirmBatchSend: (selectedDocIds: string[], deadlineDays: number, requestType?: 'phase1' | 'phase2' | 'custom') => void;
+  /** 실제 발송 결과를 돌려줘야 함 (이전: void → 결과와 무관하게 '전송되었습니다' 표시) */
+  onConfirmBatchSend: (selectedDocIds: string[], deadlineDays: number, requestType: 'phase1' | 'phase2' | 'custom', previewText: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export default function BatchDocRequestModal({
@@ -31,19 +32,21 @@ export default function BatchDocRequestModal({
   onClose,
   clientName,
   clientPhone = '',
-  creditorCount = 5,
+  creditorCount = 0,
   initialPhase,
   unsubmittedDocs,
   onConfirmBatchSend,
 }: BatchDocRequestModalProps) {
   const [selectedPhase, setSelectedPhase] = useState<'all' | 1 | 2>(initialPhase || 'all');
-  const [deadlineDays, setDeadlineDays] = useState<number>(initialPhase === 2 ? 7 : 3);
-  const [includeReminder, setIncludeReminder] = useState<boolean>(true);
+  const [deadlineDays, setDeadlineDays] = useState<number>(initialPhase === 2 ? 7 : initialPhase === 1 ? 3 : 5);
+  const [isSending, setIsSending] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const phaseOf = (d: BatchDocItem) => d.phase || 1;
 
   // 선택된 phase에 따른 서류 ID 필터링
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
     if (initialPhase) {
-      return unsubmittedDocs.filter(d => d.phase === initialPhase).map(d => d.id);
+      return unsubmittedDocs.filter(d => phaseOf(d) === initialPhase).map(d => d.id);
     }
     return unsubmittedDocs.map(d => d.id);
   });
@@ -56,7 +59,7 @@ export default function BatchDocRequestModal({
       setSelectedIds(unsubmittedDocs.map(d => d.id));
       setDeadlineDays(5);
     } else {
-      setSelectedIds(unsubmittedDocs.filter(d => (d.phase || 1) === phase).map(d => d.id));
+      setSelectedIds(unsubmittedDocs.filter(d => phaseOf(d) === phase).map(d => d.id));
       setDeadlineDays(phase === 1 ? 3 : 7);
     }
   };
@@ -70,7 +73,7 @@ export default function BatchDocRequestModal({
   const toggleSelectAll = () => {
     const currentPool = selectedPhase === 'all' 
       ? unsubmittedDocs 
-      : unsubmittedDocs.filter(d => (d.phase || 1) === selectedPhase);
+      : unsubmittedDocs.filter(d => phaseOf(d) === selectedPhase);
 
     if (selectedIds.length === currentPool.length) {
       setSelectedIds([]);
@@ -79,16 +82,30 @@ export default function BatchDocRequestModal({
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (selectedIds.length === 0) {
       toast.error('요청할 서류를 1건 이상 선택해주세요.');
       return;
     }
+    if (isSending) return;
     const type = selectedPhase === 1 ? 'phase1' : selectedPhase === 2 ? 'phase2' : 'custom';
-    onConfirmBatchSend(selectedIds, deadlineDays, type);
     const typeLabel = selectedPhase === 1 ? '[1차 서류]' : selectedPhase === 2 ? '[2차 서류]' : '';
-    toast.success(`${clientName}님께 ${typeLabel} 미제출 서류 ${selectedIds.length}건 묶음 요청 알림톡이 전송되었습니다.`);
-    onClose();
+    const previewText = previewRef.current?.innerText || '';
+    setIsSending(true);
+    try {
+      const res = await onConfirmBatchSend(selectedIds, deadlineDays, type, previewText);
+      if (res.ok) {
+        toast.success(`${clientName}님께 ${typeLabel} 서류 ${selectedIds.length}건 요청 알림톡이 접수되었습니다.`);
+      } else {
+        // 발송 실패 시 안내 문구를 복사해 직접 전달할 수 있게 함
+        let copied = false;
+        try { if (previewText) { await navigator.clipboard.writeText(previewText); copied = true; } } catch { /* ignore */ }
+        toast.error(`알림톡 미발송: ${res.error || '발송 실패'}${copied ? ' — 안내 문구를 복사했습니다. 카카오톡·문자로 직접 전달해 주세요.' : ''}`, { duration: 8000 });
+      }
+      onClose();
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const targetDeadlineDate = new Date();
@@ -113,7 +130,7 @@ export default function BatchDocRequestModal({
                 미제출 서류 묶음 요청 (카카오 알림톡)
               </h3>
               <p className="text-xs text-blue-200 mt-0.5">
-                {clientName} 고객 ({clientPhone || '연락처'}) · 개별 전송 없이 한 번에 발송
+                {clientName} 고객 ({clientPhone || '연락처 없음'}) · 선택한 서류를 알림톡 1건으로 요청
               </p>
             </div>
           </div>
@@ -166,7 +183,7 @@ export default function BatchDocRequestModal({
                     : 'bg-blue-50/60 text-blue-900 border-blue-200 hover:bg-blue-100'
                 }`}
               >
-                📋 2차 서류 ({unsubmittedDocs.filter(d => d.phase === 2).length}건)
+                📋 2차 서류 ({unsubmittedDocs.filter(d => phaseOf(d) === 2).length}건)
               </button>
             </div>
           </div>
@@ -202,19 +219,12 @@ export default function BatchDocRequestModal({
             <div>
               <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-600" />
-                <span>자동 리마인더</span>
+                <span>리마인더</span>
               </label>
-              <label className="flex items-center gap-2 p-2 rounded-xl bg-white border border-slate-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeReminder}
-                  onChange={e => setIncludeReminder(e.target.checked)}
-                  className="rounded text-[#1E3A5F] border-slate-300 focus:ring-[#1E3A5F]"
-                />
-                <span className="font-medium text-slate-800">
-                  마감 24시간 전 자동 알림톡 발송
-                </span>
-              </label>
+              {/* (이전: '마감 24시간 전 자동 알림톡 발송' 체크박스 — 값이 어디에도 전달되지 않고 예약 발송 기능도 없음) */}
+              <p className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 leading-relaxed">
+                자동 예약 리마인더는 아직 지원하지 않습니다. 마감이 가까워지면 서류 목록의 [다시 알림]으로 직접 보내 주세요.
+              </p>
             </div>
           </div>
 
@@ -263,7 +273,7 @@ export default function BatchDocRequestModal({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {doc.phase === 1 ? (
+                        {phaseOf(doc) === 1 ? (
                           <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 border border-amber-200">
                             1차 등기
                           </span>
@@ -298,9 +308,9 @@ export default function BatchDocRequestModal({
                   ? '[2차 모바일 간편제출] 알림톡 도착 미리보기' 
                   : '고객 스마트폰 카카오 알림톡 도착 미리보기'}
               </span>
-              <span className="text-[10px] text-amber-700 font-bold">인증 알림톡</span>
+              <span className="text-[10px] text-amber-700 font-bold">미리보기 (실제 문구는 팝빌 승인 템플릿 기준)</span>
             </div>
-            <div className="bg-white p-3 rounded-xl border border-amber-200 text-slate-700 leading-relaxed text-[11px] font-mono whitespace-pre-line">
+            <div ref={previewRef} className="bg-white p-3 rounded-xl border border-amber-200 text-slate-700 leading-relaxed text-[11px] font-mono whitespace-pre-line">
               {selectedPhase === 1 ? (
 `[${officeName}]
 ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠른등기 안내입니다.
@@ -311,7 +321,7 @@ ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠�
 1. 주민등록등본 및 초본 각 1부
 2. 가족관계증명서 및 혼인관계증명서 (상세)
 3. 신분증 사본 및 인감도장 실물
-4. 인감증명서 ${creditorCount + 5}부 (채권사 ${creditorCount}곳 + 5부)
+4. 인감증명서 ${creditorCount > 0 ? `${creditorCount + 5}부 (채권사 ${creditorCount}곳 + 5부)` : '[채권사 수 + 5]부 (채권사 수 확인 후 안내)'}
 5. 지방세 세목별 과세증명서 (최근 5년)
 
 📮 등기 주소: ${officeAddress}
@@ -327,18 +337,14 @@ ${clientName}님, 1차 서류 수령 확인 완료! 부채증명서 발급(약 7
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})
 ■ 제출 기한: ${deadlineStr}까지
-■ 제출 방법: 스마트폰 간편 업로드 또는 등기우편 발송 모두 가능
-
-[모바일 원클릭 2차 서류함 열기]`
+■ 제출 방법: 마이페이지 서류함 업로드 또는 등기우편 발송`
               ) : (
 `[${officeName}]
 ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니다.
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})
 ■ 제출 기한: ${deadlineStr}까지
-■ 간편 제출: 아래 링크를 누르면 정부24/홈택스 간편인증 및 스마트폰 촬영으로 1분 만에 제출하실 수 있습니다.
-
-[모바일 원클릭 서류함 열기]`
+■ 제출 방법: 마이페이지 서류함에 사진·파일로 올리시거나 사무소로 보내 주세요.`
               )}
             </div>
           </div>
@@ -356,11 +362,11 @@ ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니
           <button
             type="button"
             onClick={handleSend}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || isSending}
             className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 disabled:opacity-50 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer press-scale"
           >
             <Send className="w-3.5 h-3.5 text-emerald-400" />
-            <span>선택한 {selectedIds.length}건 한 번에 발송</span>
+            <span>{isSending ? '발송 중...' : `선택한 ${selectedIds.length}건 요청 알림톡 발송`}</span>
           </button>
         </div>
       </div>

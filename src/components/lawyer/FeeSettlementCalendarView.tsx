@@ -5,6 +5,7 @@ import {
   ExternalLink, CalendarClock, DollarSign, Filter, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { feeAmountWon } from '../../services/alimtokService';
 import type { 
   ConsultRequest, FeeInstallment, FeeSettlementSummary, AlimtokMilestone 
 } from '../../types';
@@ -21,7 +22,7 @@ interface CalendarDayItem {
 interface Props {
   settlementList: FeeSettlementSummary[];
   requests: ConsultRequest[];
-  todayStr: string;
+  todayStr: string; // 로컬 YYYY-MM-DD
   onMarkAsPaid: (item: FeeSettlementSummary, inst: FeeInstallment) => void;
   onOpenAlimtok: (client: ConsultRequest, inst: FeeInstallment, totalFee: number, totalPaid: number) => void;
   onOpenDeferModal: (client: ConsultRequest, inst: FeeInstallment) => void;
@@ -100,7 +101,7 @@ export default function FeeSettlementCalendarView({
           map[dateKey] = [];
         }
 
-        const amountWon = inst.amount >= 10000 ? inst.amount : inst.amount * 10000;
+        const amountWon = feeAmountWon(inst);
         const isPaid = inst.status === 'paid';
         const isDueToday = !isPaid && dateKey === todayStr;
         const isOverdue = !isPaid && (inst.status === 'overdue' || dateKey < todayStr);

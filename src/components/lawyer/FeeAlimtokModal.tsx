@@ -13,8 +13,10 @@ import {
   compileTemplateWithVariables,
   fetchPopbillLiveTemplates,
   loadFeeNotificationSettings,
+  feeAmountWon,
   type PopbillAlimtokTemplate 
 } from '../../services/alimtokService';
+import { localYmd, parseLocalYmd } from '../../utils/localDate';
 import ModalPortal from '../common/ModalPortal';
 import AlimtalkTemplateRegisterModal from './pipeline/AlimtalkTemplateRegisterModal';
 
@@ -23,8 +25,12 @@ interface Props {
   onClose: () => void;
   client: { id: string; clientName: string; phone: string };
   installment: FeeInstallment;
-  totalFeeManwon: number;
-  totalPaidManwon: number;
+  /** 원 단위 (권장). 없으면 만원 단위 props를 사용 */
+  totalFeeWon?: number;
+  totalPaidWon?: number;
+  /** @deprecated 만원 반올림 오차 — totalFeeWon/totalPaidWon 사용 */
+  totalFeeManwon?: number;
+  totalPaidManwon?: number;
   firmName: string;
   lawyerName: string;
   onSent?: (milestone: AlimtokMilestone) => void;
@@ -43,8 +49,10 @@ export default function FeeAlimtokModal({
   onClose, 
   client, 
   installment, 
-  totalFeeManwon, 
-  totalPaidManwon,
+  totalFeeWon,
+  totalPaidWon,
+  totalFeeManwon = 0, 
+  totalPaidManwon = 0,
   firmName,
   lawyerName,
   onSent,
@@ -60,14 +68,18 @@ export default function FeeAlimtokModal({
   const [templateMgtUrl, setTemplateMgtUrl] = useState('https://www.popbill.com/KakaoTalk/?TG=TEMPLATE');
 
   const settings = loadFeeNotificationSettings();
-  const bankAccountStr = `${settings.bankInfo.bankName} ${settings.bankInfo.accountNumber} (예금주: ${settings.bankInfo.accountHolder})`;
-  const amountWon = installment.amount >= 10000 ? installment.amount : installment.amount * 10000;
-  const remainingWon = Math.max(0, (totalFeeManwon - totalPaidManwon) * 10000);
+  const hasBank = Boolean(settings.bankInfo.bankName?.trim() && settings.bankInfo.accountNumber?.trim());
+  // 계좌 미설정 시 빈칸 표시 (이전: 가짜 기본 계좌가 채워짐)
+  const bankAccountStr = hasBank
+    ? `${settings.bankInfo.bankName} ${settings.bankInfo.accountNumber}${settings.bankInfo.accountHolder ? ` (예금주: ${settings.bankInfo.accountHolder})` : ''}`
+    : '';
+  const amountWon = feeAmountWon(installment);
+  const feeWon = totalFeeWon !== undefined ? totalFeeWon : totalFeeManwon * 10000;
+  const paidWon = totalPaidWon !== undefined ? totalPaidWon : totalPaidManwon * 10000;
+  const remainingWon = Math.max(0, feeWon - paidWon);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(installment.dueDate);
-  due.setHours(0, 0, 0, 0);
+  const today = parseLocalYmd(localYmd())!;
+  const due = parseLocalYmd(installment.dueDate) || today;
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   const daysLeft = diffDays > 0 ? String(diffDays) : '0';
 
@@ -132,13 +144,13 @@ export default function FeeAlimtokModal({
     for (const v of detectedVars) {
       switch (v) {
         case '고객명':
-          initialVars[v] = client.clientName || '고객';
+          initialVars[v] = client.clientName || '';
           break;
         case '법무법인':
-          initialVars[v] = firmName || '법무법인';
+          initialVars[v] = firmName || '';
           break;
         case '담당변호사':
-          initialVars[v] = lawyerName || '담당 변호사';
+          initialVars[v] = lawyerName || '';
           break;
         case '납부항목':
         case '납부회차':
@@ -159,17 +171,18 @@ export default function FeeAlimtokModal({
           initialVars[v] = daysLeft;
           break;
         case '입금일시':
-          initialVars[v] = installment.paidDate || new Date().toISOString().split('T')[0];
+          initialVars[v] = installment.paidDate || localYmd();
           break;
         case '잔여금액':
         case '남은잔금':
           initialVars[v] = `${remainingWon.toLocaleString()}원`;
           break;
         case '수임료':
-          initialVars[v] = `${(totalFeeManwon * 10000).toLocaleString()}원`;
+          initialVars[v] = feeWon > 0 ? `${feeWon.toLocaleString()}원` : '';
           break;
         case '사건유형':
-          initialVars[v] = '개인회생';
+          // 사건 유형은 의뢰인 기록 기준 (이전: 항상 '개인회생')
+          initialVars[v] = ((client as any).caseType === 'bankruptcy' || (client as any).category === 'individual_bankruptcy') ? '개인파산' : ((client as any).caseType ? '개인회생' : '');
           break;
         case '안내링크':
           initialVars[v] = `${origin}/my`;
@@ -225,13 +238,13 @@ export default function FeeAlimtokModal({
         lawyerName,
         milestone: selectedMilestone,
         installment,
-        remainingFeeManwon: totalFeeManwon - totalPaidManwon,
+        remainingFeeWon: remainingWon,
         bankInfo: settings.bankInfo,
         templateCode: selectedTemplate?.templateCode,
         customMessage: compiledMessage,
         buttons: selectedTemplate?.buttons,
         variableValues,
-        altSubject: `[${firmName || '법무법인'}] ${selectedTemplate?.templateName || '수임료 안내'}`,
+        altSubject: `[${firmName || '수임료 안내'}] ${selectedTemplate?.templateName || '수임료 안내'}`,
         altContent: compiledMessage,
         fallbackSms,
       });
@@ -452,7 +465,7 @@ export default function FeeAlimtokModal({
                     <div className="w-5 h-5 rounded-full bg-[#391B1B] text-white flex items-center justify-center font-black text-[8px]">
                       TALK
                     </div>
-                    <span>{firmName || '법무법인'} 회생파산 지원센터</span>
+                    <span>{firmName || '사무소명 미설정'}</span>
                   </div>
                   <span className="text-[10px] opacity-75">알림톡 도착</span>
                 </div>
@@ -478,7 +491,7 @@ export default function FeeAlimtokModal({
                 )}
 
                 <div className="flex items-center justify-between text-[10px] text-[#391B1B]/80 font-medium px-1">
-                  <span>🔒 팝빌 승인 원문 그대로 발송되므로 반려 및 전송 오류가 발생하지 않습니다.</span>
+                  <span>승인 템플릿과 문구가 다르면 알림톡 대신 문자(LMS)로 대체 발송될 수 있습니다.</span>
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { X, Calendar, DollarSign, Calculator, Check, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConsultRequest, FeeInstallment } from '../../types';
+import { localYmd, parseLocalYmd, addMonthsClamped } from '../../utils/localDate';
 import ModalPortal from '../common/ModalPortal';
 
 interface Props {
@@ -19,14 +20,16 @@ export default function FeeScheduleCreateModal({
   selectedClientId: initialClientId,
   onSaveSchedule,
 }: Props) {
-  const [targetClientId, setTargetClientId] = useState<string>(initialClientId || (clients[0]?.id || ''));
-  const [totalFeeWon, setTotalFeeWon] = useState<number>(2500000);
-  const [downPaymentWon, setDownPaymentWon] = useState<number>(1000000);
+  // 의뢰인은 직접 선택 (이전: 목록 첫 의뢰인이 자동 선택됨), 금액 기본값 0 (이전: 250만·착수금 100만 임의 값)
+  const [targetClientId, setTargetClientId] = useState<string>(initialClientId || '');
+  const [totalFeeWon, setTotalFeeWon] = useState<number>(0);
+  const [downPaymentWon, setDownPaymentWon] = useState<number>(0);
   const [installmentMonths, setInstallmentMonths] = useState<number>(3);
   const [monthlyDueDay, setMonthlyDueDay] = useState<number>(10);
   const [startYearMonth, setStartYearMonth] = useState<string>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
+    // 다음 달 (1일 기준 계산 — 31일에 setMonth(+1) 하면 한 달을 건너뛰던 문제)
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
 
@@ -51,18 +54,22 @@ export default function FeeScheduleCreateModal({
       toast.error('착수금이 총 수임료보다 클 수 없습니다.');
       return;
     }
+    if (!Number.isFinite(totalFeeWon) || !Number.isFinite(downPaymentWon) || downPaymentWon < 0 || !Number.isInteger(totalFeeWon) || !Number.isInteger(downPaymentWon)) {
+      toast.error('금액은 0 이상의 원 단위 정수로 입력해주세요.');
+      return;
+    }
 
     const remainingAmount = totalFeeWon - downPaymentWon;
     const schedule: FeeInstallment[] = [];
 
     // 1. 착수금 — 입금 확인 전에는 '대기' (이전: 입금 확인 없이 계좌이체 '납부 완료'로 기록)
     if (downPaymentWon > 0) {
-      const d = new Date();
-      const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const todayYmd = localYmd();
       schedule.push({
         id: `inst-${Date.now()}-0`,
         round: 1,
         amount: downPaymentWon,
+        amountUnit: 'won',
         dueDate: todayYmd,
         status: 'pending',
         memo: '착수금',
@@ -91,6 +98,7 @@ export default function FeeScheduleCreateModal({
           id: `inst-${Date.now()}-${i + 1}`,
           round: schedule.length + 1,
           amount,
+          amountUnit: 'won',
           dueDate,
           status: 'pending',
           memo: `${i + 1}회차 분납`,
@@ -146,18 +154,16 @@ export default function FeeScheduleCreateModal({
     setPreviewSchedule(prev => {
       const last = prev[prev.length - 1];
       const newRound = prev.length + 1;
-      let nextDueDate = new Date().toISOString().split('T')[0];
-      if (last?.dueDate) {
-        const d = new Date(last.dueDate);
-        d.setMonth(d.getMonth() + 1);
-        nextDueDate = d.toISOString().split('T')[0];
-      }
+      let nextDueDate = localYmd();
+      const lastD = last?.dueDate ? parseLocalYmd(last.dueDate) : null;
+      if (lastD) nextDueDate = localYmd(addMonthsClamped(lastD, 1));
       return [
         ...prev,
         {
           id: `inst-custom-${Date.now()}`,
           round: newRound,
-          amount: 300000,
+          amount: 0,
+          amountUnit: 'won',
           dueDate: nextDueDate,
           status: 'pending',
           memo: `${newRound}회차 추가 분납`,
@@ -181,10 +187,18 @@ export default function FeeScheduleCreateModal({
       toast.error('분납 일정을 생성해주세요.');
       return;
     }
-
+    if (previewSchedule.some(i => !i.amount || i.amount <= 0 || !i.dueDate)) {
+      toast.error('금액이 0원이거나 납부일이 비어 있는 회차가 있습니다.');
+      return;
+    }
+    // 회차 합계와 총 수임료가 다르면 저장하지 않음 (이전: 차액이 있어도 합계를 총 수임료로 덮어씀)
+    if (totalCalculated !== totalFeeWon) {
+      toast.error(`회차 합계(${totalCalculated.toLocaleString()}원)가 총 수임료(${totalFeeWon.toLocaleString()}원)와 다릅니다. 금액을 맞춘 뒤 저장해 주세요.`);
+      return;
+    }
     try {
       await onSaveSchedule(targetClientId, totalCalculated, previewSchedule);
-      toast.success('수임료 분납 일정이 성공적으로 저장되었습니다.');
+      toast.success('수임료 분납 일정이 저장되었습니다.');
       onClose();
     } catch (e: any) {
       toast.error('분납 일정 저장 중 오류가 발생했습니다: ' + (e?.message || e));

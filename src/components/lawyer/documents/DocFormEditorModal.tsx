@@ -63,8 +63,9 @@ function DocFormEditorModalInner({
       }
       setReasonInput(enrichedReason);
       setIsAiGenerating(false);
-      toast.success('AI 법률 사유 초안이 법원 판례 문체로 생성되었습니다!');
-    }, 700);
+      // AI 생성이 아니라 유형별 예시 문단 (이전: 'AI 법률 사유 초안이 법원 판례 문체로 생성되었습니다!')
+      toast.info('유형별 예시 문단을 넣었습니다. 사건 사실에 맞게 반드시 고쳐 쓰세요. (AI 생성 아님)');
+    }, 0);
   };
 
   // 인쇄 기능
@@ -82,8 +83,10 @@ function DocFormEditorModalInner({
       docItem.title
     );
     const msg = ClientMobileDocService.generateNotificationMessage(req);
-    navigator.clipboard.writeText(msg);
-    toast.success('📱 의뢰인 전송용 모바일 작성 안내문이 클립보드에 복사되었습니다! (알림톡/문자 즉시 발송 가능)');
+    navigator.clipboard.writeText(msg).then(
+      () => toast.success('모바일 작성 안내문이 복사되었습니다. 자동 발송되지 않으니 카카오톡·문자로 직접 전달해 주세요.'),
+      () => toast.error('클립보드 복사에 실패했습니다.'),
+    );
 
     if (onOpenMobileFillModal) {
       onOpenMobileFillModal(req.token);
@@ -92,11 +95,13 @@ function DocFormEditorModalInner({
 
   // 전자소송 패키지에 첨부
   const handleAttach = () => {
-    if (onAttachToFilingPackage) {
-      const fullText = `[${docItem.title}]\n\n사건: ${boundData.caseNumber}\n신청인: ${boundData.debtorName}\n\n[신청취지]\n${purposeInput}\n\n[신청이유]\n${reasonInput}`;
-      onAttachToFilingPackage(docItem.title, fullText);
+    if (!onAttachToFilingPackage) {
+      toast.error('이 화면에서는 전자소송 패키지 첨부가 연결되어 있지 않습니다.');
+      return;
     }
-    toast.success(`'${docItem.title}'이(가) 전자소송 일괄 결합 슬롯에 성공적으로 연결되었습니다.`);
+    const fullText = `[${docItem.title}]\n\n사건: ${boundData.caseNumber}\n신청인: ${boundData.debtorName}\n\n[신청취지]\n${purposeInput}\n\n[신청이유]\n${reasonInput}`;
+    onAttachToFilingPackage(docItem.title, fullText);
+    toast.success(`'${docItem.title}'을(를) 전자소송 패키지 목록에 추가했습니다.`);
     onClose();
   };
 

@@ -100,7 +100,7 @@ import {
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
 import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, AlimtokLog, AlimtokMilestone } from '../../types';
 import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
-import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings } from '../../services/alimtokService';
+import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon } from '../../services/alimtokService';
 import { loadNotificationSettings } from '../../services/notificationService';
 import { addClientNotification } from '../../services/clientNotificationService';
 
@@ -1189,13 +1189,35 @@ export default function CrmTab({
       if (notiSettings.kakao.autoTrigger) {
         const clientReq = requests.find(r => r.id === clientId);
         if (clientReq) {
-          triggerAlimtokOnStatusChange(ext.crmStatus, newStatus, {
+          const caseLabel = (clientReq.caseType === 'bankruptcy' || (ext as any).caseType === 'bankruptcy') ? '개인파산' : '개인회생';
+          const extraVars: Record<string, string> = { caseType: caseLabel };
+          if (ext.courtCase?.caseNumber) extraVars.caseNumber = ext.courtCase.caseNumber;
+          const months = (ext as any).repaymentPlan?.months;
+          const monthly = (ext as any).repaymentPlan?.monthlyRepaymentTotal;
+          if (months) extraVars.duration = String(months);
+          if (monthly) extraVars.monthlyPayment = Number(monthly).toLocaleString();
+          // 결과를 기다려 사실대로 안내 (이전: 결과 무시·오류 삼킴 → 발송 여부를 알 수 없었음)
+          const outcome = await triggerAlimtokOnStatusChange(ext.crmStatus, newStatus, {
+            clientId,
             clientName: clientReq.clientName, phone: clientReq.phone,
-            firmName: notiSettings.kakao.firmName, lawyerName: notiSettings.kakao.lawyerName,
+            firmName: notiSettings.kakao.firmName || getOfficeProfile(activeLawyer.name).firmName || '',
+            lawyerName: notiSettings.kakao.lawyerName || activeLawyer.name || '',
+            extraVars,
           }, notiSettings.kakao);
+          if (outcome.attempted) {
+            if (outcome.ok) toast.success(`[${ALIMTOK_MILESTONE_CONFIG[outcome.milestone]?.label}] 자동 알림톡이 접수되었습니다.`);
+            else toast.error(`자동 알림톡 미발송: ${outcome.error || '발송 실패'}`);
+          } else if ((outcome as any).reason === 'missing_vars') {
+            toast.info(`자동 알림톡 미발송: 필요한 정보(${((outcome as any).missing || []).join(', ')})가 사건에 없습니다.`);
+          } else if ((outcome as any).reason === 'no_phone') {
+            toast.info('자동 알림톡 미발송: 의뢰인 연락처가 없습니다.');
+          }
         }
       }
-    } catch {}
+    } catch (e: any) {
+      console.error('[자동 알림톡] 오류', e);
+      toast.error('자동 알림톡 처리 중 오류가 발생했습니다 (발송되지 않았을 수 있음).');
+    }
   };
 
   // ── 통계 ──
@@ -2190,20 +2212,21 @@ export default function CrmTab({
           }
         } catch {}
 
+        // 단위 환산은 공용 헬퍼로 통일 (이전: 이 화면만 100,000 기준 → 5만원 회차가 5억원으로 계산)
         const totalFeeWon = rawTotalFee > 0
-          ? (rawTotalFee >= 100000 ? rawTotalFee : rawTotalFee * 10000)
+          ? feeTotalWon(rawTotalFee)
           : (contractTotalWon > 0 
               ? contractTotalWon 
-              : feeSchedule.reduce((sum, f) => sum + (f.amount >= 100000 ? f.amount : f.amount * 10000), 0)
+              : feeSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0)
             );
 
         const paidSchedule = feeSchedule.filter(f => f.status === 'paid');
         const overdueSchedule = feeSchedule.filter(f => f.status === 'overdue');
         const pendingSchedule = feeSchedule.filter(f => f.status === 'pending');
 
-        const totalPaidWon = selectedExt?.totalPaid !== undefined && selectedExt.totalPaid > 0
-          ? (selectedExt.totalPaid >= 100000 ? selectedExt.totalPaid : selectedExt.totalPaid * 10000)
-          : paidSchedule.reduce((sum, f) => sum + (f.amount >= 100000 ? f.amount : f.amount * 10000), 0);
+        const totalPaidWon = feeSchedule.length > 0
+          ? paidSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0)
+          : feeTotalWon(selectedExt?.totalPaid);
 
         const unpaidWon = Math.max(0, totalFeeWon - totalPaidWon);
         const paymentRate = totalFeeWon > 0 ? Math.min(100, Math.round((totalPaidWon / totalFeeWon) * 100)) : 0;
@@ -4194,7 +4217,7 @@ export default function CrmTab({
                     const schedule = ext.feeSchedule || [];
                     const totalFee = ext.totalFee || 0;
                     const feeSettings = loadFeeNotificationSettings();
-                    const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
+                    const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + feeAmountWon(f), 0);
                     return (
                       <div className="space-y-4">
                         {/* 🌟 수임료 안내 스마트 배너 */}
@@ -4207,7 +4230,7 @@ export default function CrmTab({
                               </span>
                             </div>
                             <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                              <span className="font-bold text-slate-600">🤖 자동 발송:</span>
+                              <span className="font-bold text-slate-600">자동 발송 규칙 (예약 발송 미지원 — 저장만 됨):</span>
                               {feeSettings.autoTriggerEnabled ? (
                                 <span>
                                   {feeSettings.rules.filter(r => r.enabled).map(r => 
@@ -5274,7 +5297,7 @@ export default function CrmTab({
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
               if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
-              if (bulkFilter === 'hearing_month') return true;
+              if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
               if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
               return false;
             }).map(r => ({
@@ -5389,8 +5412,8 @@ export default function CrmTab({
           onClose={() => setFeeAlimtokModalConfig({ isOpen: false })}
           client={selectedClient}
           installment={feeAlimtokModalConfig.installment}
-          totalFeeManwon={selectedExt.totalFee || 0}
-          totalPaidManwon={(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0)}
+          totalFeeWon={feeTotalWon(selectedExt.totalFee || selectedExt.contractAmount)}
+          totalPaidWon={(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + feeAmountWon(f), 0)}
           firmName={activeLawyer.firmName || (activeLawyer as any).firm || ''}
           lawyerName={activeLawyer.name}
           initialMilestone={feeAlimtokModalConfig.initialMilestone}
@@ -5428,7 +5451,7 @@ export default function CrmTab({
             const ext = getCrmExt(r.id);
             if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
             if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
-            if (bulkFilter === 'hearing_month') return true;
+            if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
             if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
             return false;
           }).map(r => ({
@@ -5444,28 +5467,42 @@ export default function CrmTab({
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
               if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
-              if (bulkFilter === 'hearing_month') return true;
+              if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
               if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
               return false;
             });
             const channelName = channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
             const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+            // 실제 발송 API를 대상별로 호출하고 결과를 그대로 기록 (이전: 아무것도 보내지 않고 '발송 완료' 기록·표시)
+            let sent = 0; let failed = 0; let noPhone = 0; let firstError = '';
             for (const t of targets) {
               const ext = getCrmExt(t.id);
+              let resultText: string;
+              if (!t.phone) {
+                noPhone++;
+                resultText = '연락처 없음 — 미발송';
+              } else {
+                const personalized = message.replace(/#\{의뢰인명\}/g, () => t.clientName || '');
+                const res = await sendAlimtok(t.phone, 'document_request', { clientName: t.clientName || '' }, { customText: personalized, receiverName: t.clientName || '' });
+                if (res.ok) { sent++; resultText = `접수됨${res.channel && res.channel !== 'alimtalk' ? ` (${res.channel === 'lms_fallback' ? 'LMS 대체' : 'SMS 대체'})` : ''}`; }
+                else { failed++; firstError = firstError || res.error || '발송 실패'; resultText = `실패: ${res.error || '발송 실패'}`; }
+              }
               const logEntry = createActivityLog(
                 t.id,
                 actor.id,
                 actor.name,
                 actor.role,
                 'communication',
-                `타겟 대량 메시지 발송 완료 (${channelName})`,
+                `타겟 메시지 ${channelName} — ${resultText}`,
                 { filter: bulkFilter, snippet: message.slice(0, 40) }
               );
               await updateCrmExt(t.id, {
                 activities: [...(ext.activities || []), logEntry]
               });
             }
-            toast.success(`총 ${targets.length}명의 의뢰인에게 ${channelName} 대량 발송이 완료되었습니다.`);
+            if (targets.length === 0) toast.info('조건에 맞는 의뢰인이 없습니다.');
+            else if (failed === 0 && noPhone === 0) toast.success(`${sent}명에게 ${channelName} 발송이 접수되었습니다.`);
+            else toast.error(`접수 ${sent}명 · 실패 ${failed}명 · 연락처 없음 ${noPhone}명${firstError ? ` — ${firstError}` : ''}`, { duration: 8000 });
             setShowBulkMessage(false);
             setBulkSendModalConfig(null);
           }}
@@ -5485,7 +5522,7 @@ export default function CrmTab({
             clientAddress: selectedClient.financialProfile?.residenceRegion || '',
             lawyerName: activeLawyer.name,
             lawFirmName: activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || '',
-            totalFee: selectedExt?.totalFee || 300,
+            totalFee: selectedExt?.totalFee || 0,
             contractDate: new Date().toISOString().split('T')[0],
           } : undefined}
         />
