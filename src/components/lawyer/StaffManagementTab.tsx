@@ -189,11 +189,17 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
 
   // ── 핸들러: 초대 링크 생성 ──
   const handleGenerateInviteLink = async () => {
-    const token = await generateInviteToken(
-      inviteRole,
-      activeLawyer.id,
-      inviteEmail.trim() || undefined
-    );
+    let token;
+    try {
+      token = await generateInviteToken(
+        inviteRole,
+        activeLawyer.id,
+        inviteEmail.trim() || undefined
+      );
+    } catch (err: any) {
+      toast.error(err?.message || '초대 링크 생성에 실패했습니다.');
+      return;
+    }
     const url = buildInviteUrl(token.token);
     setGeneratedInviteUrl(url);
     setInviteLinkCopied(false);
@@ -1237,7 +1243,12 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                         variant: 'warning'
                                       });
                                       if (confirmed) {
-                                        await expireInviteToken(token.token);
+                                        try {
+                                          await expireInviteToken(token.token);
+                                        } catch (err: any) {
+                                          toast.error(err?.message || '초대 링크 만료 처리에 실패했습니다.');
+                                          return;
+                                        }
                                         const updated = loadInviteTokens();
                                         setInviteTokens(updated);
                                         toast.success('초대 링크가 만료되었습니다.');

@@ -19,15 +19,7 @@ function logSupabaseError(op: string, error: any) {
   console.error(`[Contract] ${op} 실패:`, error?.message || error);
 }
 
-/** CSPRNG 기반 소문자 영숫자 토큰 */
-function randomToken(length: number): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let out = '';
-  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
-  return out;
-}
+import { randomToken, newRemoteSignToken } from '../utils/secureToken';
 
 /**
  * 제안서→계약 연동 확장 컬럼 (migration 015). 값이 있을 때만 전송해
@@ -445,7 +437,7 @@ export function createContract(data: {
   // 계약 ID·서명 토큰은 기기별 localStorage 개수가 아닌 CSPRNG로 생성한다.
   // (기기마다 EC-2026-0001부터 시작하면 서버 upsert 시 다른 의뢰인의 계약서를 덮어쓴다)
   const id = `EC-${new Date().getFullYear()}-${randomToken(8).toUpperCase()}`;
-  const remoteSignToken = `sgn-${randomToken(24)}`;
+  const remoteSignToken = newRemoteSignToken();
 
   // 기본 문서 세트 생성
   const documents = createDefaultDocuments(data.clientName, data.clientPhone, data.lawyerName, data.lawFirmName);

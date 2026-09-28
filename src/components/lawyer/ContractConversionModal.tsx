@@ -7,6 +7,7 @@ import { sendAlimtok } from '../../services/alimtokService';
 import { saveCrmClient, createDefaultCrmExtension, loadCrmData } from '../../services/crmService';
 import { addClientNotification } from '../../services/clientNotificationService';
 import ModalPortal from '../common/ModalPortal';
+import { newRemoteSignToken } from '../../utils/secureToken';
 
 interface Props {
   request: ConsultRequest;
@@ -117,7 +118,7 @@ export default function ContractConversionModal({
       });
 
       // 일회용 원격 서명 링크 생성
-      const signToken = newContract.remoteSignToken || `sgn-${newContract.id.toLowerCase()}-${Date.now()}`;
+      const signToken = newContract.remoteSignToken || newRemoteSignToken();
       newContract.remoteSignToken = signToken;
       const signUrl = `${origin}?view=sign&cid=${newContract.id}&token=${signToken}`;
 

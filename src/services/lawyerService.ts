@@ -111,6 +111,8 @@ export function lawyerToRow(lawyer: any) {
       extraData[key] = value;
     }
   }
+  // [SECURITY] 인증 비밀값은 절대 DB(공개 조회 가능한 lawyers.data)에 저장하지 않음
+  delete extraData.password;
 
   return {
     id: id || '',
@@ -183,9 +185,11 @@ export function rowToLawyer(row: any): User {
     }
   }
 
+  const { password: _legacyPassword, ...safeExtra } = extraData as Record<string, any>;
+
   return {
     recentActivity: '최근 활동 없음',
-    ...extraData,
+    ...safeExtra,
     id: row.id,
     lawFirmId: row.law_firm_id ?? row.lawFirmId ?? '',
     teamId: row.team_id ?? row.teamId ?? '',

@@ -310,7 +310,7 @@
   - ✅ 신규 서버 액션 `/api/contract?action=remote-sign` (service role): 계약 ID + 서명 토큰을 `timingSafeEqual`로 검증, **서명 완료 계약은 재제출 거부(409)**, 클라이언트가 보낸 계약 전체를 덮어쓰지 않고 허용 필드만 갱신 *(수정)*
   - ✅ `saveContract`가 서버 저장 성공 여부를 반환 → 실패 시 "완료" 대신 오류 안내 *(수정)*
   - ⚠️ 만료 링크: 화면에서 `remoteSignExpiresAt` 경과 시 차단하도록 했으나, 이 값을 **설정·저장하는 곳이 없음**(DB 컬럼도 없음) → 링크 발급 시 만료일 설정은 후속 과제
-  - ❌ 변호사 측 링크 생성기 일부(`ContractConversionModal`, `ClientSignShareModal`, `ContractReminderModal`, `ContractWizard`)에 예측 가능한 토큰 폴백(`sgn-${id}-${Date.now()}`) 잔존 → PART 2 전자계약 점검 시 CSPRNG로 교체 필요
+  - ✅ 변호사 측 링크 생성기의 예측 가능한 토큰 폴백(`sgn-${id}-${Date.now()}`) → CSPRNG로 교체, 또는 토큰이 없으면 링크를 만들지 않음 (2-0 참고) *(수정)*
 - [x] **4대 약관 동의** — 전문 보기·개별/전체 동의 동작 확인 ✅. 동의 내역이 계약서에 **기록되지 않아** PDF에 "3개 동의·전문 열람 완료"가 기본값으로 찍히던 문제 → 실제 동의 항목을 `intentVerification.agreedTerms`에 저장, 기록 없으면 '기록 없음' *(수정)*
 - [x] **포트원 V2 본인인증** *(재작성)*
   - ✅ SDK 완료 후 **서버가 `PORTONE_API_SECRET`으로 단건 조회**해 `VERIFIED`와 실명·연락처를 확인(`action=identity-verify`, `remote-sign` stage `identity`). 브라우저 응답값·기대 이름으로 채우는 폴백 제거 *(수정)*
@@ -474,6 +474,43 @@
 <br/>
 
 # PART 2. ⚖️ [변호사 어드민] Lawyer CRM Checklist
+
+---
+
+### 2-0. 변호사 인증 하드닝 (PART 2 선행 보안 조치)
+
+> **점검 메모 (2026-09-28)**: 변호사 포털 로그인 여부를 브라우저 저장소 값으로 판단하고 있었습니다. 운영 환경에서도 개발자도구로 `sessionStorage.legal_crm_lawyer_session`을 넣으면 **아무 변호사 프로필로 CRM 화면에 들어갈 수 있었습니다**. 상담 원본은 012 RLS로 막혀 있지만, 이 기기의 CRM·계약·메모 데이터는 볼 수 있었습니다. 소셜 로그인은 **이름에 이메일 앞부분이 포함되면** 기존 변호사로 매칭했고, 그 프로필 ID를 `register_lawyer_account`로 **먼저 등록한 사람이 가져가는** 구조였습니다. 평문 비밀번호 로그인(`'1234'` 시드, `'2'`~`'7'`)은 화면에는 연결되지 않은 죽은 코드였지만 비밀번호를 localStorage에 저장했습니다. 이 저장값은 `lawyerToRow`를 거치면 anon 조회가 가능한 `lawyers.data`에도 들어갈 수 있었습니다.
+
+- [x] **로그인 판정 = Supabase 세션 + `lawyer_accounts` 매핑(서버)** *(재작성)*
+  - ⛔→✅ `sessionStorage`/`legal_crm_active_lawyer` JSON으로 로그인·프로필 복원 → 제거. 이 값은 새로고침 시 로딩 화면을 띄우는 힌트로만 사용 *(수정)*
+  - ⛔→✅ 로그인 전 기본 프로필이 `mockLawyers[0]`(김우진 변호사) → 빈 프로필 *(수정)*
+  - ⛔→✅ 이름 부분일치·ID·localStorage·mockLawyers 매칭 → 서버가 돌려준 `lawyer_id`의 프로필만 사용. 승인 여부도 서버 값(`lawyer_accounts.approved`)이 우선 *(수정)*
+  - ✅ 매핑이 없으면 사용자가 **직접 변호사 로그인을 시작한 경우에만** 새 매핑 생성. 의뢰인 세션이 변호사 화면에 들어와도 계정이 자동으로 만들어지지 않음 *(수정)*
+  - ✅ 매핑 조회가 실패하면(마이그레이션 미적용·네트워크) 로그인 거부(fail-closed) *(수정)*
+  - ✅ 서버 세션 종료(`SIGNED_OUT`), 강제 로그아웃, 정지·탈퇴 처리 시 Supabase 세션도 함께 종료 *(수정)*
+- [x] **개발용 우회 로그인** — `'1'/'1'`~`'7'/'7'` 우회와 평문 비밀번호 비교(`handleLogin`·`handleSignup`, 연결되지 않은 코드) 삭제. "개발용 1초 로그인" 버튼은 `import.meta.env.DEV`에서만 동작하며 별도 키(`legal_crm_lawyer_dev_session`)를 사용. 운영 번들에 해당 문자열이 없는지 확인 ✅ *(수정)*
+- [x] **비밀번호 제거** — `password: '1234'` 시드, `mockLawyers` 비밀번호, `User.password` 타입 삭제. 기존 localStorage 값은 로드할 때 제거. `lawyerToRow`/`rowToLawyer`는 `password` 키를 제거. 클라이언트에서만 동작하던 비밀번호 변경 UI(4자 이상)는 **"모든 기기에서 로그아웃"**(`signOut({scope:'global'})`)으로 교체 *(수정)*
+- [x] **`amjone8@gmail.com` 하드코딩 제거** — lawyer-1에 이메일을 주입하던 코드와, 이 이메일에 lawyer-1 상담 열람을 부여하던 분기(LawyerRole·CrmTab 4곳·consultService) 삭제 *(수정)*
+- [x] **추측 가능한 토큰 → CSPRNG** (`src/utils/secureToken.ts`, 편향 없는 샘플링) *(수정)*
+  - ✅ `ContractConversionModal`의 `sgn-${id}-${Date.now()}`(DB 저장됨) → `newRemoteSignToken()`
+  - ✅ `ClientSignShareModal`·`ContractReminderModal`·`ContractWizard`: ID 기반 임시 토큰으로 **동작하지 않는 링크**를 만들던 문제 → 저장된 토큰이 없으면 링크를 만들지 않고 안내
+  - ✅ `clientMobileDocService` `token_${Date.now()}_…` → CSPRNG, 초대 토큰 `Math.random` → CSPRNG
+- [x] **초대 링크 (`inviteService`)** *(재작성)*
+  - ⛔→✅ 초대받은 사람(로그인 전)은 006에서 anon 조회가 막혀 **서버 검증이 불가능**했고, localStorage 폴백 때문에 같은 기기에서만 동작 → `peek_invite_token` RPC로 검증. Supabase 환경에서는 로컬 폴백 없음 *(수정)*
+  - ✅ 소셜 가입 시 `consume_invite_token` RPC로 1회 소비(지정 이메일 일치 검사) 후 직원 레코드를 대기 상태로 생성. 이전에는 소비 코드가 연결되지 않은 가입 폼에만 있었음 *(수정)*
+  - ✅ 서버 저장이 실패하면 링크를 발급하지 않음. 만료 처리 실패 시 오류 표시 *(수정)*
+- [x] **국세청 사업자 조회 실패 시 'VALID' + "확인되었습니다"로 표시** → 미확인 + 오류 안내. 자격서류 저장 문구 "관리자 심사에 즉시 반영" → 사실대로 정정 *(수정)*
+- [x] **DB 마이그레이션 `018_lawyer_auth_hardening.sql`** (⚠️ **미적용 — 012 적용 후 실행 필요**)
+  - `claim_lawyer_account()`: 신규 매핑의 ID는 서버가 `lawyer-<auth uid>`로 부여. `register_lawyer_account`는 본인 uid ID만 허용해 **기존 프로필 선점 차단**
+  - `admin_link_lawyer_account(email, lawyer_id, approved)`: 기존 시드 프로필(lawyer-1 등)은 관리자만 연결
+  - `lawyers`: `authenticated_all_lawyers` 제거 → 본인 매핑 행 또는 관리자만 INSERT/UPDATE, DELETE는 관리자만. 기존 `data.password` 삭제 + 저장 시 자동 제거 트리거
+  - `invite_tokens`: 전체 허용 정책 제거 → 발급자(승인 변호사)·관리자만 접근. `peek_invite_token`(anon), `consume_invite_token`(authenticated)
+- 검증: tsc 313(기준선 유지), `npm run build` 통과, CSPRNG 토큰 테스트 6건과 Supabase 목 기반 서비스 동작 테스트 18건 통과. ⚠️ 실제 Supabase·OAuth 흐름과 SQL 실행은 이 환경에서 검증하지 못함
+- [ ] ⚠️ **남은 과제 (출시 전 필요)**
+  - **변호사 프로필이 DB와 동기화되지 않음**: `lawyerService`가 어디에서도 쓰이지 않아 프로필·가입신청·자격서류가 이 기기에만 저장됨. 다른 기기의 관리자는 신규 가입자를 볼 수 없고, 승인은 `lawyer_accounts`만 반영됨. PART 3(관리자 변호사 심사)에서 `lawyers` 테이블 연동 필요. 등록증 이미지는 공개 조회 테이블과 분리해 저장해야 함
+  - 기존 시드 프로필(lawyer-1 김우진 등)을 실제 계정에 연결하려면 해당 변호사가 1회 로그인한 뒤 관리자가 `admin_link_lawyer_account` 실행(현재 관리자 UI 없음, SQL 편집기 사용)
+  - 직원 초대 가입자의 승인 경로(대표 변호사가 `lawyer_accounts` 승인)는 관리자 승인에만 의존 → 2-x 직원관리 점검 때 정리
+  - 관리자 포털: OTP `demoCode`가 클라이언트에서 생성·표시됨. `App.tsx`가 HMAC 검증 없이 관리자 역할 화면을 복원하고 `adm_sec_9k7q` 경로가 하드코딩됨 → PART 3에서 처리
 
 ---
 

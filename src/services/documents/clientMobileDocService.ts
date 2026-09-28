@@ -2,6 +2,7 @@
  * 의뢰인 모바일 서식 자가작성 및 전자서명 연동 서비스
  * 알림톡/문자 발송 ➔ 모바일 웹 작성 ➔ 전자서명 ➔ CRM 자동 접수 및 전자소송 슬롯 연계
  */
+import { randomToken } from '../../utils/secureToken';
 
 export interface MobileDocRequestItem {
   id: string;
@@ -50,7 +51,7 @@ export class ClientMobileDocService {
     docTitle: string
   ): MobileDocRequestItem {
     const list = this.getRequests();
-    const token = `token_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const token = `mdoc_${randomToken(24)}`;
     
     const newReq: MobileDocRequestItem = {
       id: `mreq-${Date.now()}`,

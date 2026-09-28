@@ -61,8 +61,9 @@ export default function ContractReminderModal({
 
   // 일회용 보안 서명 링크 계산
   const signUrl = useMemo(() => {
-    if (!contract) return '';
-    const signToken = contract.remoteSignToken || `sgn-${contract.id.toLowerCase()}-${Date.now()}`;
+    // 서버에 저장된 서명 토큰이 없으면 링크를 만들지 않는다 (임의 토큰은 서명 페이지에서 검증 실패)
+    if (!contract?.remoteSignToken) return '';
+    const signToken = contract.remoteSignToken;
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
     return `${origin}?view=sign&token=${signToken}&cid=${contract.id}`;
   }, [contract]);
@@ -148,6 +149,10 @@ ${firm} 드림`
   const handleSend = async () => {
     if (!customMessage.trim()) {
       toast.error('발송할 메시지 내용을 입력해주세요.');
+      return;
+    }
+    if (!signUrl) {
+      toast.error('이 계약에는 발급된 원격 서명 링크가 없습니다. 계약 상세에서 원격 서명을 먼저 요청해 주세요.');
       return;
     }
 

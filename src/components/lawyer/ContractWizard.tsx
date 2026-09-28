@@ -2179,9 +2179,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const clientSignedDoc = c.documents.find(d => d.included && d.clientSignature);
     const clientSigned = Boolean(clientSignedDoc);
 
-    const signToken = c.remoteSignToken || `sgn-${c.id.toLowerCase()}`;
+    // 서버에 저장된 서명 토큰으로만 링크 생성 (ID 기반 토큰은 추측 가능하고 서명 페이지 검증도 실패)
+    const signToken = c.remoteSignToken || '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
-    const signUrl = `${origin}?view=sign&token=${signToken}&cid=${c.id}`;
+    const signUrl = signToken ? `${origin}?view=sign&token=${signToken}&cid=${c.id}` : '';
 
     const handleRefreshStatus = async () => {
       setRefreshingSign(true);
@@ -2353,6 +2354,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <button
                   type="button"
                   onClick={() => {
+                    if (!signUrl) {
+                      toast.error('이 계약에는 발급된 원격 서명 링크가 없습니다.');
+                      return;
+                    }
                     navigator.clipboard.writeText(signUrl);
                     toast.success('서명 링크가 복사되었습니다.');
                   }}

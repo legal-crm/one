@@ -47,6 +47,15 @@ import { secureGetItem, secureSetItem } from './utils/secureStorage';
 // [SECURITY] 진짜 관리자 전용 경로 (환경변수 VITE_ADMIN_SECRET_PATH로 분기, 뻔한 ?role=admin은 허니팟으로 유인)
 export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_9k7q';
 
+/** [SECURITY] 로컬 저장소·시드에서 과거 평문 비밀번호 필드를 제거 (변호사 인증은 Supabase Auth 전용) */
+function stripLawyerSecrets(list: LawyerType[]): LawyerType[] {
+  return list.map(l => {
+    if (!l || typeof l !== 'object' || !('password' in l)) return l;
+    const { password: _drop, ...rest } = l as LawyerType & { password?: unknown };
+    return rest as LawyerType;
+  });
+}
+
 export default function App() {
   // Quad role state: 'client' | 'lawyer' | 'admin' | 'honeypot'
   // 1순위: URL 쿼리 파라미터, 2순위: 활성 세션 감지 (새로고침 시 홈페이지 플래시 방지)
@@ -435,11 +444,11 @@ export default function App() {
       if (saved) {
         const parsed: LawyerType[] = JSON.parse(saved);
         if (parsed.length >= mockLawyers.length) {
-          return parsed.map(l => l.id === 'lawyer-1' && !l.email ? { ...l, email: 'amjone8@gmail.com' } : l);
+          return stripLawyerSecrets(parsed);
         }
       }
     } catch {}
-    return mockLawyers.map(l => ({ ...l, password: '1234' }));
+    return stripLawyerSecrets(mockLawyers);
   });
   const [members, setMembers] = useState<Member[]>(() => {
     try {
@@ -584,11 +593,9 @@ export default function App() {
 
     if (savedLawyers && JSON.parse(savedLawyers).length >= mockLawyers.length) {
       const parsed: LawyerType[] = JSON.parse(savedLawyers);
-      setLawyers(parsed.map(l => l.id === 'lawyer-1' && !l.email ? { ...l, email: 'amjone8@gmail.com' } : l));
+      setLawyers(stripLawyerSecrets(parsed));
     } else {
-      // Set initial passwords to '1234' for easy mockup login
-      const lawyersWithPass = mockLawyers.map(l => ({ ...l, password: '1234' }));
-      setLawyers(lawyersWithPass);
+      setLawyers(stripLawyerSecrets(mockLawyers));
     }
 
     if (savedMembers) {

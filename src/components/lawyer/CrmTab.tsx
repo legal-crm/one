@@ -410,7 +410,6 @@ export default function CrmTab({
                           r.acceptedLawyerIds?.includes(activeLawyer.id) ||
                           r.assignedLawyerId === activeLawyer.id ||
                           (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                          (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1')) ||
                           (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
       const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
         const targetLawyer = lawyers.find(l => l.id === id);
@@ -471,7 +470,6 @@ export default function CrmTab({
                           r.acceptedLawyerIds?.includes(activeLawyer.id) ||
                           r.assignedLawyerId === activeLawyer.id ||
                           (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                          (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1')) ||
                           (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
       const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
         const targetLawyer = lawyers.find(l => l.id === id);
@@ -5007,8 +5005,7 @@ export default function CrmTab({
               .filter(r => {
                 const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
                                     r.selectedLawyerId === activeLawyer.id ||
-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                                    (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1'));
+                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
                 const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
                   const targetLawyer = lawyers.find(l => l.id === id);
                   return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
@@ -5122,8 +5119,7 @@ export default function CrmTab({
               .filter(r => {
                 const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
                                     r.selectedLawyerId === activeLawyer.id ||
-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
-                                    (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1'));
+                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
                 const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
                   const targetLawyer = lawyers.find(l => l.id === id);
                   return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;

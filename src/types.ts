@@ -1213,8 +1213,8 @@ export interface User {
   bio: string;
   recentActivity: string;
   matchedCount: number;
-  password?: string; // Optional password for authentication
-  approved?: boolean; // Admin approval status for lawyers
+  // [SECURITY] 비밀번호 필드 없음 — 변호사 인증은 Supabase Auth(소셜) + lawyer_accounts 매핑으로만 판정
+  approved?: boolean; // Admin approval status for lawyers (UI 표시용; DB 권한은 lawyer_accounts.approved)
   licenseImageData?: string; // 변호사 등록증 이미지 (Base64 Data URL)
   licenseNumber?: string; // 변호사 등록번호
   licenseStatus?: 'pending' | 'verified' | 'rejected' | 'suspended'; // 자격 심사 상태

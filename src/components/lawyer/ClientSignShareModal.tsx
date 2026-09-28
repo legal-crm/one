@@ -16,10 +16,10 @@ export default function ClientSignShareModal({ contract, isOpen, onClose }: Prop
 
   if (!isOpen) return null;
 
-  // 일회용 보안 서명 URL 생성
-  const signToken = contract.remoteSignToken || `sgn-${contract.id.toLowerCase()}-${Date.now()}`;
+  // 서버에 저장된 서명 토큰으로만 링크를 만든다 (임의 토큰은 서명 페이지에서 검증 실패)
+  const signToken = contract.remoteSignToken || '';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
-  const signUrl = `${origin}?view=sign&token=${signToken}&cid=${contract.id}`;
+  const signUrl = signToken ? `${origin}?view=sign&token=${signToken}&cid=${contract.id}` : '';
 
   const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
 
@@ -39,6 +39,10 @@ ${signUrl}
 ※ 본 계약은 전자서명법 제3조에 따라 법적 효력을 가지며, 대표자 명의의 스마트폰(PASS 또는 문자)으로 본인확인이 진행됩니다.`;
 
   const handleCopyLink = () => {
+    if (!signUrl) {
+      toast.error('이 계약에는 발급된 원격 서명 링크가 없습니다.');
+      return;
+    }
     navigator.clipboard.writeText(signUrl);
     setCopiedLink(true);
     toast.success('서명 링크가 클립보드에 복사되었습니다.');
@@ -46,6 +50,10 @@ ${signUrl}
   };
 
   const handleCopyMessage = () => {
+    if (!signUrl) {
+      toast.error('이 계약에는 발급된 원격 서명 링크가 없습니다.');
+      return;
+    }
     navigator.clipboard.writeText(messageTemplate);
     setCopiedMsg(true);
     toast.success('카카오톡/문자 안내 문구가 복사되었습니다.');
@@ -87,7 +95,7 @@ ${signUrl}
             <div className="flex items-center gap-2 mt-1">
               <input
                 readOnly
-                value={signUrl}
+                value={signUrl || '발급된 서명 링크 없음'}
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 font-mono select-all focus:outline-none"
               />
               <button
