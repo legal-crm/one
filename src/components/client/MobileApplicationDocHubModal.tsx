@@ -12,6 +12,7 @@ import {
   type DocPhase 
 } from '../../services/documents/applicationDocTemplateService';
 import { CARRIER_LIST } from '../../utils/carrierTracking';
+import { validateUploadFile } from '../../utils/fileSecurity';
 import ClientDebtIntakeWizardModal from './ClientDebtIntakeWizardModal';
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
@@ -21,18 +22,25 @@ interface MobileApplicationDocHubModalProps {
   clientName?: string;
   clientRequest?: any;
   uploadedFiles?: any[];
-  onUploadFile?: (docName: string, file: File) => void;
+  onUploadFile?: (docName: string, file: File) => void | Promise<void>;
+  /** 담당 사무소 등기 수령 주소·연락처 (없으면 '사무소 안내 예정' 표시 — 가짜 주소 금지) */
+  officeAddress?: string;
+  officePhone?: string;
+  /** 등기 발송 통보 (송장번호 등) — 없으면 채팅으로 알려 달라고 안내 */
+  onNotifyDispatch?: (info: { carrier: string; trackingNo: string }) => void | Promise<void>;
 }
 
-export default function MobileApplicationDocHubModal({
+function MobileApplicationDocHubModalInner({
   isOpen,
   onClose,
-  clientName = '김가람',
+  clientName = '신청인',
   clientRequest,
   uploadedFiles = [],
-  onUploadFile
+  onUploadFile,
+  officeAddress,
+  officePhone,
+  onNotifyDispatch
 }: MobileApplicationDocHubModalProps) {
-  if (!isOpen) return null;
 
   // 의뢰인 맞춤 권장 서류 목록 로드 (22종 등)
   const docList = useMemo(() => {
@@ -40,8 +48,10 @@ export default function MobileApplicationDocHubModal({
   }, [clientRequest]);
 
   // 채권자 수 및 인감증명서 필요 부수 계산
-  const creditorCount = clientRequest?.creditorCount || 5;
-  const sealCertCount = ApplicationDocTemplateService.getRequiredSealCertCount(creditorCount);
+  // 채권자 수를 모르면 부수를 단정하지 않음 (기본 5곳 가정 제거)
+  const knownCreditorCount: number | undefined = clientRequest?.creditorCount || undefined;
+  const creditorCount = knownCreditorCount || 0;
+  const sealCertCount = knownCreditorCount ? ApplicationDocTemplateService.getRequiredSealCertCount(knownCreditorCount) : 0;
 
   // 로컬 제출 상태 (시뮬레이션 및 업로드 추적)
   const [submittedDocIds, setSubmittedDocIds] = useState<Set<string>>(() => {
@@ -83,14 +93,18 @@ export default function MobileApplicationDocHubModal({
   const totalCount = currentDocs.length;
   const progressPercent = Math.round((completedCount / (totalCount || 1)) * 100);
 
-  const lawOfficeAddress = '서울시 서초구 서초대로 254 오퓨런스빌딩 12층 법무법인 회생파산 전담팀 (우: 06596)';
+  const lawOfficeAddress = officeAddress || '';
 
   // 모바일 발급안내문 PDF 다운로드 (리걸플로 그림 2-11 상단 버튼)
   const handleDownloadGuidePdf = () => {
-    toast.success(`[${clientName} 님 맞춤 신청서류 ${activePhase}차 종합 발급안내문 PDF]가 다운로드되었습니다.`);
+    toast.info('발급안내문 PDF 다운로드는 준비 중입니다. 아래 목록을 참고해 주세요.');
   };
 
   const handleCopyAddress = () => {
+    if (!lawOfficeAddress) {
+      toast.info('등기 수령 주소는 담당 사무소에서 안내해 드립니다.');
+      return;
+    }
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(lawOfficeAddress);
       setCopiedAddress(true);
@@ -99,40 +113,54 @@ export default function MobileApplicationDocHubModal({
     }
   };
 
-  const handleNotifyDispatch = () => {
-    setIsMailDispatched(true);
-    // 1차 서류 일괄 제출 마킹 (시뮬레이션)
-    setSubmittedDocIds(prev => {
-      const next = new Set(prev);
-      phase1Docs.forEach(d => next.add(d.id));
-      return next;
-    });
-
+  const handleNotifyDispatch = async () => {
     const carrierObj = CARRIER_LIST.find(c => c.code === selectedCarrier);
     const carrierName = carrierObj ? carrierObj.name : '우체국 빠른등기';
-    const trackingMsg = inputTrackingNo.trim() ? ` (송장: ${inputTrackingNo.trim()})` : '';
+    const trackingNo = inputTrackingNo.trim();
 
-    toast.success(`[${carrierName}] 발송이 사무소에 통보되었습니다!${trackingMsg} 실물 도착 즉시 부채증명서 발급에 착수합니다.`, {
-      duration: 4500
-    });
+    if (!onNotifyDispatch) {
+      // 사무소 통보 연동이 없는 화면에서는 '통보 완료'로 표시하지 않는다
+      toast.info(`발송하셨다면 담당 변호사 채팅으로 [${carrierName}${trackingNo ? ` / 송장 ${trackingNo}` : ''}]를 알려 주세요.`, { duration: 5000 });
+      return;
+    }
+    try {
+      await onNotifyDispatch({ carrier: carrierName, trackingNo });
+      setIsMailDispatched(true);
+      toast.success(`[${carrierName}] 발송 정보를 사무소에 전달했습니다.${trackingNo ? ` (송장: ${trackingNo})` : ''} 서류가 도착하면 사무소에서 확인 후 안내합니다.`, {
+        duration: 4500
+      });
+    } catch {
+      toast.error('발송 정보를 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
-  // 파일 선택 및 업로드 처리
-  const handleFileChange = (doc: ApplicationDocMasterItem, e: React.ChangeEvent<HTMLInputElement>) => {
+  // 파일 선택 및 업로드 처리 (확장자·용량 검증 후 제출)
+  const handleFileChange = async (doc: ApplicationDocMasterItem, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
-    if (onUploadFile) {
-      onUploadFile(doc.name, file);
+    const validation = validateUploadFile(file);
+    if (!validation.isValid) {
+      toast.error(`[${file.name}] ${validation.error}`);
+      return;
+    }
+    if (!onUploadFile) {
+      toast.info('이 화면에서는 파일 제출이 지원되지 않습니다. 마이페이지 서류함에서 제출해 주세요.');
+      return;
     }
 
-    setSubmittedDocIds(prev => {
-      const next = new Set(prev);
-      next.add(doc.id);
-      return next;
-    });
-
-    toast.success(`'${doc.name}' 서류가 안전하게 제출되었습니다.`);
+    try {
+      await onUploadFile(doc.name, file);
+      setSubmittedDocIds(prev => {
+        const next = new Set(prev);
+        next.add(doc.id);
+        return next;
+      });
+      toast.success(`'${doc.name}' 서류를 제출했습니다.`);
+    } catch {
+      toast.error(`'${doc.name}' 서류를 제출하지 못했습니다. 다시 시도해 주세요.`);
+    }
   };
 
   return (
@@ -255,14 +283,14 @@ export default function MobileApplicationDocHubModal({
                   <span>인감도장 & 인감증명서 필수 안내</span>
                 </span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold">
-                  채권사 {creditorCount}곳 기준
+                  {knownCreditorCount ? `채권사 ${knownCreditorCount}곳 기준` : '채권사 수 확인 후 안내'}
                 </span>
               </div>
               <p className="text-[11px] text-amber-900/90 leading-relaxed">
-                금융기관 부채증명서 대리 발급을 위해 <strong>인감도장 실물</strong>과 <strong>인감증명서 총 {sealCertCount}부</strong>(채권사 {creditorCount}곳 + 예비 5부, 용도 미기재)가 반드시 필요합니다.
+                금융기관 부채증명서 대리 발급을 위해 <strong>인감도장 실물</strong>과 <strong>인감증명서</strong>{knownCreditorCount ? <> 총 <strong>{sealCertCount}부</strong>(채권사 {knownCreditorCount}곳 + 예비 5부, 용도 미기재)</> : ' (필요 부수는 채권사 수 확인 후 사무소에서 안내)'}가 필요합니다.
               </p>
               <div className="mt-2 text-[10px] text-amber-800 bg-white/70 p-2 rounded-xl border border-amber-200">
-                🔒 <strong>안전 보장:</strong> 인감도장은 금융사 위임장 날인 직후 안전하게 보관되며, 부채증명서 발급 완료 시 원형 그대로 반환됩니다.
+                🔒 <strong>보관 안내:</strong> 인감도장은 금융사 위임장 날인에만 사용하며, 부채증명서 발급이 끝나면 반환됩니다. 반환 방법은 사무소에서 안내합니다.
               </div>
             </div>
 
@@ -282,7 +310,7 @@ export default function MobileApplicationDocHubModal({
                 </button>
               </div>
               <p className="text-xs text-slate-300 font-mono select-all bg-black/30 p-2 rounded-xl border border-white/5 break-keep">
-                {lawOfficeAddress}
+                {lawOfficeAddress || '등기 수령 주소는 담당 사무소에서 안내해 드립니다.'}
               </p>
 
               {/* 배송사 선택 및 송장번호 입력 (선택 보조 옵션) */}
@@ -588,7 +616,7 @@ export default function MobileApplicationDocHubModal({
               : '2차 소득·재산 서류 취합이 완료되면 담당 변호사가 법원 전자소송을 접수합니다.'}
           </p>
           <p className="text-[10px] text-slate-400 font-mono">
-            서류 발급 관련 문의: 1544-0000 (법무법인 회생전담팀)
+            서류 발급 관련 문의: {officePhone || '담당 변호사 채팅으로 문의해 주세요'}
           </p>
         </div>
 
@@ -613,7 +641,7 @@ export default function MobileApplicationDocHubModal({
           onClose={() => setShowDebtIntakeWizard(false)}
           clientId={clientRequest?.id || 'client-mobile'}
           clientName={clientName}
-          clientPhone={clientRequest?.phone || '010-0000-0000'}
+          clientPhone={clientRequest?.phone || ''}
           onComplete={() => {
             setShowDebtIntakeWizard(false);
           }}
@@ -621,4 +649,10 @@ export default function MobileApplicationDocHubModal({
       )}
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리 (열고 닫을 때 훅 개수 불일치 크래시 방지)
+export default function MobileApplicationDocHubModal(props: MobileApplicationDocHubModalProps) {
+  if (!props.isOpen) return null;
+  return <MobileApplicationDocHubModalInner {...props} />;
 }

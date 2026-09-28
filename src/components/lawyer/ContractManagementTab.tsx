@@ -33,7 +33,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   const dialog = useDialog();
 
   const [contracts, setContracts] = useState<ElectronicContract[]>(() => {
-    seedMockContracts();
+    // 가짜 계약(완료·블록체인 기록 포함) 시드는 개발 환경에서만 — 운영 계약 목록에 섞이지 않도록
+    if (import.meta.env.DEV) seedMockContracts();
     return loadContractsLocal();
   });
   const [statusFilter, setStatusFilter] = useState<string>('all');

@@ -15,21 +15,20 @@ interface JobHistoryImportModalProps {
   onConfirmImport: (importedItems: JobHistoryItem[]) => void;
 }
 
-export default function JobHistoryImportModal({
+function JobHistoryImportModalInner({
   isOpen,
   onClose,
   clientName = '신청인',
   onConfirmImport
 }: JobHistoryImportModalProps) {
-  if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState<'auth' | 'document'>('auth');
+  const [activeTab, setActiveTab] = useState<'auth' | 'document'>('document');
   const [isLoading, setIsLoading] = useState(false);
 
   // A안: 간편인증 폼 상태
   const [authName, setAuthName] = useState(clientName);
-  const [rrnFront, setRrnFront] = useState('850101');
-  const [phone, setPhone] = useState('01012345678');
+  const [rrnFront, setRrnFront] = useState('');
+  const [phone, setPhone] = useState('');
   const [telecom, setTelecom] = useState<'SKT' | 'KT' | 'LGU' | 'MVNO'>('SKT');
   const [authType, setAuthType] = useState<'KAKAO' | 'PASS' | 'NAVER' | 'TOSS'>('KAKAO');
 
@@ -59,9 +58,9 @@ export default function JobHistoryImportModal({
       if (result.ok && result.items.length > 0) {
         setRetrievedItems(result.items);
         setHasQueried(true);
-        toast.success(`국민연금공단에서 ${result.items.length}건의 직장 가입 이력을 성공적으로 불러왔습니다!`);
+        toast.success(`가입 이력 ${result.items.length}건을 불러왔습니다. 내용을 확인해 주세요.`);
       } else {
-        toast.error('가입 이력을 불러오지 못했습니다. 다시 시도해 주세요.');
+        toast.error('간편인증 경력 조회는 아직 준비 중입니다. 자격득실확인서 사진으로 불러오거나 직접 입력해 주세요.');
       }
     } catch {
       toast.error('조회 중 오류가 발생했습니다.');
@@ -80,14 +79,14 @@ export default function JobHistoryImportModal({
     reader.onload = async (uploadEvt) => {
       const base64 = uploadEvt.target?.result as string;
       try {
-        toast.info('제미나이 Vision AI가 자격득실확인서 표를 분석 중입니다...');
+        toast.info('AI가 자격득실확인서 표를 읽고 있습니다. 서류 이미지는 인식을 위해 AI 서비스(Google Gemini)로 전송됩니다.');
         const result = await JobHistoryService.parseJobHistoryFromDocumentImage(base64, file.name);
         if (result.ok && result.items.length > 0) {
           setRetrievedItems(result.items);
           setHasQueried(true);
-          toast.success(`서류에서 ${result.items.length}건의 직장 경력을 성공적으로 추출했습니다!`);
+          toast.success(`서류에서 직장 경력 ${result.items.length}건을 읽었습니다. 틀린 부분이 없는지 확인해 주세요.`);
         } else {
-          toast.error('서류에서 경력을 인식하지 못했습니다. 선명한 사진으로 다시 시도해 주세요.');
+          toast.error('서류에서 경력을 인식하지 못했습니다. 선명한 사진으로 다시 시도하거나 직접 입력해 주세요.');
         }
       } catch {
         toast.error('OCR 파싱 중 오류가 발생했습니다.');
@@ -141,15 +140,15 @@ export default function JobHistoryImportModal({
                   내 과거 직장경력 한 번에 불러오기
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-300">
-                  국민연금 · 건강보험 연동
+                  자격득실확인서 인식
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                기억나지 않는 과거 직장명과 입·퇴사일을 공단 데이터로 1초 만에 조회합니다.
+                자격득실확인서 사진으로 과거 직장명과 입·퇴사일을 불러올 수 있습니다. 결과는 꼭 확인해 주세요.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="닫기" className="text-slate-300 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -167,7 +166,7 @@ export default function JobHistoryImportModal({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span>📱 카카오/PASS 간편인증 (추천)</span>
+              <span>📱 간편인증 조회 (준비 중)</span>
             </button>
             <button
               type="button"
@@ -179,7 +178,7 @@ export default function JobHistoryImportModal({
               }`}
             >
               <FileUp className="w-3.5 h-3.5" />
-              <span>📷 자격득실확인서 사진/PDF (1초 OCR)</span>
+              <span>📷 자격득실확인서 사진/PDF</span>
             </button>
           </div>
         )}
@@ -194,7 +193,7 @@ export default function JobHistoryImportModal({
                 <div>
                   <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>공단에서 확인된 과거 직장 목록 ({retrievedItems.length}건)</span>
+                    <span>불러온 과거 직장 목록 ({retrievedItems.length}건)</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     법원 진술서에 포함할 직장 경력을 선택해 주세요.
@@ -227,7 +226,9 @@ export default function JobHistoryImportModal({
                     <input
                       type="checkbox"
                       checked={item.selected}
-                      onChange={() => {}}
+                      onChange={() => toggleItemSelect(item.id)}
+                      onClick={e => e.stopPropagation()}
+                      aria-label={`${item.workplaceName} 선택`}
                       className="mt-1 accent-indigo-600 w-4 h-4 rounded-md cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">
@@ -236,7 +237,7 @@ export default function JobHistoryImportModal({
                           {item.workplaceName}
                         </span>
                         {item.isCurrent && (
-                          <span className="px-1.5 py-0.2 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-md">
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 rounded-md">
                             재직 중
                           </span>
                         )}
@@ -258,7 +259,7 @@ export default function JobHistoryImportModal({
                   <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40 rounded-2xl flex items-start gap-2.5 text-xs text-indigo-900 dark:text-indigo-200">
                     <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                     <span>
-                      국민연금공단(NPS)에 등록된 과거 직장 이력을 안전하게 1회성으로 조회합니다. 조회된 정보는 진술서 표 작성 외 다른 목적으로 저장되지 않습니다.
+                      간편인증 기반 국민연금 가입이력 조회는 연동 준비 중입니다. 지금은 [자격득실확인서 사진/PDF] 탭을 이용하거나 진술서에 직접 입력해 주세요. 선택한 경력은 진술서에 저장됩니다.
                     </span>
                   </div>
 
@@ -347,11 +348,11 @@ export default function JobHistoryImportModal({
                       {isLoading ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>국민연금공단에서 경력을 불러오는 중...</span>
+                          <span>경력을 불러오는 중...</span>
                         </>
                       ) : (
                         <>
-                          <span>국민연금 가입경력 1초 만에 불러오기</span>
+                          <span>국민연금 가입경력 불러오기</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -421,4 +422,10 @@ export default function JobHistoryImportModal({
       </div>
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리 (열고 닫을 때 훅 개수 불일치 크래시 방지)
+export default function JobHistoryImportModal(props: JobHistoryImportModalProps) {
+  if (!props.isOpen) return null;
+  return <JobHistoryImportModalInner {...props} />;
 }

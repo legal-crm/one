@@ -36,8 +36,8 @@ interface DebtDiscoveryModalProps {
 export default function DebtDiscoveryModal({
   isOpen,
   onClose,
-  clientName = '홍길동',
-  clientPhone = '010-0000-0000',
+  clientName = '',
+  clientPhone = '',
   onImportToDebtCertificates,
   onImportToRepaymentPlan
 }: DebtDiscoveryModalProps) {
@@ -137,7 +137,11 @@ export default function DebtDiscoveryModal({
       setSelectedDebtIds(new Set(result.creditDebts.map(d => d.id)));
       setSelectedTaxIds(new Set(result.taxArrears.map(t => t.id)));
       setStep('RESULT');
-      toast.success('4대 공공·금융기관 전수조회가 완료되었습니다.');
+      if (result.isLiveB2B) {
+        toast.success('기관 조회가 완료되었습니다. 결과를 확인해 주세요.');
+      } else {
+        toast.warning('실제 기관 조회는 연동 준비 중입니다. 표시되는 내용은 시연용 예시 데이터이며 반영할 수 없습니다.');
+      }
     } catch (err: any) {
       toast.error(err.message || '전수조회 데이터를 불러오지 못했습니다.');
       setStep('AUTH_WAIT');
@@ -178,6 +182,7 @@ export default function DebtDiscoveryModal({
 
   // 부채증명서 발급 대행으로 반영
   const handleApplyToDebtCertificates = () => {
+    if (!discoveryData?.isLiveB2B) { toast.error('시연용 예시 데이터는 사건 서류에 반영할 수 없습니다.'); return; }
     if (!discoveryData) return;
     if (selectedCreditDebts.length === 0) {
       toast.error('등록할 금융 채무를 최소 1건 이상 선택해 주세요.');
@@ -194,6 +199,7 @@ export default function DebtDiscoveryModal({
 
   // 변제계획안 채권자 및 재산으로 반영
   const handleApplyToRepaymentPlan = () => {
+    if (!discoveryData?.isLiveB2B) { toast.error('시연용 예시 데이터는 사건 서류에 반영할 수 없습니다.'); return; }
     if (!discoveryData) return;
     if (selectedCreditDebts.length === 0 && selectedTaxArrears.length === 0) {
       toast.error('등록할 채무 또는 세금 체납을 최소 1건 이상 선택해 주세요.');
@@ -237,7 +243,7 @@ export default function DebtDiscoveryModal({
                 </span>
               </div>
               <p className="text-xs text-indigo-200/80 mt-0.5">
-                신용정보원(대출·카드) · 국세청/위택스(조세) · 어카운트인포(계좌) · 대법원(사건) 실시간 연동
+                신용정보원(대출·카드) · 국세청/위택스(조세) · 어카운트인포(계좌) · 대법원(사건) 조회 (연동 준비 중)
               </p>
             </div>
           </div>
@@ -273,7 +279,7 @@ export default function DebtDiscoveryModal({
 
               <div>
                 <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                  간편인증으로 10초 만에 채무를 불러옵니다
+                  간편인증으로 흩어진 채무를 한 번에 확인하는 기능입니다 (연동 준비 중)
                 </h4>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
                   외부 사이트 5곳을 일일이 방문하여 서류를 발급받을 필요 없이,<br />
@@ -343,7 +349,7 @@ export default function DebtDiscoveryModal({
               {/* 보안 및 동의 안내 */}
               <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
                 <Lock className="w-3.5 h-3.5" />
-                <span>개인정보보호법 및 신용정보법에 따라 조회 목적 외 일체 저장되지 않습니다.</span>
+                <span>조회 결과는 사건 처리 목적으로만 사용됩니다.</span>
               </div>
 
               <button
@@ -407,7 +413,7 @@ export default function DebtDiscoveryModal({
               <div className="text-center space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>실시간 전산망 데이터 수집 중...</span>
+                  <span>조회 중...</span>
                 </div>
                 <h4 className="text-lg font-black text-slate-900 dark:text-white">
                   4대 기관의 채무 및 계좌 내역을 분석하고 있습니다
@@ -655,7 +661,7 @@ export default function DebtDiscoveryModal({
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-black text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                       <Landmark className="w-4 h-4" />
-                      <span>국세청·지방세·4대보험 체납 내역 (법 제415조 일반우선권 채권)</span>
+                      <span>국세청·지방세·4대보험 체납 내역 (우선권 있는 개인회생채권 — 채무자회생법 제583조)</span>
                     </h5>
                     <span className="text-[11px] text-rose-600 font-bold">
                       회생계획안에서 100% 우선 변제 필요
@@ -824,11 +830,15 @@ export default function DebtDiscoveryModal({
             </div>
 
             <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              {!discoveryData?.isLiveB2B && (
+                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 whitespace-nowrap">시연용 데이터는 반영할 수 없습니다</span>
+              )}
               {onImportToDebtCertificates && (
                 <button
                   type="button"
+                  disabled={!discoveryData?.isLiveB2B}
                   onClick={handleApplyToDebtCertificates}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FileText className="w-4 h-4 text-indigo-600" />
                   <span>부채증명서 발급목록 추가</span>
@@ -838,8 +848,9 @@ export default function DebtDiscoveryModal({
               {onImportToRepaymentPlan && (
                 <button
                   type="button"
+                  disabled={!discoveryData?.isLiveB2B}
                   onClick={handleApplyToRepaymentPlan}
-                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Sparkles className="w-4 h-4" />
                   <span>변제계획안 채권자목록으로 일괄 반영</span>

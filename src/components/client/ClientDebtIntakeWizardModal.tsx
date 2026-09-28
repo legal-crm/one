@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../common/ModalPortal';
+import { updateCrmClientExtension } from '../../services/crmService';
 import { 
   DebtIntakeRuleService,
   POPULAR_CREDITORS_PRESET,
@@ -25,15 +26,14 @@ interface ClientDebtIntakeWizardModalProps {
   onComplete?: (entries: ClientDebtIntakeEntry[]) => void;
 }
 
-export default function ClientDebtIntakeWizardModal({
+function ClientDebtIntakeWizardModalInner({
   isOpen,
   onClose,
   clientId,
   clientName = '의뢰인',
-  clientPhone = '010-0000-0000',
+  clientPhone = '',
   onComplete
 }: ClientDebtIntakeWizardModalProps) {
-  if (!isOpen) return null;
 
   // 기존 저장된 내역 불러오기 (없으면 기본 샘플)
   const existingIntake = useMemo(() => {
@@ -44,29 +44,8 @@ export default function ClientDebtIntakeWizardModal({
     if (existingIntake && existingIntake.entries.length > 0) {
       return existingIntake.entries;
     }
-    // 기본 추천 3개
-    return [
-      {
-        id: `entry_${Date.now()}_1`,
-        category: 'BANK',
-        institutionName: '국민은행',
-        hasSeparateCreditCard: true,
-        collateralType: 'NONE',
-      },
-      {
-        id: `entry_${Date.now()}_2`,
-        category: 'MUTUAL_FINANCE',
-        institutionName: '새마을금고',
-        branchName: '',
-        collateralType: 'NONE',
-      },
-      {
-        id: `entry_${Date.now()}_3`,
-        category: 'SAVINGS_BANK',
-        institutionName: 'OK저축은행',
-        collateralType: 'NONE',
-      }
-    ];
+    // 빈 목록에서 시작 — 실제 채무가 없는 기관이 채권자 목록에 들어가는 것을 방지
+    return [];
   });
 
   // 검색어 및 필터
@@ -90,8 +69,9 @@ export default function ClientDebtIntakeWizardModal({
       id: `entry_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       category,
       institutionName: presetName,
-      hasSeparateCreditCard: is4Bank,
-      nonghyupType: presetName === '농협' ? 'CENTRAL' : undefined,
+      // 카드 채무 여부·농협 종류는 의뢰인이 직접 선택 (기본값으로 가정하지 않음)
+      hasSeparateCreditCard: false,
+      nonghyupType: undefined,
       collateralType: 'NONE',
     };
 
@@ -113,7 +93,7 @@ export default function ClientDebtIntakeWizardModal({
       id: `entry_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       category: 'LOAN_OTHER',
       institutionName: name,
-      hasSeparateCreditCard: is4Bank,
+      hasSeparateCreditCard: false,
       collateralType: 'NONE',
     };
 
@@ -146,16 +126,25 @@ export default function ClientDebtIntakeWizardModal({
   }, [selectedCategory, searchQuery]);
 
   // 최종 저장
-  const handleSaveAndSubmit = () => {
+  const handleSaveAndSubmit = async () => {
     if (entries.length === 0) {
       toast.error('최소 1곳 이상의 금융기관 또는 채권자를 입력해 주세요.');
       return;
     }
-
-    // 유효성 체크: 새마을금고/신협/단위농협 지점명 미입력 알림
+    // 유효성 체크: 실무 규칙 필수 항목 미입력 시 제출 차단
     for (const e of entries) {
       const name = e.institutionName;
-      const needsBranch = name.includes('새마을금고') || name.includes('신협') || (name.includes('농협') && e.nonghyupType === 'LOCAL');
+      if (name.includes('농협') && !e.nonghyupType) {
+        toast.warning(`'${name}'이 NH농협은행인지 지역농협·축협인지 선택해 주세요. (서로 다른 기관이라 부채증명서를 따로 발급받습니다)`);
+        setActiveEntryId(e.id);
+        return;
+      }
+      if (name.includes('신용보증재단') && !name.includes('중앙회') && !e.guaranteeRegion) {
+        toast.warning(`'${name}'의 관할 지역 재단을 선택해 주세요.`);
+        setActiveEntryId(e.id);
+        return;
+      }
+      const needsBranch = name.includes('새마을금고') || name.includes('신협') || name.includes('신용협동조합') || name.includes('미소금융') || (name.includes('농협') && e.nonghyupType === 'LOCAL');
       if (needsBranch && !e.branchName?.trim()) {
         toast.warning(`'${name}'의 대출 지점명(지역명)을 입력해 주셔야 금융기관에서 부채증명서 발급이 가능합니다.`);
         setActiveEntryId(e.id);
@@ -173,10 +162,17 @@ export default function ClientDebtIntakeWizardModal({
     };
 
     DebtIntakeRuleService.saveClientIntake(payload);
+    // 변호사 CRM(서버)에도 저장 — 실패 시 사실대로 안내
+    const synced = await updateCrmClientExtension(clientId, { debtIntake: payload });
     if (onComplete) {
       onComplete(entries);
     }
-    toast.success('부채증명서 발급용 세부 정보가 변호사 사무소에 성공적으로 전송되었습니다!');
+    if (synced) {
+      toast.success('부채증명서 발급용 세부 정보를 담당 사무소에 전달했습니다. 사무소 확인 후 발급을 진행합니다.');
+    } else {
+      toast.warning('세부 정보는 이 기기에 저장되었지만 사무소 전달에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
     onClose();
   };
 
@@ -398,10 +394,11 @@ export default function ClientDebtIntakeWizardModal({
                                 관할 지역 재단을 선택해 주세요 (사업장/주소지 기준):
                               </label>
                               <select
-                                value={entry.guaranteeRegion || '서울신용보증재단'}
+                                value={entry.guaranteeRegion || ''}
                                 onChange={e => handleUpdateEntry(entry.id, { guaranteeRegion: e.target.value })}
                                 className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white font-bold"
                               >
+                                <option value="" disabled>관할 재단을 선택해 주세요</option>
                                 {REGIONAL_CREDIT_GUARANTEE_REGIONS.map(r => (
                                   <option key={r} value={r}>{r}</option>
                                 ))}
@@ -440,7 +437,7 @@ export default function ClientDebtIntakeWizardModal({
                               <div className="mt-2 bg-rose-50 border border-rose-200 rounded-xl p-2 text-[11px] text-rose-900 leading-snug flex items-start gap-1.5">
                                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
                                 <div>
-                                  <strong>⚠️ 법적 주의사항 안내:</strong> 해당 저축은행은 회생 인가 후에도 담보물(주택 경매, 차량 공매)을 임의 처리한 실사례가 발생하고 있습니다. 변호사님이 안전하게 재산을 지킬 수 있도록 부채발급 제외 여부를 정밀 검토합니다.
+                                  <strong>⚠️ 담보 대출 안내:</strong> 담보권자는 개인회생 절차와 별도로 담보권(별제권)을 행사할 수 있어, 연체 시 담보물 처분이 진행될 수 있습니다. 담보 대출도 빠짐없이 적어 주시면 담당 변호사가 대응 방법을 안내합니다.
                                 </div>
                               </div>
                             )}
@@ -560,7 +557,7 @@ export default function ClientDebtIntakeWizardModal({
                   <strong className="text-emerald-400 font-extrabold">{totalIssueCount}건</strong>
                 </div>
                 <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400">
-                  ※ 작성 완료 시 변호사 어드민의 부채증명서 대행 신청서에 100% 자동 채워집니다.
+                  ※ 작성하신 내용은 담당 사무소의 부채증명서 발급 신청 목록 작성에 사용됩니다.
                 </div>
               </div>
             </div>
@@ -588,4 +585,10 @@ export default function ClientDebtIntakeWizardModal({
       </div>
     </ModalPortal>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리 (열고 닫을 때 훅 개수 불일치 크래시 방지)
+export default function ClientDebtIntakeWizardModal(props: ClientDebtIntakeWizardModalProps) {
+  if (!props.isOpen) return null;
+  return <ClientDebtIntakeWizardModalInner {...props} />;
 }

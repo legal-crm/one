@@ -28,10 +28,11 @@ interface Fast2ndDocHubModalProps {
 export default function Fast2ndDocHubModal({
   isOpen,
   onClose,
-  clientName = '김가람',
+  clientName = '신청인',
   clientId = 'client-self',
-  hasStatement = true,
-  hasIncomeExpense = true,
+  // 작성 여부는 실제 데이터로만 판단 (기본값을 '완료'로 두지 않음)
+  hasStatement = false,
+  hasIncomeExpense = false,
   hasProperty = false,
   statementData,
   incomeExpenseData,
@@ -57,20 +58,10 @@ export default function Fast2ndDocHubModal({
     hasIncomeExpense,
     incomeExpenseData,
     hasProperty,
-    propertySummary: propertySummary || {
-      totalAssetValue: 12000000,
-      depositAmount: 10000000,
-      vehicleValue: 2000000,
-      realEstateValue: 0
-    },
-    hasDebtSummary: true,
-    debtSummary: debtSummary || {
-      totalDebt: 58000000,
-      monthlyIncome: 2450000,
-      courtName: '서울회생법원',
-      expectedReductionRate: 62,
-      monthlyPayment: 620000
-    }
+    // 실제 데이터가 없으면 공유 패키지에 가짜 요약 수치를 넣지 않는다
+    propertySummary: propertySummary || null,
+    hasDebtSummary: !!debtSummary,
+    debtSummary: debtSummary || null
   };
 
   return (
@@ -101,7 +92,7 @@ export default function Fast2ndDocHubModal({
               "개인회생 서류와 모든 준비는 <span className="text-emerald-400">마이김변에서 쉽고 빠르게!</span>"
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-              변호사를 어디서 선임하셨든 상관없습니다. 복잡한 진술서와 수지표를 말로 편하게 작성하고, 담당 변호사·사무장님께 1초 만에 전달하세요.
+              변호사를 어디서 선임하셨든 상관없습니다. 복잡한 진술서와 수지표를 말로 편하게 작성하고, 담당 변호사·사무장님께 링크로 전달할 수 있습니다.
             </p>
           </div>
 
@@ -128,10 +119,10 @@ export default function Fast2ndDocHubModal({
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div className="text-xs space-y-1">
               <span className="font-bold text-emerald-950 dark:text-emerald-200 block">
-                🌱 타 법률사무소 진행자 및 나홀로 전자소송 준비자도 100% 무료 이용
+                🌱 타 법률사무소 진행자 및 나홀로 전자소송 준비자도 무료로 이용할 수 있습니다
               </span>
               <p className="text-emerald-800/80 dark:text-emerald-300 leading-relaxed text-[11px]">
-                의뢰인이 직접 써야 하는 진술서와 수지표를 마이김변 AI가 법원 표준 양식으로 완성해 드립니다. 완성 후 담당자 휴대폰 번호로 전송하면 변호사·사무장님이 즉시 열람 및 전자소송에 접수할 수 있습니다.
+                의뢰인이 준비해야 하는 진술서와 수지표 초안을 AI가 정리해 드립니다. 완성 후 담당자 휴대폰 번호로 전송하면 변호사·사무장님이 열람하고 검토할 수 있습니다.
               </p>
             </div>
           </div>
@@ -195,7 +186,7 @@ export default function Fast2ndDocHubModal({
                     🎯 왜 법원에 제출해야 하나요? (Why)
                   </span>
                   <p className="text-indigo-900/80 dark:text-indigo-300 text-[11px] leading-relaxed pl-3.5">
-                    진술서는 신청인이 직접 작성해야 하는 유일한 서류입니다. 판사와 회생위원은 진술서를 통해 채무가 사치·낭비가 아닌 '불가피한 생계·사업 실패'였음을 확인하고 면책 여부를 결정합니다.
+                    진술서는 신청인이 채무가 생긴 경위를 직접 설명하는 서류입니다. 법원과 회생위원은 진술서와 증빙을 함께 보고 채무 발생 경위를 확인합니다.
                   </p>
                 </div>
                 <div className="space-y-1 pt-1 border-t border-indigo-200/60 dark:border-indigo-900/40">
@@ -203,7 +194,7 @@ export default function Fast2ndDocHubModal({
                     💡 어떻게 쓰면 되나요? (How)
                   </span>
                   <p className="text-indigo-900/80 dark:text-indigo-300 text-[11px] leading-relaxed pl-3.5">
-                    마이크를 켜고 AI 질문에 편하게 대답만 하세요. AI가 법원 판결문 양식(채무발생원인 → 증대경위 → 파탄시점 → 갱생다짐)으로 완벽하게 다듬어 줍니다.
+                    마이크를 켜고 AI 질문에 편하게 대답만 하세요. AI가 진술서에 흔히 쓰는 구성(채무발생원인 → 증대경위 → 지급불능 시점 → 반성과 다짐)으로 초안을 정리합니다.
                   </p>
                 </div>
               </div>
@@ -277,7 +268,7 @@ export default function Fast2ndDocHubModal({
                     💡 어떻게 쓰면 되나요? (How)
                   </span>
                   <p className="text-emerald-900/80 dark:text-emerald-300 text-[11px] leading-relaxed pl-3.5">
-                    복잡한 12개월 엑셀을 몰라도 됩니다! 마이크를 켜고 "카드 400에 현금 100이고, 월세 90, 배달비 50 나가요"라고 말씀하시면 AI가 수지표 12개월 장부를 3초 만에 채워줍니다.
+                    복잡한 12개월 엑셀을 몰라도 됩니다! 마이크를 켜고 "카드 400에 현금 100이고, 월세 90, 배달비 50 나가요"라고 말씀하시면 금액을 찾아 수지표에 채워 드립니다. 반영 전 금액을 꼭 확인해 주세요.
                   </p>
                 </div>
               </div>

@@ -251,102 +251,14 @@ export async function parseFamilyDocument(file: File): Promise<FamilyOcrResult> 
     console.warn('[Real OCR Backend Call Failed, falling back to local heuristic/sample]', err);
   }
 
-  // 3. 백엔드 미응답/개발 환경 시: 지능형 시뮬레이션 폴백
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const isFamilyRelationCert = fileName.includes('가족') || fileName.includes('family');
-  const nowYear = new Date().getFullYear();
-
-  // 현실적 표준 서류 샘플 데이터 자동 생성 (자녀 2명, 배우자 포함)
-  const child1AgeInfo = calculateKoreanAgeInfo(`${nowYear - 10}.04.12`);
-  const child2AgeInfo = calculateKoreanAgeInfo(`${nowYear - 6}.09.28`);
-  const spouseAgeInfo = calculateKoreanAgeInfo(`${nowYear - 37}.03.15`);
-
-  const sampleMembers: FamilyMemberItem[] = [
-    {
-      id: `fam_ocr_self_${Date.now()}`,
-      relationship: '본인',
-      name: '신청인(세대주)',
-      birthDate: `${nowYear - 38}.05.20`,
-      cohabitationStatus: '동거',
-      cohabitationPeriod: '출생시부터',
-      isSupportedByDebtor: true,
-      hasIncome: true,
-      jobAndIncomeDetail: '신청인 본인 (근로소득자)',
-      isEligibleDependent: true,
-      parsedAge: 38,
-      isMinor: false,
-      ageCategory: 'adult',
-      ageBadgeText: '본인(신청인)',
-      ageBadgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-      source: isFamilyRelationCert ? 'ocr_family' : 'ocr_registration'
-    },
-    {
-      id: `fam_ocr_spouse_${Date.now()}`,
-      relationship: '배우자',
-      name: '김*은',
-      birthDate: spouseAgeInfo.birthDateFormatted,
-      cohabitationStatus: '동거',
-      cohabitationPeriod: '결혼 이후 8년',
-      isSupportedByDebtor: false,
-      hasIncome: false,
-      jobAndIncomeDetail: '주부 (소득 없음)',
-      isEligibleDependent: false, // 배우자는 노동능력 보유 시 원칙적 제외
-      ineligibilityReason: '신체 건강하여 근로 능력이 있는 배우자는 부양가족에서 제외',
-      parsedAge: spouseAgeInfo.fullAge,
-      isMinor: false,
-      ageCategory: 'adult',
-      ageBadgeText: spouseAgeInfo.badgeText,
-      ageBadgeColor: spouseAgeInfo.badgeColorClass,
-      source: isFamilyRelationCert ? 'ocr_family' : 'ocr_registration'
-    },
-    {
-      id: `fam_ocr_child1_${Date.now()}`,
-      relationship: '자',
-      name: '이*민',
-      birthDate: child1AgeInfo.birthDateFormatted,
-      cohabitationStatus: '동거',
-      cohabitationPeriod: '출생시부터',
-      isSupportedByDebtor: true,
-      hasIncome: false,
-      jobAndIncomeDetail: '초등학생 (소득 없음)',
-      isEligibleDependent: true,
-      parsedAge: child1AgeInfo.fullAge,
-      isMinor: true,
-      ageCategory: 'minor',
-      ageBadgeText: child1AgeInfo.badgeText,
-      ageBadgeColor: child1AgeInfo.badgeColorClass,
-      source: isFamilyRelationCert ? 'ocr_family' : 'ocr_registration'
-    },
-    {
-      id: `fam_ocr_child2_${Date.now()}`,
-      relationship: '녀',
-      name: '이*서',
-      birthDate: child2AgeInfo.birthDateFormatted,
-      cohabitationStatus: '동거',
-      cohabitationPeriod: '출생시부터',
-      isSupportedByDebtor: true,
-      hasIncome: false,
-      jobAndIncomeDetail: '미취학 아동 (소득 없음)',
-      isEligibleDependent: true,
-      parsedAge: child2AgeInfo.fullAge,
-      isMinor: true,
-      ageCategory: 'minor',
-      ageBadgeText: child2AgeInfo.badgeText,
-      ageBadgeColor: child2AgeInfo.badgeColorClass,
-      source: isFamilyRelationCert ? 'ocr_family' : 'ocr_registration'
-    }
-  ];
-
+  // 3. 백엔드 미응답·AI 인식 실패 시: 가짜 가족 구성원을 만들지 않고 실패를 반환 → 사용자가 직접 입력
+  //    (기존: 배우자·자녀 2명·서초구 주소 샘플을 '인식 성공'으로 반환해 부양가족·생계비가 잘못 계산됨)
   return {
-    ok: true,
-    docType: isFamilyRelationCert ? 'family_relation' : 'resident_register',
-    docTitle: isFamilyRelationCert ? '가족관계증명서 (상세)' : '주민등록등본 (세대구성)',
-    headOfHousehold: '신청인',
-    residenceAddress: '서울특별시 서초구 반포대로 120',
-    issueDate: new Date().toISOString().split('T')[0],
-    extractedMembers: sampleMembers,
-    confidenceScore: 0.94,
-    message: `${isFamilyRelationCert ? '가족관계증명서' : '주민등록등본'}에서 배우자 및 미성년 자녀 2명이 자동 인식되어 등록되었습니다.`
+    ok: false,
+    docType: fileName.includes('가족') || fileName.includes('family') ? 'family_relation' : 'resident_register',
+    docTitle: fileName.includes('가족') || fileName.includes('family') ? '가족관계증명서' : '주민등록등본',
+    extractedMembers: [],
+    confidenceScore: 0,
+    message: '서류에서 가족 정보를 인식하지 못했습니다. 가족 구성원을 직접 입력해 주세요.'
   };
 }

@@ -38,15 +38,10 @@ export default function ClientCertificateSubmissionModal({
   // NPKI 파일 상태
   const [derFile, setDerFile] = useState<File | null>(null);
   const [keyFile, setKeyFile] = useState<File | null>(null);
-  const [parsedMeta, setParsedMeta] = useState<{
-    subjectName: string;
-    issuer: string;
-    validTo: string;
-    daysRemaining: number;
-  } | null>(null);
+  const [parsedMeta, setParsedMeta] = useState<ReturnType<typeof inspectDerCertificate> | null>(null);
 
   // 금융인증서 상태
-  const [relayPhone, setRelayPhone] = useState(clientPhone || '010-0000-0000');
+  const [relayPhone, setRelayPhone] = useState(clientPhone || '');
   const [telecom, setTelecom] = useState('SKT');
 
   // 비밀번호 상태
@@ -55,9 +50,10 @@ export default function ClientCertificateSubmissionModal({
   const [showPassword, setShowPassword] = useState(false);
 
   // 동의서 상태
-  const [consentPurpose, setConsentPurpose] = useState(true);
-  const [consentProhibit, setConsentProhibit] = useState(true);
-  const [consentShred, setConsentShred] = useState(true);
+  // 필수 동의는 의뢰인이 직접 체크해야 한다 (미리 체크 금지)
+  const [consentPurpose, setConsentPurpose] = useState(false);
+  const [consentProhibit, setConsentProhibit] = useState(false);
+  const [consentShred, setConsentShred] = useState(false);
   const [signerName, setSignerName] = useState(clientName);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,6 +67,11 @@ export default function ClientCertificateSubmissionModal({
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const lower = file.name.toLowerCase();
+      // 공동인증서 파일은 수 KB 수준 — 큰 파일은 인증서가 아님
+      if (file.size === 0 || file.size > 20 * 1024) {
+        toast.error(`[${file.name}] 공동인증서 파일이 아닌 것 같습니다. (signCert.der / signPri.key 파일을 선택해 주세요)`);
+        continue;
+      }
       if (lower.endsWith('.der')) {
         newDer = file;
       } else if (lower.endsWith('.key')) {
@@ -85,8 +86,18 @@ export default function ClientCertificateSubmissionModal({
       try {
         const base64 = await fileToBase64(newDer);
         const inspected = inspectDerCertificate(base64, clientName);
+        if (inspected.isExpired) {
+          setDerFile(null);
+          setParsedMeta(null);
+          toast.error(`만료된 인증서입니다 (만료일 ${inspected.validTo.slice(0, 10)}). 갱신한 인증서를 등록해 주세요.`);
+          return;
+        }
         setParsedMeta(inspected);
-        toast.success(`공동인증서 파일이 인식되었습니다. (발급기관: ${inspected.issuer})`);
+        toast.success(
+          inspected.validityParsed
+            ? `공동인증서를 확인했습니다. (${inspected.issuer} · 만료일 ${inspected.validTo.slice(0, 10)})`
+            : '인증서 파일을 선택했습니다. 유효기간은 파일에서 확인하지 못했습니다.'
+        );
       } catch (err) {
         console.warn('Certificate inspection error:', err);
       }
@@ -134,8 +145,8 @@ export default function ClientCertificateSubmissionModal({
           iv,
           subjectName: inspected.subjectName,
           issuer: inspected.issuer,
-          serialNumber: `2026-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          validFrom: new Date().toISOString(),
+          serialNumber: inspected.serialNumber || '',
+          validFrom: inspected.validFrom,
           validTo: inspected.validTo,
           isExpired: inspected.daysRemaining <= 0,
           daysRemaining: inspected.daysRemaining,
@@ -155,8 +166,8 @@ export default function ClientCertificateSubmissionModal({
       const log = createAccessLog(
         clientName,
         '의뢰인',
-        'password_view',
-        '의뢰인 전용 마법사를 통해 인증서 및 E2EE 암호화 키 안전 금고 등록 체결'
+        'register',
+        '의뢰인이 인증서 제출 마법사로 인증서를 등록함'
       );
 
       const newVault: CertificateVaultData = {
@@ -185,7 +196,8 @@ export default function ClientCertificateSubmissionModal({
       saveCertificateVault(newVault);
       await onSaveVault(newVault);
 
-      toast.success('인증서가 종단간 암호화(E2EE) 금고에 안전하게 제출되었습니다.');
+      // 인증서는 개인키 보호를 위해 서버로 전송하지 않고 이 기기에만 보관된다 (사무소 원격 전달은 미구현)
+      toast.success('인증서를 이 기기에 암호화해 보관했습니다. 사무소 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 5000 });
       onClose();
     } catch (err: any) {
       toast.error(err.message || '인증서 등록 중 오류가 발생했습니다.');
@@ -206,12 +218,10 @@ export default function ClientCertificateSubmissionModal({
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
                 인증서 안심 제출 마법사
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
-                  Zero-Knowledge
-                </span>
+
               </h3>
               <p className="text-[11px] text-slate-400">
-                부채증명서 발급 및 대법원 전자소송 대리 전용 E2EE 암호화 금고
+                부채증명서 발급 및 전자소송 대리 목적으로만 사용하는 인증서 보관함
               </p>
             </div>
           </div>
@@ -318,7 +328,7 @@ export default function ClientCertificateSubmissionModal({
 
               <div className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs text-slate-300 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>제출하신 인증서는 암호화되며, 부채증명서 발급 및 소송 진행 외에는 절대 사용되지 않습니다.</span>
+                <span>제출하신 인증서는 부채증명서 발급 및 소송 진행 등 위임 목적으로만 사용되며, 사용 내역이 기록됩니다.</span>
               </div>
             </div>
           )}
@@ -336,7 +346,11 @@ export default function ClientCertificateSubmissionModal({
                   </div>
 
                   {/* 드래그앤드롭 영역 */}
-                  <label className="block border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-950/40 rounded-2xl p-6 text-center cursor-pointer transition-colors">
+                  <label
+                    className="block border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-950/40 rounded-2xl p-6 text-center cursor-pointer transition-colors"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); handleFileUpload(e.dataTransfer.files); }}
+                  >
                     <Upload className="w-8 h-8 text-blue-400 mx-auto mb-2" />
                     <span className="text-xs font-bold text-slate-200 block">
                       이곳을 클릭하거나 인증서 파일들을 끌어다 놓으세요
@@ -440,7 +454,7 @@ export default function ClientCertificateSubmissionModal({
                   <div className="text-center space-y-1">
                     <h4 className="text-sm font-bold text-white">인증서 비밀번호 입력</h4>
                     <p className="text-xs text-slate-400">
-                      입력하신 비밀번호는 브라우저 내부에서 즉시 AES-256-GCM으로 암호화되어 안전하게 보관됩니다.
+                      입력하신 비밀번호는 암호화(AES-256-GCM)되어 이 기기(브라우저)에만 저장되며 서버로 전송되지 않습니다. 사무소 전달이 필요하면 담당 변호사와 전달 방법을 상의해 주세요.
                     </p>
                   </div>
 
@@ -488,10 +502,10 @@ export default function ClientCertificateSubmissionModal({
                   <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 space-y-1">
                     <span className="font-bold flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      Zero-Knowledge 종단간 암호화(E2EE) 보장
+                      보관 및 사용 방식 안내
                     </span>
                     <p className="text-[11px] text-emerald-400/80 leading-relaxed">
-                      비밀번호는 평문으로 서버에 전송되지 않으며, 변호사 사무실에서도 열람 사유를 입력하고 2차 인증을 거친 경우에만 1회성으로 복호화됩니다.
+                      비밀번호는 평문으로 저장하지 않습니다. 이 보관함은 현재 기기 안에만 저장되며, 사무소가 인증서를 쓰려면 별도 전달 절차가 필요합니다. 인증서 제출이 부담되시면 제출하지 않고 사무소와 다른 발급 방법을 상의하셔도 됩니다.
                     </p>
                   </div>
                 </>
@@ -514,7 +528,7 @@ export default function ClientCertificateSubmissionModal({
               <div className="text-center space-y-1">
                 <h4 className="text-sm font-bold text-white">법적 위임 목적 제한 서약</h4>
                 <p className="text-xs text-slate-400">
-                  전자서명법 제3조 및 변호사법에 따라 오직 사건 진행 목적으로만 사용됨을 보증합니다.
+                  아래 내용을 읽고 동의하시는 경우에만 체크해 주세요.
                 </p>
               </div>
 
@@ -541,7 +555,7 @@ export default function ClientCertificateSubmissionModal({
                   />
                   <span>
                     <strong>[필수] 일체 금융거래(예금 인출·대출) 금지 확인:</strong><br />
-                    본 위임 목적 외의 예금 인출, 이체, 대출 실행 등 금융 행위는 절대 불가능하며 기술적으로 원천 차단됨을 확인합니다.
+                    담당 사무소는 위임 목적 외에 예금 인출·이체·대출 실행 등 금융거래에 인증서를 사용하지 않습니다. (공동인증서는 기술적으로 서명이 가능한 수단이므로, 비밀번호는 절대 다른 사람에게 알리지 마세요.)
                   </span>
                 </label>
 
@@ -554,7 +568,7 @@ export default function ClientCertificateSubmissionModal({
                   />
                   <span>
                     <strong>[필수] 사건 종결 및 요청 시 영구 파기 권한:</strong><br />
-                    면책 결정 확정 또는 본인의 요청 시 인증서 파일 및 암호화 키가 즉시 영구 파기(Crypto-Shredding)됨에 동의합니다.
+                    면책 결정 확정 또는 본인의 요청 시 저장된 인증서 파일과 비밀번호가 삭제됨에 동의합니다.
                   </span>
                 </label>
               </div>

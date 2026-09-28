@@ -67,8 +67,26 @@ export async function startContractFromProposal(params: {
   // 분납 일정(회차·금액·날짜)은 임의로 만들지 않는다 — 제안서의 분납 조건은 감사 로그에 기록하고,
   // 세부 스케줄은 담당 변호사가 CRM 계약 관리에서 확정한다.
   const installments = parseInstallmentCount(proposal.installment);
+  // 서명 화면에는 기본 약정(총 수임료 + 분납 조건)만 명시하고, 회차별 스케줄은 변호사가 CRM에서 확정
+  const feeWon = Math.round((proposal.fee || 0) * 10000);
+  const basicTerms =
+    `[제안서 기준 기본 약정]\n` +
+    `- 총 수임료: ${feeWon.toLocaleString('ko-KR')}원 (${proposal.fee}만원)\n` +
+    `- 분납 조건: ${proposal.installment ? `${proposal.installment}${installments ? ` (${installments}회 분할)` : ''}` : '일시 납부 또는 담당 변호사와 협의'}\n` +
+    `- 회차별 납부일·금액은 담당 변호사가 확정하여 별도 안내하며, 안내된 스케줄이 본 약정의 첨부 스케줄이 된다.`;
+  const documents = base.documents.map(d => {
+    if (d.type === 'installment_agreement') {
+      return { ...d, included: true, content: `${d.content}\n\n${basicTerms}` };
+    }
+    if (d.type === 'main_contract') {
+      return { ...d, content: `${d.content}\n\n${basicTerms}` };
+    }
+    return d;
+  });
+
   let contract: ElectronicContract = {
     ...base,
+    documents,
     status: 'pending_sign',
     realNameConversionPending: true,
     consultRequestId: request.id,

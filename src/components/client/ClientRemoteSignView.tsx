@@ -8,7 +8,7 @@ import {
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { CONTRACT_DOC_TYPES } from '../../types';
-import { getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
+import { getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity, isRemoteSignServerEnabled, submitRemoteSignStage } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
@@ -70,7 +70,15 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
 
         // 토큰 검증
         if (found.remoteSignToken && found.remoteSignToken !== token) {
-          setError('유효하지 않거나 만료된 서명 링크입니다. 담당 변호사에게 재발송을 요청해 주세요.');
+          setError('유효하지 않은 서명 링크입니다. 담당 변호사에게 재발송을 요청해 주세요.');
+          setLoading(false);
+          return;
+        }
+
+        // 만료 링크 차단 (서명 전 계약만 — 서명 완료본은 확인 화면 열람 허용)
+        const alreadySigned = found.status === 'completed' || found.documents.some(d => d.included && d.clientSignature);
+        if (!alreadySigned && found.remoteSignExpiresAt && new Date(found.remoteSignExpiresAt).getTime() < Date.now()) {
+          setError('서명 기한이 지난 링크입니다. 담당 변호사에게 새 서명 링크를 요청해 주세요.');
           setLoading(false);
           return;
         }
@@ -100,10 +108,42 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
     if (!contract) return;
     setVerifying(true);
 
+    // ── 서버 저장 경로 (운영): 포트원 인증 → 서버가 단건 조회로 실명 확인 후 실명 전환/이름 대조·저장 ──
+    if (isRemoteSignServerEnabled) {
+      const expected = contract.realNameConversionPending && !contract.isBusiness
+        ? undefined
+        : (contract.isBusiness ? (contract.businessInfo?.representativeName || contract.clientName) : contract.clientName);
+      const idv = await requestIdentityVerification(expected, authProvider, { contractId: contract.id, remoteSignToken: token });
+      if (!idv.success) {
+        setVerifying(false);
+        toast.error(idv.error || '본인인증에 실패했습니다.');
+        return;
+      }
+      const saved = await submitRemoteSignStage({
+        stage: 'identity',
+        contractId: contract.id,
+        remoteSignToken: token,
+        identityVerificationId: idv.txId,
+        provider: authProvider,
+        providerName: idv.providerName,
+      });
+      setVerifying(false);
+      if (saved.ok === false) {
+        setRepMatchMessage(saved.error);
+        toast.error(saved.error);
+        return;
+      }
+      setContract(saved.contract);
+      setRepMatchMessage(`${saved.contract.clientName}님 본인인증을 확인했습니다.`);
+      setVerified(true);
+      toast.success('본인인증이 완료되었습니다.');
+      return;
+    }
+
     // ── 스텔스 가명 → 실명 전환 계약 (고객이 제안서에서 직접 시작한 계약) ──
     // 계약서의 이름은 가명이므로 이름 대조 대신, 본인인증으로 확인된 실명·연락처를 계약 당사자로 확정한다.
     if (contract.realNameConversionPending && !contract.isBusiness) {
-      const result = await requestIdentityVerification(undefined, authProvider);
+      const result = await requestIdentityVerification(undefined, authProvider, { contractId: contract.id, remoteSignToken: token });
       setVerifying(false);
       if (!result.success) {
         toast.error(result.error || '본인인증에 실패했습니다.');
@@ -133,9 +173,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         `본인인증(${result.providerName || result.method}) 완료 — 가명 계약 당사자를 인증된 실명으로 전환`,
         'client'
       );
-      try {
-        await saveContract(converted);
-      } catch {
+      const savedOk = await saveContract(converted).catch(() => false);
+      if (!savedOk) {
         toast.error('인증 정보를 저장하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.');
         return;
       }
@@ -151,7 +190,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       : contract.clientName;
 
     // 포트원(PortOne V2) 공식 스마트폰 본인인증 & 전자서명
-    const result = await requestIdentityVerification(expectedName, authProvider);
+    const result = await requestIdentityVerification(expectedName, authProvider, { contractId: contract.id, remoteSignToken: token });
     setVerifying(false);
 
     if (result.success) {
@@ -207,6 +246,45 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       }
     }
 
+    const agreedTerms = [
+      agreeLegalEffect && '전자서명 효력 합의',
+      agreePrivacy && '개인정보 수집·이용',
+      agreeThirdParty && '개인정보 제3자 제공',
+      agreeProcedure && '사건 진행 절차 및 유의사항',
+    ].filter(Boolean) as string[];
+
+    // ── 서버 저장 경로 (운영): 서버가 토큰·본인인증 여부·확약 문구를 재검증하고 서명을 1회만 저장 ──
+    if (isRemoteSignServerEnabled) {
+      setSubmitting(true);
+      try {
+        const confirmations: Record<string, string> = {};
+        for (const d of docsWithRequiredConfirmation) confirmations[d.id] = (userConfirmations[d.id] || '').trim();
+        const saved = await submitRemoteSignStage({
+          stage: 'signature',
+          contractId: contract.id,
+          remoteSignToken: token,
+          clientSignature: signatureData,
+          confirmations,
+          agreedTerms,
+        });
+        if (saved.ok === false) {
+          toast.error(saved.error);
+          return;
+        }
+        try {
+          await syncContractToCrm(saved.contract.clientId, saved.contract, { id: 'client', name: saved.contract.clientName, role: 'CLIENT' as any });
+        } catch (crmErr) {
+          console.warn('CRM sync warning on client sign:', crmErr);
+        }
+        setContract(saved.contract);
+        setCompleted(true);
+        toast.success(saved.contract.status === 'completed' ? '전자서명을 제출했고 계약이 체결되었습니다.' : '전자서명을 제출했습니다. 담당 변호사 서명 후 체결이 완료됩니다.');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try {
       const now = new Date().toISOString();
@@ -225,6 +303,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         ...contract,
         documents: updatedDocs,
         updatedAt: now,
+        // 실제로 동의한 약관 목록을 기록 (기존: 미기록 → PDF에 '3개 동의·전문 열람 완료'가 기본값으로 인쇄됨)
+        intentVerification: { scrollCompleted: false, agreedTerms },
       };
 
       const confirmationLogs = docsWithRequiredConfirmation.map(d => `[${d.title}: '${userConfirmations[d.id]}']`).join(', ');
@@ -239,7 +319,10 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       if (lawyerSig) {
         updatedContract = await finalizeContractWithIntegrity(updatedContract, signatureData, lawyerSig);
       } else {
-        await saveContract(updatedContract);
+        const savedOk = await saveContract(updatedContract);
+        if (!savedOk) {
+          throw new Error('서명을 서버에 저장하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 제출해 주세요.');
+        }
       }
 
       // CRM 상태 실시간 연동 (수임 계약 체결 반영)
@@ -255,7 +338,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
 
       setContract(updatedContract);
       setCompleted(true);
-      toast.success('전자서명이 성공적으로 제출되었습니다!');
+      toast.success(updatedContract.status === 'completed' ? '전자서명을 제출했고 계약이 체결되었습니다.' : '전자서명을 제출했습니다. 담당 변호사 서명 후 체결이 완료됩니다.');
     } catch (e: any) {
       toast.error(e?.message || '서명 제출 중 오류가 발생했습니다.');
     } finally {
@@ -293,41 +376,55 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   }
 
   if (completed) {
-    const isAnchored = Boolean(contract.blockchainAnchor);
+    // 양 당사자 서명 여부: 의뢰인 서명만 있으면 '체결 완료'가 아니라 '서명 제출 완료(변호사 서명 대기)'
+    const isFullySigned = contract.status === 'completed';
+    const finalHash = contract.documentHashes?.finalHash;
+    const anchor = contract.blockchainAnchor;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white p-7 md:p-8 rounded-3xl border border-emerald-200 shadow-xl max-w-md w-full text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-scaleUp">
-            <CheckCircle2 className="w-9 h-9" />
+            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
           </div>
           <div>
-            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" /> 전자서명 체결 완료
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" aria-hidden="true" /> {isFullySigned ? '전자계약 체결 완료' : '의뢰인 서명 제출 완료'}
             </span>
-            <h2 className="text-xl font-black text-slate-900 mt-2">사건위임계약 체결 완료</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              {contract.clientName} 의뢰인님의 자필 서명이 안전하게 암호화 등록되었습니다.
+            <h2 className="text-xl font-black text-slate-900 mt-2">
+              {isFullySigned ? '사건위임계약 체결 완료' : '서명이 제출되었습니다'}
+            </h2>
+            <p className="text-xs text-slate-600 mt-1">
+              {isFullySigned
+                ? `${contract.clientName} 의뢰인님과 담당 변호사의 서명이 모두 완료되었습니다.`
+                : `${contract.clientName} 의뢰인님의 서명이 저장되었습니다. 담당 변호사가 서명하면 계약이 체결되고 안내해 드립니다.`}
             </p>
           </div>
 
-          {/* 블록체인 앵커링 성공 뱃지 */}
-          <div className="bg-blue-950 text-blue-100 p-3.5 rounded-2xl border border-blue-800 text-left text-[11px] space-y-1.5 font-sans">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-white flex items-center gap-1.5 text-xs">
-                <Database className="w-4 h-4 text-blue-400" />
-                <span>블록체인 분산원장 영구 각인</span>
-              </span>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50">
-                100% 무결성
-              </span>
+          {/* 전자지문(SHA-256) — 실제 값이 있을 때만 표시. 블록체인 기록은 실제 온체인 전송된 경우에만 표기 */}
+          {finalHash && (
+            <div className="bg-slate-900 text-slate-100 p-3.5 rounded-2xl border border-slate-700 text-left text-[11px] space-y-1.5 font-sans">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                  <Database className="w-4 h-4 text-blue-300" aria-hidden="true" />
+                  <span>체결본 전자지문 (SHA-256)</span>
+                </span>
+                {anchor?.isRealOnChain && (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50 whitespace-nowrap">
+                    블록체인 기록됨
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-300 leading-relaxed">
+                체결 시점의 계약서 내용과 서명으로 만든 고유 값입니다. 나중에 계약서 내용이 바뀌면 이 값이 달라져 변경 여부를 확인할 수 있습니다.
+              </p>
+              <div className="font-mono text-[10px] text-blue-200 pt-1 border-t border-slate-700 break-all">
+                {finalHash}
+              </div>
+              {anchor?.isRealOnChain && anchor.txHash && (
+                <div className="font-mono text-[10px] text-slate-300 truncate">Tx: {anchor.txHash}</div>
+              )}
             </div>
-            <p className="text-[10px] text-blue-200 leading-relaxed">
-              본 계약서는 Polygon PoS 분산원장에 해시가 영구 각인되어 향후 법원 제출 시 변호사나 누구도 사후 위·변조할 수 없습니다.
-            </p>
-            <div className="font-mono text-[9.5px] text-blue-300 pt-1 border-t border-blue-900/60 truncate">
-              Tx: {contract.blockchainAnchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c'}
-            </div>
-          </div>
+          )}
 
           <div className="bg-slate-50 p-4 rounded-xl text-left text-xs space-y-2 border border-slate-200">
             <div className="flex justify-between">
@@ -340,11 +437,11 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">본인인증 방식</span>
-              <span className="font-bold text-indigo-700">{contract.identityVerification?.providerName || contract.identityVerification?.carrier || '공인 스마트폰 본인인증'}</span>
+              <span className="font-bold text-indigo-700">{contract.identityVerification?.providerName || contract.identityVerification?.carrier || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">법적 효력</span>
-              <span className="font-bold text-emerald-600">전자서명법 제3조 규정 충족</span>
+              <span className="text-slate-500">체결 상태</span>
+              <span className="font-bold text-slate-800">{isFullySigned ? '양 당사자 서명 완료' : '변호사 서명 대기'}</span>
             </div>
           </div>
 
@@ -373,13 +470,13 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer min-h-[42px]"
             >
               <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>블록체인 원본 진위검증 열기</span>
+              <span>전자지문(원본) 검증 열기</span>
             </button>
           </div>
 
           <a
             href="/"
-            className="block w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            className="flex items-center justify-center w-full min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
           >
             플랫폼 홈으로 이동
           </a>
@@ -414,6 +511,10 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const isStep2Done = agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect; // 약관동의
   const isStep3Done = verified; // 스마트폰 본인인증
   const isStep4Done = Boolean(signatureData); // 전자서명
+  // 중요 조항 직접 입력이 모두 일치해야 서명 패드·제출 버튼 활성화
+  const typedConfirmationsOk = includedDocs
+    .filter(d => d.requiredConfirmationText)
+    .every(d => (userConfirmations[d.id] || '').trim() === (d.requiredConfirmationText || '').trim());
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
@@ -492,7 +593,14 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 </div>
                 <div className="text-right">
                   <span className="text-slate-400 block text-[11px]">분할 납부</span>
-                  <span className="font-bold text-slate-700">{contract.feeSchedule.length}회차 분납</span>
+                  {contract.feeSchedule.length > 0 ? (
+                    <span className="font-bold text-slate-700">{contract.feeSchedule.length}회차 분납</span>
+                  ) : (
+                    <span className="font-bold text-slate-700 block">약정서 기본 조건</span>
+                  )}
+                  {contract.feeSchedule.length === 0 && (
+                    <span className="text-[10px] text-slate-500 block">회차별 일정은 변호사 확정 후 안내</span>
+                  )}
                 </div>
               </div>
 
@@ -776,9 +884,9 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
               {/* 4대 공인 본인인증 수단 선택 (포트원 V2 공식 연동) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'kakao' as const, label: '카카오페이', badge: 'KISA 공인', icon: '💬', desc: '카카오 간편인증' },
+                  { id: 'kakao' as const, label: '카카오페이', badge: '간편인증', icon: '💬', desc: '카카오 간편인증' },
                   { id: 'pass' as const, label: 'PASS 앱', badge: '통신 3사', icon: '📱', desc: 'PASS 스마트폰 앱' },
-                  { id: 'toss' as const, label: '토스', badge: 'KISA 공인', icon: '🔷', desc: '토스 간편인증' },
+                  { id: 'toss' as const, label: '토스', badge: '간편인증', icon: '🔷', desc: '토스 간편인증' },
                   { id: 'sms' as const, label: '문자 (SMS)', badge: '안전망', icon: '✉️', desc: '앱 불필요 6자리' },
                 ].map(p => {
                   const isSelected = authProvider === p.id;
@@ -819,7 +927,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 <div className="p-2.5 bg-blue-50/80 rounded-xl border border-blue-200 text-blue-900 text-[11px] leading-relaxed flex items-center gap-2">
                   <span className="text-base">💡</span>
                   <span>
-                    <strong>간편인증 앱이 없어도 안심하세요:</strong> 본인 명의 휴대폰 문자로 발송되는 6자리 인증번호만 입력하시면 신용 회복 중이거나 고령자분도 100% 서명 가능합니다.
+                    <strong>간편인증 앱이 없어도 안심하세요:</strong> 본인 명의 휴대폰으로 받은 문자 인증번호를 입력해 본인확인을 할 수 있습니다.
                   </span>
                 </div>
               )}
@@ -983,11 +1091,15 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 <button
                   type="button"
                   onClick={() => setSignatureData(null)}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
+                  className="text-xs text-slate-600 hover:text-slate-800 font-bold px-3 min-h-[44px] rounded-lg border border-slate-200 bg-white cursor-pointer whitespace-nowrap"
                 >
                   다시 서명
                 </button>
               </div>
+            </div>
+          ) : verified && !typedConfirmationsOk ? (
+            <div className="p-6 bg-amber-50 border border-dashed border-amber-300 rounded-xl text-center text-xs text-amber-800 font-bold">
+              위의 중요 조항 확인 문구를 모두 정확히 입력하시면 서명 패드가 활성화됩니다.
             </div>
           ) : verified ? (
             <SignatureCanvas
@@ -1017,13 +1129,17 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 toast.error('4대 법적 필수 약관에 모두 동의해 주세요.');
                 return;
               }
+              if (!typedConfirmationsOk) {
+                toast.error('중요 조항 확인 문구를 정확히 입력해 주세요.');
+                return;
+              }
               if (!signatureData) {
                 toast.error('자필 서명을 먼저 입력해 주세요.');
                 return;
               }
               setShowConfirmModal(true);
             }}
-            disabled={submitting || !verified || !signatureData || !agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect}
+            disabled={submitting || !verified || !typedConfirmationsOk || !signatureData || !agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect}
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-h-[48px]"
           >
             {submitting ? (
@@ -1064,7 +1180,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                   <span>법적 효력 및 사후 위·변조 방지 안내</span>
                 </p>
                 <p className="text-slate-500 leading-normal">
-                  체결 완료 후에는 전자서명법 제3조 규정에 따라 계약 내용의 수정이 영구적으로 불가(Lock)하며, 분산원장에 해시가 각인됩니다.
+                  제출 후에는 이 링크로 서명을 다시 제출할 수 없습니다. 양 당사자 서명이 끝나면 계약서 내용으로 SHA-256 전자지문을 만들어 사후 변경 여부를 확인할 수 있게 합니다.
                 </p>
               </div>
 

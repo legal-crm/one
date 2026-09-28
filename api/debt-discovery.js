@@ -134,7 +134,7 @@ function generateSimulatedDiscoveryData(clientName = '홍길동', phone = '010-0
         originalTaxAmount: 3850000,
         dueDate: '2025-05-31',
         isPriority: true,
-        priorityClass: '일반우선권 채권 (법 415조)',
+        priorityClass: '우선권 있는 개인회생채권 (법 제583조 참고)',
         hasSeizure: false
       },
       {
@@ -146,7 +146,7 @@ function generateSimulatedDiscoveryData(clientName = '홍길동', phone = '010-0
         originalTaxAmount: 640000,
         dueDate: '2025-07-31',
         isPriority: true,
-        priorityClass: '일반우선권 채권 (법 415조)',
+        priorityClass: '우선권 있는 개인회생채권 (법 제583조 참고)',
         hasSeizure: false
       },
       {
@@ -158,7 +158,7 @@ function generateSimulatedDiscoveryData(clientName = '홍길동', phone = '010-0
         originalTaxAmount: 1120000,
         dueDate: '2025-04-10',
         isPriority: true,
-        priorityClass: '일반우선권 채권 (법 415조)',
+        priorityClass: '우선권 있는 개인회생채권 (법 제583조 참고)',
         hasSeizure: true,
         seizureDetail: '신한은행 계좌 가압류 예고 통지'
       }
@@ -305,7 +305,8 @@ export default async function handler(req, res) {
       step: 'auth_requested',
       sessionId: generatedSessionId,
       authProvider,
-      message: `${authProvider === 'kakao' ? '카카오톡' : authProvider === 'toss' ? '토스' : 'PASS'} 앱으로 본인확인 알림이 발송되었습니다. 휴대폰에서 승인해 주세요.`,
+      simulated: true,
+      message: '실제 기관 조회는 연동 준비 중입니다. 지금은 시연용 예시 데이터만 표시됩니다.',
       expiresInSeconds: 180
     });
   }
@@ -330,7 +331,9 @@ export default async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     step: 'completed',
-    isLiveB2B: Boolean(clientId && clientSecret),
+    // 실제 기관 조회(CODEF 상품 호출)는 아직 구현되지 않음 → 항상 시연용 데이터임을 명시
+    isLiveB2B: false,
+    simulated: true,
     data: discoveryResult
   });
 }

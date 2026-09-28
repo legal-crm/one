@@ -35,6 +35,10 @@ export function useSpeechRecognition({
 
   const recognitionRef = useRef<any>(null);
   const isManuallyStoppedRef = useRef(false);
+  // 콜백은 ref로 보관 — 인라인 함수가 바뀔 때마다 인식기를 재생성(abort)해 첫 문장 후 인식이 끊기던 문제 방지
+  const onResultRef = useRef(onResult);
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onResultRef.current = onResult; onErrorRef.current = onError; }, [onResult, onError]);
 
   // 브라우저 Web Speech API 지원 여부 확인
   const isSupported = typeof window !== 'undefined' && 
@@ -74,7 +78,7 @@ export function useSpeechRecognition({
       if (finalStr) {
         setTranscript(prev => {
           const next = (prev ? prev.trim() + ' ' : '') + finalStr.trim();
-          if (onResult) onResult(next);
+          onResultRef.current?.(next);
           return next;
         });
       }
@@ -93,7 +97,8 @@ export function useSpeechRecognition({
         msg = '네트워크 연결이 불안정하여 음성 인식이 중단되었습니다.';
       }
       setErrorMessage(msg);
-      if (onError) onError(msg);
+      isManuallyStoppedRef.current = true; // 치명적 오류 후 onend 자동 재시작 루프 방지
+      onErrorRef.current?.(msg);
       setIsListening(false);
     };
 
@@ -103,10 +108,8 @@ export function useSpeechRecognition({
       if (!isManuallyStoppedRef.current && continuous) {
         try {
           // 일시적 대기 후 재시작 시도 (사파리/크롬 대응)
-          if (isListening) {
-            recognition.start();
-            return;
-          }
+          recognition.start();
+          return;
         } catch {
           // ignore
         }
@@ -123,7 +126,7 @@ export function useSpeechRecognition({
         // ignore
       }
     };
-  }, [isSupported, lang, continuous, interimResults, onResult, onError]);
+  }, [isSupported, lang, continuous, interimResults]);
 
   const startListening = useCallback(() => {
     if (!isSupported) {

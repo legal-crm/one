@@ -321,7 +321,49 @@ export async function getContractsByClientId(clientId: string, altId?: string, p
   });
 }
 
-export async function saveContract(contract: ElectronicContract): Promise<void> {
+/** 원격 서명 서버 저장 사용 여부 (Supabase 미설정 로컬 개발 환경은 기존 로컬 저장 흐름 사용) */
+export const isRemoteSignServerEnabled = isSupabaseConfigured;
+
+/**
+ * 비로그인 원격 서명 단계 저장 (/api/contract?action=remote-sign)
+ * - electronic_contracts UPDATE RLS는 로그인 사용자 전용이므로, 문자 링크 서명자는 서버(service role)가
+ *   서명 토큰을 검증한 뒤 허용된 필드만 갱신한다.
+ */
+export async function submitRemoteSignStage(params: {
+  stage: 'identity' | 'signature';
+  contractId: string;
+  remoteSignToken: string;
+  identityVerificationId?: string;
+  provider?: string;
+  providerName?: string;
+  clientSignature?: string;
+  confirmations?: Record<string, string>;
+  agreedTerms?: string[];
+}): Promise<{ ok: true; contract: ElectronicContract } | { ok: false; error: string }> {
+  try {
+    const res = await fetch('/api/contract?action=remote-sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok || !json.contract) {
+      return { ok: false, error: json?.error || `서버 저장에 실패했습니다. (${res.status})` };
+    }
+    const contract = rowToContract(json.contract);
+    // 기기 사본도 서버 결과로 갱신
+    const local = loadContractsLocal();
+    const idx = local.findIndex(c => c.id === contract.id);
+    if (idx >= 0) local[idx] = contract; else local.unshift(contract);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+    return { ok: true, contract };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || '네트워크 오류로 저장하지 못했습니다.' };
+  }
+}
+
+/** @returns 서버(Supabase) 저장 성공 여부 — Supabase 미설정(로컬 전용) 환경은 true */
+export async function saveContract(contract: ElectronicContract): Promise<boolean> {
   // localStorage
   const localContracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   const idx = localContracts.findIndex((c: any) => c.id === contract.id);
@@ -343,9 +385,16 @@ export async function saveContract(contract: ElectronicContract): Promise<void> 
           ({ error } = await supabase.from('electronic_contracts').upsert(baseRow, { onConflict: 'id' }));
         }
       }
-      if (error) logSupabaseError('saveContract', error);
-    } catch (e) { logSupabaseError('saveContract (exception)', e); }
+      if (error) {
+        logSupabaseError('saveContract', error);
+        return false;
+      }
+    } catch (e) {
+      logSupabaseError('saveContract (exception)', e);
+      return false;
+    }
   }
+  return true;
 }
 
 export async function deleteContract(id: string): Promise<void> {
@@ -685,6 +734,7 @@ export async function finalizeContractWithIntegrity(
       originalHash,
       finalHash,
       algorithm: 'SHA-256',
+      signedAt: now,
     },
     timestampToken,
     authorityStatus: contract.isBusiness 
@@ -694,12 +744,12 @@ export async function finalizeContractWithIntegrity(
     auditTrail: [
       ...contract.auditTrail,
       {
-        action: '계약 체결 완료 (4대 법적 효력 충족)',
+        action: '계약 체결 완료 (양 당사자 서명)',
         timestamp: now,
         actor: 'system',
         documentHash: finalHash,
         details: `SHA-256 원본: ${originalHash.slice(0, 16)}... | 체결본: ${finalHash.slice(0, 16)}... | 시점토큰: ${timestampToken.token}`,
-        ip: contract.identityVerification?.ipAddress || '211.234.12.89',
+        ip: contract.identityVerification?.ipAddress || '',
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'System',
       }
     ]
@@ -709,12 +759,12 @@ export async function finalizeContractWithIntegrity(
   const anchorInfo = await anchorContractToBlockchain(completedContract);
   completedContract.blockchainAnchor = anchorInfo;
   completedContract.auditTrail.push({
-    action: '블록체인 분산원장 영구 앵커링 (Polygon PoS)',
+    action: anchorInfo.isRealOnChain ? '전자지문 블록체인 기록 (Polygon)' : '전자지문 서버 보관 (블록체인 미기록)',
     timestamp: anchorInfo.anchoredAt,
     actor: 'system',
     documentHash: finalHash,
-    details: `Polygon Tx: ${anchorInfo.txHash.slice(0, 18)}... | Block #${anchorInfo.blockNumber.toLocaleString()} | 스마트컨트랙트 공증 완료`,
-    ip: contract.identityVerification?.ipAddress || '211.234.12.89',
+    details: `Polygon Tx: ${anchorInfo.txHash.slice(0, 18)}... | Block #${anchorInfo.blockNumber.toLocaleString()}${anchorInfo.isRealOnChain ? '' : ' (온체인 미전송)'}`,
+    ip: contract.identityVerification?.ipAddress || '',
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'System',
   });
 

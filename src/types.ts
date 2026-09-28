@@ -915,6 +915,8 @@ export interface AssignmentDirective {
 // CRM 확장된 고객 데이터 (ConsultRequest에 추가)
 export interface CrmClientExtension {
   crmStatus: CrmStatus;
+  /** 의뢰인이 마이페이지에서 면책신청서 제출을 요청한 시각 (변호사 CRM 확인용) */
+  dischargeRequestedAt?: string;
   assigneeId?: string;               // 통합 담당자 ID (변호사/사무장/직원 무관)
   // ── 하위 호환 (마이그레이션 후 제거 예정) ──
   assignedLawyerId?: string;
@@ -981,6 +983,9 @@ export interface CrmClientExtension {
   incomeExpenseD5103?: import('./types/incomeExpenseTypes').IncomeExpenseD5103Data;
   // ── 대법원 전산양식 D5102 재산목록 (11대 자산 가치 평가) ──
   propertyListD5102?: import('./types/propertyTypes').PropertyListD5102Data;
+  // ── 의뢰인 제출: 통장 거래내역 소명표 / 부채증명서 발급용 채권기관 세부정보 ──
+  bankStatementAudit?: import('./types/bankAuditTypes').BankStatementAuditData;
+  debtIntake?: import('./services/repayment/debtIntakeRuleService').ClientDebtIntakePayload;
   // ── 리걸플로형 표준 13단계 파이프라인 & 개시결정 요약 ──
   thirteenStage?: LegalFlowRehabStage | LegalFlowBankruptcyStage | string;
   isDismissedRevoked?: boolean; // 기각 및 폐지 플래그 (선택/해제 가능)
@@ -2430,6 +2435,8 @@ export interface ElectronicContract {
     originalHash: string; // 원본 SHA-256 해시
     finalHash: string; // 체결본 SHA-256 해시
     algorithm: 'SHA-256';
+    /** 체결본 해시 산정에 쓴 서명 시각 (공개 검증 시 재계산용) */
+    signedAt?: string;
   };
   timestampToken?: {
     token: string; // 암호학적 시점 봉인 토큰
@@ -2684,7 +2691,7 @@ export interface CertificateAccessLog {
   timestamp: string;          // ISO 일시
   actorName: string;          // 담당자 (변호사/사무장/직원)
   actorRole: string;          // 직책
-  targetItem: 'password_view' | 'file_download' | 'relay_request' | 'auto_shred' | 'revocation';
+  targetItem: 'register' | 'password_view' | 'file_download' | 'relay_request' | 'auto_shred' | 'revocation';
   purpose: string;            // 열람 사유 (예: "국민은행 온라인 부채증명서 발급 대행")
   ipAddress?: string;
   device?: string;

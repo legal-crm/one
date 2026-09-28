@@ -267,7 +267,28 @@ export function createDefaultIncomeExpenseD5103(
  * 실시간 입력값 수정에 따른 전체 합계 및 가용소득 재계산
  */
 export function recalculateD5103Data(prev: IncomeExpenseD5103Data): IncomeExpenseD5103Data {
-  const next = { ...prev };
+  // 의뢰인이 처음 작성하는 경우(기존 D5103 없음) 빈 섹션으로 보정 — 가짜 기본값은 채우지 않는다
+  const next = { ...prev } as IncomeExpenseD5103Data;
+  next.other = next.other || { pensionMonthly: 0, subsidyMonthly: 0, familySupportMonthly: 0, totalOtherMonthly: 0 };
+  next.familyMembers = next.familyMembers || [];
+  next.expenses = next.expenses || ({
+    householdSize: 1,
+    statutoryBaseCost2026: get2026LivingExpense(1),
+    claimedCostOption: 'BELOW_60',
+    claimedBaseCost: get2026LivingExpense(1),
+    additionalHousing: 0,
+    additionalMedical: 0,
+    additionalEducation: 0,
+    additionalChildSupport: 0,
+    additionalOther: 0,
+    additionalReasonDetail: '',
+    additionalEvidenceDocs: [],
+    totalAdditionalExpenses: 0,
+    totalMonthlyExpense: 0,
+  } as ExpenseAndLivingDetail);
+  next.disposableIncome = next.disposableIncome || ({
+    monthlyNetIncome: 0, monthlyTotalExpense: 0, monthlyDisposableIncome: 0, repaymentMonths: 36, totalDisposableIncome: 0,
+  } as DisposableIncomeSummary);
   
   // 1. 급여소득 재계산
   if (next.incomeType === 'SALARY') {
@@ -603,10 +624,11 @@ export function syncBusinessLedgerToD5103(
     detailedIncomeType: 'BUSINESS',
     monthlyLedger: ledger,
     business: {
-      ...prev.business,
+      ...(prev.business || {} as any),
       annualGrossRevenue: ledger.annualTotals.totalGrossRevenue,
       annualOperatingExpenses: ledger.annualTotals.totalOperatingExpense,
-      annualTaxes: prev.business.annualTaxes || Math.round(ledger.annualTotals.totalGrossRevenue * 0.03),
+      // 제세공과금: 입력값이 없으면 매출의 3%를 '추정치'로 사용 (변호사 검토 시 실제 신고액으로 교체)
+      annualTaxes: prev.business?.annualTaxes || Math.round(ledger.annualTotals.totalGrossRevenue * 0.03),
       netAnnualBusinessIncome: ledger.annualTotals.totalNetProfit,
       monthlyAverageIncome: ledger.monthlyAverages.avgNetIncome
     }
@@ -624,8 +646,10 @@ export function syncFreelancerLedgerToD5103(
 ): IncomeExpenseD5103Data {
   const totalAnnualRevenue = freelancer.annualGrossRevenue || (freelancer.monthlyGrossIncome * 12);
   const totalAnnualExpense = freelancer.totalMonthlyExpenses * 12;
-  const netAnnual = Math.max(0, totalAnnualRevenue - totalAnnualExpense);
-  const monthlyNet = freelancer.netMonthlyIncome;
+  // 입력 수수료는 원천징수(3.3%) 전 금액 — 실수령 기준 소득을 위해 원천징수세액을 제세공과금으로 차감
+  const annualWithholding = Math.round(totalAnnualRevenue * 0.033);
+  const netAnnual = Math.max(0, totalAnnualRevenue - totalAnnualExpense - annualWithholding);
+  const monthlyNet = Math.round(netAnnual / 12);
 
   const next: IncomeExpenseD5103Data = {
     ...prev,
@@ -633,12 +657,12 @@ export function syncFreelancerLedgerToD5103(
     detailedIncomeType: 'FREELANCER',
     freelancerLedger: freelancer,
     business: {
-      ...prev.business,
+      ...(prev.business || {} as any),
       businessCategory: '사업소득',
       businessName: `${freelancer.jobTypeDetail || '프리랜서'} 3.3% 용역소득`,
       annualGrossRevenue: totalAnnualRevenue,
       annualOperatingExpenses: totalAnnualExpense,
-      annualTaxes: 0, // 원천징수 후 금액인 경우
+      annualTaxes: annualWithholding, // 사업소득 원천징수 3.3%
       netAnnualBusinessIncome: netAnnual,
       monthlyAverageIncome: monthlyNet,
       evidenceDocuments: freelancer.evidenceDocuments || [
@@ -668,7 +692,7 @@ export function syncDayLaborerLedgerToD5103(
     detailedIncomeType: 'DAY_LABORER',
     dayLaborerLedger: dayLaborer,
     salary: {
-      ...prev.salary,
+      ...(prev.salary || {} as any),
       employerName: '건설·현장 일용직 (다수 현장)',
       jobTitle: `일용근로자 (월평균 ${dayLaborer.workDaysPerMonth}일 근무, 일당 ${(dayLaborer.dailyWage / 10000).toFixed(0)}만원)`,
       monthlyBasePay: monthlyGross,
@@ -706,7 +730,7 @@ export function syncPartTimeToD5103(
     detailedIncomeType: 'PART_TIME',
     partTimeLedger: partTime,
     salary: {
-      ...prev.salary,
+      ...(prev.salary || {} as any),
       employerName: workplaceNames,
       jobTitle: '단기·시간제 아르바이트',
       monthlyBasePay: monthlyGross,

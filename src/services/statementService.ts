@@ -68,21 +68,17 @@ export class StatementService {
       id: `stmt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       clientId,
       caseType,
+      // 법원 제출 문서이므로 가짜 기본값(주민번호·주소·보증금·경력 등)을 채우지 않는다 — 미입력은 빈 값
       courtName: initialData?.courtName || '서울회생법원',
       applicantName: clientName,
-      applicantRrnMasked: initialData?.applicantRrnMasked || '800101-1******',
-      applicantPhone: initialData?.applicantPhone || '010-****-****',
-      applicantAddress: initialData?.applicantAddress || '서울특별시 서초구 서초대로',
-      finalEducation: initialData?.finalEducation || '고등학교 졸업',
+      applicantRrnMasked: initialData?.applicantRrnMasked || '',
+      applicantPhone: initialData?.applicantPhone || '',
+      applicantAddress: initialData?.applicantAddress || '',
+      finalEducation: initialData?.finalEducation || '',
       jobHistories: initialData?.jobHistories && initialData.jobHistories.length > 0 
         ? initialData.jobHistories 
         : [
-            {
-              period: '2021.03 ~ 현재',
-              companyName: '일반 직장 / 자영업',
-              position: '직원 / 대표',
-              reasonForLeaving: '재직 중 (소득 감소)'
-            }
+            { period: '', companyName: '', position: '', reasonForLeaving: '' }
           ],
       pastHistory: initialData?.pastHistory || {
         hasPastCase: false
@@ -90,13 +86,13 @@ export class StatementService {
       residence: initialData?.residence || {
         residenceType: 'RENT_LEASE',
         residenceTypeLabel: '임차(월세)',
-        deposit: 10000000,
-        monthlyRent: 500000,
-        ownerName: '임대인',
-        ownerRelation: '임대인'
+        deposit: 0,
+        monthlyRent: 0,
+        ownerName: '',
+        ownerRelation: ''
       },
       story: initialData?.story || {
-        initialCauseKeywords: ['생활비부족', '경기침체'],
+        initialCauseKeywords: [],
         initialCauseDetail: '',
         growthProcessDetail: '',
         insolvencyTriggerDetail: '',
@@ -177,36 +173,25 @@ export class StatementService {
         timestamp: new Date().toISOString()
       });
 
-      // 서류철 10번/02번 슬롯 매칭용 가상 PDF 파일 객체 생성 및 uploadedFiles 등록
-      const docTitle = isRehab ? '10. 진술서' : '02. 파산 진술서';
-      const docFileName = `[법원양식]_${isRehab ? '개인회생' : '개인파산'}_진술서_${statement.applicantName}.pdf`;
-      
-      const statementFileObj = {
-        name: docFileName,
-        category: 'core_form',
-        uploadedAt: new Date().toISOString(),
-        fileSize: 1024 * 45, // 약 45KB 가상 크기
-        mimeType: 'application/pdf',
-        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJ...', // mock PDF prefix
-        uploadSource: 'client',
-        linkedDocId: isRehab ? 'R10' : 'B02'
-      };
-
-      const currentFiles = ext.uploadedFiles || [];
-      const filtered = currentFiles.filter(f => !f.name.includes('진술서'));
-      ext.uploadedFiles = [statementFileObj as any, ...filtered];
-
-      await saveCrmClient(statement.clientId, ext);
+      // 진술서는 구조화 데이터(ext.courtStatement)로 전달한다.
+      // (이전: 열리지 않는 가짜 PDF를 첨부하고, 이름에 '진술서'가 들어간 기존 업로드 파일을 모두 삭제하던 로직 제거)
+      const synced = await saveCrmClient(statement.clientId, ext);
+      if (!synced) {
+        return {
+          ok: false,
+          message: '진술서는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 네트워크 확인 후 다시 제출해 주세요.'
+        };
+      }
 
       return {
         ok: true,
-        message: '법원 진술서가 담당 변호사에게 성공적으로 전달되었으며 사건 서류철에 자동 첨부되었습니다.'
+        message: '진술서를 담당 변호사 사건 기록에 저장했습니다. 변호사가 검토 후 법원 제출용으로 확정합니다.'
       };
     } catch (e: any) {
       console.warn('[StatementService] CRM deliver error', e);
       return {
-        ok: true,
-        message: '진술서가 안전하게 저장되었습니다.'
+        ok: false,
+        message: '진술서는 이 기기에 저장되었지만 변호사에게 전달하지 못했습니다. 잠시 후 다시 제출해 주세요.'
       };
     }
   }

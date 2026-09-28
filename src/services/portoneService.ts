@@ -1,30 +1,39 @@
 // ============================================================
 // PortOne 통신 3사 스마트폰 본인인증(PASS / SMS) 서비스 (공식 V2 가이드 준수)
-// 대표자 실명 ↔ 국세청 대표자명 교차 검증 및 통신사 공인 시각 획득
+// 대표자 실명 ↔ 국세청 대표자명 교차 검증
+//
+// [보안 원칙]
+// - 브라우저 SDK의 완료 응답은 위조 가능하므로 신뢰하지 않는다. 인증 완료 후 반드시 서버
+//   (/api/contract?action=identity-verify)가 PORTONE_API_SECRET으로 단건 조회한 실명·연락처만 사용한다.
+// - API Secret은 서버 환경변수(PORTONE_API_SECRET)에만 둔다. (VITE_ 접두어 금지: 브라우저 번들에 노출됨)
+// - 프로덕션에서 Store ID/Channel Key가 없으면 '성공'을 흉내 내지 않고 실패를 반환한다.
 // ============================================================
+import { getAuthHeaders } from '../supabaseClient';
 
 const STORE_ID = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PORTONE_STORE_ID) || '';
 const CHANNEL_KEY = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PORTONE_CHANNEL_KEY) || '';
-const PORTONE_API_SECRET = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_PORTONE_API_SECRET) || '';
+const IS_DEV = typeof import.meta !== 'undefined' && !!(import.meta as any).env?.DEV;
 
 export interface VerificationResult {
   success: boolean;
-  method: string;          // 'portone_pass' | 'portone_sms' | 'kakao_pay_cert' | 'toss_cert' | 'demo_pass'
+  method: string;          // 'portone_pass' | 'portone_sms' | 'portone_kakao' | 'portone_toss' | 'demo_dev'
   provider?: 'pass' | 'kakao' | 'toss' | 'sms';
   providerName?: string;
-  name: string;            // 통신사/기관 인증 실명 (예: 홍길동)
-  birthDate?: string;      // 생년월일 (YYYY-MM-DD 또는 YYYYMMDD)
-  gender?: string;         // 성별
-  phoneNumber?: string;    // 휴대폰번호 (숫자)
-  phoneMasked?: string;    // 마스킹된 휴대폰번호
-  carrier?: string;        // 통신사/기관 (SKT, KT, LGU+, 알뜰폰, 카카오페이 등)
-  txId: string;            // identityVerificationId / 공인 거래 승인번호
-  certifiedAt: string;     // 공인 시각 (ISO 8601)
-  ci?: string;             // 연계정보 (Connecting Information)
-  di?: string;             // 중복가입확인정보 (Duplication Information)
-  isForeigner?: boolean;   // 외국인 여부
-  deviceInfo: string;      // 접속 단말기 환경
-  ipAddress: string;       // 접속 IP
+  name: string;            // 서버 검증된 실명
+  birthDate?: string;
+  gender?: string;
+  phoneNumber?: string;
+  phoneMasked?: string;
+  carrier?: string;
+  txId: string;            // identityVerificationId
+  certifiedAt: string;     // 포트원 검증 시각 (ISO 8601)
+  ci?: string;             // CI 해시 (원문 미보관)
+  di?: string;
+  isForeigner?: boolean;
+  deviceInfo: string;
+  ipAddress: string;       // 서버가 확인한 접속 IP (확인 불가 시 빈 값)
+  /** 개발 환경 시연 결과 여부 — true면 실제 본인확인이 아님 */
+  isDemo?: boolean;
   error?: string;
 }
 
@@ -36,209 +45,139 @@ export interface RepresentativeMatchResult {
   phoneMatched?: boolean;
 }
 
-/**
- * 포트원 REST API: 본인인증 내역 단건 조회 (GET https://api.portone.io/identity-verifications/{id})
- */
-export async function fetchIdentityVerificationDetails(identityVerificationId: string): Promise<any | null> {
-  if (!PORTONE_API_SECRET) return null;
+/** 원격 서명(비로그인) 사용자의 서버 검증 인가용 컨텍스트 */
+export interface IdentityVerifyContext {
+  contractId?: string;
+  remoteSignToken?: string;
+}
 
-  try {
-    const url = `https://api.portone.io/identity-verifications/${encodeURIComponent(identityVerificationId)}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `PortOne ${PORTONE_API_SECRET}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.warn('[PortOne] 단건 조회 응답 오류:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (err: any) {
-    console.warn('[PortOne] 단건 조회 실패:', err?.message || err);
-    return null;
-  }
+function failResult(provider: VerificationResult['provider'], deviceInfo: string, error: string, txId = ''): VerificationResult {
+  return {
+    success: false,
+    method: `portone_${provider}`,
+    provider,
+    name: '',
+    txId,
+    certifiedAt: new Date().toISOString(),
+    deviceInfo,
+    ipAddress: '',
+    error,
+  };
 }
 
 /**
- * 스마트폰 본인인증 실행 (PortOne V2 브라우저 SDK / 카카오 / PASS / 토스 / SMS)
- * 공식 가이드: PortOne.requestIdentityVerification({ storeId, identityVerificationId, channelKey })
- * @param targetName 인증을 기대하는 대표자명 (데모 시뮬레이션 및 폴백용)
- * @param provider 선택한 인증 수단 ('kakao' | 'pass' | 'toss' | 'sms')
+ * 스마트폰 본인인증 실행 (PortOne V2 브라우저 SDK → 서버 단건 조회 검증)
+ * @param _targetName 기대 실명 (서버 검증 결과와의 대조는 호출부의 verifyRepresentativeMatch에서 수행 — 결과 채움에 사용하지 않음)
+ * @param provider 선택한 인증 수단
+ * @param ctx 원격 서명 링크의 contractId + remoteSignToken (비로그인 서버 인가용)
  */
 export async function requestIdentityVerification(
-  targetName?: string,
-  provider: 'pass' | 'kakao' | 'toss' | 'sms' = 'kakao'
+  _targetName?: string,
+  provider: 'pass' | 'kakao' | 'toss' | 'sms' = 'kakao',
+  ctx: IdentityVerifyContext = {}
 ): Promise<VerificationResult> {
-  const deviceInfo = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Browser';
-  const ipAddress = '211.234.12.89'; // 프로덕션 권장
+  const deviceInfo = typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : 'Unknown Browser';
 
-  // Store ID 및 Channel Key가 미설정된 경우 데모 시뮬레이션 모드로 동작
   if (!STORE_ID || !CHANNEL_KEY) {
-    return simulateDemoVerification(targetName, deviceInfo, ipAddress, provider);
+    if (IS_DEV) return simulateDemoVerification(_targetName, deviceInfo, provider);
+    return failResult(provider, deviceInfo, '본인인증 서비스가 아직 설정되지 않았습니다. 담당 사무소에 문의해 주세요.');
   }
 
+  const PortOne = (window as any).PortOne;
+  if (!PortOne || typeof PortOne.requestIdentityVerification !== 'function') {
+    return failResult(provider, deviceInfo, '본인인증 모듈을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
+  }
+
+  const uuid = crypto.randomUUID();
+  const identityVerificationId = `idv-${provider}-${uuid}`;
+
   try {
-    // PortOne V2 SDK 확인 (index.html에서 로드된 window.PortOne)
-    const PortOne = (window as any).PortOne;
-    if (!PortOne || typeof PortOne.requestIdentityVerification !== 'function') {
-      throw new Error('PortOne 브라우저 SDK(v2)가 로드되지 않았습니다.');
-    }
-
-    // 공식 가이드 권장 규격의 identityVerificationId 생성
-    const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-      ? crypto.randomUUID() 
-      : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const identityVerificationId = `idv-${provider}-${uuid}`;
-
-    // 1. 브라우저 본인인증창 호출 (PASS 앱 / 카카오 / 문자 인증)
+    // 1. 브라우저 본인인증창 호출
     const response = await PortOne.requestIdentityVerification({
       storeId: STORE_ID,
       identityVerificationId,
       channelKey: CHANNEL_KEY,
     });
-
-    // 프로세스가 제대로 완료되지 않은 경우 response.code가 존재함
     if (response && response.code !== undefined) {
-      return {
-        success: false,
-        method: `portone_${provider}`,
-        provider,
-        name: '',
-        txId: identityVerificationId,
-        certifiedAt: new Date().toISOString(),
-        deviceInfo,
-        ipAddress,
-        error: response.message || `본인인증 실패 (코드: ${response.code})`,
-      };
+      return failResult(provider, deviceInfo, response.message || `본인인증이 취소되었거나 실패했습니다. (코드: ${response.code})`, identityVerificationId);
     }
 
-    // 2. 인증 완료 후 서버 API를 통한 단건 조회 시도 (PORTONE_API_SECRET 존재 시)
-    let verifiedCustomer: any = null;
-    if (PORTONE_API_SECRET) {
-      const serverDetails = await fetchIdentityVerificationDetails(identityVerificationId);
-      if (serverDetails && serverDetails.status === 'VERIFIED') {
-        verifiedCustomer = serverDetails.verifiedCustomer;
-      }
+    // 2. 서버 단건 조회로 실제 인증 여부·실명 확인 (브라우저 응답값은 사용하지 않음)
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch('/api/contract?action=identity-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({
+        identityVerificationId,
+        contractId: ctx.contractId,
+        remoteSignToken: ctx.remoteSignToken,
+      }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok || !json.verifiedCustomer?.name) {
+      return failResult(provider, deviceInfo, json?.error || '본인인증 결과를 서버에서 확인하지 못했습니다. 다시 시도해 주세요.', identityVerificationId);
     }
 
-    // 3. 인증 정보 파싱 및 반환
-    const certifiedName = verifiedCustomer?.name || response?.name || targetName || '인증회원';
-    const birthDate = verifiedCustomer?.birthDate || response?.birthDate || '1985-01-01';
-    const rawPhone = verifiedCustomer?.phoneNumber || response?.phoneNumber || '';
-    const phoneMasked = rawPhone ? rawPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2') : '010-****-5678';
-    const carrier = verifiedCustomer?.operator || response?.operator || (
-      provider === 'kakao' ? '카카오페이 전자서명인증' :
-      provider === 'toss' ? '토스 전자서명인증' :
-      provider === 'sms' ? '휴대폰 문자(SMS) 공인인증' : 'SKT / PASS'
-    );
-    const ci = verifiedCustomer?.ci || response?.ci || undefined;
-    const di = verifiedCustomer?.di || undefined;
-    const gender = verifiedCustomer?.gender || undefined;
-    const isForeigner = verifiedCustomer?.isForeigner ?? false;
-
+    const vc = json.verifiedCustomer;
+    const rawPhone = String(vc.phoneNumber || '').replace(/\D/g, '');
     return {
       success: true,
       method: `portone_${provider}`,
       provider,
       providerName: getProviderDisplayName(provider),
-      name: certifiedName,
-      birthDate,
-      gender,
+      name: String(vc.name).trim(),
+      birthDate: vc.birthDate || undefined,
+      gender: vc.gender || undefined,
       phoneNumber: rawPhone || undefined,
-      phoneMasked,
-      carrier,
+      phoneMasked: rawPhone ? rawPhone.replace(/(\d{3})\d{3,4}(\d{4})/, '$1-****-$2') : undefined,
+      carrier: vc.operator || undefined,
       txId: identityVerificationId,
-      certifiedAt: new Date().toISOString(),
-      ci,
-      di,
-      isForeigner,
+      certifiedAt: json.verifiedAt || new Date().toISOString(),
+      ci: vc.ciHash || undefined,
+      isForeigner: !!vc.isForeigner,
       deviceInfo,
-      ipAddress,
+      ipAddress: json.clientIp || '',
     };
   } catch (err: any) {
-    return {
-      success: false,
-      method: 'portone_error',
-      provider,
-      name: '',
-      txId: '',
-      certifiedAt: new Date().toISOString(),
-      deviceInfo,
-      ipAddress,
-      error: err.message || '본인인증 처리 중 알 수 없는 오류가 발생했습니다.',
-    };
+    return failResult(provider, deviceInfo, err?.message || '본인인증 처리 중 알 수 없는 오류가 발생했습니다.', identityVerificationId);
   }
 }
 
 export function getProviderDisplayName(provider: 'pass' | 'kakao' | 'toss' | 'sms'): string {
   switch (provider) {
     case 'kakao':
-      return '카카오페이 전자서명인증 (KISA 공인)';
+      return '카카오 인증 (포트원 본인인증)';
     case 'pass':
-      return '통신 3사 PASS 앱 간편인증';
+      return 'PASS 앱 인증 (포트원 본인인증)';
     case 'toss':
-      return '토스 전자서명인증 (KISA 공인)';
+      return '토스 인증 (포트원 본인인증)';
     case 'sms':
-      return '휴대폰 문자(SMS) 6자리 본인확인 (안전망)';
+      return '휴대폰 문자 인증 (포트원 본인인증)';
   }
 }
 
 /**
- * 데모 모드 시뮬레이션 (API 키 미설정 시)
+ * 개발 환경 전용 시연 결과 (프로덕션 빌드에서는 호출되지 않음)
+ * - 실명·연락처를 지어내지 않는다: 기대 이름만 되돌려 주므로 가명→실명 전환(기대 이름 없음)은 진행되지 않는다.
  */
 async function simulateDemoVerification(
-  targetName?: string, 
-  deviceInfo?: string, 
-  ipAddress?: string,
+  targetName: string | undefined,
+  deviceInfo: string,
   provider: 'pass' | 'kakao' | 'toss' | 'sms' = 'kakao'
 ): Promise<VerificationResult> {
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const demoName = targetName?.trim() || '홍길동';
-  const now = new Date().toISOString();
-
-  let carrierName = '카카오페이 (KISA 공인인증)';
-  let methodCode = 'kakao_pay_cert';
-  let txPrefix = 'KAKAO-CERT-2026';
-
-  if (provider === 'pass') {
-    carrierName = '통신 3사 (PASS 앱 공인인증)';
-    methodCode = 'portone_pass';
-    txPrefix = 'PASS-APP-2026';
-  } else if (provider === 'toss') {
-    carrierName = '토스인증 (KISA 전자서명인증)';
-    methodCode = 'toss_cert';
-    txPrefix = 'TOSS-CERT-2026';
-  } else if (provider === 'sms') {
-    carrierName = '통신 3사 휴대폰 SMS 6자리 인증';
-    methodCode = 'portone_sms';
-    txPrefix = 'SMS-OTP-2026';
-  }
-
+  await new Promise(resolve => setTimeout(resolve, 400));
   return {
-    success: true,
-    method: methodCode,
+    success: !!targetName?.trim(),
+    method: 'demo_dev',
     provider,
-    providerName: getProviderDisplayName(provider),
-    name: demoName,
-    birthDate: '1982-05-15',
-    gender: 'MALE',
-    phoneNumber: '01012345678',
-    phoneMasked: '010-****-5678',
-    carrier: carrierName,
-    txId: `${txPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-    certifiedAt: now,
-    ci: 'CI-' + Math.random().toString(36).slice(2, 14).toUpperCase(),
-    di: 'DI-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
-    isForeigner: false,
-    deviceInfo: deviceInfo || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)',
-    ipAddress: ipAddress || '211.234.12.89',
+    providerName: `${getProviderDisplayName(provider)} — 개발 환경`,
+    name: targetName?.trim() || '',
+    txId: `DEV-${Date.now()}`,
+    certifiedAt: new Date().toISOString(),
+    deviceInfo,
+    ipAddress: '',
+    isDemo: true,
+    error: targetName?.trim() ? undefined : '[개발 환경] 포트원 Store ID/Channel Key가 설정되지 않아 본인인증을 진행할 수 없습니다. (.env에 VITE_PORTONE_STORE_ID, VITE_PORTONE_CHANNEL_KEY 설정, 서버에 PORTONE_API_SECRET 설정)',
   };
 }
 

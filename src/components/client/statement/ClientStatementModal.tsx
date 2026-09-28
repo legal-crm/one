@@ -44,7 +44,7 @@ const CAUSE_KEYWORDS = [
   '자녀 학비 및 양육비'
 ];
 
-export default function ClientStatementModal({
+function ClientStatementModalInner({
   isOpen,
   onClose,
   clientId,
@@ -55,7 +55,6 @@ export default function ClientStatementModal({
   monthlyIncome = 250,
   onSuccessSubmitted
 }: ClientStatementModalProps) {
-  if (!isOpen) return null;
 
   // 단계 상태 (1: 학력/경력, 2: 주거/과거이력, 3: 음성/사연입력, 4: AI 생성 및 검토, 5: 법원양식 미리보기/제출)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(3); // 3단계(사연입력)를 첫 진입으로 유도하거나 1단계부터
@@ -133,6 +132,26 @@ export default function ClientStatementModal({
     } catch {
       toast.error('저장에 실패했습니다.');
     }
+  };
+
+  // 닫기 시 작성 중인 내용 자동 임시저장 (입력 유실 방지)
+  const handleCloseWithAutosave = async () => {
+    if (statement) {
+      try {
+        await StatementService.saveStatement({
+          ...statement,
+          story: {
+            ...statement.story,
+            voiceTranscript: transcript,
+            rawCustomerNotes: transcript || statement.story.rawCustomerNotes
+          }
+        });
+      } catch {
+        // 저장 실패해도 닫기는 진행 — 다음 진입 시 마지막 저장본 로드
+      }
+    }
+    if (isListening) stopListening();
+    onClose();
   };
 
   // 키워드 토글
@@ -219,7 +238,11 @@ export default function ClientStatementModal({
         setStatement(updatedStatement);
         await StatementService.saveStatement(updatedStatement);
         setCurrentStep(4); // 검토 단계로 자동 이동
-        toast.success('✨ 제미나이가 법원 표준 진술문을 성공적으로 완성했습니다!');
+        if (res.source === 'gemini_ai') {
+          toast.success('AI가 진술서 초안을 작성했습니다. 사실과 다른 부분이 없는지 꼭 확인해 주세요.');
+        } else {
+          toast.info('AI 연결이 되지 않아 입력 내용을 바탕으로 기본 초안을 만들었습니다. 내용을 직접 다듬어 주세요.');
+        }
       } else {
         toast.error('AI 생성 중 오류가 발생했습니다. 다시 시도해 주세요.');
       }
@@ -236,6 +259,10 @@ export default function ClientStatementModal({
     if (!statement) return;
     try {
       const res = await StatementService.deliverStatementToLawyer(statement);
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
       confetti({
         particleCount: 80,
         spread: 70,
@@ -279,28 +306,31 @@ export default function ClientStatementModal({
                 <h3 className="font-extrabold text-base text-white">
                   법원 제출용 {isRehab ? '개인회생' : '개인파산'} 진술서 간편 작성기
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
-                  Gemini 2.5 AI 스마트 도우미
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 whitespace-nowrap">
+                  AI 초안 도우미
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                신청인: {statement.applicantName} · 말로 편하게 이야기하면 제미나이가 법원 양식으로 완성해 드립니다.
+              <p className="text-xs text-slate-300">
+                신청인: {statement.applicantName} · 말로 이야기하면 AI가 진술서 초안을 정리합니다. 입력 내용은 초안 작성을 위해 AI 서비스(Google Gemini)로 전송되며, 최종본은 담당 변호사가 검토합니다.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleSaveDraft}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer press-scale whitespace-nowrap"
+              className="px-3 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer press-scale whitespace-nowrap"
             >
               임시저장
             </button>
             <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              type="button"
+              onClick={handleCloseWithAutosave}
+              aria-label="진술서 작성 닫기 (자동 임시저장)"
+              className="text-slate-300 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -388,14 +418,14 @@ export default function ClientStatementModal({
                       className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand/90 hover:to-indigo-500 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                     >
                       <Building2 className="w-3.5 h-3.5" />
-                      <span>🏢 공단 경력 한 번에 불러오기</span>
+                      <span>🏢 자격득실확인서로 경력 불러오기</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         const updated = [
                           ...statement.jobHistories,
-                          { period: '2019.01 ~ 2021.02', companyName: '', position: '직원', reasonForLeaving: '퇴직' }
+                          { period: '', companyName: '', position: '', reasonForLeaving: '' }
                         ];
                         setStatement({ ...statement, jobHistories: updated });
                       }}
@@ -416,7 +446,7 @@ export default function ClientStatementModal({
                         value={job.period}
                         onChange={e => {
                           const updated = [...statement.jobHistories];
-                          updated[idx].period = e.target.value;
+                          updated[idx] = { ...updated[idx], period: e.target.value };
                           setStatement({ ...statement, jobHistories: updated });
                         }}
                         className="w-full sm:w-36 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
@@ -427,7 +457,7 @@ export default function ClientStatementModal({
                         value={job.companyName}
                         onChange={e => {
                           const updated = [...statement.jobHistories];
-                          updated[idx].companyName = e.target.value;
+                          updated[idx] = { ...updated[idx], companyName: e.target.value };
                           setStatement({ ...statement, jobHistories: updated });
                         }}
                         className="w-full sm:flex-1 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
@@ -438,7 +468,7 @@ export default function ClientStatementModal({
                         value={job.position}
                         onChange={e => {
                           const updated = [...statement.jobHistories];
-                          updated[idx].position = e.target.value;
+                          updated[idx] = { ...updated[idx], position: e.target.value };
                           setStatement({ ...statement, jobHistories: updated });
                         }}
                         className="w-full sm:w-28 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
@@ -449,7 +479,7 @@ export default function ClientStatementModal({
                         value={job.reasonForLeaving}
                         onChange={e => {
                           const updated = [...statement.jobHistories];
-                          updated[idx].reasonForLeaving = e.target.value;
+                          updated[idx] = { ...updated[idx], reasonForLeaving: e.target.value };
                           setStatement({ ...statement, jobHistories: updated });
                         }}
                         className="w-full sm:w-40 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
@@ -633,7 +663,7 @@ export default function ClientStatementModal({
                   어떻게 빚이 생기셨나요? 편하게 말씀해 주세요
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  글쓰기 부담 없이 질문에 답하시면 제미나이가 법원 표준 4단 양식(발생원인·증대경위·지급불능·재기다짐)으로 완벽하게 정리해 드립니다.
+                  글쓰기 부담 없이 질문에 답하시면 AI가 진술서에 흔히 쓰이는 4단 구성(발생원인·증대경위·지급불능·반성과 다짐)으로 초안을 정리해 드립니다.
                 </p>
               </div>
 
@@ -825,7 +855,7 @@ export default function ClientStatementModal({
                       rows={4}
                       value={transcript + (interimTranscript ? ` (${interimTranscript})` : '')}
                       onChange={e => setTranscript(e.target.value)}
-                      placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 제미나이가 법원 양식에 맞춰 완벽하게 다듬어 드립니다."
+                      placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 AI가 초안으로 다듬어 드립니다. 사실과 다른 내용은 쓰지 말아 주세요."
                       className="w-full p-4 text-xs font-sans bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-brand focus:outline-hidden leading-relaxed"
                     />
                   </div>
@@ -892,7 +922,7 @@ export default function ClientStatementModal({
                     제미나이가 완성한 법원 제출용 진술문 검토
                   </h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    대법원 표준 4단 구성으로 정리되었습니다. 내용을 읽어보시고 필요한 부분을 직접 수정하실 수 있습니다.
+                    4단 구성 초안으로 정리했습니다. 사실과 다르거나 과장된 부분이 없는지 읽어보고 직접 수정해 주세요.
                   </p>
                 </div>
 
@@ -1015,7 +1045,7 @@ export default function ClientStatementModal({
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
                   <div className="flex items-center gap-2 font-bold text-xs text-slate-800 dark:text-slate-200">
                     <FileText className="w-4 h-4 text-emerald-600" />
-                    <span>대법원 표준 {isRehab ? '개인회생' : '개인파산'} 진술서 서식 완비</span>
+                    <span>{isRehab ? '개인회생' : '개인파산'} 진술서 제출 양식 미리보기</span>
                   </div>
                   <button
                     type="button"
@@ -1055,10 +1085,10 @@ export default function ClientStatementModal({
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <p className="font-bold text-emerald-900 dark:text-emerald-300">
-                    제출 시 담당 변호사에게 실시간 자동 전송됩니다
+                    제출하면 담당 변호사 사건 기록에 저장됩니다
                   </p>
                   <p className="text-emerald-700 dark:text-emerald-400">
-                    변호사 사무소 CRM의 전자소송 서류철({isRehab ? '10번 진술서 슬롯' : '02번 파산 진술서 슬롯'})에 바로 첨부되어, 법원 전자소송 접수 시 즉시 사용됩니다.
+                    담당 변호사가 진술서 내용을 검토·보완한 뒤 법원 제출용으로 확정합니다. 제출 후에도 변호사 요청에 따라 수정될 수 있습니다.
                   </p>
                 </div>
               </div>
@@ -1132,4 +1162,10 @@ export default function ClientStatementModal({
       />
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리 (열고 닫을 때 훅 개수 불일치 크래시 방지)
+export default function ClientStatementModal(props: ClientStatementModalProps) {
+  if (!props.isOpen) return null;
+  return <ClientStatementModalInner {...props} />;
 }

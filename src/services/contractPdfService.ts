@@ -16,8 +16,9 @@ export async function generateCourtSubmissionPdf(contract: ElectronicContract): 
 
   try {
     // 1. 블록체인 검증용 QR 코드 생성 (Data URL)
-    const verifyUrl = contract.blockchainAnchor?.verifyUrl || 
-      `https://legal-crm-xi.vercel.app/?verifyContractId=${contract.id}&hash=${contract.documentHashes?.finalHash || ''}`;
+    // 검증 QR: 현재 서비스 도메인 기준 (하드코딩된 배포 도메인 대신)
+    const verifyUrl = contract.blockchainAnchor?.verifyUrl ||
+      `${typeof window !== 'undefined' ? window.location.origin : 'https://mykim.kr'}/?verifyContractId=${encodeURIComponent(contract.id)}`;
     const qrCodeDataUrl = await generateQrCodeDataUrl(verifyUrl);
 
     // 2. DOM 렌더링용 임시 컨테이너 생성 (사용자 화면 방해 없도록 화면 밖 배치)
@@ -146,7 +147,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
               <div><strong>성명 / 상호:</strong> ${contract.clientName} ${isBiz ? `(${biz?.companyName || '사업체'})` : ''}</div>
               <div><strong>연락처:</strong> ${contract.clientPhone}</div>
               ${isBiz && biz?.businessNumber ? `<div><strong>사업자등록번호:</strong> ${biz.businessNumber}</div>` : ''}
-              <div><strong>본인인증:</strong> <span style="color: #047857; font-weight: bold;">${idv?.providerName || idv?.carrier || '공인 스마트폰 본인인증 완료'}</span></div>
+              <div><strong>본인인증:</strong> <span style="color: #047857; font-weight: bold;">${idv?.providerName || idv?.carrier || '본인인증 기록 없음'}</span></div>
             </div>
           </div>
 
@@ -167,8 +168,8 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
         <!-- 4대 법적 효력 및 진정성립 공증 테이블 -->
         <div style="border: 2px solid #0f172a; border-radius: 10px; overflow: hidden; margin-bottom: 25px;">
           <div style="background: #0f172a; color: #ffffff; padding: 10px 16px; font-size: 13px; font-weight: 800; display: flex; justify-content: space-between; align-items: center;">
-            <span>전자서명법·민사소송법 기준 4대 법적 효력 완비 검증 요약</span>
-            <span style="background: #10b981; color: #ffffff; font-size: 10px; padding: 2px 6px; border-radius: 3px;">법적 효력 100% 충족</span>
+            <span>전자계약 체결 기록 요약</span>
+            
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
             <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
@@ -176,35 +177,35 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
               <td style="padding: 10px 14px; color: #0f172a;">
                 ${isBiz ? `국세청 사업자등록 진위확인 완료 (대표자: ${biz?.representativeName || contract.clientName} / 상태: 계속사업자)` : '개인 위임인 신원 및 사건위임 의사 직접 검증'}
               </td>
-              <td style="padding: 10px 14px; width: 80px; text-align: center; color: #047857; font-weight: bold;">[확인완료]</td>
+              <td style="padding: 10px 14px; width: 80px; text-align: center; color: #047857; font-weight: bold;">${(isBiz ? biz?.ntsStatus === 'VALID' : !!idv?.txId) ? '[확인]' : '[-]'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e2e8f0; background: #fafafa;">
               <td style="padding: 10px 14px; font-weight: bold; background: #f1f5f9; color: #334155;">2. 당사자성 (Who)</td>
               <td style="padding: 10px 14px; color: #0f172a;">
-                ${idv?.providerName || 'KISA 공인 스마트폰 본인인증'} (승인번호: <span style="font-family: monospace;">${idv?.txId || 'TX-PORTONE-V2'}</span>)
+                ${idv?.txId ? `${idv?.providerName || '본인인증'} (인증번호: <span style="font-family: monospace;">${idv.txId}</span>)` : '본인인증 기록 없음'}
               </td>
-              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">[확인완료]</td>
+              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">${!!idv?.txId ? '[확인]' : '[-]'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
               <td style="padding: 10px 14px; font-weight: bold; background: #f1f5f9; color: #334155;">3. 의사성 (Intent)</td>
               <td style="padding: 10px 14px; color: #0f172a;">
-                약관규제법 제3조 준수 (전문 스크롤 열람 강제 감지 및 의뢰인 직접 자필서명 날인 완료)
+                필수 약관 ${contract.intentVerification?.agreedTerms?.length || 0}개 동의 · 중요 조항 직접 입력 · 자필서명 ${clientSig ? '제출' : '미제출'}
               </td>
-              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">[확인완료]</td>
+              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">${!!clientSig ? '[확인]' : '[-]'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e2e8f0; background: #fafafa;">
               <td style="padding: 10px 14px; font-weight: bold; background: #f1f5f9; color: #334155;">4. 무결성 (Integrity)</td>
               <td style="padding: 10px 14px; color: #0f172a;">
-                FIPS 180-4 SHA-256 체결본 해시 산출 및 공인 시점확인(3중 Time-Stamp Token) 봉인
+                ${hashes?.finalHash ? 'SHA-256 체결본 전자지문 생성' : '양 당사자 서명 전 (전자지문 미생성)'}
               </td>
-              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">[확인완료]</td>
+              <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">${!!hashes?.finalHash ? '[확인]' : '[-]'}</td>
             </tr>
             <tr style="background: #eff6ff;">
               <td style="padding: 10px 14px; font-weight: bold; background: #dbeafe; color: #1e3a8a;">5. 블록체인 불변성</td>
               <td style="padding: 10px 14px; color: #1e3a8a; font-weight: 500;">
-                Polygon PoS 분산원장 영구 각인 완료 (Tx: <span style="font-family: monospace; font-size: 10px;">${anchor?.txHash ? anchor.txHash.slice(0, 24) + '...' : '0x7b4a...'}</span>)
+                ${anchor?.isRealOnChain && anchor?.txHash ? `블록체인 기록 (Tx: <span style="font-family: monospace; font-size: 10px;">${anchor.txHash.slice(0, 24)}...</span>)` : '블록체인 미기록 (전자지문은 서버 보관)'}
               </td>
-              <td style="padding: 10px 14px; text-align: center; color: #1d4ed8; font-weight: bold;">[영구각인]</td>
+              <td style="padding: 10px 14px; text-align: center; color: #1d4ed8; font-weight: bold;">${anchor?.isRealOnChain ? '[기록]' : '[-]'}</td>
             </tr>
           </table>
         </div>
@@ -216,7 +217,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
               스마트폰 카메라로 진위여부 즉시 검증 (QR 코드)
             </div>
             <p style="font-size: 11px; color: #334155; line-height: 1.5; margin: 0;">
-              사법부(법원) 재판부 및 관계자는 스마트폰 기본 카메라로 우측 QR 코드를 비추면 별도 프로그램 설치 없이 <strong>블록체인 분산원장과 전자서명 원본의 100% 일치 여부</strong>를 즉시 확인할 수 있습니다.
+              사법부(법원) 재판부 및 관계자는 스마트폰 기본 카메라로 우측 QR 코드를 비추면 별도 프로그램 설치 없이 <strong>저장된 계약서가 체결 당시와 같은지</strong> 확인할 수 있습니다.
             </p>
             <div style="font-size: 10px; font-family: monospace; color: #64748b; margin-top: 6px;">
               체결본 해시: ${hashes?.finalHash ? hashes.finalHash.slice(0, 36) + '...' : '7e2b19f0...'}
@@ -251,12 +252,12 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
         <div style="font-size: 11px; line-height: 1.7; color: #1e293b; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fafafa;">
           <p style="margin: 0 0 6px 0;"><strong>제1조 (위임의 목적)</strong> 위임인(갑)은 수임인(을)에게 ${contract.caseType || '개인회생·파산신청'} 사건의 대리 및 그에 부수하는 일체의 법률사무 처리를 위임한다.</p>
           <p style="margin: 0 0 6px 0;"><strong>제2조 (수임료 및 법원실비)</strong> 변호사 보수(순 수임료)는 금 ${formattedFee}원${contract.vatIncluded ? '(VAT 포함)' : '(VAT 10% 별도)'}으로 정한다. 송달료(${(contract.courtCosts?.deliveryFee || 0).toLocaleString()}원), 인지대(${(contract.courtCosts?.stampFee || 0).toLocaleString()}원), 부채증명서 발급대행비(${(contract.courtCosts?.debtCertFee || 0).toLocaleString()}원)${contract.courtCosts?.provisionalDeposit ? `, 변제예납금(${(contract.courtCosts.provisionalDeposit).toLocaleString()}원)` : ''} 등 법원 실비는 사건 진행 중 실비로 별도 정산한다.</p>
-          <p style="margin: 0 0 6px 0;"><strong>제3조 (입금 지정 계좌)</strong> 수임료는 [${contract.feeAccount?.bankName || '신한은행'} ${contract.feeAccount?.accountNumber || ''} (예금주: ${contract.feeAccount?.accountHolder || contract.lawFirmName})] 계좌로 입금한다.</p>
+          <p style="margin: 0 0 6px 0;"><strong>제3조 (입금 지정 계좌)</strong> 수임료는 [${contract.feeAccount?.bankName || '(은행 미기재)'} ${contract.feeAccount?.accountNumber || '(계좌번호 미기재)'} (예금주: ${contract.feeAccount?.accountHolder || contract.lawFirmName})] 계좌로 입금한다.</p>
           ${contract.successFee?.enabled ? `
             <p style="margin: 0 0 6px 0; color: #78350f;"><strong>제4조 (성공보수 약정)</strong> 갑은 [${contract.successFee.dueDateCondition || '면책 또는 인가결정 확정 시'}] 을에게 ${contract.successFee.type === 'reduction_rate' ? `탕감액의 ${contract.successFee.ratePercent || 5}%` : `약정금 ${(contract.successFee.amount || 500000).toLocaleString()}원`}의 성공보수를 지급하기로 약정한다.</p>
           ` : ''}
           <p style="margin: 0 0 6px 0;"><strong>${contract.successFee?.enabled ? '제5조' : '제4조'} (성실의무 및 자료제출)</strong> 을은 변호사법에 따라 성실히 사건을 수행하며, 갑은 법원 제출용 소득 및 재산 증빙서류를 성실히 제출한다.</p>
-          <p style="margin: 0;"><strong>${contract.successFee?.enabled ? '제6조' : '제5조'} (효력 발생)</strong> 본 계약은 전자서명법에 따라 양 당사자의 전자서명 날인 및 블록체인 봉인이 완료된 시점부터 법적 효력이 발생한다.</p>
+          <p style="margin: 0;"><strong>${contract.successFee?.enabled ? '제6조' : '제5조'} (효력 발생)</strong> 본 계약은 양 당사자의 전자서명이 완료된 시점부터 효력이 발생한다.</p>
         </div>
 
         <!-- 분납 일정표 -->
@@ -311,7 +312,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
                 위임인: <strong>${contract.clientName}</strong> (인/서명)
               </div>
               <div style="height: 65px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa;">
-                ${clientSig ? `<img src="${clientSig}" style="max-height: 55px; max-width: 180px;" alt="위임인 자필서명" />` : '<span style="font-size: 11px; color: #94a3b8;">[전자 자필서명 날인완료]</span>'}
+                ${clientSig ? `<img src="${clientSig}" style="max-height: 55px; max-width: 180px;" alt="위임인 자필서명" />` : '<span style="font-size: 11px; color: #94a3b8;">[서명 전]</span>'}
               </div>
               <div style="font-size: 9.5px; color: #64748b; margin-top: 4px; font-family: monospace;">
                 서명일시: ${contract.updatedAt ? contract.updatedAt.slice(0, 19).replace('T', ' ') : dateFormatted}
@@ -326,7 +327,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
                 수임인: <strong>${contract.lawFirmName}</strong> 담당 <strong>${contract.lawyerName}</strong>
               </div>
               <div style="height: 65px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa;">
-                ${lawyerSig ? `<img src="${lawyerSig}" style="max-height: 55px; max-width: 180px;" alt="변호사 직인" />` : '<span style="font-size: 11px; color: #1e3a8a; font-weight: bold;">[법률사무소 공인인 날인]</span>'}
+                ${lawyerSig ? `<img src="${lawyerSig}" style="max-height: 55px; max-width: 180px;" alt="변호사 서명" />` : '<span style="font-size: 11px; color: #94a3b8;">[서명 전]</span>'}
               </div>
               <div style="font-size: 9.5px; color: #64748b; margin-top: 4px; font-family: monospace;">
                 인증일시: ${dateFormatted} (KST)
@@ -354,7 +355,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             <span style="background: #0f172a; color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 3px;">AUDIT TRAIL</span>
             <h2 style="font-size: 18px; font-weight: 900; margin: 4px 0 0 0; color: #0f172a;">전자계약 체결 및 사법 감사추적 인증서</h2>
           </div>
-          <span style="font-size: 11px; color: #64748b; font-family: monospace;">ISO/IEC 27001 & 전자서명법 기준</span>
+          
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 12px; font-size: 10.5px;">
@@ -374,24 +375,24 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             <div style="font-weight: 800; color: #0f172a; margin-bottom: 6px;">2. 서명자 스마트폰 본인인증 기록 (Identity & Non-Repudiation)</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #334155; line-height: 1.6;">
               <div>인증 실명: <strong>${idv?.name || contract.clientName}</strong></div>
-              <div>인증 수단: <strong>${idv?.providerName || idv?.carrier || '카카오페이 전자서명인증'}</strong></div>
-              <div style="font-family: monospace;">공인 승인번호: ${idv?.txId || 'TX-PORTONE-VERIFIED'}</div>
+              <div>인증 수단: <strong>${idv?.providerName || idv?.carrier || '-'}</strong></div>
+              <div style="font-family: monospace;">인증번호: ${idv?.txId || '-'}</div>
               <div style="font-family: monospace;">인증 시각: ${idv?.certifiedAt ? idv.certifiedAt.slice(0, 19).replace('T', ' ') : dateFormatted}</div>
               <div style="grid-column: span 2; font-family: monospace; font-size: 9.5px; color: #64748b;">
-                접속 단말기/IP: ${idv?.ipAddress || '211.234.12.89'} · ${idv?.deviceInfo || 'Mobile WebKit Browser'}
+                접속 단말기/IP: ${idv?.ipAddress || '기록 없음'} · ${idv?.deviceInfo || '기록 없음'}
               </div>
             </div>
           </div>
 
           <!-- 3. 암호학적 해시 및 시점확인 -->
           <div style="border: 1px solid #0f172a; border-radius: 8px; padding: 10px 14px; background: #0f172a; color: #ffffff;">
-            <div style="font-weight: 800; color: #f59e0b; margin-bottom: 6px;">3. FIPS 180-4 SHA-256 무결성 해시 & 3중 시점확인(TSA)</div>
+            <div style="font-weight: 800; color: #f59e0b; margin-bottom: 6px;">3. SHA-256 전자지문</div>
             <div style="font-family: monospace; font-size: 9.5px; line-height: 1.6;">
-              <div><span style="color: #94a3b8;">Original Hash (서명 전 원본):</span> ${hashes?.originalHash || 'a8f5c4e92b1034d8719283746152bc41902746193fe1209a827361849201abcd'}</div>
-              <div><span style="color: #94a3b8;">Final Hash (최종 체결본):</span> <span style="color: #34d399; font-weight: bold;">${hashes?.finalHash || '7e2b19f0c84139a0491823746193fe1209a8f5c4e92b1034d8719283746152bc'}</span></div>
+              <div><span style="color: #94a3b8;">Original Hash (서명 전 원본):</span> ${hashes?.originalHash || '미생성'}</div>
+              <div><span style="color: #94a3b8;">Final Hash (최종 체결본):</span> <span style="color: #34d399; font-weight: bold;">${hashes?.finalHash || '미생성 (양 당사자 서명 전)'}</span></div>
               <div style="margin-top: 4px; border-top: 1px solid #334155; padding-top: 4px; display: flex; justify-content: space-between;">
-                <span>Timestamp Token: <span style="color: #fbbf24;">${ts?.token || 'TS-2026-9821-0242ac120002'}</span></span>
-                <span style="color: #94a3b8;">대한민국 표준시(KST) 봉인</span>
+                <span>서명 시각: <span style="color: #fbbf24;">${hashes?.signedAt ? hashes.signedAt.slice(0, 19).replace('T', ' ') + ' (UTC)' : '-'}</span></span>
+                
               </div>
             </div>
           </div>
@@ -399,21 +400,19 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
           <!-- 4. 블록체인(Polygon PoS) 분산원장 영구 각인 정보 -->
           <div style="border: 1.5px solid #2563eb; border-radius: 8px; padding: 12px 14px; background: #eff6ff;">
             <div style="font-weight: 800; color: #1e3a8a; margin-bottom: 6px; display: flex; justify-content: space-between;">
-              <span>4. 블록체인 분산원장 영구 각인 (Polygon Distributed Ledger Proof)</span>
-              <span style="color: #1d4ed8; font-size: 9.5px; font-weight: bold;">위·변조 사후 원천 차단</span>
+              <span>4. 블록체인 기록 및 검증 QR</span>
+              
             </div>
             <div style="display: flex; gap: 14px; align-items: center;">
               <div style="flex: 1; font-size: 10px; line-height: 1.7; color: #1e293b;">
-                <div><strong>기록 네트워크:</strong> ${anchor?.network || 'Polygon PoS (EVM)'}</div>
-                <div style="font-family: monospace;"><strong>Tx Hash:</strong> ${anchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c'}</div>
-                <div><strong>블록 번호:</strong> Block #${(anchor?.blockNumber || 61845214).toLocaleString()} | 각인일시: ${anchor?.anchoredAt ? anchor.anchoredAt.slice(0, 19).replace('T', ' ') : dateFormatted}</div>
-                <div style="font-size: 9.5px; color: #2563eb; margin-top: 2px;">
-                  공증 스마트컨트랙트: 0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1
-                </div>
+                <div><strong>블록체인 기록:</strong> ${anchor?.isRealOnChain ? (anchor.network || '기록됨') : '미기록 (전자지문은 서버 보관)'}</div>
+                ${anchor?.isRealOnChain && anchor?.txHash ? `<div style="font-family: monospace;"><strong>Tx Hash:</strong> ${anchor.txHash}</div>` : ''}
+                ${anchor?.isRealOnChain && anchor?.blockNumber ? `<div><strong>블록 번호:</strong> #${anchor.blockNumber.toLocaleString()}</div>` : ''}
+                <div style="font-size: 9.5px; color: #2563eb; margin-top: 2px;">QR 코드로 검증 화면을 열어 전자지문을 다시 계산해 볼 수 있습니다.</div>
               </div>
               <div style="text-align: center; background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #bfdbfe; flex-shrink: 0;">
                 ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" style="width: 72px; height: 72px; display: block;" alt="블록체인 검증 QR" />` : ''}
-                <span style="font-size: 8.5px; color: #1e3a8a; font-weight: bold;">스캔 즉시 확인</span>
+                <span style="font-size: 8.5px; color: #1e3a8a; font-weight: bold;">원본 검증</span>
               </div>
             </div>
           </div>
@@ -437,10 +436,10 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
       <!-- 3페이지 하단 법적 고지 및 푸터 -->
       <div>
         <div style="background: #f8fafc; border-top: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 4px; font-size: 9px; color: #64748b; line-height: 1.5; margin-bottom: 10px;">
-          <strong>사법기관 제출 효력 증명:</strong> 본 문서는 전자서명법 제3조 제1항에 따라 날인된 사문서로서의 진정성립이 인정되며, 블록체인 및 SHA-256 해시 대조를 통해 작성 당시의 원본과 100% 동일함을 영구히 증명합니다.
+          <strong>안내:</strong> 이 문서는 전자서명 체결 기록(본인인증·약관 동의·서명·전자지문)을 정리한 것입니다. 전자지문 대조로 체결 이후 계약서 변경 여부를 확인할 수 있으며, 계약의 법적 효력에 대한 판단은 법원에 있습니다.
         </div>
         <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
-          <span>my김변 공인 전자계약 감사증명원</span>
+          <span>my김변 전자계약 체결 기록</span>
           <span>감사추적 인증서 [3 / 3]</span>
           <span>문서관리번호: ${contract.id}</span>
         </div>

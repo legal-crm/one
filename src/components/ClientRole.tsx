@@ -366,7 +366,8 @@ const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
   let computedOtherDependents = 0;
   if (profile.familyMembers && profile.familyMembers.length > 0) {
     const minorKids = profile.familyMembers.filter(m => m.relationship === '자녀' && (m.isMinor ?? true));
-    const adultDeps = profile.familyMembers.filter(m => m.isDependent && (m.relationship !== '자녀' || !m.isMinor));
+    // 법정 부양가족 적격(isEligibleDependent)인 성인만 추가 가구원으로 인정 (기존 isDependent는 존재하지 않는 필드라 항상 0명)
+    const adultDeps = profile.familyMembers.filter(m => m.isEligibleDependent && (m.relationship !== '자녀' || !(m.isMinor ?? true)));
     if (minorKids.length > 0) {
       computedMinorChildren = minorKids.length + (profile.nonCohabitingMinorChildren || 0);
     }
@@ -380,8 +381,9 @@ const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
 
   return {
     clientName: profile.companyNameMasked || '의뢰인',
-    phoneNumber: '010-4567-8901',
-    birthDate: '1991-01-01',
+    // 계산 전용 매핑 — 실제 연락처가 없으면 가짜 번호를 채우지 않는다
+    phoneNumber: profile.phone || profile.clientPhone || '',
+    birthDate: (profile as any).birthDate || '1991-01-01', // 생년 미입력 시 계산용 기본값(나이 요건 판정에만 사용)
     consultDate: new Date().toISOString().split('T')[0],
     dbVendor: '',
     caseType: 'rehab',
@@ -3046,6 +3048,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         onNavigateToChat={() => setActiveTab('chat')}
                         isCompact={false}
                         initialSubTab={mypageSubTab}
+                        lawyers={directoryLawyers}
                       />
                     ) : (
                       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">

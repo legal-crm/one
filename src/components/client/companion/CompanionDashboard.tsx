@@ -813,7 +813,7 @@ export default function CompanionDashboard({
         isOpen={isDiscoveryModalOpen}
         onClose={() => setIsDiscoveryModalOpen(false)}
         clientName={caseData.alias || '의뢰인'}
-        clientPhone="010-0000-0000"
+        clientPhone=""
       />
 
       {/* 채권자집회 출석 완벽 가이드 모달 */}
@@ -830,18 +830,12 @@ export default function CompanionDashboard({
           <Fast2ndDocHubModal
             isOpen={isDocHubOpen}
             onClose={() => setIsDocHubOpen(false)}
-            clientName={caseData.alias || '김가람'}
+            clientName={caseData.alias || '신청인'}
             clientId={caseData.id || 'client-self'}
-            hasStatement={true}
-            hasIncomeExpense={true}
+            // 작성 여부·채무 요약은 실제 데이터가 없으므로 '완료'나 추정 수치(총채무 ×1.6, 탕감률 64% 등)를 넘기지 않는다
+            hasStatement={false}
+            hasIncomeExpense={false}
             hasProperty={false}
-            debtSummary={{
-              totalDebt: (caseData.totalRounds || 36) * (caseData.monthlyRepaymentAmount || 500000) * 1.6,
-              monthlyIncome: caseData.cashflow?.monthlyIncome || 2500000,
-              courtName: caseData.courtName || '서울회생법원',
-              expectedReductionRate: 64,
-              monthlyPayment: caseData.monthlyRepaymentAmount || 500000
-            }}
             onOpenStatementModal={() => setIsStatementModalOpen(true)}
             onOpenIncomeExpenseModal={() => setIsIncomeExpenseModalOpen(true)}
             onOpenPropertyModal={() => setIsPropertyModalOpen(true)}
@@ -856,7 +850,7 @@ export default function CompanionDashboard({
             isOpen={isStatementModalOpen}
             onClose={() => setIsStatementModalOpen(false)}
             clientId={caseData.id || 'client-self'}
-            clientName={caseData.alias || '김가람'}
+            clientName={caseData.alias || '신청인'}
             courtName={caseData.courtName || '서울회생법원'}
           />
         </React.Suspense>
@@ -869,7 +863,7 @@ export default function CompanionDashboard({
             isOpen={isIncomeExpenseModalOpen}
             onClose={() => setIsIncomeExpenseModalOpen(false)}
             clientId={caseData.id || 'client-self'}
-            clientName={caseData.alias || '김가람'}
+            clientName={caseData.alias || '신청인'}
           />
         </React.Suspense>
       )}
@@ -881,7 +875,7 @@ export default function CompanionDashboard({
             isOpen={isPropertyModalOpen}
             onClose={() => setIsPropertyModalOpen(false)}
             clientId={caseData.id || 'client-self'}
-            clientName={caseData.alias || '김가람'}
+            clientName={caseData.alias || '신청인'}
           />
         </React.Suspense>
       )}

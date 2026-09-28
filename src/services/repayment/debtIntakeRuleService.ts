@@ -78,7 +78,7 @@ export const MAJOR_4_BANKS = [
 export const REGIONAL_CREDIT_GUARANTEE_REGIONS = [
   '서울신용보증재단', '경기신용보증재단', '인천신용보증재단', '부산신용보증재단',
   '대구신용보증재단', '대전신용보증재단', '광주신용보증재단', '울산신용보증재단',
-  '강원신용보증재단', '충북신용보증재단', '충남신용보증재단', '전북신용보증재단',
+  '강원신용보증재단', '충북신용보증재단', '충남신용보증재단', '전북특별자치도신용보증재단',
   '전남신용보증재단', '경북신용보증재단', '경남신용보증재단', '제주신용보증재단', '세종신용보증재단'
 ];
 
@@ -97,8 +97,8 @@ export const POPULAR_CREDITORS_PRESET: { name: string; category: CreditorCategor
   { name: '신협', category: 'MUTUAL_FINANCE', ruleNotice: '대출받으신 지점명(법인명)을 알아야 발급 가능합니다.' },
   { name: '수협은행/수협', category: 'MUTUAL_FINANCE' },
   { name: '미소금융', category: 'MUTUAL_FINANCE', ruleNotice: '지원받으신 재단 지점명을 알아야 합니다.' },
-  { name: 'OK저축은행', category: 'SAVINGS_BANK', ruleNotice: '자가/차량 담보 대출의 경우 경매·공매 주의 플래그가 적용됩니다.' },
-  { name: '페퍼저축은행', category: 'SAVINGS_BANK', ruleNotice: '자가 담보 대출의 경우 경매 주의 플래그가 적용됩니다.' },
+  { name: 'OK저축은행', category: 'SAVINGS_BANK', ruleNotice: '담보 대출은 담보 종류를 함께 선택해 주세요.' },
+  { name: '페퍼저축은행', category: 'SAVINGS_BANK', ruleNotice: '담보 대출은 담보 종류를 함께 선택해 주세요.' },
   { name: '웰컴저축은행', category: 'SAVINGS_BANK' },
   { name: 'SBI저축은행', category: 'SAVINGS_BANK' },
   { name: '한국투자저축은행', category: 'SAVINGS_BANK' },
@@ -292,13 +292,13 @@ export class DebtIntakeRuleService {
       let riskNote = '';
       if (trimmedName.includes('OK저축') || trimmedName.includes('오케이저축')) {
         if (entry.collateralType === 'HOUSING') {
-          riskNote = '🚨 [경매주의] 오케이저축 자가담보: 인가 후 경매 사례 다수 (부채발급 제외/별제권 협의 검토)';
+          riskNote = '⚠️ [담보] 저축은행 주택담보: 별제권 행사 가능성 — 담보권 처리 방안 변호사 검토 (채권자목록에서 누락 금지)';
         } else if (entry.collateralType === 'VEHICLE') {
-          riskNote = '🚨 [차량공매주의] 오케이저축 차량담보: 공매 사례 발생 (신복/새출발 제외 검토 or 완납안내)';
+          riskNote = '⚠️ [담보] 저축은행 차량담보: 별제권 행사 가능성 — 차량 유지 방안 변호사 검토 (채권자목록에서 누락 금지)';
         }
       } else if (trimmedName.includes('페퍼저축')) {
         if (entry.collateralType === 'HOUSING') {
-          riskNote = '🚨 [경매주의] 페퍼저축 자가담보: 인가 후 경매 사례 다수 (부채발급 제외/별제권 협의 검토)';
+          riskNote = '⚠️ [담보] 저축은행 주택담보: 별제권 행사 가능성 — 담보권 처리 방안 변호사 검토 (채권자목록에서 누락 금지)';
         }
       }
 

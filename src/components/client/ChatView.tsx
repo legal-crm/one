@@ -1156,6 +1156,7 @@ export default function ChatView({
                 onNavigateToChat={() => setShowProfilePanel(false)}
                 isCompact={true}
                 initialSubTab="diagnosis"
+                lawyers={lawyers}
               />
             </div>
           </div>

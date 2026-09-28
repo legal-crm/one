@@ -38,6 +38,9 @@ interface ClientMonthlyIncomeExpenseModalProps {
 }
 
 // 자주 쓰이는 추천 경비 칩 프리셋 (원터치 추가)
+// 2026년 최저임금 (시간급, 고용노동부 고시)
+const MIN_WAGE_2026 = 10320;
+
 const POPULAR_EXPENSE_PRESETS: { name: string; target: 'operating' | 'rent' | 'utility' | 'electricity'; defaultAmt: number }[] = [
   { name: '배달대행료 (배민/쿠팡/요기요)', target: 'operating', defaultAmt: 600000 },
   { name: '세무기장료 및 세무신고비', target: 'operating', defaultAmt: 110000 },
@@ -63,38 +66,36 @@ export default function ClientMonthlyIncomeExpenseModal({
   const [selectedIncomeType, setSelectedIncomeType] = useState<DetailedIncomeType>('BUSINESS');
   
   // 사업자 간편 마법사 상태
-  const [bizCard, setBizCard] = useState<number>(3500000);
-  const [bizCash, setBizCash] = useState<number>(1000000);
-  const [bizBaseOperating, setBizBaseOperating] = useState<number>(1200000);
-  const [bizRent, setBizRent] = useState<number>(800000);
-  const [bizUtility, setBizUtility] = useState<number>(120000);
-  const [bizElectricity, setBizElectricity] = useState<number>(180000);
-  const [dynamicExpenses, setDynamicExpenses] = useState<DynamicExpenseItem[]>([
-    { id: 'exp_1', name: '배달대행료 (배민/쿠팡/요기요)', monthlyAmount: 550000, rollupTarget: 'operating' },
-    { id: 'exp_2', name: '세무기장료', monthlyAmount: 110000, rollupTarget: 'operating' }
-  ]);
+  const [bizCard, setBizCard] = useState<number>(0);
+  const [bizCash, setBizCash] = useState<number>(0);
+  const [bizBaseOperating, setBizBaseOperating] = useState<number>(0);
+  const [bizRent, setBizRent] = useState<number>(0);
+  const [bizUtility, setBizUtility] = useState<number>(0);
+  const [bizElectricity, setBizElectricity] = useState<number>(0);
+  const [dynamicExpenses, setDynamicExpenses] = useState<DynamicExpenseItem[]>([]);
   
   // 사업자: 1분 간편 마법사 vs 12개월 상세 엑셀 토글
   const [viewMode, setViewMode] = useState<'wizard' | 'sheet'>('wizard');
   const [manualMonths, setManualMonths] = useState<MonthlyLedgerItem[]>([]);
 
   // 프리랜서 상태
-  const [flJobType, setFlJobType] = useState<string>('배달라이더/용역');
-  const [flGross, setFlGross] = useState<number>(3200000);
+  const [flJobType, setFlJobType] = useState<string>('');
+  const [flGross, setFlGross] = useState<number>(0);
   const [flExpenses, setFlExpenses] = useState<FreelancerExpenseItem[]>([
-    { id: 'fle_1', name: '오토바이/차량 유류비 및 정비비', monthlyAmount: 450000, category: 'fuel' },
-    { id: 'fle_2', name: '스마트폰 통신비 및 업무 플랫폼료', monthlyAmount: 90000, category: 'telecom' },
-    { id: 'fle_3', name: '시간제 유상운송보험료', monthlyAmount: 180000, category: 'fee' }
+    // 흔한 경비 항목 이름만 제시하고 금액은 0원 — 실제 지출이 없는 경비가 순소득에서 빠지지 않도록
+    { id: 'fle_1', name: '오토바이/차량 유류비 및 정비비', monthlyAmount: 0, category: 'fuel' },
+    { id: 'fle_2', name: '스마트폰 통신비 및 업무 플랫폼료', monthlyAmount: 0, category: 'telecom' },
+    { id: 'fle_3', name: '시간제 유상운송보험료', monthlyAmount: 0, category: 'fee' }
   ]);
 
   // 일용직 상태
-  const [dlWorkDays, setDlWorkDays] = useState<number>(18);
-  const [dlDailyWage, setDlDailyWage] = useState<number>(160000);
+  const [dlWorkDays, setDlWorkDays] = useState<number>(0);
+  const [dlDailyWage, setDlDailyWage] = useState<number>(0);
   const [dlIsCash, setDlIsCash] = useState<boolean>(false);
 
   // 아르바이트 상태
   const [ptWorkplaces, setPtWorkplaces] = useState<PartTimeWorkplace[]>([
-    { id: 'ptw_1', workplaceName: '편의점 야간', hourlyWage: 10030, weeklyHours: 25, hasWeeklyHolidayPay: true, monthlyGrossIncome: 1300000 }
+    { id: 'ptw_1', workplaceName: '', hourlyWage: MIN_WAGE_2026, weeklyHours: 0, hasWeeklyHolidayPay: false, monthlyGrossIncome: 0 }
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -108,22 +109,20 @@ export default function ClientMonthlyIncomeExpenseModal({
     if (!text.trim()) return;
     const items: { type: 'card' | 'cash' | 'rent' | 'utility' | 'expense'; label: string; amount: number }[] = [];
 
+    // "1억 2천만", "1천500만", "380만원", "3,500,000원", "월세 90"(단위 없음=만원) 모두 원 단위로 변환
     const parseAmount = (segment: string): number => {
-      const eok = segment.match(/(\d+)\s*억/);
-      const man = segment.match(/(\d+)\s*만/);
-      const plain = segment.match(/(\d+)\s*원/);
-      let total = 0;
-      if (eok) total += parseInt(eok[1], 10) * 100000000;
-      if (man) total += parseInt(man[1], 10) * 10000;
-      if (!eok && !man && plain) total += parseInt(plain[1], 10);
-      if (total === 0) {
-        const num = segment.match(/\b(\d{2,4})\b/);
-        if (num) {
-          const v = parseInt(num[1], 10);
-          return v < 10000 ? v * 10000 : v;
-        }
-      }
-      return total;
+      const s = segment.replace(/(\d),(?=\d{3})/g, '$1').replace(/\s+/g, '');
+      const m = s.match(/^(?:(\d+)억)?(?:(\d+)천)?(\d+)?(만|원)?/);
+      if (!m) return 0;
+      const eok = m[1] ? parseInt(m[1], 10) : 0;
+      const cheon = m[2] ? parseInt(m[2], 10) : 0;
+      const rest = m[3] ? parseInt(m[3], 10) : 0;
+      const unit = m[4];
+      if (!eok && !cheon && !rest) return 0;
+      if (unit === '원' && !eok && !cheon) return rest; // "3500000원"
+      // 억·천·단위없는 숫자는 만원 단위로 해석 (단, 10000 이상 단위없는 숫자는 원으로 간주)
+      if (!unit && !eok && !cheon && rest >= 10000) return rest;
+      return eok * 100000000 + (cheon * 1000 + rest) * 10000;
     };
 
     const patterns = [
@@ -141,11 +140,12 @@ export default function ClientMonthlyIncomeExpenseModal({
 
     patterns.forEach(p => {
       for (const name of p.names) {
-        const regex1 = new RegExp(`${name}[^0-9]{0,8}(\\d+\\s*(?:억|만|원|\\b))`, 'g');
-        const regex2 = new RegExp(`(\\d+\\s*(?:억|만|원))[^0-9]{0,8}${name}`, 'g');
-        const m = regex1.exec(text) || regex2.exec(text);
+        // 키워드와 금액 사이 간격은 짧게(조사·"은/는/이" 정도) 제한해 다른 항목 금액을 잘못 가져오지 않도록 함
+        const AMOUNT = '(\\d[\\d,]*\\s*억\\s*(?:\\d+\\s*천)?\\s*(?:\\d+)?\\s*(?:만|원)?|\\d+\\s*천\\s*(?:\\d+)?\\s*(?:만|원)?|\\d[\\d,]*\\s*(?:만|원)?)';
+        const regex1 = new RegExp(`${name}(?:은|는|이|가|에|이고|으로|로|이랑|\\s|:)*${AMOUNT}`);
+        const m = regex1.exec(text);
         if (m) {
-          const amt = parseAmount(m[1] || m[0]);
+          const amt = parseAmount(m[1] || '');
           if (amt > 0 && !items.some(i => i.label === p.label)) {
             items.push({ type: p.key as any, label: p.label, amount: amt });
             break;
@@ -240,8 +240,8 @@ export default function ClientMonthlyIncomeExpenseModal({
       // 프리랜서 복원
       if (initialD5103.freelancerLedger) {
         const fl = initialD5103.freelancerLedger;
-        setFlJobType(fl.jobTypeDetail || '프리랜서');
-        setFlGross(fl.monthlyGrossIncome || 3200000);
+        setFlJobType(fl.jobTypeDetail || '');
+        setFlGross(fl.monthlyGrossIncome || 0);
         if (fl.expenses && fl.expenses.length > 0) {
           setFlExpenses(fl.expenses);
         }
@@ -250,8 +250,8 @@ export default function ClientMonthlyIncomeExpenseModal({
       // 일용직 복원
       if (initialD5103.dayLaborerLedger) {
         const dl = initialD5103.dayLaborerLedger;
-        setDlWorkDays(dl.workDaysPerMonth || 18);
-        setDlDailyWage(dl.dailyWage || 160000);
+        setDlWorkDays(dl.workDaysPerMonth || 0);
+        setDlDailyWage(dl.dailyWage || 0);
         setDlIsCash(!!dl.isDirectCash);
       }
 
@@ -294,7 +294,9 @@ export default function ClientMonthlyIncomeExpenseModal({
   const flTotalExpenses = useMemo(() => {
     return flExpenses.reduce((sum, item) => sum + (item.monthlyAmount || 0), 0);
   }, [flExpenses]);
-  const flNetIncome = Math.max(0, flGross - flTotalExpenses);
+  // 입력 금액은 원천징수(3.3%) 전 총수수료 → 원천징수세액을 빼고 경비를 차감한 실수령 기준 순소득
+  const flWithholding = Math.round((flGross || 0) * 0.033);
+  const flNetIncome = Math.max(0, flGross - flWithholding - flTotalExpenses);
 
   // 일용직 월소득 계산
   const dlMonthlyIncome = useMemo(() => {
@@ -313,7 +315,7 @@ export default function ClientMonthlyIncomeExpenseModal({
     const newId = `exp_${Date.now()}`;
     setDynamicExpenses(prev => [
       ...prev,
-      { id: newId, name: '추가 지출 경비', monthlyAmount: 100000, rollupTarget: 'operating' }
+      { id: newId, name: '', monthlyAmount: 0, rollupTarget: 'operating' }
     ]);
   };
 
@@ -405,7 +407,8 @@ export default function ClientMonthlyIncomeExpenseModal({
         baseD5103.d5103ClientStatus = 'client_submitted';
         baseD5103.d5103ClientSubmittedAt = new Date().toISOString();
       } else {
-        baseD5103.d5103ClientStatus = 'not_started';
+        // 임시저장이 이미 제출된 상태를 되돌리지 않도록 기존 상태 유지
+        baseD5103.d5103ClientStatus = baseD5103.d5103ClientStatus || 'not_started';
       }
       baseD5103.lastSavedAt = new Date().toISOString();
 
@@ -477,7 +480,7 @@ export default function ClientMonthlyIncomeExpenseModal({
                   </span>
                 </div>
                 <p className="text-[11px] text-indigo-200 mt-0.5">
-                  "카드매출 400에 현금 100이고, 월세 90, 배달대행 60, 식자재 180 나가요"라고 편하게 말씀하시면 AI가 수지표를 자동 완성합니다.
+                  "카드매출 400에 현금 100이고, 월세 90, 배달대행 60, 식자재 180 나가요"라고 말씀하시면 금액을 자동으로 찾아 채워 드립니다. 반영 전 금액을 꼭 확인해 주세요.
                 </p>
               </div>
             </div>
@@ -485,12 +488,19 @@ export default function ClientMonthlyIncomeExpenseModal({
             <button
               type="button"
               onClick={() => {
-                setIsVoicePanelOpen(!isVoicePanelOpen);
-                if (!isVoicePanelOpen && !isListening) {
-                  toggleListening();
+                if (!isSpeechSupported) {
+                  toast.error('이 브라우저는 음성 입력을 지원하지 않습니다. 금액을 직접 입력해 주세요.');
+                  return;
                 }
+                if (isListening) {
+                  // 듣는 중 클릭 = 인식 종료 (패널은 유지해 결과 확인)
+                  toggleListening();
+                  return;
+                }
+                setIsVoicePanelOpen(true);
+                toggleListening();
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm ${
+              className={`px-3.5 min-h-[44px] whitespace-nowrap rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
                   : 'bg-white text-indigo-950 hover:bg-indigo-50'
@@ -820,7 +830,7 @@ export default function ClientMonthlyIncomeExpenseModal({
                         <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">3</span>
                         <h4 className="font-bold text-slate-800 text-sm sm:text-base">추가 경비 항목 (원터치 추가 & 직접 등록)</h4>
                       </div>
-                      <span className="text-xs text-amber-700 font-medium">경비가 많을수록 월 변제금이 줄어듭니다!</span>
+                      <span className="text-xs text-amber-800 font-medium">실제 지출한 경비만 입력하고 영수증·이체내역을 보관해 주세요.</span>
                     </div>
 
                     {/* 추천 칩 */}
@@ -994,7 +1004,7 @@ export default function ClientMonthlyIncomeExpenseModal({
               {/* 실시간 월평균 순수익 요약 카드 */}
               <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">법원 제출 기준 최종 계산치</span>
+                  <span className="text-xs text-slate-400 font-medium">입력값 기준 예상 계산치</span>
                   <h4 className="text-base sm:text-lg font-bold text-white mt-0.5">
                     월평균 실질 순소득: <span className="text-emerald-400 font-extrabold text-xl">{won(generatedLedger.monthlyAverages.avgNetIncome)} 원</span>
                   </h4>
@@ -1004,7 +1014,7 @@ export default function ClientMonthlyIncomeExpenseModal({
                 </div>
                 <div className="text-right sm:text-right shrink-0">
                   <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-                    변제금 산정 기준 소득 반영 완료
+                    담당 변호사 검토 후 확정
                   </span>
                 </div>
               </div>
@@ -1116,7 +1126,7 @@ export default function ClientMonthlyIncomeExpenseModal({
               {/* 프리랜서 순소득 결과 */}
               <div className="bg-slate-900 text-white rounded-2xl p-5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-slate-400">프리랜서 월평균 순소득 (총수입 - 필요경비)</span>
+                  <span className="text-xs text-slate-400">프리랜서 월평균 순소득 (총수입 − 원천징수 3.3% {won(flWithholding)}원 − 필요경비)</span>
                   <h4 className="text-xl font-bold text-emerald-400 mt-0.5">{won(flNetIncome)} 원</h4>
                 </div>
                 <div className="text-xs text-slate-400 text-right">
@@ -1280,7 +1290,7 @@ export default function ClientMonthlyIncomeExpenseModal({
                       const newId = `ptw_${Date.now()}`;
                       setPtWorkplaces(prev => [
                         ...prev,
-                        { id: newId, workplaceName: '추가 아르바이트', hourlyWage: 10030, weeklyHours: 15, hasWeeklyHolidayPay: false, monthlyGrossIncome: 650000 }
+                        { id: newId, workplaceName: '', hourlyWage: MIN_WAGE_2026, weeklyHours: 0, hasWeeklyHolidayPay: false, monthlyGrossIncome: 0 }
                       ]);
                     }}
                     className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center justify-center gap-1"

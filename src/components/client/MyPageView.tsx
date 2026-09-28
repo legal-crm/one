@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send, Download, ExternalLink, ChevronDown, ChevronUp, FileCheck, Copy, KeyRound, Lock } from 'lucide-react';
-import type { ConsultRequest, ConsultProposal, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile, ElectronicContract, CertificateVaultData } from '../../types';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send, Download, ExternalLink, ChevronDown, ChevronUp, FileCheck, Copy, KeyRound, Lock, ShieldCheck, Calculator } from 'lucide-react';
+import type { User, ConsultRequest, ConsultProposal, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile, ElectronicContract, CertificateVaultData } from '../../types';
 import { CRM_STATUS_CONFIG, DOC_REVIEW_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
@@ -9,7 +9,6 @@ import { useDialog } from '../common/DialogProvider';
 import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount, type ClientNotification } from '../../services/clientNotificationService';
 import { submitClientDocument, updateCrmClientExtension, getCrmClientSync } from '../../services/crmService';
 import { secureGetItem } from '../../utils/secureStorage';
-import { mockLawyers } from '../../data';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
 import { loadContractsLocal } from '../../services/contractService';
@@ -51,9 +50,12 @@ interface MyPageViewProps {
   onNavigateToChat: (reqId?: string) => void;
   isCompact?: boolean;
   initialSubTab?: 'companion' | 'diagnosis' | 'settings';
+  /** 실제 등록 변호사 목록 (mock 데이터 대신 사용) */
+  lawyers?: User[];
 }
 
 export default function MyPageView({
+  lawyers = [],
   userAlias, setUserAlias,
   isEditingAlias, setIsEditingAlias,
   tempAlias, setTempAlias,
@@ -121,6 +123,8 @@ export default function MyPageView({
   const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
   // 보정 소명자료 업로드 영역 열림 상태
   const [isCorrectionUploadOpen, setIsCorrectionUploadOpen] = useState(false);
+  // 면책신청 요청 전달 여부 (CRM dischargeRequestedAt과 병행)
+  const [dischargeRequestedLocal, setDischargeRequestedLocal] = useState(false);
 
   // ── 의뢰인 인증서 안전 금고 상태 ──
   const [isCertSubmissionModalOpen, setIsCertSubmissionModalOpen] = useState(false);
@@ -1749,24 +1753,32 @@ export default function MyPageView({
           const rawCrm = (() => { try { const raw = secureGetItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
           const curCrmExt = reqId ? rawCrm[reqId] : null;
           const targetLawyerId = curCrmExt?.assigneeId || curCrmExt?.assignedLawyerId || activeRequest?.selectedLawyerId || (activeRequest?.selectedLawyerIds?.[0]);
-          const foundLawyer = mockLawyers.find(l => l.id === targetLawyerId || l.name === clientContract?.lawyerName) || mockLawyers[0];
-          const lawyerName = clientContract?.lawyerName || foundLawyer?.name || '도산 전담 변호사';
-          const lawyerTitle = foundLawyer?.bio || foundLawyer?.specialty || '서울/경기 도산 전문';
-          const lawyerAvatar = foundLawyer?.avatarUrl || foundLawyer?.profileImage || "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=256";
+          // 실제 등록 변호사만 조회 — 없는 경우 임의 변호사(mock)로 채우지 않는다
+          const foundLawyer = lawyers.find(l => l.id === targetLawyerId || (!!clientContract?.lawyerName && l.name === clientContract.lawyerName));
+          const lawyerName = clientContract?.lawyerName || foundLawyer?.name || '';
+          const lawyerTitle = foundLawyer?.firmName || foundLawyer?.firm || clientContract?.lawFirmName || '';
+          const lawyerAvatar = foundLawyer?.avatar || '';
+          if (!lawyerName) return null;
 
           return (
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-2xl p-4 shrink-0 flex flex-col justify-between gap-3 w-full md:w-[280px]">
               <div className="space-y-1">
                 <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block">전담 지정 변호인</span>
                 <div className="flex items-center gap-2">
-                  <img 
-                    src={lawyerAvatar} 
-                    alt={lawyerName} 
-                    className="w-8 h-8 rounded-lg object-cover" 
-                  />
+                  {lawyerAvatar ? (
+                    <img 
+                      src={lawyerAvatar} 
+                      alt={lawyerName} 
+                      className="w-8 h-8 rounded-lg object-cover" 
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-brand text-white flex items-center justify-center text-xs font-bold" aria-hidden="true">
+                      {lawyerName.charAt(0)}
+                    </div>
+                  )}
                   <div className="text-left min-w-0">
                     <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">{lawyerName} 변호사</span>
-                    <span className="text-[11px] text-[#7e7e8f] font-semibold block truncate">{lawyerTitle}</span>
+                    {lawyerTitle && <span className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold block truncate">{lawyerTitle}</span>}
                   </div>
                 </div>
               </div>
@@ -1776,9 +1788,9 @@ export default function MyPageView({
                   const req = activeRequest || requests[0];
                   onNavigateToChat(req?.id);
                 }}
-                className="w-full text-center py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full text-center min-h-[44px] whitespace-nowrap bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
+                <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>1:1 비공개 상담방 입장</span>
               </button>
             </div>
@@ -1947,6 +1959,7 @@ export default function MyPageView({
               onNavigateToChat={(reqId) => onNavigateToChat(reqId || allProposals[0]?.req?.id)}
               onStartContract={handleStartContractFromProposal}
               onOpenLawyerCompare={() => onNavigateToChat(allProposals[0]?.req?.id)}
+              lawyers={lawyers}
             />
           )}
 
@@ -2013,6 +2026,7 @@ export default function MyPageView({
               const reqId = activeRequest?.id || requests[0]?.id;
               const crmExt = reqId ? (getCrmData()[reqId] || null) : null;
               const currentStatus: CrmStatus = crmExt?.crmStatus || activeRequest?.status || 'requested';
+              const isDischargeRequested = dischargeRequestedLocal || !!crmExt?.dischargeRequestedAt;
               // 수임료 분납 스케줄: CRM 확장 데이터 우선, 미등록 시 체결된 전자계약서(clientContract) 자동 폴백
               const feeSchedule: FeeInstallment[] = (Array.isArray(crmExt?.feeSchedule) && crmExt.feeSchedule.length > 0)
                 ? crmExt.feeSchedule 
@@ -2026,8 +2040,15 @@ export default function MyPageView({
                 .reduce((s: number, f: FeeInstallment) => s + (f.amount || 0), 0);
 
               const handleFileUpload = async (files: FileList | null, linkedDocId?: string) => {
-                if (!files || files.length === 0 || !reqId) return;
+                if (!files || files.length === 0 || !reqId) return false;
                 let validCount = 0;
+                let failedCount = 0;
+                const readAsDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
+                  const r = new FileReader();
+                  r.onload = () => resolve(r.result as string);
+                  r.onerror = () => reject(r.error);
+                  r.readAsDataURL(f);
+                });
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
                   const validation = validateUploadFile(file);
@@ -2035,10 +2056,8 @@ export default function MyPageView({
                     toast.error(`[${file.name}] ${validation.error}`);
                     continue;
                   }
-                  validCount++;
-                  const reader = new FileReader();
-                  reader.onload = async (e) => {
-                    let dataUrl = e.target?.result as string;
+                  try {
+                    let dataUrl = await readAsDataUrl(file);
                     let fileSize = file.size;
                     let mimeType = file.type;
 
@@ -2069,13 +2088,17 @@ export default function MyPageView({
                       linkedDocId
                     };
                     await submitClientDocument(reqId, fileObj as any, linkedDocId);
-                    setRefreshTick(c => c + 1);
-                  };
-                  reader.readAsDataURL(file);
+                    validCount++;
+                  } catch (err) {
+                    console.warn('[upload failed]', err);
+                    failedCount++;
+                  }
                 }
-                if (validCount > 0) {
-                  toast.success(`${validCount}개 파일이 안전하게 제출되었습니다`);
-                }
+                setRefreshTick(c => c + 1);
+                // 실제 제출이 끝난 뒤에만 결과 안내
+                if (validCount > 0) toast.success(`${validCount}개 파일을 제출했습니다.`);
+                if (failedCount > 0) toast.error(`${failedCount}개 파일은 제출하지 못했습니다. 다시 시도해 주세요.`);
+                return validCount > 0 && failedCount === 0;
               };
 
               const submittedCount = checklist.filter(d => ['submitted', 'approved', 'under_review', 'resubmitted'].includes(d.reviewStatus || '')).length;
@@ -2466,8 +2489,8 @@ export default function MyPageView({
                                       accept="image/*,.pdf" 
                                       multiple 
                                       onChange={(e) => {
+                                        // 성공/실패 안내는 handleFileUpload가 실제 제출 완료 후 표시
                                         handleFileUpload(e.target.files, 'correction_proof');
-                                        toast.success('보정 소명자료가 담당 변호사 사무소로 즉시 전달되었습니다.');
                                       }} 
                                     />
                                   </label>
@@ -2538,19 +2561,27 @@ export default function MyPageView({
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setIsDischargeRequested(true);
-                              toast.success('담당 변호사에게 개인회생 면책신청서 제출이 성공적으로 위임 요청되었습니다.');
+                            onClick={async () => {
+                              if (!reqId || isDischargeRequested) return;
+                              try {
+                                // 실제로 CRM에 요청 시각을 기록해 담당 변호사가 확인할 수 있게 한다
+                                await updateCrmClientExtension(reqId, { dischargeRequestedAt: new Date().toISOString() });
+                                setDischargeRequestedLocal(true);
+                                setRefreshTick(t => t + 1);
+                                toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
+                              } catch {
+                                toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                              }
                             }}
                             disabled={isDischargeRequested}
-                            className={`px-4 py-2.5 text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 press-scale shrink-0 whitespace-nowrap ${
+                            className={`px-4 min-h-[44px] text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 press-scale shrink-0 whitespace-nowrap ${
                               isDischargeRequested 
                                 ? 'bg-emerald-600 text-white cursor-default' 
                                 : 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer'
                             }`}
                           >
                             <FileText className="w-3.5 h-3.5" />
-                            <span>{isDischargeRequested ? '✅ 면책신청 위임 접수완료' : '🏆 변호사에게 별도 면책신청 위임하기'}</span>
+                            <span>{isDischargeRequested ? '✅ 면책신청 요청 전달됨' : '변호사에게 면책신청 요청하기'}</span>
                           </button>
                         </div>
                       )}
@@ -2981,9 +3012,13 @@ export default function MyPageView({
                             uploadSource: 'client',
                             reviewStatus: 'submitted',
                           };
-                          await submitClientDocument(reqId!, docFile);
+                          try {
+                            await submitClientDocument(reqId!, docFile);
+                            toast.success(`${scanned.name} 스캔본을 제출했습니다.`);
+                          } catch {
+                            toast.error('스캔본을 서버에 제출하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                          }
                           setRefreshTick(t => t + 1);
-                          toast.success(`${scanned.name} 스캔 제출 완료`);
                         }}
                       />
                     </div>
@@ -3310,17 +3345,24 @@ export default function MyPageView({
                           </span>
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm('인증서 파일과 암호화 키를 즉시 영구 파기(복구 불가)하시겠습니까?')) {
-                                const shredded = shredCertificateVault(clientVault, userAlias || profile?.name || '신청인', '의뢰인 본인 직접 폐기 요청');
-                                saveCertificateVault(shredded);
-                                setClientVault(shredded);
-                                toast.success('인증서가 영구 파기(Crypto-Shredding)되었습니다.');
-                              }
+                            onClick={async () => {
+                              const ok = await dialog.confirm({
+                                title: '인증서 삭제',
+                                message: '저장된 인증서 파일과 비밀번호를 삭제합니다. 삭제 후에는 복구할 수 없습니다.\n삭제하시겠습니까?',
+                                confirmText: '삭제',
+                                variant: 'danger'
+                              });
+                              if (!ok) return;
+                              const shredded = shredCertificateVault(clientVault, userAlias || profile?.name || '신청인', '의뢰인 본인 직접 폐기 요청');
+                              // 기기 보관본 + CRM 확장 데이터 사본을 모두 삭제본으로 덮어씀
+                              saveCertificateVault(shredded);
+                              await updateCrmClientExtension(targetClientId, { certificateVault: shredded });
+                              setClientVault(shredded);
+                              toast.success('인증서 파일과 비밀번호를 삭제했습니다.');
                             }}
-                            className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline whitespace-nowrap cursor-pointer"
+                            className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline whitespace-nowrap cursor-pointer min-h-[44px]"
                           >
-                            인증서 즉시 영구 파기
+                            인증서 삭제
                           </button>
                         </div>
                       )}
@@ -3409,10 +3451,9 @@ export default function MyPageView({
         clientName={profile?.name || userAlias || '신청인'}
         onSyncToLawyerCrm={async (updates) => {
           const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
-          if (updates) {
-            await updateCrmClientExtension(targetId, updates);
-          }
+          const ok = updates ? await updateCrmClientExtension(targetId, updates) : false;
           setRefreshTick(c => c + 1);
+          return ok;
         }}
       />
     </React.Suspense>
@@ -3429,10 +3470,11 @@ export default function MyPageView({
         initialD5103={crmExt?.incomeExpenseD5103 || null}
         onSaveD5103={async (updatedData) => {
           const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
-          await updateCrmClientExtension(targetId, {
+          const ok = await updateCrmClientExtension(targetId, {
             incomeExpenseD5103: updatedData
           });
           setRefreshTick(c => c + 1);
+          if (!ok) throw new Error('서버 저장 실패');
         }}
       />
     </React.Suspense>
@@ -3446,11 +3488,12 @@ export default function MyPageView({
         onClose={() => setIsBankAuditModalOpen(false)}
         clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
         clientName={profile?.name || userAlias || '신청인'}
-        caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '2026개회 108492호'}
+        caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || ''}
         courtName={crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'}
         onSubmittedSuccess={() => {
           setRefreshTick(c => c + 1);
         }}
+        onSyncToCrm={(data) => updateCrmClientExtension(activeRequest?.id || requests[0]?.id || 'client-self', { bankStatementAudit: data })}
       />
     </React.Suspense>
   )}
@@ -3469,7 +3512,7 @@ export default function MyPageView({
     <ClientCertificateSubmissionModal
       clientId={targetClientId}
       clientName={profile?.name || userAlias || '신청인'}
-      clientPhone={profile?.phone || (activeRequest as any)?.phone || '010-0000-0000'}
+      clientPhone={profile?.phone || (activeRequest as any)?.phone || ''}
       existingVault={clientVault || undefined}
       onSaveVault={async (updated) => {
         setClientVault(updated);

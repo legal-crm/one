@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../../common/ModalPortal';
+import { useDialog } from '../../common/DialogProvider';
 import PrintableHighValueAuditModal from '../../common/PrintableHighValueAuditModal';
 import { 
   AUDIT_PRESET_TEMPLATES, 
@@ -27,17 +28,33 @@ interface ClientBankAuditModalProps {
   caseNumber?: string;
   courtName?: string;
   onSubmittedSuccess?: () => void;
+  /** 제출 시 변호사 CRM(서버)에 동기화 — 성공 여부 반환 */
+  onSyncToCrm?: (data: BankStatementAuditData) => Promise<boolean>;
+}
+
+/** '[…기재]' 안내 문구가 남아 있으면 미작성으로 간주 */
+const isExplanationComplete = (text?: string) =>
+  !!text && text.trim().length > 0 && !/\[[^\]]*기재[^\]]*\]/.test(text);
+
+const THRESHOLD_OPTIONS = [300000, 500000, 1000000];
+
+const txKey = (i: AuditTransactionItem) => `${i.date}|${i.counterparty}|${i.amount}`;
+function mergeWithoutDuplicates(incoming: AuditTransactionItem[], existing: AuditTransactionItem[]): AuditTransactionItem[] {
+  const seen = new Set(existing.map(txKey));
+  return [...incoming.filter(i => !seen.has(txKey(i))), ...existing];
 }
 
 export default function ClientBankAuditModal({
   isOpen,
   onClose,
   clientId = 'client-default',
-  clientName = '김채무',
-  caseNumber = '2026개회 108492호',
+  clientName = '신청인',
+  caseNumber = '',
   courtName = '서울회생법원',
-  onSubmittedSuccess
+  onSubmittedSuccess,
+  onSyncToCrm
 }: ClientBankAuditModalProps) {
+  const dialog = useDialog();
   // 전체 데이터셋 상태
   const [auditData, setAuditData] = useState<BankStatementAuditData | null>(null);
   
@@ -83,17 +100,25 @@ export default function ClientBankAuditModal({
 
   if (!isOpen || !auditData) return null;
 
-  // 100만 원 이상 대상 항목들
+  const thresholdLabel = `${(threshold / 10000).toLocaleString()}만 원`;
+  const handleThresholdChange = (value: number) => {
+    setThreshold(value);
+    const updated = { ...auditData, thresholdAmount: value };
+    setAuditData(updated);
+    saveStoredBankAuditData(updated);
+  };
+
+  // 기준 금액 이상 대상 항목들
   const targetItems = auditData.items.filter(item => item.amount >= threshold);
   const totalTargetCount = targetItems.length;
-  const resolvedCount = targetItems.filter(item => item.explanation && item.explanation.trim().length > 0).length;
+  const resolvedCount = targetItems.filter(item => isExplanationComplete(item.explanation)).length;
   const unresolvedCount = totalTargetCount - resolvedCount;
   const progressPercent = totalTargetCount > 0 ? Math.round((resolvedCount / totalTargetCount) * 100) : 100;
   const totalAmountSum = targetItems.reduce((acc, curr) => acc + curr.amount, 0);
 
   // 필터링된 표시 목록
   const displayedItems = targetItems.filter(item => {
-    const hasExpl = item.explanation && item.explanation.trim().length > 0;
+    const hasExpl = isExplanationComplete(item.explanation);
     if (filterMode === 'UNRESOLVED' && hasExpl) return false;
     if (filterMode === 'RESOLVED' && !hasExpl) return false;
 
@@ -116,7 +141,8 @@ export default function ClientBankAuditModal({
           ...item,
           explanation: templateText,
           evidenceType,
-          isResolved: true
+          // 안내 문구([…기재])를 실제 내용으로 바꿔야 작성 완료로 인정
+          isResolved: isExplanationComplete(templateText)
         };
       }
       return item;
@@ -129,7 +155,7 @@ export default function ClientBankAuditModal({
 
     setAuditData(updatedData);
     saveStoredBankAuditData(updatedData);
-    toast.success('원터치 소명 사유가 입력되었습니다.', { duration: 1500 });
+    toast.success(isExplanationComplete(templateText) ? '소명 사유 예시를 넣었습니다. 사실과 맞게 수정해 주세요.' : '예시 문구의 [ ] 부분을 실제 내용으로 바꿔 주세요.', { duration: 2500 });
   };
 
   // ═══ 핸들러: 소명 문구 직접 입력 ═══
@@ -139,7 +165,7 @@ export default function ClientBankAuditModal({
         return {
           ...item,
           explanation: text,
-          isResolved: text.trim().length > 0
+          isResolved: isExplanationComplete(text)
         };
       }
       return item;
@@ -199,23 +225,33 @@ export default function ClientBankAuditModal({
   // ═══ 핸들러: 임시 저장 ═══
   const handleSaveDraft = () => {
     saveStoredBankAuditData(auditData);
-    toast.success('작성하신 내용이 안전하게 임시 저장되었습니다.');
+    toast.success('작성하신 내용을 이 기기에 임시 저장했습니다.');
   };
 
   // ═══ 핸들러: 변호사에게 최종 제출 ═══
-  const handleSubmitToLawyer = () => {
+  const handleSubmitToLawyer = async () => {
     if (unresolvedCount > 0) {
-      const confirmSubmit = window.confirm(
-        `아직 소명이 작성되지 않은 내역이 ${unresolvedCount}건 남아있습니다.\n현재 상태로 변호사님께 제출하시겠습니까? (미작성 건은 변호사 상담 시 추가 검토됩니다)`
-      );
+      const confirmSubmit = await dialog.confirm({
+        title: '미작성 소명이 남아 있습니다',
+        message: `아직 소명이 작성되지 않은 내역이 ${unresolvedCount}건 남아 있습니다.\n현재 상태로 제출하시겠습니까? (미작성 건은 변호사 상담 시 추가로 확인합니다)`,
+        confirmText: '그대로 제출',
+        cancelText: '계속 작성',
+        variant: 'primary'
+      });
       if (!confirmSubmit) return;
     }
 
     const updated = submitBankAuditToLawyer(clientId);
     setAuditData(updated);
-    toast.success('소명표가 담당 변호사에게 성공적으로 제출되었습니다!', {
-      description: '변호사 검토 및 법률적 보정서 결합 후 법원에 접수됩니다.'
-    });
+    const synced = onSyncToCrm ? await onSyncToCrm(updated) : false;
+    if (synced) {
+      toast.success('소명표를 담당 변호사 사건 기록에 제출했습니다.', {
+        description: '변호사가 검토 후 필요한 보완을 요청하거나 법원 제출용으로 정리합니다.'
+      });
+    } else {
+      toast.warning('소명표는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 잠시 후 다시 제출해 주세요.');
+      return;
+    }
 
     if (onSubmittedSuccess) {
       onSubmittedSuccess();
@@ -231,12 +267,12 @@ export default function ClientBankAuditModal({
       const file = files[0];
       const parsedItems = await parseExcelBankStatement(file, threshold);
       if (parsedItems.length === 0) {
-        toast.error('파일에서 100만 원 이상 출금 거래를 찾지 못했습니다.');
+        toast.error(`파일에서 ${thresholdLabel} 이상 출금 거래를 찾지 못했습니다.`);
         return;
       }
 
-      // 기존 항목과 병합
-      const mergedItems = [...parsedItems, ...auditData.items];
+      // 기존 항목과 병합 (같은 날짜·거래처·금액은 중복 등록하지 않음)
+      const mergedItems = mergeWithoutDuplicates(parsedItems, auditData.items);
       const updatedData: BankStatementAuditData = {
         ...auditData,
         items: mergedItems
@@ -245,7 +281,7 @@ export default function ClientBankAuditModal({
       setAuditData(updatedData);
       saveStoredBankAuditData(updatedData);
       setShowImportSection(false);
-      toast.success(`${parsedItems.length}건의 100만 원 이상 출금 내역을 새로 등록했습니다!`);
+      toast.success(`${parsedItems.length}건의 ${thresholdLabel} 이상 출금 내역을 새로 등록했습니다.`);
     } catch (err) {
       console.error(err);
       toast.error('엑셀 파일 분석 중 오류가 발생했습니다. 파일 형식을 확인해주세요.');
@@ -263,11 +299,11 @@ export default function ClientBankAuditModal({
 
     const parsed = parseRawBankStatementText(pasteText, threshold);
     if (parsed.length === 0) {
-      toast.error('입력된 텍스트에서 100만 원 이상 출금 내역을 식별하지 못했습니다.');
+      toast.error(`입력된 텍스트에서 ${thresholdLabel} 이상 출금 내역을 찾지 못했습니다.`);
       return;
     }
 
-    const merged = [...parsed, ...auditData.items];
+    const merged = mergeWithoutDuplicates(parsed, auditData.items);
     const updatedData: BankStatementAuditData = {
       ...auditData,
       items: merged
@@ -277,7 +313,7 @@ export default function ClientBankAuditModal({
     saveStoredBankAuditData(updatedData);
     setPasteText('');
     setShowImportSection(false);
-    toast.success(`${parsed.length}건의 100만 원 이상 출금 내역이 추가되었습니다.`);
+    toast.success(`${parsed.length}건의 ${thresholdLabel} 이상 출금 내역이 추가되었습니다.`);
   };
 
   const isSubmitted = auditData.status === 'submitted' || auditData.status === 'lawyer_approved';
@@ -310,17 +346,33 @@ export default function ClientBankAuditModal({
                   ) : null}
                 </div>
                 <h2 className="text-lg sm:text-xl font-extrabold tracking-tight">
-                  100만 원 이상 출금 거래 사용처 소명표
+                  {thresholdLabel} 이상 출금 거래 사용처 소명표
                 </h2>
+                {/* 소명 기준 금액 선택 (관할법원·회생위원 요청 기준에 맞춰 변경) */}
+                <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="소명 기준 금액">
+                  <span className="text-[11px] text-blue-100">소명 기준:</span>
+                  {THRESHOLD_OPTIONS.map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={threshold === v}
+                      onClick={() => handleThresholdChange(v)}
+                      className={`min-h-[36px] px-3 rounded-lg text-xs font-bold whitespace-nowrap border transition-colors cursor-pointer ${threshold === v ? 'bg-white text-slate-900 border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+                    >
+                      {v / 10000}만 원
+                    </button>
+                  ))}
+                </div>
                 <p className="text-xs sm:text-[13px] text-blue-100/80 leading-relaxed">
-                  회생위원은 큰 금액의 출금 내역에 대해 재산 은닉이나 편파변제가 없는지 확인합니다. 아래 거래를 누르고 <strong>알맞은 사유를 터치</strong>해 주세요.
+                  회생위원은 큰 금액의 출금 내역에 대해 재산 은닉이나 편파변제가 없는지 확인합니다. 아래 거래마다 <strong>실제 사용처를 사실대로</strong> 적어 주세요. 예시 문구를 눌러도 [ ] 부분은 직접 채워야 합니다.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                aria-label="소명표 닫기"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -337,7 +389,7 @@ export default function ClientBankAuditModal({
                 </span>
               </div>
               <div className="text-slate-300 text-[11px]">
-                100만 원 이상 총 출금액: <strong className="text-white text-xs">{totalAmountSum.toLocaleString()}원</strong>
+                {thresholdLabel} 이상 총 출금액: <strong className="text-white text-xs">{totalAmountSum.toLocaleString()}원</strong>
               </div>
             </div>
 
@@ -422,7 +474,7 @@ export default function ClientBankAuditModal({
                   은행 엑셀 파일 또는 모바일 뱅킹 텍스트 붙여넣기
                 </span>
                 <span className="text-[11px] text-indigo-700 dark:text-indigo-300">
-                  ※ 100만 원 이상 출금 건만 자동 필터링됩니다
+                  ※ {thresholdLabel} 이상 출금 건만 자동 필터링됩니다
                 </span>
               </div>
 
@@ -472,7 +524,7 @@ export default function ClientBankAuditModal({
               <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
                 <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                  {filterMode === 'UNRESOLVED' ? '모든 100만 원 이상 거래의 소명이 완료되었습니다!' : '소명 대상 거래가 없습니다.'}
+                  {filterMode === 'UNRESOLVED' ? `모든 ${thresholdLabel} 이상 거래의 소명이 완료되었습니다.` : '소명 대상 거래가 없습니다.'}
                 </h4>
                 <p className="text-xs text-slate-500">
                   {filterMode === 'UNRESOLVED' ? '하단의 [변호사에게 제출하기] 버튼을 눌러 점검을 요청하세요.' : '새로운 거래내역을 추가하려면 상단의 [거래내역 추가]를 이용하세요.'}

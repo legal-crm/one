@@ -44,7 +44,9 @@ async function handler(req, res) {
     });
   }
 
-  const { imageBase64, fileName = '' } = req.body || {};
+  const { imageBase64, fileName = '', mode = 'family' } = req.body || {};
+  // mode: 'family'(등본·가족관계증명서, 기본) | 'job_history'(건강보험 자격득실확인서·국민연금 가입증명서)
+  const isJobHistory = mode === 'job_history';
 
   // [SECURITY] 2. 대용량 페이로드 DoS 방어 (최대 10MB 제한)
   if (!imageBase64) {
@@ -66,7 +68,28 @@ async function handler(req, res) {
         cleanBase64 = parts[1] || '';
       }
 
-      const promptText = `
+      const jobHistoryPrompt = `
+당신은 대한민국 국민건강보험공단 자격득실확인서 및 국민연금 가입증명서 판독 시스템입니다.
+제공된 서류 이미지/PDF에서 직장가입자 이력(사업장명칭, 자격취득일, 자격상실일) 표만 추출하세요.
+서류에 없는 정보는 추측하지 말고 빈 문자열 또는 null로 두세요. 판독할 수 없는 서류면 items를 빈 배열로 반환하세요.
+
+반드시 순수 JSON 형식으로만 응답하세요 (마크다운 백틱 없이):
+{
+  "items": [
+    {
+      "workplaceName": "사업장 명칭",
+      "joinDate": "YYYY-MM-DD",
+      "leaveDate": "YYYY-MM-DD 또는 재직 중이면 null",
+      "isCurrent": true,
+      "periodText": "YYYY.MM ~ YYYY.MM 또는 현재",
+      "suggestedPosition": "",
+      "leaveReason": ""
+    }
+  ]
+}
+`;
+
+      const promptText = isJobHistory ? jobHistoryPrompt : `
 당신은 대한민국 법원 개인회생·파산 실무 서류(주민등록등본, 가족관계증명서) 전문 AI 비전 분석가입니다.
 제공된 이미지에서 세대 구성원 및 가족 구성원 정보를 정확히 추출하세요.
 
@@ -158,56 +181,10 @@ async function handler(req, res) {
     }
   }
 
-  // 폴백 응답
+  // AI 키 미설정·인식 실패: 가짜 구성원/경력을 만들지 않고 실패를 알린다 (클라이언트는 직접 입력 안내)
   return res.status(200).json({
-    ok: true,
-    result: {
-      isValidDocument: true,
-      docType: fileName.includes('가족') ? 'family_relation' : 'resident_register',
-      docTitle: fileName.includes('가족') ? '가족관계증명서 (상세)' : '주민등록등본',
-      headOfHousehold: '신청인',
-      residenceAddress: '서울특별시 서초구 반포대로 120',
-      issueDate: new Date().toISOString().split('T')[0],
-      extractedMembers: [
-        {
-          relationship: '본인',
-          name: '신청인',
-          birthDate: '1988.05.12',
-          cohabitationStatus: '동거',
-          cohabitationPeriod: '출생시부터',
-          hasIncome: true,
-          jobAndIncomeDetail: '신청인'
-        },
-        {
-          relationship: '배우자',
-          name: '김*은',
-          birthDate: '1989.08.20',
-          cohabitationStatus: '동거',
-          cohabitationPeriod: '결혼 이후 6년',
-          hasIncome: false,
-          jobAndIncomeDetail: '주부'
-        },
-        {
-          relationship: '자',
-          name: '이*민',
-          birthDate: '2015.04.12',
-          cohabitationStatus: '동거',
-          cohabitationPeriod: '출생시부터',
-          hasIncome: false,
-          jobAndIncomeDetail: '초등학생 (소득 없음)'
-        },
-        {
-          relationship: '녀',
-          name: '이*서',
-          birthDate: '2019.09.28',
-          cohabitationStatus: '동거',
-          cohabitationPeriod: '출생시부터',
-          hasIncome: false,
-          jobAndIncomeDetail: '미취학 아동 (소득 없음)'
-        }
-      ],
-      confidenceScore: 0.92
-    }
+    ok: false,
+    error: '서류를 인식하지 못했습니다. 선명한 이미지로 다시 시도하거나 직접 입력해 주세요.'
   });
 }
 

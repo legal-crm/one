@@ -147,9 +147,16 @@ export function inspectDerCertificate(derBase64: string, defaultClientName: stri
   validTo: string;
   daysRemaining: number;
   isExpired: boolean;
+  serialNumber?: string;
+  /** DER에서 유효기간을 실제로 읽었는지 여부 (false면 만료일 확인 불가) */
+  validityParsed: boolean;
 } {
-  let issuer = '금융결제원 (yessign)';
-  let subjectName = defaultClientName;
+  let issuer = '발급기관 확인 불가';
+  const subjectName = defaultClientName;
+  let validFrom = '';
+  let validTo = '';
+  let serialNumber: string | undefined;
+  let validityParsed = false;
 
   try {
     const binary = atob(derBase64);
@@ -158,24 +165,59 @@ export function inspectDerCertificate(derBase64: string, defaultClientName: stri
     else if (binary.includes('SignKorea')) issuer = '코스콤 (SignKorea)';
     else if (binary.includes('KICA')) issuer = '한국정보인증 (KICA)';
     else if (binary.includes('TradeSign')) issuer = '한국무역정보통신 (TradeSign)';
+
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    // X.509 tbsCertificate: [0] version(A0 03 02 01 0x) 다음 INTEGER가 일련번호
+    for (let i = 0; i < Math.min(bytes.length - 6, 64); i++) {
+      if (bytes[i] === 0xa0 && bytes[i + 1] === 0x03 && bytes[i + 2] === 0x02 && bytes[i + 3] === 0x01 && bytes[i + 5] === 0x02) {
+        const len = bytes[i + 6];
+        if (len > 0 && len <= 32) {
+          serialNumber = Array.from(bytes.slice(i + 7, i + 7 + len)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+        break;
+      }
+    }
+    // 유효기간(Validity): 처음 등장하는 UTCTime(0x17)/GeneralizedTime(0x18) 두 개 = notBefore, notAfter
+    const times: Date[] = [];
+    for (let i = 0; i < bytes.length - 2 && times.length < 2; i++) {
+      const tag = bytes[i];
+      const len = bytes[i + 1];
+      if ((tag === 0x17 && len === 13) || (tag === 0x18 && len === 15)) {
+        const s = String.fromCharCode(...bytes.slice(i + 2, i + 2 + len));
+        const m = tag === 0x17
+          ? s.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/)
+          : s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/);
+        if (m) {
+          let year = parseInt(m[1], 10);
+          if (tag === 0x17) year += year < 50 ? 2000 : 1900;
+          times.push(new Date(Date.UTC(year, parseInt(m[2], 10) - 1, parseInt(m[3], 10), parseInt(m[4], 10), parseInt(m[5], 10), parseInt(m[6], 10))));
+          i += 1 + len;
+        }
+      }
+    }
+    if (times.length === 2) {
+      validFrom = times[0].toISOString();
+      validTo = times[1].toISOString();
+      validityParsed = true;
+    }
   } catch {
-    // ignore parse error
+    // 파싱 실패 → 확인 불가로 표시 (임의 만료일을 만들지 않음)
   }
 
-  // 1년 유효기간 기본 산출 (현재 등록일 기준 + 1년 - 15일)
-  const now = new Date();
-  const validFrom = new Date(now.getTime() - 15 * 86400000).toISOString();
-  const validToDate = new Date(now.getTime() + 350 * 86400000);
-  const validTo = validToDate.toISOString();
-  const daysRemaining = Math.max(0, Math.ceil((validToDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const now = Date.now();
+  const daysRemaining = validityParsed
+    ? Math.ceil((new Date(validTo).getTime() - now) / 86400000)
+    : 0;
 
   return {
     subjectName,
     issuer,
     validFrom,
     validTo,
-    daysRemaining,
-    isExpired: daysRemaining <= 0
+    daysRemaining: Math.max(0, daysRemaining),
+    isExpired: validityParsed && daysRemaining <= 0,
+    serialNumber,
+    validityParsed,
   };
 }
 
@@ -229,7 +271,8 @@ export function createAccessLog(
     actorRole,
     targetItem,
     purpose,
-    ipAddress: '127.0.0.1 (사내망 SSL 암호화 터널)',
+    // 브라우저에서는 실제 접속 IP를 알 수 없으므로 임의 값을 기록하지 않는다 (서버 로그에서 확인)
+    ipAddress: undefined,
     device: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 50) : 'Browser'
   };
 }

@@ -18,6 +18,23 @@ const ALLOWED_EXTENSIONS = new Set([
   'hwp', 'hwpx', 'txt', 'csv', 'zip'
 ]);
 
+// 실행·스크립트로 해석될 수 있는 MIME 타입 (확장자를 위장해도 차단)
+// ※ 'xml' 단독 매칭 금지 — docx/xlsx MIME(openxmlformats)에 포함됨
+const BLOCKED_MIME_PATTERN = /(javascript|ecmascript|x-msdownload|x-msdos|x-executable|x-sh$|x-php|^text\/html|xhtml|svg\+xml|^text\/xml|^application\/xml)/;
+
+// 확장자별 기대 MIME 접두어 — 이미지·PDF처럼 브라우저가 형식을 안정적으로 알려주는 경우만 대조
+const EXPECTED_MIME_PREFIX: Record<string, string[]> = {
+  pdf: ['application/pdf'],
+  jpg: ['image/jpeg', 'image/pjpeg'],
+  jpeg: ['image/jpeg', 'image/pjpeg'],
+  png: ['image/png'],
+  gif: ['image/gif'],
+  webp: ['image/webp'],
+  heic: ['image/heic', 'image/heif'],
+  bmp: ['image/bmp', 'image/x-ms-bmp'],
+  tiff: ['image/tiff'],
+};
+
 export interface FileValidationResult {
   isValid: boolean;
   error?: string;
@@ -58,6 +75,19 @@ export function validateUploadFile(file: File, maxSize: number = MAX_FILE_SIZE_B
   // 안전 확장자 화이트리스트 검사
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return { isValid: false, error: `지원하지 않는 파일 형식(.${ext})입니다. (PDF, 이미지, 오피스 문서, HWP만 지원)` };
+  }
+
+  // 3. MIME 타입 검사 (브라우저가 알려준 경우에만 — HWP 등은 빈 값이 흔함)
+  //    확장자만 바꾼 스크립트·HTML 파일, 확장자와 내용 형식이 다른 파일 차단
+  const mime = (file.type || '').toLowerCase();
+  if (mime) {
+    if (BLOCKED_MIME_PATTERN.test(mime)) {
+      return { isValid: false, error: '보안상 업로드할 수 없는 파일 형식입니다.' };
+    }
+    const expected = EXPECTED_MIME_PREFIX[ext];
+    if (expected && !expected.some(prefix => mime.startsWith(prefix))) {
+      return { isValid: false, error: `파일 확장자(.${ext})와 실제 형식(${mime})이 일치하지 않습니다.` };
+    }
   }
 
   return { isValid: true };

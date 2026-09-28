@@ -121,6 +121,7 @@ ${payload.interviewAnswers ? `
         const parsed = JSON.parse(clean);
         return {
           ok: true,
+          source: 'gemini_ai',
           sections: parsed.sections,
           fullFormattedText: parsed.fullFormattedText,
           safetyWarnings: parsed.safetyWarnings || [],
@@ -158,7 +159,8 @@ ${payload.interviewAnswers ? `
 
     const ia = payload.interviewAnswers || {};
     const upbringingPart = ia.upbringing ? `신청인은 과거 ${ia.upbringing}의 환경 속에서 자라며 성실히 생활하고자 하였으나, ` : '';
-    const medicalPart = ia.healthAndMedical && !ia.healthAndMedical.includes('문제 없음') ? `또한 ${ia.healthAndMedical} 등의 심각한 건강 및 의료비 지출이 겹치면서 ` : '';
+    // '건강상 큰 질병이나 문제는 없음' 같은 부정 답변을 의료비 사유로 오기재하지 않도록 '없' 포함 여부로 판정
+    const medicalPart = ia.healthAndMedical && !/없(음|습니다|어요|다)/.test(ia.healthAndMedical) ? `또한 ${ia.healthAndMedical} 등으로 건강 및 의료비 지출이 겹치면서 ` : '';
     const firstDebtPart = ia.firstDebtCause ? `${ia.firstDebtCause} 등의 사유로 인하여 ` : `${keywords} 등의 사유로 인하여 `;
 
     const initialCause = `${upbringingPart}${medicalPart}신청인 ${name}은(는) ${firstDebtPart}가계 수지 및 생계 유지가 급격히 악화되었고, 부족한 생활비와 고정지출을 충당하고자 부득이하게 최초 금융기관 대출 및 신용카드를 이용하게 되었습니다.`;
@@ -190,6 +192,7 @@ ${resolution}`;
 
     return {
       ok: true,
+      source: 'rule_template',
       sections: {
         initialCause,
         growthProcess,

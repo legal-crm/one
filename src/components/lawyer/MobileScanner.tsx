@@ -22,6 +22,7 @@ export default function MobileScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [docName, setDocName] = useState('');
@@ -32,10 +33,8 @@ export default function MobileScanner({
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
+      streamRef.current = mediaStream;
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (err) {
       toast.error('카메라에 접근할 수 없습니다. 권한을 확인해주세요.');
     } finally {
@@ -43,12 +42,19 @@ export default function MobileScanner({
     }
   }, []);
 
+  // 스트림은 ref로 관리 — 언마운트/닫기 시 최신 스트림을 확실히 종료 (기존: stale closure로 카메라가 켜진 채 남음)
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    setStream(null);
+  }, []);
+
+  // 재촬영 시 <video>가 다시 마운트된 뒤 스트림 연결 (기존: 검은 화면)
+  React.useEffect(() => {
+    if (stream && videoRef.current && videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
     }
-  }, [stream]);
+  }, [stream, capturedImage]);
 
   const capture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -96,7 +102,7 @@ export default function MobileScanner({
       setCapturedImage(null);
       setDocName('');
       onClose();
-      toast.success('보안 워터마크가 합성된 서류가 안전하게 등록되었습니다.');
+      // 제출 결과 안내는 onCapture를 처리하는 상위 컴포넌트가 실제 저장 후 표시
     } catch (err) {
       console.error('[Watermark Error]', err);
       // 폴백 처리
@@ -110,7 +116,7 @@ export default function MobileScanner({
       setCapturedImage(null);
       setDocName('');
       onClose();
-      toast.success('서류가 스캔되었습니다.');
+      toast.warning('사본 표시(워터마크)를 넣지 못해 원본 이미지로 제출합니다.');
     }
   }, [capturedImage, docName, onCapture, onClose, clientName, requestId]);
 
@@ -131,7 +137,7 @@ export default function MobileScanner({
         <h3 className="text-white font-bold text-sm flex items-center gap-2">
           <Camera className="w-4 h-4" /> 서류 스캔
         </h3>
-        <button onClick={() => { stopCamera(); setCapturedImage(null); onClose(); }} className="text-white/70 hover:text-white">
+        <button type="button" aria-label="스캔 닫기" onClick={() => { stopCamera(); setCapturedImage(null); onClose(); }} className="text-white/80 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -159,7 +165,7 @@ export default function MobileScanner({
             </div>
           </>
         ) : (
-          <img src={capturedImage} alt="captured" className="max-w-full max-h-full object-contain" />
+          <img src={capturedImage} alt="촬영한 서류 미리보기" className="max-w-full max-h-full object-contain" />
         )}
       </div>
 
@@ -170,6 +176,8 @@ export default function MobileScanner({
         {!capturedImage ? (
           <div className="flex justify-center">
             <button
+              type="button"
+              aria-label="촬영"
               onClick={capture}
               disabled={!stream}
               className="w-16 h-16 rounded-full bg-white border-4 border-white/30 hover:scale-105 active:scale-95 transition-transform disabled:opacity-30"
@@ -186,10 +194,10 @@ export default function MobileScanner({
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
             />
             <div className="flex gap-3">
-              <button onClick={retake} className="flex-1 py-3 text-sm font-bold text-white/70 bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2">
+              <button type="button" onClick={retake} className="flex-1 py-3 text-sm font-bold text-white/70 bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2">
                 <RotateCcw className="w-4 h-4" /> 다시 촬영
               </button>
-              <button onClick={confirm} className="flex-1 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center gap-2 press-scale">
+              <button type="button" onClick={confirm} className="flex-1 py-3 text-sm font-bold text-black bg-white rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center gap-2 press-scale">
                 <Check className="w-4 h-4" /> 저장
               </button>
             </div>

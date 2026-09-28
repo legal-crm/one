@@ -17,6 +17,7 @@ import type {
   BusinessAssetItem,
   ExemptPropertyItem,
   RealEstateType,
+  RealEstateValuationMethod,
   BusinessAssetType,
   ExemptPropertyType
 } from '../../../types/propertyTypes';
@@ -32,6 +33,7 @@ import {
 import { 
   REGION_CONFIG_2026, 
   HOUSING_EXEMPT_DEPOSIT_LIMITS,
+  EXEMPT_PROPERTY_LIVING_LIMIT,
   RegionType
 } from '../../../services/repayment/repaymentConstants2026';
 import PrintablePropertyIntakeModal from './PrintablePropertyIntakeModal';
@@ -41,7 +43,7 @@ interface ClientPropertyIntakeModalProps {
   onClose: () => void;
   clientId: string;
   clientName?: string;
-  onSyncToLawyerCrm?: (updates: { propertyListD5102: PropertyListD5102Data }) => Promise<void> | void;
+  onSyncToLawyerCrm?: (updates: { propertyListD5102: PropertyListD5102Data }) => Promise<boolean | void> | boolean | void;
 }
 
 type TabKey = 'deposits' | 'vehicles' | 'leases' | 'realestates' | 'business' | 'severance' | 'summary';
@@ -86,17 +88,21 @@ export default function ClientPropertyIntakeModal({
     const saved = ClientPropertyService.saveClientData(data);
     setData(saved);
     setHasSaved(true);
-    toast.success('재산상황 기초자료가 안전하게 임시 저장되었습니다.');
+    toast.success('재산상황 기초자료를 이 기기에 임시 저장했습니다.');
   };
 
   // 담당 변호사에게 제출
   const handleSubmitToLawyer = async () => {
     setIsSubmitting(true);
     try {
-      const submitted = ClientPropertyService.submitToLawyer(data, onSyncToLawyerCrm);
+      const { data: submitted, synced } = await ClientPropertyService.submitToLawyer(data, onSyncToLawyerCrm);
       setData(submitted);
       setHasSaved(true);
-      toast.success('재산 기초자료가 담당 변호사에게 전달되었습니다! 변호사가 법리 검토 후 재산목록을 최종 완성합니다.');
+      if (!synced) {
+        toast.warning('재산 기초자료는 이 기기에 저장되었지만 변호사에게 전달하지 못했습니다. 잠시 후 다시 전달해 주세요.');
+        return;
+      }
+      toast.success('재산 기초자료를 담당 변호사에게 전달했습니다. 변호사가 검토 후 재산목록을 작성합니다.');
       setTimeout(() => {
         onClose();
       }, 1200);
@@ -303,19 +309,19 @@ export default function ClientPropertyIntakeModal({
                     <span>계좌정보통합관리서비스(어카운트인포) & 내보험다보여 조회 안내</span>
                   </div>
                   <p className="text-slate-600 text-[11px]">
-                    모든 은행의 활동성 계좌와 보험 예상해약환급금을 누락 없이 입력해야 법원 보정명령을 피할 수 있습니다.
+                    모든 은행의 활동성 계좌와 보험 예상해약환급금을 빠짐없이 입력해 주세요. 누락되면 법원 보정권고를 받을 수 있습니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => handleOpenPortal('account_info')}
+                    onClick={() => handleOpenPortal('payinfo')}
                     className="px-3 py-1.5 bg-white border border-indigo-300 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>어카운트인포 조회</span>
                     <ExternalLink className="w-3 h-3" />
                   </button>
                   <button
-                    onClick={() => handleOpenPortal('my_insurance')}
+                    onClick={() => handleOpenPortal('credit4u')}
                     className="px-3 py-1.5 bg-white border border-indigo-300 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>내보험다보여 조회</span>
@@ -341,9 +347,9 @@ export default function ClientPropertyIntakeModal({
                       const newFa: FinancialAssetItem = {
                         id: `fa-${Date.now()}`,
                         category: 'deposit',
-                        institutionName: '국민은행',
-                        description: '급여통장 (끝자리 1234)',
-                        marketValue: 500000,
+                        institutionName: '',
+                        description: '',
+                        marketValue: 0,
                         statutoryDeduction: 1850000,
                         liquidationValue: 0,
                       };
@@ -452,14 +458,14 @@ export default function ClientPropertyIntakeModal({
                     onClick={() => {
                       const newIns: InsuranceItem = {
                         id: `ins-${Date.now()}`,
-                        companyName: '삼성생명',
-                        policyName: '통합건강보험',
+                        companyName: '',
+                        policyName: '',
                         policyNumber: '',
-                        isSecurityInsurance: true,
-                        surrenderValue: 2000000,
+                        isSecurityInsurance: false,
+                        surrenderValue: 0,
                         policyLoanBalance: 0,
-                        statutoryDeduction: 1500000,
-                        liquidationValue: 500000,
+                        statutoryDeduction: 0,
+                        liquidationValue: 0,
                       };
                       updateData(prev => ({
                         ...prev,
@@ -601,7 +607,7 @@ export default function ClientPropertyIntakeModal({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => handleOpenPortal('encar_price', data.vehicles[0]?.modelName)}
+                    onClick={() => handleOpenPortal('encar', data.vehicles[0]?.modelName)}
                     className="px-3 py-1.5 bg-white border border-indigo-300 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>엔카 시세 조회</span>
@@ -633,15 +639,15 @@ export default function ClientPropertyIntakeModal({
                       const newVeh: VehicleItem = {
                         id: `veh-${Date.now()}`,
                         type: 'car',
-                        modelName: '아반떼 CN7',
-                        plateNumber: '12가 3456',
-                        year: 2021,
+                        modelName: '',
+                        plateNumber: '',
+                        year: new Date().getFullYear(),
                         valuationMethod: 'used_avg',
-                        marketValue: 15000000,
-                        loanBalance: 8000000,
-                        liquidationValue: 7000000,
+                        marketValue: 0,
+                        loanBalance: 0,
+                        liquidationValue: 0,
                         ownerType: 'self',
-                        note: '캐피탈 할부금 잔액 차감'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -781,11 +787,11 @@ export default function ClientPropertyIntakeModal({
                     최대 5,500만 원 공제
                   </div>
                   <div className="p-2 bg-white rounded-lg border border-indigo-100">
-                    <span className="font-bold text-slate-900 block">과밀억제권역/용인/화성</span>
+                    <span className="font-bold text-slate-900 block">과밀억제권역·세종·용인·화성·김포</span>
                     최대 4,800만 원 공제
                   </div>
                   <div className="p-2 bg-white rounded-lg border border-indigo-100">
-                    <span className="font-bold text-slate-900 block">광역시/안산/평택 등</span>
+                    <span className="font-bold text-slate-900 block">광역시·안산·광주·파주·이천·평택</span>
                     최대 2,800만 원 공제
                   </div>
                   <div className="p-2 bg-white rounded-lg border border-indigo-100">
@@ -810,16 +816,16 @@ export default function ClientPropertyIntakeModal({
                     onClick={() => {
                       const newLd: LeaseDepositItem = {
                         id: `ld-${Date.now()}`,
-                        address: '서울특별시 마포구 ',
-                        depositAmount: 50000000,
+                        address: '',
+                        depositAmount: 0,
                         unpaidRent: 0,
                         pledgeLoanAmount: 0,
                         region: 'SEOUL',
                         statutoryExemption: 55000000,
                         liquidationValue: 0,
                         leaseType: 'housing',
-                        hasFixedDate: true,
-                        note: '확정일자부 임대차계약서'
+                        hasFixedDate: false,
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -858,8 +864,8 @@ export default function ClientPropertyIntakeModal({
                               className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold"
                             >
                               <option value="SEOUL">서울특별시 (공제 5,500만)</option>
-                              <option value="OVERCROWDED">수도권 과밀억제권역/세종/용인/화성 (공제 4,800만)</option>
-                              <option value="METROPOLITAN">광역시/안산/평택 등 (공제 2,800만)</option>
+                              <option value="OVERCROWDED">과밀억제권역·세종·용인·화성·김포 (공제 4,800만)</option>
+                              <option value="METROPOLITAN">광역시·안산·광주·파주·이천·평택 (공제 2,800만)</option>
                               <option value="OTHERS">그 밖의 지역 (공제 2,500만)</option>
                             </select>
                             <select
@@ -978,12 +984,12 @@ export default function ClientPropertyIntakeModal({
                     <span>부동산 시세 산정 기준 안내</span>
                   </div>
                   <p className="text-slate-600 text-[11px]">
-                    아파트는 KB부동산 일반평균가, 빌라·단독주택·토지는 국토부 공시가격의 130% 공식이 실무상 적용됩니다.
+                    아파트는 KB부동산 일반평균가, 빌라·단독주택·토지는 공시가격의 130% 등으로 시가를 추정하는 경우가 많습니다. 최종 평가액은 담당 변호사가 관할법원 기준으로 확정합니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => handleOpenPortal('kb_land', data.realEstates[0]?.address)}
+                    onClick={() => handleOpenPortal('kb_realestate', data.realEstates[0]?.address)}
                     className="px-3 py-1.5 bg-white border border-indigo-300 text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>KB부동산 시세</span>
@@ -1015,15 +1021,15 @@ export default function ClientPropertyIntakeModal({
                       const newRe: RealEstateItem = {
                         id: `re-${Date.now()}`,
                         type: 'villa_multi',
-                        address: '서울특별시 마포구 ',
+                        address: '',
                         valuationMethod: 'public_price_130',
-                        officialPublicPrice: 200000000,
-                        marketValue: 260000000,
-                        mortgageBalance: 150000000,
-                        liquidationValue: 110000000,
+                        officialPublicPrice: 0,
+                        marketValue: 0,
+                        mortgageBalance: 0,
+                        liquidationValue: 0,
                         ownerType: 'self',
                         shareRatio: 1.0,
-                        note: '공시가격 130% 적용'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -1054,9 +1060,14 @@ export default function ClientPropertyIntakeModal({
                               value={re.type}
                               onChange={(e) => {
                                 const newType = e.target.value as RealEstateType;
+                                // 유형에 맞는 평가 방법으로 함께 전환 (아파트=KB시세, 상가=실거래가, 그 외=공시가 130% 추정)
+                                const method: RealEstateValuationMethod =
+                                  newType === 'apartment_officetel' ? 'kb_general'
+                                  : newType === 'commercial' ? 'actual_trade'
+                                  : 'public_price_130';
                                 updateData(prev => ({
                                   ...prev,
-                                  realEstates: prev.realEstates.map(item => item.id === re.id ? { ...item, type: newType } : item)
+                                  realEstates: prev.realEstates.map(item => item.id === re.id ? { ...item, type: newType, valuationMethod: method } : item)
                                 }));
                               }}
                               className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold"
@@ -1218,12 +1229,12 @@ export default function ClientPropertyIntakeModal({
                       const newBa: BusinessAssetItem = {
                         id: `ba-${Date.now()}`,
                         type: 'equipment',
-                        name: '사업장 영업 집기 및 비품',
+                        name: '',
                         description: '',
-                        bookValue: 3000000,
-                        marketValue: 1000000,
+                        bookValue: 0,
+                        marketValue: 0,
                         encumbrance: 0,
-                        liquidationValue: 1000000,
+                        liquidationValue: 0,
                         recoveryStatus: 'normal',
                         note: ''
                       };
@@ -1367,12 +1378,13 @@ export default function ClientPropertyIntakeModal({
                     onClick={() => {
                       const newSev: SeveranceItem = {
                         id: `sev-${Date.now()}`,
-                        workplaceName: '현재 직장',
-                        isRetirementPension: true,
-                        expectedAmount: 20000000,
-                        statutoryDeduction: 20000000,
+                        workplaceName: '',
+                        // 퇴직연금 가입 여부는 의뢰인이 직접 확인해 체크 (기본값으로 전액 면제 처리하지 않음)
+                        isRetirementPension: false,
+                        expectedAmount: 0,
+                        statutoryDeduction: 0,
                         liquidationValue: 0,
-                        note: 'DC형 퇴직연금 가입'
+                        note: ''
                       };
                       updateData(prev => ({
                         ...prev,
@@ -1478,8 +1490,8 @@ export default function ClientPropertyIntakeModal({
                       const newEp: ExemptPropertyItem = {
                         id: `ep-${Date.now()}`,
                         type: 'living_expense_383_2',
-                        appliedAmount: 11100000,
-                        description: '6개월간 생계비(1,110만 원) 면제재산 신청 희망',
+                        appliedAmount: EXEMPT_PROPERTY_LIVING_LIMIT,
+                        description: '6개월간 생계비(1,110만 원) 면제재산 신청 희망 (법원 결정 전까지 신청액)',
                         note: ''
                       };
                       updateData(prev => ({
@@ -1599,7 +1611,7 @@ export default function ClientPropertyIntakeModal({
                     담당 변호사에게 재산 기초자료 전달하기
                   </h4>
                   <p className="text-xs text-slate-300">
-                    작성하신 재산 내역이 변호사 전자 CRM에 즉시 전송되어, 담당 변호사가 법원 서류와 변제계획안을 완성합니다.
+                    작성하신 재산 내역을 담당 변호사 사건 기록에 저장하면, 변호사가 검토해 재산목록과 변제계획안을 작성합니다.
                   </p>
                 </div>
                 <button

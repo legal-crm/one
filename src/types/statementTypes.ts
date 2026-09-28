@@ -135,6 +135,8 @@ export interface GenerateStatementAiPayload {
 
 export interface GenerateStatementAiResponse {
   ok: boolean;
+  /** 생성 경로: AI 생성 vs 규칙 기반 초안 템플릿 (UI에서 구분 안내) */
+  source?: 'gemini_ai' | 'rule_based_engine' | 'rule_template';
   sections: {
     initialCause: string;                  // 1. 채무 발생 원인
     growthProcess: string;                 // 2. 채무 증대 경위

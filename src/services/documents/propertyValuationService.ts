@@ -17,13 +17,15 @@ import {
 import {
   HOUSING_EXEMPT_DEPOSIT_LIMITS,
   EXEMPT_INSURANCE_REFUND_LIMIT,
+  EXEMPT_DEPOSIT_LIMIT,
   RegionType,
 } from '../repayment/repaymentConstants2026';
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentAsset } from '../repayment/repaymentTypes';
 
-// 예금 압류금지 최신 기준 (민사집행법 시행령 개정: 250만 원)
-export const EXEMPT_DEPOSIT_LIMIT_2026 = 2500000;
+// 예금 압류금지 공제액 — 단일 기준값(repaymentConstants2026.EXEMPT_DEPOSIT_LIMIT)을 사용해 챗봇·CRM 엔진과 일치시킨다.
+// ※ 기존 이 파일만 250만 원을 사용해 다른 엔진(185만 원)과 청산가치가 달랐음. 기준 변경 시 상수 한 곳만 수정.
+export const EXEMPT_DEPOSIT_LIMIT_2026 = EXEMPT_DEPOSIT_LIMIT;
 
 // ── 1. 자산별 개별 평가 및 청산가치 연산 ──
 
@@ -69,29 +71,38 @@ export function calculateLeaseDepositLiquidation(item: LeaseDepositItem): number
   const limitInfo =
     HOUSING_EXEMPT_DEPOSIT_LIMITS[item.region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
   
-  let exemption = 0;
-  // 주거용인 경우 소액임차보증금 요건 확인 (보증금이 기준액 이하일 때 최우선변제금 공제)
-  if (item.leaseType === 'housing') {
-    if (item.depositAmount <= limitInfo.maxDeposit) {
-      exemption = limitInfo.exemptAmount;
-    } else {
-      // 보증금 요건을 초과하더라도 서울회생법원 등 실무상 소액보증금 상당액을 공제하는 경우 지원
-      exemption = limitInfo.exemptAmount;
-    }
-  }
-
-  const deductTotal = (item.unpaidRent || 0) + (item.pledgeLoanAmount || 0) + exemption;
-  const net = item.depositAmount - deductTotal;
+  const net = item.depositAmount - (item.unpaidRent || 0) - (item.pledgeLoanAmount || 0) - getLeaseDepositExemption(item);
   return Math.max(0, net);
+}
+
+/**
+ * 임차보증금 면제(소액임차인 최우선변제금 상당액) 공제액
+ * - 주거용 + 보증금이 지역별 소액임차인 기준 이하인 경우에만 공제 (기존: 기준 초과 시에도 동일 공제 → 청산가치 과소)
+ * - 공제액은 연체차임·질권대출을 뺀 잔존 보증금을 넘지 않음
+ * ※ 기준 초과 보증금에 대한 법원별 실무 특례는 담당 변호사가 개별 검토
+ */
+export function getLeaseDepositExemption(item: LeaseDepositItem): number {
+  if (item.leaseType !== 'housing') return 0;
+  const limitInfo =
+    HOUSING_EXEMPT_DEPOSIT_LIMITS[item.region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
+  if (item.depositAmount > limitInfo.maxDeposit) return 0;
+  const remaining = Math.max(0, item.depositAmount - (item.unpaidRent || 0) - (item.pledgeLoanAmount || 0));
+  return Math.min(limitInfo.exemptAmount, remaining);
 }
 
 /**
  * 보험 해약환급금 청산가치 계산: 환급금 - 약관대출 - 150만 원(보장성 법정 압류금지)
  */
 export function calculateInsuranceLiquidation(item: InsuranceItem): number {
-  const statutoryDeduction = item.isSecurityInsurance ? EXEMPT_INSURANCE_REFUND_LIMIT : 0;
-  const net = item.surrenderValue - (item.policyLoanBalance || 0) - statutoryDeduction;
-  return Math.max(0, net);
+  const net = Math.max(0, item.surrenderValue - (item.policyLoanBalance || 0));
+  return Math.max(0, net - getInsuranceDeduction(item));
+}
+
+/** 보장성 보험 해약환급금 공제액 (약관대출 차감 후 환급금을 넘지 않음) */
+export function getInsuranceDeduction(item: InsuranceItem): number {
+  if (!item.isSecurityInsurance) return 0;
+  const net = Math.max(0, item.surrenderValue - (item.policyLoanBalance || 0));
+  return Math.min(EXEMPT_INSURANCE_REFUND_LIMIT, net);
 }
 
 /**
@@ -109,7 +120,7 @@ export function calculateSeveranceLiquidation(item: SeveranceItem): number {
  */
 export function calculateFinancialAssetLiquidation(item: FinancialAssetItem): number {
   if (item.category === 'deposit') {
-    // 예금 250만 원 공제
+    // 단일 계좌 기준 참고값 — 실제 합계 공제는 recalculateD5102Totals에서 전체 예금에 1회 적용
     const net = item.marketValue - EXEMPT_DEPOSIT_LIMIT_2026;
     return Math.max(0, net);
   }
@@ -131,10 +142,15 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
   // 1. 부동산
   const updatedRealEstates = (data.realEstates || []).map((re) => {
     const liq = calculateRealEstateLiquidation(re);
-    totalMarketValue += re.marketValue;
+    // 공시가 130% 추정 방식이면 시가 칸도 같은 값으로 맞춰 총괄표(시가 합계 − 담보 = 청산가치)가 서로 맞도록 함
+    const effectiveMarket =
+      re.valuationMethod === 'public_price_130' && re.officialPublicPrice && re.officialPublicPrice > 0
+        ? calculatePublicPrice130(re.officialPublicPrice)
+        : re.marketValue;
+    totalMarketValue += effectiveMarket;
     totalEncumbrance += re.mortgageBalance;
     totalLiquidationValue += liq;
-    return { ...re, liquidationValue: liq };
+    return { ...re, marketValue: effectiveMarket, liquidationValue: liq };
   });
 
   // 2. 차량
@@ -149,9 +165,7 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
   // 3. 임차보증금
   const updatedLeaseDeposits = (data.leaseDeposits || []).map((ld) => {
     const liq = calculateLeaseDepositLiquidation(ld);
-    const limitInfo =
-      HOUSING_EXEMPT_DEPOSIT_LIMITS[ld.region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
-    const exemption = ld.leaseType === 'housing' ? limitInfo.exemptAmount : 0;
+    const exemption = getLeaseDepositExemption(ld);
     
     totalMarketValue += ld.depositAmount;
     totalEncumbrance += (ld.unpaidRent || 0) + (ld.pledgeLoanAmount || 0);
@@ -163,7 +177,7 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
   // 4. 보험
   const updatedInsurances = (data.insurances || []).map((ins) => {
     const liq = calculateInsuranceLiquidation(ins);
-    const deduction = ins.isSecurityInsurance ? EXEMPT_INSURANCE_REFUND_LIMIT : 0;
+    const deduction = getInsuranceDeduction(ins);
     totalMarketValue += ins.surrenderValue;
     totalEncumbrance += ins.policyLoanBalance || 0;
     totalStatutoryDeduction += deduction;
@@ -184,9 +198,19 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
   });
 
   // 6. 금융자산
+  // 예금 압류금지 공제는 계좌별이 아니라 전체 예금 합계에 1회 적용 (기존: 계좌마다 공제 → 계좌 수만큼 과다 공제)
+  let remainingDepositExemption = EXEMPT_DEPOSIT_LIMIT_2026;
   const updatedFinancialAssets = (data.financialAssets || []).map((fa) => {
-    const liq = calculateFinancialAssetLiquidation(fa);
-    const deduction = fa.category === 'deposit' ? Math.min(fa.marketValue, EXEMPT_DEPOSIT_LIMIT_2026) : 0;
+    let deduction = 0;
+    let liq: number;
+    if (fa.category === 'deposit') {
+      const balance = Math.max(0, fa.marketValue || 0);
+      deduction = Math.min(balance, remainingDepositExemption);
+      remainingDepositExemption -= deduction;
+      liq = balance - deduction;
+    } else {
+      liq = calculateFinancialAssetLiquidation(fa);
+    }
     totalMarketValue += fa.marketValue;
     totalStatutoryDeduction += deduction;
     totalLiquidationValue += liq;

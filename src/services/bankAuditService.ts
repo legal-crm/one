@@ -23,7 +23,7 @@ export const AUDIT_PRESET_TEMPLATES: AuditPresetTemplate[] = [
     category: 'SAFE_LIVING',
     name: '식비 및 생필품',
     icon: '🛒',
-    templateText: '배우자 및 미성년 자녀를 포함한 4인 가구의 1개월분 식료품 및 생활필수품 마트 구매 비용 (생계유지비 지출)',
+    templateText: '가구 식료품 및 생활필수품 구매 비용 (생계비 지출)',
     suggestedEvidence: '카드영수증 / 마트 구매내역서'
   },
   {
@@ -47,7 +47,7 @@ export const AUDIT_PRESET_TEMPLATES: AuditPresetTemplate[] = [
     category: 'SAFE_DEBT',
     name: '대출 상환 및 카드 대환',
     icon: '💳',
-    templateText: '타 금융기관 연체 방지를 위한 기존 대출금 원리금 상환 및 카드 결제대금 충당 (대환 상환, 재산은닉 없음)',
+    templateText: '[상환처·금액 기재] 기존 대출 원리금 또는 카드 결제대금 상환 — 상환한 금융기관명을 적어 주세요',
     suggestedEvidence: '금융거래확인서 / 대환 송금확인증'
   },
   {
@@ -55,7 +55,7 @@ export const AUDIT_PRESET_TEMPLATES: AuditPresetTemplate[] = [
     category: 'CAUTION_TRANSFER',
     name: '가족 생활비 보조',
     icon: '👨‍👩‍👧',
-    templateText: '생계를 같이하는 고령의 모친(배우자) 생활비 보조를 위한 실비 송금 (편파변제 및 재산은닉 의도 일체 없음)',
+    templateText: '[받은 사람과의 관계·송금 이유 기재] 가족 생활비 송금 — 빌린 돈을 갚은 것이라면 반드시 그렇게 적어 주세요',
     suggestedEvidence: '주민등록등본 / 가족관계증명서 / 계좌확인증'
   },
   {
@@ -63,7 +63,7 @@ export const AUDIT_PRESET_TEMPLATES: AuditPresetTemplate[] = [
     category: 'CAUTION_CASH',
     name: '단순 현금인출 (생활비)',
     icon: '💵',
-    templateText: '전통시장 장보기, 자녀 소액 용돈 및 학용품비 등 일상적 현금 지출을 위한 인출 (은닉 재산 전혀 없음)',
+    templateText: '[현금 사용처 기재] 현금 인출 후 사용처 — 장보기·병원비 등 실제 사용처를 구체적으로 적어 주세요',
     suggestedEvidence: '가계 지출 소명서 / 영수증 복원 메모'
   },
   {
@@ -71,7 +71,7 @@ export const AUDIT_PRESET_TEMPLATES: AuditPresetTemplate[] = [
     category: 'DANGER_SPECULATION',
     name: '주식·코인 투자 손실',
     icon: '📉',
-    templateText: '과거 가상자산/주식 투자 손실 발생분 (관할 법원 도산 실무준칙에 의거 청산가치 제외 및 성실 변제 서약)',
+    templateText: '[투자처·손실 경위 기재] 가상자산·주식 투자금 이체 — 투자 시기와 현재 잔액(손실 여부)을 사실대로 적어 주세요',
     suggestedEvidence: '거래소 출입금내역서 / 손실증명원'
   }
 ];
@@ -99,8 +99,8 @@ export function classifyTransactionRisk(
     if (norm.includes(kw)) {
       return {
         category: 'DANGER_SPECULATION',
-        badgeText: '사행성 (코인·주식)',
-        advice: '서울·수원회생법원은 투자 손실금 청산가치 제외 실무준칙 적용 가능. 기타 법원은 청산가치 반영 방어 소명서 필수.',
+        badgeText: '투자·사행성 (변호사 검토)',
+        advice: '투자·도박 관련 출금은 법원이 사용처와 손실 경위를 엄격히 확인합니다. 관할법원마다 청산가치 반영 기준이 다르므로 담당 변호사 검토가 필요합니다. 도박·사행성 지출은 투자 손실과 다르게 취급될 수 있습니다.',
         defaultExplanation: AUDIT_PRESET_TEMPLATES.find(p => p.id === 'preset-speculation')!.templateText,
         defaultEvidence: '거래소 출입금내역서'
       };
@@ -115,7 +115,7 @@ export function classifyTransactionRisk(
         category: 'DANGER_LUXURY',
         badgeText: '사치·유흥 주의',
         advice: '회생위원이 청산가치 산입 또는 변제율 상향을 요구할 수 있으므로 일회성 경조사 및 필수 지출 소명 필요.',
-        defaultExplanation: '업무상 불가피한 경조사/접대 및 치료 목적 지출이며 지속적 사치 행위가 아님을 소명합니다.',
+        defaultExplanation: '',
         defaultEvidence: '세부 영수증 / 소명서'
       };
     }
@@ -142,7 +142,7 @@ export function classifyTransactionRisk(
       return {
         category: 'SAFE_DEBT',
         badgeText: '대출상환·대환',
-        advice: '타 금융기관 부채 변제는 정당한 채무 상환으로 인정되어 청산가치에 산입되지 않습니다.',
+        advice: '신청 전 특정 채권자에게만 갚은 금액은 편파변제로 문제될 수 있습니다(부인권 대상). 정기 약정 상환인지, 일시 상환인지 사실대로 적어 주세요.',
         defaultExplanation: AUDIT_PRESET_TEMPLATES.find(p => p.id === 'preset-debt')!.templateText,
         defaultEvidence: '대환 이체확인증'
       };
@@ -157,7 +157,7 @@ export function classifyTransactionRisk(
       return {
         category: 'SAFE_FIXED',
         badgeText: isMed ? '의료비' : '주거·고정비',
-        advice: '필수 생계 및 주거 안정 비용으로 법원에서 100% 정상 인정하는 항목입니다.',
+        advice: '일반적인 생계·주거·의료 지출 항목입니다. 영수증이나 계약서로 확인할 수 있으면 함께 준비해 주세요.',
         defaultExplanation: isMed 
           ? AUDIT_PRESET_TEMPLATES.find(p => p.id === 'preset-medical')!.templateText 
           : AUDIT_PRESET_TEMPLATES.find(p => p.id === 'preset-rent')!.templateText,
@@ -173,7 +173,7 @@ export function classifyTransactionRisk(
       return {
         category: 'SAFE_LIVING',
         badgeText: '식비·생필품',
-        advice: '기본 생계 유지비로 안전하게 인정됩니다.',
+        advice: '일반적인 생활비 지출 항목입니다.',
         defaultExplanation: AUDIT_PRESET_TEMPLATES.find(p => p.id === 'preset-living')!.templateText,
         defaultEvidence: '카드영수증'
       };
@@ -310,29 +310,26 @@ export function parseRawBankStatementText(text: string, filterThreshold: number 
   const results: AuditTransactionItem[] = [];
 
   lines.forEach((line, idx) => {
-    // 쉼표 또는 탭 또는 다중 공백 분리
-    const tokens = line.split(/[,\t|]/).map(t => t.trim()).filter(Boolean);
+    // 금액 속 천단위 쉼표(1,200,000)는 구분자가 아님 → 먼저 제거한 뒤 탭·파이프·쉼표·2칸 이상 공백으로 분리
+    const normalized = line.replace(/(\d),(?=\d{3}(\D|$))/g, '$1');
+    let tokens = normalized.split(/[,\t|]|\s{2,}/).map(t => t.trim()).filter(Boolean);
+    // "2025-11-20 김철수 1200000"처럼 한 칸 공백만 있는 경우 공백으로 재분리
+    if (tokens.length < 3) tokens = normalized.split(/\s+/).map(t => t.trim()).filter(Boolean);
     if (tokens.length < 3) return;
 
-    // 간단한 날짜 패턴 검출 (예: 2025-08-10, 2025.08.10, 2025/08/10, 20250810)
-    const dateMatch = tokens[0].match(/\d{4}[-./]?\d{1,2}[-./]?\d{1,2}/);
-    let date = new Date().toISOString().split('T')[0];
-    if (dateMatch) {
-      const raw = dateMatch[0].replace(/[/.]/g, '-');
-      if (raw.length === 8 && !raw.includes('-')) {
-        date = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
-      } else {
-        date = raw;
-      }
-    }
+    // 날짜 패턴 (2025-08-10, 2025.8.1, 2025/08/10, 20250810) — 날짜 없는 행은 건너뜀(오늘 날짜로 대체하지 않음)
+    const dateMatch = tokens[0].match(/(\d{4})[-./]?(\d{1,2})[-./]?(\d{1,2})/);
+    if (!dateMatch) return;
+    const date = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
 
-    // 금액 찾기 (숫자와 콤마로 이루어진 토큰)
+    // 금액 찾기: 부호·원 표기 허용, 첫 번째 1만 원 이상 금액
     let amount = 0;
     let counterparty = tokens[1] || '거래처 불명';
 
     for (let i = 1; i < tokens.length; i++) {
-      const cleaned = tokens[i].replace(/[^0-9]/g, '');
-      const parsed = parseInt(cleaned, 10);
+      const numMatch = tokens[i].match(/^-?\d+(?:\.\d+)?(?:원)?$/);
+      if (!numMatch) continue;
+      const parsed = Math.round(Math.abs(parseFloat(tokens[i].replace(/원$/, ''))));
       if (!isNaN(parsed) && parsed >= 10000 && parsed <= 500000000) {
         amount = parsed;
         if (i > 1) {
@@ -371,10 +368,11 @@ export function parseRawBankStatementText(text: string, filterThreshold: number 
 
 export async function parseExcelBankStatement(file: File, filterThreshold: number = 0): Promise<AuditTransactionItem[]> {
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  // cellDates + raw:false → 엑셀 날짜 일련번호(예: 45890)를 'yyyy-mm-dd' 문자열로 받음
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[firstSheetName];
-  const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
 
   if (!jsonData || jsonData.length === 0) return [];
 
@@ -389,16 +387,18 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
     const row = jsonData[r];
     if (!row || !Array.isArray(row)) continue;
     const strRow = row.map(c => String(c || '').trim());
+    // 헤더는 한 행 안에서 찾는다 (제목 행의 '조회일자' 등과 섞이지 않도록 행마다 초기화)
+    dateCol = -1; withdrawCol = -1; counterpartyCol = -1; balanceCol = -1;
 
     for (let c = 0; c < strRow.length; c++) {
       const val = strRow[c];
       if (/거래일|일자|거래일시|날짜/i.test(val) && dateCol === -1) dateCol = c;
-      if (/출금|지급|출금액|지급액|이용금액|결제금액/i.test(val) && withdrawCol === -1) withdrawCol = c;
+      if (/^(출금|지급|출금액|지급액|찾으신금액|출금금액|이용금액|결제금액)(\(원\))?$/.test(val.replace(/\s/g, '')) && withdrawCol === -1) withdrawCol = c;
       if (/적요|내용|기재내용|상대방|가맹점|거래내용|수취인/i.test(val) && counterpartyCol === -1) counterpartyCol = c;
       if (/잔액|거래후잔액/i.test(val) && balanceCol === -1) balanceCol = c;
     }
 
-    if (dateCol !== -1 && (withdrawCol !== -1 || counterpartyCol !== -1)) {
+    if (dateCol !== -1 && withdrawCol !== -1) {
       headerRowIndex = r;
       break;
     }
@@ -413,7 +413,7 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
       if (!row || row.length === 0) continue;
 
       const rawDate = String(row[dateCol] || '').trim();
-      const rawWithdraw = String(row[withdrawCol] || '').replace(/[^0-9]/g, '');
+      const rawWithdraw = String(row[withdrawCol] || '').replace(/[,\s원]/g, '').replace(/^-/, '').split('.')[0];
       const rawCounterparty = counterpartyCol !== -1 ? String(row[counterpartyCol] || '').trim() : '불명 거래';
       const rawBalance = balanceCol !== -1 ? String(row[balanceCol] || '').replace(/[^0-9]/g, '') : undefined;
 
@@ -425,13 +425,15 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
         if (rawDate.length === 8 && !rawDate.includes('-') && !rawDate.includes('.')) {
           date = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
         } else {
-          date = rawDate.replace(/[/.]/g, '-').slice(0, 10);
+          const dm = rawDate.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+          date = dm ? `${dm[1]}-${dm[2].padStart(2, '0')}-${dm[3].padStart(2, '0')}` : '';
         }
 
+        if (!date) continue; // 날짜 없는 합계·안내 행은 제외 (오늘 날짜로 대체하지 않음)
         const classification = classifyTransactionRisk(rawCounterparty, 'WITHDRAWAL', amount);
         results.push({
           id: `excel-${Date.now()}-${r}`,
-          date: date || new Date().toISOString().split('T')[0],
+          date,
           bankOrCard: file.name.replace(/\.[^/.]+$/, '').slice(0, 20) || '금융기관',
           transactionType: 'WITHDRAWAL',
           counterparty: rawCounterparty || '거래처 불명',
@@ -480,8 +482,8 @@ export function exportToCourtStandardExcel(
 ) {
   const {
     clientName = '신청인',
-    caseNumber = '2026개회 108492호',
-    courtName = '서울회생법원',
+    caseNumber = '',
+    courtName = '',
     thresholdAmount = 1000000
   } = options;
 
@@ -759,21 +761,30 @@ const STORAGE_KEY_PREFIX = 'legal_crm_bank_audit_';
 
 export function getStoredBankAuditData(
   clientId: string = 'client-default',
-  clientName: string = '김채무'
+  clientName: string = '신청인'
 ): BankStatementAuditData {
   const key = `${STORAGE_KEY_PREFIX}${clientId}`;
   try {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw) as BankStatementAuditData;
+      // 과거 버전이 자동 삽입한 샘플 거래(id: audit-1 ~ audit-25) 및 가짜 사건번호 정리
+      const SAMPLE_ID = /^audit-\d+$/;
+      if (Array.isArray(parsed.items) && parsed.items.some(i => SAMPLE_ID.test(i.id))) {
+        parsed.items = parsed.items.filter(i => !SAMPLE_ID.test(i.id));
+        if (parsed.caseNumber === '2026개회 108492호') parsed.caseNumber = '';
+        parsed.stats = calculateAuditStats(parsed.items, parsed.thresholdAmount || 1000000);
+        try { localStorage.setItem(key, JSON.stringify(parsed)); } catch { /* ignore */ }
+      }
       return parsed;
     }
   } catch (e) {
     console.error('Failed to load bank audit from localStorage', e);
   }
 
-  // 기본 샘플 데이터셋 생성
-  const sampleItems = generateSampleBankTransactions();
+  // 실제 의뢰인 데이터에는 샘플 거래를 넣지 않는다 (법원 제출 소명표에 가짜 거래가 섞이는 것을 방지)
+  // 샘플이 필요한 시연·테스트는 generateSampleBankTransactions()를 명시적으로 호출할 것
+  const sampleItems: AuditTransactionItem[] = [];
   const threshold = 1000000;
   const stats = calculateAuditStats(sampleItems, threshold);
 
@@ -781,8 +792,8 @@ export function getStoredBankAuditData(
     id: `audit-batch-${clientId}`,
     clientId,
     clientName,
-    caseNumber: '2026개회 108492호',
-    courtName: '서울회생법원',
+    caseNumber: '',
+    courtName: '',
     thresholdAmount: threshold,
     items: sampleItems,
     stats,

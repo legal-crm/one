@@ -18,7 +18,8 @@ export default function PrintableCourtStatementModal({
 
   const isRehab = statement.caseType === 'rehab';
   const s = statement.story;
-  const jobs = statement.jobHistories || [];
+  // 빈 행(아무것도 입력하지 않은 경력)은 출력하지 않는다
+  const jobs = (statement.jobHistories || []).filter(j => (j.companyName || j.period || '').trim().length > 0);
   const residence = statement.residence;
   const screening = statement.bankruptcyScreening;
 
@@ -28,7 +29,7 @@ export default function PrintableCourtStatementModal({
 
   const handleDownloadPdf = () => {
     window.print();
-    toast.info('인쇄 창에서 "PDF로 저장"을 선택하시면 법원 제출 규격의 정식 서식 PDF로 저장됩니다.');
+    toast.info('인쇄 창에서 "PDF로 저장"을 선택하시면 PDF 파일로 저장됩니다. 최종 제출본은 담당 변호사가 확정합니다.');
   };
 
   const todayStr = new Date().toLocaleDateString('ko-KR', {
@@ -49,7 +50,7 @@ export default function PrintableCourtStatementModal({
             </span>
             <div>
               <h3 className="font-extrabold text-sm text-white">
-                대법원·회생법원 정식 규격 {isRehab ? '개인회생' : '개인파산'} 진술서 서식
+                {isRehab ? '개인회생' : '개인파산'} 진술서 미리보기
               </h3>
               <p className="text-[11px] text-slate-400">
                 신청인: {statement.applicantName} · 관할: {statement.courtName} · 상태: {statement.status === 'client_completed' ? '제출 완료' : '작성 중'}
@@ -91,8 +92,8 @@ export default function PrintableCourtStatementModal({
             </h1>
             <p className="text-xs font-sans text-slate-500 pt-1">
               {isRehab 
-                ? '【채무자 회생 및 파산에 관한 법률 제589조 제1항 제3호 및 실무준칙】'
-                : '【채무자 회생 및 파산에 관한 법률 제302조 및 제556조】'}
+                ? '【개인회생절차개시신청서 첨부 진술서】'
+                : '【파산 및 면책신청서 첨부 진술서】'}
             </p>
           </div>
 
@@ -100,19 +101,19 @@ export default function PrintableCourtStatementModal({
           <div className="space-y-1.5 text-sm font-sans border-b border-slate-300 pb-5">
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">사 &nbsp; &nbsp; &nbsp; 건 :</span>
-              <span>2026개회 또는 본인신청 사건 ({isRehab ? '개인회생' : '개인파산 및 면책'})</span>
+              <span>{isRehab ? '개인회생' : '개인파산 및 면책'} 신청 사건 (사건번호는 접수 후 부여)</span>
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">신 &nbsp; 청 &nbsp; 인 :</span>
-              <span className="font-bold">{statement.applicantName} (주민등록번호: {statement.applicantRrnMasked})</span>
+              <span className="font-bold">{statement.applicantName} (주민등록번호: {statement.applicantRrnMasked || '변호사 작성 시 기재'})</span>
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">연 &nbsp; 락 &nbsp; 처 :</span>
-              <span>{statement.applicantPhone}</span>
+              <span>{statement.applicantPhone || '-'}</span>
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">주 &nbsp; &nbsp; &nbsp; 소 :</span>
-              <span>{statement.applicantAddress}</span>
+              <span>{statement.applicantAddress || '변호사 작성 시 기재'}</span>
             </div>
           </div>
 
@@ -122,7 +123,7 @@ export default function PrintableCourtStatementModal({
               1. 최종 학력 및 과거 경력
             </h3>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
-              <div><span className="font-bold">최종 학력:</span> {statement.finalEducation}</div>
+              <div><span className="font-bold">최종 학력:</span> {statement.finalEducation || '미기재'}</div>
             </div>
 
             <table className="w-full text-xs border border-slate-300">
@@ -156,13 +157,13 @@ export default function PrintableCourtStatementModal({
               {statement.pastHistory.hasPastCase ? (
                 <div className="space-y-1">
                   <span className="font-bold text-amber-700">이용 경험 있음:</span>{' '}
-                  {statement.pastHistory.year || ''}년경 {statement.pastHistory.courtOrAgency || '법원'}{' '}
+                  {statement.pastHistory.year ? `${String(statement.pastHistory.year).replace(/년$/, '')}년경` : '시기 미기재'} {statement.pastHistory.courtOrAgency || '법원'}{' '}
                   (사건번호: {statement.pastHistory.caseNumber || '기억나지 않음'})
                   {statement.pastHistory.resultStatus && ` - 결과: ${statement.pastHistory.resultStatus}`}
                 </div>
               ) : (
                 <span className="text-slate-700 font-bold">
-                  해당 없음 (과거 개인회생, 파산면책, 워크아웃 신청 이력이 전무한 최초 신청자임)
+                  해당 없음 (신청인 진술: 과거 개인회생·파산면책·워크아웃 신청 이력 없음)
                 </span>
               )}
             </div>
@@ -216,7 +217,7 @@ export default function PrintableCourtStatementModal({
                 (1) 채무 발생의 최초 원인
               </h4>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl leading-relaxed text-xs text-slate-800 font-serif whitespace-pre-wrap">
-                {s.initialCauseDetail || '신청인은 불가피한 생계비 및 고정지출 발생으로 인하여 최초 금융거래를 시작하게 되었습니다.'}
+                {s.initialCauseDetail || '[미작성]'}
               </div>
             </div>
 
@@ -227,7 +228,7 @@ export default function PrintableCourtStatementModal({
                 (2) 채무가 점차 증대된 구체적 경위
               </h4>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl leading-relaxed text-xs text-slate-800 font-serif whitespace-pre-wrap">
-                {s.growthProcessDetail || '이후 이자 부담이 가중되고 돌려막기를 거듭하면서 채무가 지속적으로 증가하였습니다.'}
+                {s.growthProcessDetail || '[미작성]'}
               </div>
             </div>
 
@@ -238,7 +239,7 @@ export default function PrintableCourtStatementModal({
                 (3) 지급불능에 이르게 된 결정적 사정
               </h4>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl leading-relaxed text-xs text-slate-800 font-serif whitespace-pre-wrap">
-                {s.insolvencyTriggerDetail || '수입 대비 원리금 상환액이 초과되어 최종적으로 지급불능 상태에 도달하였습니다.'}
+                {s.insolvencyTriggerDetail || '[미작성]'}
               </div>
             </div>
 
@@ -249,7 +250,7 @@ export default function PrintableCourtStatementModal({
                 (4) 신청인의 반성과 향후 갱생 다짐
               </h4>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl leading-relaxed text-xs text-slate-800 font-serif whitespace-pre-wrap">
-                {s.resolutionAndApology || '채권자분들께 사죄드리며, 법원의 결정에 따라 성실히 변제계획을 수행하겠습니다.'}
+                {s.resolutionAndApology || '[미작성]'}
               </div>
             </div>
           </div>
@@ -275,7 +276,7 @@ export default function PrintableCourtStatementModal({
                     { key: 'preferentialPayment', label: '3. 파산 직전 친인척 채무만 우선 변제 (편파변제)' },
                     { key: 'concealmentOfAssets', label: '4. 재산 은닉, 타인 명의 이전, 헐값 처분' },
                     { key: 'falseCreditorList', label: '5. 채권자목록 고의 누락 (허위 작성)' },
-                    { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산)/5년(회생) 이내 면책 이력' },
+                    { key: 'pastDischargeWithinYears', label: '6. 면책신청 전 7년 이내 파산면책 또는 5년 이내 개인회생면책(제624조) 이력' },
                     { key: 'falseReportToTrustee', label: '7. 파산관재인에 대한 허위 진술 및 거부' },
                     { key: 'creditTransactionBeforeFiling', label: '8. 파산 직전 무리한 신용카드/대출 발생' },
                   ].map(item => {
@@ -287,7 +288,7 @@ export default function PrintableCourtStatementModal({
                           {isChecked ? <span className="text-rose-600">해당</span> : <span className="text-emerald-700">해당없음</span>}
                         </td>
                         <td className="border border-slate-300 p-2 text-slate-500">
-                          {isChecked ? '별도 소명서 첨부' : '법정 요건 부합'}
+                          {isChecked ? '별도 소명서 첨부' : '해당 없음(신청인 진술)'}
                         </td>
                       </tr>
                     );

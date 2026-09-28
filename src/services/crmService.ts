@@ -43,7 +43,7 @@ export function getCrmExt(clientId: string): CrmClientExtension {
 }
 
 /** 특정 고객의 CRM 데이터 부분 업데이트 (단축 alias) */
-export async function updateCrmExt(clientId: string, updates: Partial<CrmClientExtension>): Promise<void> {
+export async function updateCrmExt(clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> {
   return updateCrmClientExtension(clientId, updates);
 }
 
@@ -54,7 +54,7 @@ export function getCrmClientSync(clientId: string): CrmClientExtension | null {
 }
 
 /** 특정 고객의 CRM 데이터를 부분 업데이트하고 저장 및 브로드캐스트 */
-export async function updateCrmClientExtension(clientId: string, updates: Partial<CrmClientExtension>): Promise<void> {
+export async function updateCrmClientExtension(clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   const current = store[clientId] || createDefaultCrmExtension(clientId);
   const updated: CrmClientExtension = {
@@ -62,7 +62,7 @@ export async function updateCrmClientExtension(clientId: string, updates: Partia
     ...updates,
     lastActivityAt: new Date().toISOString()
   };
-  await saveCrmClient(clientId, updated);
+  return saveCrmClient(clientId, updated);
 }
 
 // ── CRM Client Extension 관리 ──
@@ -79,6 +79,8 @@ export async function loadCrmData(): Promise<CrmDataStore> {
         const store: CrmDataStore = {};
         data.forEach((row: any) => {
           store[row.client_id] = {
+            // 확장 필드(진술서·D5102·D5103·소명표 등) 먼저 복원 후 고정 컬럼으로 덮어씀 (migration 016)
+            ...(row.extension_data || {}),
             crmStatus: row.crm_status || 'requested',
             assigneeId: row.assignee_id || row.assigned_lawyer_id || row.assigned_consultant_id || row.assigned_staff_id,
             assignedLawyerId: row.assigned_lawyer_id,
@@ -120,7 +122,8 @@ export async function loadCrmData(): Promise<CrmDataStore> {
   return store;
 }
 
-export async function saveCrmClient(clientId: string, ext: CrmClientExtension): Promise<void> {
+/** @returns 서버(Supabase) 저장 성공 여부 — 미설정 환경에서는 로컬 저장만 하고 true */
+export async function saveCrmClient(clientId: string, ext: CrmClientExtension): Promise<boolean> {
   // Always save to localStorage
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   store[clientId] = ext;
@@ -129,7 +132,11 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
   // Also persist to Supabase if configured
   if (isSupabaseConfigured) {
     try {
-      await supabase.from('crm_clients').upsert({
+      // 고정 컬럼에 없는 확장 필드(진술서·D5102·D5103·소명표·13단계 등)는 extension_data(jsonb)에 통째로 보관
+      // (migration 016). 파일 본문(uploadedFiles)은 기존 uploaded_files 컬럼을 사용하므로 중복 저장하지 않는다.
+      // 인증서 금고(certificateVault)는 개인키 원본이 포함되므로 서버 jsonb로 절대 전송하지 않는다.
+      const { uploadedFiles: _files, certificateVault: _vault, ...extensionData } = ext as CrmClientExtension & { certificateVault?: unknown };
+      const baseRow = {
         client_id: clientId,
         crm_status: ext.crmStatus,
         assignee_id: ext.assigneeId,
@@ -154,11 +161,24 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
         court_case: ext.courtCase,
         alimtok_logs: ext.alimtokLogs,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'client_id' });
+      };
+      let { error } = await supabase
+        .from('crm_clients')
+        .upsert({ ...baseRow, extension_data: extensionData }, { onConflict: 'client_id' });
+      // migration 016 미적용(extension_data 컬럼 없음) → 기존 컬럼만으로 재시도
+      if (error && (error.code === 'PGRST204' || /extension_data/i.test(error.message || ''))) {
+        ({ error } = await supabase.from('crm_clients').upsert(baseRow, { onConflict: 'client_id' }));
+      }
+      if (error) {
+        console.warn('[CRM] Supabase save failed', error.message);
+        return false;
+      }
     } catch (e) {
       console.warn('[CRM] Supabase save failed', e);
+      return false;
     }
   }
+  return true;
 }
 
 // ── Staff (직원) 관리 ──
@@ -660,12 +680,13 @@ export async function submitClientDocument(
   linkedDocId?: string
 ): Promise<void> {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const ext = store[clientId];
-  if (!ext) return;
+  // CRM 레코드가 아직 없는 의뢰인도 제출이 버려지지 않도록 기본 레코드 생성
+  const ext = store[clientId] || createDefaultCrmExtension(clientId);
 
-  // uploadedFiles에 추가
+  // uploadedFiles에 추가 (파일 ID가 없으면 생성 — 체크리스트 연결에 필요)
   const newFile: DocumentFile = {
     ...file,
+    id: file.id || `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     uploadSource: 'client',
     linkedDocId: linkedDocId,
     reviewStatus: 'submitted',
@@ -674,7 +695,7 @@ export async function submitClientDocument(
 
   // 체크리스트 항목과 매핑
   if (linkedDocId) {
-    ext.documents = ext.documents.map(d =>
+    ext.documents = (ext.documents || []).map(d =>
       d.id === linkedDocId ? {
         ...d,
         reviewStatus: 'submitted' as DocumentReviewStatus,
@@ -697,7 +718,8 @@ export async function submitClientDocument(
   }
 
   ext.lastActivityAt = new Date().toISOString();
-  await saveCrmClient(clientId, ext);
+  const synced = await saveCrmClient(clientId, ext);
+  if (!synced) throw new Error('서버 저장 실패');
 }
 
 /** 전자계약 체결 시 CRM 동기화 (수임료, 분납스케줄, 진행상태, 활동로그 일괄 업데이트) */

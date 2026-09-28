@@ -162,13 +162,15 @@ export async function fetchDebtDiscoveryResults(params: {
 
   const result: DebtDiscoveryResult = {
     ...json.data,
-    isLiveB2B: json.isLiveB2B
+    isLiveB2B: json.isLiveB2B === true && json.simulated !== true
   };
 
-  // 클라이언트 캐싱
-  try {
-    localStorage.setItem(`${CACHE_STORAGE_KEY}${params.clientName}`, JSON.stringify(result));
-  } catch {}
+  // 시연용 데이터는 캐싱하지 않는다 (실제 조회 결과로 오인 방지)
+  if (result.isLiveB2B) {
+    try {
+      localStorage.setItem(`${CACHE_STORAGE_KEY}${params.clientName}`, JSON.stringify(result));
+    } catch {}
+  }
 
   return result;
 }
@@ -195,7 +197,7 @@ export function convertDiscoveryToRepaymentCreditors(
   let seq = startIndex;
   const result: RepaymentCreditor[] = [];
 
-  // 1. 우선권 채권 (조세 및 공과금 체납) 우선 편성 (법 제415조)
+  // 1. 우선권 채권 (조세 및 공과금 체납) 우선 편성 (채무자회생법 제583조 우선권 있는 개인회생채권)
   selectedTaxes.forEach((tax) => {
     const addressPreset = matchCreditorPreset(tax.agencyName);
     result.push({

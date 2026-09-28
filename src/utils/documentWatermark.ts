@@ -2,13 +2,10 @@
 // ============================================================
 // [Zero-Trust Document Security] 법원 제출용 비가역 반투명 워터마크 엔진
 // 
-// 1. 법원 실무 요건 100% 충족:
-//    - 신청인(본인) 주민등록번호 13자리 완전 보존 (보정권고 방지)
-//    - 성명, 발급일자, 직인, 사진 가독성 100% 보장 (Alpha 0.15 은은한 반투명)
-//    - 사건 메타데이터는 신분증 본문을 침범하지 않도록 하단 여백 밴드에 분리 배치
-// 2. 금융/통신 범죄 원천 차단:
-//    - 사본 및 법원 제출 전용 워터마크가 픽셀에 영구 결합되어 비대면 개통 AI가 100% 거절
-//    - EXIF(GPS 위치, 기기 식별값) 자동 소거
+// - 본문(주민등록번호 등)은 가리지 않도록 반투명(Alpha 0.15) 대각선 문구만 얹고,
+//   업로드 정보는 이미지 아래 별도 여백 밴드에 기록한다.
+// - 사본 용도 제한 문구로 타 용도 도용을 어렵게 하는 목적 (완전한 차단을 보장하지 않음)
+// - JPEG 재인코딩으로 EXIF(GPS 등) 메타데이터가 제거된다.
 // ============================================================
 
 export interface WatermarkOptions {
@@ -78,16 +75,15 @@ export async function applyCourtSubmissionWatermark(
     ctx.translate(width / 2, height / 2);
     ctx.rotate((-28 * Math.PI) / 180); // -28도 회전
 
-    // 글자 크기 동적 산출
-    const fontSize = Math.max(18, Math.round(width / 22));
+    const primaryText = '[개인회생·파산 법원 제출용 사본 - 타 용도 사용 불가]';
+    // 문구가 대각선 길이를 넘어 잘리지 않도록 글자 크기 산출
+    const diag = Math.sqrt(width * width + height * height);
+    const fontSize = Math.max(14, Math.min(Math.round(width / 22), Math.floor((diag * 0.85) / primaryText.length)));
     ctx.font = `bold ${fontSize}px "Pretendard", "Apple SD Gothic Neo", -apple-system, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const primaryText = '[개인회생·파산 법원 제출 전용 - 타 용도 사용 불가 / 금융·통신 개통 금지]';
-
-    // [중요 법원 가독성 세팅] Alpha 0.15 반투명: 본문 글자 가림 없이 판독 100% 보장
-    // 은은한 붉은 틴트(경고 효과) + 얇은 테두리로 비대면 개통 OCR AI는 100% 감지
+    // Alpha 0.15 반투명: 본문 글자를 가리지 않도록 옅게 표시
     ctx.fillStyle = 'rgba(220, 38, 38, 0.15)';
     ctx.fillText(primaryText, 0, 0);
 
@@ -118,7 +114,8 @@ export async function applyCourtSubmissionWatermark(
   ctx.textBaseline = 'middle';
 
   const today = new Date().toISOString().split('T')[0];
-  const metaText = `🛡️ my김변 보안인증 법원제출본 | 의뢰인: ${clientName} | 사건: ${requestId || '접수진행'} | 일시: ${today}`;
+  // 플랫폼이 서류의 진위를 '인증'하는 것처럼 보이지 않도록 업로드 사실만 기재
+  const metaText = `마이김변 업로드 사본 | 제출자: ${clientName} | 업로드일: ${today}`;
   ctx.fillText(metaText, Math.round(width * 0.025), height + metaBandHeight / 2);
   ctx.restore();
 

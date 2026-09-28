@@ -124,6 +124,265 @@ export default async function handler(req, res) {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // 0-1. [IDENTITY-VERIFY] 포트원 V2 본인인증 결과 서버 검증
+  //   - 브라우저 SDK 결과는 위조 가능하므로, 서버가 PORTONE_API_SECRET으로 단건 조회해 VERIFIED 여부와 실명을 확인한다.
+  //   - 비로그인 원격 서명 사용자는 contractId + remoteSignToken 쌍으로 인가한다.
+  //   - CI/DI 원문은 클라이언트로 돌려보내지 않는다 (중복 확인용 해시만 반환).
+  // ─────────────────────────────────────────────────────────────
+  if (action === 'identity-verify') {
+    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    const { identityVerificationId, contractId, remoteSignToken } = req.body || {};
+    if (!identityVerificationId || typeof identityVerificationId !== 'string' || identityVerificationId.length > 200) {
+      return res.status(400).json({ ok: false, error: 'identityVerificationId가 올바르지 않습니다.' });
+    }
+
+    let isAuthorized = false;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try { if (await verifyAuth(req)) isAuthorized = true; } catch (_) {}
+    }
+    if (!isAuthorized && contractId && remoteSignToken && supabase) {
+      try {
+        const { data: row } = await supabase
+          .from('electronic_contracts')
+          .select('id, remote_sign_token')
+          .eq('id', contractId)
+          .maybeSingle();
+        if (row && typeof row.remote_sign_token === 'string' && row.remote_sign_token.length > 0) {
+          const a = Buffer.from(row.remote_sign_token);
+          const b = Buffer.from(String(remoteSignToken));
+          isAuthorized = a.length === b.length && crypto.timingSafeEqual(a, b);
+        }
+      } catch (_) {}
+    }
+    if (!isAuthorized) {
+      return res.status(401).json({ ok: false, error: '인증 정보가 없거나 서명 링크가 유효하지 않습니다.' });
+    }
+
+    const secret = process.env.PORTONE_API_SECRET;
+    if (!secret) {
+      return res.status(503).json({ ok: false, error: '본인인증 서버 검증이 설정되지 않았습니다. (PORTONE_API_SECRET 미설정)' });
+    }
+
+    try {
+      const pr = await fetch(`https://api.portone.io/identity-verifications/${encodeURIComponent(identityVerificationId)}`, {
+        headers: { Authorization: `PortOne ${secret}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!pr.ok) {
+        return res.status(502).json({ ok: false, error: `본인인증 내역을 조회하지 못했습니다. (${pr.status})` });
+      }
+      const detail = await pr.json();
+      if (detail?.status !== 'VERIFIED' || !detail?.verifiedCustomer?.name) {
+        return res.status(200).json({ ok: false, error: '본인인증이 완료되지 않았습니다.', status: detail?.status || 'UNKNOWN' });
+      }
+      const vc = detail.verifiedCustomer;
+      return res.status(200).json({
+        ok: true,
+        status: 'VERIFIED',
+        verifiedAt: detail.verifiedAt || new Date().toISOString(),
+        verifiedCustomer: {
+          name: vc.name,
+          phoneNumber: vc.phoneNumber || '',
+          birthDate: vc.birthDate || '',
+          gender: vc.gender || '',
+          isForeigner: !!vc.isForeigner,
+          operator: vc.operator || '',
+          ciHash: vc.ci ? crypto.createHash('sha256').update(vc.ci).digest('hex') : '',
+        },
+        // 서버가 본 접속 IP (감사 로그용)
+        clientIp: ip,
+      });
+    } catch (e) {
+      console.error('[identity-verify] PortOne lookup failed', e?.message);
+      return res.status(502).json({ ok: false, error: '본인인증 검증 중 오류가 발생했습니다.' });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 0-2. [REMOTE-SIGN] 비로그인 원격 서명 저장 (service role + 서명 토큰 인가)
+  //   electronic_contracts UPDATE RLS는 로그인 사용자 전용이라, 문자 링크로 들어온 의뢰인의
+  //   본인인증·서명이 서버에 저장되지 않던 문제를 해결한다. 클라이언트가 보낸 계약 전체를
+  //   덮어쓰지 않고, 서버가 허용된 필드만 갱신한다.
+  //   stage='identity'  : 포트원 단건 조회로 실명 확인 → (가명 계약이면) 실명 전환, 아니면 이름 대조
+  //   stage='signature' : 본인인증 완료 계약에만 서명·확약 문구 저장 (1회), 변호사 서명이 있으면 해시 봉인
+  // ─────────────────────────────────────────────────────────────
+  if (action === 'remote-sign') {
+    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    const body = req.body || {};
+    const { contractId, remoteSignToken, stage } = body;
+    if (!contractId || !remoteSignToken || !['identity', 'signature'].includes(stage)) {
+      return res.status(400).json({ ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ ok: false, error: '서명 저장 서버가 설정되지 않았습니다.' });
+    }
+
+    const { data: row, error: rowErr } = await supabase
+      .from('electronic_contracts').select('*').eq('id', contractId).maybeSingle();
+    if (rowErr || !row || typeof row.remote_sign_token !== 'string' || !row.remote_sign_token) {
+      return res.status(404).json({ ok: false, error: '계약서를 찾을 수 없습니다.' });
+    }
+    const tA = Buffer.from(row.remote_sign_token);
+    const tB = Buffer.from(String(remoteSignToken));
+    if (tA.length !== tB.length || !crypto.timingSafeEqual(tA, tB)) {
+      return res.status(401).json({ ok: false, error: '유효하지 않은 서명 링크입니다.' });
+    }
+
+    const docs = Array.isArray(row.documents) ? row.documents : [];
+    const alreadySigned = row.status === 'completed' || docs.some(d => d && d.included && d.clientSignature);
+    if (alreadySigned) {
+      return res.status(409).json({ ok: false, error: '이미 서명이 완료된 계약서입니다.' });
+    }
+
+    const now = new Date().toISOString();
+    const ua = String(req.headers['user-agent'] || '').slice(0, 200);
+    const audit = Array.isArray(row.audit_trail) ? row.audit_trail : [];
+    const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+
+    if (stage === 'identity') {
+      const secret = process.env.PORTONE_API_SECRET;
+      const idvId = body.identityVerificationId;
+      if (!secret) return res.status(503).json({ ok: false, error: '본인인증 서버 검증이 설정되지 않았습니다.' });
+      if (!idvId || typeof idvId !== 'string' || idvId.length > 200) {
+        return res.status(400).json({ ok: false, error: 'identityVerificationId가 올바르지 않습니다.' });
+      }
+      let detail;
+      try {
+        const pr = await fetch(`https://api.portone.io/identity-verifications/${encodeURIComponent(idvId)}`, {
+          headers: { Authorization: `PortOne ${secret}` }, signal: AbortSignal.timeout(10000),
+        });
+        if (!pr.ok) return res.status(502).json({ ok: false, error: `본인인증 내역을 조회하지 못했습니다. (${pr.status})` });
+        detail = await pr.json();
+      } catch (e) {
+        return res.status(502).json({ ok: false, error: '본인인증 검증 중 오류가 발생했습니다.' });
+      }
+      const vc = detail?.verifiedCustomer;
+      if (detail?.status !== 'VERIFIED' || !vc?.name) {
+        return res.status(200).json({ ok: false, error: '본인인증이 완료되지 않았습니다.' });
+      }
+      const realName = String(vc.name).trim();
+      const realPhone = String(vc.phoneNumber || '').replace(/\D/g, '');
+      const providerName = String(body.providerName || '포트원 본인인증').slice(0, 60);
+      const identity = {
+        method: `portone_${String(body.provider || 'unknown').slice(0, 10)}`,
+        providerName,
+        name: realName,
+        phoneMasked: realPhone ? realPhone.replace(/(\d{3})\d{3,4}(\d{4})/, '$1-****-$2') : undefined,
+        birthDate: vc.birthDate || undefined,
+        carrier: vc.operator || undefined,
+        txId: idvId,
+        certifiedAt: detail.verifiedAt || now,
+        ci: vc.ci ? sha256(vc.ci) : undefined,
+        isForeigner: !!vc.isForeigner,
+        deviceInfo: ua,
+        ipAddress: ip,
+      };
+
+      const patch = { identity_verification: identity, updated_at: now };
+      if (row.real_name_conversion_pending && !row.is_business) {
+        const alias = String(row.client_name || '');
+        const swap = (t) => (alias && alias !== realName && typeof t === 'string') ? t.split(alias).join(realName) : t;
+        patch.client_name = realName;
+        if (realPhone) patch.client_phone = realPhone;
+        patch.documents = docs.map(d => ({ ...d, content: swap(d.content) }));
+        patch.real_name_conversion_pending = false;
+        patch.authority_status = 'REPRESENTATIVE_VERIFIED';
+        patch.audit_trail = [...audit, { action: `본인인증(${providerName}) 완료 — 가명 계약 당사자를 인증된 실명으로 전환`, timestamp: now, actor: 'client', ip, userAgent: ua }];
+      } else {
+        const expected = String((row.is_business ? row.business_info?.representativeName : null) || row.client_name || '').replace(/\s+/g, '');
+        if (!expected || expected !== realName.replace(/\s+/g, '')) {
+          return res.status(200).json({ ok: false, error: '본인인증된 이름이 계약서의 위임인(대표자) 이름과 일치하지 않습니다. 담당 변호사에게 문의해 주세요.' });
+        }
+        const expPhone = String(row.client_phone || '').replace(/\D/g, '');
+        if (expPhone && realPhone && expPhone.slice(-8) !== realPhone.slice(-8)) {
+          return res.status(200).json({ ok: false, error: '본인인증된 휴대폰 번호가 계약서에 등록된 연락처와 다릅니다. 담당 변호사에게 연락처 확인을 요청해 주세요.' });
+        }
+        patch.authority_status = 'REPRESENTATIVE_VERIFIED';
+        patch.audit_trail = [...audit, { action: `본인인증(${providerName}) 완료 — 위임인 실명 일치 확인`, timestamp: now, actor: 'client', ip, userAgent: ua }];
+      }
+
+      const { data: updated, error: upErr } = await supabase
+        .from('electronic_contracts').update(patch).eq('id', contractId).select('*').maybeSingle();
+      if (upErr || !updated) return res.status(500).json({ ok: false, error: '인증 결과를 저장하지 못했습니다.' });
+      return res.status(200).json({ ok: true, contract: updated });
+    }
+
+    // stage === 'signature'
+    if (!row.identity_verification || !row.identity_verification.txId) {
+      return res.status(409).json({ ok: false, error: '본인인증을 먼저 완료해 주세요.' });
+    }
+    const sig = body.clientSignature;
+    if (typeof sig !== 'string' || !sig.startsWith('data:image/png;base64,') || sig.length < 2000 || sig.length > 800000) {
+      return res.status(400).json({ ok: false, error: '서명 이미지가 올바르지 않습니다. 다시 서명해 주세요.' });
+    }
+    const confirmations = body.confirmations && typeof body.confirmations === 'object' ? body.confirmations : {};
+    for (const d of docs) {
+      if (d && d.included && d.requiredConfirmationText) {
+        const typed = String(confirmations[d.id] || '').trim();
+        if (typed !== String(d.requiredConfirmationText).trim()) {
+          return res.status(400).json({ ok: false, error: `[${d.title}] 중요 조항 확인 문구가 일치하지 않습니다.` });
+        }
+      }
+    }
+    const agreedTerms = Array.isArray(body.agreedTerms) ? body.agreedTerms.map(t => String(t).slice(0, 40)).slice(0, 10) : [];
+    if (agreedTerms.length < 4) {
+      return res.status(400).json({ ok: false, error: '필수 약관에 모두 동의해 주세요.' });
+    }
+
+    const signedDocs = docs.map(d => {
+      if (!d || !d.included) return d;
+      return {
+        ...d,
+        clientSignature: sig,
+        clientSignedAt: now,
+        clientConfirmationText: d.requiredConfirmationText ? String(confirmations[d.id] || '').trim() : undefined,
+        confirmedAt: d.requiredConfirmationText ? now : undefined,
+      };
+    });
+    const patch = {
+      documents: signedDocs,
+      intent_verification: { scrollCompleted: false, agreedTerms },
+      updated_at: now,
+      audit_trail: [...audit, { action: `위임인(${row.client_name}) 본인인증 후 약관 ${agreedTerms.length}개 동의·중요조항 확인·전자서명 제출`, timestamp: now, actor: 'client', ip, userAgent: ua }],
+    };
+
+    // 변호사 서명이 이미 있으면 서버에서 해시 봉인 (integrityService와 동일 산식)
+    const lawyerSig = docs.find(d => d && d.lawyerSignature)?.lawyerSignature;
+    // src/services/integrityService.ts canonicalStringify와 동일 규칙 (키 정렬, null/undefined 키 제외)
+    const canonicalStringify = (v) => {
+      if (v === null || v === undefined) return 'null';
+      if (Array.isArray(v)) return `[${v.map(canonicalStringify).join(',')}]`;
+      if (typeof v === 'object') {
+        const keys = Object.keys(v).filter(k => v[k] !== null && v[k] !== undefined).sort();
+        return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalStringify(v[k])}`).join(',')}}`;
+      }
+      return JSON.stringify(v);
+    };
+    if (lawyerSig) {
+      const originalHash = sha256(canonicalStringify({
+        id: row.id,
+        clientName: row.client_name,
+        clientPhone: row.client_phone,
+        businessInfo: row.business_info,
+        lawyerName: row.lawyer_name,
+        totalFee: row.total_fee,
+        feeSchedule: row.fee_schedule || [],
+        contractDate: row.contract_date,
+        documents: signedDocs.map(d => ({ id: d.id, title: d.title, content: d.content })),
+      }));
+      const finalHash = sha256(`${originalHash}::CLIENT_SIG_SHA256:${sha256(sig)}::LAWYER_SIG_SHA256:${sha256(lawyerSig)}::AT:${now}`);
+      patch.status = 'completed';
+      patch.document_hashes = { originalHash, finalHash, algorithm: 'SHA-256', signedAt: now };
+      patch.audit_trail.push({ action: '계약 체결 완료 (양 당사자 서명)', timestamp: now, actor: 'system', documentHash: finalHash, details: `SHA-256 원본: ${originalHash.slice(0, 16)}... | 체결본: ${finalHash.slice(0, 16)}...`, ip, userAgent: ua });
+    }
+
+    const { data: updated, error: upErr } = await supabase
+      .from('electronic_contracts').update(patch).eq('id', contractId).select('*').maybeSingle();
+    if (upErr || !updated) return res.status(500).json({ ok: false, error: '서명을 저장하지 못했습니다.' });
+    return res.status(200).json({ ok: true, contract: updated });
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // 1. [STATUS] 블록체인 노드 연결 및 릴레이어 지갑 상태 조회
   // ─────────────────────────────────────────────────────────────
   if (action === 'status') {

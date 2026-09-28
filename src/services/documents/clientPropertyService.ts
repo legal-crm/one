@@ -63,8 +63,9 @@ export class ClientPropertyService {
     try {
       const key = `${CLIENT_PROPERTY_STORAGE_PREFIX}${data.clientId}`;
       const serialized = JSON.stringify(recalculated);
+      // secureStorage에만 저장 (평문 localStorage 중복 저장 제거 — 재산 정보 노출 방지)
       secureSetItem(key, serialized);
-      localStorage.setItem(key, serialized);
+      localStorage.removeItem(key);
     } catch (e) {
       console.warn('[ClientPropertyService] Failed to save to storage:', e);
     }
@@ -74,10 +75,10 @@ export class ClientPropertyService {
   /**
    * 담당 변호사에게 재산 기초자료 전달 (상태 변경 및 CRM 동기화)
    */
-  static submitToLawyer(
+  static async submitToLawyer(
     data: PropertyListD5102Data,
-    onSyncCrmExt?: (updates: { propertyListD5102: PropertyListD5102Data }) => Promise<void> | void
-  ): PropertyListD5102Data {
+    onSyncCrmExt?: (updates: { propertyListD5102: PropertyListD5102Data }) => Promise<boolean | void> | boolean | void
+  ): Promise<{ data: PropertyListD5102Data; synced: boolean }> {
     const submittedData: PropertyListD5102Data = {
       ...recalculateD5102Totals(data),
       clientIntakeStatus: 'submitted_to_lawyer',
@@ -88,16 +89,18 @@ export class ClientPropertyService {
     // 로컬 저장
     this.saveClientData(submittedData);
 
-    // 변호사 CRM 동기화 콜백 호출
+    // 변호사 CRM 동기화 — 완료까지 기다리고 결과를 반환 (기존: 결과 확인 없이 성공 안내)
+    let synced = false;
     if (onSyncCrmExt) {
       try {
-        onSyncCrmExt({ propertyListD5102: submittedData });
+        const res = await onSyncCrmExt({ propertyListD5102: submittedData });
+        synced = res !== false;
       } catch (e) {
         console.warn('[ClientPropertyService] Failed to sync to lawyer CRM:', e);
       }
     }
 
-    return submittedData;
+    return { data: submittedData, synced };
   }
 
   /**

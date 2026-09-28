@@ -26,7 +26,7 @@ export interface JobHistoryImportParams {
 
 export interface JobHistoryImportResult {
   ok: boolean;
-  source: 'scraping_api' | 'vision_ocr' | 'mock_simulation';
+  source: 'scraping_api' | 'vision_ocr' | 'mock_simulation' | 'unavailable';
   totalCount: number;
   items: RetrievedJobHistoryItem[];
   queriedAt: string;

@@ -3,7 +3,7 @@ import {
   Sparkles, CheckCircle2, Clock, Users, ArrowRight, 
   MessageSquare, FileText, Check, ChevronRight, Scale, ShieldCheck 
 } from 'lucide-react';
-import type { ConsultProposal, ConsultRequest } from '../../../types';
+import type { ConsultProposal, ConsultRequest, User } from '../../../types';
 import ProposalAnalyzingCard from './ProposalAnalyzingCard';
 import ProposalHeroCard from './ProposalHeroCard';
 
@@ -14,6 +14,7 @@ interface ClientProposalTrackerProps {
   onNavigateToChat: (reqId?: string) => void;
   onStartContract: (proposal: ConsultProposal) => void;
   onOpenLawyerCompare?: () => void;
+  lawyers?: User[];
 }
 
 export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
@@ -22,7 +23,8 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
   onViewReport,
   onNavigateToChat,
   onStartContract,
-  onOpenLawyerCompare
+  onOpenLawyerCompare,
+  lawyers = [],
 }) => {
   const [selectedProposalIdx, setSelectedProposalIdx] = useState(0);
 
@@ -31,7 +33,8 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
 
   // 파이프라인 단계 계산
   // 1: 접수완료, 2: 작성중, 3: 제안서도착, 4: 추가상담/계약결정
-  const currentPipelineStep = hasProposals ? 3 : 2;
+  // 4단계(계약 결정)는 서명 대기 계약서가 있는 경우 — 트래커는 계약 전 화면에서만 노출되므로 현재 2/3단계만 사용
+  const currentPipelineStep: number = hasProposals ? 3 : 2;
 
   return (
     <div className="space-y-4">
@@ -141,6 +144,7 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
         <ProposalAnalyzingCard
           request={activeRequest}
           onNavigateToChat={() => onNavigateToChat(activeRequest?.id)}
+          lawyers={lawyers}
         />
       ) : (
         // 제안서 도착 완료 카드

@@ -30,8 +30,24 @@ export async function calculateSha256(data: string): Promise<string> {
 /**
  * 계약서 원본 내용(텍스트)으로부터 원본 SHA-256 해시 생성
  */
+/**
+ * 정규화 JSON 직렬화 — 키를 정렬하고 null/undefined 키는 제외한다.
+ * (DB JSONB 왕복 시 키 순서·null 처리 차이로 같은 계약서가 다른 해시가 되는 것을 방지)
+ * ※ api/contract.js의 canonicalStringify와 동일 규칙
+ */
+export function canonicalStringify(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (Array.isArray(value)) return `[${value.map(v => canonicalStringify(v)).join(',')}]`;
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).filter(k => obj[k] !== null && obj[k] !== undefined).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalStringify(obj[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
 export async function generateContractOriginalHash(contract: ElectronicContract): Promise<string> {
-  const seedString = JSON.stringify({
+  const seedString = canonicalStringify({
     id: contract.id,
     clientName: contract.clientName,
     clientPhone: contract.clientPhone,
@@ -55,8 +71,38 @@ export async function generateContractFinalHash(
   lawyerSignature: string,
   signedAt: string
 ): Promise<string> {
-  const seed = `${originalHash}::CLIENT_SIG:${clientSignature.slice(0, 100)}::LAWYER_SIG:${lawyerSignature.slice(0, 100)}::AT:${signedAt}`;
+  // 서명 이미지 전체의 SHA-256을 결합 (기존: 앞 100자만 사용 → PNG 헤더뿐이라 서명이 해시에 사실상 반영되지 않았음)
+  // ※ api/contract.js(remote-sign)와 동일 산식 — 한쪽을 바꾸면 다른 쪽도 같이 바꿀 것
+  const clientSigHash = await calculateSha256(clientSignature);
+  const lawyerSigHash = await calculateSha256(lawyerSignature);
+  const seed = `${originalHash}::CLIENT_SIG_SHA256:${clientSigHash}::LAWYER_SIG_SHA256:${lawyerSigHash}::AT:${signedAt}`;
   return calculateSha256(seed);
+}
+
+export type IntegrityCheckStatus = 'match' | 'mismatch' | 'unsigned' | 'unsupported';
+
+/**
+ * 저장된 계약서 내용·서명으로 전자지문을 다시 계산해 봉인 당시 값과 비교한다.
+ * - 'match'      : 체결 이후 계약서 본문·서명이 바뀌지 않음
+ * - 'mismatch'   : 재계산 값이 다름 (체결 후 변경되었거나 저장본 손상)
+ * - 'unsigned'   : 아직 양 당사자 서명·봉인 전
+ * - 'unsupported': 이전 방식으로 봉인되어 재계산 검증을 지원하지 않음
+ */
+export async function verifyContractIntegrity(contract: ElectronicContract): Promise<{
+  status: IntegrityCheckStatus;
+  recomputedFinalHash?: string;
+}> {
+  const stored = contract.documentHashes;
+  if (!stored?.finalHash) return { status: 'unsigned' };
+  if (!stored.signedAt) return { status: 'unsupported' };
+  const included = contract.documents.filter(d => d.included);
+  const clientSig = included.find(d => d.clientSignature)?.clientSignature;
+  const lawyerSig = contract.documents.find(d => d.lawyerSignature)?.lawyerSignature;
+  if (!clientSig || !lawyerSig) return { status: 'mismatch' };
+  const original = await generateContractOriginalHash(contract);
+  const finalHash = await generateContractFinalHash(original, clientSig, lawyerSig, stored.signedAt);
+  const ok = original === stored.originalHash && finalHash === stored.finalHash;
+  return { status: ok ? 'match' : 'mismatch', recomputedFinalHash: finalHash };
 }
 
 /**
@@ -152,23 +198,24 @@ export function buildAuditTrailCertificateData(contract: ElectronicContract): Au
     },
     identity: {
       signerName: idv?.name || contract.clientName,
-      carrier: idv?.carrier || 'SK Telecom / KISA 공인 본인확인',
-      txId: idv?.txId || `TX-LOCAL-${Date.now()}`,
-      certifiedAt: idv?.certifiedAt || contract.contractDate,
-      deviceInfo: idv?.deviceInfo ? (idv.deviceInfo.length > 50 ? idv.deviceInfo.slice(0, 50) + '...' : idv.deviceInfo) : 'Mobile WebKit (iOS/Android)',
-      ipAddress: idv?.ipAddress || '211.234.12.89',
+      // 기록이 없으면 그럴듯한 값을 지어내지 않고 '기록 없음'으로 표시
+      carrier: idv?.carrier || idv?.providerName || '기록 없음',
+      txId: idv?.txId || '기록 없음',
+      certifiedAt: idv?.certifiedAt || '',
+      deviceInfo: idv?.deviceInfo ? (idv.deviceInfo.length > 50 ? idv.deviceInfo.slice(0, 50) + '...' : idv.deviceInfo) : '기록 없음',
+      ipAddress: idv?.ipAddress || '기록 없음',
     },
     intent: {
-      scrollCompleted: contract.intentVerification?.scrollCompleted ?? true,
-      viewDurationText: contract.intentVerification?.viewDurationSeconds ? `${contract.intentVerification.viewDurationSeconds}초 열람 완료` : '전문 스크롤 열람 완료',
+      scrollCompleted: contract.intentVerification?.scrollCompleted ?? false,
+      viewDurationText: contract.intentVerification?.viewDurationSeconds ? `${contract.intentVerification.viewDurationSeconds}초 열람` : '열람 시간 기록 없음',
       signatureMethod: '스마트폰 터치 캔버스 자필 서명 날인 (PNG)',
-      agreedTermsCount: contract.intentVerification?.agreedTerms?.length || 3,
+      agreedTermsCount: contract.intentVerification?.agreedTerms?.length || 0,
     },
     integrity: {
-      originalHash: hashes?.originalHash || 'a8f5c4e92b1034d8719283746152bc41902746193fe1209a827361849201abcd',
-      finalHash: hashes?.finalHash || '7e2b19f0c84139a0491823746193fe1209a8f5c4e92b1034d8719283746152bc',
-      timestampToken: ts?.token || `TS-${Date.now()}-9821-0242ac120002`,
-      algorithm: 'SHA-256 (FIPS 180-4 표준)',
+      originalHash: hashes?.originalHash || '미생성',
+      finalHash: hashes?.finalHash || '미생성 (양 당사자 서명 전)',
+      timestampToken: ts?.token || '-',
+      algorithm: 'SHA-256',
     },
   };
 }
