@@ -1,102 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Scale, Briefcase, FileText, Calculator, CheckCircle2, 
-  Printer, ShieldCheck, Download, ExternalLink, ArrowRight, 
-  Lock, Sparkles, AlertCircle, Building2, Smartphone, UserCheck, 
-  Layers, Check, Copy, ChevronRight, HelpCircle
+import {
+  Scale, FileText, Calculator, Printer, AlertCircle, Mic, ArrowRight, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
-import confetti from 'canvas-confetti';
-import { 
-  getDocSharePackage, 
-  quickRegisterStaffOrLawyer, 
-  upgradeToFullPartner,
+import {
+  peekDocSharePackage,
+  openDocSharePackage,
   LawyerDocSharePackage,
-  RecipientRoleType
 } from '../../services/lawyerDocShareService';
 
 interface UnregisteredLawyerDocViewerProps {
   token: string;
+  /** @deprecated 역할 전환은 실제 로그인으로만 — 호환용으로 남겨 두지만 호출하지 않음 */
   onLawyerRegistered?: (lawyerId: string) => void;
   onNavigateHome?: () => void;
 }
 
+/**
+ * 변호사·사무장 서류 열람 (의뢰인이 공유한 링크)
+ * - 서버(doc_share_packages)에서 링크 확인 → 수신 휴대폰 번호 입력 시 서버가 대조 후 열람 (5회 오입력 잠금)
+ * - 기존의 '5초 간이 가입'·'정식 파트너 전환'은 본인 확인 없이 변호사 권한을 부여하고 가짜 사건을 CRM에 넣던 기능이라 제거
+ */
 export default function UnregisteredLawyerDocViewer({
   token,
-  onLawyerRegistered,
   onNavigateHome
 }: UnregisteredLawyerDocViewerProps) {
   const [pkg, setPkg] = useState<LawyerDocSharePackage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // 1단계: 간이 가입 여부 체크
-  const [isUnlocked, setIsUnlocked] = useState(false);
-
-  // 간이 가입 폼 상태
-  const [regName, setRegName] = useState('');
-  const [regRole, setRegRole] = useState<RecipientRoleType>('LAWYER');
-  const [regPhone, setRegPhone] = useState('');
-  const [regFirmName, setRegFirmName] = useState('');
-
-  // 서류 탭: 'statement' | 'incomeExpense' | 'property'
+  const [linkValid, setLinkValid] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [phoneLast4, setPhoneLast4] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isOpening, setIsOpening] = useState(false);
   const [activeTab, setActiveTab] = useState<'statement' | 'incomeExpense' | 'property'>('statement');
 
-  // 2단계: 정식 파트너 전환 모달
-  const [isUpgrading, setIsUpgrading] = useState(false);
-
   useEffect(() => {
-    const loaded = getDocSharePackage(token);
-    setPkg(loaded);
-    setIsLoading(false);
-
-    if (loaded) {
-      setRegName(loaded.recipientName || '');
-      setRegRole(loaded.recipientType || 'LAWYER');
-      setRegPhone(loaded.recipientPhone || '');
-      setRegFirmName(loaded.recipientFirmName || '');
-
-      // 이미 세션에 등록된 변호사/사무장인지 확인
-      try {
-        const sessionRaw = sessionStorage.getItem('mykimbyun_light_member');
-        if (sessionRaw) {
-          const member = JSON.parse(sessionRaw);
-          if (member.token === token || member.phone === loaded.recipientPhone) {
-            setIsUnlocked(true);
-          }
-        }
-      } catch {}
-    }
+    let cancelled = false;
+    peekDocSharePackage(token).then(r => {
+      if (cancelled) return;
+      setLinkValid(!!r.ok);
+      setLocked(!!r.locked);
+      setPhoneLast4(r.phoneLast4 || '');
+      setIsLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [token]);
+
+  const goHome = () => {
+    if (onNavigateHome) onNavigateHome();
+    else window.location.href = window.location.origin;
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs text-slate-400">보안 서류 패키지를 불러오는 중입니다...</p>
-        </div>
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4" role="status">
+        <p className="text-sm text-slate-300">서류 링크를 확인하는 중입니다...</p>
       </div>
     );
   }
 
-  if (!pkg) {
+  if (!linkValid || locked) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-            <AlertCircle className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-300 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" aria-hidden="true" />
           </div>
-          <h2 className="text-lg font-black text-white">서류 열람 기간이 만료되었거나 올바르지 않은 링크입니다</h2>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            보안을 위해 서류 공유 링크는 발송 후 7일간 유효합니다. 의뢰인에게 새 열람 링크 전송을 요청해 주세요.
+          <h2 className="text-lg font-black text-white">
+            {locked ? '확인 번호를 여러 번 잘못 입력해 열람이 잠겼습니다' : '만료되었거나 올바르지 않은 링크입니다'}
+          </h2>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            서류 공유 링크는 7일간 유효합니다. 의뢰인에게 새 링크를 요청해 주세요.
           </p>
-          <button
-            onClick={() => {
-              if (onNavigateHome) onNavigateHome();
-              else window.location.href = window.location.origin;
-            }}
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition"
-          >
+          <button type="button" onClick={goHome} className="px-5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold">
             마이김변 홈으로 이동
           </button>
         </div>
@@ -104,197 +80,64 @@ export default function UnregisteredLawyerDocViewer({
     );
   }
 
-  // 1단계: 5초 간이 가입 제출 처리
-  const handleQuickRegister = (e: React.FormEvent) => {
+  const handleOpen = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName.trim()) {
-      toast.error('변호사님 또는 사무장님의 성함을 입력해 주세요.');
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10) { toast.error('링크를 받은 휴대폰 번호를 입력해 주세요.'); return; }
+    setIsOpening(true);
+    const r = await openDocSharePackage(token, digits);
+    setIsOpening(false);
+    if (r.ok === false) {
+      if (r.reason === 'locked') { setLocked(true); return; }
+      if (r.reason === 'mismatch') { toast.error(`번호가 일치하지 않습니다. (남은 시도 ${r.remaining ?? 0}회)`); return; }
+      toast.error('서류를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
       return;
     }
-    if (!regPhone.trim()) {
-      toast.error('휴대폰 번호를 입력해 주세요.');
-      return;
-    }
-
-    const res = quickRegisterStaffOrLawyer({
-      token,
-      name: regName.trim(),
-      role: regRole,
-      phone: regPhone.trim(),
-      firmName: regFirmName.trim()
-    });
-
-    if (res.success) {
-      setIsUnlocked(true);
-      toast.success(`${regName} ${regRole === 'LAWYER' ? '변호사님' : '사무장님'} 인증 완료! 서류 열람실로 입장합니다.`);
-    }
-  };
-
-  // 2단계: 정식 파트너 변호사 회원 전환
-  const handleUpgradeToFull = () => {
-    setIsUpgrading(true);
-    const sessionRaw = sessionStorage.getItem('mykimbyun_light_member');
-    const member = sessionRaw ? JSON.parse(sessionRaw) : {};
-    const lawyerId = member.lawyerId || `lawyer_${Date.now()}`;
-
-    const res = upgradeToFullPartner({
-      lawyerId,
-      name: regName || pkg.recipientName,
-      role: regRole,
-      phone: regPhone || pkg.recipientPhone,
-      firmName: regFirmName || pkg.recipientFirmName || '법무법인 한빛',
-      token
-    });
-
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    } catch {}
-
-    toast.success('🎉 마이김변 정식 파트너 변호사로 전환되었습니다! 해당 의뢰인 사건이 CRM 수임 목록에 배속되었습니다.', {
-      duration: 5000
-    });
-
-    setTimeout(() => {
-      setIsUpgrading(false);
-      if (onLawyerRegistered) {
-        onLawyerRegistered(lawyerId);
-      } else {
-        // App role 전환
-        window.location.search = '?role=lawyer';
-      }
-    }, 1200);
+    setPkg(r.pkg);
   };
 
   const won = (n: number | undefined) => (n || 0).toLocaleString();
 
-  // ══════════════════════════════════════════════════════════
-  // GATE: 5초 간이 가입 화면 (미인증 상태)
-  // ══════════════════════════════════════════════════════════
-  if (!isUnlocked) {
+  // ══ GATE: 수신 휴대폰 번호 확인 ══
+  if (!pkg) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-left">
-          
+        <form onSubmit={handleOpen} className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-left">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-lg">
-              <Scale className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                마이김변 로펌 서류 열람실
-              </span>
-              <h2 className="text-lg font-black text-white mt-1">
-                변호사·사무장 서류 확인
-              </h2>
+              <h2 className="text-lg font-black text-white">의뢰인 공유 서류 열람</h2>
+              <p className="text-sm text-slate-300">링크를 받은 휴대폰 번호를 입력해 주세요.</p>
             </div>
           </div>
-
-          <div className="p-3.5 bg-slate-850 rounded-2xl border border-slate-800 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-400">전달 의뢰인:</span>
-              <span className="font-bold text-white">{pkg.clientName} 님</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-400">포함 서류:</span>
-              <span className="text-emerald-400 font-semibold">진술서(D5104), 수지표(D5103), 재산목록</span>
-            </div>
-            {pkg.memo && (
-              <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-800 italic">
-                "{pkg.memo}"
-              </p>
-            )}
+          <div className="space-y-1.5">
+            <label htmlFor="ds-phone" className="text-sm font-bold text-slate-200 block">
+              휴대폰 번호 {phoneLast4 && <span className="text-slate-400 font-normal">(끝자리 {phoneLast4})</span>}
+            </label>
+            <input
+              id="ds-phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value.replace(/[^0-9-]/g, ''))}
+              placeholder="010-0000-0000"
+              className="w-full px-3.5 min-h-[44px] bg-slate-800 border border-slate-700 rounded-xl text-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="text-xs text-slate-400">5회 잘못 입력하면 열람이 잠깁니다.</p>
           </div>
-
-          <form onSubmit={handleQuickRegister} className="space-y-3.5 text-xs">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">직책 선택</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRegRole('LAWYER')}
-                  className={`py-2 px-3 rounded-xl font-bold border transition ${
-                    regRole === 'LAWYER'
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
-                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                  }`}
-                >
-                  ⚖️ 변호사
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegRole('MANAGER')}
-                  className={`py-2 px-3 rounded-xl font-bold border transition ${
-                    regRole === 'MANAGER'
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
-                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                  }`}
-                >
-                  💼 사무장·실무관
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">성함</label>
-                <input
-                  type="text"
-                  required
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  placeholder="예: 김민준"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">소속 로펌명</label>
-                <input
-                  type="text"
-                  value={regFirmName}
-                  onChange={(e) => setRegFirmName(e.target.value)}
-                  placeholder="예: 법무법인 한빛"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">수신 휴대폰 번호</label>
-              <input
-                type="tel"
-                required
-                value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
-                placeholder="010-XXXX-XXXX"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>⚡ 5초 간이 가입 & 서류 즉시 열람하기</span>
-            </button>
-          </form>
-
-          <p className="text-[11px] text-slate-500 text-center leading-relaxed">
-            * 별도의 앱 설치나 결제 없이, 의뢰인이 작성한 법원 표준 서류를 즉시 확인하고 A4 인쇄/다운로드하실 수 있습니다.
-          </p>
-
-        </div>
+          <button type="submit" disabled={isOpening} className="w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+            <span>{isOpening ? '확인 중...' : '서류 열람하기'}</span>
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </form>
       </div>
     );
   }
 
-  // ══════════════════════════════════════════════════════════
-  // UNLOCKED: 서류 열람실 & 정식 파트너 전환 뷰어
-  // ══════════════════════════════════════════════════════════
+  // ══ UNLOCKED: 서류 열람 ══
   const stmt = pkg.docs.statementData;
   const inc = pkg.docs.incomeExpenseData;
   const prop = pkg.docs.propertySummary;
@@ -302,129 +145,55 @@ export default function UnregisteredLawyerDocViewer({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-20">
-      
-      {/* ═══ 상단 로펌 헤더 바 ═══ */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black">
-            <Scale className="w-5 h-5" />
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+            <Scale className="w-5 h-5" aria-hidden="true" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black text-white">
-                마이김변 로펌 서류 열람실
-              </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                인증 열람 모드
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              열람자: {regFirmName ? `[${regFirmName}] ` : ''}{regName} {regRole === 'LAWYER' ? '변호사님' : '사무장님'}
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-base font-black text-white truncate">의뢰인 공유 서류 열람</h1>
+            <p className="text-xs text-slate-300 truncate">
+              받는 분: {pkg.recipientFirmName ? `[${pkg.recipientFirmName}] ` : ''}{pkg.recipientName} {pkg.recipientType === 'LAWYER' ? '변호사님' : '사무장님'} · {new Date(pkg.expiresAt).toLocaleDateString('ko-KR')}까지 열람 가능
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              window.print();
-            }}
-            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>A4 인쇄</span>
-          </button>
-
-          <button
-            onClick={handleUpgradeToFull}
-            disabled={isUpgrading}
-            className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isUpgrading ? 'CRM 이관 중...' : '🏆 이 사건 내 CRM에 수임 등록'}</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="px-3.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-1.5 shrink-0"
+        >
+          <Printer className="w-4 h-4" aria-hidden="true" />
+          <span>A4 인쇄</span>
+        </button>
       </header>
 
-      {/* ═══ 의뢰인 사건 요약 카드 ═══ */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 text-left">
-        <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-indigo-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-500 text-white">
-                  개인회생 2차 서류
-                </span>
-                <span className="text-xs text-slate-400 font-medium">
-                  접수관할: {debt?.courtName || '서울회생법원'}
-                </span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
-                의뢰인 <span className="text-emerald-400">{pkg.clientName}</span> 님의 사전 작성 서류 패키지
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <span className="text-[11px] text-slate-400 block">총 채무액</span>
-                <span className="text-lg font-black text-white">{won(debt?.totalDebt)}원</span>
-              </div>
-              <div className="h-8 w-px bg-slate-800"></div>
-              <div className="text-right">
-                <span className="text-[11px] text-slate-400 block">예상 월 변제금</span>
-                <span className="text-lg font-black text-emerald-400">{won(debt?.monthlyPayment)}원</span>
-              </div>
-            </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+          <div>
+            <span className="text-xs text-slate-300">관할: {debt?.courtName || stmt?.courtName || '미기재'}</span>
+            <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+              의뢰인 <span className="text-emerald-300">{pkg.clientName}</span> 님이 작성한 서류 초안
+            </h2>
+            {pkg.memo && <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">"{pkg.memo}"</p>}
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs">
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-              <span className="text-slate-500 block text-[10px]">신청인 월 소득</span>
-              <span className="font-bold text-slate-200">{won(debt?.monthlyIncome)}원</span>
+          {debt && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-800 text-xs">
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">총 채무액</span><span className="font-bold text-white">{won(debt.totalDebt)}원</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">월 소득</span><span className="font-bold text-white">{won(debt.monthlyIncome)}원</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 월 변제금</span><span className="font-bold text-white">{won(debt.monthlyPayment)}원</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 탕감률(참고)</span><span className="font-bold text-white">{debt.expectedReductionRate ? `${debt.expectedReductionRate}%` : '-'}</span></div>
             </div>
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-              <span className="text-slate-500 block text-[10px]">총 재산(청산가치)</span>
-              <span className="font-bold text-slate-200">{won(prop?.totalAssetValue)}원</span>
-            </div>
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-              <span className="text-slate-500 block text-[10px]">예상 원금 탕감률</span>
-              <span className="font-bold text-emerald-400">{debt?.expectedReductionRate || 60}%</span>
-            </div>
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-              <span className="text-slate-500 block text-[10px]">서류 AI 검증</span>
-              <span className="font-bold text-indigo-300">법원 표준 규격 100%</span>
-            </div>
-          </div>
+          )}
+          <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+            의뢰인이 마이김변에서 직접 작성한 초안이며 법원 제출 요건 충족 여부는 검토되지 않았습니다. 사실관계와 수치를 확인한 뒤 사용해 주세요.
+          </p>
         </div>
 
-        {/* ═══ 2단계 정식 전환 유치 배너 (High-Conversion Callout) ═══ */}
-        <div className="mt-4 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-slate-900 border border-purple-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-purple-500 text-white">
-                B2B 로펌 전용 혜택
-              </span>
-              <span className="text-xs text-purple-200 font-bold">
-                서류 보정 야근 80% 절감!
-              </span>
-            </div>
-            <h4 className="text-sm sm:text-base font-black text-white">
-              의뢰인이 AI로 90% 완성해 온 서류입니다. 지금 원클릭으로 사건을 수임 등록하세요.
-            </h4>
-            <p className="text-xs text-purple-200/80 leading-relaxed">
-              정식 파트너로 등록하시면 이 사건의 전자소송 데이터가 내 CRM으로 자동 이관되며, 매달 사전 검토된 회생 의뢰인을 무료 매칭해 드립니다.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleUpgradeToFull}
-            disabled={isUpgrading}
-            className="px-5 py-3 bg-white text-slate-950 hover:bg-slate-100 text-xs sm:text-sm font-black rounded-2xl shadow-lg transition flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-[0.98]"
-          >
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span>10초 만에 정식 파트너 가입 & 수임 등록</span>
-          </button>
+        <div className="mt-4 p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-slate-200">변호사 회원으로 가입하면 마이김변에서 의뢰인 상담·서류를 관리할 수 있습니다. (가입 시 변호사 등록번호 확인 절차가 있습니다)</p>
+          <a href="/?role=lawyer" className="px-4 min-h-[44px] bg-white text-slate-950 rounded-xl text-sm font-black flex items-center justify-center shrink-0 whitespace-nowrap">
+            변호사 회원 안내
+          </a>
         </div>
 
         {/* ═══ 서류 탭 네비게이션 ═══ */}
@@ -439,7 +208,7 @@ export default function UnregisteredLawyerDocViewer({
             }`}
           >
             <Mic className="w-4 h-4" />
-            <span>🎙️ 대법원 표준 진술서 (D5104)</span>
+            <span>진술서</span>
           </button>
 
           <button
@@ -452,7 +221,7 @@ export default function UnregisteredLawyerDocViewer({
             }`}
           >
             <Calculator className="w-4 h-4" />
-            <span>📊 12개월 수지표 (D5103)</span>
+            <span>수입·지출</span>
           </button>
 
           <button
@@ -465,7 +234,7 @@ export default function UnregisteredLawyerDocViewer({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>📋 재산 및 청산가치 요약</span>
+            <span>재산 요약</span>
           </button>
         </div>
 
@@ -478,14 +247,14 @@ export default function UnregisteredLawyerDocViewer({
               <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-black text-white">
-                    대법원 전산양식 [D5104] 개인회생 진술서
+                    진술서 (의뢰인 작성 초안)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     사건본인: {stmt?.applicantName || pkg.clientName} | 관할: {stmt?.courtName || '서울회생법원'}
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  판사·회생위원 검토 규격
+                  의뢰인 작성 초안
                 </span>
               </div>
 
@@ -505,7 +274,7 @@ export default function UnregisteredLawyerDocViewer({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {(stmt?.careers || []).map((c: any, i: number) => (
+                      {(stmt?.jobHistories || (stmt as any)?.careers || []).map((c: any, i: number) => (
                         <tr key={i} className="hover:bg-slate-850">
                           <td className="p-3 font-mono">{c.period}</td>
                           <td className="p-3 font-bold text-white">{c.companyName}</td>
@@ -597,7 +366,7 @@ export default function UnregisteredLawyerDocViewer({
               <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-black text-white">
-                    대법원 전산양식 [D5103] 채무자의 수입 및 지출에 관한 목록
+                    수입 및 지출 목록 (의뢰인 작성 초안)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     소득 구분: {inc?.detailedIncomeType || '개인사업자/프리랜서'}
@@ -612,19 +381,19 @@ export default function UnregisteredLawyerDocViewer({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-500 block text-[10px]">월평균 총매출/수입</span>
-                  <span className="text-sm font-black text-white">{won(inc?.monthlyLedger?.averageMonthlyIncome || 3200000)}원</span>
+                  <span className="text-sm font-black text-white">{won(inc?.monthlyLedger?.monthlyAverages?.avgGrossRevenue)}원</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-500 block text-[10px]">월평균 인정 필요경비</span>
-                  <span className="text-sm font-black text-rose-400">{won(inc?.monthlyLedger?.averageMonthlyExpense || 720000)}원</span>
+                  <span className="text-sm font-black text-rose-400">{won(inc?.monthlyLedger?.monthlyAverages?.avgOperatingExpense)}원</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-500 block text-[10px]">월평균 순소득</span>
-                  <span className="text-sm font-black text-emerald-400">{won(inc?.monthlyLedger?.averageNetIncome || 2480000)}원</span>
+                  <span className="text-sm font-black text-emerald-400">{won(inc?.monthlyLedger?.monthlyAverages?.avgNetIncome)}원</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
-                  <span className="text-slate-500 block text-[10px]">1인가구 최저생계비</span>
-                  <span className="text-sm font-black text-indigo-300">1,400,000원</span>
+                  <span className="text-slate-400 block text-[11px]">가구원 수</span>
+                  <span className="text-sm font-black text-indigo-200">{(inc as any)?.expenses?.householdSize ? `${(inc as any).expenses.householdSize}인` : '-'}</span>
                 </div>
               </div>
 
@@ -689,7 +458,6 @@ export default function UnregisteredLawyerDocViewer({
                 <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
                   <span className="text-slate-500 block text-[10px]">청산가치 총액</span>
                   <span className="text-base font-black text-indigo-400">{won(prop?.totalAssetValue)}원</span>
-                  <p className="text-[10px] text-emerald-400">청산가치 보장 원칙 통과</p>
                 </div>
               </div>
             </div>

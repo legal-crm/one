@@ -2188,10 +2188,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         setClientNotifications(loadClientNotifications());
                       }
                     }}
-                    className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                    title="알림"
+                    className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    aria-label={unreadCount > 0 ? `알림 (읽지 않은 알림 ${unreadCount}건)` : '알림'}
+                    aria-expanded={showNotifDropdown}
+                    aria-haspopup="true"
                   >
-                    <Bell className="w-5 h-5 text-slate-600" />
+                    <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" aria-hidden="true" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                         {unreadCount > 9 ? '9+' : unreadCount}
@@ -2205,7 +2207,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         {unreadCount > 0 && (
                           <button
                             onClick={() => { markAllAsRead(); setClientNotifications(loadClientNotifications()); setUnreadCount(0); }}
-                            className="text-[11px] text-brand font-bold hover:underline cursor-pointer"
+                            className="text-xs text-brand font-bold hover:underline cursor-pointer min-h-[44px] px-2"
                           >
                             모두 읽음 처리
                           </button>
@@ -2690,7 +2692,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
                   <span>실시간 고민 해결 상담사례</span>
                 </h3>
-                <span className="text-sm sm:text-base text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
+                <span className="text-sm sm:text-base text-slate-500">변호사가 답변한 최근 상담 사례입니다</span>
               </div>
 
               <div className="space-y-3.5">
@@ -3325,7 +3327,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       )}
       {selectedArticle && (
         <React.Suspense fallback={null}>
-          <NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         </React.Suspense>
       )}
 

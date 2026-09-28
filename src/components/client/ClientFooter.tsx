@@ -63,7 +63,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
             <p>
               상호: 몬스터랩
               <span className="mx-1.5 text-slate-600">|</span>
-              대표이사: 진성호
+              대표: 진성호
               <span className="mx-1.5 text-slate-600">|</span>
               사업자등록번호: 521-39-01355
             </p>

@@ -24,8 +24,8 @@ export default function LawyerDocShareModal({
   isOpen,
   onClose,
   clientId,
-  clientName = '김가람',
-  clientPhone = '010-9876-5432',
+  clientName = '신청인',
+  clientPhone = '',
   docPackage
 }: LawyerDocShareModalProps) {
   const [recipientType, setRecipientType] = useState<RecipientRoleType>('LAWYER');
@@ -45,6 +45,7 @@ export default function LawyerDocShareModal({
   const [shareUrl, setShareUrl] = useState('');
   const [smsLink, setSmsLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   if (!isOpen) return null;
 
@@ -60,7 +61,7 @@ export default function LawyerDocShareModal({
     setRecipientPhone(formatted);
   };
 
-  const handleGenerateShare = () => {
+  const handleGenerateShare = async () => {
     const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
     if (!recipientName.trim()) {
       toast.error('받으실 변호사님 또는 사무장님의 성함을 입력해 주세요.');
@@ -82,7 +83,8 @@ export default function LawyerDocShareModal({
       debtSummary: includeDebtSummary ? docPackage.debtSummary : null,
     };
 
-    const pkg = createDocSharePackage({
+    setIsCreating(true);
+    const created = await createDocSharePackage({
       clientId,
       clientName,
       clientPhone,
@@ -93,15 +95,20 @@ export default function LawyerDocShareModal({
       memo: memo.trim(),
       docs: filteredDocs
     });
+    setIsCreating(false);
+    if (created.ok === false) {
+      toast.error(created.error);
+      return;
+    }
+    const pkg = created.pkg;
 
-    const origin = window.location.origin + window.location.pathname;
-    const url = `${origin}?docShare=${pkg.token}`;
+    const url = `${window.location.origin}/?docShare=${encodeURIComponent(pkg.token)}`;
     const msg = generateShareMessage(pkg, url);
 
     setShareUrl(url);
     setSmsLink(msg.smsUrl);
     setStep('done');
-    toast.success('변호사·사무장 전용 보안 열람 링크가 생성되었습니다!');
+    toast.success('열람 링크를 만들었습니다. 문자나 메신저로 보내 주세요.');
   };
 
   const handleCopyLink = () => {
@@ -129,17 +136,19 @@ export default function LawyerDocShareModal({
                   변호사·사무장 서류 패키지 전달
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-slate-950">
-                  휴대폰 번호 즉시 전송
+                  휴대폰 번호 확인 후 열람
                 </span>
               </div>
               <p className="text-xs text-indigo-200 mt-0.5">
-                마이김변에서 준비한 진술서·수지표를 담당자 휴대폰 번호로 바로 전달합니다.
+                마이김변에서 작성한 진술서·수지표 초안을 담당자에게 링크로 공유합니다.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition"
+            aria-label="공유 창 닫기"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white rounded-full hover:bg-white/10 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -308,10 +317,11 @@ export default function LawyerDocShareModal({
               <button
                 type="button"
                 onClick={handleGenerateShare}
+                disabled={isCreating}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>보안 열람 링크 생성 및 전달 준비</span>
+                <span>{isCreating ? '링크 만드는 중...' : '열람 링크 만들기'}</span>
               </button>
             </>
           ) : (
@@ -326,7 +336,7 @@ export default function LawyerDocShareModal({
                   {recipientFirmName ? `[${recipientFirmName}] ` : ''}{recipientName} {recipientType === 'LAWYER' ? '변호사님' : '사무장님'}께
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  서류 패키지가 안전하게 암호화 생성되었습니다. 아래 버튼으로 전송해 주세요.
+                  열람 링크를 만들었습니다. 링크를 받은 분은 이 휴대폰 번호를 입력해야 열람할 수 있습니다.
                 </p>
               </div>
 
@@ -353,7 +363,7 @@ export default function LawyerDocShareModal({
               {/* 보안 링크 박스 */}
               <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-left space-y-1">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                  생성된 7일간 유효한 보안 링크
+                  7일간 유효한 열람 링크
                 </span>
                 <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 break-all select-all">
                   {shareUrl}
@@ -361,7 +371,7 @@ export default function LawyerDocShareModal({
               </div>
 
               <div className="text-[11px] text-slate-400 leading-relaxed text-left p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800">
-                🔒 <strong>개인정보보호:</strong> 가족의 주민번호 등 민감 정보는 자동 마스킹 처리되어 법원 제출 규격으로만 전달됩니다.
+                🔒 <strong>개인정보 안내:</strong> 선택한 서류의 내용이 그대로 공유됩니다. 링크와 휴대폰 번호를 아는 사람은 7일간 열람할 수 있으니 받을 분의 번호를 정확히 입력해 주세요.
               </div>
 
               <button
@@ -378,7 +388,7 @@ export default function LawyerDocShareModal({
         {/* 하단 푸터 */}
         <div className="p-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 text-center">
           <span className="text-[11px] text-slate-500 font-medium">
-            마이김변 모바일 서류 허브 • 대법원 전자소송 표준 서식 연동
+            마이김변 서류 공유 · 의뢰인 작성 초안
           </span>
         </div>
 

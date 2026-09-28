@@ -45,15 +45,19 @@ export default function MySettingsView({
   const handlePurgeAllData = async () => {
     const confirmed = await dialog.confirm({
       title: '나의 모든 상담·진단 데이터 영구 파기 (자폭)',
-      message: '의뢰인님의 모든 상담 내역, 1:1 대화 내용, 채무 진단 상세 기록이 서버와 기기에서 즉시 영구 파기됩니다.\n\n파기된 데이터는 절대 복구할 수 없습니다. 정말 진행하시겠습니까?',
-      confirmText: '모든 데이터 영구 파기',
+      message: '다음 기록을 삭제합니다. 삭제 후에는 복구할 수 없습니다.\n\n· 서버: 내 상담 요청과 1:1 대화, 1:1 문의\n· 이 기기: 진단 결과, 작성 중인 서류, 회생동행 기록, 인증서 보관함, 알림\n\n※ 이미 사건을 맡긴 변호사 사무소의 수임 기록·전자계약서는 법령상 보관될 수 있어 이 기능으로 삭제되지 않습니다. 필요하면 해당 사무소에 삭제를 요청해 주세요.\n\n진행하시겠습니까?',
+      confirmText: '삭제하기',
       variant: 'danger'
     });
 
     if (confirmed) {
-      const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-      await purgeAllClientData(currentClientId);
-      toast.success('모든 상담 및 진단 기록이 서버에서 영구 파기되었습니다.');
+      // 기존: localStorage에서 의뢰인 ID를 읽어(실제로는 sessionStorage에 저장됨) 'client-temp'로 삭제 → 본인 기록이 지워지지 않았음
+      const result = await purgeAllClientData();
+      if (result.serverOk) {
+        toast.success(`삭제했습니다. (서버 상담 ${result.deletedRequests}건, 문의 ${result.deletedInquiries}건, 이 기기 데이터)`);
+      } else {
+        toast.error(`이 기기의 데이터는 삭제했지만 서버 기록 일부를 삭제하지 못했습니다: ${result.errors.join(', ')}. 고객센터로 삭제를 요청해 주세요.`, { duration: 10000 });
+      }
       onLogout();
     }
   };

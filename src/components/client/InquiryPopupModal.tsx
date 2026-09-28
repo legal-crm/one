@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { toast } from 'sonner';
+import { createInquiry, toClientInquiry } from '../../services/inquiryService';
+import { validateUploadFile } from '../../utils/fileSecurity';
 import { X, Paperclip, Send, FileText, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { ClientInquiry, ClientInquiryCategory, InquiryAttachment } from '../../types';
 import TurnstileWidget from '../common/TurnstileWidget';
@@ -56,21 +58,22 @@ export default function InquiryPopupModal({
       return;
     }
 
+    // 서버 전송 한도(요청 본문) 때문에 파일당 1MB, 이미지·PDF만 허용 (기존: 5MB 안내, PDF 등은 내용이 빠진 채 저장)
     for (const file of newFiles) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`'${file.name}' 파일이 5MB를 초과합니다`);
+      const v = validateUploadFile(file, 1 * 1024 * 1024);
+      if (!v.isValid) { toast.error(`'${file.name}' ${v.error}`); continue; }
+      if (!/^(image\/(png|jpeg|gif|webp)|application\/pdf)$/.test(file.type)) {
+        toast.error(`'${file.name}' 이미지(PNG/JPG/GIF/WEBP) 또는 PDF만 첨부할 수 있습니다`);
         continue;
       }
-
-      if (file.type.startsWith('image/')) {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          setAttachments(prev => [...prev, { file, dataUrl: event.target?.result as string }]);
-        };
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
-      } else {
-        setAttachments(prev => [...prev, { file }]);
-      }
+      }).catch(() => '');
+      if (!dataUrl) { toast.error(`'${file.name}' 파일을 읽지 못했습니다`); continue; }
+      setAttachments(prev => (prev.length >= 2 ? prev : [...prev, { file, dataUrl }]));
     }
     
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -80,7 +83,7 @@ export default function InquiryPopupModal({
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -100,33 +103,36 @@ export default function InquiryPopupModal({
       }
     }
 
+    if (!isLoggedIn && !turnstileToken) {
+      toast.error('봇 방지 확인이 끝난 뒤 다시 제출해 주세요');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const clientId = isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : `non-member-${Date.now()}`;
-
-      const newInquiry = {
-        id: `inquiry-popup-${Date.now()}`,
-        clientId,
-        clientName: isLoggedIn ? (userAlias || '의뢰인') : nickname.trim(),
+      // 서버에 저장 (Turnstile 서버 검증, 비회원 비밀번호는 서버에서 해시 — 브라우저에 평문 저장하지 않음)
+      // 기존: 브라우저 sessionStorage에만 저장돼 관리자에게 전달되지 않았음
+      const result = await createInquiry({
+        turnstileToken: turnstileToken || undefined,
+        category,
+        nickname: isLoggedIn ? (userAlias || '회원') : nickname.trim(),
+        password: !isLoggedIn ? tempPassword : undefined,
+        contact: contact.trim() || undefined,
         title: title.trim(),
         content: content.trim(),
-        createdAt: new Date().toISOString(),
-        status: 'pending' as const,
-        category,
-        source: 'popup_modal' as const,
-        contactInfo: contact.trim() || undefined,
-        tempPassword: !isLoggedIn ? tempPassword : undefined,
-        attachments: attachments.map((a, i) => ({
-          id: `att-${Date.now()}-${i}`,
-          fileName: a.file.name,
-          fileSize: a.file.size,
-          fileType: a.file.type,
-          dataUrl: a.dataUrl || ''
-        }))
-      };
-
-      setInquiries(prev => [newInquiry, ...prev]);
-      toast.success('문의가 정상적으로 접수되었습니다');
+        source: 'popup_modal',
+        attachments: attachments.map(a => ({ fileName: a.file.name, fileSize: a.file.size, fileType: a.file.type, dataUrl: a.dataUrl || '' })),
+      });
+      if (result.ok === false) {
+        toast.error(result.error);
+        return;
+      }
+      setInquiries(prev => [toClientInquiry(result.item, isLoggedIn ? (userAlias || '의뢰인') : nickname.trim()), ...prev]);
+      if (isLoggedIn) {
+        toast.success('문의가 접수되었습니다. 답변은 [1:1 문의] 메뉴에서 확인할 수 있습니다.');
+      } else {
+        toast.success(`문의가 접수되었습니다. 문의번호 ${result.id} 와 비밀번호로 답변을 확인할 수 있습니다. 문의번호를 꼭 적어 두세요.`, { duration: 15000 });
+      }
       
       // Reset form
       setCategory('site_usage');
@@ -157,8 +163,10 @@ export default function InquiryPopupModal({
             <p className="text-sm text-slate-500 mt-1">사이트 사용 및 활용에 관한 문의를 남겨주세요</p>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-800 rounded-full transition-colors active:scale-95"
+            aria-label="문의 창 닫기"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-800 rounded-full transition-colors active:scale-95"
           >
             <X className="w-5 h-5" />
           </button>
@@ -286,7 +294,7 @@ export default function InquiryPopupModal({
             {/* File Upload */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block">파일 첨부 (최대 2개, 5MB)</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block">파일 첨부 (최대 2개, 파일당 1MB · 이미지/PDF)</label>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}

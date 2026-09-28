@@ -343,20 +343,82 @@ export async function purgeConsultationRecord(requestId: string): Promise<boolea
  * [SECURITY Complete Client Purge]
  * 의뢰인의 모든 상담 요청, 금융 진단 데이터, 1:1 대화 로그를 전수 소각합니다.
  */
-export async function purgeAllClientData(clientId: string): Promise<boolean> {
-  try {
-    const requests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
-    const clientReqs = requests.filter(r => r.clientId === clientId);
-    
-    for (const req of clientReqs) {
-      await deleteConsultRequest(req.id);
-    }
+export interface ClientPurgeResult {
+  /** 서버 삭제가 모두 성공했는지 (Supabase 미설정 환경은 true) */
+  serverOk: boolean;
+  deletedRequests: number;
+  deletedInquiries: number;
+  errors: string[];
+}
 
-    return true;
-  } catch (err) {
-    console.error('[SECURITY] 의뢰인 전체 데이터 소각 실패:', err);
-    return false;
+// 이 기기에 남는 의뢰인 데이터 키 (접두어) — 상담·진단·서류·동행·계약·인증서·캐시·알림
+const CLIENT_DATA_KEY_PREFIXES = [
+  'legal_crm_', 'LEGAL_CRM_', 'mykim', 'client_', 'scourt_cache_', 'debt_discovery_cache_',
+  'electronic_contracts', 'qa_author_id', 'shared_report', 'diagnosis', 'rehab_', 'statement_', 'income_expense', 'property_',
+];
+
+function wipeClientDeviceData(): number {
+  let removed = 0;
+  for (const storage of [localStorage, sessionStorage]) {
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k && CLIENT_DATA_KEY_PREFIXES.some(p => k.startsWith(p))) keys.push(k);
+    }
+    keys.forEach(k => { storage.removeItem(k); removed++; });
   }
+  return removed;
+}
+
+/**
+ * [SECURITY Complete Client Purge]
+ * 로그인한 의뢰인 본인의 상담 요청·메시지(서버), 1:1 문의(서버), 이 기기의 모든 의뢰인 데이터를 삭제한다.
+ * - 기존: 로컬 캐시에 있는 요청만, 잘못된 ID('client-temp')로 찾아 실제 요청이 지워지지 않았고 결과와 무관하게 '서버에서 파기' 안내
+ * - 변호사 측 수임 기록(CRM·전자계약서)은 법령상 보관 의무가 있을 수 있어 여기서 삭제하지 않는다 → 화면에서 사실대로 안내
+ */
+export async function purgeAllClientData(): Promise<ClientPurgeResult> {
+  const result: ClientPurgeResult = { serverOk: true, deletedRequests: 0, deletedInquiries: 0, errors: [] };
+
+  if (isSupabaseConfigured) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid) {
+      result.serverOk = false;
+      result.errors.push('로그인 세션이 없어 서버 기록을 삭제하지 못했습니다.');
+    } else {
+      // 1) 상담 요청 + 메시지 (012 RLS: 본인 삭제 허용)
+      const { data: rows, error: selErr } = await supabase.from('consult_requests').select('id').eq('client_id', uid);
+      if (selErr) {
+        result.serverOk = false;
+        result.errors.push('상담 기록 조회 실패');
+      } else {
+        for (const r of rows || []) {
+          const { error: mErr } = await supabase.from('consult_messages').delete().eq('consult_request_id', r.id);
+          const { error: rErr } = await supabase.from('consult_requests').delete().eq('id', r.id);
+          if (mErr || rErr) { result.serverOk = false; result.errors.push(`상담 ${r.id} 삭제 실패`); }
+          else result.deletedRequests++;
+        }
+      }
+      // 2) 1:1 문의 (서버 함수가 본인 문의만 삭제)
+      try {
+        const res = await fetch('/api/inquiry?action=delete-mine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}` },
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) { result.serverOk = false; result.errors.push('1:1 문의 삭제 실패'); }
+        else result.deletedInquiries = json.deleted || 0;
+      } catch {
+        result.serverOk = false;
+        result.errors.push('1:1 문의 삭제 실패');
+      }
+    }
+  }
+
+  // 3) 이 기기의 의뢰인 데이터 전체 (서버 실패와 무관하게 삭제)
+  try { wipeClientDeviceData(); } catch (err) { result.errors.push('기기 데이터 일부 삭제 실패'); }
+
+  return result;
 }
 
 // ── 상담 메시지 (ConsultMessage) 관리 ──

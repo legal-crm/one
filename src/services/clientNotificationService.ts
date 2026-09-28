@@ -60,25 +60,29 @@ export function getUnreadCount(): number {
   return loadClientNotifications().filter(n => !n.isRead).length;
 }
 
+/**
+ * 최초 방문 안내 알림 1건만 생성
+ * - 기존: "상담 신청이 접수되었습니다", "담당 변호사의 메시지가 도착했습니다", "추가 서류 제출 요청" 등
+ *   실제로 일어나지 않은 일을 미읽음 3건으로 표시 → 이전 버전이 저장한 가짜 시드(cn-seed-1~4)도 정리
+ */
 export function seedInitialNotifications(): void {
   const existing = loadClientNotifications();
-  if (existing.length > 0) return;
+  const cleaned = existing.filter(n => !/^cn-seed-[1-9]$/.test(n.id));
+  if (cleaned.length !== existing.length) saveClientNotifications(cleaned);
+  if (cleaned.length > 0) return;
+  saveClientNotifications([{
+    type: 'system',
+    title: '마이김변에 오신 것을 환영합니다',
+    body: '상담 진행, 변호사 답변, 서류 요청 등 실제 알림이 생기면 이곳에 표시됩니다.',
+    emoji: '👋',
+    linkTab: 'mypage',
+    id: 'cn-seed-0',
+    createdAt: new Date().toISOString(),
+    isRead: true,
+  } as ClientNotification]);
+}
 
-  const now = new Date();
-  const seeds: Omit<ClientNotification, 'id' | 'createdAt' | 'isRead'>[] = [
-    { type: 'system', title: '마이김변에 오신 것을 환영합니다', body: '안심 가명 보호가 적용된 마이페이지에서 사건 진행 상황을 확인하세요.', emoji: '👋', linkTab: 'mypage' },
-    { type: 'status_change', title: '상담 신청이 접수되었습니다', body: '담당 변호사가 배정되면 알림을 보내드리겠습니다.', emoji: '📋', linkTab: 'mypage' },
-    { type: 'new_message', title: '담당 변호사의 메시지가 도착했습니다', body: '담당 변호사가 1:1 상담 관리방에 새 메시지를 보냈습니다.', emoji: '💬', linkTab: 'chat' },
-    { type: 'document_request', title: '추가 서류 제출 요청', body: '부채증명서 및 소득증빙 자료를 마이페이지에서 업로드해 주세요.', emoji: '📁', linkTab: 'mypage' },
-    { type: 'notice', title: '서비스 업데이트 안내', body: '사건 진행 트래커 기능이 추가되었습니다. 마이페이지에서 확인하세요.', emoji: '📢', linkTab: 'mypage' },
-  ];
-
-  const notifications: ClientNotification[] = seeds.map((s, i) => ({
-    ...s,
-    id: `cn-seed-${i}`,
-    createdAt: new Date(now.getTime() - i * 3600000).toISOString(),
-    isRead: i >= 3,
-  }));
-
-  saveClientNotifications(notifications);
+/** 로그아웃·데이터 삭제 시 이 기기의 알림 삭제 (공용 기기에서 다음 사용자에게 노출 방지) */
+export function clearClientNotifications(): void {
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }

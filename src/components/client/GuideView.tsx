@@ -78,7 +78,7 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
             서비스 이용안내
           </h1>
           <p className="text-base md:text-lg text-slate-200 font-medium max-w-md mx-auto leading-relaxed">
-            4단계로 진행되는 my김변 서비스를<br className="md:hidden" /> 자세히 안내해 드립니다
+            my김변 이용 절차와 필요 서류를<br className="md:hidden" /> 안내해 드립니다
           </p>
         </div>
       </section>
@@ -206,8 +206,8 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
                 step: 2,
                 title: '2. 가족관계증명서 & 혼인관계증명서',
                 fileName: '가족관계증명서 혼인관계증명서.pdf',
-                issuer: '대법원 전자의무기록 / 주민센터',
-                desc: '미혼, 기혼, 이혼 여부와 무관하게 모든 신청인이 반드시 "상세" 증명서로 발급',
+                issuer: '대법원 전자가족관계등록시스템 / 주민센터',
+                desc: '대부분의 법원이 "상세" 증명서를 요구합니다. 관할 법원·담당 변호사 안내를 확인하세요',
                 tip: '신청인 본인 외 가족 주민등록번호 뒷자리는 마스킹(별표) 처리 필수',
                 badge: '필수 2호',
                 url: 'https://efamily.scourt.go.kr'

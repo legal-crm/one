@@ -10,7 +10,9 @@ interface NewsDetailModalProps {
 }
 
 export default function NewsDetailModal({ article, lawyers, onClose, onConsultWithLawyer }: NewsDetailModalProps) {
-  const matchingLawyer = lawyers.find(l => l.id === article.authorId) || lawyers[0];
+  // 작성 변호사를 찾지 못하면 다른 변호사(목록 첫 번째)로 대체하지 않는다 — 상담 버튼도 숨김
+  const matchingLawyer = lawyers.find(l => l.id === article.authorId)
+    || ({ id: '', name: (article as any).author || '작성자', fields: [], bio: '', avatar: '' } as any);
 
 
   return (
@@ -78,10 +80,10 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base text-slate-900 dark:text-white">{matchingLawyer.name}</span>
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-md">도산 전문 변호사</span>
+                {matchingLawyer.id && <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-0.5 rounded-md">변호사</span>}
               </div>
               <span className="text-xs text-slate-600 dark:text-slate-400 font-bold block">
-                {matchingLawyer.fields?.join(' · ') || '도산 전문'}
+                {matchingLawyer.fields?.join(' · ') || ''}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400 font-normal line-clamp-1 block">
                 {matchingLawyer.bio}
@@ -96,13 +98,13 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
             >
               닫기
             </button>
-            <button 
+            {matchingLawyer.id && <button 
               onClick={() => onConsultWithLawyer(matchingLawyer.id, matchingLawyer.name, article.title)}
               className="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold rounded-2xl text-sm transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <span>📞 {matchingLawyer.name} 변호사에게 1:1 상담 예약</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </button>}
           </div>
         </div>
 

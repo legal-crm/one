@@ -98,7 +98,14 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
 
   const totalPages = Math.ceil(filteredQAs.length / ITEMS_PER_PAGE);
   const activePage = Math.min(page, Math.max(1, totalPages));
-  const paginatedQAs = filteredQAs.slice(
+  // 정렬 탭이 실제로 적용되도록 (기존: 탭 상태만 바뀌고 목록 순서는 그대로)
+  const qaTime = (q: ClientQA) => (q.createdAt ? new Date(q.createdAt).getTime() : 0);
+  const sortedQAs = [...filteredQAs].sort((a, b) => {
+    if (sortBy === 'views') return ((b as any).views || 0) - ((a as any).views || 0);
+    if (sortBy === 'latest' || sortBy === 'question') return qaTime(b) - qaTime(a);
+    return 0;
+  });
+  const paginatedQAs = sortedQAs.slice(
     (activePage - 1) * ITEMS_PER_PAGE,
     activePage * ITEMS_PER_PAGE
   );
@@ -112,9 +119,10 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
     });
   };
 
+  // 실제 조회수 값이 있을 때만 사용 (기존: 글 ID 해시로 1만~51만 가짜 조회수 생성)
   const mockViews = (id: string) => {
-    const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    return (hash * 1337 % 500000) + 10000;
+    const q = qas.find(x => x.id === id) as any;
+    return typeof q?.views === 'number' ? q.views : 0;
   };
   const mockDate = (id: string, createdAt?: string) => {
     if (createdAt) {
@@ -127,9 +135,7 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
       const days = Math.floor(hours / 24);
       return `${days}일 전`;
     }
-    const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const mins = hash % 60;
-    return mins === 0 ? '방금' : `${mins}분 전`;
+    return ''; // 작성 시각이 없으면 표시하지 않음 (기존: ID 해시로 'N분 전' 생성)
   };
 
   const getTotalAnswers = (qa: ClientQA) => {
@@ -174,7 +180,7 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
     };
 
     setQas(prev => [newQA, ...prev]);
-    toast.success('질문이 등록되었습니다. 변호사 답변을 기다려주세요.');
+    toast.info('질문을 이 기기에 저장했습니다. 현재 게시판 질문은 변호사에게 자동 전달되지 않으니, 답변이 필요하면 변호사 상담 요청을 이용해 주세요.', { duration: 7000 });
 
     // Reset form
     setNewTitle('');
@@ -217,7 +223,7 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
               <div className="py-16 text-center space-y-4">
                 <Lock className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="font-bold text-lg text-slate-700">비밀 상담 글입니다</h3>
-                <p className="text-sm text-slate-500">작성자와 답변 변호사만 열람할 수 있습니다.</p>
+                <p className="text-sm text-slate-500">비밀 상담 글은 작성한 브라우저에서만 볼 수 있습니다.</p>
               </div>
             </div>
           );
@@ -315,7 +321,7 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
               나와 비슷한 문제에 대한<br className="md:hidden" />
               답변을 찾아보세요.
             </h1>
-            <p className="text-sm text-slate-500 mt-1">도산 전문 변호사들이 직접 답변한 실시간 법률 상담 Q&A입니다.</p>
+            <p className="text-sm text-slate-500 mt-1">변호사가 답변한 회생·파산 상담 사례입니다. 답변은 일반적인 안내이며, 내 사건 판단은 변호사 상담으로 확인하세요.</p>
           </div>
           <button
             onClick={() => setShowCreateForm(true)}

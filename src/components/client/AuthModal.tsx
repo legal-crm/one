@@ -9,7 +9,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: AuthModalProps) {
-  const [authConsent, setAuthConsent] = useState(true);
+  const [authConsent, setAuthConsent] = useState(false); // 필수 동의는 직접 체크 (미리 체크 금지)
   const [isLoadingProvider, setIsLoadingProvider] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -65,7 +65,7 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
         <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-4 text-left space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>100% 스텔스 가명 안심 보증</span>
+            <span>가명으로 상담 시작</span>
           </div>
           <p className="text-[12px] text-emerald-800/80 dark:text-emerald-200/80 leading-relaxed">
             카카오/Google 계정으로 로그인하더라도, 상담 대화방 및 변호사에게는 <strong>임의의 스텔스 가명(예: 신중한 사자)</strong>으로 철저히 보호되어 실명이 일체 노출되지 않습니다.
@@ -113,7 +113,7 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
 
         {/* Security assurance note */}
         <p className="text-center text-[11px] text-slate-400 dark:text-slate-500">
-          🔒 비밀번호 저장 없는 OAuth 2.0 보안 인증 및 256bit 암호화 적용
+          🔒 카카오·구글 계정으로 로그인하며 마이김변은 비밀번호를 저장하지 않습니다
         </p>
 
         {/* Lawyer Login Redirect */}

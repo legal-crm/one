@@ -41,8 +41,8 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
           </span>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">my김변 법률 정보 &amp; 뉴스 센터</h1>
           <p className="text-slate-350 text-sm md:text-base leading-relaxed">
-            대한변협 등록 도산 전문 변호인단이 집필한 고품격 법률 칼럼과 뉴스입니다.<br/>
-            최신 회생 실무 기준과 탕감 노하우를 확인하고 빚 독촉 위기를 신속하게 해결해 보세요.
+            회생·파산 관련 법률 칼럼과 뉴스입니다. 일반적인 정보이며 개별 사건에 대한 법률 자문이 아닙니다.<br/>
+            제도와 절차를 이해하는 데 참고하고, 내 상황은 변호사 상담으로 확인하세요.
           </p>
         </div>
       </div>
