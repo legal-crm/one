@@ -102,7 +102,7 @@ export default function CollateralPledgeSection({
             {fmt(pledgedAssetsEstimatedDeficit)}
           </p>
           <p className="text-[11px] text-slate-500 leading-tight">
-            담보 처분으로 전액 변제되지 못한 잔액은 일반 무담보 채무와 동일하게 <strong>탕감 대상</strong>에 산입됩니다.
+            담보 처분으로 변제되지 못할 것으로 예상되는 잔액(예정부족액)은 일반 회생채권으로 <strong>변제계획에 산입</strong>됩니다.
           </p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function CollateralPledgeSection({
         <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden text-xs animate-fadeIn text-left">
           <div className="bg-slate-100 px-3 py-2 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
             <span>공동담보 목적물별 가액비율 안분 내역서</span>
-            <span className="text-[10px] text-slate-500">법원 회생실무준칙 제411호 규격</span>
+            <span className="text-[10px] text-slate-500">가액비율 단순 안분 (참고용)</span>
           </div>
           <div className="p-3 divide-y divide-slate-100">
             {collateralAssets.map((asset, i) => {

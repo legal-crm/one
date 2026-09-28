@@ -758,23 +758,17 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 <p className="text-xs text-slate-400 mt-0.5">
                   수신: <span className="text-slate-200 font-semibold">{clientName}</span> 님 귀하 | 관할: <span className="text-slate-200 font-semibold">{courtName}</span>
                   {isAIPremium ? (
-                    <span className="text-amber-300 font-semibold ml-2">✦ 공개 통계 참고 진단 포함</span>
+                    <span className="text-amber-300 font-semibold ml-2">✦ 규칙 기반 참고 진단 포함</span>
                   ) : (
                     <span className="text-emerald-300 font-semibold ml-2">⚖️ 담당 변호사 검토 의견</span>
                   )}
                 </p>
 
-                {/* Court Stats Ribbon if available in AI report */}
-                {isAIPremium && rawAiInsights?.courtStats && (
+                {/* 관할 법원 표시 (이전: 근거 없는 인용률·탕감률·속도등급을 의뢰인에게 표시 — 저장된 옛 제안서의 수치도 표시하지 않음) */}
+                {isAIPremium && rawAiInsights?.courtStats?.courtName && (
                   <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px]">
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
-                      🏛️ 금지명령 인용률 {rawAiInsights.courtStats.injunctionRate}%
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
-                      법원 평균 탕감률 {rawAiInsights.courtStats.averageReductionRate}%
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
-                      심사 속도 등급 {rawAiInsights.courtStats.speedRating}
+                      🏛️ 관할 {rawAiInsights.courtStats.courtName}
                     </span>
                   </div>
                 )}

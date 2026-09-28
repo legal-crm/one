@@ -57,7 +57,9 @@ export async function writeCopilotAuditLog(
   // 2. Supabase 저장
   if (isSupabaseConfigured) {
     try {
-      await supabase.from('copilot_audit_logs').insert([logEntry]);
+      const { error } = await supabase.from('copilot_audit_logs').insert([logEntry]);
+      // supabase-js는 throw하지 않으므로 error를 직접 확인 (이전: 실패가 무시됨)
+      if (error) console.warn('[COPILOT_AUDIT] Supabase 저장 실패 (비차단)', error.message);
     } catch (e) {
       console.warn('[COPILOT_AUDIT] Supabase 저장 실패 (비차단)', e);
     }

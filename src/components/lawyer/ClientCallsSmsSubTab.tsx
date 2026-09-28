@@ -308,7 +308,9 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
         caseType: crmExt.caseType === 'bankruptcy' ? '개인파산·면책' : '개인회생'
       });
 
-      const updatedRecordings = [newRecording, ...(crmExt.recordings || [])];
+      // 드라이브 업로드에 성공한 경우에만 녹취 링크 저장 (실패/미설정 시 재생 불가 링크를 남기지 않음)
+      const uploaded = driveRes.status === 'success';
+      const updatedRecordings = uploaded ? [newRecording, ...(crmExt.recordings || [])] : (crmExt.recordings || []);
       const updated: CrmClientExtension = {
         ...crmExt,
         recordings: updatedRecordings,
@@ -317,8 +319,14 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
       };
 
       onUpdateExt(updated);
-      setPlayingRecording(newRecording);
-      toast.success('통화 녹취 업로드 및 AI 대화록 생성이 완료되었습니다.');
+      if (uploaded) {
+        setPlayingRecording(newRecording);
+        toast.success('통화 녹취 업로드 및 AI 대화록 생성이 완료되었습니다.');
+      } else {
+        toast.warning(driveRes.status === 'not_configured'
+          ? 'AI 대화록은 생성했지만, 구글 드라이브 연동이 설정되지 않아 녹음 파일은 저장되지 않았습니다.'
+          : 'AI 대화록은 생성했지만, 구글 드라이브 업로드에 실패해 녹음 파일은 저장되지 않았습니다.');
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(`녹음 분석 실패: ${err.message || '오류 발생'}`);
@@ -663,9 +671,10 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                               {/* 스마트폰으로 전화 걸기 버튼 */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  enqueueCall(clientPhone, clientName);
-                                  toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                                onClick={async () => {
+                                  const r = await enqueueCall(clientPhone, clientName);
+                                  if (r.success) toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                                  else toast.error(r.message);
                                 }}
                                 className="w-8 h-8 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors cursor-pointer"
                                 title="스마트폰으로 전화 걸기"

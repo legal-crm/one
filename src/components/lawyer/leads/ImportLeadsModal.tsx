@@ -4,14 +4,20 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style';
 import type { SalesLead } from '../../../types/leadTypes';
 import type { ConsultRequest } from '../../../types';
-import { formatPhone, normalizeBirthYear } from '../../../services/leadService';
+import { formatPhone, normalizeBirthYear, normalizeKrPhoneDigits } from '../../../services/leadService';
+import { localYmd } from '../../../utils/localDate';
+
+/** 업로드 제한 (브라우저 메모리·localStorage 보호) */
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5000;
 import { loadInboundPaths } from '../../../services/settingsService';
 import ModalPortal from '../../common/ModalPortal';
 
 interface ImportLeadsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (leads: SalesLead[]) => void;
+  /** @returns false면 저장 실패 */
+  onImport: (leads: SalesLead[]) => boolean | void;
   existingLeads: SalesLead[];
   existingRequests: ConsultRequest[];
 }
@@ -43,7 +49,7 @@ export default function ImportLeadsModal({
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [rawData, setRawData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const [batchName, setBatchName] = useState(() => `${new Date().toISOString().slice(0, 7)} 대량 인입 DB`);
+  const [batchName, setBatchName] = useState(() => `${localYmd().slice(0, 7)} 대량 인입 DB`);
   const [defaultInboundPath, setDefaultInboundPath] = useState('타사DB구매');
   const [allowDuplicates, setAllowDuplicates] = useState(false);
 
@@ -68,11 +74,15 @@ export default function ImportLeadsModal({
   };
 
   const processFile = (file: File) => {
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      toast.error('파일이 너무 큽니다. 5MB 이하 엑셀/CSV 파일만 가져올 수 있습니다.');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
@@ -84,6 +94,10 @@ export default function ImportLeadsModal({
 
         const headers = jsonData[0].map(h => (h ? String(h).trim() : ''));
         const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== null && cell !== ''));
+        if (rows.length > MAX_IMPORT_ROWS) {
+          toast.error(`한 번에 최대 ${MAX_IMPORT_ROWS.toLocaleString()}행까지 가져올 수 있습니다. (현재 ${rows.length.toLocaleString()}행)`);
+          return;
+        }
         
         setRawHeaders(headers);
         setRawData(rows);
@@ -109,7 +123,7 @@ export default function ImportLeadsModal({
         toast.error('파일을 읽는 중 오류가 발생했습니다.');
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -126,8 +140,8 @@ export default function ImportLeadsModal({
     const duplicates: any[] = [];
     const errors: any[] = [];
 
-    const existingClientPhones = new Set(existingRequests.map(r => (r.phone || '').replace(/\D/g, '')));
-    const existingLeadPhones = new Set(existingLeads.map(l => (l.phone || '').replace(/\D/g, '')));
+    const existingClientPhones = new Set(existingRequests.map(r => normalizeKrPhoneDigits(r.phone)));
+    const existingLeadPhones = new Set(existingLeads.map(l => normalizeKrPhoneDigits(l.phone)));
     const seenBatchPhones = new Set<string>();
 
     rawData.forEach((row, idx) => {
@@ -137,10 +151,10 @@ export default function ImportLeadsModal({
       });
 
       const customerName = String(obj.customerName || '').trim();
-      const rawPhone = String(obj.phone || '').trim();
-      const cleanPhone = rawPhone.replace(/\D/g, '');
+      // 앞자리 0 누락(엑셀 숫자 셀)·+82 표기 정규화 (이전: 중복 검사를 통과하고 잘못된 번호로 저장됨)
+      const cleanPhone = normalizeKrPhoneDigits(obj.phone);
 
-      if (!customerName || cleanPhone.length < 10) {
+      if (!customerName || cleanPhone.length < 10 || cleanPhone.length > 11 || !cleanPhone.startsWith('0')) {
         errors.push({ row: idx + 2, reason: '이름 누락 또는 유효하지 않은 전화번호', data: row });
         return;
       }
@@ -163,28 +177,29 @@ export default function ImportLeadsModal({
       seenBatchPhones.add(cleanPhone);
 
       const leadItem: SalesLead = {
-        id: `lead-bulk-${Date.now()}-${idx}`,
+        id: `lead-bulk-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
         customerName,
         phone: formattedPhone,
         status: 'new',
         secondaryStatus: '신규인입',
         birth: normalizeBirthYear(String(obj.birth || '')),
-        gender: String(obj.gender || '').includes('여') ? '여' : '남',
+        // 파일에 없는 항목은 비워 둠 (이전: 성별 남·급여소득·4대보험 가입·미혼·월세·카드사용으로 임의 지정)
+        gender: (String(obj.gender || '').includes('여') ? '여' : String(obj.gender || '').includes('남') ? '남' : undefined) as any,
         region: String(obj.region || '').trim(),
         inboundPath: defaultInboundPath,
         batchName: batchName.trim(),
         caseType: String(obj.caseType || '').includes('파산') ? '개인파산' : '개인회생',
-        jobTypes: ['급여소득'],
-        insurance4: '가입',
-        maritalStatus: '미혼',
+        jobTypes: [],
+        insurance4: undefined as any,
+        maritalStatus: undefined as any,
         incomeNet: Number(obj.incomeNet) || 0,
         loanMonthlyPay: 0,
-        housingType: '월세',
+        housingType: undefined as any,
         deposit: 0,
         rent: 0,
         assets: [],
         debtTotal: Number(obj.debtTotal) || 0,
-        creditCardUse: '사용',
+        creditCardUse: undefined as any,
         specialMemo: String(obj.specialMemo || '').trim(),
         callCount: 0,
         reminders: [],
@@ -204,8 +219,12 @@ export default function ImportLeadsModal({
       toast.error('가져올 유효한 데이터가 없습니다.');
       return;
     }
-    onImport(processedResults.valid);
-    toast.success(`${processedResults.valid.length}건의 영업 DB가 성공적으로 등록되었습니다.`);
+    const ok = onImport(processedResults.valid);
+    if (ok === false) {
+      toast.error('저장 공간 부족 등으로 영업 DB를 저장하지 못했습니다.');
+      return;
+    }
+    toast.success(`${processedResults.valid.length}건의 영업 DB를 등록했습니다.`);
     handleClose();
   };
 

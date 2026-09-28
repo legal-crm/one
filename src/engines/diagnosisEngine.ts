@@ -257,7 +257,8 @@ function generateWarnings(answers: DiagnosisAnswers, result: ComputeResponse): s
     warnings.push('아직 연체 전이지만, 최근 1년 내 발생한 채무가 많으면 법원 심사 시 불리할 수 있습니다.');
   }
   if (answers.q2_debtScale === 'over_50000') {
-    warnings.push('채무가 5억 원을 초과하면 개인회생 신청 자격이 제한될 수 있습니다. 정밀 분석이 필요합니다.');
+    // 개인회생 채무한도: 무담보 10억 / 담보 15억 (채무자회생법 제579조). 이전 문구는 개정 전 5억 기준이었음
+    warnings.push('채무가 5억 원 이상입니다. 개인회생 채무 한도(무담보 10억 원·담보 15억 원) 해당 여부를 정밀 분석해야 합니다.');
   }
 
   return warnings;

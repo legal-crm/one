@@ -229,7 +229,9 @@ export default function ClientCommunicationSidePanel({
         caseType: crmExt.caseType === 'bankruptcy' ? '개인파산·면책' : '개인회생'
       });
 
-      const updatedRecordings = [newRec, ...(crmExt.recordings || [])];
+      // 드라이브 업로드 성공 시에만 녹취 링크 저장
+      const uploaded = driveRes.status === 'success';
+      const updatedRecordings = uploaded ? [newRec, ...(crmExt.recordings || [])] : (crmExt.recordings || []);
       const updated: CrmClientExtension = {
         ...crmExt,
         recordings: updatedRecordings,
@@ -240,8 +242,14 @@ export default function ClientCommunicationSidePanel({
       if (onUpdateExt) {
         onUpdateExt(updated);
       }
-      setPlayingRecording(newRec);
-      toast.success('통화 녹취 업로드 및 AI 대화록 작성이 완료되었습니다.');
+      if (uploaded) {
+        setPlayingRecording(newRec);
+        toast.success('통화 녹취 업로드 및 AI 대화록 작성이 완료되었습니다.');
+      } else {
+        toast.warning(driveRes.status === 'not_configured'
+          ? 'AI 대화록은 작성했지만, 구글 드라이브 연동이 설정되지 않아 녹음 파일은 저장되지 않았습니다.'
+          : 'AI 대화록은 작성했지만, 구글 드라이브 업로드에 실패해 녹음 파일은 저장되지 않았습니다.');
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(`녹취 분석 실패: ${err.message || '오류 발생'}`);
@@ -561,13 +569,14 @@ export default function ClientCommunicationSidePanel({
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (!clientRequest.phone) {
                     toast.error('연락처가 등록되어 있지 않습니다.');
                     return;
                   }
-                  enqueueCall(clientRequest.phone, clientName);
-                  toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                  const r = await enqueueCall(clientRequest.phone, clientName);
+                  if (r.success) toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                  else toast.error(r.message);
                 }}
                 className="py-2 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale"
                 title="스마트폰으로 즉시 전화 걸기"

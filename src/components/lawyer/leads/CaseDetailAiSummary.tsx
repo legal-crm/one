@@ -24,6 +24,7 @@ import { SalesLead, RecordingItem } from '../../../types/leadTypes';
 import { CustomAudioPlayer, CustomAudioPlayerRef } from './CustomAudioPlayer';
 import { parseAiTranscript, generateAiCallSummary, extractSpecialMemoFromSummary } from '../../../services/aiCallSummaryService';
 import { uploadRecordingToDrive, getGoogleDriveConfig } from '../../../services/communicationService';
+import { loadTelegramRooms } from '../../../services/settingsService';
 import { GoogleDriveSettingsModal } from './GoogleDriveSettingsModal';
 import { toast } from 'sonner';
 
@@ -54,15 +55,24 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [editedSummary, setEditedSummary] = useState(lead.aiSummary || '');
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  // [영업 설정 > 텔레그램]에 등록한 방만 사용 (이전: 설정은 webhookUrl로 저장하는데 여기선 url을 읽어 항상 undefined,
+  //  등록된 방이 없으면 가짜 방 2개(t.me/c/123456789 등)를 표시)
   const [telegramRooms] = useState<Array<{ id: string; name: string; url: string }>>(() => {
+    const isTelegramUrl = (u: unknown): u is string => typeof u === 'string' && /^https:\/\/t\.me\//.test(u.trim());
+    const rooms: Array<{ id: string; name: string; url: string }> = [];
     try {
-      const saved = localStorage.getItem('lm_telegramRooms') || localStorage.getItem('legal_crm_telegram_rooms');
-      if (saved) return JSON.parse(saved);
+      loadTelegramRooms().forEach(r => {
+        if (r.active !== false && isTelegramUrl(r.webhookUrl)) rooms.push({ id: r.id, name: r.name, url: r.webhookUrl.trim() });
+      });
+      const legacy = localStorage.getItem('lm_telegramRooms');
+      if (legacy) {
+        (JSON.parse(legacy) as any[]).forEach((r: any) => {
+          const u = r?.url || r?.webhookUrl;
+          if (isTelegramUrl(u) && !rooms.some(x => x.url === u.trim())) rooms.push({ id: String(r.id || u), name: String(r.name || '텔레그램'), url: u.trim() });
+        });
+      }
     } catch (e) {}
-    return [
-      { id: 'room-1', name: '회생파산 전담팀', url: 'https://t.me/c/123456789/1' },
-      { id: 'room-2', name: '상담 브리핑 채널', url: 'https://t.me/c/987654321/1' }
-    ];
+    return rooms;
   });
 
   const playerRef = useRef<CustomAudioPlayerRef>(null);
@@ -115,7 +125,9 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
 
     const textToCopy = summaryText || lead.aiSummary;
     navigator.clipboard.writeText(textToCopy).then(() => {
-      if (telegramRooms.length === 1) {
+      if (telegramRooms.length === 0) {
+        toast.info('요약문을 복사했습니다. 등록된 텔레그램 방이 없어 [영업 설정 > 텔레그램]에서 방 링크(https://t.me/...)를 추가해 주세요.');
+      } else if (telegramRooms.length === 1) {
         window.open(telegramRooms[0].url, '_blank');
         toast.success('텔레그램 방이 열렸습니다. 붙여넣기(Ctrl+V)하여 전송하세요.');
       } else {
@@ -216,10 +228,12 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
         setCurrentAudioUrl(uploadRes.url);
         toast.success(`구글 드라이브에 업로드되었습니다! [AI 분석]을 클릭하여 대화록을 생성하세요.`);
       } else {
-        toast.info(`파일이 로드되었습니다. (로컬 플레이어 모드)`);
+        toast.warning(uploadRes.status === 'not_configured'
+          ? '구글 드라이브 연동이 설정되지 않아 녹음은 이 화면에서만 재생됩니다. (저장되지 않음)'
+          : '구글 드라이브 업로드에 실패했습니다. 녹음은 이 화면에서만 재생됩니다. (저장되지 않음)');
       }
     } catch {
-      toast.info(`파일이 로드되었습니다. [AI 분석]을 클릭하세요.`);
+      toast.warning('구글 드라이브 업로드에 실패했습니다. 녹음은 이 화면에서만 재생됩니다.');
     } finally {
       setIsUploadingToDrive(false);
     }

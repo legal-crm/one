@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Cloud, Mail, CheckCircle2, AlertCircle, Save, ExternalLink, RefreshCw, Folder } from 'lucide-react';
 import { toast } from 'sonner';
 import { GoogleDriveConfig } from '../../../types/leadTypes';
-import { getGoogleDriveConfig, saveGoogleDriveConfig, DEFAULT_GOOGLE_SCRIPT_URL } from '../../../services/communicationService';
+import { getGoogleDriveConfig, saveGoogleDriveConfig } from '../../../services/communicationService';
 import ModalPortal from '../../common/ModalPortal';
 
 interface GoogleDriveSettingsModalProps {
@@ -46,16 +46,23 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
       return;
     }
 
+    const gasUrl = config.gasWebAppUrl?.trim() || '';
+    if (gasUrl && !/^https:\/\/script\.google\.com\//.test(gasUrl)) {
+      toast.error('Google Apps Script 주소(https://script.google.com/...)만 사용할 수 있습니다.');
+      return;
+    }
+
     const updated: GoogleDriveConfig = {
       ...config,
       googleAccountEmail: emailToSave,
-      gasWebAppUrl: config.gasWebAppUrl?.trim() || DEFAULT_GOOGLE_SCRIPT_URL,
+      gasWebAppUrl: gasUrl,
       folderName: config.folderName?.trim() || '마이김변_통화녹취'
     };
 
     saveGoogleDriveConfig(updated);
     setConfig(updated);
-    toast.success('구글 드라이브 연동 설정이 안전하게 저장되었습니다.');
+    // 이 브라우저(localStorage)에만 저장됨
+    toast.success(gasUrl ? '구글 드라이브 연동 설정을 이 브라우저에 저장했습니다.' : '설정을 저장했습니다. 스크립트 URL이 없어 녹음은 업로드되지 않습니다.');
     onClose();
   };
 
@@ -64,7 +71,11 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
     toast.info('구글 드라이브 스크립트 연결 상태를 확인하고 있습니다...');
 
     try {
-      const targetUrl = config.gasWebAppUrl?.trim() || DEFAULT_GOOGLE_SCRIPT_URL;
+      const targetUrl = config.gasWebAppUrl?.trim() || '';
+      if (!/^https:\/\/script\.google\.com\//.test(targetUrl)) {
+        toast.error('사무소에서 배포한 Google Apps Script URL을 먼저 입력해 주세요.');
+        return;
+      }
       const res = await fetch(targetUrl, {
         method: 'POST',
         body: JSON.stringify({ target: 'ping' })
@@ -73,10 +84,11 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
       if (res.ok) {
         toast.success('구글 드라이브 업로드 엔드포인트 연결에 성공했습니다!');
       } else {
-        toast.warning(`연결 응답 코드: ${res.status}. 업로드 폴백(로컬/표준)이 가동됩니다.`);
+        toast.error(`연결 실패 (응답 코드 ${res.status}). 스크립트 배포 설정을 확인해 주세요.`);
       }
     } catch {
-      toast.info('구글 스크립트(GAS) 엔드포인트 연결 준비가 확인되었습니다.');
+      // 이전: 연결 예외를 '연결 준비 확인'으로 안내
+      toast.error('스크립트에 연결하지 못했습니다. URL과 배포 권한(모든 사용자 접근)을 확인해 주세요.');
     } finally {
       setIsTesting(false);
     }
@@ -209,21 +221,21 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
               </label>
               <button
                 type="button"
-                onClick={() => setConfig({ ...config, gasWebAppUrl: DEFAULT_GOOGLE_SCRIPT_URL })}
+                onClick={() => setConfig({ ...config, gasWebAppUrl: '' })}
                 className="text-[10px] text-purple-600 hover:underline cursor-pointer"
               >
-                기본값 복원
+                지우기
               </button>
             </div>
             <input
               type="url"
-              value={config.gasWebAppUrl || DEFAULT_GOOGLE_SCRIPT_URL}
+              value={config.gasWebAppUrl || ''}
               onChange={(e) => setConfig({ ...config, gasWebAppUrl: e.target.value })}
               placeholder="https://script.google.com/macros/s/.../exec"
               className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-[11px] text-slate-600 focus:ring-2 focus:ring-purple-500 outline-hidden"
             />
             <p className="text-[11px] text-slate-400">
-              * 마이김변 기본 제공 스크립트 또는 변호사님 개인 드라이브에 배포된 Web App URL을 연동합니다.
+              * 변호사님(사무소) 구글 계정으로 직접 배포한 Web App URL만 입력하세요. 통화 녹음 원본이 이 주소로 전송됩니다.
             </p>
           </div>
 

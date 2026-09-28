@@ -10,7 +10,7 @@ import { useCopilotPermissions } from '../../hooks/useCopilotPermissions';
 import type {
   CaseReviewStatus, ReviewFlag, LawyerOpinion as LawyerOpinionType,
   ReviewRuleSet, CourtPracticeNote, CopilotAuditLog,
-  ReviewFlagType, RuleSourceType
+  ReviewFlagType, RuleSourceType, CopilotAuditAction
 } from '../../types/copilot';
 import {
   CASE_REVIEW_STATUS_CONFIG, FLAG_TYPE_CONFIG, RULE_SOURCE_TYPE_CONFIG
@@ -30,6 +30,9 @@ import AIRepaymentMatrix, { type RepaymentScenario } from './copilot/AIRepayment
 import ExemptAssetBasket from './copilot/ExemptAssetBasket';
 import CollateralPledgeSection from './copilot/CollateralPledgeSection';
 import SpecialCreditorRadar from './copilot/SpecialCreditorRadar';
+import { writeCopilotAuditLog } from '../../services/copilotAuditService';
+import { getOfficeProfile } from '../../services/lawyer/officeProfile';
+import { localYmd } from '../../utils/localDate';
 
 // ============================================================
 // 사건검토 코파일럿 메인 컴포넌트
@@ -142,7 +145,12 @@ const COPILOT_TABS: { key: CopilotTab; label: string; icon: React.ReactNode; req
   { key: 'court-notes', label: '관할법원 참고', icon: <Scale className="w-3.5 h-3.5" /> },
 ];
 
-/** 금액 포맷 */
+/** 만원 단위 원본값(financialProfile) 표시 */
+function fmtMan(v: number): string {
+  return fmtMoney(Math.round((Number(v) || 0) * 10000));
+}
+
+/** 금액 포맷 (원) */
 function fmtMoney(v: number): string {
   if (!v && v !== 0) return '-';
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억 원`;
@@ -156,14 +164,16 @@ function fmtMoney(v: number): string {
 function mapToIntakeData(req: any): IntakeData | null {
   if (!req) return null;
   const fp = req.financialProfile || req;
-  const income = fp.income || fp.monthlyIncome || 0;
-  const debtTotal = fp.debtTotal || 0;
+  // financialProfile 금액은 만원 단위 → 팩트엔진·룰엔진은 원 단위 (이전: 만원 값을 그대로 넘겨 모든 판정이 왜곡됨)
+  const W = (v: any) => Math.round((Number(v) || 0) * 10000);
+  const income = W(fp.income || fp.monthlyIncome);
+  const debtTotal = W(fp.debtTotal);
 
   const debts = (fp.debts || []).map((d: any, i: number) => ({
     id: `debt-${i}`,
     creditor: d.creditor || d.name || `채권자 ${i + 1}`,
-    principal: d.principal || d.amount || 0,
-    interest: d.interest || 0,
+    principal: W(d.principal || d.amount),
+    interest: W(d.interest),
     type: (d.type as 'unsecured' | 'secured' | 'tax') || 'unsecured',
     isGamblingOrLuxury: d.isGamblingOrLuxury || false,
     isRecent: d.isRecent || false,
@@ -178,8 +188,8 @@ function mapToIntakeData(req: any): IntakeData | null {
     owner: (a.owner as 'self' | 'spouse') || 'self',
     type: a.type || 'deposit',
     label: a.label || a.name || '',
-    marketValue: a.marketValue || a.value || 0,
-    loanBalance: a.loanBalance || 0,
+    marketValue: W(a.marketValue || a.value),
+    loanBalance: W(a.loanBalance),
     hasPledge: a.hasPledge || false,
     isExempt: a.isExempt || false,
   }));
@@ -187,13 +197,13 @@ function mapToIntakeData(req: any): IntakeData | null {
   return {
     clientName: req.client_name || req.clientName || '의뢰인',
     phoneNumber: '',
-    birthDate: fp.birthDate || '1985-1-1',
-    consultDate: new Date().toISOString().split('T')[0],
+    birthDate: fp.birthDate || '',
+    consultDate: localYmd(),
     dbVendor: '코파일럿',
     caseType: '개인회생',
-    residence: fp.residence || fp.address || '서울특별시',
-    workplace: '',
-    selectedCourt: fp.selectedCourt || '서울회생법원',
+    residence: fp.residence || fp.address || fp.residenceRegion || '',
+    workplace: fp.workLocation || '',
+    selectedCourt: fp.selectedCourt || '',
     maritalStatus: fp.maritalStatus || 'single',
     minorChildren: fp.minorChildren || 0,
     minorChildrenFullRecognition: false,
@@ -206,9 +216,9 @@ function mapToIntakeData(req: any): IntakeData | null {
     }],
     debts,
     assets,
-    monthlyLivingCost: fp.monthlyExpense || fp.livingCost || 0,
-    monthlyRent: fp.monthlyRent || 0,
-    monthlyInsurance: fp.monthlyInsurance || 0,
+    monthlyLivingCost: W(fp.monthlyExpense || fp.livingCost),
+    monthlyRent: W(fp.monthlyRent || fp.rentCost),
+    monthlyInsurance: W(fp.monthlyInsurance),
     extraLivingCost: { utilities: 0, education: 0, specialEducation: 0, medical: 0, other: 0 },
     specialCircumstances: { singleParent: false, basicLivelihood: false, rentFraud: false, severeDisability: false },
     consultationLogs: [],
@@ -224,7 +234,8 @@ export default function CaseReviewCopilot({
   const allClients = React.useMemo(() => {
     const fromProps = consultRequests || (singleRequest ? [singleRequest] : []);
     if (fromProps.length > 0) return fromProps;
-    return SAMPLE_CLIENTS; // 실제 상담이 없을 때 데모용 폴백
+    // 데모 샘플(가짜 의뢰인·연락처)은 개발 환경에서만 표시
+    return import.meta.env.DEV ? SAMPLE_CLIENTS : [];
   }, [consultRequests, singleRequest]);
 
   const [selectedClientIdx, setSelectedClientIdx] = useState<number>(-1);
@@ -249,7 +260,9 @@ export default function CaseReviewCopilot({
   const [showRehabReport, setShowRehabReport] = useState(false);
 
   // 변호사 컨펌 프로세스
-  const [confirmRequest, setConfirmRequest] = useState<{requester: string; role: string; memo: string; requestedAt: string} | null>(null);
+  const [confirmRequest, setConfirmRequest] = useState<{requester: string; requesterId?: string; role: string; memo: string; requestedAt: string} | null>(null);
+  // 요청자 본인은 승인할 수 없음 (자기 승인 차단)
+  const isSelfApproval = !!confirmRequest?.requesterId && confirmRequest.requesterId === actorId;
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState<CopilotTab>('client-info');
@@ -293,6 +306,17 @@ export default function CaseReviewCopilot({
 
   // 감사 로그
   const [auditLogs, setAuditLogs] = useState<{ time: string; action: string; actor: string; detail: string }[]>([]);
+
+  // 감사 로그: 화면 표시 + 서버/로컬 기록 (이전: 화면 상태에만 저장되어 새로고침 시 소실)
+  const addAuditLog = useCallback((action: string, detail: string) => {
+    setAuditLogs(prev => [{
+      time: new Date().toLocaleString('ko-KR'),
+      action,
+      actor: `${actorName} (${actorRole})`,
+      detail,
+    }, ...prev]);
+    void writeCopilotAuditLog(tenantId, actorId, actorRole, action as CopilotAuditAction, 'ConsultRequest', consultRequest?.id || '', { detail });
+  }, [actorName, actorRole, actorId, tenantId, consultRequest?.id]);
 
   // 검토 초안 생성
   const handleRunCopilot = useCallback(() => {
@@ -341,16 +365,7 @@ export default function CaseReviewCopilot({
     } finally {
       setIsRunning(false);
     }
-  }, [consultRequest, tenantId]);
-
-  const addAuditLog = (action: string, detail: string) => {
-    setAuditLogs(prev => [{
-      time: new Date().toLocaleString('ko-KR'),
-      action,
-      actor: `${actorName} (${actorRole})`,
-      detail,
-    }, ...prev]);
-  };
+  }, [consultRequest, tenantId, addAuditLog]);
 
   // 사무직원 검토 제출
   const handleStaffSubmit = () => {
@@ -813,9 +828,9 @@ export default function CaseReviewCopilot({
 
                     {/* [기능 1] 관할 법원 실무 통계 & 1:1 관할 비교 레이더 */}
                     <CourtStatsRadar
-                      residenceAddress={fp.residence || fp.residenceRegion || fp.address || '서울특별시'}
+                      residenceAddress={fp.residence || fp.residenceRegion || fp.address || ''}
                       workLocation={fp.workLocation}
-                      selectedCourtName={rehabCalcResult?.courtName || fp.selectedCourt || '서울회생법원'}
+                      selectedCourtName={rehabCalcResult?.courtName || fp.selectedCourt || ''}
                     />
 
                     {factOutput || rehabCalcResult ? (
@@ -1002,7 +1017,10 @@ export default function CaseReviewCopilot({
                               <p><span className="font-bold">메모:</span> {confirmRequest.memo}</p>
                               <p><span className="font-bold">요청일:</span> {confirmRequest.requestedAt}</p>
                             </div>
-                            {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && (
+                            {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && isSelfApproval && (
+                              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2.5">요청자 본인은 승인할 수 없습니다. 다른 변호사의 승인이 필요합니다.</p>
+                            )}
+                            {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && !isSelfApproval && (
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
@@ -1100,10 +1118,10 @@ export default function CaseReviewCopilot({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                         {[
-                          { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
+                          { label: '월 소득', value: fmtMan(fp.income || fp.monthlyIncome || 0) },
                           { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
                           { label: '근무지', value: fp.workLocation || '-' },
-                          { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
+                          { label: '배우자 소득', value: fp.spouseIncome ? fmtMan(fp.spouseIncome) : '-' },
                         ].map((item, i) => (
                           <div key={i} className="px-3.5 py-2.5 text-left">
                             <p className="text-xs font-bold text-slate-400">{item.label}</p>
@@ -1121,7 +1139,7 @@ export default function CaseReviewCopilot({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                         {[
-                          { label: '총 채무', value: fmtMoney(fp.debtTotal || 0), highlight: true },
+                          { label: '총 채무', value: fmtMan(fp.debtTotal || 0), highlight: true },
                           { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
                           { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
                           { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
@@ -1149,7 +1167,7 @@ export default function CaseReviewCopilot({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                         {[
-                          { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
+                          { label: '총 자산', value: fmtMan(fp.assetsTotal || 0) },
                           { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
                           { label: '배우자 자산', value: fp.spouseAsset ? `${fp.spouseAsset}만원` : '-' },
                           { label: '임대보증금', value: fp.rentalDeposit ? `${fp.rentalDeposit}만원` : '-' },
@@ -1184,7 +1202,7 @@ export default function CaseReviewCopilot({
                             {fp.assets.map((a: any, i: number) => (
                               <tr key={i} className="border-t border-slate-50">
                                 <td className="px-3 py-1.5 text-slate-700 font-bold">{a.label || a.description || `자산 ${i+1}`}</td>
-                                <td className="px-3 py-1.5 text-right font-black text-slate-900">{fmtMoney(a.marketValue || a.value || 0)}</td>
+                                <td className="px-3 py-1.5 text-right font-black text-slate-900">{fmtMan(a.marketValue || a.value || 0)}</td>
                                 <td className="px-3 py-1.5 text-center"><span className="bg-slate-100 rounded-lg px-2 py-0.5 text-xs font-bold">{a.type || '-'}</span></td>
                               </tr>
                             ))}
@@ -1219,10 +1237,10 @@ export default function CaseReviewCopilot({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                         {[
-                          { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
+                          { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMan(fp.monthlyRent) : '-' },
                           { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만` : '-' },
                           { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만` : '-' },
-                          { label: '합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
+                          { label: '합계', value: fp.monthlyExpense ? fmtMan(fp.monthlyExpense) : fp.livingCost ? fmtMan(fp.livingCost) : '-' },
                         ].map((item, i) => (
                           <div key={i} className="px-3.5 py-2.5 text-left">
                             <p className="text-xs font-bold text-slate-400">{item.label}</p>
@@ -1317,7 +1335,7 @@ export default function CaseReviewCopilot({
           isAIPremiumEnabled={true}
           lawyerInfo={{
             name: actorName || '담당 변호사',
-            firmName: '도산전문 법률사무소'
+            firmName: getOfficeProfile(actorName).firmName
           }}
           onSendProposal={(proposalData) => {
             // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
@@ -1330,7 +1348,7 @@ export default function CaseReviewCopilot({
           onRequestConfirm={(proposalData, memo) => {
             setShowRehabReport(false);
             setReviewStatus('LAWYER_REVIEW_REQUIRED');
-            setConfirmRequest({ requester: actorName, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
+            setConfirmRequest({ requester: actorName, requesterId: actorId, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
             addAuditLog('CONFIRM_REQUESTED', `변호사 컨펌 요청: ${memo}`);
           }}
         />

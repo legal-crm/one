@@ -68,13 +68,13 @@ export default function ProposalWorkspace({
 
   const clientId = consultRequest?.id || 'unknown';
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
-  const { savedDraft, scheduleAutoSave, clearDraft, lastSavedAt, isDirty } = useProposalDraft(clientId);
+  const { initialDraft, scheduleAutoSave, clearDraft, lastSavedAt, isDirty } = useProposalDraft(clientId);
   
-  // 초안 복원 여부 결정
-  const [useDraft, setUseDraft] = useState<boolean>(!!savedDraft);
+  // 초안 복원 여부 결정 — '이어쓰기' 선택 시 에디터를 다시 마운트해 초안 값으로 초기화
+  const [useDraft, setUseDraft] = useState<boolean>(false);
 
   useEffect(() => {
-    if (savedDraft) {
+    if (initialDraft) {
       toast('이전 작성 내용이 있습니다. 이어서 작성하시겠습니까?', {
         action: {
           label: '이어쓰기',
@@ -135,7 +135,7 @@ export default function ProposalWorkspace({
   // AI 정밀분석 변호사법 검수 승인 완료 시 발송 실행
   const handleAttestationConfirm = (reviewData: AttorneyReviewData) => {
     setIsAttestationOpen(false);
-    toast.success('변호사 직접 검수가 공식 인증되었습니다. 제안서를 고객에게 전송합니다.');
+    // 발송 결과 안내는 실제 발송 처리(LawyerRole)에서 표시 (이전: 발송 전에 '공식 인증·전송' 성공 토스트)
     document.dispatchEvent(new CustomEvent('proposal-workspace-submit', {
       detail: { attorneyReview: reviewData }
     }));
@@ -189,7 +189,7 @@ export default function ProposalWorkspace({
     setMobileTab('editor');
   }, []);
 
-  const courtName = (rehabCalcResult as any)?.court || '서울회생법원';
+  const courtName = (rehabCalcResult as any)?.court || consultRequest?.financialProfile?.selectedCourt || '';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden font-sans animate-fadeIn">
@@ -360,7 +360,8 @@ export default function ProposalWorkspace({
             onRejectProposal={onRejectProposal}
             pendingStaffName={pendingStaffName}
             aiAnalysis={aiAnalysis}
-            initialDraft={useDraft ? savedDraft : null}
+            key={useDraft ? 'draft-restored' : 'draft-fresh'}
+            initialDraft={useDraft ? initialDraft : null}
             onDraftChange={handleDraftChange}
             activeViewMode={viewMode}
             onToggleViewMode={setViewMode}
@@ -464,8 +465,8 @@ export default function ProposalWorkspace({
             repaymentMonths: (rehabCalcResult as any)?.repaymentMonths || 36,
             debtReductionRate: rehabCalcResult?.debtReductionRate,
             lawyer: lawyerInfo,
-            lawyerName: lawyerInfo?.name || '김회생 변호사',
-            firmName: lawyerInfo?.firmName || '법무법인 케어'
+            lawyerName: lawyerInfo?.name || '',
+            firmName: lawyerInfo?.firmName || ''
           }}
           isLawyerEditor={true}
           onApplyChanges={handleApplyAIReportChanges}
@@ -479,8 +480,8 @@ export default function ProposalWorkspace({
           onClose={() => setIsAttestationOpen(false)}
           onConfirm={handleAttestationConfirm}
           clientName={clientName}
-          monthlyPayment={rehabCalcResult?.monthlyPayment || 400000}
-          totalDebt={rehabUserInput?.totalDebt || 50000000}
+          monthlyPayment={rehabCalcResult?.monthlyPayment || 0}
+          totalDebt={rehabUserInput?.totalDebt || 0}
           courtName={courtName}
           lawyerName={lawyerInfo?.name}
           firmName={lawyerInfo?.firmName}

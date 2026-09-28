@@ -1,5 +1,6 @@
 import React from 'react';
 import { Scale, CheckCircle2, AlertTriangle, ArrowUpRight, TrendingUp, ShieldAlert, Sparkles } from 'lucide-react';
+import { getLeibnizFactor } from '../../../services/repayment/repaymentConstants2026';
 
 interface LegalQualificationChartProps {
   liquidationValue: number; // 청산가치 (원)
@@ -39,14 +40,8 @@ export default function LegalQualificationChart({
   const totalRepayment = monthlyPayment * repaymentMonths;
 
   // 2. 라이프니츠(Leibniz) 계수 적용 현재가치 (PV) 산출
-  // 법원 실무: 월 5% 복리할인(라이프니츠) 적용 계수
-  // 36개월 계수 약 33.3657, 48개월 약 43.4304, 60개월 약 52.9907
-  const getLeibnizFactor = (months: number) => {
-    if (months <= 24) return 22.79;
-    if (months <= 36) return 33.36;
-    if (months <= 48) return 43.43;
-    return 52.99;
-  };
+  // 연 5%(월 5%/12) 복리할인 라이프니츠 계수 — 프로젝트 공통 산식 사용
+  // (이전: 24/36/48/60 계단식 근사값을 써서 30개월 등 중간 기간의 현재가치를 과대평가)
   const leibnizFactor = getLeibnizFactor(repaymentMonths);
   const presentValue = Math.round(monthlyPayment * leibnizFactor);
 
@@ -63,8 +58,11 @@ export default function LegalQualificationChart({
   const meetsDisposableIncome = disposableIncome > 0 && monthlyPayment > 0;
 
   // 청산가치 충족을 위해 필요한 최소 월 변제금 (현재 기간 기준)
-  const requiredMonthlyPayment = Math.ceil(liquidationValue / leibnizFactor);
+  const requiredMonthlyPayment = leibnizFactor > 0 ? Math.ceil(liquidationValue / leibnizFactor) : 0;
   const deficitMonthlyPayment = Math.max(0, requiredMonthlyPayment - monthlyPayment);
+
+  // 다음 연장 단계 (이전: 36→48 외에는 모두 60으로 점프)
+  const nextMonths = repaymentMonths < 36 ? 36 : repaymentMonths < 48 ? 48 : 60;
 
   // 전체 요건 통과 여부
   const isFullyQualified = meetsLiquidationGuarantee && meetsInsolvency && meetsDisposableIncome;
@@ -189,7 +187,7 @@ export default function LegalQualificationChart({
             <span>청산가치 보장 요건 미달 해결 가이드 (-{formatWon(liquidationGap)})</span>
           </div>
           <p className="text-xs text-rose-800 leading-relaxed">
-            채무자회생법 제614조 제1항 제4호에 따라 변제금의 현재가치({formatWon(presentValue)})가 청산가치({formatWon(liquidationValue)})보다 적으면 법원에서 <strong>인가가 기각</strong>됩니다.
+            채무자회생법 제614조 제1항 제4호에 따라 변제금의 현재가치({formatWon(presentValue)})가 청산가치({formatWon(liquidationValue)})보다 적으면 법원이 변제계획을 <strong>불인가</strong>할 수 있습니다.
           </p>
           
           <div className="flex flex-wrap gap-2 pt-1">
@@ -204,10 +202,10 @@ export default function LegalQualificationChart({
             )}
             {repaymentMonths < 60 && (
               <button
-                onClick={() => onAdjustPlan?.(repaymentMonths === 36 ? 48 : 60, monthlyPayment)}
+                onClick={() => onAdjustPlan?.(nextMonths, monthlyPayment)}
                 className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold active:scale-[0.98] transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
               >
-                변제기간 {repaymentMonths}개월 → {repaymentMonths === 36 ? '48' : '60'}개월로 연장하기
+                변제기간 {repaymentMonths}개월 → {nextMonths}개월로 연장하기
               </button>
             )}
           </div>

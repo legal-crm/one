@@ -3,6 +3,7 @@ import { Calendar, FileText, CheckCircle, Clock, Plus, Trash2, CreditCard, Dolla
 import { toast } from 'sonner';
 import type { SalesLead, Partner } from '../../../types/leadTypes';
 import { calculateCommission, formatKoreanMoney } from '../../../services/leadService';
+import { localYmd } from '../../../utils/localDate';
 
 interface CaseSettlementTabProps {
   lead: SalesLead;
@@ -48,7 +49,7 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
 
   // 입금 항목 추가
   const handleAddDeposit = () => {
-    const nextHistory = [...depositHistory, { date: new Date().toISOString().split('T')[0], amount: 0 }];
+    const nextHistory = [...depositHistory, { date: localYmd(), amount: 0 }];
     const updated: SalesLead = {
       ...lead,
       depositHistory: nextHistory,

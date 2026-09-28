@@ -42,6 +42,10 @@ export async function createTask(
     requiresApproval?: boolean;
     templateId?: string;
     caseStage?: string;
+    taskDomain?: 'sales' | 'client';
+    leadId?: string;
+    leadPhone?: string;
+    leadDebt?: number;
   }
 ): Promise<TaskTicket> {
   const ticket: TaskTicket = {
@@ -62,6 +66,10 @@ export async function createTask(
     requiresApproval: data.requiresApproval || false,
     templateId: data.templateId,
     caseStage: data.caseStage,
+    taskDomain: data.taskDomain,
+    leadId: data.leadId,
+    leadPhone: data.leadPhone,
+    leadDebt: data.leadDebt,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
   CheckCircle2, FileText, AlertTriangle, Scale, Plus, Trash2, 
   Send, Sparkles, User, MessageSquare, Clock, Eye, Edit3, Settings,
@@ -12,6 +12,7 @@ import { ProposalDraftState } from '../../hooks/useProposalDraft';
 import { toast } from 'sonner';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { getCourtStats } from '../../constants/courtStatistics';
+import { findProhibitedExpressions } from '../../services/proposalCompliance';
 
 export interface AIAnalysisData {
   factSummary: {
@@ -87,9 +88,13 @@ export interface ProposalData {
     includeCourtNotes: boolean;
     courtStats?: {
       courtName: string;
-      injunctionRate: number;
-      averageReductionRate: number;
-      speedRating: string;
+      isSpecialized?: boolean;
+      /** @deprecated 근거 없는 수치 — 더 이상 생성하지 않음 (옛 제안서 호환용) */
+      injunctionRate?: number;
+      /** @deprecated */
+      averageReductionRate?: number;
+      /** @deprecated */
+      speedRating?: string;
       specialRules?: string[];
     };
   };
@@ -134,23 +139,23 @@ const fmtNum = (n: number) => n.toLocaleString('ko-KR');
 const STRATEGY_CHIPS = [
   {
     tag: '#주식코인손실탕감',
-    text: '\n• [주식/코인 투자손실 방어]: 손실금의 청산가치 과다 반영을 차단하여 원금 탕감률을 최대화하도록 소명하겠습니다.'
+    text: '\n• [주식/코인 투자손실 소명]: 투자 손실금이 청산가치에 과다 반영되지 않도록 거래내역을 바탕으로 소명하겠습니다.'
   },
   {
     tag: '#서울회생법원특칙',
-    text: '\n• [관할법원 실무준칙 적용]: 관할 법원의 실무준칙에 의거하여 보정권고 횟수를 최소화하고 빠른 개시결정을 유도합니다.'
+    text: '\n• [관할법원 실무준칙 반영]: 관할 법원의 실무준칙에 맞춰 서류를 준비하여 보정권고에 대비하겠습니다.'
   },
   {
     tag: '#급여압류신속해제',
-    text: '\n• [압류 및 독촉 즉시중단]: 접수 즉시 금지명령·중지명령을 신청하여 급여 압류를 조기에 해제하고 생계비를 보장합니다.'
+    text: '\n• [금지·중지명령 신청]: 접수 시 금지명령·중지명령을 함께 신청하여 추심과 강제집행 대응을 진행하겠습니다. (인용 여부와 시기는 법원 판단)'
   },
   {
     tag: '#생계비추가인정',
-    text: '\n• [가계 수지 최적화]: 실제 지출 중인 주거비(월세) 및 필수 의료비를 추가 생계비로 반영시켜 월 변제금을 최소화합니다.'
+    text: '\n• [추가 생계비 소명]: 실제 지출 중인 주거비(월세)·필수 의료비를 추가 생계비로 인정받을 수 있도록 소명하겠습니다.'
   },
   {
     tag: '#배우자재산미반영',
-    text: '\n• [배우자 재산 방어]: 원칙적으로 배우자 명의 재산을 청산가치에 반영하지 않도록 법리적으로 완벽히 방어합니다.'
+    text: '\n• [배우자 재산 소명]: 배우자 명의 재산의 청산가치 반영 범위를 관할 법원 기준에 따라 검토·소명하겠습니다.'
   }
 ];
 
@@ -264,13 +269,13 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   };
 
   // Section 4: Lawyer Opinion
-  const courtName = (rehabCalcResult as any).court || consultRequest?.financialProfile?.selectedCourt || '서울회생법원';
+  const courtName = (rehabCalcResult as any).court || consultRequest?.financialProfile?.selectedCourt || '';
   
   const defaultOpinion = useMemo(() => {
     if (aiAnalysis) {
-      return `개인회생 진행이 가능한 것으로 분석되었습니다.\n\n현재 월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 산출되며, 예상 변제 기간 ${rehabCalcResult.repaymentMonths}개월 동안 성실히 납부 시 총 채무의 약 ${rehabCalcResult.debtReductionRate}%를 법적으로 면책받으실 수 있습니다.\n\n${courtName}의 실무 기준에 맞추어 사건 접수 즉시 금지명령을 신청하여 독촉과 압류를 중단시키고, 인가 결정을 최단기간에 이끌어내겠습니다.`;
+      return `개인회생 진행이 가능한 것으로 분석되었습니다.\n\n현재 월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 산출되며, 예상 변제 기간 ${rehabCalcResult.repaymentMonths}개월 동안 성실히 납부 시 총 채무의 약 ${rehabCalcResult.debtReductionRate}%를 법적으로 면책받으실 수 있습니다.\n\n${courtName ? `${courtName}의 ` : '관할 법원의 '}실무 기준에 맞추어 접수 시 금지명령을 함께 신청하고, 인가 결정까지 절차를 성실히 진행하겠습니다. (결정 여부와 시기는 법원 판단 사항입니다)`;
     }
-    return `개인회생 신청 적격 대상자로 분석됩니다.\n\n의뢰인님의 소득과 생계비를 종합 고려하여 월 최저 변제금(${formatCurrency(rehabCalcResult.monthlyPayment)})으로 인가받을 수 있도록 최적의 변제계획안을 수립하겠습니다.\n\n접수 즉시 금지명령을 통해 모든 채권 추심과 압류를 신속히 중단시켜 드리겠습니다.`;
+    return `입력하신 정보 기준으로 개인회생 신청을 검토할 수 있는 사안입니다.\n\n의뢰인님의 소득과 생계비를 종합 고려한 예상 월 변제금은 ${formatCurrency(rehabCalcResult.monthlyPayment)}이며, 서류 확인 후 변제계획안을 확정하겠습니다.\n\n접수 시 금지명령을 함께 신청하여 채권 추심에 대응하겠습니다. (인용 여부와 시기는 법원 판단 사항입니다)`;
   }, [aiAnalysis, rehabCalcResult, courtName]);
 
   const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? defaultOpinion);
@@ -396,11 +401,12 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       answer: clientAnswers[idx] || ''
     })),
     attorneyReview: {
-      isReviewed: true,
+      // 직원 작성본은 변호사 검수 전 — 검수 완료로 표시하지 않음 (이전: 항상 true)
+      isReviewed: viewerRole !== 'staff',
       reviewedAt: new Date().toISOString(),
       reviewerName: lawyerInfo?.name || '담당 변호사',
-      firmName: lawyerInfo?.firmName || '법률사무소',
-      disclaimerAgreed: true,
+      firmName: lawyerInfo?.firmName || '',
+      disclaimerAgreed: viewerRole !== 'staff',
     },
     ...(isAIPremium && aiAnalysis ? {
       aiInsights: {
@@ -421,12 +427,10 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         includeFinancialAnalysis,
         includeRiskReport,
         includeCourtNotes,
+        // 관할 법원명·전문법원 여부만 전달 (이전: 근거 없는 인용률·탕감률이 의뢰인 제안서에 포함됨)
         courtStats: {
           courtName,
-          injunctionRate: getCourtStats(courtName).injunctionRate,
-          averageReductionRate: Math.round(100 - getCourtStats(courtName).avgRepaymentRate),
-          speedRating: getCourtStats(courtName).speedRating,
-          specialRules: getCourtStats(courtName).features,
+          isSpecialized: getCourtStats(courtName).isSpecialized,
         },
       }
     } : {}),
@@ -434,22 +438,61 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     rehabCalcResult
   });
 
+  // 발송 직전 검증: 금지 광고 표현 차단 (상담 스타일 프로필 + 기본 목록)
+  const tenantKey = consultRequest?.selectedLawyerId || undefined;
+  const validateBeforeSend = (data: ProposalData): boolean => {
+    const text = [
+      data.lawyerOpinion,
+      ...(data.specialNotes || []),
+      data.fees?.feeMemo || '',
+      ...(data.clientQnA || []).map(q => q.answer || ''),
+    ].join('\n');
+    const hits = findProhibitedExpressions(text, tenantKey);
+    if (hits.length > 0) {
+      toast.error(`금지 표현이 포함되어 발송할 수 없습니다: ${hits.join(', ')}`, { description: '변협 광고규정에 따라 결과 보장·과장 표현을 수정해 주세요.' });
+      return false;
+    }
+    return true;
+  };
+
+  // 발송/컨펌요청 공통 처리 — 직원은 변호사 컨펌 요청으로만 전달 (이전: 직원도 의뢰인에게 직접 발송됨)
+  const submitProposal = (data: ProposalData) => {
+    if (!validateBeforeSend(data)) return;
+    if (viewerRole === 'staff') {
+      if (!onRequestConfirm) {
+        toast.error('변호사 컨펌 요청 경로가 연결되어 있지 않습니다.');
+        return;
+      }
+      onRequestConfirm(data, `${pendingStaffName || '직원'} 작성 제안서 컨펌 요청`);
+      return;
+    }
+    if (viewerRole === 'reviewer' && onApproveProposal) {
+      onApproveProposal(data);
+      return;
+    }
+    onSendProposal(data);
+  };
+
+  // 최신 렌더의 값을 이벤트 리스너에서 사용 (이전: 첫 렌더의 getProposalData를 캡처해 수정 전 내용이 발송될 수 있었음)
+  const latestRef = useRef({ getProposalData, submitProposal });
+  latestRef.current = { getProposalData, submitProposal };
+
   // External Submit listener
   useEffect(() => {
     if (!isEmbedded) return;
     const handleExternalSubmit = (e: any) => {
-      const data = getProposalData();
+      const data = latestRef.current.getProposalData();
       if (e?.detail?.attorneyReview) {
         data.attorneyReview = {
           ...data.attorneyReview,
           ...e.detail.attorneyReview
         };
       }
-      onSendProposal(data);
+      latestRef.current.submitProposal(data);
     };
     document.addEventListener('proposal-workspace-submit', handleExternalSubmit);
     return () => document.removeEventListener('proposal-workspace-submit', handleExternalSubmit);
-  }, [isEmbedded, onSendProposal]);
+  }, [isEmbedded]);
 
   // 템플릿 원클릭 적용 핸들러
   const handleApplyTemplate = (tpl: OpinionTemplate) => {
@@ -530,7 +573,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             reportData={{
               lawyerInfo: {
                 name: lawyerInfo?.name || '담당 변호사',
-                firmName: lawyerInfo?.firmName || '도산전문 법률사무소',
+                firmName: lawyerInfo?.firmName || '',
                 avatar: lawyerInfo?.avatar
               },
               clientName,
@@ -563,10 +606,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 isAIPremium: true,
                 courtStats: {
                   courtName,
-                  injunctionRate: stats.injunctionRate,
-                  averageReductionRate: Math.round(100 - stats.avgRepaymentRate),
-                  speedRating: stats.speedRating,
-                  specialRules: stats.features,
+                  isSpecialized: stats.isSpecialized,
                 },
                 reviewGrade: aiAnalysis?.reviewGrade || 'NORMAL_REVIEW'
               } : undefined,
@@ -978,11 +1018,11 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             닫기
           </button>
           <button
-            onClick={() => onSendProposal(getProposalData())}
+            onClick={() => submitProposal(getProposalData())}
             className="px-6 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all active:scale-[0.98] min-h-[44px] whitespace-nowrap cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            고객에게 제안서 발송하기
+            {viewerRole === 'staff' ? '변호사 컨펌 요청' : viewerRole === 'reviewer' ? '승인 및 고객 발송' : '고객에게 제안서 발송하기'}
           </button>
         </footer>
       )}

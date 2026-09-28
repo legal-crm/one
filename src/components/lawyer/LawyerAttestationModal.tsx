@@ -30,8 +30,9 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
   monthlyPayment,
   totalDebt,
   courtName,
-  lawyerName = '김회생 변호사',
-  firmName = '법무법인 케어'
+  // 이전: 기본값 '김회생 변호사'·'법무법인 케어'가 검수 기록에 남을 수 있었음
+  lawyerName = '',
+  firmName = ''
 }) => {
   const [checkedPayment, setCheckedPayment] = useState(false);
   const [checkedCourt, setCheckedCourt] = useState(false);
@@ -39,7 +40,8 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
 
   if (!isOpen) return null;
 
-  const allChecked = checkedPayment && checkedCourt && checkedEndorse;
+  const hasReviewer = !!lawyerName.trim();
+  const allChecked = checkedPayment && checkedCourt && checkedEndorse && hasReviewer;
 
   const handleConfirm = () => {
     if (!allChecked) return;
@@ -169,7 +171,7 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
                 변
               </div>
               <div>
-                <span className="font-bold text-slate-900">{firmName} {lawyerName}</span>
+                <span className="font-bold text-slate-900">{hasReviewer ? `${firmName} ${lawyerName}`.trim() : '검수 변호사 정보 없음 — 로그인 변호사 정보를 확인하세요'}</span>
                 <span className="text-[11px] text-slate-500 ml-1.5">(대한변협 등록 변호사)</span>
               </div>
             </div>

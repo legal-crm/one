@@ -41,8 +41,10 @@ export const DEFAULT_SMS_TEMPLATES: SmsTemplate[] = [
 
 const LOCAL_STORAGE_TEMPLATES_KEY = 'legal_crm_sms_templates';
 const LOCAL_STORAGE_DRIVE_CONFIG_KEY = 'legal_crm_google_drive_config';
-export const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzv9cZBunN0db6kabqL7tIpeBHirVGUOwso6vxLxgcZaPVekTvTH4hxKKiyvCjjg4eafw/exec';
-const GOOGLE_SCRIPT_URL = (import.meta as any).env?.VITE_GOOGLE_SCRIPT_URL || DEFAULT_GOOGLE_SCRIPT_URL;
+// 이전: 제3자 소유 Apps Script URL이 기본값으로 하드코딩되어 통화 녹음(base64)·변호사 이메일이 그곳으로 전송됨
+// → 기본값 없음. 사무소가 직접 배포한 GAS URL(설정 또는 VITE_GOOGLE_SCRIPT_URL)만 사용
+export const DEFAULT_GOOGLE_SCRIPT_URL = '';
+const GOOGLE_SCRIPT_URL: string = (import.meta as any).env?.VITE_GOOGLE_SCRIPT_URL || '';
 
 /**
  * 구글 드라이브 연동 설정 로드 (변호사 구글 계정 및 전용 GAS URL)
@@ -55,7 +57,7 @@ export const getGoogleDriveConfig = (): GoogleDriveConfig => {
     console.warn('Failed to parse google drive config', e);
   }
   return {
-    gasWebAppUrl: GOOGLE_SCRIPT_URL,
+    gasWebAppUrl: GOOGLE_SCRIPT_URL || '',
     folderName: '마이김변_통화녹취',
     autoUpload: true
   };
@@ -317,21 +319,27 @@ export const enqueueSms = async (
     lineInfo
   };
 
+  // 발송 큐 등록에 실패하면 발송 기록을 남기지 않고 실패로 반환 (이전: 항상 success:true '오프라인 모드')
+  if (!queuedInSupabase) {
+    return { success: false, message: '문자 발송 요청을 등록하지 못했습니다. (서버 미연결) 문구를 복사해 직접 발송해 주세요.' };
+  }
+
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('communication_logs').insert([{
+      const { error } = await supabase.from('communication_logs').insert([{
         phone_number: cleanPhone,
         type: 'SMS_OUT',
         content: content.trim(),
         timestamp: now,
         line_info: lineInfo
       }]);
+      if (error) console.warn('Failed to insert comm log for SMS_OUT', error.message);
     } catch (e) {
       console.warn('Failed to insert comm log for SMS_OUT', e);
     }
   }
 
-  // Fallback: save to localStorage
+  // 로컬 타임라인 캐시
   try {
     const local = localStorage.getItem(`comm_logs_${cleanPhone}`);
     const parsed: CommunicationLog[] = local ? JSON.parse(local) : [];
@@ -342,9 +350,7 @@ export const enqueueSms = async (
 
   return { 
     success: true, 
-    message: queuedInSupabase 
-      ? `스마트폰(${lineInfo})으로 발송 요청되었습니다. 앱에서 자동 발송됩니다.`
-      : `문자 발송이 등록되었습니다. (오프라인 모드)`,
+    message: `스마트폰(${lineInfo})으로 발송 요청되었습니다. 앱에서 자동 발송됩니다.`,
     log: newLog
   };
 };
@@ -374,12 +380,14 @@ export const enqueueCall = async (
       if (!error) {
         return { success: true, message: '스마트폰으로 전화 걸기 요청을 전송했습니다.' };
       }
+      console.warn('[communicationService] Supabase enqueueCall error:', error.message);
     } catch (err) {
       console.warn('[communicationService] Supabase enqueueCall error:', err);
     }
   }
 
-  return { success: true, message: '전화 걸기 요청 완료 (데모)' };
+  // 이전: 실패해도 success:true '(데모)' 반환
+  return { success: false, message: '전화 걸기 요청을 전송하지 못했습니다. (서버 미연결)' };
 };
 
 /**
@@ -390,10 +398,13 @@ export const uploadRecordingToDrive = async (
   file: File,
   config?: GoogleDriveConfig,
   targetEmail?: string
-): Promise<{ status: string; url: string; viewUrl: string; filename: string; driveFileId?: string }> => {
+): Promise<{ status: 'success' | 'failed' | 'not_configured'; url: string; viewUrl: string; filename: string; driveFileId?: string }> => {
   const activeCfg = config || getGoogleDriveConfig();
-  const gasUrl = activeCfg.gasWebAppUrl || GOOGLE_SCRIPT_URL;
+  const gasUrl = (activeCfg.gasWebAppUrl || GOOGLE_SCRIPT_URL || '').trim();
   const userAccountEmail = targetEmail || activeCfg.googleAccountEmail || '';
+  if (!/^https:\/\/script\.google\.com\//.test(gasUrl)) {
+    return { status: 'not_configured', url: '', viewUrl: '', filename: file.name };
+  }
 
   // 1. File to Base64
   const base64Data = await new Promise<string>((resolve, reject) => {
@@ -435,17 +446,11 @@ export const uploadRecordingToDrive = async (
       }
     }
   } catch (err) {
-    console.warn('[communicationService] Google Drive upload failed, falling back to blob URL:', err);
+    console.warn('[communicationService] Google Drive upload failed:', err);
   }
 
-  // Fallback to local blob URL
-  const blobUrl = URL.createObjectURL(file);
-  return {
-    status: 'local',
-    url: blobUrl,
-    viewUrl: blobUrl,
-    filename: file.name
-  };
+  // 이전: 실패 시 blob URL을 반환해 새로고침 후 재생 불가한 링크가 녹취 기록으로 저장됨
+  return { status: 'failed', url: '', viewUrl: '', filename: file.name };
 };
 
 /**
@@ -544,7 +549,7 @@ export const exportCommunicationLogsAsText = (
   });
 
   text += `==========================================================\n`;
-  text += `* 본 내역은 스마트폰 통화기록 및 문자 삭제에 대비하여 CRM에 영구 암호화 보존된 공식 기록입니다.\n`;
+  text += `* 본 내역은 CRM에 기록된 통화·문자 이력을 출력한 참고 자료입니다. (원본: 통신사·단말기 기록)\n`;
   text += `==========================================================\n`;
 
   return text;
@@ -592,5 +597,31 @@ export const subscribeToCommunicationLogs = (
 
   return () => {
     supabase.removeChannel(channel);
+  };
+};
+
+/**
+ * 퀵 문자: 스마트폰 발송 큐 등록을 시도하고, 실패하면 문구를 클립보드에 복사한다.
+ * (이전: 영업 리드 퀵 SMS는 아무것도 보내지 않고 '발송되었습니다' 토스트 + 부재 차수를 올렸음)
+ */
+export const sendQuickSmsOrCopy = async (
+  phoneNumber: string,
+  content: string
+): Promise<{ sent: boolean; copied: boolean; message: string }> => {
+  const res = await enqueueSms(phoneNumber, content);
+  if (res.success) return { sent: true, copied: false, message: res.message };
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(content);
+    copied = true;
+  } catch {
+    copied = false;
+  }
+  return {
+    sent: false,
+    copied,
+    message: copied
+      ? '문자 발송 서버에 연결되지 않아 발송하지 못했습니다. 문구를 복사했으니 직접 보내 주세요.'
+      : '문자 발송 서버에 연결되지 않아 발송하지 못했습니다.',
   };
 };

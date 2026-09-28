@@ -17,8 +17,21 @@ export interface ProposalDraftState {
 export function useProposalDraft(clientId: string) {
   const getStorageKey = useCallback(() => `proposal-draft-${clientId}`, [clientId]);
   
-  const [savedDraft, setSavedDraft] = useState<ProposalDraftState | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  // 첫 렌더에서 동기적으로 읽음 (이전: 마운트 후 effect에서 읽어 '이어쓰기' 안내가 한 번도 뜨지 않았음)
+  const [initialStored] = useState<{ state: ProposalDraftState | null; savedAt: string | null }>(() => {
+    try {
+      const stored = localStorage.getItem(`proposal-draft-${clientId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return { state: parsed?.state || null, savedAt: parsed?.savedAt || null };
+      }
+    } catch (e) {
+      console.error('Failed to load proposal draft:', e);
+    }
+    return { state: null, savedAt: null };
+  });
+  const [savedDraft, setSavedDraft] = useState<ProposalDraftState | null>(initialStored.state);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialStored.savedAt);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,6 +99,8 @@ export function useProposalDraft(clientId: string) {
   }, [saveDraft]);
 
   return {
+    /** 화면을 연 시점에 저장돼 있던 초안 (이어쓰기용 스냅샷) */
+    initialDraft: initialStored.state,
     savedDraft,
     saveDraft,
     clearDraft,

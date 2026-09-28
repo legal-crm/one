@@ -15,6 +15,7 @@ interface LeadConversionModalProps {
   lawyers: User[];
   onConverted: (newRequest: any, newExt: any, updatedLead: SalesLead) => void;
   onNavigateToCrm?: (newClientId: string) => void;
+  existingRequests?: any[];
 }
 
 export default function LeadConversionModal({
@@ -26,6 +27,7 @@ export default function LeadConversionModal({
   lawyers,
   onConverted,
   onNavigateToCrm,
+  existingRequests = [],
 }: LeadConversionModalProps) {
   const [caseType, setCaseType] = useState<CaseType>('개인회생');
   const [assignedLawyerId, setAssignedLawyerId] = useState<string>(activeLawyer.id);
@@ -41,10 +43,11 @@ export default function LeadConversionModal({
     }
   }, [lead, activeLawyer.id]);
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
+    if (!lead || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const { newRequest, newExt, updatedLead } = convertLeadToClient(
+      const { newRequest, newExt, updatedLead, serverSaved } = await convertLeadToClient(
         lead,
         { id: activeLawyer.id, name: activeLawyer.name },
         {
@@ -52,12 +55,16 @@ export default function LeadConversionModal({
           assignedStaffId: assignedStaffId || undefined,
           caseType,
           consultMemo,
+          existingRequests,
         }
       );
 
       onConverted(newRequest, newExt, updatedLead);
-      toast.success(
-        `⭐️ ${lead.customerName}님이 정식 고객 DB로 승격되었습니다!`,
+      if (!serverSaved) {
+        toast.warning(`${lead.customerName}님을 고객으로 이전했지만 서버 저장에 실패했습니다. 이 기기에만 저장되어 있으니 네트워크 확인 후 다시 저장해 주세요.`);
+      }
+      (serverSaved ? toast.success : toast.info)(
+        `${lead.customerName}님을 정식 고객으로 이전했습니다.`,
         {
           action: onNavigateToCrm ? {
             label: '고객 CRM 바로가기',
@@ -67,9 +74,9 @@ export default function LeadConversionModal({
         }
       );
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('고객 이전 중 오류가 발생했습니다.');
+      toast.error(err?.message || '고객 이전 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }

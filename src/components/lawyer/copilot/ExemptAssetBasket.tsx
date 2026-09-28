@@ -1,6 +1,9 @@
 import React from 'react';
 import { Shield, CheckCircle2, TrendingDown, Info, HelpCircle } from 'lucide-react';
 import { AssetSummary } from '../../../engines/factEngine';
+import {
+  DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT, HOUSING_EXEMPT_DEPOSIT_LIMITS,
+} from '../../../services/repayment/repaymentConstants2026';
 
 interface ExemptAssetBasketProps {
   assetsSummary?: AssetSummary;
@@ -45,13 +48,13 @@ export default function ExemptAssetBasket({
           </div>
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
-              <span>민사집행법 제246조 압류금지채권 공제</span>
+              <span>압류금지재산·소액보증금 공제</span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
                 법정 공제 바스켓
               </span>
             </h4>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              예금 185만 원, 보험 150만 원, 소액임차보증금을 법정 기준에 따라 청산가치에서 자동 공제합니다.
+              예금 {fmt(DEPOSIT_EXEMPTION_KRW)}, 보장성 보험 {fmt(EXEMPT_INSURANCE_REFUND_LIMIT)}, 소액임차보증금을 기준에 따라 청산가치에서 공제한 참고값입니다.
             </p>
           </div>
         </div>
@@ -82,11 +85,11 @@ export default function ExemptAssetBasket({
                 🏦 예금·적금 바스켓
                 <span className="block text-[10px] text-slate-400 font-normal">모든 금융기관 계좌 잔액 합산</span>
               </td>
-              <td className="py-2.5 px-3 text-right text-slate-600">최대 185만 원</td>
+              <td className="py-2.5 px-3 text-right text-slate-600">최대 {fmt(DEPOSIT_EXEMPTION_KRW)}</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptDepositTotal > 0 ? `-${fmt(exemptDepositTotal)}` : '0원'}
               </td>
-              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">민사집행법 §246①(8)</td>
+              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">민사집행법 §246①(8), 시행령 §7</td>
             </tr>
 
             {/* 2. 보장성 보험 150만 원 한도 공제 */}
@@ -95,11 +98,11 @@ export default function ExemptAssetBasket({
                 🛡️ 보장성 보험 해약환급금
                 <span className="block text-[10px] text-slate-400 font-normal">보장성 보험에 한함 (저축성 제외)</span>
               </td>
-              <td className="py-2.5 px-3 text-right text-slate-600">최대 150만 원</td>
+              <td className="py-2.5 px-3 text-right text-slate-600">최대 {fmt(EXEMPT_INSURANCE_REFUND_LIMIT)}</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptInsuranceTotal > 0 ? `-${fmt(exemptInsuranceTotal)}` : '0원'}
               </td>
-              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">동법 시행령 §3</td>
+              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">민사집행법 §246①(7), 시행령 §6</td>
             </tr>
 
             {/* 3. 소액임차보증금 최우선변제금 */}
@@ -108,7 +111,7 @@ export default function ExemptAssetBasket({
                 🏠 주거용 소액임차보증금
                 <span className="block text-[10px] text-slate-400 font-normal">지역별 최우선변제금 범위 내</span>
               </td>
-              <td className="py-2.5 px-3 text-right text-slate-600">서울 5,500만 / 과밀 4,800만 등</td>
+              <td className="py-2.5 px-3 text-right text-slate-600">서울 {fmt(HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL.exemptAmount)} / 과밀 {fmt(HOUSING_EXEMPT_DEPOSIT_LIMITS.OVERCROWDED.exemptAmount)} 등</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptHousingDeposit > 0 ? `-${fmt(exemptHousingDeposit)}` : '0원'}
               </td>

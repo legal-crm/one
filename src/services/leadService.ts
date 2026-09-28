@@ -3,10 +3,25 @@ import type { ConsultRequest, CrmClientExtension, CaseType } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 import { createDefaultCrmExtension, saveCrmClient } from './crmService';
 import { createTask } from './taskTicketService';
+import { localYmd } from '../utils/localDate';
 
-const SALES_LEADS_STORAGE_KEY = 'legal_sales_leads';
+const LEGACY_SALES_LEADS_KEY = 'legal_sales_leads';
 
-// 초기 Mock 리드 데이터 (신규 사용자 체험용)
+// ── 저장 범위(테넌트) ──
+// 이전: 모든 변호사·사무소가 브라우저 전역 키 하나('legal_sales_leads')를 공유 → 같은 기기의 다른 계정에 리드가 노출됨
+let salesLeadScope = '';
+/** 로그인한 사무소(또는 변호사) 기준으로 리드 저장소를 분리 */
+export function setSalesLeadScope(tenantId: string | undefined | null): void {
+  salesLeadScope = (tenantId || '').trim();
+}
+function leadsKey(): string {
+  return salesLeadScope ? `${LEGACY_SALES_LEADS_KEY}::${salesLeadScope}` : LEGACY_SALES_LEADS_KEY;
+}
+
+/** DEV 체험용 시드 ID (운영에서 기존 저장분 정리용) */
+const SEED_LEAD_IDS = new Set(['lead-1001', 'lead-1002', 'lead-1003']);
+
+// 초기 Mock 리드 데이터 (개발 환경 체험용 — 운영에서는 사용하지 않음)
 const INITIAL_MOCK_LEADS: SalesLead[] = [
   {
     id: 'lead-1001',
@@ -148,27 +163,51 @@ const INITIAL_MOCK_LEADS: SalesLead[] = [
 ];
 
 export function loadSalesLeads(): SalesLead[] {
+  const key = leadsKey();
   try {
-    const raw = secureGetItem(SALES_LEADS_STORAGE_KEY) || localStorage.getItem(SALES_LEADS_STORAGE_KEY);
-    if (raw) {
+    let raw = secureGetItem(key);
+    // 전역 키에 남은 기존 데이터는 처음 로그인한 범위로 1회 이전 후 삭제
+    if (raw === null && key !== LEGACY_SALES_LEADS_KEY) {
+      const legacy = localStorage.getItem(LEGACY_SALES_LEADS_KEY);
+      if (legacy !== null) {
+        localStorage.setItem(key, legacy);
+        localStorage.removeItem(LEGACY_SALES_LEADS_KEY);
+        raw = legacy;
+      }
+    }
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // 운영: 이전에 저장된 체험용 시드 리드 제거
+        if (!import.meta.env.DEV && parsed.some((l: SalesLead) => SEED_LEAD_IDS.has(l?.id))) {
+          const cleaned = parsed.filter((l: SalesLead) => !SEED_LEAD_IDS.has(l?.id));
+          saveSalesLeads(cleaned);
+          return cleaned;
+        }
+        return parsed;
+      }
     }
   } catch (e) {
     console.warn('[leadService] loadSalesLeads failed', e);
+    return [];
   }
-  // 초기 데이터 적재
-  saveSalesLeads(INITIAL_MOCK_LEADS);
-  return INITIAL_MOCK_LEADS;
+  // 처음 사용: 개발 환경에서만 체험용 시드 적재 (이전: 목록이 비면 운영에서도 가짜 리드를 매번 다시 채움)
+  if (import.meta.env.DEV) {
+    saveSalesLeads(INITIAL_MOCK_LEADS);
+    return INITIAL_MOCK_LEADS.map(l => ({ ...l }));
+  }
+  return [];
 }
 
-export function saveSalesLeads(leads: SalesLead[]): void {
+/** @returns 저장 성공 여부 */
+export function saveSalesLeads(leads: SalesLead[]): boolean {
   try {
-    const serialized = JSON.stringify(leads);
-    secureSetItem(SALES_LEADS_STORAGE_KEY, serialized);
-    localStorage.setItem(SALES_LEADS_STORAGE_KEY, serialized);
+    // 이전: secureSetItem + localStorage.setItem 이중 저장 (같은 localStorage에 중복 기록)
+    localStorage.setItem(leadsKey(), JSON.stringify(leads));
+    return true;
   } catch (e) {
     console.warn('[leadService] saveSalesLeads failed', e);
+    return false;
   }
 }
 
@@ -188,11 +227,11 @@ export function deleteSalesLead(leadId: string): void {
   saveSalesLeads(list.filter(l => l.id !== leadId));
 }
 
+/** @returns 저장된 건수 (저장 실패 시 0) */
 export function bulkInsertLeads(newLeads: SalesLead[]): number {
   const current = loadSalesLeads();
   const merged = [...newLeads, ...current];
-  saveSalesLeads(merged);
-  return newLeads.length;
+  return saveSalesLeads(merged) ? newLeads.length : 0;
 }
 
 // ── 통화 디스포지션 기록 ──
@@ -233,10 +272,10 @@ export function logLeadCall(
       lead.reminders.push(newRem);
 
       // '내 할일'에 영업 티켓 자동 생성
+      // 이전: createTask(객체 1개)로 잘못 호출 → tenantId 자리에 객체가 들어가 티켓이 생성되지 않음(비동기 오류도 무시)
       try {
-        createTask({
-          tenantId: 'default',
-          targetType: 'sales_lead',
+        void createTask(salesLeadScope || 'default', {
+          targetType: 'sales_lead' as any,
           targetId: lead.id,
           assignerId: caller.id,
           assignerName: caller.name,
@@ -245,13 +284,12 @@ export function logLeadCall(
           title: `[콜백] ${lead.customerName} 재통화 예약`,
           description: memo || '고객 요청 재통화 일정',
           priority: 'HIGH',
-          status: 'PENDING',
           dueDate: callbackScheduledAt,
           taskDomain: 'sales',
           leadId: lead.id,
           leadPhone: lead.phone,
           leadDebt: lead.debtTotal,
-        });
+        }).catch(err => console.warn('Auto task creation for lead failed', err));
       } catch (err) {
         console.warn('Auto task creation for lead failed', err);
       }
@@ -333,13 +371,23 @@ export interface ConvertOptions {
   assignedStaffId?: string;
   caseType?: CaseType;
   consultMemo?: string;
+  /** 기존 고객 목록 — 같은 전화번호 고객이 있으면 이전을 막음 */
+  existingRequests?: ConsultRequest[];
 }
 
-export function convertLeadToClient(
+export async function convertLeadToClient(
   lead: SalesLead,
   operator: { id: string; name: string },
   options?: ConvertOptions
-): { newRequest: ConsultRequest; newExt: CrmClientExtension; updatedLead: SalesLead } {
+): Promise<{ newRequest: ConsultRequest; newExt: CrmClientExtension; updatedLead: SalesLead; serverSaved: boolean }> {
+  // 중복 이전 방지 (이전: 두 번 누르면 같은 리드가 고객으로 두 번 생성됨)
+  if (lead.status === 'converted' || lead.convertedClientId) {
+    throw new Error('이미 정식 고객으로 이전된 리드입니다.');
+  }
+  const cleanPhone = (lead.phone || '').replace(/\D/g, '');
+  if (cleanPhone.length >= 10 && (options?.existingRequests || []).some(r => (r.phone || '').replace(/\D/g, '') === cleanPhone)) {
+    throw new Error('같은 전화번호의 고객이 이미 CRM에 있습니다. 기존 고객을 확인해 주세요.');
+  }
   const newReqId = `req-conv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const nowIso = new Date().toISOString();
 
@@ -358,25 +406,27 @@ export function convertLeadToClient(
     financialProfile: {
       clientName: lead.customerName,
       age: lead.birth ? (new Date().getFullYear() - parseInt(lead.birth, 10)) : 0,
-      gender: lead.gender === '여' ? 'female' : 'male',
-      maritalStatus: (lead.maritalStatus === '기혼' ? 'MARRIED' : lead.maritalStatus === '이혼' ? 'DIVORCED' : 'SINGLE') as any,
+      // 미확인 항목은 비워 둠 (이전: 성별 미상→남성, 혼인 미상→미혼, 자녀 전원을 미성년으로 간주)
+      gender: (lead.gender === '여' ? 'female' : lead.gender === '남' ? 'male' : undefined) as any,
+      maritalStatus: (lead.maritalStatus === '기혼' ? 'MARRIED' : lead.maritalStatus === '이혼' ? 'DIVORCED' : lead.maritalStatus === '미혼' ? 'SINGLE' : undefined) as any,
       dependents: lead.childrenCount || 0,
-      minorChildren: lead.childrenCount || 0,
+      minorChildren: 0,
       income: lead.incomeNet || 0,
       debtTotal: lead.debtTotal || 0,
       priorityDebt: 0,
       assetsTotal: (lead.assets || []).reduce((sum, a) => sum + (a.amount || 0), 0),
       creditorCount: 0,
-      jobType: (lead.jobTypes?.[0] === '영업소득' ? 'BUSINESS' : lead.jobTypes?.[0] === '무직' ? 'UNEMPLOYED' : 'SALARIED') as any,
+      jobType: (lead.jobTypes?.[0] === '영업소득' ? 'BUSINESS' : lead.jobTypes?.[0] === '무직' ? 'UNEMPLOYED' : lead.jobTypes?.[0] === '급여소득' ? 'SALARIED' : undefined) as any,
       companyName: '',
       companyNameMasked: '',
       employmentDate: '',
       residenceRegion: lead.region || '',
       workLocation: '',
-      housingType: (lead.housingType === '전세' ? 'jeonse' : lead.housingType === '자가' ? 'owned' : 'rent') as any,
+      housingType: (lead.housingType === '전세' ? 'jeonse' : lead.housingType === '자가' ? 'owned' : lead.housingType === '월세' ? 'rent' : undefined) as any,
       housingContractHolder: 'self',
-      debtCause: 'LIVING',
-      harassmentLevel: 'NONE',
+      // 채무 원인·추심 강도는 상담에서 확인 (이전: '생활비'·'추심 없음'으로 임의 지정)
+      debtCause: undefined as any,
+      harassmentLevel: undefined as any,
       debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
       legalActions: [],
       myAssets: (lead.assets || []).reduce((sum, a) => sum + (a.amount || 0), 0),
@@ -387,7 +437,8 @@ export function convertLeadToClient(
       rentCost: lead.rent || 0,
       medicalCost: 0,
       educationCost: 0,
-      monthlyFixedExpenses: lead.loanMonthlyPay || 0,
+      // 대출 월 상환액은 생계비가 아니므로 고정지출에 넣지 않음 (newExt.loanMonthlyPay로 별도 보관)
+      monthlyFixedExpenses: 0,
       retirementPay: 0,
       retirementPensionType: 'none',
       specialCondition: 'none',
@@ -438,7 +489,7 @@ export function convertLeadToClient(
       dueDate: d.date,
       amount: d.amount,
       status: d.amount > 0 ? 'paid' : 'pending',
-      paidAt: d.date,
+      paidAt: d.amount > 0 ? d.date : undefined,
     }));
   }
 
@@ -466,8 +517,8 @@ export function convertLeadToClient(
     createdAt: nowIso,
   });
 
-  // CRM 데이터베이스 영구 저장
-  saveCrmClient(newReqId, newExt);
+  // CRM 저장 (서버 저장 결과 반환 — 이전: 결과 무시)
+  const serverSaved = await saveCrmClient(newReqId, newExt);
 
   // 3. 영업 리드 상태 'converted'로 업데이트
   lead.status = 'converted';
@@ -477,7 +528,7 @@ export function convertLeadToClient(
   lead.updatedAt = nowIso;
   saveSalesLead(lead);
 
-  return { newRequest, newExt, updatedLead: lead };
+  return { newRequest, newExt, updatedLead: lead, serverSaved };
 }
 
 // ── 독립 영업 대시보드 통계 산출 ──
@@ -512,7 +563,7 @@ export function getSalesDashboardMetrics(leads: SalesLead[]): SalesDashboardMetr
     };
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localYmd(); // 이전: UTC 날짜 → 한국 00~09시에 '오늘 리마인더'가 전날 기준으로 집계됨
   const nowMs = Date.now();
 
   let newCount = 0;
@@ -566,6 +617,18 @@ export function getSalesDashboardMetrics(leads: SalesLead[]): SalesDashboardMetr
 
 // ── 유틸리티: 전화번호 중복 검사 및 정규화 ──
 
+/**
+ * 한국 전화번호 숫자 정규화
+ * - '+82 10-1234-5678' / '821012345678' → '01012345678'
+ * - 엑셀 숫자 셀로 앞자리 0이 사라진 '1012345678' → '01012345678'
+ */
+export function normalizeKrPhoneDigits(val: string | number | null | undefined): string {
+  let d = String(val ?? '').replace(/\D/g, '');
+  if (d.startsWith('82') && (d.length === 11 || d.length === 12)) d = '0' + d.slice(2);
+  if (d.length === 10 && /^1[016789]/.test(d)) d = '0' + d;
+  return d;
+}
+
 export function formatPhone(val: string): string {
   const digits = val.replace(/\D/g, '');
   if (digits.length <= 3) return digits;
@@ -594,11 +657,11 @@ export function checkLeadPhoneDuplicate(
   leads: SalesLead[],
   existingRequests: ConsultRequest[] = []
 ): { isDuplicate: boolean; matchType?: 'lead' | 'client'; matchedName?: string } {
-  const cleanPhone = phone.replace(/\D/g, '');
+  const cleanPhone = normalizeKrPhoneDigits(phone);
   if (cleanPhone.length < 10) return { isDuplicate: false };
 
   // 1. 기존 CRM 고객과 중복 체크 (더 중요)
-  const clientMatch = existingRequests.find(r => (r.phone || '').replace(/\D/g, '') === cleanPhone);
+  const clientMatch = existingRequests.find(r => normalizeKrPhoneDigits(r.phone) === cleanPhone);
   if (clientMatch) {
     return {
       isDuplicate: true,
@@ -608,7 +671,7 @@ export function checkLeadPhoneDuplicate(
   }
 
   // 2. 기존 영업 리드와 중복 체크
-  const leadMatch = leads.find(l => (l.phone || '').replace(/\D/g, '') === cleanPhone);
+  const leadMatch = leads.find(l => normalizeKrPhoneDigits(l.phone) === cleanPhone);
   if (leadMatch) {
     return {
       isDuplicate: true,
@@ -928,8 +991,8 @@ export const calculateCommission = (fee: number, rules?: CommissionRule[]): numb
   const safeRules = Array.isArray(rules) ? rules : [];
   const rule = getMatchingRule(fee, safeRules);
   if (rule) return rule.commission;
-  // 기본 추정 룰: 수임료의 약 10%
-  return Math.round(fee * 0.1);
+  // 매칭되는 정산 룰이 없으면 0 (이전: 임의로 수임료의 10%를 수수료로 표시)
+  return 0;
 };
 
 // ── 본안 수임 고객(ConsultRequest & CrmClientExtension) 표준 요약문 생성 함수 ──

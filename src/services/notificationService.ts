@@ -131,7 +131,7 @@ export async function sendTelegramMessage(
     // Vercel API route를 프록시로 사용 (CORS 우회)
     const res = await fetch('/api/telegram', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({ botToken, chatId, text, parseMode: 'Markdown' }),
     });
     const data = await res.json();
@@ -456,7 +456,7 @@ export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boole
     // 2. 서버리스 알림 API (/api/notify-admin) 호출 -> 텔레그램 / 슬랙 발송
     const res = await fetch('/api/telegram', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({
         title: '💳 [신규 광고 신청] 입금 대기 안내',
         message: plainText,
@@ -500,7 +500,7 @@ export async function notifyAdminAdConfirmed(order: AdOrder): Promise<{ ok: bool
 
     const res = await fetch('/api/telegram', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({
         title: '✅ [광고 활성화 완료]',
         message: plainText,

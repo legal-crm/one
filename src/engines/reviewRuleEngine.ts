@@ -31,15 +31,37 @@ export const DEFAULT_REVIEW_RULES: ReviewRule[] = [
     id: 'rule-01',
     ruleSetId: 'default',
     category: '채무한도',
-    title: '채무한도 초과 확인',
-    description: '채무액이 5억원(무담보)을 초과하는지 확인',
+    title: '무담보 채무한도 초과 확인',
+    // 이전: 2021년 개정 전 기준(5억)을 총채무에 적용 → 현행 제579조: 무담보 10억 / 담보 15억
+    description: '무담보 채무가 10억 원을 초과하는지 확인',
     conditions: [
-      { field: 'totalDebt', operator: 'GT', value: 500000000 }
+      { field: 'unsecuredDebt', operator: 'GT', value: 1000000000 }
     ],
-    outputType: 'REVIEW_FLAG',
-    outputMessage: '채무액이 5억 원을 초과하여 개인회생 채무 한도와 관련된 사항을 확인하세요.',
-    sourceType: 'FIRM_EXPERIENCE',
-    sourceReference: '',
+    outputType: 'HIGH_RISK',
+    outputMessage: '무담보 채무가 10억 원을 초과합니다. 개인회생 채무 한도(무담보 10억 원)를 넘으므로 신청 자격을 확인하세요.',
+    sourceType: 'STATUTE',
+    sourceReference: '채무자회생법 제579조 제1호',
+    effectiveFrom: '',
+    reviewDueAt: '',
+    approvedByLawyerId: '',
+    approvedAt: '',
+    version: 1,
+    status: 'ACTIVE',
+    expiryStatus: 'CURRENT',
+  },
+  {
+    id: 'rule-01b',
+    ruleSetId: 'default',
+    category: '채무한도',
+    title: '담보 채무한도 초과 확인',
+    description: '담보 채무가 15억 원을 초과하는지 확인',
+    conditions: [
+      { field: 'securedDebt', operator: 'GT', value: 1500000000 }
+    ],
+    outputType: 'HIGH_RISK',
+    outputMessage: '담보 채무가 15억 원을 초과합니다. 개인회생 채무 한도(담보 15억 원)를 넘으므로 신청 자격을 확인하세요.',
+    sourceType: 'STATUTE',
+    sourceReference: '채무자회생법 제579조 제1호',
     effectiveFrom: '',
     reviewDueAt: '',
     approvedByLawyerId: '',
@@ -95,14 +117,15 @@ export const DEFAULT_REVIEW_RULES: ReviewRule[] = [
     ruleSetId: 'default',
     category: '형사고소위험',
     title: '최근 채무 사기죄 피소 주의',
-    description: '최근 6개월 이내 발생한 채무가 포함되어 채권자의 사기죄(형법 제347조) 고소 위험',
+    description: '최근 발생한 채무가 포함되어 채권자의 사기죄(형법 제347조) 고소 위험 (기간 기준은 사무소 실무)',
     conditions: [
       { field: 'recentDebts', operator: 'EXISTS', value: true }
     ],
     outputType: 'HIGH_RISK',
     outputMessage: '최근 발생한 채무가 확인되었습니다. 채권자의 사기죄 고소(차용 당시 변제의사/능력 부존재) 위험에 대비해 병원비, 생계비 등 실제 사용처 소명자료를 사전에 확보하세요.',
-    sourceType: 'STATUTE',
-    sourceReference: '형법 제347조, 채무자회생법 제595조',
+    // 이전: '채무자회생법 제595조'(면책 불허가 사유) 오인용 + 사무소 경험칙을 법령으로 표기
+    sourceType: 'FIRM_EXPERIENCE',
+    sourceReference: '형법 제347조 (사무소 실무 기준)',
     effectiveFrom: '',
     reviewDueAt: '',
     approvedByLawyerId: '',

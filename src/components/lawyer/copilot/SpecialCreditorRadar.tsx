@@ -112,7 +112,7 @@ export default function SpecialCreditorRadar({
                   </p>
                   {isFraud && (
                     <div className="bg-rose-50 p-2.5 rounded-lg border border-rose-100 text-[11px] text-rose-800 mt-1 leading-relaxed">
-                      💡 <strong>실무 팁:</strong> 대출 실행일 직전·직후의 계좌 거래내역을 확인하여 도박이나 편취가 아닌 실제 생활비, 병원비, 채무변제 돌려막기로 소비되었음을 입증하는 소명서를 미리 작성해 두면 사기죄 불송치(무혐의) 처분을 유도할 수 있습니다.
+                      💡 <strong>실무 팁:</strong> 대출 실행일 직전·직후의 계좌 거래내역을 확인하여 도박이나 편취가 아닌 실제 생활비, 병원비, 채무변제 돌려막기로 소비되었음을 입증하는 소명서를 미리 준비해 두면 고소 대응에 도움이 됩니다. (처분 결과는 수사기관 판단 사항)
                     </div>
                   )}
                 </div>

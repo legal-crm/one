@@ -4,6 +4,7 @@
 import { setCorsHeaders } from './_lib/popbill-service.js';
 import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { verifyAuth } from './_lib/auth-middleware.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
@@ -46,16 +47,31 @@ export default async function handler(req, res) {
     cfToken,
   } = req.body || {};
 
-  // [BOT DEFENSE] 서버 환경변수 봇 사용 시 봇 방어 강제 (임의 스크립트 스팸 방지)
-  const isUsingServerToken = !reqBotToken && Boolean(process.env.TELEGRAM_ADMIN_BOT_TOKEN);
-  const token = turnstileToken || cfToken;
-  if (token) {
+  // [AUTH] 이전: Authorization 헤더가 '있기만' 하면 봇 방어를 건너뛰었고(값 검증 없음),
+  //        요청자가 임의 botToken/chatId를 넘기면 인증 없이 텔레그램 발송을 중계(오픈 릴레이)했음.
+  // 현재: Authorization이 있으면 Supabase 토큰을 실제 검증. 사용자 지정 봇(botToken/slackWebhookUrl)은 로그인 사용자만 허용.
+  //       서버 관리자 봇은 로그인 사용자 또는 Turnstile 통과 요청만 허용.
+  let authedUser = null;
+  if (req.headers.authorization) {
+    try {
+      authedUser = await verifyAuth(req);
+    } catch (e) {
+      return res.status(401).json({ ok: false, error: '인증에 실패했습니다. 다시 로그인해 주세요.' });
+    }
+  }
+  const usesCallerCredentials = Boolean(reqBotToken || telegram?.botToken || reqSlackUrl);
+  if (usesCallerCredentials && !authedUser) {
+    return res.status(401).json({ ok: false, error: '로그인한 사용자만 사용자 지정 알림 채널을 사용할 수 있습니다.' });
+  }
+  if (!authedUser) {
+    const token = turnstileToken || cfToken;
+    if (!token) {
+      return res.status(403).json({ ok: false, error: '알림 발송을 위해 로그인 또는 봇 방지 인증(Turnstile Token)이 필요합니다.' });
+    }
     const cfCheck = await verifyTurnstileToken(token, ip);
     if (!cfCheck.success) {
       return res.status(403).json({ ok: false, error: cfCheck.error || '봇 방지 검증에 실패했습니다.' });
     }
-  } else if (isUsingServerToken && !req.headers.authorization) {
-    return res.status(403).json({ ok: false, error: '공공 알림 발송을 위해 봇 방지 인증(Turnstile Token)이 필요합니다.' });
   }
 
   // 1. 텔레그램 토큰/채팅ID 결정 (요청값 -> telegram 객체 -> 서버 환경변수 순서)

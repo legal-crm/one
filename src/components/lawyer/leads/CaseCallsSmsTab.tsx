@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { SalesLead, CommunicationLog, CommunicationType, SmsTemplate, RecordingItem } from '../../../types/leadTypes';
+import { localYmd } from '../../../utils/localDate';
 import { 
   fetchCommunicationLogs, 
   fetchSmsTemplates, 
@@ -68,7 +69,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `[통화문자증빙]_${lead.customerName}_${lead.phone.replace(/[^0-9]/g, '')}_${new Date().toISOString().slice(0, 10)}.txt`;
+    link.download = `[통화문자증빙]_${lead.customerName}_${lead.phone.replace(/[^0-9]/g, '')}_${localYmd()}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -229,7 +230,8 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
       lineInfo: simLine
     };
 
-    const updatedLogs = [...(lead.communicationLogs || logs), newLog];
+    // 이전: 존재하지 않는 변수 `logs` 참조 → 통화기록이 없는 리드에서 수동 통화 기록 시 ReferenceError
+    const updatedLogs = [...(lead.communicationLogs || dbLogs), newLog];
     const updatedLead: SalesLead = {
       ...lead,
       communicationLogs: updatedLogs,
@@ -439,9 +441,10 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                             {/* 스마트폰으로 전화 걸기 버튼 */}
                             <button
                               type="button"
-                              onClick={() => {
-                                enqueueCall(lead.phone, lead.customerName);
-                                toast.success(`${lead.customerName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                              onClick={async () => {
+                                const r = await enqueueCall(lead.phone, lead.customerName);
+                                if (r.success) toast.success(`${lead.customerName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
+                                else toast.error(r.message);
                               }}
                               className="w-8 h-8 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors cursor-pointer"
                               title="스마트폰으로 전화 걸기"

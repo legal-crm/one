@@ -20,6 +20,8 @@ import {
   formatPhone, normalizeBirthYear 
 } from '../../../services/leadService';
 import { loadPartners, loadInboundPaths, loadSecondaryStatuses } from '../../../services/settingsService';
+import { sendQuickSmsOrCopy } from '../../../services/communicationService';
+import { localYmd, addDaysYmd } from '../../../utils/localDate';
 import CaseBriefingBanner from './CaseBriefingBanner';
 import { CaseDetailAiSummary } from './CaseDetailAiSummary';
 import { CaseCallsSmsTab } from './CaseCallsSmsTab';
@@ -214,7 +216,7 @@ export default function SalesLeadDetailView({
   }, [currentLead]);
 
   // ── 우측 독: 리마인더 상태 & 핸들러 ──
-  const [remDate, setRemDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [remDate, setRemDate] = useState(() => localYmd());
   const [remHour, setRemHour] = useState('10');
   const [remMinute, setRemMinute] = useState('00');
   const [remType, setRemType] = useState<ReminderType>('통화');
@@ -245,9 +247,8 @@ export default function SalesLeadDetailView({
   };
 
   const handleQuickAddReminder = (offsetDays: number, label: string) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    const dateStr = d.toISOString().slice(0, 10);
+    // 로컬 날짜 기준 (이전: UTC → 한국 00~09시에 하루 전 날짜로 예약됨)
+    const dateStr = addDaysYmd(localYmd(), offsetDays);
     const dt = `${dateStr} ${remHour}:${remMinute}`;
     const item: ReminderItem = {
       id: `rem-${Date.now()}`,
@@ -327,22 +328,15 @@ export default function SalesLeadDetailView({
     }
   };
 
-  // 퀵 SMS 발송 시뮬레이션
-  const handleSendQuickSms = (type: 'no_answer' | 'appointment') => {
+  // 퀵 SMS: 실제 발송 큐 등록, 실패 시 문구 복사 (부재 차수는 올리지 않음)
+  const handleSendQuickSms = async (type: 'no_answer' | 'appointment') => {
     const text = type === 'no_answer'
       ? `[법무법인] ${currentLead.customerName}님, 회생·파산 무료상담 신청 주셔서 연락드렸으나 부재중으로 문자 남깁니다. 편하신 시간에 회신 주시면 변호사 직접 진단 도와드리겠습니다.`
       : `[법무법인] ${currentLead.customerName}님, 회생·파산 상담 전화 예약 안내드립니다. 예약 일시에 맞춰 연락드리겠습니다.`;
 
-    toast.success(`${currentLead.customerName}님께 퀵 문자가 발송되었습니다.`, {
-      description: text,
-    });
-
-    logLeadCall(
-      currentLead.id,
-      { id: activeLawyer.id, name: activeLawyer.name },
-      'no_answer',
-      `[SMS발송] ${type === 'no_answer' ? '부재중 안내문자' : '예약안내문자'} 발송`
-    );
+    const r = await sendQuickSmsOrCopy(currentLead.phone, text);
+    if (r.sent) toast.success(`${currentLead.customerName}님께 퀵 문자 발송을 요청했습니다.`, { description: r.message });
+    else toast.error(r.message);
   };
 
   const briefingData = extractBriefingData(currentLead);

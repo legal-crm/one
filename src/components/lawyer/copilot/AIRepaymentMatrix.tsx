@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getLeibnizFactor } from '../../../services/repayment/repaymentConstants2026';
 import { Sparkles, ShieldCheck, Zap, Flame, Check, ArrowRight, HelpCircle } from 'lucide-react';
 import { formatCurrency } from '../../../rehab-chatbot-package/services/calculationService';
 
@@ -7,7 +8,7 @@ export interface RepaymentScenario {
   title: string;
   badge: string;
   badgeColor: string;
-  approvalProbability: number; // 예상 승인율 (%)
+  // 이전: approvalProbability(95/82/58% 고정값)를 'ML 심사예측 승인확률'로 표시 — 모델이 없어 제거
   monthlyPayment: number;       // 월 변제금 (원)
   repaymentMonths: number;      // 변제 기간 (개월)
   totalRepayment: number;       // 변제 총액 (원)
@@ -39,11 +40,13 @@ export default function AIRepaymentMatrix({
   className = ''
 }: AIRepaymentMatrixProps) {
   const [activeId, setActiveId] = useState<'conservative' | 'standard' | 'aggressive'>(selectedScenarioId);
+  useEffect(() => { setActiveId(selectedScenarioId); }, [selectedScenarioId]);
 
   // 3단 시나리오 동적 계산
   const scenarios: RepaymentScenario[] = React.useMemo(() => {
     // 기본 월변제금을 기준으로 3단계 산출
-    const base = Math.max(100000, baseMonthlyPayment);
+    // 이전: 기본값 10만원 하한을 임의로 적용 → 계산값 그대로 사용
+    const base = Math.max(0, baseMonthlyPayment || 0);
 
     // 1. 보수안 (엄격 심사, 변제금 약 15~20% 상향 또는 추가생계비 배제)
     const conservativeMonthly = Math.round((base * 1.18) / 10000) * 10000;
@@ -57,7 +60,9 @@ export default function AIRepaymentMatrix({
 
     // 3. 공격적안 (최대 감액, 청산가치 보장 하한선까지 최대한 낮춤)
     // 청산가치 36개월 균등 + 최소생계비 고려 (약 15~25% 감액)
-    const minPossibleMonthly = liquidationValue > 0 ? Math.ceil(liquidationValue / 33.36) : 100000;
+    // 청산가치 보장 하한: 변제기간에 맞는 라이프니츠 계수 사용 (이전: 기간과 무관하게 36개월 계수 33.36 고정)
+    const leibniz = getLeibnizFactor(repaymentMonths);
+    const minPossibleMonthly = liquidationValue > 0 && leibniz > 0 ? Math.ceil(liquidationValue / leibniz) : 0;
     const aggressiveMonthly = Math.max(minPossibleMonthly, Math.round((base * 0.78) / 10000) * 10000);
     const aggTotal = Math.min(totalDebt, aggressiveMonthly * repaymentMonths);
     const aggRate = totalDebt > 0 ? Math.max(0, Math.round(((totalDebt - aggTotal) / totalDebt) * 100)) : 0;
@@ -68,7 +73,6 @@ export default function AIRepaymentMatrix({
         title: '안전 보수안',
         badge: '무보정 통과 목표',
         badgeColor: 'bg-slate-100 text-slate-700 border-slate-200',
-        approvalProbability: 95,
         monthlyPayment: conservativeMonthly,
         repaymentMonths,
         totalRepayment: consTotal,
@@ -86,7 +90,6 @@ export default function AIRepaymentMatrix({
         title: '추천 표준안',
         badge: '실무 최적 밸런스',
         badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-        approvalProbability: 82,
         monthlyPayment: standardMonthly,
         repaymentMonths,
         totalRepayment: stdTotal,
@@ -104,7 +107,6 @@ export default function AIRepaymentMatrix({
         title: '최대 감액안',
         badge: '최대 탕감율 도전',
         badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-        approvalProbability: 58,
         monthlyPayment: aggressiveMonthly,
         repaymentMonths,
         totalRepayment: aggTotal,
@@ -135,13 +137,13 @@ export default function AIRepaymentMatrix({
           </div>
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
-              <span>AI 변제금 3단 예측 매트릭스</span>
-              <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full">
-                ML 심사예측
+              <span>변제금 3단 시뮬레이션</span>
+              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+                참고용
               </span>
             </h4>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              법원 보정권고 강도와 의뢰인 전략에 맞춰 3가지 변제 시나리오 중 최적안을 선택할 수 있습니다.
+              기본 산출 변제금을 기준으로 보수안(+18%)·감액안(−22%, 청산가치 하한 적용)을 단순 비율로 계산한 참고값입니다. 법원 판단이나 승인 가능성을 예측하지 않습니다.
             </p>
           </div>
         </div>
@@ -167,9 +169,6 @@ export default function AIRepaymentMatrix({
                 <div className="flex items-center justify-between">
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${sc.badgeColor}`}>
                     {sc.badge}
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-500">
-                    승인확률 <strong className={sc.approvalProbability >= 80 ? 'text-emerald-600' : 'text-purple-600'}>{sc.approvalProbability}%</strong>
                   </span>
                 </div>
                 <h5 className="text-sm font-black text-slate-900 flex items-center justify-between">

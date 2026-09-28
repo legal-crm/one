@@ -150,6 +150,11 @@ export default function SalesSettingsModal({
       toast.error('알림방 이름과 웹훅 URL을 모두 입력해주세요.');
       return;
     }
+    // 브리핑 전송은 '요약 복사 + 텔레그램 방 열기' 방식 → 텔레그램 방 링크만 허용
+    if (!/^https:\/\/t\.me\//.test(newRoomUrl.trim())) {
+      toast.error('텔레그램 방 링크(https://t.me/...)를 입력해주세요.');
+      return;
+    }
     const newRoom: TelegramRoomTarget = {
       id: `tg-${Date.now()}`,
       name: newRoomName.trim(),

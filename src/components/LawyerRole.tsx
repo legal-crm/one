@@ -17,7 +17,7 @@ import ProposalWorkspace from './lawyer/ProposalWorkspace';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
-import { loadSalesLeads } from '../services/leadService';
+import { loadSalesLeads, setSalesLeadScope } from '../services/leadService';
 import { claimLawyerAccount, getMyLawyerAccount, type LawyerAccount } from '../services/lawyerAccountService';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
@@ -1339,6 +1339,11 @@ export default function LawyerRole({
   const handleSubmitProposalFromDraft = (reqId: string, proposalData: any) => {
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
+    // 변호사법: 직원 계정은 의뢰인에게 직접 발송 불가 → 변호사 컨펌 요청 경로만 허용
+    if (!isLawyerOrOwner) {
+      toast.error('직원 계정은 제안서를 직접 발송할 수 없습니다. 변호사 컨펌을 요청해 주세요.');
+      return;
+    }
 
     const isAIPremium = !!proposalData.aiInsights;
 
@@ -1676,6 +1681,8 @@ export default function LawyerRole({
     );
   };
   const ownRequests = requests.filter(isOwnRequest);
+  // 영업 리드 저장소를 로그인 사무소(변호사) 단위로 분리 — 아래 사이드바 배지·영업관리 탭이 이 범위를 사용
+  setSalesLeadScope(activeLawyer.lawFirmId || activeLawyer.id);
   const ownRequestIds = new Set(ownRequests.map(r => r.id));
   const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
   const activeChatsCount = ownRequests.filter(r => r.status === 'counseling').length;
@@ -5307,7 +5314,7 @@ export default function LawyerRole({
         {activeTab === 'case-copilot' && (
           activeLawyer.aiCaseAnalysisEnabled ? (
             <CaseReviewCopilot
-              consultRequests={requests}
+              consultRequests={requests.filter(isRelevantRequest)}
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               actorId={activeStaffMember?.id || activeLawyer.id}
               actorRole={activeStaffMember?.role || 'OWNER'}
@@ -6475,6 +6482,7 @@ export default function LawyerRole({
             setProposalRehabInput(null);
             setProposalConsultRequest(null);
           }}
+          mode="modal"
           viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
           onSendProposal={(proposalData) => {
             handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
@@ -6497,6 +6505,7 @@ export default function LawyerRole({
             setProposalRehabInput(null);
             setProposalConsultRequest(null);
           }}
+          mode="modal"
           viewerRole="reviewer"
           pendingStaffName={reviewModalProposal.staffName}
           onSendProposal={() => {}}

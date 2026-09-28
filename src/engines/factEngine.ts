@@ -1,4 +1,4 @@
-import { DEPOSIT_EXEMPTION_KRW } from '../services/repayment/repaymentConstants2026';
+import { DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from '../services/repayment/repaymentConstants2026';
 import { IntakeData, AppSettings, ComputeResponse, DebtItem, AssetDetail } from '../types';
 import { calculateRehabPlan } from '../rehabEngine';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -244,7 +244,7 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
   // 1) 예금 185만 원 일괄 공제
   const exemptDepositTotal = Math.min(bankDepositTotal, DEPOSIT_EXEMPTION_KRW);
   // 2) 보장성 보험 해약환급금 150만 원 한도 공제
-  const exemptInsuranceTotal = Math.min(insuranceTotal, 1500000);
+  const exemptInsuranceTotal = Math.min(insuranceTotal, EXEMPT_INSURANCE_REFUND_LIMIT);
   // 3) 주거용 소액임차보증금 공제 (rawComputeResponse의 exemptions 참조 또는 서울 기본 5,500만 원 적용)
   let exemptHousingDeposit = 0;
   if (housingRentalDeposit > 0) {
