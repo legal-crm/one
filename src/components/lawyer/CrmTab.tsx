@@ -30,6 +30,7 @@ import { ClientCallsSmsSubTab } from './ClientCallsSmsSubTab';
 import { GoogleDriveSettingsModal } from './leads/GoogleDriveSettingsModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
+import InternalThreadTab from './InternalThreadTab';
 import CourtCaseTab from './CourtCaseTab';
 import DebtCertificateTab from './repayment/DebtCertificateTab';
 import RepaymentPlanEditor from './repayment/RepaymentPlanEditor';
@@ -116,7 +117,11 @@ interface CrmTabProps {
   setCopilotPreselectedReqId?: (id: string) => void;
   initialView?: 'leads';
   initialClientId?: string;
-  initialDetailTab?: 'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault';
+  initialDetailTab?: 'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault';
+  /** 로그인한 직원 (대표 변호사 본인이면 null) — 권한·작업자 기록에 사용 */
+  currentStaff?: StaffMember | null;
+  /** 업무·일정 공유 단위 (직원이면 초대한 대표의 ID) */
+  firmTenantId?: string;
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
@@ -176,7 +181,9 @@ export default function CrmTab({
   setCopilotPreselectedReqId, 
   initialView,
   initialClientId,
-  initialDetailTab
+  initialDetailTab,
+  currentStaff = null,
+  firmTenantId
 }: CrmTabProps) {
   const dialog = useDialog();
   // ── 기본 State ──
@@ -238,7 +245,7 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   // ── 5단계 실무 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
@@ -382,29 +389,17 @@ export default function CrmTab({
       const cleaned = cleanupRecycleBin();
       if (cleaned > 0) toast.info(`휴지통 ${cleaned}건 자동 정리됨`);
     });
-    loadStaffMembers().then(members => {
-      setStaffMembers(members);
-      // 대표 변호사(현재 로그인) 기반으로 activeStaff 설정
-      const owner = members.find(m => m.role === 'OWNER');
-      if (owner) setActiveStaff(owner);
-      else {
-        // 자동으로 현재 변호사를 OWNER로 등록
-        const defaultOwner: StaffMember = {
-          id: activeLawyer.id,
-          name: activeLawyer.name,
-          role: 'OWNER',
-          isActive: true,
-          assignedCount: 0,
-          createdAt: new Date().toISOString(),
-          permissions: DEFAULT_PERMISSIONS.OWNER,
-          status: 'active',
-        };
-        setStaffMembers([defaultOwner]);
-        setActiveStaff(defaultOwner);
-        saveStaffMember(defaultOwner);
-      }
-    });
-  }, [activeLawyer.id, activeLawyer.name]);
+    // 작업자 = 로그인한 직원(없으면 대표 변호사 본인)
+    // 이전: staff_members에서 아무 사무소의 첫 OWNER 행을 골라 작업자로 쓰고, 없으면 OWNER 행을 자동 생성
+    //       → 직원이 로그인해도 대표 권한으로 CRM 전체가 열림
+    setActiveStaff(currentStaff || null);
+    loadStaffMembers(currentStaff?.invitedBy || activeLawyer.id)
+      .then(members => setStaffMembers(members.filter(m => m.status === 'active')))
+      .catch(err => {
+        console.warn('[CRM] 직원 목록 조회 실패:', err?.message || err);
+        setStaffMembers([]);
+      });
+  }, [activeLawyer.id, currentStaff]);
 
   // ── 이 변호사(또는 같은 사무소)가 담당·참여 중인 요청만 CRM 대상 ──
   // (이전: requestType === 'open'이면 누구의 요청이든 모든 변호사 CRM·엑셀 내보내기에 포함됨)
@@ -930,25 +925,33 @@ export default function CrmTab({
     let reminder: NoteReminder | undefined;
     if (hasReminder) {
       const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
-      const calEvt = await createCalendarEvent(tenantId, {
-        title: `[🔔] ${clientName} - ${reminderAction.trim()}`,
-        date: reminderDate,
-        type: 'deadline',
-        visibility: 'personal',
-        recurrence: 'none',
-        reminder: 'at_time',
-        createdBy: actor.id,
-        createdByName: actor.name,
-        createdByRole: actor.role as string,
-        description: reminderMemo.trim() || undefined,
-      });
+      let calEvtId: string | undefined;
+      try {
+        const calEvt = await createCalendarEvent(tenantId, {
+          title: `[🔔] ${clientName} - ${reminderAction.trim()}`,
+          date: reminderDate,
+          startTime: reminderTime || undefined,
+          type: 'deadline',
+          visibility: 'personal',
+          recurrence: 'none',
+          reminder: 'none',
+          createdBy: actor.id,
+          createdByName: actor.name,
+          createdByRole: actor.role as string,
+          description: reminderMemo.trim() || undefined,
+        });
+        calEvtId = calEvt.id;
+      } catch (e: any) {
+        toast.error(e?.message || '리마인더를 캘린더에 저장하지 못했습니다.');
+        return;
+      }
       reminder = { 
         date: reminderDate, 
         time: reminderTime || undefined, 
         action: reminderAction.trim(), 
         memo: reminderMemo.trim() || undefined, 
         completed: false, 
-        calendarEventId: calEvt.id 
+        calendarEventId: calEvtId 
       };
     }
 
@@ -1075,35 +1078,7 @@ export default function CrmTab({
     await updateCrmExt(selectedId, { documents: docs, activities });
   };
 
-  const handleAddStaff = async () => {
-    if (!newStaffName.trim()) return;
-    const member: StaffMember = {
-      id: `staff-${Date.now()}`,
-      name: newStaffName.trim(),
-      role: newStaffRole,
-      isActive: true,
-      assignedCount: 0,
-      createdAt: new Date().toISOString(),
-      permissions: DEFAULT_PERMISSIONS[newStaffRole],
-      status: 'active',
-    };
-    setStaffMembers(prev => [...prev, member]);
-    await saveStaffMember(member);
-    setNewStaffName('');
-  };
-
-  const handleRemoveStaff = async (id: string) => {
-    const confirmed = await dialog.confirm({
-      title: '직원 삭제',
-      message: '이 직원을 삭제하시겠습니까?',
-      confirmText: '삭제',
-      variant: 'danger'
-    });
-    if (!confirmed) return;
-    setStaffMembers(prev => prev.filter(m => m.id !== id));
-    await deleteStaffMember(id);
-    toast.success('직원이 삭제되었습니다.');
-  };
+  // (직원 추가·삭제는 '사용자 관리' 탭에서만 — 이전 CRM 내 미사용 직원 추가/삭제 핸들러 제거)
 
   // ── 일괄 작업 핸들러 ──
   const handleBulkStatusChange = async () => {
@@ -1480,21 +1455,10 @@ export default function CrmTab({
             <p className="text-sm text-slate-500 mt-1">상담이 접수된 전체 의뢰인의 진단 결과, 담당자 지정 및 진행 단계를 상세 관리합니다.</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* 직원 전환 드롭다운 */}
-            {currentPermissions.manageStaff && (
-              <select
-                value={activeStaff?.id || ''}
-                onChange={(e) => {
-                  const s = staffMembers.find(m => m.id === e.target.value);
-                  if (s) setActiveStaff(s);
-                }}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium"
-              >
-                {staffMembers.filter(m => m.isActive).map(m => (
-                  <option key={m.id} value={m.id}>{STAFF_ROLE_CONFIG[m.role].label}: {m.name}</option>
-                ))}
-              </select>
-            )}
+            {/* 현재 작업자 표시 — 이전: 대표가 다른 직원으로 '전환'해 그 직원 이름으로 기록을 남길 수 있었음 */}
+            <span className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium whitespace-nowrap">
+              {activeStaff ? `${STAFF_ROLE_CONFIG[activeStaff.role].label}: ${activeStaff.name}` : `${STAFF_ROLE_CONFIG.OWNER.label}: ${activeLawyer.name}`}
+            </span>
           </div>
         </div>
 
@@ -3292,6 +3256,7 @@ export default function CrmTab({
                       { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
                       { key: 'calls', label: '통화 및 문자', icon: '💬', count: (selectedExt.communicationLogs || []).length > 0 ? (selectedExt.communicationLogs || []).length : null },
                       { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
+                      { key: 'thread', label: '내부 스레드', icon: '🗨️', count: null },
                       { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
                       { 
                         key: 'contracts', 
@@ -3370,7 +3335,8 @@ export default function CrmTab({
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
                   if (!latestDirective) return null;
                   const pc = DIRECTIVE_PRIORITY_CONFIG[latestDirective.priority];
-                  const isOverdue = latestDirective.deadline && new Date(latestDirective.deadline) < new Date();
+                  // 기한 당일까지는 유효 (이전: 'YYYY-MM-DD'를 UTC 자정으로 해석해 당일 09시부터 기한 초과)
+                  const isOverdue = !!latestDirective.deadline && !latestDirective.acknowledgedAt && latestDirective.deadline.slice(0, 10) < localYmd();
                   return (
                     <div className={`mx-5 mt-4 p-4 rounded-2xl border-l-4 shadow-xs ${isOverdue ? 'bg-rose-50 border-rose-500 text-rose-950' : `${pc.bgColor} ${pc.borderColor}`} animate-fadeIn`}>
                       <div className="flex items-start justify-between gap-3">
@@ -3387,7 +3353,7 @@ export default function CrmTab({
                             )}
                             {latestDirective.deadline && (
                               <span className="text-[11px] text-slate-500 font-medium">
-                                📅 회신 기한: {new Date(latestDirective.deadline).toLocaleDateString()}
+                                📅 회신 기한: {latestDirective.deadline.slice(0, 10)}
                               </span>
                             )}
                           </div>
@@ -4199,7 +4165,7 @@ export default function CrmTab({
                   {detailTab === 'tasks' && (
                     <div className="space-y-4">
                       <TaskTicketTab
-                        tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                        tenantId={firmTenantId || activeLawyer.lawFirmId || activeLawyer.id}
                         targetType={(selectedClient as any)?.category === 'case' ? 'case' : 'consult_request'}
                         targetId={selectedId}
                         actorId={activeStaff?.id || activeLawyer.id}
@@ -4209,6 +4175,19 @@ export default function CrmTab({
                         canAssignTasks={!activeStaff || activeStaff.role === 'OWNER' || activeStaff.role === 'LAWYER' || !!currentPermissions.canAssignTasks}
                       />
                     </div>
+                  )}
+
+                  {/* ══════════ [4-1] 사무소 내부 스레드 (이전: 컴포넌트만 있고 화면에 연결되지 않음) ══════════ */}
+                  {detailTab === 'thread' && (
+                    <InternalThreadTab
+                      tenantId={firmTenantId || activeLawyer.lawFirmId || activeLawyer.id}
+                      targetType={(selectedClient as any)?.category === 'case' ? 'case' : 'consult_request'}
+                      targetId={selectedId}
+                      actorId={activeStaff?.id || activeLawyer.id}
+                      actorName={activeStaff?.name || activeLawyer.name}
+                      actorRole={String(activeStaff?.role || 'OWNER')}
+                      staffMembers={staffMembers}
+                    />
                   )}
 
                   {/* ══════════ [5] 수임료 탭 ══════════ */}

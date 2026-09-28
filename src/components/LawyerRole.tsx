@@ -37,8 +37,8 @@ import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
-import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
-import { loadStaffMembers, loadCrmExtMap, getCrmExt } from '../services/crmService';
+import { validateInviteToken, acceptStaffInvite } from '../services/inviteService';
+import { loadStaffMembers, findStaffRecordForUser, loadCrmExtMap, getCrmExt } from '../services/crmService';
 import { feeAmountWon } from '../services/alimtokService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { createNotification } from '../services/notificationCenterService';
@@ -338,7 +338,7 @@ export default function LawyerRole({
       registerSession({
         userId: activeLawyer.id,
         userName: activeLawyer.name,
-        userEmail: (activeLawyer as any).email || `${activeLawyer.id}@mykim.kr`,
+        userEmail: (activeLawyer as any).email || undefined,
         userRole: 'LAWYER',
         firmName: activeLawyer.firmName || '법률사무소',
       });
@@ -553,19 +553,58 @@ export default function LawyerRole({
   }, []);
 
   // Load staff member data for RBAC
+  // - 로그인 계정에 연결된 직원 기록이 있으면 그 역할·권한을 적용한다.
+  // - 승인 대기·정지·탈퇴 상태면 포털을 잠근다 (이전: 상태를 보지 않아 정지·탈퇴 직원도 계속 사용)
+  // - 1분마다 다시 확인해 대표가 정지·탈퇴 처리하면 최대 1분 안에 차단된다.
+  const lockPortalForStaff = useCallback((reason: string) => {
+    sessionStorage.removeItem('legal_crm_lawyer_session');
+    sessionStorage.removeItem('legal_crm_active_lawyer');
+    if (import.meta.env.DEV) sessionStorage.removeItem(DEV_LAWYER_SESSION_KEY);
+    verifiedAccountRef.current = null; clearDockSensitiveData();
+    if (isSupabaseConfigured) supabase.auth.signOut().catch(() => {});
+    setIsLoggedIn(false);
+    setActiveStaffMember(null);
+    setActiveLawyer(EMPTY_LAWYER);
+    setLoginError(reason);
+    toast.error(reason);
+  }, []);
+
   useEffect(() => {
-    if (isLoggedIn && activeLawyer) {
-      loadStaffMembers().then(members => {
-        setStaffMembers(members);
-        const found = members.find(m => m.linkedUserId === activeLawyer.id || m.authEmail === activeLawyer.id);
-        if (found) {
-          setActiveStaffMember(found);
-        } else {
-          setActiveStaffMember(null);
-        }
-      });
-    }
-  }, [isLoggedIn, activeLawyer]);
+    if (!isLoggedIn || !activeLawyer?.id) return;
+    let cancelled = false;
+    const check = async () => {
+      let mine: StaffMember | null = null;
+      try {
+        mine = await findStaffRecordForUser(activeLawyer.id);
+      } catch (err: any) {
+        // 조회 실패는 기존 판정을 유지 (네트워크 오류로 강제 로그아웃하지 않음)
+        console.warn('[RBAC] 직원 기록 확인 실패:', err?.message || err);
+        return;
+      }
+      if (cancelled) return;
+      if (mine && mine.status !== 'active') {
+        lockPortalForStaff(
+          mine.status === 'pending' ? '대표 변호사의 승인 후 이용할 수 있습니다.' :
+          mine.status === 'suspended' ? '대표 변호사가 계정 사용을 정지했습니다.' :
+          '사무소에서 탈퇴 처리된 계정입니다.'
+        );
+        return;
+      }
+      setActiveStaffMember(mine);
+      try {
+        const members = await loadStaffMembers(mine?.invitedBy || activeLawyer.id);
+        if (!cancelled) setStaffMembers(members);
+      } catch (err: any) {
+        console.warn('[RBAC] 직원 목록 조회 실패:', err?.message || err);
+      }
+    };
+    check();
+    const timer = window.setInterval(check, 60_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [isLoggedIn, activeLawyer?.id, lockPortalForStaff]);
+
+  // 업무·일정·알림 공유 단위: 직원이면 초대한 대표 변호사, 아니면 사무소(없으면 본인)
+  const firmTenantId = activeStaffMember?.invitedBy || activeLawyer.lawFirmId || activeLawyer.id;
   
   // Login form state
   const [loginId, setLoginId] = useState<string>('');
@@ -973,44 +1012,60 @@ export default function LawyerRole({
           toast.info(`${profile.name} 님, 변호사 계정 연결이 접수되었습니다. 자격 서류 제출 후 관리자 승인이 필요합니다.`);
           onLogActivity(profile.id, profile.name, 'LAWYER', 'SIGNUP', `${providerName} 소셜 계정으로 변호사 가입 신청 (자격 심사 대기)`);
 
-          // 초대 링크로 들어온 경우: 서버에서 토큰 1회 소비 후 직원 레코드 생성
-          if (inviteToken && inviteTokenValid) {
-            const staffId = `staff-${account.lawyerId}`;
-            const consumed = await consumeInviteToken(inviteToken, staffId);
-            if (consumed.ok) {
+        } else {
+          toast.success(`[인증 완료] ${profile.name} 님으로 로그인되었습니다.`);
+          onLogActivity(profile.id, profile.name, 'LAWYER', 'LOGIN', `${providerName} 소셜 로그인 성공`);
+        }
+
+        // 초대 링크로 들어온 경우 (신규·기존 계정 모두): 서버가 토큰 소비 + 승인 대기 직원 기록 생성
+        // 이전: 신규 계정일 때만 처리, 토큰을 먼저 소비한 뒤 클라이언트가 역할을 넣어 직원 기록 저장(실패해도 무시)
+        if (inviteToken && inviteTokenValid) {
+          const staffId = `staff-${account.lawyerId}`;
+          const accepted = await acceptStaffInvite(inviteToken, {
+            staffId,
+            linkedUserId: account.lawyerId,
+            name: profile.name,
+            email: profile.email || undefined,
+            avatar: profile.avatar || undefined,
+            provider: provider === 'kakao' ? 'kakao' : 'google',
+          });
+          if (accepted.ok) {
+            let staffSaved = accepted.staffCreatedOnServer;
+            if (!staffSaved) {
+              // 020 미적용 환경 — 클라이언트에서 승인 대기 기록 생성 (대표가 승인해야 권한이 생김)
               try {
                 const { saveStaffMember: saveSM } = await import('../services/crmService');
                 const newStaff: StaffMember = {
                   id: staffId,
                   name: profile.name,
-                  role: consumed.role,
+                  role: accepted.role,
                   email: profile.email || '',
                   avatar: profile.avatar || undefined,
                   isActive: false,
                   assignedCount: 0,
                   createdAt: new Date().toISOString(),
-                  permissions: DEFAULT_PERMISSIONS[consumed.role],
+                  permissions: DEFAULT_PERMISSIONS[accepted.role],
                   status: 'pending',
+                  invitedBy: accepted.invitedBy,
                   authEmail: profile.email || '',
                   authProvider: provider === 'kakao' ? 'kakao' : 'google',
                   linkedUserId: account.lawyerId,
                   supabaseUserId: user.id,
-                  inviteToken,
                 };
                 await saveSM(newStaff);
-              } catch (err) {
-                console.warn('[OAuth] StaffMember 생성 실패:', err);
+                staffSaved = true;
+              } catch (err: any) {
+                console.warn('[OAuth] StaffMember 생성 실패:', err?.message || err);
               }
-              const url = new URL(window.location.href);
-              url.searchParams.delete('invite');
-              window.history.replaceState({}, '', url.toString());
-            } else {
-              toast.error('error' in consumed ? consumed.error : '초대 링크 처리에 실패했습니다.');
             }
+            if (staffSaved) toast.success('초대를 수락했습니다. 대표 변호사가 승인하면 사무소 업무를 이용할 수 있습니다.');
+            else toast.error('초대는 확인했지만 직원 등록을 저장하지 못했습니다. 대표 변호사에게 새 초대 링크를 요청해 주세요.');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('invite');
+            window.history.replaceState({}, '', url.toString());
+          } else {
+            toast.error(('error' in accepted && accepted.error) || '초대 링크 처리에 실패했습니다.');
           }
-        } else {
-          toast.success(`[인증 완료] ${profile.name} 님으로 로그인되었습니다.`);
-          onLogActivity(profile.id, profile.name, 'LAWYER', 'LOGIN', `${providerName} 소셜 로그인 성공`);
         }
       } finally {
         oauthProcessingRef.current = false;
@@ -1493,7 +1548,7 @@ export default function LawyerRole({
 
     // 알림 발송
     createNotification(
-      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
+      firmTenantId, // NotificationBell과 동일한 tenant 키
       supervisingId,
       {
         type: 'REVIEW_REQUESTED',
@@ -1504,7 +1559,7 @@ export default function LawyerRole({
         linkType: 'proposal_review',
         linkId: pending.id
       }
-    );
+    ).catch(err => console.warn('[알림] 발송 실패:', err?.message || err));
 
     toast.success(`${supervisingLawyer.name} 변호사에게 컨펌 요청을 보냈습니다.`);
 
@@ -1527,7 +1582,7 @@ export default function LawyerRole({
 
     // 직원에게 승인 알림
     createNotification(
-      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
+      firmTenantId, // NotificationBell과 동일한 tenant 키
       pending.staffId,
       {
         type: 'REVIEW_APPROVED',
@@ -1538,7 +1593,7 @@ export default function LawyerRole({
         linkType: 'consult_request',
         linkId: pending.reqId
       }
-    );
+    ).catch(err => console.warn('[알림] 발송 실패:', err?.message || err));
 
     toast.success('제안서를 승인하고 고객에게 발송했습니다.');
   };
@@ -1552,7 +1607,7 @@ export default function LawyerRole({
 
     // 직원에게 반려 알림
     createNotification(
-      activeLawyer.lawFirmId || activeLawyer.id, // NotificationBell과 동일한 tenant 키
+      firmTenantId, // NotificationBell과 동일한 tenant 키
       pending.staffId,
       {
         type: 'REVIEW_REJECTED',
@@ -1563,7 +1618,7 @@ export default function LawyerRole({
         linkType: 'consult_request',
         linkId: pending.reqId
       }
-    );
+    ).catch(err => console.warn('[알림] 발송 실패:', err?.message || err));
 
     toast.info('제안서를 반려했습니다.');
   };
@@ -2411,7 +2466,7 @@ export default function LawyerRole({
 
 
             <NotificationBell
-              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              tenantId={firmTenantId}
               userId={activeStaffMember?.id || activeLawyer.id}
               onNavigate={(linkType, linkId) => {
                 if (linkType === 'proposal_review') {
@@ -5280,6 +5335,8 @@ export default function LawyerRole({
             requests={requests}
             lawyers={lawyers}
             activeLawyer={activeLawyer}
+            currentStaff={activeStaffMember}
+            firmTenantId={firmTenantId}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
             getDisplayClientName={getDisplayClientName}
@@ -5326,7 +5383,7 @@ export default function LawyerRole({
           activeLawyer.aiCaseAnalysisEnabled ? (
             <CaseReviewCopilot
               consultRequests={requests.filter(isRelevantRequest)}
-              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              tenantId={firmTenantId}
               actorId={activeStaffMember?.id || activeLawyer.id}
               actorRole={activeStaffMember?.role || 'OWNER'}
               actorName={activeStaffMember?.name || activeLawyer.name}
@@ -5343,7 +5400,13 @@ export default function LawyerRole({
         )}
 
         {/* TAB: STAFF MANAGEMENT */}
-        {activeTab === 'staff-management' && (
+        {activeTab === 'staff-management' && !permissionCtx.canAccessTab('staff-management') && (
+          <div role="alert" className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-600">
+            사용자 관리는 대표 변호사만 이용할 수 있습니다.
+          </div>
+        )}
+        {/* 이전: 사이드바 버튼만 숨기고 탭 자체는 권한 없이 렌더링 */}
+        {activeTab === 'staff-management' && permissionCtx.canAccessTab('staff-management') && (
           <StaffManagementTab
             requests={requests}
             lawyers={lawyers}
@@ -5356,7 +5419,7 @@ export default function LawyerRole({
         {activeTab === 'tasks-schedule' && (
           <div className="">
             <TasksScheduleTab
-              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              tenantId={firmTenantId}
               userId={activeStaffMember?.id || activeLawyer.id}
               userName={activeStaffMember?.name || activeLawyer.name}
               userRole={activeStaffMember?.role || 'OWNER'}
@@ -5447,7 +5510,7 @@ export default function LawyerRole({
                 userId={activeLawyer.id}
                 userName={activeLawyer.name}
                 userRole="LAWYER"
-                userEmail={(activeLawyer as any).email || `${activeLawyer.id}@mykim.kr`}
+                userEmail={(activeLawyer as any).email || ''}
                 firmName={activeLawyer.firmName || '법률사무소'}
               />
             )}
@@ -5500,7 +5563,7 @@ export default function LawyerRole({
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {[
                   { key: 'calc-rules', label: '📊 2026 회생/파산 산정 기준표' },
-                  ...(isLawyerOrOwner && staffRole === 'OWNER' ? [{ key: 'data-backup', label: '🔒 데이터 백업 및 복원' }] : []),
+                  ...(isLawyerOrOwner && staffRole === 'OWNER' ? [{ key: 'data-backup', label: '🔒 데이터 백업' }] : []),
                 ].map(s => (
                   <button
                     key={s.key}
@@ -5534,7 +5597,7 @@ export default function LawyerRole({
                     };
                     setLawyers(prev => prev.map(l => l.id === finalLawyer.id ? finalLawyer : l));
                     setActiveLawyer(finalLawyer);
-                    toast.success('프로필이 저장되었습니다');
+                    // 저장 안내는 편집기 자체 토스트로 표시 (이전: 토스트 2개가 동시에 뜸)
                   }}
                   onClose={() => setSettingsSub('notices')}
                   inline={true}
@@ -5546,7 +5609,7 @@ export default function LawyerRole({
             {settingsSub === 'consult-style' && (
               <div>
                 <ConsultStyleProfile
-                  tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                  tenantId={firmTenantId}
                   actorId={activeLawyer.id}
                   actorName={activeLawyer.name}
                 />
@@ -6462,6 +6525,8 @@ export default function LawyerRole({
               <DataBackupSection
                 isOwner={staffRole === 'OWNER'}
                 lawyerName={activeLawyer.name}
+                lawyerId={activeLawyer.id}
+                tenantId={firmTenantId}
               />
             )}
 

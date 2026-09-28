@@ -58,18 +58,26 @@ export const VISIBILITY_CONFIG: Record<EventVisibility, { label: string; emoji: 
   personal: { label: '나만 보기', emoji: '🔒', color: 'text-slate-500',  bgColor: 'bg-slate-50' },
 };
 
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+/** 알림(10분~1일 전)은 저장만 된다. 발송하는 스케줄러가 아직 없다. */
+export const REMINDER_DELIVERY_SUPPORTED = false;
 
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { generateUUID } from '../utils/deviceDetector';
+import { addMonthsClamped, localYmd, parseLocalYmd } from '../utils/localDate';
+
+// Supabase 미설정(로컬 개발)일 때만 쓰는 저장소
 const STORAGE_KEY = 'cal-events';
 
-function logSupabaseError(op: string, error: any) {
-  console.error(`[Calendar] ${op} 실패:`, error?.message || error);
+function calendarError(action: string, error: any): Error {
+  const msg = error?.message || String(error || '');
+  console.error(`[Calendar] ${action} 실패:`, msg);
+  return new Error(`일정을 ${action}하지 못했습니다.${msg ? ` (${msg})` : ''}`);
 }
 
 function eventToRow(e: CalendarEvent) {
   return {
     id: e.id,
-    tenant_id: e.tenantId || 'default',
+    tenant_id: e.tenantId,
     title: e.title || '',
     date: e.date,
     time: e.startTime || '',
@@ -77,6 +85,8 @@ function eventToRow(e: CalendarEvent) {
     client_name: e.clientName || '',
     memo: e.description || '',
     assigned_staff_id: e.createdBy || '',
+    // 이전: visibility 컬럼을 쓰지 않아 DB 기본값 'firm'이 남음 → RLS가 '나만 보기' 일정을 모두에게 허용
+    visibility: e.visibility,
     created_at: e.createdAt || new Date().toISOString(),
     data: e,
   };
@@ -93,14 +103,18 @@ function saveToStorage(tenantId: string, events: CalendarEvent[]) {
   localStorage.setItem(`${STORAGE_KEY}-${tenantId}`, JSON.stringify(events));
 }
 
-function generateId(): string {
-  return `evt-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+/** 공개 범위 판정 (화면 표시용 — 서버는 RLS로 한 번 더 거른다) */
+export function canViewEvent(e: CalendarEvent, userId: string, userRole: string): boolean {
+  if (e.visibility === 'firm') return true;
+  if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER' || e.createdBy === userId;
+  if (e.visibility === 'personal') return !!userId && e.createdBy === userId;
+  return false;
 }
 
 /**
- * 가시성 기반 안전 일정 조회 (Zero Over-fetching)
- * 타인의 비공개 개인 일정(personal)이 네트워크 응답이나 localStorage에 절대 남지 않도록
- * DB RLS와 런타임 권한 필터를 이중 적용하고, 인가된 일정만 로컬 캐시에 저장합니다.
+ * 공개 범위에 맞는 일정 조회
+ * - Supabase 설정 시: 서버 조회 결과만 사용하고 브라우저에 캐시하지 않는다. 실패하면 예외.
+ * - '나만 보기' 일정의 서버 측 차단은 RLS(020 마이그레이션)가 맡는다.
  */
 export async function getVisibleEvents(
   tenantId: string,
@@ -108,46 +122,17 @@ export async function getVisibleEvents(
   userRole: string
 ): Promise<CalendarEvent[]> {
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('date', { ascending: true });
-
-      if (error) {
-        logSupabaseError('getVisibleEvents', error);
-      } else if (data) {
-        const events = data
-          .map((row: any) => row.data || row)
-          .filter((e: CalendarEvent) => {
-            if (e.visibility === 'firm') return true;
-            if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER';
-            if (e.visibility === 'personal') return e.createdBy === userId;
-            return false;
-          });
-
-        // 로컬 스토리지에 타인 비공개 개인 일정이 유출되지 않도록 인가된 데이터만 저장
-        saveToStorage(tenantId, events);
-        return events;
-      }
-    } catch (e) {
-      logSupabaseError('getVisibleEvents (exception)', e);
-    }
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('date', { ascending: true });
+    if (error) throw calendarError('불러오', error);
+    return (data || [])
+      .map((row: any) => ({ ...(row.data || {}), id: row.id, tenantId: row.tenant_id, visibility: row.visibility || row.data?.visibility || 'personal' }) as CalendarEvent)
+      .filter((e: CalendarEvent) => canViewEvent(e, userId, userRole));
   }
-
-  const local = loadFromStorage(tenantId);
-  return local.filter(e => {
-    if (e.visibility === 'firm') return true;
-    if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER';
-    if (e.visibility === 'personal') return e.createdBy === userId;
-    return false;
-  });
-}
-
-/** @deprecated getVisibleEvents 사용 권장 (BOLA 방어) */
-export async function getEvents(tenantId: string): Promise<CalendarEvent[]> {
-  return getVisibleEvents(tenantId, '', 'OWNER');
+  return loadFromStorage(tenantId).filter(e => canViewEvent(e, userId, userRole));
 }
 
 /** 일정 삭제 권한 확인 */
@@ -179,44 +164,78 @@ export function getDefaultVisibility(
   hasManageCalendar: boolean
 ): EventVisibility {
   if (userRole === 'OWNER' || hasManageCalendar) return 'firm';
-  if (userRole === 'LAWYER') return 'personal';
   return 'personal';
 }
 
-/** 일정 생성 */
+/**
+ * 반복 일정을 [rangeStart, rangeEnd] 범위의 날짜(YYYY-MM-DD) 목록으로 펼친다.
+ * - 매월: 시작일과 같은 날짜, 없는 달은 말일 (1/31 → 2/28)
+ * - 반복 종료일이 없으므로 범위 밖은 계산하지 않는다
+ */
+export function expandEventOccurrences(e: Pick<CalendarEvent, 'date' | 'recurrence'>, rangeStart: string, rangeEnd: string): string[] {
+  const base = parseLocalYmd(e.date);
+  const start = parseLocalYmd(rangeStart);
+  const end = parseLocalYmd(rangeEnd);
+  if (!base || !start || !end) return e.date ? [e.date] : [];
+  const inRange = (d: Date) => d >= start && d <= end;
+  const rec = e.recurrence || 'none';
+  if (rec === 'none') return inRange(base) ? [localYmd(base)] : [];
+
+  const out: string[] = [];
+  if (rec === 'monthly') {
+    for (let i = 0; i < 1200; i++) {
+      const d = addMonthsClamped(base, i);
+      if (d > end) break;
+      if (inRange(d)) out.push(localYmd(d));
+    }
+    return out;
+  }
+  const stepDays = rec === 'daily' ? 1 : rec === 'weekly' ? 7 : 14;
+  const dayMs = 86400000;
+  // 범위 시작 직전 회차부터 계산 (자정 기준 일수 차 — 서머타임 없는 지역 가정, 반올림으로 보정)
+  const diffDays = Math.round((start.getTime() - base.getTime()) / dayMs);
+  let k = diffDays > 0 ? Math.floor(diffDays / stepDays) : 0;
+  for (let guard = 0; guard < 400; guard++, k++) {
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k * stepDays);
+    if (d > end) break;
+    if (inRange(d)) out.push(localYmd(d));
+  }
+  return out;
+}
+
+/** 일정 생성 — 서버 저장 실패 시 예외 (이전: 실패해도 '추가되었습니다' 후 새로고침하면 사라짐) */
 export async function createEvent(
   tenantId: string,
   data: Omit<CalendarEvent, 'id' | 'tenantId' | 'createdAt'>
 ): Promise<CalendarEvent> {
-  const events = loadFromStorage(tenantId);
+  if (!tenantId) throw new Error('사무소 정보를 확인할 수 없어 일정을 저장하지 못했습니다.');
+  if (!parseLocalYmd(data.date)) throw new Error('날짜 형식이 올바르지 않습니다.');
   const newEvent: CalendarEvent = {
     ...data,
-    id: generateId(),
+    id: generateUUID(),
     tenantId,
     createdAt: new Date().toISOString(),
   };
-  events.push(newEvent);
-  saveToStorage(tenantId, events);
 
   if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.from('calendar_events').upsert(eventToRow(newEvent), { onConflict: 'id' });
-      if (error) logSupabaseError('createEvent', error);
-    } catch (e) { logSupabaseError('createEvent (exception)', e); }
+    const { error } = await supabase.from('calendar_events').insert(eventToRow(newEvent));
+    if (error) throw calendarError('저장', error);
+  } else {
+    const events = loadFromStorage(tenantId);
+    events.push(newEvent);
+    saveToStorage(tenantId, events);
   }
-
   return newEvent;
 }
 
-/** 일정 삭제 */
+/** 일정 삭제 — 같은 사무소 일정만 */
 export async function deleteEvent(tenantId: string, eventId: string): Promise<void> {
-  const events = loadFromStorage(tenantId);
-  saveToStorage(tenantId, events.filter(e => e.id !== eventId));
-
   if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
-      if (error) logSupabaseError('deleteEvent', error);
-    } catch (e) { logSupabaseError('deleteEvent (exception)', e); }
+    const { data, error } = await supabase.from('calendar_events').delete()
+      .eq('tenant_id', tenantId).eq('id', eventId).select('id');
+    if (error) throw calendarError('삭제', error);
+    if (!data || data.length === 0) throw new Error('일정을 삭제하지 못했습니다. 권한이 없거나 이미 삭제된 일정입니다.');
+    return;
   }
+  saveToStorage(tenantId, loadFromStorage(tenantId).filter(e => e.id !== eventId));
 }

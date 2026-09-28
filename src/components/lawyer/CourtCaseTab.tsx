@@ -73,6 +73,8 @@ export default function CourtCaseTab({
     caseNo: string;
     statusBadge: string;
     statusColor: string;
+    lastSyncedAt?: string;
+    finalResult?: string;
   }
 
   // 관련사건 목록: CRM에 저장된 것만 (이전: 모든 의뢰인에게 가짜 금지·타채 사건 3건 표시)
@@ -91,7 +93,8 @@ export default function CourtCaseTab({
     }
     return [];
   });
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('rc-1');
+  // 첫 번째(본안) 사건을 기본 선택 (이전: 저장된 ID와 맞지 않는 'rc-1' 고정)
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => relatedCases.find(rc => rc.type === '본안')?.id || relatedCases[0]?.id || '');
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
   const [newCaseType, setNewCaseType] = useState<'본안' | '금지' | '중지' | '타채(압류)' | '종전'>('중지');
   const [newCaseCourt, setNewCaseCourt] = useState(defaultCourt);
@@ -131,10 +134,35 @@ export default function CourtCaseTab({
 
       setCourtDetail(detail);
 
+      // 금지·중지·타채 같은 관련사건을 조회한 경우 본안 사건 기록을 덮어쓰지 않는다
+      // (이전: 어떤 사건을 조회하든 courtCase(본안)를 교체하고 의뢰인 화면에도 그 사건번호를 동기화)
+      const selectedRelated = relatedCases.find(rc => rc.id === selectedCaseId);
+      const primaryNo = (crmExt.courtCase?.caseNumber || '').replace(/\s+/g, '');
+      const isRelatedOnly = !!selectedRelated && selectedRelated.type !== '본안'
+        && selectedRelated.caseNo.replace(/\s+/g, '') !== primaryNo;
+      if (isRelatedOnly) {
+        const next = relatedCases.map(rc => rc.id === selectedRelated!.id ? {
+          ...rc,
+          statusBadge: `조회 ${new Date(detail.lastSyncedAt).toLocaleDateString('ko-KR')}`,
+          statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          lastSyncedAt: detail.lastSyncedAt,
+          finalResult: detail.finalResult,
+        } : rc);
+        setRelatedCases(next);
+        await onUpdateCrmExt({ relatedCourtCases: next } as any);
+        toast.success(`${selectedRelated.type} 사건 조회 결과를 불러왔습니다. 본안 사건 기록은 바뀌지 않습니다.`);
+        return;
+      }
+
+      // 사건 부호로 유형 판단: 개회=개인회생, 하단·하면=개인파산 (이전: '회생'이 없으면 모두 개인파산)
+      const code = (detail.caseNumber.match(/\d{4}([가-힣]+)\d+/) || [])[1] || '';
+      const caseType = code.startsWith('개회') || detail.caseType.includes('회생') ? '개인회생'
+        : code.startsWith('하단') || code.startsWith('하면') || detail.caseType.includes('파산') ? '개인파산'
+        : (crmExt.courtCase?.caseType || detail.caseType);
       const updatedCourtCase = {
         caseNumber: detail.caseNumber,
         courtName: detail.courtName,
-        caseType: (detail.caseType.includes('회생') ? '개인회생' : '개인파산') as any,
+        caseType: caseType as any,
         filedDate: detail.filedDate,
         lastSyncedAt: detail.lastSyncedAt,
         events: detail.events
@@ -225,9 +253,11 @@ export default function CourtCaseTab({
   // 대법원 복사 및 이동
   const handleCopyAndGoScourt = () => {
     const text = `${courtName} ${caseNumber}`;
-    navigator.clipboard.writeText(text);
-    toast.success(`'${text}' 복사 완료! 대법원 공식 사이트로 이동합니다.`);
+    // 새 창은 클릭 이벤트 안에서 바로 열어야 팝업 차단을 피한다
     window.open('https://m.scourt.go.kr', '_blank', 'noopener,noreferrer');
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success(`'${text}'를 복사했습니다. 대법원 사이트에 붙여 넣어 주세요.`))
+      .catch(() => toast.warning(`복사하지 못했습니다. 사건번호를 직접 입력해 주세요: ${text}`));
   };
 
   // 감지된 보정명령 목록

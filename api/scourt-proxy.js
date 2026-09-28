@@ -40,12 +40,15 @@ function getServerCacheTTL(data) {
   return SERVER_CACHE_TTL.ACTIVE;
 }
 
-function getCacheKey(courtName, caseNumber) {
-  return `${courtName}::${caseNumber}`.trim().toLowerCase();
+// 당사자 이름까지 키에 넣는다 — CODEF는 사건번호 + 당사자명이 맞아야 조회되므로,
+// 사건번호만으로 캐시하면 이름을 모르는 다른 사용자도 캐시된 사건 내용을 받아 갈 수 있었다.
+function getCacheKey(courtName, caseNumber, clientName) {
+  const name = String(clientName || '').replace(/\s+/g, '');
+  return `${courtName}::${caseNumber}::${name}`.trim().toLowerCase();
 }
 
-function getCachedResponse(courtName, caseNumber) {
-  const key = getCacheKey(courtName, caseNumber);
+function getCachedResponse(courtName, caseNumber, clientName) {
+  const key = getCacheKey(courtName, caseNumber, clientName);
   const entry = responseCache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
@@ -55,8 +58,8 @@ function getCachedResponse(courtName, caseNumber) {
   return entry.data;
 }
 
-function setCachedResponse(courtName, caseNumber, data) {
-  const key = getCacheKey(courtName, caseNumber);
+function setCachedResponse(courtName, caseNumber, clientName, data) {
+  const key = getCacheKey(courtName, caseNumber, clientName);
   // 캐시 크기 제한: 초과 시 가장 오래된 항목 삭제
   if (responseCache.size >= MAX_CACHE_ENTRIES) {
     const firstKey = responseCache.keys().next().value;
@@ -262,7 +265,7 @@ async function handler(req, res) {
 
   // [COST DEFENSE] 캐시 조회 — 동일 사건번호에 대해 24시간 내 재호출 방지
   if (!forceRefresh && caseNumber) {
-    const cached = getCachedResponse(courtName, caseNumber);
+    const cached = getCachedResponse(courtName, caseNumber, clientName);
     if (cached) {
       console.info(`[CODEF Cache HIT] ${courtName} ${caseNumber} — CODEF 호출 생략, 캐시 응답 반환`);
       return res.status(200).json({
@@ -329,7 +332,7 @@ async function handler(req, res) {
           };
 
           // [COST DEFENSE] 성공 응답을 24시간 캐시에 저장
-          setCachedResponse(courtName, caseNumber, responsePayload);
+          setCachedResponse(courtName, caseNumber, clientName, responsePayload);
           console.info(`[CODEF Cache SET] ${courtName} ${caseNumber} — 24시간 캐시 저장 완료`);
 
           return res.status(200).json(responsePayload);

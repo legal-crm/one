@@ -565,8 +565,16 @@ export function touchSessionHeartbeat(sessionId?: string): void {
   const allSessions = loadStoredSessions();
   const session = allSessions.find(s => s.id === id);
   if (session && session.status === 'active') {
-    session.lastActiveAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    session.lastActiveAt = nowIso;
     saveStoredSessions(allSessions);
+    // 다른 기기의 '최근 활동'이 로그인 시각에 멈춰 보이지 않도록 서버에도 기록 (이전: 브라우저에만 기록)
+    if (isSupabaseConfigured) {
+      supabase.from('user_sessions')
+        .update({ last_active_at: nowIso })
+        .eq('id', id).eq('status', 'active')
+        .then(({ error }) => { if (error) console.warn('[SESSION] heartbeat 서버 기록 실패:', error.message); });
+    }
   }
 }
 
@@ -593,7 +601,8 @@ export function recordLoginAudit(entry: Omit<LoginAuditEntry, 'id' | 'timestamp'
 export function getLoginAuditHistory(userId: string): LoginAuditEntry[] {
   try {
     const history: LoginAuditEntry[] = JSON.parse(localStorage.getItem(LOGIN_HISTORY_STORAGE_KEY) || '[]');
-    const userEntries = history.filter(h => h.userId === userId);
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const userEntries = history.filter(h => h.userId === userId && new Date(h.timestamp).getTime() >= since);
     if (userEntries.length > 0) return userEntries;
   } catch {}
 

@@ -11,6 +11,7 @@ import {
 import type { TaskTicket, TaskPriority, TaskStatus, MessageTargetType } from '../../types/communication';
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from '../../types/communication';
 import type { StaffMember } from '../../types';
+import { localYmd } from '../../utils/localDate';
 
 interface TaskTicketTabProps {
   tenantId: string;
@@ -52,10 +53,31 @@ export default function TaskTicketTab({
 
   const canAssign = actorRole === 'OWNER' || actorRole === 'LAWYER' || canAssignTasks;
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const refresh = useCallback(async () => {
-    const all = await getTasksByTarget(tenantId, targetType, targetId);
-    setTasks(all);
+    try {
+      const all = await getTasksByTarget(tenantId, targetType, targetId);
+      setTasks(all);
+      setLoadError(null);
+    } catch (e: any) {
+      setLoadError(e?.message || '업무 목록을 불러오지 못했습니다.');
+    }
   }, [tenantId, targetType, targetId]);
+
+  /** 서비스 예외를 토스트로 표시 */
+  const run = async (fn: () => Promise<unknown>, successMsg: string): Promise<boolean> => {
+    try {
+      await fn();
+      toast.success(successMsg);
+      return true;
+    } catch (e: any) {
+      toast.error(e?.message || '처리하지 못했습니다.');
+      return false;
+    } finally {
+      refresh();
+    }
+  };
 
   useEffect(() => {
     refresh();
@@ -72,7 +94,7 @@ export default function TaskTicketTab({
     }
 
     const assignee = staffMembers.find(s => s.id === newAssigneeId);
-    await createTask(tenantId, {
+    const ok = await run(() => createTask(tenantId, {
       targetType,
       targetId,
       assignerId: actorId,
@@ -83,16 +105,15 @@ export default function TaskTicketTab({
       description: newDesc.trim() || undefined,
       priority: newPriority,
       dueDate: newDueDate || undefined,
-    });
+    }), '업무를 지시했습니다');
+    if (!ok) return;
 
-    toast.success('업무가 성공적으로 지시되었습니다');
     setNewTitle('');
     setNewDesc('');
     setNewAssigneeId('');
     setNewPriority('NORMAL');
     setNewDueDate('');
     setShowForm(false);
-    refresh();
   };
 
   const handleStatusChange = async (taskId: string, status: TaskStatus) => {
@@ -100,17 +121,12 @@ export default function TaskTicketTab({
       setCompletingId(taskId);
       return;
     }
-    await updateTaskStatus(tenantId, taskId, status);
-    toast.success('상태가 변경되었습니다');
-    refresh();
+    await run(() => updateTaskStatus(tenantId, taskId, status), '상태가 변경되었습니다');
   };
 
   const handleComplete = async (taskId: string) => {
-    await updateTaskStatus(tenantId, taskId, 'COMPLETED', completionNote);
-    toast.success('업무 완료 처리되었습니다');
-    setCompletingId(null);
-    setCompletionNote('');
-    refresh();
+    const ok = await run(() => updateTaskStatus(tenantId, taskId, 'COMPLETED', completionNote), '업무 완료 처리되었습니다');
+    if (ok) { setCompletingId(null); setCompletionNote(''); }
   };
 
   const handleDelete = async (taskId: string) => {
@@ -122,15 +138,19 @@ export default function TaskTicketTab({
     });
     if (!confirmed) return;
 
-    await deleteTask(tenantId, taskId);
-    toast.success('업무가 삭제되었습니다');
-    refresh();
+    await run(() => deleteTask(tenantId, taskId), '업무가 삭제되었습니다');
   };
 
   const filtered = statusFilter === 'ALL' ? tasks : tasks.filter(t => t.status === statusFilter);
 
   return (
     <div className="space-y-4">
+      {loadError && (
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-red-700">{loadError}</p>
+          <button onClick={() => refresh()} className="shrink-0 whitespace-nowrap bg-white border border-red-200 text-red-700 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-red-100 active:scale-[0.98]">다시 불러오기</button>
+        </div>
+      )}
       {/* 헤더 & 필터 & 업무 지시 버튼 */}
       <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -254,9 +274,11 @@ export default function TaskTicketTab({
         <div className="space-y-2.5">
           {filtered.map(task => {
             const priCfg = TASK_PRIORITY_CONFIG[task.priority];
-            const stCfg = TASK_STATUS_CONFIG[task.status];
-            const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED' && task.status !== 'CANCELLED';
+            const stCfg = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG.PENDING;
+            // 마감일 당일은 아직 기한 내 — 로컬 날짜 기준 비교 (이전: UTC 자정 비교로 당일 09시부터 '기한 초과')
+            const isOverdue = !!task.dueDate && task.dueDate.slice(0, 10) < localYmd() && task.status !== 'COMPLETED' && task.status !== 'CANCELLED';
             const isAssignee = task.assigneeId === actorId;
+            const canOperate = isAssignee || canAssign;
 
             return (
               <div
@@ -324,12 +346,18 @@ export default function TaskTicketTab({
                           시작
                         </button>
                       )}
-                      <button
-                        onClick={() => handleStatusChange(task.id, 'COMPLETED')}
-                        className="bg-green-50 text-green-600 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-green-100 active:scale-[0.98] transition-all cursor-pointer"
-                      >
-                        완료
-                      </button>
+                      {/* 검토 승인이 필요한 업무는 '일정/할일' 탭에서 검토 요청 → 승인으로만 완료 */}
+                      {canOperate && !task.requiresApproval && task.status !== 'REVIEW_REQUESTED' && (
+                        <button
+                          onClick={() => handleStatusChange(task.id, 'COMPLETED')}
+                          className="bg-green-50 text-green-600 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-green-100 active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                          완료
+                        </button>
+                      )}
+                      {task.requiresApproval && (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg whitespace-nowrap">검토 승인 필요</span>
+                      )}
                       {canAssign && (
                         <button
                           onClick={() => handleDelete(task.id)}

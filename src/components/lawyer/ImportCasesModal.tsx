@@ -1,10 +1,35 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, Check, Download, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype pollution CVE-2023-30533 대응
+import * as XLSX from 'xlsx-js-style'; // 주의: xlsx-js-style 1.2.0은 SheetJS 0.18.5 기반 — CVE-2023-30533(0.19.3에서 수정)·CVE-2024-22363 미해결. 파일 크기·행 수 제한으로 노출만 줄임
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG } from '../../types';
-import { formatPhone } from '../../services/crmService';
+import { formatPhone, isValidKoreanPhone } from '../../services/crmService';
 import ModalPortal from '../common/ModalPortal';
+
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 2000;
+
+/**
+ * 엑셀 셀의 전화번호 정리
+ * - 엑셀이 숫자로 저장한 휴대폰 번호는 앞자리 0이 빠진다(01012345678 → 1012345678) → 0을 되살림
+ */
+export function normalizeImportedPhone(cell: unknown): string {
+  let s = typeof cell === 'number' ? String(Math.trunc(cell)) : String(cell ?? '').trim();
+  if (/^1[016789]\d{7,8}$/.test(s)) s = '0' + s;
+  if (/^2\d{7,8}$/.test(s) && typeof cell === 'number') s = '0' + s;
+  return formatPhone(s);
+}
+
+/** 유입경로 셀 값을 등록된 코드로 (코드 또는 표시 이름 일치) */
+export function matchIntakeChannel(value: string): IntakeChannel | null {
+  const v = value.trim();
+  if (!v) return null;
+  const entries = Object.entries(INTAKE_CHANNEL_CONFIG) as [IntakeChannel, { label: string }][];
+  const byKey = entries.find(([k]) => k === v);
+  if (byKey) return byKey[0];
+  const byLabel = entries.find(([, cfg]) => cfg.label === v);
+  return byLabel ? byLabel[0] : null;
+}
 
 interface Props {
   isOpen: boolean;
@@ -73,22 +98,34 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
   };
 
   const processFile = (file: File) => {
+    // 이전: 크기·형식·행 수 제한이 없어 큰 파일이 탭을 멈추게 할 수 있었음
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
+      toast.error('엑셀(.xlsx, .xls) 또는 CSV 파일만 올릴 수 있습니다.');
+      return;
+    }
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      toast.error(`파일이 너무 큽니다. ${Math.round(MAX_IMPORT_FILE_BYTES / 1024 / 1024)}MB 이하로 나눠서 올려 주세요.`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array', sheetRows: MAX_IMPORT_ROWS + 1 });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-        if (jsonData.length < 1) {
-          toast.error('파일에 데이터가 없습니다.');
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true }) as any[][];
+        if (jsonData.length < 2) {
+          toast.error('파일에 데이터 행이 없습니다. 첫 줄은 제목, 둘째 줄부터 고객 정보를 넣어 주세요.');
           return;
         }
 
         const headers = jsonData[0].map(h => h ? String(h).trim() : '');
         const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== null && cell !== ''));
+        if (rows.length >= MAX_IMPORT_ROWS) {
+          toast.warning(`한 번에 ${MAX_IMPORT_ROWS.toLocaleString()}행까지만 불러옵니다. 나머지는 파일을 나눠서 올려 주세요.`);
+        }
         
         setRawHeaders(headers);
         setRawData(rows);
@@ -116,7 +153,7 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
         console.error('[ImportCases] 엑셀 파일 파싱 오류:', error?.message || error);
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -168,10 +205,18 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
 
   // Generate preview data
   const previewData = useMemo(() => {
+    const existingByPhone = new Map<string, { id: string; clientName?: string; phone?: string; status?: string }>();
+    existingRequests.forEach(r => {
+      const d = (r.phone || '').replace(/\D/g, '');
+      if (d) existingByPhone.set(d, r);
+    });
+    const seenInFile = new Map<string, number>(); // 숫자 전화번호 → 파일 내 첫 행 번호
+
     return rawData.map((row, index) => {
       const caseData: any = {
         intakeChannel: defaultIntakeChannel
       };
+      let errorReason = '';
       
       Object.entries(columnMapping).forEach(([colIdxStr, fieldKey]) => {
         const colIdx = parseInt(colIdxStr, 10);
@@ -179,30 +224,45 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
         const key = String(fieldKey);
         if (cellValue !== undefined && cellValue !== null && cellValue !== '') {
           if (key === 'phone') {
-            caseData[key] = formatPhone(String(cellValue));
+            caseData[key] = normalizeImportedPhone(cellValue);
           } else if (key === 'debtTotal' || key === 'income') {
-            caseData[key] = Number(String(cellValue).replace(/[^0-9.-]+/g,""));
+            const n = Number(String(cellValue).replace(/[^0-9.-]+/g, ''));
+            if (Number.isFinite(n) && n >= 0) caseData[key] = n;
+            else errorReason = errorReason || `${key === 'debtTotal' ? '채무액' : '소득'} 숫자 오류`;
+          } else if (key === 'intakeChannel') {
+            // 등록된 유입경로 코드·이름만 인정 (이전: 임의 문자열을 그대로 저장)
+            const matched = matchIntakeChannel(String(cellValue));
+            if (matched) caseData[key] = matched;
           } else {
-            caseData[key] = String(cellValue);
+            caseData[key] = String(cellValue).trim().slice(0, 1000);
           }
         }
       });
+      if (caseData.clientName) caseData.clientName = String(caseData.clientName).trim().slice(0, 50);
 
       // Validation
       const isMissingRequired = !caseData.clientName || !caseData.phone;
-      
-      // Duplicate check
-      const duplicateInfo = caseData.phone ? existingRequests.find(r => r.phone === caseData.phone) : null;
-      const isDuplicate = !!duplicateInfo;
+      if (!errorReason && caseData.phone && !isValidKoreanPhone(caseData.phone)) errorReason = '전화번호 형식 오류';
+
+      // Duplicate check — 기존 고객(하이픈 무시) + 같은 파일 안의 중복
+      const digits = caseData.phone ? String(caseData.phone).replace(/\D/g, '') : '';
+      const duplicateInfo = digits ? existingByPhone.get(digits) || null : null;
+      let inFileDupOf: number | null = null;
+      if (digits) {
+        if (seenInFile.has(digits)) inFileDupOf = seenInFile.get(digits)!;
+        else seenInFile.set(digits, index);
+      }
+      const isDuplicate = !!duplicateInfo || inFileDupOf !== null;
 
       let status = 'valid';
-      if (isMissingRequired) status = 'error';
+      if (isMissingRequired || errorReason) status = 'error';
       else if (isDuplicate) status = 'duplicate';
 
       return {
         _index: index,
         _status: status,
-        _duplicateInfo: duplicateInfo,
+        _error: isMissingRequired ? '필수 항목 누락' : errorReason,
+        _duplicateInfo: duplicateInfo || (inFileDupOf !== null ? { id: '', clientName: `파일 ${inFileDupOf + 2}행과 같은 번호` } : null),
         data: caseData as ImportedCase
       };
     });
@@ -444,8 +504,11 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
                           </span>
                           {row._status === 'duplicate' && row._duplicateInfo && (
                             <span className="block text-xs text-yellow-700 mt-1">
-                              기존: {row._duplicateInfo.clientName}
+                              {row._duplicateInfo.id ? `기존: ${row._duplicateInfo.clientName || ''}` : row._duplicateInfo.clientName}
                             </span>
+                          )}
+                          {row._status === 'error' && row._error && (
+                            <span className="block text-xs text-red-700 mt-1">{row._error}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-slate-600">

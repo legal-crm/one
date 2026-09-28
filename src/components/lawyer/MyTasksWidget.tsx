@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, ChevronRight, User, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import { getMyTasks, updateTaskStatus } from '../../services/taskTicketService';
 import type { TaskTicket, TaskStatus } from '../../types/communication';
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from '../../types/communication';
@@ -26,8 +27,12 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
   const [completingId, setCompletingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const all = await getMyTasks(tenantId, userId);
-    setTasks(all.filter(t => t.status !== 'CANCELLED'));
+    try {
+      const all = await getMyTasks(tenantId, userId);
+      setTasks(all.filter(t => t.status !== 'CANCELLED'));
+    } catch (e: any) {
+      console.warn('[MyTasksWidget] 업무 조회 실패:', e?.message || e);
+    }
   }, [tenantId, userId]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -36,14 +41,23 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
   const recentCompleted = tasks.filter(t => t.status === 'COMPLETED').slice(0, 3);
 
   const handleStart = async (taskId: string) => {
-    await updateTaskStatus(tenantId, taskId, 'IN_PROGRESS');
+    try {
+      await updateTaskStatus(tenantId, taskId, 'IN_PROGRESS');
+    } catch (e: any) {
+      toast.error(e?.message || '업무를 시작하지 못했습니다.');
+    }
     refresh();
   };
 
   const handleComplete = async (taskId: string) => {
-    await updateTaskStatus(tenantId, taskId, 'COMPLETED', completionNote);
-    setCompletingId(null);
-    setCompletionNote('');
+    try {
+      await updateTaskStatus(tenantId, taskId, 'COMPLETED', completionNote);
+      setCompletingId(null);
+      setCompletionNote('');
+    } catch (e: any) {
+      // 검토 승인이 필요한 업무는 여기서 완료할 수 없음 (서비스가 거부)
+      toast.error(e?.message || '업무를 완료하지 못했습니다.');
+    }
     refresh();
   };
 

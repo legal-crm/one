@@ -3,6 +3,8 @@
 // ============================================================
 
 import type { TaskPriority } from '../types/communication';
+import { localYmd, parseLocalYmd } from '../utils/localDate';
+import { getKoreanHolidayOfDate, isHolidayDataCovered } from '../utils/koreanHolidays';
 
 export interface TaskTemplateItem {
   title: string;
@@ -23,46 +25,48 @@ export interface TaskPackageTemplate {
   tasks: TaskTemplateItem[];
 }
 
-/** 대한민국 법정 공휴일 (월-일 기준) */
-export const STATUTORY_HOLIDAYS: Record<string, string> = {
-  '01-01': '신정',
-  '03-01': '삼일절',
-  '05-05': '어린이날',
-  '06-06': '현충일',
-  '08-15': '광복절',
-  '10-03': '개천절',
-  '10-09': '한글날',
-  '12-25': '성탄절',
-};
+export interface CourtDeadlineDetail {
+  /** 만료일 YYYY-MM-DD */
+  date: string;
+  /** 토요일·공휴일이라 연장된 날짜와 사유 */
+  extendedOver: { date: string; reason: string }[];
+  /** 공휴일 자료(음력·대체·선거일)가 등록되지 않은 연도를 거쳤는지 — 결과를 직접 확인해야 함 */
+  holidayDataMissing: boolean;
+}
 
 /**
- * 민법 제161조에 따른 법원 불변기한 계산 함수
- * - 기간의 말일이 토요일 또는 공휴일에 해당하는 때에는 기간은 그 익일로 만료한다.
+ * 민법 제161조에 따른 기간 만료일 계산
+ * - 초일 불산입(민법 157조): 송달일 다음 날부터 세므로 송달일 + days 가 말일
+ * - 말일이 토요일 또는 공휴일(일요일 포함)이면 그 다음 날 만료
+ * - 설날·추석·대체공휴일·선거일은 연도별 자료(utils/koreanHolidays)로 판단
  */
-export function calculateCourtDeadline(startDateStr: string, days: number): string {
-  const date = new Date(startDateStr + 'T00:00:00');
-  if (isNaN(date.getTime())) return startDateStr;
-
-  // 기준일 + days
-  date.setDate(date.getDate() + days);
-
-  // 만료일이 토(6), 일(0) 또는 공휴일이면 평일이 될 때까지 하루씩 연장
-  while (true) {
-    const dayOfWeek = date.getDay();
-    const mmdd = String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-    const isHoliday = !!STATUTORY_HOLIDAYS[mmdd];
-
-    if (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) {
-      date.setDate(date.getDate() + 1);
-    } else {
-      break;
-    }
+export function calculateCourtDeadlineDetail(startDateStr: string, days: number): CourtDeadlineDetail {
+  const date = parseLocalYmd(startDateStr);
+  if (!date || !Number.isFinite(days)) {
+    return { date: startDateStr, extendedOver: [], holidayDataMissing: false };
   }
 
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  date.setDate(date.getDate() + Math.trunc(days));
+
+  const extendedOver: { date: string; reason: string }[] = [];
+  let holidayDataMissing = !isHolidayDataCovered(date.getFullYear());
+  // 연휴가 아무리 길어도 2주를 넘지 않음 — 무한 루프 방지
+  for (let guard = 0; guard < 14; guard++) {
+    const dow = date.getDay();
+    const holiday = getKoreanHolidayOfDate(date);
+    const reason = [dow === 6 ? '토요일' : dow === 0 ? '일요일' : '', holiday || ''].filter(Boolean).join('·');
+    if (!reason) break;
+    extendedOver.push({ date: localYmd(date), reason });
+    date.setDate(date.getDate() + 1);
+    if (!isHolidayDataCovered(date.getFullYear())) holidayDataMissing = true;
+  }
+
+  return { date: localYmd(date), extendedOver, holidayDataMissing };
+}
+
+/** 만료일만 필요할 때 (YYYY-MM-DD) */
+export function calculateCourtDeadline(startDateStr: string, days: number): string {
+  return calculateCourtDeadlineDetail(startDateStr, days).date;
 }
 
 /** 회생·파산 4대 표준 템플릿 패키지 목록 */

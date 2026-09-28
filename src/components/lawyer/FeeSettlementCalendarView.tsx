@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { feeAmountWon } from '../../services/alimtokService';
+import { getKoreanHoliday } from '../../utils/koreanHolidays';
 import type { 
   ConsultRequest, FeeInstallment, FeeSettlementSummary, AlimtokMilestone 
 } from '../../types';
@@ -34,18 +35,9 @@ type StatusFilter = 'all' | 'overdue_only' | 'due_today_only' | 'pending_only' |
 
 const DAY_HEADERS = ['일', '월', '화', '수', '목', '금', '토'];
 
-const KOREAN_HOLIDAYS: Record<string, string> = {
-  '01-01': '신정', '03-01': '삼일절', '05-05': '어린이날',
-  '06-06': '현충일', '08-15': '광복절', '10-03': '개천절',
-  '10-09': '한글날', '12-25': '성탄절',
-  '02-16': '설날 전날', '02-17': '설날', '02-18': '설날 다음날',
-  '05-24': '부처님오신날',
-  '09-24': '추석 전날', '09-25': '추석', '09-26': '추석 다음날',
-};
-
-function getHoliday(month: number, day: number): string | null {
-  const key = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-  return KOREAN_HOLIDAYS[key] || null;
+// 연도별 공휴일 (이전: 2026년 음력 날짜를 모든 연도에 고정 적용)
+function getHoliday(year: number, month: number, day: number): string | null {
+  return getKoreanHoliday(year, month + 1, day);
 }
 
 function toDateKey(y: number, m: number, d: number): string {
@@ -331,7 +323,7 @@ export default function FeeSettlementCalendarView({
               const dow = (firstDow + i) % 7;
               const dateKey = toDateKey(calYear, calMon, day);
               const isToday = dateKey === todayStr;
-              const holiday = getHoliday(calMon, day);
+              const holiday = getHoliday(calYear, calMon, day);
               const isHoliday = dow === 0 || !!holiday;
               const items = itemsByDate[dateKey] || [];
               const isSelected = selectedDateKey === dateKey;
@@ -448,7 +440,7 @@ export default function FeeSettlementCalendarView({
             {weekDays.map((wd, i) => {
               const dateKey = toDateKey(wd.getFullYear(), wd.getMonth(), wd.getDate());
               const isToday = dateKey === todayStr;
-              const holiday = getHoliday(wd.getMonth(), wd.getDate());
+              const holiday = getHoliday(wd.getFullYear(), wd.getMonth(), wd.getDate());
               const isHoliday = i === 0 || !!holiday;
               const items = itemsByDate[dateKey] || [];
               const isSelected = selectedDateKey === dateKey;

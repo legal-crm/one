@@ -19,12 +19,14 @@ import {
 import type { TaskTicket, TaskPriority, TaskStatus, MessageTargetType, TaskSubtask } from '../../types/communication';
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from '../../types/communication';
 import {
-  TASK_PACKAGE_TEMPLATES, calculateCourtDeadline, type TaskPackageTemplate
+  TASK_PACKAGE_TEMPLATES, calculateCourtDeadline, calculateCourtDeadlineDetail, type TaskPackageTemplate
 } from '../../services/taskTemplateService';
+import { getKoreanHoliday, isHolidayDataCovered, HOLIDAY_DATA_FIRST_YEAR, HOLIDAY_DATA_LAST_YEAR } from '../../utils/koreanHolidays';
+import { localYmd, parseLocalYmd } from '../../utils/localDate';
 import {
-  getVisibleEvents, createEvent, deleteEvent, canDeleteEvent,
+  getVisibleEvents, createEvent, deleteEvent, canDeleteEvent, expandEventOccurrences,
   getAvailableVisibilities, getDefaultVisibility,
-  EVENT_TYPE_CONFIG, VISIBILITY_CONFIG, RECURRENCE_CONFIG, REMINDER_CONFIG
+  EVENT_TYPE_CONFIG, VISIBILITY_CONFIG, RECURRENCE_CONFIG, REMINDER_CONFIG, REMINDER_DELIVERY_SUPPORTED
 } from '../../services/calendarEventService';
 import type { CalendarEvent, EventType, EventVisibility, RecurrenceType, ReminderType } from '../../services/calendarEventService';
 import type { StaffMember } from '../../types';
@@ -54,18 +56,9 @@ type CalView = 'month' | 'week';
 type ActivityFilterType = 'all' | 'request' | 'counseling' | 'case' | 'task' | 'qna';
 type ActivityPeriodType = 'all' | 'today' | '7days' | '30days';
 
-const KOREAN_HOLIDAYS: Record<string, string> = {
-  '01-01': '신정', '03-01': '삼일절', '05-05': '어린이날',
-  '06-06': '현충일', '08-15': '광복절', '10-03': '개천절',
-  '10-09': '한글날', '12-25': '성탄절',
-  '02-16': '설날 전날', '02-17': '설날', '02-18': '설날 다음날',
-  '05-24': '부처님오신날',
-  '09-24': '추석 전날', '09-25': '추석', '09-26': '추석 다음날',
-};
-
-function getHoliday(_y: number, month: number, day: number): string | null {
-  const key = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-  return KOREAN_HOLIDAYS[key] || null;
+// 연도별 공휴일(설날·추석·대체공휴일·선거일 포함) — 이전: 2026년 음력 날짜를 모든 연도에 고정 적용
+function getHoliday(y: number, month: number, day: number): string | null {
+  return getKoreanHoliday(y, month + 1, day);
 }
 
 function parseSafeDate(d: any): Date {
@@ -162,7 +155,7 @@ export default function TasksScheduleTab({
   const [showDeadlineCalculator, setShowDeadlineCalculator] = useState(false);
 
   // 불변기한 계산기 상태
-  const [calcStartDate, setCalcStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [calcStartDate, setCalcStartDate] = useState(() => localYmd());
   const [calcDays, setCalcDays] = useState(7);
   const [calcTitle, setCalcTitle] = useState('법원 보정서 제출');
   const [calcTargetId, setCalcTargetId] = useState('general');
@@ -171,7 +164,7 @@ export default function TasksScheduleTab({
   const [selectedTemplate, setSelectedTemplate] = useState<TaskPackageTemplate>(TASK_PACKAGE_TEMPLATES[0]);
   const [templateAssigneeId, setTemplateAssigneeId] = useState(userId);
   const [templateTargetId, setTemplateTargetId] = useState('general');
-  const [templateBaseDate, setTemplateBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [templateBaseDate, setTemplateBaseDate] = useState(() => localYmd());
 
   // 권한 체계 정밀 계산
   const isLawyerOrOwner = userRole === 'OWNER' || userRole === 'LAWYER';
@@ -239,23 +232,36 @@ export default function TasksScheduleTab({
     return list;
   }, [requests, cases]);
 
+  const [tasksLoadError, setTasksLoadError] = useState<string | null>(null);
+  const [eventsLoadError, setEventsLoadError] = useState<string | null>(null);
+
   // 할일 목록 로드
   const refreshTasks = useCallback(async () => {
-    let all: TaskTicket[] = [];
-    if (taskScope === 'my') {
-      all = await getMyTasks(tenantId, userId);
-    } else if (taskScope === 'assigned') {
-      all = await getMyAssignedTasks(tenantId, userId);
-    } else {
-      all = await getAllTenantTasks(tenantId);
+    try {
+      let all: TaskTicket[] = [];
+      if (taskScope === 'my') {
+        all = await getMyTasks(tenantId, userId);
+      } else if (taskScope === 'assigned') {
+        all = await getMyAssignedTasks(tenantId, userId);
+      } else {
+        all = await getAllTenantTasks(tenantId);
+      }
+      setTasks(all.filter(t => t.status !== 'CANCELLED'));
+      setTasksLoadError(null);
+    } catch (e: any) {
+      setTasksLoadError(e?.message || '업무 목록을 불러오지 못했습니다.');
     }
-    setTasks(all.filter(t => t.status !== 'CANCELLED'));
   }, [tenantId, userId, taskScope]);
 
   // 캘린더 이벤트 로드
   const refreshEvents = useCallback(async () => {
-    const all = await getVisibleEvents(tenantId, userId, userRole);
-    setEvents(all);
+    try {
+      const all = await getVisibleEvents(tenantId, userId, userRole);
+      setEvents(all);
+      setEventsLoadError(null);
+    } catch (e: any) {
+      setEventsLoadError(e?.message || '일정을 불러오지 못했습니다.');
+    }
   }, [tenantId, userId, userRole]);
 
   useEffect(() => {
@@ -263,37 +269,40 @@ export default function TasksScheduleTab({
     refreshEvents();
   }, [refreshTasks, refreshEvents]);
 
+  /** 서비스 예외를 토스트로 표시하고 성공 여부를 돌려준다 */
+  const runTaskAction = async (fn: () => Promise<unknown>, successMsg: string, kind: 'success' | 'warning' = 'success'): Promise<boolean> => {
+    try {
+      await fn();
+      if (kind === 'warning') toast.warning(successMsg); else toast.success(successMsg);
+      return true;
+    } catch (e: any) {
+      toast.error(e?.message || '처리하지 못했습니다.');
+      return false;
+    } finally {
+      refreshTasks();
+    }
+  };
+
   // ── 태스크 액션 핸들러 ──
   const handleStartTask = async (id: string) => {
-    await updateTaskStatus(tenantId, id, 'IN_PROGRESS');
-    toast.success('업무를 시작했습니다');
-    refreshTasks();
+    await runTaskAction(() => updateTaskStatus(tenantId, id, 'IN_PROGRESS'), '업무를 시작했습니다');
   };
 
   const handleCompleteTask = async (id: string) => {
-    await updateTaskStatus(tenantId, id, 'COMPLETED', completionNote);
-    toast.success('업무를 완료 처리했습니다');
-    setCompletingId(null);
-    setCompletionNote('');
-    refreshTasks();
+    const ok = await runTaskAction(() => updateTaskStatus(tenantId, id, 'COMPLETED', completionNote), '업무를 완료 처리했습니다');
+    if (ok) { setCompletingId(null); setCompletionNote(''); }
   };
 
   // 검토 요청 핸들러
   const handleRequestReview = async (id: string) => {
-    await requestTaskReview(tenantId, id, reviewNote);
-    toast.success('지시자에게 검토(승인)를 요청했습니다');
-    setReviewingId(null);
-    setReviewNote('');
-    refreshTasks();
+    const ok = await runTaskAction(() => requestTaskReview(tenantId, id, reviewNote), '지시자에게 검토(승인)를 요청했습니다');
+    if (ok) { setReviewingId(null); setReviewNote(''); }
   };
 
-  // 승인 완료 핸들러
+  // 승인 완료 핸들러 (담당자 본인 승인·검토 요청 전 승인은 서비스에서 거부)
   const handleApproveTask = async (id: string) => {
-    await approveTask(tenantId, id, approvalNoteInput);
-    toast.success('업무가 최종 승인 완료되었습니다');
-    setApprovingId(null);
-    setApprovalNoteInput('');
-    refreshTasks();
+    const ok = await runTaskAction(() => approveTask(tenantId, id, approvalNoteInput, { id: userId, name: userName }), '업무를 승인해 완료 처리했습니다');
+    if (ok) { setApprovingId(null); setApprovalNoteInput(''); }
   };
 
   // 반려 / 수정보완 핸들러
@@ -302,16 +311,17 @@ export default function TasksScheduleTab({
       toast.error('수정보완 요청 사유를 입력해주세요');
       return;
     }
-    await rejectTask(tenantId, id, rejectionNoteInput.trim());
-    toast.warning('업무가 반려되어 보완 요청되었습니다');
-    setRejectingId(null);
-    setRejectionNoteInput('');
-    refreshTasks();
+    const ok = await runTaskAction(() => rejectTask(tenantId, id, rejectionNoteInput.trim(), { id: userId, name: userName }), '업무를 반려하고 보완을 요청했습니다', 'warning');
+    if (ok) { setRejectingId(null); setRejectionNoteInput(''); }
   };
 
   // 서브태스크 완료 토글
   const handleToggleSubtask = async (taskId: string, subtaskId: string) => {
-    await toggleSubtask(tenantId, taskId, subtaskId);
+    try {
+      await toggleSubtask(tenantId, taskId, subtaskId);
+    } catch (e: any) {
+      toast.error(e?.message || '세부 항목을 바꾸지 못했습니다.');
+    }
     refreshTasks();
   };
 
@@ -324,9 +334,7 @@ export default function TasksScheduleTab({
     });
     if (!confirmed) return;
 
-    await deleteTask(tenantId, id);
-    toast.success('업무가 삭제되었습니다');
-    refreshTasks();
+    await runTaskAction(() => deleteTask(tenantId, id), '업무가 삭제되었습니다');
   };
 
   // 새 서브태스크 추가 핸들러
@@ -360,23 +368,34 @@ export default function TasksScheduleTab({
       return;
     }
 
-    const assignee = assignableMembers.find(m => m.id === newTask.assigneeId);
-    await createTask(tenantId, {
-      targetType: newTask.targetType,
-      targetId: newTask.targetId,
-      assignerId: userId,
-      assignerName: userName,
-      assigneeId: newTask.assigneeId,
-      assigneeName: assignee ? assignee.name.replace(' (본인)', '') : userName,
-      title: newTask.title.trim(),
-      description: newTask.description.trim() || undefined,
-      priority: newTask.priority,
-      dueDate: newTask.dueDate || undefined,
-      subtasks: newTask.subtasks,
-      requiresApproval: newTask.requiresApproval,
-    });
+    // 변호사가 본인에게 배정한 업무는 승인해 줄 사람이 없어 '검토 대기'에 묶이므로 막는다
+    if (newTask.requiresApproval && newTask.assigneeId === userId && isLawyerOrOwner) {
+      toast.error('본인에게 배정한 업무에는 검토 승인을 켤 수 없습니다. 담당자를 다른 직원으로 지정해 주세요.');
+      return;
+    }
 
-    toast.success('새 할일이 성공적으로 등록되었습니다');
+    const assignee = assignableMembers.find(m => m.id === newTask.assigneeId);
+    try {
+      await createTask(tenantId, {
+        targetType: newTask.targetType,
+        targetId: newTask.targetId,
+        assignerId: userId,
+        assignerName: userName,
+        assigneeId: newTask.assigneeId,
+        assigneeName: assignee ? assignee.name.replace(' (본인)', '') : userName,
+        title: newTask.title.trim(),
+        description: newTask.description.trim() || undefined,
+        priority: newTask.priority,
+        dueDate: newTask.dueDate || undefined,
+        subtasks: newTask.subtasks,
+        requiresApproval: newTask.requiresApproval,
+      });
+    } catch (e: any) {
+      toast.error(e?.message || '할일을 등록하지 못했습니다.');
+      return;
+    }
+
+    toast.success('새 할일을 등록했습니다');
     setShowAddTaskModal(false);
     setNewTask({
       title: '',
@@ -410,7 +429,8 @@ export default function TasksScheduleTab({
         description: t.description,
         priority: t.priority,
         dueDate: calcDue,
-        requiresApproval: t.requiresApproval,
+        // 변호사가 본인에게 배정하면 승인할 사람이 없으므로 검토 단계를 생략
+        requiresApproval: t.requiresApproval && !(templateAssigneeId === userId && isLawyerOrOwner),
         templateId: selectedTemplate.id,
         subtasks: t.subtasks.map(st => ({
           id: `st-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -420,52 +440,77 @@ export default function TasksScheduleTab({
       };
     });
 
-    await createTaskBatch(tenantId, itemsToCreate);
-    toast.success(`'${selectedTemplate.name}'의 ${itemsToCreate.length}개 표준 업무가 일괄 등록되었습니다.`);
-    setShowTemplateModal(false);
+    const { created, failed } = await createTaskBatch(tenantId, itemsToCreate);
+    if (created.length === 0) {
+      toast.error('업무를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } else if (failed > 0) {
+      toast.warning(`${itemsToCreate.length}건 중 ${created.length}건만 등록되었습니다. 누락된 ${failed}건은 직접 추가해 주세요.`);
+      setShowTemplateModal(false);
+    } else {
+      toast.success(`'${selectedTemplate.name}'의 ${created.length}개 업무를 등록했습니다.`);
+      setShowTemplateModal(false);
+    }
     refreshTasks();
   };
 
   // 불변기한 계산 결과로 즉시 할일 + 캘린더 등록 핸들러
   const handleCreateDeadlineTask = async () => {
-    const calculatedDate = calculateCourtDeadline(calcStartDate, calcDays);
+    const detail = calculateCourtDeadlineDetail(calcStartDate, calcDays);
+    const calculatedDate = detail.date;
     const targetOpt = targetOptions.find(o => o.id === calcTargetId);
+    const extendedNote = detail.extendedOver.length > 0
+      ? ` / 말일이 ${detail.extendedOver.map(x => `${x.date}(${x.reason})`).join(', ')}이라 연장`
+      : '';
+    const missingNote = detail.holidayDataMissing ? ' / ※ 공휴일 자료 미등록 연도 — 만료일 직접 확인 필요' : '';
 
     // 1. 업무 티켓 생성
-    await createTask(tenantId, {
-      targetType: targetOpt ? targetOpt.type : 'general',
-      targetId: calcTargetId,
-      assignerId: userId,
-      assignerName: userName,
-      assigneeId: userId,
-      assigneeName: userName,
-      title: `⚖️ [불변기한 D-${calcDays}] ${calcTitle}`,
-      description: `송달일: ${calcStartDate} / 법정만료일: ${calculatedDate} (민법 제161조 공휴일 연장 적용)`,
-      priority: 'URGENT',
-      dueDate: calculatedDate,
-      requiresApproval: true,
-      subtasks: [
-        { id: `st-${Date.now()}-1`, title: '소명 및 보정서류 완비', completed: false },
-        { id: `st-${Date.now()}-2`, title: '변호사 최종 검토(컨펌)', completed: false },
-        { id: `st-${Date.now()}-3`, title: '전자소송 접수 및 접수증 출력', completed: false }
-      ]
-    });
+    try {
+      await createTask(tenantId, {
+        targetType: targetOpt ? targetOpt.type : 'general',
+        targetId: calcTargetId,
+        assignerId: userId,
+        assignerName: userName,
+        assigneeId: userId,
+        assigneeName: userName,
+        title: `⚖️ [기한 ${calcDays}일] ${calcTitle}`,
+        description: `송달일: ${calcStartDate} / 만료일: ${calculatedDate} (민법 제161조 적용)${extendedNote}${missingNote}`,
+        priority: 'URGENT',
+        dueDate: calculatedDate,
+        // 직원이 만든 기한 업무만 변호사 검토를 거친다 (변호사 본인 업무는 승인자가 없음)
+        requiresApproval: !isLawyerOrOwner,
+        subtasks: [
+          { id: `st-${Date.now()}-1`, title: '소명 및 보정서류 완비', completed: false },
+          { id: `st-${Date.now()}-2`, title: '변호사 최종 검토(컨펌)', completed: false },
+          { id: `st-${Date.now()}-3`, title: '전자소송 접수 및 접수증 출력', completed: false }
+        ]
+      });
+    } catch (e: any) {
+      toast.error(e?.message || '기한 업무를 등록하지 못했습니다.');
+      return;
+    }
 
-    // 2. 캘린더에도 불변기한 일정 동시 등록
-    await createEvent(tenantId, {
-      title: `⚖️ [기한] ${calcTitle}`,
-      date: calculatedDate,
-      type: 'deadline',
-      visibility: defaultVis,
-      description: `송달일(${calcStartDate})로부터 ${calcDays}일 불변기한`,
-      createdBy: userId,
-      createdByName: userName,
-      createdByRole: userRole,
-      recurrence: 'none',
-      reminder: '1day'
-    });
+    // 2. 캘린더에도 기한 일정 등록
+    let calendarOk = true;
+    try {
+      await createEvent(tenantId, {
+        title: `⚖️ [기한] ${calcTitle}`,
+        date: calculatedDate,
+        type: 'deadline',
+        visibility: defaultVis,
+        description: `송달일(${calcStartDate})로부터 ${calcDays}일${extendedNote}${missingNote}`,
+        createdBy: userId,
+        createdByName: userName,
+        createdByRole: userRole,
+        recurrence: 'none',
+        reminder: 'none'
+      });
+    } catch {
+      calendarOk = false;
+    }
 
-    toast.success(`불변기한 마감일(${calculatedDate})로 할일 및 캘린더가 등록되었습니다.`);
+    if (calendarOk) toast.success(`만료일(${calculatedDate})로 할일과 캘린더 일정을 등록했습니다.`);
+    else toast.warning(`할일은 등록했지만 캘린더 일정은 저장하지 못했습니다. 캘린더에 직접 추가해 주세요.`);
+    if (detail.holidayDataMissing) toast.warning('공휴일 자료가 없는 연도라 설날·추석·대체공휴일을 반영하지 못했을 수 있습니다. 만료일을 직접 확인해 주세요.');
     setShowDeadlineCalculator(false);
     refreshTasks();
     refreshEvents();
@@ -477,12 +522,17 @@ export default function TasksScheduleTab({
       toast.error('제목과 날짜를 입력해주세요');
       return;
     }
-    await createEvent(tenantId, {
-      ...newEvt,
-      createdBy: userId,
-      createdByName: userName,
-      createdByRole: userRole
-    });
+    try {
+      await createEvent(tenantId, {
+        ...newEvt,
+        createdBy: userId,
+        createdByName: userName,
+        createdByRole: userRole
+      });
+    } catch (e: any) {
+      toast.error(e?.message || '일정을 저장하지 못했습니다.');
+      return;
+    }
     toast.success('일정이 추가되었습니다');
     setShowAddEventModal(false);
     setNewEvt({
@@ -507,8 +557,12 @@ export default function TasksScheduleTab({
     });
     if (!confirmed) return;
 
-    await deleteEvent(tenantId, evt.id);
-    toast.success('일정이 삭제되었습니다');
+    try {
+      await deleteEvent(tenantId, evt.id);
+      toast.success('일정이 삭제되었습니다');
+    } catch (e: any) {
+      toast.error(e?.message || '일정을 삭제하지 못했습니다.');
+    }
     refreshEvents();
   };
 
@@ -530,22 +584,33 @@ export default function TasksScheduleTab({
     return result;
   }, [events, typeFilters, visFilter]);
 
-  // Events by date
+  // Events by date — 반복 일정은 보고 있는 달(앞뒤 1개월)과 주간 범위 안에서 날짜별로 펼친다
+  // (이전: 반복 설정을 저장만 하고 첫 날짜에만 표시)
   const eventsByDate = useMemo(() => {
+    const monthStart = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+    const monthEnd = new Date(calMonth.getFullYear(), calMonth.getMonth() + 2, 0);
+    const wkStart = new Date(weekStart);
+    const wkEnd = new Date(weekStart); wkEnd.setDate(wkEnd.getDate() + 6);
+    const todayD = new Date();
+    const rangeStart = localYmd(new Date(Math.min(monthStart.getTime(), wkStart.getTime(), todayD.getTime())));
+    const rangeEnd = localYmd(new Date(Math.max(monthEnd.getTime(), wkEnd.getTime(), todayD.getTime())));
     const map: Record<string, CalendarEvent[]> = {};
     filteredEvents.forEach(e => {
-      if (!map[e.date]) map[e.date] = [];
-      map[e.date].push(e);
+      for (const d of expandEventOccurrences(e, rangeStart, rangeEnd)) {
+        if (!map[d]) map[d] = [];
+        map[d].push(e);
+      }
     });
     return map;
-  }, [filteredEvents]);
+  }, [filteredEvents, calMonth, weekStart]);
 
   // Tasks by date
   const tasksByDate = useMemo(() => {
     const map: Record<string, TaskTicket[]> = {};
     tasks.forEach(t => {
       if (!t.dueDate) return;
-      const dd = new Date(t.dueDate);
+      const dd = parseLocalYmd(t.dueDate);
+      if (!dd) return;
       const key = toDateKey(dd.getFullYear(), dd.getMonth(), dd.getDate());
       if (!map[key]) map[key] = [];
       map[key].push(t);
@@ -832,6 +897,12 @@ export default function TasksScheduleTab({
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'tasks' && (
         <div className="space-y-4">
+          {tasksLoadError && (
+            <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold text-red-700">{tasksLoadError}</p>
+              <button onClick={() => refreshTasks()} className="shrink-0 whitespace-nowrap bg-white border border-red-200 text-red-700 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-red-100 active:scale-[0.98]">다시 불러오기</button>
+            </div>
+          )}
           {/* 상단 컨트롤 바 */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -1042,6 +1113,9 @@ export default function TasksScheduleTab({
                   const isCompleted = task.status === 'COMPLETED';
                   const isAssignee = task.assigneeId === userId;
                   const isAssigner = task.assignerId === userId || isLawyerOrOwner;
+                  // 진행 조작은 담당자 또는 전체 업무 관리자만, 승인·반려는 담당자 본인이 아닌 승인권자만
+                  const canOperate = isAssignee || hasManageAllPerm;
+                  const canReview = (hasApprovePerm || task.assignerId === userId) && !isAssignee;
                   
                   // D-Day 신호등 계산
                   const dDayVal = task.dueDate ? dDay(task.dueDate) : null;
@@ -1226,7 +1300,7 @@ export default function TasksScheduleTab({
                         {/* 우측 조작 버튼 그룹 (2단계 검토 & 상태 변경) */}
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                           {/* 1. 대기(PENDING) 상태 ➔ 시작 */}
-                          {task.status === 'PENDING' && (
+                          {task.status === 'PENDING' && canOperate && (
                             <button
                               onClick={() => handleStartTask(task.id)}
                               className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl px-3 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-2xs"
@@ -1236,7 +1310,7 @@ export default function TasksScheduleTab({
                           )}
 
                           {/* 2. 진행중(IN_PROGRESS) 상태 ➔ 검토요청 or 완료 */}
-                          {task.status === 'IN_PROGRESS' && (
+                          {task.status === 'IN_PROGRESS' && canOperate && (
                             task.requiresApproval ? (
                               <button
                                 onClick={() => setReviewingId(reviewingId === task.id ? null : task.id)}
@@ -1256,7 +1330,7 @@ export default function TasksScheduleTab({
 
                           {/* 3. 검토요청(REVIEW_REQUESTED) 상태 ➔ 지시자/승인권자의 승인 or 반려 */}
                           {task.status === 'REVIEW_REQUESTED' && (
-                            (hasApprovePerm || isAssigner) ? (
+                            canReview ? (
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setApprovingId(approvingId === task.id ? null : task.id)}
@@ -1474,7 +1548,7 @@ export default function TasksScheduleTab({
 
                               {/* 빠른 다음 단계 액션 버튼 */}
                               <div className="pt-1 flex items-center justify-end gap-1">
-                                {t.status === 'PENDING' && (
+                                {t.status === 'PENDING' && (t.assigneeId === userId || hasManageAllPerm) && (
                                   <button
                                     onClick={() => handleStartTask(t.id)}
                                     className="w-full py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg cursor-pointer"
@@ -1482,7 +1556,7 @@ export default function TasksScheduleTab({
                                     시작 ➔
                                   </button>
                                 )}
-                                {t.status === 'IN_PROGRESS' && (
+                                {t.status === 'IN_PROGRESS' && (t.assigneeId === userId || hasManageAllPerm) && (
                                   t.requiresApproval ? (
                                     <button
                                       onClick={() => handleRequestReview(t.id)}
@@ -1499,9 +1573,19 @@ export default function TasksScheduleTab({
                                     </button>
                                   )
                                 )}
-                                {t.status === 'REVIEW_REQUESTED' && (hasApprovePerm || t.assignerId === userId) && (
+                                {t.status === 'REVIEW_REQUESTED' && (hasApprovePerm || t.assignerId === userId) && t.assigneeId !== userId && (
                                   <button
-                                    onClick={() => handleApproveTask(t.id)}
+                                    onClick={async () => {
+                                      const ok = await dialog.confirm({
+                                        title: '업무 승인',
+                                        message: `'${t.title}' 업무를 승인해 완료 처리하시겠습니까?`,
+                                        confirmText: '승인',
+                                        variant: 'primary'
+                                      });
+                                      if (!ok) return;
+                                      setApprovalNoteInput('');
+                                      await runTaskAction(() => approveTask(tenantId, t.id, '', { id: userId, name: userName }), '업무를 승인해 완료 처리했습니다');
+                                    }}
                                     className="w-full py-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer shadow-2xs"
                                   >
                                     승인 완료 ✓
@@ -1526,6 +1610,17 @@ export default function TasksScheduleTab({
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'calendar' && (
         <div className="space-y-4">
+          {eventsLoadError && (
+            <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold text-red-700">{eventsLoadError}</p>
+              <button onClick={() => refreshEvents()} className="shrink-0 whitespace-nowrap bg-white border border-red-200 text-red-700 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-red-100 active:scale-[0.98]">다시 불러오기</button>
+            </div>
+          )}
+          {!isHolidayDataCovered(calMonth.getFullYear()) && (
+            <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+              {calMonth.getFullYear()}년은 공휴일 자료가 없어 설날·추석·대체공휴일이 표시되지 않습니다 (등록 연도: {HOLIDAY_DATA_FIRST_YEAR}~{HOLIDAY_DATA_LAST_YEAR}).
+            </p>
+          )}
           {(todayEvents.length > 0 || todayTasks.length > 0) && (
             <div className="bg-brand/5 border border-brand/15 rounded-2xl p-4 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-brand/10 shrink-0">
@@ -2614,7 +2709,8 @@ export default function TasksScheduleTab({
 
               {/* 실시간 계산 결과 박스 */}
               {(() => {
-                const finalDate = calculateCourtDeadline(calcStartDate, calcDays);
+                const detail = calculateCourtDeadlineDetail(calcStartDate, calcDays);
+                const finalDate = detail.date;
                 const dd = dDay(finalDate);
                 const dObj = new Date(finalDate + 'T00:00:00');
                 const dow = ['일','월','화','수','목','금','토'][dObj.getDay()];
@@ -2630,7 +2726,17 @@ export default function TasksScheduleTab({
                       {finalDate} ({dow}요일) 23:59까지
                     </p>
                     <p className="text-[11px] text-amber-800 leading-relaxed">
-                      ※ 기간의 말일이 토요일/공휴일인 경우 그 익일(다음 평일)로 자동 만료 처리되었습니다.
+                      {detail.extendedOver.length > 0
+                        ? `※ 말일이 ${detail.extendedOver.map(x => `${x.date.slice(5)}(${x.reason})`).join(', ')}이라 다음 평일로 연장했습니다.`
+                        : '※ 말일이 토요일·공휴일이면 다음 평일로 연장합니다(민법 제161조).'}
+                    </p>
+                    {detail.holidayDataMissing && (
+                      <p role="alert" className="text-[11px] text-red-700 font-bold leading-relaxed">
+                        {HOLIDAY_DATA_FIRST_YEAR}~{HOLIDAY_DATA_LAST_YEAR}년 밖의 날짜라 설날·추석·대체공휴일을 반영하지 못했습니다. 만료일을 직접 확인해 주세요.
+                      </p>
+                    )}
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      임시공휴일은 지정될 때 따로 반영해야 합니다. 제출 전 법원 공지를 확인해 주세요.
                     </p>
                   </div>
                 );
@@ -2793,9 +2899,11 @@ export default function TasksScheduleTab({
                 </label>
                 <div className="relative">
                   <select
-                    value={newEvt.reminder}
+                    value={REMINDER_DELIVERY_SUPPORTED ? newEvt.reminder : 'none'}
+                    disabled={!REMINDER_DELIVERY_SUPPORTED}
+                    aria-describedby="reminder-unsupported-note"
                     onChange={e => setNewEvt(p => ({ ...p, reminder: e.target.value as ReminderType }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {(Object.keys(REMINDER_CONFIG) as ReminderType[]).map(key => (
                       <option key={key} value={key}>
@@ -2805,6 +2913,11 @@ export default function TasksScheduleTab({
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {!REMINDER_DELIVERY_SUPPORTED && (
+                  <p id="reminder-unsupported-note" className="text-[11px] text-slate-500 mt-1">
+                    알림 발송 기능은 준비 중입니다. 지금은 알림이 가지 않습니다.
+                  </p>
+                )}
               </div>
             </div>
 

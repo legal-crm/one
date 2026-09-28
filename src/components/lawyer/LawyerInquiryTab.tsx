@@ -100,7 +100,8 @@ export default function LawyerInquiryTab({
     setCategory('platform_usage');
     setAttachments([]);
     
-    toast.success('문의가 성공적으로 등록되었습니다.');
+    // 주의: 변호사 문의는 아직 서버에 저장되지 않는다(App 상태 + 이 브라우저 저장소). 사실대로 안내.
+    toast.success('문의를 저장했습니다. 현재는 이 브라우저에만 저장되어 운영팀에 자동 전달되지 않습니다.');
   };
 
   const toggleExpand = (id: string) => {

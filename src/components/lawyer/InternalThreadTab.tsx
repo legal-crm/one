@@ -45,38 +45,73 @@ export default function InternalThreadTab({
   const [repliesMap, setRepliesMap] = useState<Record<string, InternalMessage[]>>({});
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | 'all'>('all');
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const isLawyer = actorRole === 'OWNER' || actorRole === 'LAWYER';
+  // '지정 공개'는 받을 사람을 고르는 화면이 없어 제외, '변호사 전용'은 변호사만 작성
+  const visibilityOptions = (Object.keys(VISIBILITY_CONFIG) as MessageVisibility[])
+    .filter(v => v !== 'designated' && (v !== 'lawyers_only' || isLawyer));
+
   const refresh = useCallback(async () => {
-    const msgs = await getMessages(tenantId, targetType, targetId, actorRole, actorId);
-    setMessages(msgs);
+    try {
+      const msgs = await getMessages(tenantId, targetType, targetId, actorRole, actorId);
+      setMessages(msgs);
+      setLoadError(null);
+    } catch (e: any) {
+      setLoadError(e?.message || '메시지를 불러오지 못했습니다.');
+    }
   }, [tenantId, targetType, targetId, actorRole, actorId]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const mentionTargets = staffMembers.filter(s => s.id !== actorId).map(s => ({ id: s.id, name: s.name }));
+
   const handleSend = async () => {
-    if (!newContent.trim()) return;
-    const mentions = parseMentions(newContent, staffMembers.map(s => ({ id: s.id, name: s.name })));
-    await createMessage(tenantId, targetType, targetId, actorId, actorName, actorRole, newContent.trim(), {
-      category, visibility, mentions,
-    });
-    setNewContent('');
-    refresh();
+    if (!newContent.trim() || sending) return;
+    setSending(true);
+    try {
+      const mentions = parseMentions(newContent, mentionTargets);
+      const { notifyFailed } = await createMessage(tenantId, targetType, targetId, actorId, actorName, actorRole, newContent.trim(), {
+        category, visibility, mentions,
+      });
+      setNewContent('');
+      if (notifyFailed > 0) toast.warning(`메시지는 등록했지만 멘션 알림 ${notifyFailed}건을 보내지 못했습니다.`);
+    } catch (e: any) {
+      toast.error(e?.message || '메시지를 보내지 못했습니다.');
+    } finally {
+      setSending(false);
+      refresh();
+    }
   };
 
   const handleReply = async (parentId: string) => {
-    if (!replyContent.trim()) return;
-    const mentions = parseMentions(replyContent, staffMembers.map(s => ({ id: s.id, name: s.name })));
-    await createMessage(tenantId, targetType, targetId, actorId, actorName, actorRole, replyContent.trim(), {
-      parentId, mentions, category: 'general', visibility: 'all_staff',
-    });
-    setReplyContent('');
-    setReplyingTo(null);
-    loadReplies(parentId);
-    refresh();
+    if (!replyContent.trim() || sending) return;
+    setSending(true);
+    try {
+      const mentions = parseMentions(replyContent, mentionTargets);
+      // 공개 범위는 서비스가 원글 기준으로 정한다
+      const { notifyFailed } = await createMessage(tenantId, targetType, targetId, actorId, actorName, actorRole, replyContent.trim(), {
+        parentId, mentions, category: 'general',
+      });
+      setReplyContent('');
+      setReplyingTo(null);
+      setExpandedReplies(prev => new Set(prev).add(parentId));
+      if (notifyFailed > 0) toast.warning(`답글은 등록했지만 알림 ${notifyFailed}건을 보내지 못했습니다.`);
+    } catch (e: any) {
+      toast.error(e?.message || '답글을 보내지 못했습니다.');
+    } finally {
+      setSending(false);
+      loadReplies(parentId);
+    }
   };
 
   const loadReplies = async (parentId: string) => {
-    const replies = await getReplies(tenantId, parentId, actorRole, actorId);
-    setRepliesMap(prev => ({ ...prev, [parentId]: replies }));
+    try {
+      const replies = await getReplies(tenantId, parentId, actorRole, actorId);
+      setRepliesMap(prev => ({ ...prev, [parentId]: replies }));
+    } catch (e: any) {
+      toast.error(e?.message || '답글을 불러오지 못했습니다.');
+    }
   };
 
   const toggleReplies = (msgId: string) => {
@@ -94,13 +129,22 @@ export default function InternalThreadTab({
     });
     if (!confirmed) return;
 
-    await deleteMessage(tenantId, msgId);
-    toast.success('메시지가 삭제되었습니다.');
+    try {
+      await deleteMessage(tenantId, msgId, actorId);
+      toast.success('메시지가 삭제되었습니다.');
+    } catch (e: any) {
+      toast.error(e?.message || '메시지를 삭제하지 못했습니다.');
+    }
     refresh();
   };
 
   const handlePin = async (msgId: string) => {
-    await togglePin(tenantId, msgId);
+    try {
+      const pinned = await togglePin(tenantId, msgId);
+      toast.success(pinned ? '메시지를 고정했습니다.' : '고정을 해제했습니다.');
+    } catch (e: any) {
+      toast.error(e?.message || '고정 상태를 바꾸지 못했습니다.');
+    }
     refresh();
   };
 
@@ -113,6 +157,12 @@ export default function InternalThreadTab({
 
   return (
     <div className="space-y-3">
+      {loadError && (
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-red-700">{loadError}</p>
+          <button onClick={() => refresh()} className="shrink-0 whitespace-nowrap bg-white border border-red-200 text-red-700 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-red-100 active:scale-[0.98]">다시 불러오기</button>
+        </div>
+      )}
       {/* 카테고리 필터 */}
       <div className="flex gap-1 overflow-x-auto pb-1">
         <button
@@ -161,14 +211,14 @@ export default function InternalThreadTab({
               onChange={e => setVisibility(e.target.value as MessageVisibility)}
               className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] outline-none"
             >
-              {(Object.keys(VISIBILITY_CONFIG) as MessageVisibility[]).map(vis => (
+              {visibilityOptions.map(vis => (
                 <option key={vis} value={vis}>{VISIBILITY_CONFIG[vis].emoji} {VISIBILITY_CONFIG[vis].label}</option>
               ))}
             </select>
           </div>
           <button
             onClick={handleSend}
-            disabled={!newContent.trim()}
+            disabled={!newContent.trim() || sending}
             className="bg-brand text-white rounded-xl px-3 py-1.5 font-bold text-xs hover:bg-brand/90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1"
           >
             <Send className="w-3.5 h-3.5" /> 전송

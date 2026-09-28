@@ -238,7 +238,9 @@ export async function fetchCourtCase({
     body: JSON.stringify({
       courtName: cleanCourt,
       caseNumber: cleanCaseNumber,
-      clientName: clientName.trim()
+      clientName: clientName.trim(),
+      // 이전: 새로고침 버튼을 눌러도 이 값을 보내지 않아 서버가 최대 24시간(종결 7일) 캐시를 그대로 돌려줌
+      forceRefresh: forceRefresh === true
     })
   });
 
@@ -250,6 +252,11 @@ export async function fetchCourtCase({
   const json = await res.json();
   if (!json.ok) {
     throw new Error(json.error || '대법원 사건 정보를 불러오지 못했습니다.');
+  }
+  // 대법원 보안문자(2-Way) 요구 — 사건 내용이 없으므로 '동기화 성공'으로 저장하지 않는다
+  // (이전: 빈 사건을 실시간 조회 결과로 저장해 기존 기일·진행 내역을 덮어씀)
+  if (json.needsTwoWay || json.continue2Way) {
+    throw new Error('대법원에서 보안문자 확인을 요구해 자동 조회를 마치지 못했습니다. 대법원 "나의 사건검색"에서 직접 확인해 주세요.');
   }
 
   const codefData = json.data || {};

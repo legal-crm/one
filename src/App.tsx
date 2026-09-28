@@ -542,9 +542,17 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialPopupConfig;
   });
 
+  // 시연용 변호사 문의(가상 변호사 '김민수'·'이서연')는 DEV에서만 — 운영에서는 과거 저장분도 제거
   const [lawyerInquiries, setLawyerInquiries] = useState<LawyerInquiry[]>(() => {
+    const seedIds = new Set(initialLawyerInquiries.map(i => i.id));
     const saved = secureGetItem('legal_crm_lawyer_inquiries');
-    return saved ? JSON.parse(saved) : initialLawyerInquiries;
+    if (saved) {
+      try {
+        const parsed: LawyerInquiry[] = JSON.parse(saved);
+        return import.meta.env.PROD ? parsed.filter(i => !seedIds.has(i.id)) : parsed;
+      } catch { /* 손상된 저장값은 무시 */ }
+    }
+    return import.meta.env.DEV ? initialLawyerInquiries : [];
   });
 
   // Sync states to localStorage

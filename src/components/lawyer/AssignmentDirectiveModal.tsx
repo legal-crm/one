@@ -3,6 +3,7 @@ import { X, Send, SkipForward } from 'lucide-react';
 import type { DirectivePriority, StaffRole } from '../../types';
 import { DIRECTIVE_PRIORITY_CONFIG } from '../../types';
 import ModalPortal from '../common/ModalPortal';
+import { localYmd } from '../../utils/localDate';
 
 interface AssignmentDirectiveModalProps {
   isOpen: boolean;
@@ -125,7 +126,7 @@ export default function AssignmentDirectiveModal({
               type="date"
               value={deadline}
               onChange={e => setDeadline(e.target.value)}
-              min={new Date().toISOString().slice(0, 10)}
+              min={localYmd()}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40 transition-all"
             />
           </div>

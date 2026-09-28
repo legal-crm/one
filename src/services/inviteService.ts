@@ -48,6 +48,7 @@ export async function generateInviteToken(
   email?: string,
   expiryHours: number = INVITE_EXPIRY_HOURS
 ): Promise<InviteToken> {
+  if (role === 'OWNER') throw new Error('대표 변호사 역할로는 초대할 수 없습니다.');
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiryHours * 60 * 60 * 1000);
 
@@ -78,10 +79,12 @@ export async function generateInviteToken(
     }
   }
 
-  // 발급 목록 표시용 로컬 사본 (검증에는 사용하지 않음)
-  const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
-  tokens.push(token);
-  setLocalData(INVITE_STORAGE_KEY, tokens);
+  // Supabase 미설정(로컬 개발)일 때만 브라우저에 저장. 설정 환경의 발급 목록은 서버에서 조회한다.
+  if (!isSupabaseConfigured) {
+    const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
+    tokens.push(token);
+    setLocalData(INVITE_STORAGE_KEY, tokens);
+  }
 
   return token;
 }
@@ -131,7 +134,7 @@ export async function validateInviteToken(tokenString: string): Promise<{
 
   // Supabase 미설정(로컬 개발) 전용 폴백
   const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
-  const found = tokens.find(t => t.token === tokenString);
+  const found = tokens.find(t => t.token === cleaned);
 
   if (!found) {
     return { valid: false, error: '유효하지 않은 초대 링크입니다.' };
@@ -148,46 +151,98 @@ export async function validateInviteToken(tokenString: string): Promise<{
 
 // ── 초대 토큰 사용 처리 ──
 
+export interface AcceptInviteProfile {
+  staffId: string;
+  linkedUserId: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  provider?: string;
+}
+
+export type AcceptInviteResult =
+  | { ok: true; role: StaffRole; invitedBy?: string; staffCreatedOnServer: boolean }
+  | { ok: false; error: string };
+
 /**
- * 로그인한 초대 대상자가 토큰을 1회 소비한다.
- * Supabase 환경에서는 consume_invite_token RPC(018)가 사용 여부·만료·지정 이메일을 서버에서 검증한다.
- * @returns 성공 시 { ok: true, role }, 실패 시 { ok: false, error }
+ * 로그인한 초대 대상자가 초대를 수락한다 (토큰 1회 소비 + 승인 대기 직원 기록 생성).
+ * - Supabase: accept_staff_invite RPC(020)가 토큰 검증·소비와 직원 기록 생성을 한 트랜잭션으로 처리한다.
+ *   역할·초대자는 서버의 토큰 값으로 정해지므로 클라이언트가 바꿀 수 없다.
+ * - 020 미적용 환경: consume_invite_token(018)으로 소비만 하고 staffCreatedOnServer=false를 돌려준다.
  */
-export async function consumeInviteToken(
-  tokenString: string,
-  usedById: string
-): Promise<{ ok: true; role: StaffRole } | { ok: false; error: string }> {
+export async function acceptStaffInvite(tokenString: string, profile: AcceptInviteProfile): Promise<AcceptInviteResult> {
   const now = new Date().toISOString();
+  const cleaned = (tokenString || '').trim();
 
   if (isSupabaseConfigured) {
-    const { data, error } = await supabase.rpc('consume_invite_token', {
-      p_token: tokenString,
-      p_staff_id: usedById,
+    const { data, error } = await supabase.rpc('accept_staff_invite', {
+      p_token: cleaned,
+      p_staff_id: profile.staffId,
+      p_linked_user_id: profile.linkedUserId,
+      p_name: profile.name,
+      p_email: profile.email || null,
+      p_avatar: profile.avatar || null,
+      p_provider: profile.provider || null,
     });
-    if (error) {
-      console.warn('[Invite] consume_invite_token failed', error.message);
+    if (!error) {
+      const row = Array.isArray(data) ? data[0] : data;
+      return { ok: true, role: row?.role as StaffRole, invitedBy: row?.invited_by || undefined, staffCreatedOnServer: true };
+    }
+    // 020 마이그레이션 미적용(함수 없음) → 018 RPC로 소비만
+    const missingFn = error.code === 'PGRST202' || /accept_staff_invite/i.test(error.message || '') && /not find|does not exist/i.test(error.message || '');
+    if (!missingFn) {
+      console.warn('[Invite] accept_staff_invite failed', error.message);
       return { ok: false, error: rpcErrorToKorean(error.message) };
     }
-    return { ok: true, role: data as StaffRole };
+    const legacy = await supabase.rpc('consume_invite_token', { p_token: cleaned, p_staff_id: profile.staffId });
+    if (legacy.error) {
+      console.warn('[Invite] consume_invite_token failed', legacy.error.message);
+      return { ok: false, error: rpcErrorToKorean(legacy.error.message) };
+    }
+    return { ok: true, role: legacy.data as StaffRole, staffCreatedOnServer: false };
   }
 
   // Supabase 미설정(로컬 개발) 전용
   const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
-  const found = tokens.find(t => t.token === tokenString);
+  const found = tokens.find(t => t.token === cleaned);
   if (!found || found.isUsed || new Date(found.expiresAt) < new Date()) {
     return { ok: false, error: '유효하지 않은 초대 링크입니다.' };
   }
   setLocalData(
     INVITE_STORAGE_KEY,
-    tokens.map(t => (t.token === tokenString ? { ...t, isUsed: true, usedBy: usedById, usedAt: now } : t))
+    tokens.map(t => (t.token === cleaned ? { ...t, isUsed: true, usedBy: profile.staffId, usedAt: now } : t))
   );
-  return { ok: true, role: found.role };
+  return { ok: true, role: found.role, invitedBy: found.createdBy, staffCreatedOnServer: false };
 }
 
 // ── 초대 토큰 목록 조회 (관리자용) ──
 
-export function loadInviteTokens(): InviteToken[] {
-  return getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
+/**
+ * 내가 발급한 초대 링크 목록
+ * (이전: 이 브라우저 공용 localStorage만 읽어 다른 기기에서 사용된 링크가 계속 '활성'으로 보이고, 다른 변호사 발급분도 섞임)
+ */
+export async function loadInviteTokens(createdBy: string): Promise<InviteToken[]> {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('invite_tokens')
+      .select('token, role, email, expires_at, created_by, created_at, used_by, used_at, is_used')
+      .eq('created_by', createdBy)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw new Error('초대 링크 목록을 불러오지 못했습니다.');
+    return (data || []).map((r: any) => ({
+      token: r.token,
+      role: r.role,
+      email: r.email || undefined,
+      expiresAt: r.expires_at,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+      usedBy: r.used_by || undefined,
+      usedAt: r.used_at || undefined,
+      isUsed: !!r.is_used,
+    }));
+  }
+  return getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []).filter(t => t.createdBy === createdBy);
 }
 
 // ── 초대 URL 생성 헬퍼 ──
@@ -212,8 +267,10 @@ export function cleanupExpiredTokens(): void {
 
 export async function expireInviteToken(token: string): Promise<void> {
   if (isSupabaseConfigured) {
-    const { error } = await supabase.from('invite_tokens').update({ expires_at: new Date().toISOString() }).eq('token', token);
-    if (error) throw new Error('초대 링크 만료 처리에 실패했습니다.');
+    const { data, error } = await supabase.from('invite_tokens')
+      .update({ expires_at: new Date().toISOString() }).eq('token', token).select('token');
+    if (error || !data || data.length === 0) throw new Error('초대 링크 만료 처리에 실패했습니다.');
+    return;
   }
   const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
   const updated = tokens.map(t =>

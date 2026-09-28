@@ -4,6 +4,7 @@
 
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { InAppNotification, NotificationType, NotificationLinkType } from '../types/communication';
+import { generateUUID } from '../utils/deviceDetector';
 
 const STORAGE_KEY = 'in-app-notifications';
 
@@ -18,8 +19,9 @@ function saveToStorage(tenantId: string, recipientId: string, notifications: InA
   localStorage.setItem(`${STORAGE_KEY}-${tenantId}-${recipientId}`, JSON.stringify(notifications));
 }
 
+// in_app_notifications.id 는 UUID 컬럼 — 이전 'notif-…' 문자열은 서버 저장이 항상 실패해 보낸 사람 브라우저에만 남았음
 function generateId(): string {
-  return `notif-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+  return generateUUID();
 }
 
 /** ?�림 ?�성 */
@@ -67,11 +69,10 @@ export async function createNotification(
         is_read: false,
       });
       if (error) throw error;
-    } catch (err) {
-      console.warn('Supabase ?�림 ?�???�패, localStorage ?�백:', err);
-      const all = loadFromStorage(tenantId, recipientId);
-      all.unshift(notif);
-      saveToStorage(tenantId, recipientId, all);
+    } catch (err: any) {
+      // 보낸 사람 브라우저에 저장해도 받는 사람에게는 가지 않으므로 실패로 알린다
+      console.warn('[Notification] 서버 저장 실패:', err?.message || err);
+      throw new Error('알림을 보내지 못했습니다.');
     }
   } else {
     const all = loadFromStorage(tenantId, recipientId);

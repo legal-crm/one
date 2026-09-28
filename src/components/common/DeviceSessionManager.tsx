@@ -468,8 +468,8 @@ export default function DeviceSessionManager({
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900">최근 30일 접속 이력 (보안 감사)</h3>
-              <p className="text-xs text-slate-500 mt-0.5">계정에 로그인된 일시와 위치, 기기 정보를 기록합니다.</p>
+              <h3 className="text-sm font-extrabold text-slate-900">최근 30일 로그인 이력 (이 브라우저)</h3>
+              <p className="text-xs text-slate-500 mt-0.5">이 브라우저에서 로그인한 기록만 표시합니다. 다른 기기의 로그인과 실패 시도는 여기에 나오지 않습니다.</p>
             </div>
             <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2.5 py-1 rounded-lg">
               총 {loginHistory.length}건 기록

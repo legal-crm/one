@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
   CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus,
-  DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
+  StaffPermissions, DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
 } from '../types';
 import { DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, getStandardDocumentsForClient } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
@@ -183,67 +183,132 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
 
 // ── Staff (직원) 관리 ──
 
-export async function loadStaffMembers(): Promise<StaffMember[]> {
+// Supabase 설정 시 직원 정보는 서버(staff_members)만 사용한다. 쓰기 실패는 예외로 알린다.
+// (이전: supabase-js는 오류를 throw하지 않는데 try/catch로만 감싸 실패를 무시 → 화면만 바뀌고 서버는 그대로)
+
+function mapStaffRow(row: any): StaffMember {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role as StaffRole,
+    email: row.email,
+    phone: row.phone,
+    avatar: row.avatar,
+    isActive: row.is_active ?? false,
+    assignedCount: row.assigned_count || 0,
+    createdAt: row.created_at,
+    permissions: row.permissions || {},
+    status: (row.status || (row.is_active ? 'active' : 'pending')) as StaffMemberStatus,
+    invitedBy: row.invited_by || undefined,
+    approvedAt: row.approved_at || undefined,
+    removedAt: row.removed_at || undefined,
+    removalReason: row.removal_reason || undefined,
+    lastActiveAt: row.last_active_at || undefined,
+    authEmail: row.auth_email || undefined,
+    authProvider: row.auth_provider || undefined,
+    supabaseUserId: row.supabase_user_id || undefined,
+    linkedUserId: row.linked_user_id || undefined,
+    supervisingLawyerId: row.supervising_lawyer_id || undefined,
+  };
+}
+
+function staffWriteError(action: string, error: any): Error {
+  const msg = error?.message || String(error || '');
+  console.error(`[CRM] 직원 ${action} 실패:`, msg);
+  return new Error(`직원 정보를 ${action}하지 못했습니다.${msg ? ` (${msg})` : ''}`);
+}
+
+/**
+ * 직원 목록
+ * @param ownerId 대표 변호사 ID — 지정하면 그 대표가 초대한 직원만 돌려준다(다른 사무소 직원 노출 방지)
+ */
+export async function loadStaffMembers(ownerId?: string): Promise<StaffMember[]> {
+  let members: StaffMember[];
   if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase
-        .from('staff_members')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (!error && data) {
-        return data.map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          role: row.role as StaffRole,
-          email: row.email,
-          phone: row.phone,
-          avatar: row.avatar,
-          isActive: row.is_active ?? true,
-          assignedCount: row.assigned_count || 0,
-          createdAt: row.created_at,
-          permissions: row.permissions || {},
-          status: row.status || (row.is_active ? 'active' : 'pending') as StaffMemberStatus,
-          invitedBy: row.invited_by,
-          approvedAt: row.approved_at,
-          removedAt: row.removed_at,
-          removalReason: row.removal_reason,
-          lastActiveAt: row.last_active_at,
-        }));
-      }
-    } catch (e) {
-      console.warn('[CRM] Supabase staff load failed', e);
+    let query = supabase.from('staff_members').select('*');
+    if (ownerId) {
+      // 초대자 기록이 없는 직원(020 적용 전 가입)도 내가 발급한 초대 링크로 들어왔으면 포함
+      const { data: used } = await supabase
+        .from('invite_tokens').select('used_by')
+        .eq('created_by', ownerId).eq('is_used', true).limit(200);
+      const usedIds = (used || [])
+        .map((r: any) => String(r.used_by || ''))
+        .filter(id => /^[A-Za-z0-9_\-]+$/.test(id));
+      query = usedIds.length > 0
+        ? query.or(`invited_by.eq.${ownerId.replace(/[^A-Za-z0-9_\-]/g, '')},id.in.(${usedIds.join(',')})`)
+        : query.eq('invited_by', ownerId);
     }
+    const { data, error } = await query.order('created_at', { ascending: true });
+    if (error) throw staffWriteError('불러오', error);
+    members = (data || []).map(mapStaffRow);
+  } else {
+    members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
+    if (ownerId) members = members.filter(m => !m.invitedBy || m.invitedBy === ownerId);
   }
-  return getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
+  return members;
+}
+
+/** 로그인한 계정(변호사 ID)에 연결된 직원 기록 — 없으면 null */
+export async function findStaffRecordForUser(userId: string): Promise<StaffMember | null> {
+  if (!userId) return null;
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('staff_members').select('*')
+      .eq('linked_user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw staffWriteError('확인', error);
+    return data && data[0] ? mapStaffRow(data[0]) : null;
+  }
+  return getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []).find(m => m.linkedUserId === userId) || null;
 }
 
 export async function saveStaffMember(member: StaffMember): Promise<void> {
-  // localStorage
+  if (member.role === 'OWNER') throw new Error('대표 변호사 역할은 직원에게 부여할 수 없습니다.');
+  if (isSupabaseConfigured) {
+    const row: Record<string, any> = {
+      id: member.id,
+      name: member.name,
+      role: member.role,
+      email: member.email || null,
+      phone: member.phone || null,
+      avatar: member.avatar || null,
+      is_active: member.isActive,
+      assigned_count: member.assignedCount,
+      permissions: member.permissions,
+      status: member.status,
+      invited_by: member.invitedBy || null,
+      auth_email: member.authEmail || null,
+      auth_provider: member.authProvider || null,
+      linked_user_id: member.linkedUserId || null,
+      supervising_lawyer_id: member.supervisingLawyerId || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('staff_members').upsert(row, { onConflict: 'id' });
+    if (error) throw staffWriteError('저장', error);
+    return;
+  }
   const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
   const idx = members.findIndex(m => m.id === member.id);
   if (idx >= 0) members[idx] = member;
   else members.push(member);
   setLocalData(STAFF_STORAGE_KEY, members);
+}
 
-  // Supabase
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').upsert({
-        id: member.id,
-        name: member.name,
-        role: member.role,
-        email: member.email,
-        phone: member.phone,
-        avatar: member.avatar,
-        is_active: member.isActive,
-        assigned_count: member.assignedCount,
-        permissions: member.permissions,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
-    } catch (e) {
-      console.warn('[CRM] Supabase staff save failed', e);
-    }
-  }
+/** 서버 update — 적용된 행이 없으면(RLS 거부·없는 직원) 예외 */
+async function updateStaffRow(memberId: string, updates: Record<string, any>, action: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('staff_members')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', memberId)
+    .select('id');
+  if (error) throw staffWriteError(action, error);
+  if (!data || data.length === 0) throw new Error(`직원 정보를 ${action}하지 못했습니다. 권한이 없거나 이미 삭제된 직원입니다.`);
+}
+
+function updateStaffLocal(memberId: string, patch: (m: StaffMember) => StaffMember) {
+  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
+  setLocalData(STAFF_STORAGE_KEY, members.map(m => m.id === memberId ? patch(m) : m));
 }
 
 export async function deleteStaffMember(memberId: string): Promise<void> {
@@ -774,13 +839,25 @@ export async function syncContractToCrm(
 
 /** 전화번호 포맷팅 (010-XXXX-XXXX) */
 export function formatPhone(value: string): string {
-  const digits = value.replace(/[^\d]/g, '').replace(/^\+82/, '0');
+  // 국가번호(+82)는 숫자만 남기기 전에 바꾼다 (이전: '+'를 먼저 지워 '+82 10-…'가 '821-…'로 변형)
+  let digits = String(value || '').trim().replace(/[^\d+]/g, '');
+  if (digits.startsWith('+82')) digits = '0' + digits.slice(3).replace(/^0/, '');
+  else if (/^82(1|2|[3-6]\d)/.test(digits) && digits.length >= 11) digits = '0' + digits.slice(2);
+  digits = digits.replace(/\D/g, '');
   if (digits.startsWith('02')) {
     if (digits.length <= 9) return digits.replace(/(\d{2})(\d{3,4})(\d{4})/, '$1-$2-$3');
     return digits.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
   }
   if (digits.length <= 10) return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
   return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+}
+
+/** 국내 휴대폰·일반전화 형식인지 (하이픈 포함 formatPhone 결과 기준) */
+export function isValidKoreanPhone(formatted: string): boolean {
+  return /^01[016789]-\d{3,4}-\d{4}$/.test(formatted)
+    || /^02-\d{3,4}-\d{4}$/.test(formatted)
+    || /^0[3-6]\d-\d{3,4}-\d{4}$/.test(formatted)
+    || /^070-\d{4}-\d{4}$/.test(formatted);
 }
 
 /** 전화번호 중복 검사 — 기존 requests 중 동일 전화번호 건 반환 */
@@ -883,117 +960,69 @@ const STAFF_ACTIVITY_STORAGE_KEY = 'legal_crm_staff_activities';
 
 // ── 직원 상태 변경 ──
 
-export async function approveStaffMember(memberId: string): Promise<void> {
-  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
-  const updated = members.map(m => m.id === memberId ? { 
-    ...m, 
-    status: 'active' as StaffMemberStatus, 
-    isActive: true, 
-    approvedAt: new Date().toISOString(),
-    lastActiveAt: new Date().toISOString(),
-  } : m);
-  setLocalData(STAFF_STORAGE_KEY, updated);
-  
+/** 가입 승인 — 권한이 비어 있으면(초대 수락 RPC는 빈 권한으로 만든다) 역할 기본 권한을 함께 저장 */
+export async function approveStaffMember(memberId: string, permissions?: StaffPermissions): Promise<void> {
+  const now = new Date().toISOString();
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').update({
-        status: 'active',
-        is_active: true,
-        approved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq('id', memberId);
-    } catch (e) {
-      console.warn('[CRM] Supabase staff approve failed', e);
-    }
+    await updateStaffRow(memberId, { status: 'active', is_active: true, approved_at: now, ...(permissions ? { permissions } : {}) }, '승인');
+    return;
   }
+  updateStaffLocal(memberId, m => ({ ...m, status: 'active', isActive: true, approvedAt: now, lastActiveAt: now, ...(permissions ? { permissions } : {}) }));
 }
 
 export async function rejectStaffMember(memberId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('staff_members').delete().eq('id', memberId).select('id');
+    if (error) throw staffWriteError('거부', error);
+    if (!data || data.length === 0) throw new Error('가입 요청을 거부하지 못했습니다. 권한이 없거나 이미 처리된 요청입니다.');
+    return;
+  }
   const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
   setLocalData(STAFF_STORAGE_KEY, members.filter(m => m.id !== memberId));
-  
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').delete().eq('id', memberId);
-    } catch (e) {
-      console.warn('[CRM] Supabase staff reject failed', e);
-    }
-  }
 }
 
 export async function suspendStaffMember(memberId: string, reason?: string): Promise<void> {
-  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
-  const updated = members.map(m => m.id === memberId ? {
-    ...m,
-    status: 'suspended' as StaffMemberStatus,
-    isActive: false,
-    removalReason: reason,
-  } : m);
-  setLocalData(STAFF_STORAGE_KEY, updated);
-  
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').update({
-        status: 'suspended',
-        is_active: false,
-        removal_reason: reason,
-        updated_at: new Date().toISOString(),
-      }).eq('id', memberId);
-    } catch (e) {
-      console.warn('[CRM] Supabase staff suspend failed', e);
-    }
+    await updateStaffRow(memberId, { status: 'suspended', is_active: false, removal_reason: reason || null }, '정지');
+    return;
   }
+  updateStaffLocal(memberId, m => ({ ...m, status: 'suspended', isActive: false, removalReason: reason }));
 }
 
 export async function reactivateStaffMember(memberId: string): Promise<void> {
-  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
-  const updated = members.map(m => m.id === memberId ? {
-    ...m,
-    status: 'active' as StaffMemberStatus,
-    isActive: true,
-    removalReason: undefined,
-    lastActiveAt: new Date().toISOString(),
-  } : m);
-  setLocalData(STAFF_STORAGE_KEY, updated);
-  
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').update({
-        status: 'active',
-        is_active: true,
-        removal_reason: null,
-        updated_at: new Date().toISOString(),
-      }).eq('id', memberId);
-    } catch (e) {
-      console.warn('[CRM] Supabase staff reactivate failed', e);
-    }
+    await updateStaffRow(memberId, { status: 'active', is_active: true, removal_reason: null }, '재개');
+    return;
   }
+  updateStaffLocal(memberId, m => ({ ...m, status: 'active', isActive: true, removalReason: undefined, lastActiveAt: new Date().toISOString() }));
 }
 
 export async function removeStaffMemberWithReason(memberId: string, reason: string): Promise<void> {
-  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
-  const updated = members.map(m => m.id === memberId ? {
-    ...m,
-    status: 'removed' as StaffMemberStatus,
-    isActive: false,
-    removedAt: new Date().toISOString(),
-    removalReason: reason,
-  } : m);
-  setLocalData(STAFF_STORAGE_KEY, updated);
-  
+  const now = new Date().toISOString();
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('staff_members').update({
-        status: 'removed',
-        is_active: false,
-        removed_at: new Date().toISOString(),
-        removal_reason: reason,
-        updated_at: new Date().toISOString(),
-      }).eq('id', memberId);
-    } catch (e) {
-      console.warn('[CRM] Supabase staff remove failed', e);
-    }
+    await updateStaffRow(memberId, { status: 'removed', is_active: false, removed_at: now, removal_reason: reason }, '탈퇴 처리');
+    return;
   }
+  updateStaffLocal(memberId, m => ({ ...m, status: 'removed', isActive: false, removedAt: now, removalReason: reason }));
+}
+
+/** 감독 변호사 지정 (이전: 화면 상태만 바뀌고 저장되지 않음) */
+export async function updateStaffSupervisor(memberId: string, supervisingLawyerId: string | undefined): Promise<void> {
+  if (isSupabaseConfigured) {
+    await updateStaffRow(memberId, { supervising_lawyer_id: supervisingLawyerId || null }, '저장');
+    return;
+  }
+  updateStaffLocal(memberId, m => ({ ...m, supervisingLawyerId }));
+}
+
+/** 역할 변경 — 권한은 새 역할 기본값으로 초기화. OWNER로는 바꿀 수 없음 */
+export async function updateStaffRole(memberId: string, role: StaffRole, permissions: StaffPermissions): Promise<void> {
+  if (role === 'OWNER') throw new Error('대표 변호사 역할은 직원에게 부여할 수 없습니다.');
+  if (isSupabaseConfigured) {
+    await updateStaffRow(memberId, { role, permissions }, '역할 변경');
+    return;
+  }
+  updateStaffLocal(memberId, m => ({ ...m, role, permissions }));
 }
 
 // ── 직원 활동 로그 ──
@@ -1034,26 +1063,15 @@ export function saveStaffActivityLog(log: StaffActivityLog): void {
 
 // ── 직원 권한 수정 ──
 
-export async function updateStaffPermissions(memberId: string, permissions: Partial<StaffMember['permissions']>): Promise<void> {
-  const members = getLocalData<StaffMember[]>(STAFF_STORAGE_KEY, []);
-  const updated = members.map(m => m.id === memberId ? {
-    ...m,
-    permissions: { ...m.permissions, ...permissions },
-  } : m);
-  setLocalData(STAFF_STORAGE_KEY, updated);
-  
+/**
+ * 개별 권한 저장 — 전체 권한 객체를 서버에 그대로 저장
+ * (이전: 이 브라우저 localStorage에 직원이 없으면 서버 저장을 건너뛰고도 '저장되었습니다' 표시)
+ */
+export async function updateStaffPermissions(memberId: string, permissions: StaffPermissions): Promise<void> {
   if (isSupabaseConfigured) {
-    try {
-      const member = updated.find(m => m.id === memberId);
-      if (member) {
-        await supabase.from('staff_members').update({
-          permissions: member.permissions,
-          updated_at: new Date().toISOString(),
-        }).eq('id', memberId);
-      }
-    } catch (e) {
-      console.warn('[CRM] Supabase staff permission update failed', e);
-    }
+    await updateStaffRow(memberId, { permissions }, '권한 저장');
+    return;
   }
+  updateStaffLocal(memberId, m => ({ ...m, permissions: { ...m.permissions, ...permissions } }));
 }
 

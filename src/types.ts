@@ -1920,6 +1920,9 @@ export interface ClientQA {
   createdAt?: string;
   content?: string;
   status?: 'waiting' | 'answered';
+  /** 첫 답변 변호사 ID (동명이인 구분) */
+  lawyerId?: string;
+  answeredAt?: string;
 }
 
 export interface SuccessReview {

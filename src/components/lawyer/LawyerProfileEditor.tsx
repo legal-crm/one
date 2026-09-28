@@ -9,6 +9,25 @@ import {
 import type { User, LawFirm, LawyerSealInfo } from '../../types';
 import { mockLawFirms } from '../../data';
 import LawyerSealManagerModal from './LawyerSealManagerModal';
+import { toast } from 'sonner';
+
+/**
+ * 공개 프로필 저장 전 검사 — 문제가 있으면 안내 문구, 없으면 null
+ * (이전: 이름 빈칸, 성공률 150%, javascript: 링크도 그대로 저장)
+ */
+export function validateLawyerProfile(form: Pick<User, 'name' | 'totalCases' | 'successRate' | 'avgRepaymentRate' | 'websiteUrl' | 'youtubeUrl' | 'blogUrl'>): string | null {
+  if (!form.name || !form.name.trim()) return '이름을 입력해 주세요.';
+  const pct = (v: unknown) => v === undefined || v === null || (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100);
+  if (form.totalCases !== undefined && form.totalCases !== null && !(Number.isInteger(form.totalCases) && form.totalCases >= 0)) {
+    return '누적 수임 건수는 0 이상의 정수로 입력해 주세요.';
+  }
+  if (!pct(form.successRate)) return '인가 성공률은 0~100 사이로 입력해 주세요.';
+  if (!pct(form.avgRepaymentRate)) return '평균 변제율은 0~100 사이로 입력해 주세요.';
+  for (const [label, url] of [['홈페이지', form.websiteUrl], ['유튜브', form.youtubeUrl], ['블로그', form.blogUrl]] as const) {
+    if (url && !/^https?:\/\/[^\s]+$/i.test(url.trim())) return `${label} 주소는 http:// 또는 https://로 시작해야 합니다.`;
+  }
+  return null;
+}
 
 interface LawyerProfileEditorProps {
   lawyer: User;
@@ -60,6 +79,17 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 이전: '최대 5MB' 안내만 있고 형식·크기 검사가 없었음
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+      toast.error('PNG·JPG·WEBP·GIF 이미지만 올릴 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('이미지는 5MB 이하만 올릴 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
@@ -70,8 +100,14 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   };
 
   const handleSave = () => {
+    const problem = validateLawyerProfile(form);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     const finalForm = {
       ...form,
+      name: form.name.trim(),
       avatar: form.avatarData || form.avatar,
       avatarData: form.avatarData || form.avatar,
     };
@@ -465,7 +501,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     className={inputCls}
                     value={form.totalCases || ''}
                     onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })}
-                    placeholder="842"
+                    placeholder="직접 확인한 건수만 입력"
                   />
                 </div>
                 <div>
@@ -475,7 +511,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     className={inputCls}
                     value={form.successRate || ''}
                     onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })}
-                    placeholder="98"
+                    placeholder="0~100"
                     max={100}
                   />
                 </div>
@@ -486,7 +522,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     className={inputCls}
                     value={form.avgRepaymentRate || ''}
                     onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })}
-                    placeholder="31"
+                    placeholder="0~100"
                     max={100}
                   />
                 </div>
@@ -696,7 +732,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           {[
                             { title: '초기 상담 지원', desc: '채무 현황 분석 및 최적 해결 방안 안내', emoji: '💬' },
                             { title: '1:1 밀착 관리', desc: '사건 접수부터 인가까지 전 과정 전담 케어', emoji: '🤝' },
-                            { title: '보정명령 긴급 대응', desc: '법원 보정명령 발생 시 48시간 내 즉시 대응', emoji: '⚡' },
+                            { title: '보정명령 대응', desc: '법원 보정명령 내용 확인 및 보정서 준비', emoji: '⚡' },
                             { title: '신용 회복 가이드', desc: '면책 후 신용 등급 회복 로드맵 제공', emoji: '📈' },
                           ].map(svc => (
                             <div key={svc.title} className="bg-white border border-slate-100 rounded-lg p-3 flex items-start gap-2">
@@ -717,10 +753,11 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                             <MapPin className="w-3.5 h-3.5 text-[#1E3A5F]" />
                             사무소 위치 및 연락처
                           </h4>
-                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
-                            방문 상담 가능
-                          </span>
+                          {form.officeAddress && (
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              사무소 주소 등록됨
+                            </span>
+                          )}
                         </div>
                         <div className="space-y-1.5 text-[11px]">
                           <div className="flex items-center gap-1.5">
@@ -763,11 +800,12 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           인증 뱃지
                         </h4>
                         <div className="grid grid-cols-3 gap-2">
+                          {/* 입력한 값만 표시 (이전: 전문 분야 고정 배지, 미입력 시 수임 건수 기본값 표시 — 변호사 광고 규정상 근거 없는 표시) */}
                           {[
-                            { label: '대한변협 등록', sub: '도산법 전문', icon: '⚖️' },
-                            { label: '회생법원 전담', sub: form.courtJurisdiction || '', icon: '🏛️' },
-                            { label: `수임 ${form.totalCases || 100}건+`, sub: '인가 실적', icon: '🏆' },
-                          ].map(badge => (
+                            form.barAssociation ? { label: '소속', sub: form.barAssociation, icon: '⚖️' } : null,
+                            form.courtJurisdiction ? { label: '관할 법원', sub: form.courtJurisdiction, icon: '🏛️' } : null,
+                            form.totalCases ? { label: `수임 ${form.totalCases}건`, sub: '변호사 입력값', icon: '🏆' } : null,
+                          ].filter((b): b is { label: string; sub: string; icon: string } => !!b).map(badge => (
                             <div key={badge.label} className="flex flex-col items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-xs text-center">
                               <span className="text-lg">{badge.icon}</span>
                               <div className="text-[10px] font-bold text-slate-900 leading-tight">{badge.label}</div>
@@ -780,11 +818,11 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                       {/* 정보 테이블 */}
                       <div className="bg-slate-50 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
                         {[
-                          { label: '관할 법원', value: form.courtJurisdiction || `${form.region} 법원`, icon: Building },
+                          { label: '관할 법원', value: form.courtJurisdiction || '미입력', icon: Building },
                           { label: '경력', value: null, icon: Briefcase, list: form.career },
-                          { label: '자격', value: form.certYear || '변호사시험 합격', icon: Award },
-                          { label: '소속', value: form.barAssociation || '대한변호사협회', icon: Users },
-                          { label: '학력', value: form.education || '법학전문대학원 졸업', icon: GraduationCap },
+                          { label: '자격', value: form.certYear || '미입력', icon: Award },
+                          { label: '소속', value: form.barAssociation || '미입력', icon: Users },
+                          { label: '학력', value: form.education || '미입력', icon: GraduationCap },
                         ].map(row => (
                           <div key={row.label} className="flex items-start gap-3 px-3.5 py-2.5">
                             <div className="flex items-center gap-1.5 w-16 shrink-0">
@@ -825,6 +863,20 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
           </div>
 
         </div>
+
+        {/* 직인·로고 설정 (이전: 모달 모드에서는 이 컴포넌트를 그리지 않아 '직인·로고 설정 열기' 버튼이 동작하지 않음) */}
+        {isSealModalOpen && !inline && (
+          <LawyerSealManagerModal
+            isOpen={isSealModalOpen}
+            onClose={() => setIsSealModalOpen(false)}
+            lawyerId={form.id}
+            lawyerName={form.name}
+            initialSealInfo={form.sealInfo}
+            onSaveSealInfo={(newSealInfo) => {
+              updateForm({ sealInfo: newSealInfo });
+            }}
+          />
+        )}
 
         {/* ── 저장 완료 토스트 ── */}
         {saveToast && (
@@ -928,7 +980,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   {[
                     { title: '초기 상담 지원', desc: '채무 현황 분석 및 최적 해결 방안 안내', emoji: '💬' },
                     { title: '1:1 밀착 관리', desc: '사건 접수부터 인가까지 전 과정 전담 케어', emoji: '🤝' },
-                    { title: '보정명령 긴급 대응', desc: '법원 보정명령 발생 시 48시간 내 즉시 대응', emoji: '⚡' },
+                    { title: '보정명령 대응', desc: '법원 보정명령 내용 확인 및 보정서 준비', emoji: '⚡' },
                     { title: '신용 회복 가이드', desc: '면책 후 신용 등급 회복 로드맵 제공', emoji: '📈' },
                   ].map(svc => (
                     <div key={svc.title} className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3 hover:border-[#1E3A5F]/20 hover:shadow-sm transition-all">
@@ -949,10 +1001,11 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     <MapPin className="w-4 h-4 text-[#1E3A5F]" />
                     사무소 위치 및 연락처
                   </h3>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    방문 상담 가능
-                  </span>
+                  {form.officeAddress && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      사무소 주소 등록됨
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
@@ -1102,9 +1155,9 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
             <div className={sectionCls}>
               <h3 className={sectionTitleCls}><Award className="w-4 h-4" /> 실적 정보</h3>
               <div className="grid grid-cols-3 gap-2.5">
-                <div><label className={labelCls}>누적 수임 (건)</label><input type="number" className={inputCls} value={form.totalCases || ''} onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })} placeholder="842" /></div>
-                <div><label className={labelCls}>인가 성공률 (%)</label><input type="number" className={inputCls} value={form.successRate || ''} onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })} placeholder="98" max={100} /></div>
-                <div><label className={labelCls}>평균 변제율 (%)</label><input type="number" className={inputCls} value={form.avgRepaymentRate || ''} onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })} placeholder="31" max={100} /></div>
+                <div><label className={labelCls}>누적 수임 (건)</label><input type="number" className={inputCls} value={form.totalCases || ''} onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })} placeholder="직접 확인한 건수만 입력" /></div>
+                <div><label className={labelCls}>인가 성공률 (%)</label><input type="number" className={inputCls} value={form.successRate || ''} onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })} placeholder="0~100" min={0} max={100} /></div>
+                <div><label className={labelCls}>평균 변제율 (%)</label><input type="number" className={inputCls} value={form.avgRepaymentRate || ''} onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })} placeholder="0~100" min={0} max={100} /></div>
               </div>
             </div>
 
@@ -1191,10 +1244,10 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                       </div>
                       <div className="bg-slate-50 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
                         {[
-                          { label: '관할 법원', value: form.courtJurisdiction || `${form.region} 법원`, icon: Building },
-                          { label: '자격', value: form.certYear || '변호사시험 합격', icon: Award },
-                          { label: '소속', value: form.barAssociation || '대한변호사협회', icon: Users },
-                          { label: '학력', value: form.education || '법학전문대학원 졸업', icon: GraduationCap },
+                          { label: '관할 법원', value: form.courtJurisdiction || '미입력', icon: Building },
+                          { label: '자격', value: form.certYear || '미입력', icon: Award },
+                          { label: '소속', value: form.barAssociation || '미입력', icon: Users },
+                          { label: '학력', value: form.education || '미입력', icon: GraduationCap },
                         ].map(row => (
                           <div key={row.label} className="flex items-center gap-2 px-3 py-1.5">
                             <div className="flex items-center gap-1 w-14 shrink-0"><row.icon className="w-2.5 h-2.5 text-slate-500" /><span className="text-[10px] text-slate-600 font-bold">{row.label}</span></div>

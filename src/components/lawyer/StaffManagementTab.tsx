@@ -17,13 +17,14 @@ import {
   STAFF_ROLE_CONFIG, DEFAULT_PERMISSIONS, registerCustomRole, loadCustomRoles, deleteCustomRole
 } from '../../types';
 import {
-  loadStaffMembers, saveStaffMember, deleteStaffMember,
+  loadStaffMembers,
   approveStaffMember, rejectStaffMember, suspendStaffMember,
   reactivateStaffMember, removeStaffMemberWithReason,
   createStaffActivityLog, loadStaffActivityLogs, saveStaffActivityLog,
-  loadCrmData, saveCrmClient, updateStaffPermissions,
+  loadCrmData, saveCrmClient, updateStaffPermissions, updateStaffSupervisor, updateStaffRole,
   type CrmDataStore
 } from '../../services/crmService';
+import { computeBulkTransfer, isAssignedTo } from '../../services/staffTransfer';
 import { revokeAllUserSessionsByAdmin } from '../../services/sessionService';
 
 // ── 활동 타입 한글 라벨 ──
@@ -111,22 +112,51 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [newRoleBg, setNewRoleBg] = useState('bg-teal-500/10');
   const [newRoleBorder, setNewRoleBorder] = useState('border-teal-500/20');
 
+  const refreshInviteTokens = async () => {
+    try {
+      setInviteTokens(await loadInviteTokens(activeLawyer.id));
+    } catch (err: any) {
+      toast.error(err?.message || '초대 링크 목록을 불러오지 못했습니다.');
+    }
+  };
+
   // ── 초기 로드 ──
-  useEffect(() => {
-    loadStaffMembers().then(members => {
-      const normalized = members.map(m => ({
+  const [staffLoadError, setStaffLoadError] = useState<string | null>(null);
+  const refreshStaff = async () => {
+    try {
+      // 내가 초대한 직원만 (이전: 모든 사무소의 staff_members 전체 조회)
+      const members = await loadStaffMembers(activeLawyer.id);
+      setStaffMembers(members.map(m => ({
         ...m,
         status: (m.status || (m.isActive ? 'active' : 'pending')) as StaffMemberStatus,
-      }));
-      setStaffMembers(normalized);
-    });
-    setActivityLogs(loadStaffActivityLogs());
+      })));
+      setStaffLoadError(null);
+    } catch (err: any) {
+      setStaffLoadError(err?.message || '직원 목록을 불러오지 못했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    refreshStaff();
+    setActivityLogs(loadStaffActivityLogs().filter(l => l.actorId === activeLawyer.id));
     loadCrmData().then(setCrmData);
-    // 초대 링크 로드
-    setInviteTokens(loadInviteTokens());
-    // 커스텀 역할 로드
+    refreshInviteTokens();
     setCustomRoles(loadCustomRoles());
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLawyer.id]);
+
+  /** 서버 반영이 끝난 뒤에만 화면·기록을 바꾼다 */
+  const runStaffAction = async (fn: () => Promise<void>, onSuccess: () => void, successMsg?: string): Promise<boolean> => {
+    try {
+      await fn();
+    } catch (err: any) {
+      toast.error(err?.message || '처리하지 못했습니다.');
+      return false;
+    }
+    onSuccess();
+    if (successMsg) toast.success(successMsg);
+    return true;
+  };
 
   // ── 파생 데이터 ──
   const pendingStaff = useMemo(() => staffMembers.filter(m => m.status === 'pending'), [staffMembers]);
@@ -135,16 +165,14 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const removedStaff = useMemo(() => staffMembers.filter(m => m.status === 'removed'), [staffMembers]);
   const allManagedStaff = useMemo(() => [...activeStaff, ...suspendedStaff], [activeStaff, suspendedStaff]);
 
-  // 직원별 담당 사건 수
+  // 직원별 담당 사건 수 (어느 담당 필드든 해당 직원이면 포함 — 이관 대상과 같은 기준)
   const staffCaseCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     staffMembers.forEach(m => { counts[m.id] = 0; });
     requests.forEach(r => {
       const ext = crmData[r.id];
-      if (ext) {
-        const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
-        if (effectiveAssignee && counts[effectiveAssignee] !== undefined) counts[effectiveAssignee]++;
-      }
+      if (!ext) return;
+      staffMembers.forEach(m => { if (isAssignedTo(ext, m.id)) counts[m.id]++; });
     });
     return counts;
   }, [staffMembers, requests, crmData]);
@@ -165,28 +193,6 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   };
 
   // ── 핸들러: 직원 초대 ──
-  const handleInviteStaff = async () => {
-    if (!inviteName.trim()) return;
-    const newStaff: StaffMember = {
-      id: `staff-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      name: inviteName.trim(),
-      role: inviteRole,
-      email: inviteEmail.trim() || undefined,
-      phone: invitePhone.trim() || undefined,
-      isActive: false,
-      assignedCount: 0,
-      createdAt: new Date().toISOString(),
-      permissions: DEFAULT_PERMISSIONS[inviteRole],
-      status: 'pending',
-      invitedBy: activeLawyer.id,
-    };
-    await saveStaffMember(newStaff);
-    setStaffMembers(prev => [...prev, newStaff]);
-    recordActivity(newStaff.id, newStaff.name, 'staff_invited', `${newStaff.name}님을 ${STAFF_ROLE_CONFIG[inviteRole].label}(으)로 초대했습니다.`);
-    setShowInviteModal(false);
-    setInviteName(''); setInviteEmail(''); setInvitePhone(''); setInviteRole('CONSULTANT');
-  };
-
   // ── 핸들러: 초대 링크 생성 ──
   const handleGenerateInviteLink = async () => {
     let token;
@@ -203,21 +209,36 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     const url = buildInviteUrl(token.token);
     setGeneratedInviteUrl(url);
     setInviteLinkCopied(false);
-    recordActivity('system', '시스템', 'staff_invited', `${STAFF_ROLE_CONFIG[inviteRole].label} 역할의 초대 링크가 생성되었습니다.`);
+    recordActivity(activeLawyer.id, activeLawyer.name, 'staff_invited', `${STAFF_ROLE_CONFIG[inviteRole].label} 역할의 초대 링크를 만들었습니다.`);
+    refreshInviteTokens();
   };
 
   const handleCopyInviteLink = () => {
     navigator.clipboard.writeText(generatedInviteUrl).then(() => {
       setInviteLinkCopied(true);
       setTimeout(() => setInviteLinkCopied(false), 3000);
-    });
+    }).catch(() => toast.error('복사하지 못했습니다. 링크를 직접 선택해 복사해 주세요.'));
   };
 
   // ── 핸들러: 승인 ──
   const handleApprove = async (member: StaffMember) => {
-    await approveStaffMember(member.id);
-    setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'active' as StaffMemberStatus, isActive: true, approvedAt: new Date().toISOString() } : m));
-    recordActivity(member.id, member.name, 'staff_approved', `${member.name}님의 가입을 승인했습니다.`);
+    const perms = member.permissions && Object.keys(member.permissions).length > 0 ? member.permissions : DEFAULT_PERMISSIONS[member.role];
+    await runStaffAction(() => approveStaffMember(member.id, perms), () => {
+      setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, permissions: perms, status: 'active' as StaffMemberStatus, isActive: true, approvedAt: new Date().toISOString() } : m));
+      recordActivity(member.id, member.name, 'staff_approved', `${member.name}님의 가입을 승인했습니다.`);
+    }, `${member.name}님을 승인했습니다.`);
+  };
+
+  /** 직원이 로그인에 쓰는 계정 ID (세션은 이 ID로 등록됨) */
+  const sessionUserIdOf = (m: StaffMember) => m.linkedUserId || m.id;
+
+  /** 세션 강제 종료 요청 — 서버 권한상 다른 사용자의 세션 행은 바꾸지 못할 수 있어 결과를 과장하지 않는다 */
+  const requestSessionRevoke = async (m: StaffMember, reason: string) => {
+    try {
+      await revokeAllUserSessionsByAdmin(sessionUserIdOf(m), reason);
+    } catch (err) {
+      console.warn('[Staff] 세션 종료 요청 실패:', err);
+    }
   };
 
   // ── 핸들러: 거부 ──
@@ -229,31 +250,35 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       variant: 'danger'
     });
     if (!confirmed) return;
-    await rejectStaffMember(member.id);
-    setStaffMembers(prev => prev.filter(m => m.id !== member.id));
-    recordActivity(member.id, member.name, 'staff_rejected', `${member.name}님의 가입을 거부했습니다.`);
+    await runStaffAction(() => rejectStaffMember(member.id), () => {
+      setStaffMembers(prev => prev.filter(m => m.id !== member.id));
+      recordActivity(member.id, member.name, 'staff_rejected', `${member.name}님의 가입을 거부했습니다.`);
+    }, `${member.name}님의 가입 요청을 거부했습니다.`);
   };
 
   // ── 핸들러: 정지 ──
   const handleSuspend = async (member: StaffMember) => {
+    if (member.role === 'OWNER') { toast.error('대표 변호사는 정지할 수 없습니다.'); return; }
     const confirmed = await dialog.confirm({
       title: '활동 정지 확인',
-      message: `${member.name}님의 활동을 정지하시겠습니까?\n해당 직원의 CRM 접근이 즉시 차단되며 활성 세션이 강제 종료됩니다.`,
+      message: `${member.name}님의 활동을 정지하시겠습니까?\n직원 화면은 1분 안에 잠기고 다시 로그인해도 들어올 수 없습니다.`,
       confirmText: '활동 정지',
       variant: 'warning'
     });
     if (!confirmed) return;
-    await suspendStaffMember(member.id);
-    await revokeAllUserSessionsByAdmin(member.id, '대표 변호사에 의한 계정 활동 정지');
-    setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'suspended' as StaffMemberStatus, isActive: false } : m));
-    recordActivity(member.id, member.name, 'staff_suspended', `${member.name}님의 활동을 정지하고 세션을 강제 종료했습니다.`);
+    const ok = await runStaffAction(() => suspendStaffMember(member.id), () => {
+      setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'suspended' as StaffMemberStatus, isActive: false } : m));
+      recordActivity(member.id, member.name, 'staff_suspended', `${member.name}님의 활동을 정지했습니다.`);
+    }, `${member.name}님의 활동을 정지했습니다. 직원 화면은 1분 안에 잠깁니다.`);
+    if (ok) await requestSessionRevoke(member, '대표 변호사에 의한 계정 활동 정지');
   };
 
   // ── 핸들러: 재활성화 ──
   const handleReactivate = async (member: StaffMember) => {
-    await reactivateStaffMember(member.id);
-    setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'active' as StaffMemberStatus, isActive: true } : m));
-    recordActivity(member.id, member.name, 'staff_reactivated', `${member.name}님의 활동을 재개했습니다.`);
+    await runStaffAction(() => reactivateStaffMember(member.id), () => {
+      setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'active' as StaffMemberStatus, isActive: true } : m));
+      recordActivity(member.id, member.name, 'staff_reactivated', `${member.name}님의 활동을 재개했습니다.`);
+    }, `${member.name}님의 활동을 재개했습니다.`);
   };
 
   // ── 핸들러: 강제 탈퇴 ──
@@ -261,62 +286,78 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     if (!removeTargetId || !removeReason.trim()) return;
     const target = staffMembers.find(m => m.id === removeTargetId);
     if (!target) return;
-    await removeStaffMemberWithReason(removeTargetId, removeReason.trim());
-    await revokeAllUserSessionsByAdmin(removeTargetId, `대표 변호사에 의한 강제 탈퇴: ${removeReason.trim()}`);
-    setStaffMembers(prev => prev.map(m => m.id === removeTargetId ? { ...m, status: 'removed' as StaffMemberStatus, isActive: false, removedAt: new Date().toISOString(), removalReason: removeReason.trim() } : m));
-    recordActivity(removeTargetId, target.name, 'staff_removed', `${target.name}님을 강제 탈퇴 및 세션 폐기 처리했습니다. 사유: ${removeReason.trim()}`);
+    if (target.role === 'OWNER') { toast.error('대표 변호사는 탈퇴 처리할 수 없습니다.'); return; }
+    const reason = removeReason.trim();
+    const targetId = removeTargetId;
+    const ok = await runStaffAction(() => removeStaffMemberWithReason(targetId, reason), () => {
+      setStaffMembers(prev => prev.map(m => m.id === targetId ? { ...m, status: 'removed' as StaffMemberStatus, isActive: false, removedAt: new Date().toISOString(), removalReason: reason } : m));
+      recordActivity(targetId, target.name, 'staff_removed', `${target.name}님을 탈퇴 처리했습니다. 사유: ${reason}`);
+    }, `${target.name}님을 탈퇴 처리했습니다. 직원 화면은 1분 안에 잠깁니다.`);
+    if (!ok) return;
+    await requestSessionRevoke(target, `대표 변호사에 의한 강제 탈퇴: ${reason}`);
     setShowRemoveModal(false);
     setRemoveTargetId(''); setRemoveReason('');
 
     // 담당 사건이 있으면 일괄 이관 유도
-    if ((staffCaseCounts[removeTargetId] || 0) > 0) {
-      setBulkFromId(removeTargetId);
+    if ((staffCaseCounts[targetId] || 0) > 0) {
+      setBulkFromId(targetId);
       setShowBulkTransferModal(true);
     }
   };
 
   // ── 핸들러: 일괄 이관 ──
+  // 담당자 필드(assigneeId·assignedLawyerId·assignedConsultantId·assignedStaffId) 중 어느 것이든
+  // 떠나는 직원이면 모두 새 담당자로 바꾸고, 서버 저장 결과를 건별로 확인한다.
+  // (이전: 첫 번째 담당자 필드만 비교, 상담·사무 담당 필드는 그대로, 저장 결과 무시하고 '성공적으로 이관' 표시)
   const handleBulkTransfer = async () => {
     if (!bulkFromId || !bulkToId || bulkFromId === bulkToId) return;
     const fromStaff = staffMembers.find(m => m.id === bulkFromId);
     const toStaff = staffMembers.find(m => m.id === bulkToId);
     if (!fromStaff || !toStaff) return;
 
-    let transferredCount = 0;
-    const updatedCrmData = { ...crmData };
+    const { next, changedIds } = computeBulkTransfer(crmData, requests.map(r => r.id), bulkFromId, bulkToId, toStaff.name);
+    if (changedIds.length === 0) {
+      toast.info(`${fromStaff.name}님이 담당한 사건이 없습니다.`);
+      setShowBulkTransferModal(false);
+      return;
+    }
 
-    requests.forEach(r => {
-      const ext = updatedCrmData[r.id];
-      if (ext) {
-        let changed = false;
-        const updatedExt = { ...ext };
-        const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
-        if (effectiveAssignee === bulkFromId) {
-          updatedExt.assigneeId = bulkToId;
-          updatedExt.assignedLawyerId = bulkToId;  // 하위 호환
-          changed = true;
-        }
-        if (changed) {
-          updatedCrmData[r.id] = updatedExt;
-          saveCrmClient(r.id, updatedExt);
-          transferredCount++;
-        }
-      }
+    const results = await Promise.all(changedIds.map(async id => ({ id, ok: await saveCrmClient(id, next[id]) })));
+    const okIds = new Set(results.filter(r => r.ok).map(r => r.id));
+    const failed = results.length - okIds.size;
+
+    setCrmData(prev => {
+      const merged = { ...prev };
+      okIds.forEach(id => { merged[id] = next[id]; });
+      return merged;
     });
+    if (okIds.size > 0) {
+      recordActivity(bulkFromId, fromStaff.name, 'case_bulk_transferred',
+        `${fromStaff.name}의 담당 사건 ${okIds.size}건을 ${toStaff.name}에게 이관했습니다.${failed ? ` (저장 실패 ${failed}건)` : ''}`,
+        { fromId: bulkFromId, toId: bulkToId, count: String(okIds.size) });
+    }
 
-    setCrmData(updatedCrmData);
-    recordActivity(bulkFromId, fromStaff.name, 'case_bulk_transferred',
-      `${fromStaff.name}의 담당 사건 ${transferredCount}건을 ${toStaff.name}에게 일괄 이관했습니다.`,
-      { fromId: bulkFromId, toId: bulkToId, count: String(transferredCount) });
-    
-    setShowBulkTransferModal(false);
-    setBulkFromId(''); setBulkToId('');
-    toast.success(`${transferredCount}건의 사건이 ${toStaff.name}에게 성공적으로 이관되었습니다.`);
+    if (failed === 0) {
+      setShowBulkTransferModal(false);
+      setBulkFromId(''); setBulkToId('');
+      toast.success(`${okIds.size}건을 ${toStaff.name}님에게 이관했습니다.`);
+    } else {
+      // 모달을 닫지 않아 다시 시도할 수 있게 둔다 (저장된 건은 이미 반영됨)
+      toast.error(`${results.length}건 중 ${failed}건을 저장하지 못했습니다. 다시 시도해 주세요.`);
+    }
+  };
+
+  // ── 핸들러: 감독 변호사 지정 ──
+  const handleSupervisorChange = async (member: StaffMember, newId: string) => {
+    await runStaffAction(() => updateStaffSupervisor(member.id, newId || undefined), () => {
+      setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, supervisingLawyerId: newId || undefined } : m));
+    }, '감독 변호사를 저장했습니다.');
   };
 
   // ── 핸들러: 역할 변경 ──
   const handleRoleChange = async (member: StaffMember, newRole: StaffRole) => {
     if (member.role === newRole) return;
+    if (member.role === 'OWNER' || newRole === 'OWNER') { toast.error('대표 변호사 역할은 변경할 수 없습니다.'); return; }
     const confirmed = await dialog.confirm({
       title: '역할 변경 확인',
       message: `${member.name}님의 역할을 ${STAFF_ROLE_CONFIG[member.role].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경하시겠습니까?\n권한이 새 역할의 기본값으로 초기화됩니다.`,
@@ -326,11 +367,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     if (!confirmed) return;
     
     const oldRole = member.role;
-    const updatedMember = { ...member, role: newRole, permissions: DEFAULT_PERMISSIONS[newRole] };
-    await saveStaffMember(updatedMember);
-    setStaffMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
-    recordActivity(member.id, member.name, 'role_changed', `${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[oldRole].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
-    toast.success(`${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
+    const newPerms = DEFAULT_PERMISSIONS[newRole];
+    await runStaffAction(() => updateStaffRole(member.id, newRole, newPerms), () => {
+      setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: newRole, permissions: newPerms } : m));
+      recordActivity(member.id, member.name, 'role_changed', `${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[oldRole].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
+    }, `${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다. 직원 화면에는 1분 안에 반영됩니다.`);
   };
 
   // ── 필터된 직원 목록 ──
@@ -443,6 +484,12 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
           animation: slideInRight 0.3s ease-out;
         }
       `}</style>
+      {staffLoadError && (
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-red-700">{staffLoadError}</p>
+          <button onClick={() => refreshStaff()} className="shrink-0 whitespace-nowrap bg-white border border-red-200 text-red-700 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-red-100 active:scale-[0.98]">다시 불러오기</button>
+        </div>
+      )}
       {/* ── 페이지 헤더 ── */}
       <div className="bg-white border border-slate-200/80 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1">
@@ -453,7 +500,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
           <p className="text-sm text-slate-500">사무실 직원의 접속 권한을 관리합니다.</p>
         </div>
         <button
-          onClick={() => setShowInviteModal(true)}
+          onClick={() => { setShowInviteModal(true); setShowInviteLinkMode(true); }}
           className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all self-start md:self-center cursor-pointer shadow-xs active:scale-[0.98]"
         >
           <UserPlus className="w-4 h-4" />
@@ -640,10 +687,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                           <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">감독 변호사</span>
                           <select
                             value={member.supervisingLawyerId || ''}
-                            onChange={e => {
-                              const newId = e.target.value;
-                              setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, supervisingLawyerId: newId || undefined } : m));
-                            }}
+                            onChange={e => handleSupervisorChange(member, e.target.value)}
                             className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-600 flex-1 min-w-0"
                           >
                             <option value="">대표 변호사 (기본)</option>
@@ -964,23 +1008,12 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
               </div>
             </div>
 
-            {/* 모드 탭 */}
-            <div className="flex border-b border-slate-200">
-              <button
-                onClick={() => { setShowInviteLinkMode(false); setGeneratedInviteUrl(''); }}
-                className={`flex-1 py-2.5 text-xs font-extrabold transition-colors cursor-pointer ${!showInviteLinkMode ? 'text-[#1E3A5F] border-b-2 border-[#1E3A5F]' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                직접 초대
-              </button>
-              <button
-                onClick={() => setShowInviteLinkMode(true)}
-                className={`flex-1 py-2.5 text-xs font-extrabold transition-colors cursor-pointer ${showInviteLinkMode ? 'text-[#1E3A5F] border-b-2 border-[#1E3A5F]' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                🔗 초대 링크
-              </button>
-            </div>
+            {/* 이전 '직접 초대'는 이름만 적은 승인 대기 기록을 만들 뿐, 링크·메일이 가지 않고 로그인과도 연결되지 않아 제거 */}
+            <p className="text-[12px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-relaxed">
+              초대 링크를 만들어 직원에게 직접 전달해 주세요. 직원이 링크로 로그인하면 '승인 대기'에 표시되고, 승인해야 사무소 업무를 이용할 수 있습니다.
+            </p>
 
-            {showInviteLinkMode ? (
+            {(
               <div className="space-y-3.5">
                 <div className="space-y-1.5">
                   <label className="text-xs text-slate-700 font-bold block">역할 지정 *</label>
@@ -1015,52 +1048,14 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         {inviteLinkCopied ? '✓ 복사됨' : '복사'}
                       </button>
                     </div>
-                    <p className="text-xs text-amber-700 font-bold">⏰ 이 링크는 48시간 후 만료됩니다.</p>
+                    <p className="text-xs text-amber-700 font-bold">⏰ 이 링크는 48시간 후 만료되며 한 번만 쓸 수 있습니다.</p>
                   </div>
                 )}
+                <button onClick={() => setShowInviteModal(false)}
+                  className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer">
+                  닫기
+                </button>
               </div>
-            ) : (
-              <>
-                <div className="space-y-3.5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-700 font-bold block">이름 *</label>
-                    <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
-                      placeholder="직원 이름 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-700 font-bold block">이메일</label>
-                    <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                      placeholder="이메일 주소" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-700 font-bold block">연락처</label>
-                    <input type="tel" value={invitePhone} onChange={e => setInvitePhone(e.target.value)}
-                      placeholder="010-XXXX-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-700 font-bold block">역할 지정</label>
-                    <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]">
-                      <option value="LAWYER">담당 변호사</option>
-                      <option value="CONSULTANT">상담 직원</option>
-                      <option value="STAFF">사무 직원</option>
-                      <option value="ACCOUNTING">경리 직원</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button onClick={handleInviteStaff}
-                    disabled={!inviteName.trim()}
-                    className="flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-xs active:scale-[0.98]">
-                    초대하기
-                  </button>
-                  <button onClick={() => setShowInviteModal(false)}
-                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer">
-                    취소
-                  </button>
-                </div>
-              </>
             )}
           </div>
         </div>
@@ -1204,7 +1199,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {inviteTokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(token => {
+                    {[...inviteTokens].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(token => {
                       const isExpired = new Date(token.expiresAt) <= new Date();
                       const status = token.isUsed ? 'used' : isExpired ? 'expired' : 'active';
                       return (
@@ -1227,8 +1222,9 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                 <>
                                   <button
                                     onClick={() => {
-                                      navigator.clipboard.writeText(buildInviteUrl(token.token));
-                                      toast.success('초대 링크가 복사되었습니다.');
+                                      navigator.clipboard.writeText(buildInviteUrl(token.token))
+                                        .then(() => toast.success('초대 링크가 복사되었습니다.'))
+                                        .catch(() => toast.error('복사하지 못했습니다.'));
                                     }}
                                     className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                                   >
@@ -1249,8 +1245,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                           toast.error(err?.message || '초대 링크 만료 처리에 실패했습니다.');
                                           return;
                                         }
-                                        const updated = loadInviteTokens();
-                                        setInviteTokens(updated);
+                                        await refreshInviteTokens();
                                         toast.success('초대 링크가 만료되었습니다.');
                                       }
                                     }}
@@ -1279,7 +1274,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">🏷️ 커스텀 역할 관리</h4>
-                <p className="text-xs text-slate-500 mt-0.5">사무실 특성에 맞게 직책/역할을 정의하고 권한을 부여할 수 있습니다.</p>
+                <p className="text-xs text-slate-500 mt-0.5">역할 이름만 이 브라우저에 저장됩니다. 아직 직원에게 배정하거나 권한을 편집할 수 없습니다(준비 중).</p>
               </div>
               <button
                 onClick={() => setShowCustomRoleForm(!showCustomRoleForm)}
@@ -1496,10 +1491,12 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                   </div>
                   <button
                     onClick={async () => {
-                      await updateStaffPermissions(selectedStaffDetail.id, editPermissions);
-                      setStaffMembers(prev => prev.map(m => m.id === selectedStaffDetail.id ? { ...m, permissions: editPermissions } : m));
-                      recordActivity(selectedStaffDetail.id, selectedStaffDetail.name, 'permission_changed', `${selectedStaffDetail.name}님의 개별 권한이 변경되었습니다.`);
-                      toast.success('권한이 저장되었습니다.');
+                      const target = selectedStaffDetail;
+                      const perms = editPermissions;
+                      await runStaffAction(() => updateStaffPermissions(target.id, perms), () => {
+                        setStaffMembers(prev => prev.map(m => m.id === target.id ? { ...m, permissions: perms } : m));
+                        recordActivity(target.id, target.name, 'permission_changed', `${target.name}님의 개별 권한이 변경되었습니다.`);
+                      }, '권한을 저장했습니다. 직원 화면에는 1분 안에 반영됩니다.');
                     }}
                     className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
                   >

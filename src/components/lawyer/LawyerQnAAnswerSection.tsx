@@ -70,8 +70,8 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
 
   const hasAlreadyAnswered = (qa: ClientQA): boolean => {
     if (!currentLawyer) return false;
-    // Check primary answer
-    if (qa.lawyerName === currentLawyer.name && qa.answer) return true;
+    // Check primary answer (ID가 있으면 ID로, 과거 데이터는 이름으로)
+    if (qa.answer && (qa.lawyerId ? qa.lawyerId === currentLawyer.id : qa.lawyerName === currentLawyer.name)) return true;
     // Check additional answers
     return (qa.additionalAnswers || []).some(a => a.lawyerId === currentLawyer.id || a.lawyerName === currentLawyer.name);
   };
@@ -83,6 +83,12 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
       return;
     }
     if (!setQas) return;
+    // 같은 질문에 한 변호사가 답변을 여러 번 달지 않도록 (이전: 안내 문구만 바뀌고 계속 추가 가능)
+    const target = qas.find(q => q.id === qaId);
+    if (target && hasAlreadyAnswered(target)) {
+      toast.error('이미 답변한 질문입니다.');
+      return;
+    }
 
     const newAnswer: QAAnswer = {
       lawyerName: currentLawyer.name,
@@ -103,6 +109,8 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
           answer: text,
           lawyerName: currentLawyer.name,
           lawyerAvatar: currentLawyer.avatar || currentLawyer.avatarData || '',
+          lawyerId: currentLawyer.id,
+          answeredAt: new Date().toISOString(),
           badge: '전문가 답변',
           status: 'answered' as const,
         };
@@ -117,7 +125,8 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
     }));
 
     setAnswerTexts(prev => ({ ...prev, [qaId]: '' }));
-    toast.success('답변이 등록되었습니다.');
+    // Q&A는 아직 서버에 저장되지 않는다(App 상태 + 이 브라우저 저장소) — 사실대로 안내
+    toast.success('답변을 저장했습니다. 현재는 이 브라우저에만 저장되어 다른 기기의 의뢰인에게는 보이지 않습니다.');
   };
 
   const mockDate = (createdAt?: string) => {

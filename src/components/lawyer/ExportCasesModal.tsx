@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype pollution CVE-2023-30533 대응
+import * as XLSX from 'xlsx-js-style'; // 주의: xlsx-js-style 1.2.0은 SheetJS 0.18.5 기반 — CVE-2023-30533(0.19.3에서 수정)·CVE-2024-22363 미해결. 파일 크기·행 수 제한으로 노출만 줄임
 import { CRM_STATUS_CONFIG, INTAKE_CHANNEL_CONFIG } from '../../types';
 import type { ConsultRequest, CrmClientExtension, CrmStatus, IntakeChannel } from '../../types';
 import ModalPortal from '../common/ModalPortal';
-import { localYmd } from '../../utils/localDate';
 import { localYmd } from '../../utils/localDate';
 
 interface Props {
@@ -60,9 +59,10 @@ export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt,
         const d = new Date(r.createdAt);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
-    } else if (dateMode === 'custom' && dateFrom && dateTo) {
-      const from = new Date(dateFrom + 'T00:00:00');
-      const to = new Date(dateTo + 'T23:59:59');
+    } else if (dateMode === 'custom' && (dateFrom || dateTo)) {
+      // 한쪽 날짜만 입력해도 적용 (이전: 둘 다 입력해야 적용돼 한쪽만 넣으면 전체가 내보내짐)
+      const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date(0);
+      const to = dateTo ? new Date(dateTo + 'T23:59:59.999') : new Date(8640000000000000);
       filtered = filtered.filter(r => {
         const d = new Date(r.createdAt);
         return d >= from && d <= to;

@@ -138,16 +138,17 @@ export default function SalesSettingsModal({
 
   // ── 4. 부재 티어 핸들러 ──
   const handleUpdateTierMinutes = (idx: number, minutes: number) => {
-    const next = [...intervalTiers];
-    next[idx].minutes = minutes;
+    // 입력 중 값은 화면에만 두고, 10분 이상일 때만 저장 (이전: 빈칸이 0분으로 저장, 기존 객체를 직접 수정)
+    const safe = Number.isFinite(minutes) ? Math.round(minutes) : 0;
+    const next = intervalTiers.map((t, i) => i === idx ? { ...t, minutes: safe } : t);
     setIntervalTiers(next);
-    saveIntervalTiers(next);
+    if (next.every(t => t.minutes >= 10)) saveIntervalTiers(next);
   };
 
   // ── 5. 텔레그램 핸들러 ──
   const handleAddTelegramRoom = () => {
     if (!newRoomName.trim() || !newRoomUrl.trim()) {
-      toast.error('알림방 이름과 웹훅 URL을 모두 입력해주세요.');
+      toast.error('알림방 이름과 텔레그램 방 링크를 모두 입력해주세요.');
       return;
     }
     // 브리핑 전송은 '요약 복사 + 텔레그램 방 열기' 방식 → 텔레그램 방 링크만 허용
@@ -183,12 +184,12 @@ export default function SalesSettingsModal({
       const updated = statuses.filter(s => s !== itemToDelete.value);
       setStatuses(updated);
       saveStatuses(updated);
-      toast.success(`'${itemToDelete.value}' 상태가 삭제되었으며, 기존 건은 '${migrationTarget || '종결'}'(으)로 이전되었습니다.`);
+      toast.success(`'${itemToDelete.value}' 상태를 목록에서 삭제했습니다. 기존 건의 상태는 그대로입니다.`);
     } else if (itemToDelete.type === 'inbound') {
       const updated = inboundPaths.filter(p => p !== itemToDelete.value);
       setInboundPaths(updated);
       saveInboundPaths(updated);
-      toast.success(`'${itemToDelete.value}' 경로가 삭제되었으며, 기존 건은 '${migrationTarget || '기타'}'(으)로 이전되었습니다.`);
+      toast.success(`'${itemToDelete.value}' 경로를 목록에서 삭제했습니다. 기존 건의 유입 경로는 그대로입니다.`);
     }
     setItemToDelete(null);
     setMigrationTarget('');
@@ -486,7 +487,7 @@ export default function SalesSettingsModal({
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                 <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
                   <Send size={14} className="text-sky-500" />
-                  <span>텔레그램 알림방 웹훅 등록</span>
+                  <span>텔레그램 알림방 링크 등록</span>
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
@@ -498,7 +499,7 @@ export default function SalesSettingsModal({
                   />
                   <input
                     type="text"
-                    placeholder="https://api.telegram.org/bot.../sendMessage"
+                    placeholder="https://t.me/방이름 (봇 토큰은 넣지 마세요)"
                     value={newRoomUrl}
                     onChange={e => setNewRoomUrl(e.target.value)}
                     className="px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl bg-white outline-hidden"
@@ -557,24 +558,13 @@ export default function SalesSettingsModal({
           <div className="bg-white p-5 rounded-2xl shadow-xl max-w-sm w-full space-y-4 border border-slate-200">
             <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
               <AlertTriangle className="text-amber-500 w-5 h-5" />
-              <span>데이터 마이그레이션 안내</span>
+              <span>항목 삭제 확인</span>
             </h4>
+            {/* 이전: '대체 대상'을 고르게 하고 기존 건을 옮겼다고 안내했지만 실제로 옮기는 코드는 없었음 */}
             <p className="text-xs text-slate-600 leading-relaxed">
-              <strong>'{itemToDelete.value}'</strong> 항목을 삭제하면, 기존에 이 항목으로 지정된 데이터들이 영향을 받습니다. 대체할 대상을 선택해주세요.
+              <strong>'{itemToDelete.value}'</strong> 항목을 선택 목록에서 삭제합니다.
+              이미 이 값으로 저장된 고객·리드는 자동으로 바뀌지 않으니, 필요하면 각 건에서 직접 변경해 주세요.
             </p>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">대체 대상 선택</label>
-              <select
-                value={migrationTarget}
-                onChange={e => setMigrationTarget(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl bg-white"
-              >
-                {itemToDelete.type === 'status'
-                  ? statuses.filter(s => s !== itemToDelete.value).map(s => <option key={s} value={s}>{s}</option>)
-                  : inboundPaths.filter(p => p !== itemToDelete.value).map(p => <option key={p} value={p}>{p}</option>)
-                }
-              </select>
-            </div>
             <div className="flex gap-2 justify-end pt-2">
               <button
                 type="button"
@@ -588,7 +578,7 @@ export default function SalesSettingsModal({
                 onClick={handleConfirmDeletion}
                 className="px-4 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-extrabold"
               >
-                이전 후 삭제
+                삭제
               </button>
             </div>
           </div>

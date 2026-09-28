@@ -14,6 +14,8 @@ scratch/
 오토로/
 로패스/
 references/
+.kiro/
+_tmp_*
 
 .vercel
 .env*
