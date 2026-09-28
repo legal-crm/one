@@ -72,7 +72,7 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
             </div>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed pl-10">
-            대한민국 변호사법(제109조 및 제34조)과 대한변협 AI 가이드라인에 따라, 본 AI 분석 결과는 <strong>담당 변호사의 직접 검토 및 확인</strong>을 거쳐야만 의뢰인에게 발송될 수 있습니다.
+            본 AI 분석 결과는 <strong>담당 변호사가 직접 검토·확인한 뒤에만</strong> 의뢰인에게 보낼 수 있습니다. (법률사무는 변호사 책임 아래 이루어져야 하므로 이 플랫폼이 정한 확인 절차입니다)
           </p>
         </div>
 

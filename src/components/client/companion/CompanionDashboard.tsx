@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
 import { updateCrmClientExtension } from '../../../services/crmService';
+import { parseLocalYmd } from '../../../utils/localDate';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
 import CreditorMeetingGuideModal from './CreditorMeetingGuideModal';
@@ -52,12 +53,13 @@ export default function CompanionDashboard({
     : (schedules.length > 0 ? schedules[schedules.length - 1] : undefined);
 
   // D-Day 계산
+  // 로컬 자정 기준 날짜 차이 (이전: 'YYYY-MM-DD'를 UTC로 해석 + 현재 시각 기준 올림 → 시간대에 따라 하루 어긋남)
   const calculateDday = (dueDateStr?: string): number => {
-    if (!dueDateStr) return NaN;
-    const due = new Date(dueDateStr);
+    const due = parseLocalYmd(dueDateStr || '');
+    if (!due) return NaN;
     const today = new Date();
-    const diffTime = due.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    today.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / 86400000);
   };
   const dDay = calculateDday(currentTargetRound?.dueDate);
 
@@ -870,7 +872,7 @@ export default function CompanionDashboard({
             onClose={() => setIsStatementModalOpen(false)}
             clientId={caseData.id || 'client-self'}
             clientName={caseData.alias || '신청인'}
-            courtName={caseData.courtName || '서울회생법원'}
+            courtName={caseData.courtName || ''}
           />
         </React.Suspense>
       )}

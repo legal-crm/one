@@ -326,7 +326,7 @@ export default function BlockchainConfigModal({
                 }`}
               >
                 <div className="font-bold text-xs">암호학적 타임스탬프</div>
-                <div className="text-[10px] text-slate-400 mt-1">KISA 표준 오프체인 무결성 보관 (0원 가스)</div>
+                <div className="text-[10px] text-slate-400 mt-1">서버에 해시만 보관 (온체인 기록 아님 · 가스비 없음)</div>
               </button>
             </div>
           </div>

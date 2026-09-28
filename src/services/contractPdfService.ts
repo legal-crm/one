@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import type { ElectronicContract } from '../types';
+import { localYmd } from '../utils/localDate';
 import { generateQrCodeDataUrl } from './blockchainAnchorService';
 
 export async function generateCourtSubmissionPdf(contract: ElectronicContract): Promise<void> {
@@ -108,7 +109,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
   const ts = contract.timestampToken;
   const anchor = contract.blockchainAnchor;
   const formattedFee = (contract.totalFee * 10000).toLocaleString();
-  const dateFormatted = contract.contractDate || new Date().toISOString().slice(0, 10);
+  const dateFormatted = contract.contractDate || localYmd();
 
   // 대표 서명
   const clientSig = contract.documents.find(d => d.clientSignature)?.clientSignature || '';
@@ -126,13 +127,13 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             </div>
             <h1 style="font-size: 26px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: -0.5px;">사건위임계약서 및 전자체결 증명서</h1>
             <p style="font-size: 11px; color: #475569; margin: 5px 0 0 0;">
-              전자서명법 제3조 제1항 및 민사소송법 제358조(사문서의 진정성립) 공인 증빙서
+              전자서명·본인확인·문서 해시 기록 (시스템 발급 · 공인 인증기관 증명서 아님)
             </p>
           </div>
           <div style="text-align: right; font-family: monospace;">
             <div style="font-size: 10px; color: #64748b; font-weight: bold;">계약 식별 관리번호</div>
             <div style="font-size: 14px; font-weight: 900; color: #0f172a;">${contract.id}</div>
-            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">발급일시: ${new Date().toISOString().slice(0, 19).replace('T', ' ')} (KST)</div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">발급일시: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })} (KST)</div>
           </div>
         </div>
 
@@ -232,7 +233,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
 
       <!-- 1페이지 하단 푸터 -->
       <div style="border-top: 1px solid #cbd5e1; padding-top: 10px; display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
-        <span>대한민국 전자서명법 제3조 제1항 준수 공인 서식</span>
+        <span>전자서명 기록 사본</span>
         <span>법원제출용 표지 [1 / 3]</span>
         <span>문서관리번호: ${contract.id}</span>
       </div>

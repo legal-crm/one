@@ -2405,7 +2405,7 @@ export default function MyPageView({
                                   </span>
                                 </div>
                                 <p className="text-xs text-emerald-200 mt-0.5">
-                                  {crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'} · 사건번호: <span className="font-mono font-bold text-white">{crmExt?.courtCase?.caseNumber || '사건 접수 준비중'}</span>
+                                  {crmExt?.courtCase?.courtName || activeRequest?.court || '관할 법원 미등록'} · 사건번호: <span className="font-mono font-bold text-white">{crmExt?.courtCase?.caseNumber || '사건 접수 준비중'}</span>
                                 </p>
                               </div>
                             </div>
@@ -2413,7 +2413,7 @@ export default function MyPageView({
                             <button
                               type="button"
                               onClick={() => {
-                                const court = crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원';
+                                const court = crmExt?.courtCase?.courtName || activeRequest?.court || '관할 법원';
                                 const cNo = crmExt?.courtCase?.caseNumber || '사건번호 발급 예정';
                                 const lawFirm = clientContract?.lawFirmName || '법률대리인 사무소';
                                 const msg = `[개인회생 금지명령 송달 안내]\n본인은 ${court}에 개인회생(사건번호: ${cNo})을 정식 접수하여 법원으로부터 금지명령을 송달받았습니다.\n채무자회생법 제593조에 따라 일체의 변제요구, 전화/방문 추심 및 급여·통장 압류가 법적으로 전면 금지됩니다.\n모든 문의는 본인의 법률대리인(${lawFirm})으로 연락 바랍니다.`;
@@ -2521,7 +2521,7 @@ export default function MyPageView({
                                 </span>
                               </div>
                               <p className="text-xs text-indigo-800 dark:text-indigo-300 mt-0.5">
-                                {crmExt?.courtCase?.courtName || '서울회생법원'} 회생법정 · 신청인 본인 출석 필수 (소요시간 3~5분)
+                                {crmExt?.courtCase?.courtName || '관할 법원'} · 신청인 본인 출석 원칙 (기일·장소는 법원 통지서 확인)
                               </p>
                             </div>
                           </div>
@@ -3092,7 +3092,7 @@ export default function MyPageView({
                           <div className="flex items-center gap-2.5">
                             <Shield className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span className="text-slate-600 dark:text-slate-300">
-                              전자서명법 제3조에 따라 공인 암호화 해시(SHA-256)가 적용된 법적 효력을 갖는 전자계약서입니다.
+                              전자서명으로 체결한 계약서입니다. 체결 시점의 문서 해시(SHA-256)를 기록해 두어 이후 변경 여부를 확인할 수 있습니다.
                             </span>
                           </div>
                           {clientContract.contractUrl && (
@@ -3405,15 +3405,16 @@ export default function MyPageView({
         onClose={() => setIsFastDocHubOpen(false)}
         clientName={profile?.name || userAlias || '신청인'}
         clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
-        hasStatement={true}
-        hasIncomeExpense={true}
+        // 작성 여부·채무 요약은 실제 값만 (이전: 작성 완료 true, 총채무 5,000만·소득 250만·탕감률 64%·월 68만 가짜 값)
+        hasStatement={false}
+        hasIncomeExpense={false}
         hasProperty={false}
         debtSummary={{
-          totalDebt: profile?.debtTotal ? profile.debtTotal * 10000 : 50000000,
-          monthlyIncome: profile?.income ? profile.income * 10000 : 2500000,
-          courtName: activeRequest?.court || '서울회생법원',
-          expectedReductionRate: 64,
-          monthlyPayment: 680000
+          totalDebt: profile?.debtTotal ? profile.debtTotal * 10000 : 0,
+          monthlyIncome: profile?.income ? profile.income * 10000 : 0,
+          courtName: activeRequest?.court || '',
+          expectedReductionRate: 0,
+          monthlyPayment: 0
         }}
         onOpenStatementModal={() => setIsStatementModalOpen(true)}
         onOpenIncomeExpenseModal={() => setIsIncomeExpenseModalOpen(true)}
@@ -3431,9 +3432,9 @@ export default function MyPageView({
         clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
         clientName={profile?.name || userAlias || '신청인'}
         caseType={activeRequest?.caseType === 'bankruptcy' || activeRequest?.category === 'individual_bankruptcy' ? 'bankruptcy' : 'rehab'}
-        courtName={activeRequest?.court || '서울회생법원'}
-        totalDebtAmount={profile?.debtTotal || 5000}
-        monthlyIncome={profile?.income || 250}
+        courtName={activeRequest?.court || ''}
+        totalDebtAmount={profile?.debtTotal || 0}
+        monthlyIncome={profile?.income || 0}
         onSuccessSubmitted={() => {
           setRefreshTick(c => c + 1);
         }}
@@ -3503,7 +3504,7 @@ export default function MyPageView({
   <CreditorMeetingGuideModal
     isOpen={isCreditorMeetingModalOpen}
     onClose={() => setIsCreditorMeetingModalOpen(false)}
-    courtName={crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'}
+    courtName={crmExt?.courtCase?.courtName || activeRequest?.court || ''}
     caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '사건 접수 준비중'}
   />
 

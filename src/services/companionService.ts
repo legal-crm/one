@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
 import { getAuthHeaders } from '../supabaseClient';
+import { localYmd } from '../utils/localDate';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -51,14 +52,14 @@ export function generateRepaymentSchedules(
 ): RepaymentRoundItem[] {
   const [startYear, startMonth] = (startYearMonth || '').split('-').map(Number);
   if (!startYear || !startMonth || !totalRounds || totalRounds < 1) return [];
-  const day = Math.min(28, Math.max(1, repaymentDay || 1)); // 29~31일 지정 시 짧은 달 날짜 오류 방지
+  // 지정일 그대로 쓰되, 짧은 달은 말일로 보정 (이전: 29~31일을 매달 28일로 고정)
+  const day = Math.min(31, Math.max(1, repaymentDay || 1));
   const items: RepaymentRoundItem[] = [];
 
   for (let i = 1; i <= totalRounds; i++) {
-    const monthIndex = startMonth - 1 + (i - 1);
-    const y = startYear + Math.floor(monthIndex / 12);
-    const m = (monthIndex % 12) + 1;
-    const dueDate = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const first = new Date(startYear, startMonth - 1 + (i - 1), 1);
+    const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    const dueDate = localYmd(new Date(first.getFullYear(), first.getMonth(), Math.min(day, lastDay)));
     const selfDeclared = i <= initialCompletedRounds;
     items.push({
       round: i,
@@ -145,9 +146,15 @@ export function syncCompanionWithCrmCase(
   const caseNumberMasked = realCaseNumber
     ? (realCaseNumber.length > 6 ? `${realCaseNumber.slice(0, -4)}****` : realCaseNumber)
     : '접수 준비중';
-  const monthlyRepayment = Number(ds.monthlyPayment || crmExt.repaymentPlan?.monthlyPayment || 0);
-  const courtAccount = ds.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
-  const totalRounds = Number(ds.totalRounds || crmExt.repaymentPlan?.totalRounds || 0);
+  // 필드명 정합 (이전: 존재하지 않는 ds.totalRounds·repaymentPlan.monthlyPayment·ds.courtVirtualAccount를 읽어 스케줄이 비는 문제)
+  // - DecisionSummaryData: monthlyPayment(원 또는 만원), repaymentMonths, virtualAccountBank/virtualAccountNumber
+  // - RepaymentPlanData: monthlyRepaymentTotal(원), months
+  const dsMonthlyRaw = Number(ds.monthlyPayment || 0);
+  const dsMonthlyWon = dsMonthlyRaw > 0 && dsMonthlyRaw < 10000 ? dsMonthlyRaw * 10000 : dsMonthlyRaw; // 1만 원 미만이면 만원 단위로 입력된 값
+  const monthlyRepayment = Number(dsMonthlyWon || crmExt.repaymentPlan?.monthlyRepaymentTotal || ds.monthlyPayment || 0);
+  const courtAccount = (ds.virtualAccountNumber ? `${ds.virtualAccountBank || ''} ${ds.virtualAccountNumber}`.trim() : '')
+    || ds.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
+  const totalRounds = Number(ds.repaymentMonths || ds.totalRounds || crmExt.repaymentPlan?.months || 0);
 
   let startYearMonth = '';
   let repaymentDay = 0;
@@ -400,7 +407,7 @@ export interface CourtSearchLinkInfo {
 
 export function getCourtSearchDeepLink(courtName: string, caseNumber: string): CourtSearchLinkInfo {
   const cleanNumber = (caseNumber || '').trim();
-  const cleanCourt = (courtName || '서울회생법원').trim();
+  const cleanCourt = (courtName || '').trim();
 
   return {
     mobileUrl: 'https://m.scourt.go.kr',
@@ -577,10 +584,10 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       stageInfo: {
         stageNumber: 3,
         stageName: '폐지 위험 (기준 도달)',
-        description: `법원의 개인회생 직권 폐지 결정 위험 임계치(${threshold.courtName} 기준 ${threshold.repealRiskRounds}회)를 초과했습니다.`,
+        description: `참고용 경향 기준(${threshold.courtName} ${threshold.repealRiskRounds}회)에 도달했습니다. 실제 폐지 여부는 재판부가 판단합니다.`,
         actionTip: '미납금 즉시 분납 또는 긴급 변제계획 변경신청·특별면책 검토가 시급합니다.'
       },
-      message: `🚨 변제금 ${count}회차 미납: ${threshold.courtName} 직권 폐지 결정 위험이 최고조에 달했습니다.`,
+      message: `🚨 납부 기록이 없는 회차 ${count}건: 절차 폐지 위험이 높습니다. 바로 담당 변호사와 상의하세요.`,
       recommendedAction: '즉시 담당 변호사와 상의해 미납금 납부, 변제계획 변경신청, 요건이 되면 면책 신청(법 제624조 제2항) 가능 여부를 검토하세요.'
     };
   } else if (count >= 3) {
@@ -592,10 +599,10 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       stageInfo: {
         stageNumber: 2,
         stageName: '경고 (3회)',
-        description: '법원의 개인회생 폐지 예고 통지서가 발송되는 위험 단계입니다.',
+        description: '미납이 누적되어 법원·회생위원이 납부 독촉이나 폐지 검토를 할 수 있는 단계입니다.',
         actionTip: '가능한 범위에서 가상계좌로 분할 입금하거나 급여감소 등 사정변경 소명을 준비하세요.'
       },
-      message: `⚠️ 변제금 3회차 미납 경고: ${threshold.courtName} 폐지예고 통지서 발송 단계입니다.`,
+      message: `⚠️ 납부 기록이 없는 회차 ${count}건: 미납이 누적되면 ${threshold.courtName}이 절차 폐지를 검토할 수 있습니다.`,
       recommendedAction: '가능한 금액부터 가상계좌로 입금하고, 소득이 줄었다면 담당 변호사와 변제계획 변경신청을 검토하세요. (분납 가능 여부는 법원·회생위원 안내에 따릅니다)'
     };
   } else if (count >= 1) {

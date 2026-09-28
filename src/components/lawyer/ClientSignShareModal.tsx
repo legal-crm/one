@@ -32,11 +32,11 @@ ${contract.clientName} 의뢰인님,
 
 ■ 계약명: 개인회생/파산 사건 수임 계약
 ■ 총 수임료: ${feeFormatted}원
-■ 서명 기한: 72시간 이내
+■ 서명 요청: 가능한 빨리 서명해 주세요
 ■ 안전 서명 링크:
 ${signUrl}
 
-※ 본 계약은 전자서명법 제3조에 따라 법적 효력을 가지며, 대표자 명의의 스마트폰(PASS 또는 문자)으로 본인확인이 진행됩니다.`;
+※ 서명 전 대표자 명의 휴대폰으로 본인확인이 진행됩니다. 전자서명은 전자적 형태라는 이유만으로 효력이 부인되지 않습니다(전자서명법 제3조).`;
 
   const handleCopyLink = () => {
     if (!signUrl) {
@@ -107,7 +107,7 @@ ${signUrl}
               </button>
             </div>
             <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-amber-500" /> 발송 후 72시간 동안 유효하며, 1회 서명 완료 시 자동 만료됩니다.
+              <Clock className="w-3 h-3 text-amber-500" /> 서명이 완료되면 같은 링크로 다시 서명할 수 없습니다. 시간 만료 기능은 아직 없으니, 링크가 유출되면 새 계약서로 재발급하세요.
             </p>
           </div>
 

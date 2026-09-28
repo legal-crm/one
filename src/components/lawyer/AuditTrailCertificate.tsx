@@ -29,10 +29,12 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
   }, [contract.id, contract.blockchainAnchor?.verifyUrl, contract.documentHashes?.finalHash]);
 
   const handleCopyTx = () => {
-    const tx = contract.blockchainAnchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c';
-    navigator.clipboard.writeText(tx);
-    setCopiedTx(true);
-    toast.success('트랜잭션 해시가 클립보드에 복사되었습니다.');
+    const tx = contract.blockchainAnchor?.txHash;
+    if (!tx) { toast.info('기록된 해시가 없습니다.'); return; }
+    navigator.clipboard.writeText(tx).then(
+      () => { setCopiedTx(true); toast.success('해시를 클립보드에 복사했습니다.'); },
+      () => toast.error('클립보드 복사에 실패했습니다.')
+    );
     setTimeout(() => setCopiedTx(false), 2000);
   };
 
@@ -53,20 +55,20 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 bg-slate-900 text-white font-black text-[10px] rounded tracking-wider">OFFICIAL</span>
-            <span className="text-[11px] font-bold text-slate-500 tracking-wider">KOREA E-SIGNATURE ACT VERIFIED</span>
+            <span className="text-[11px] font-bold text-slate-500 tracking-wider">AUDIT TRAIL</span>
           </div>
           <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-brand" />
             <span>전자계약 체결 및 감사추적 인증서</span>
           </h3>
           <p className="text-[11px] text-slate-500 mt-1">
-            본 문서는 전자서명법 제3조 및 전자문서및전자거래기본법 제4조의2에 의거하여 생성된 공인 규격 증거 보고서입니다.
+            본 문서는 전자계약의 본인확인·서명·해시 기록을 모은 시스템 감사추적 보고서입니다. 공인 인증기관이 발급한 증명서가 아니며, 법적 효력은 개별 사안에서 법원이 판단합니다.
           </p>
         </div>
         <div className="text-right border-l-2 md:border-l border-slate-200 pl-4">
           <p className="text-[10px] text-slate-400 font-bold uppercase">Contract Identifier</p>
           <p className="text-sm font-black text-slate-900 font-mono">{data.contractId}</p>
-          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{data.completedAt.slice(0, 19).replace('T', ' ')} (KST)</p>
+          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{data.completedAt ? new Date(data.completedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }) : '-'} (KST)</p>
         </div>
       </div>
 
@@ -198,15 +200,17 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
           </div>
         </div>
 
-        {/* ── 5. 블록체인 분산원장 영구 각인 & 진위검증 QR (Polygon PoS Proof) ── */}
+        {/* ── 5. 문서 해시 기록 & 진위검증 QR ──
+             실제 온체인 기록(isRealOnChain)일 때만 네트워크·블록·트랜잭션을 표시한다.
+             (이전: 기록이 없어도 가짜 txHash·블록번호·'Polygon Mainnet'·'위변조 100% 차단'을 표시) */}
         <div className="bg-blue-950 text-blue-100 border border-blue-800 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h4 className="font-bold text-white flex items-center gap-1.5 text-xs">
               <Database className="w-4 h-4 text-blue-400" />
-              <span>5. 블록체인 분산원장 영구 각인 (Polygon Distributed Ledger Proof)</span>
+              <span>5. 문서 해시 기록 {contract.blockchainAnchor?.isRealOnChain ? '(블록체인 온체인)' : '(서버 보관 · 온체인 미기록)'}</span>
             </h4>
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-700/50 px-2 py-0.5 rounded">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> 사후 위·변조 100% 원천 차단
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> 해시 대조로 변경 여부 확인 가능
             </span>
           </div>
 
@@ -214,17 +218,17 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
             <div className="flex-1 space-y-1.5 text-[10px] font-mono w-full">
               <div className="flex justify-between border-b border-blue-900/60 pb-1">
                 <span className="text-blue-300 font-sans">분산원장 네트워크</span>
-                <span className="text-white font-bold">{contract.blockchainAnchor?.network || 'Polygon PoS Mainnet (EVM-137)'}</span>
+                <span className="text-white font-bold">{contract.blockchainAnchor?.isRealOnChain ? (contract.blockchainAnchor.network || '-') : '온체인 미기록'}</span>
               </div>
               <div className="flex justify-between border-b border-blue-900/60 pb-1">
                 <span className="text-blue-300 font-sans">블록 번호 (Block #)</span>
-                <span className="text-emerald-300 font-bold">#{(contract.blockchainAnchor?.blockNumber || 61845214).toLocaleString()}</span>
+                <span className="text-emerald-300 font-bold">{contract.blockchainAnchor?.isRealOnChain && contract.blockchainAnchor.blockNumber ? `#${contract.blockchainAnchor.blockNumber.toLocaleString()}` : '-'}</span>
               </div>
               <div>
-                <span className="text-blue-300 block font-sans">트랜잭션 해시 (Polygon TxHash):</span>
+                <span className="text-blue-300 block font-sans">{contract.blockchainAnchor?.isRealOnChain ? '트랜잭션 해시 (TxHash):' : '서버 보관 다이제스트 (트랜잭션 아님):'}</span>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="text-blue-200 break-all select-all flex-1 text-[9.5px]">
-                    {contract.blockchainAnchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c'}
+                    {contract.blockchainAnchor?.txHash || contract.documentHashes?.finalHash || '기록 없음'}
                   </span>
                   <button
                     onClick={handleCopyTx}
@@ -236,8 +240,8 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
                 </div>
               </div>
               <div className="pt-1 flex items-center justify-between text-[9px] text-blue-300">
-                <span>공증 컨트랙트: 0x3a82F56D2dE8...</span>
-                {contract.blockchainAnchor?.explorerUrl && (
+                <span>{contract.blockchainAnchor?.isRealOnChain && contract.blockchainAnchor.smartContractAddress ? `기록 컨트랙트: ${contract.blockchainAnchor.smartContractAddress.slice(0, 14)}...` : ''}</span>
+                {contract.blockchainAnchor?.isRealOnChain && contract.blockchainAnchor?.explorerUrl && (
                   <a
                     href={contract.blockchainAnchor.explorerUrl}
                     target="_blank"
@@ -272,7 +276,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
       <div className="mt-5 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="text-[10px] text-slate-500 leading-relaxed flex-1">
           <p>
-            <strong>사법 증명 효력:</strong> 본 인증서는 전자서명법 제3조 제1항 및 민사소송법 제358조에 따라 사문서로서의 진정성립을 증명하며, 분산원장에 각인되어 사후 일체 수정이 불가능합니다.
+            <strong>참고:</strong> 전자서명법 제3조에 따라 전자서명은 전자적 형태라는 이유만으로 효력이 부인되지 않습니다. 다만 이 기록은 공인 증명서가 아니며, 문서의 진정성립 여부는 분쟁 시 법원이 판단합니다. 해시 대조로 체결 후 변경 여부를 확인할 수 있습니다.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">

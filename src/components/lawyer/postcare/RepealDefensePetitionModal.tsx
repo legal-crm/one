@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepealDefensePetitionType } from '../../../types/courtPetitionTypes';
 import ModalPortal from '../../common/ModalPortal';
+import { escapeHtml } from '../../../services/court/CourtFormHtmlBuilder';
 
 interface RepealDefensePetitionModalProps {
   isOpen: boolean;
@@ -25,68 +26,77 @@ function RepealDefensePetitionModalInner({
   petitionType,
   clientRequest,
   crmExt,
-  activeLawyerName = '김변호',
-  overdueCount = 3,
-  totalOverdueAmount = 1440000
+  activeLawyerName = '',
+  overdueCount = 0,
+  totalOverdueAmount = 0
 }: RepealDefensePetitionModalProps) {
 
+  // ⚠️ 서면 초안 원칙: 사실관계는 지어내지 않는다. [대괄호]는 증빙을 보고 담당자가 채울 빈칸이다.
+  // (이전: '암 진단·입원', '청산가치 1,500만 원 / 기납부 1,920만 원', '지인·친족 지원으로 완납', '가족 의료비', 소득 추산식,
+  //  '서울회생법원'·'2026개회 (접수 준비중)'·'서울특별시'·'김변호' 기본값을 넣어 그대로 제출될 위험)
   const [copied, setCopied] = useState(false);
-  const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '2026개회 (접수 준비중)';
-  const monthlyPayment = crmExt.repaymentPlan?.monthlyRepaymentTotal || 480000;
+  const BL = '[          ]';
+  const clientName = clientRequest.clientName || BL;
+  const cc: any = crmExt.courtCase || {};
+  const courtName = cc.courtName || crmExt.decisionSummary?.courtName || clientRequest.court || '';
+  const courtLabel = courtName || '[관할 법원]';
+  const caseNumber = cc.caseNumber || crmExt.decisionSummary?.caseNumber || (clientRequest as any).caseNumber || BL;
+  const monthlyPayment = Math.round(crmExt.repaymentPlan?.monthlyRepaymentTotal || 0);
+  const won = (n: number) => (n > 0 ? `${Math.round(n).toLocaleString()}원` : '[금액]원');
+  const address = (clientRequest as any).address || BL;
+  const lawyer = activeLawyerName || BL;
   const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // 1. 변제계획 변경신청서 초안
+  // 1. 변제계획 변경신청서 초안 (채무자회생법 제619조)
   const planModDraft = `[변제계획 변경신청서]
 
 사   건 : ${caseNumber} 개인회생
 신 청 인(채무자) : ${clientName}
-주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || ''}
-대 리 인 : 변호사 ${activeLawyerName}
+주   소 : ${address}
+연 락 처 : ${clientRequest.phone || BL}
+대 리 인 : 변호사 ${lawyer}
 
 신  청  취  지
 
-신청인에 대하여 ${courtName}이 인가한 변제계획을 별지 '수정 변제계획안'과 같이 변경한다.
+신청인에 대하여 ${courtLabel}이 인가한 변제계획을 별지 '변경 변제계획안'과 같이 변경한다.
 라는 결정을 구합니다.
 
 신  청  이  유
 
 1. 변제계획 인가의 경위
-신청인은 귀원으로부터 변제계획인가 결정을 받고 인가된 계획에 따라 월 ${monthlyPayment.toLocaleString()}원씩 성실히 변제금을 납부해 왔습니다.
+신청인은 [인가결정일] 변제계획인가결정을 받고, 인가된 계획에 따라 월 ${won(monthlyPayment)}씩 변제금을 납부하여 왔습니다. (현재까지 [  ]회 납부)
 
 2. 사정변경의 발생 (채무자회생법 제619조)
-신청인은 최근 예상치 못한 급여 삭감(또는 권고사직·폐업·중증 질환 발생)으로 인하여 기존 월 소득이 현저히 감소하여, 기존의 변제계획을 그대로 수행하는 것이 불가능한 사정변경이 발생하였습니다.
-- 기존 인정 소득: 월 ${(monthlyPayment + 1500000).toLocaleString()}원
-- 현재 실수령 소득: 월 ${(monthlyPayment * 0.6 + 1300000).toLocaleString()}원 (급여 감소 및 고정 의료비 지출)
+신청인에게 [사정변경 내용 — 예: 급여 삭감 / 권고사직 / 폐업 / 질병 등, 발생 일자]이 생겨 기존 변제계획을 그대로 수행하기 어렵게 되었습니다.
+- 인가 당시 월 소득: [금액]원
+- 현재 월 소득: [금액]원 (증빙: [급여명세서 등])
 
-3. 변경 변제계획안의 타당성 (청산가치 보장의 원칙 충족)
-신청인은 월 변제금을 기존 ${monthlyPayment.toLocaleString()}원에서 ${(monthlyPayment * 0.65).toLocaleString()}원으로 감액하고 변제기간을 연장하더라도, 본 사건 개시 당시 확정된 채무자의 청산가치를 여전히 충분히 초과하여 변제할 수 있으므로 채권자들의 이익을 침해하지 아니합니다.
+3. 변경 변제계획안의 내용 및 타당성
+변경안은 월 변제금을 ${won(monthlyPayment)}에서 [금액]원으로 조정하고 [변제기간 조정 내용]합니다. 변경 후에도 청산가치 보장 원칙을 충족합니다(청산가치 [금액]원, 변경안 총변제액의 현재가치 [금액]원). 변제기간은 법이 정한 상한(제611조 제5항)을 넘지 않습니다.
 
 4. 결 어
-따라서 채무자회생 및 파산에 관한 법률 제619조에 의하여 변제계획의 변경을 신청하오니 인가하여 주시기 바랍니다.
+따라서 채무자 회생 및 파산에 관한 법률 제619조에 따라 변제계획의 변경을 신청합니다.
 
 첨  부  서  류
-1. 소득감소 소명자료(원천징수영수증/급여명세서/퇴직증명서) 각 1부
-2. 수정 변제계획안 1부
+1. 소득 변동 소명자료 [ ]부
+2. 변경 변제계획안 1부
 3. 수입 및 지출에 관한 목록 1부
 
 ${todayStr}
 
 위 신청인(채무자) : ${clientName} (인)
-신청인의 대리인 변호사 : ${activeLawyerName} (인)
+신청인의 대리인 변호사 : ${lawyer} (인)
 
-${courtName} 귀중`;
+${courtLabel} 귀중`;
 
   // 2. 특별면책 신청서 초안 (채무자회생법 제624조 제2항)
-  const specialDischargeDraft = `[특별면책 신청서]
+  const specialDischargeDraft = `[면책신청서 (채무자회생법 제624조 제2항)]
 
 사   건 : ${caseNumber} 개인회생
 신 청 인(채무자) : ${clientName}
-주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || ''}
-대 리 인 : 변호사 ${activeLawyerName}
+주   소 : ${address}
+연 락 처 : ${clientRequest.phone || BL}
+대 리 인 : 변호사 ${lawyer}
 
 신  청  취  지
 
@@ -95,47 +105,47 @@ ${courtName} 귀중`;
 
 신  청  이  유
 
-1. 채무자회생 및 파산에 관한 법률 제624조 제2항의 규정
-법원은 채무자가 변제계획에 따른 변제를 완료하지 못하였다 하더라도, 다음 각호의 요건이 모두 충족되는 때에는 이해관계인의 의견을 들은 후 면책의 결정을 할 수 있습니다.
+1. 채무자 회생 및 파산에 관한 법률 제624조 제2항
+법원은 채무자가 변제계획에 따른 변제를 완료하지 못한 경우에도 다음 요건이 모두 충족되는 때에는 이해관계인의 의견을 들은 후 면책의 결정을 할 수 있습니다.
 ① 채무자가 책임질 수 없는 사유로 인하여 변제를 완료하지 못하였을 것
-② 회생채권자가 변제계획에 따라 변제받은 총액이 파산절차를 통하여 배당받을 수 있었던 금액(청산가치)보다 적지 아니할 것
+② 개인회생채권자가 면책결정일까지 변제받은 금액이 채무자가 파산절차를 신청한 경우 파산절차에서 배당받을 금액보다 적지 아니할 것
 ③ 변제계획의 변경이 불가능할 것
 
-2. 각 요건의 구비 여부 소명
-가. 채무자의 책임 없는 사유 (제1호)
-신청인은 변제 수행 도중 중증 난치성 질환(암 진단 및 지속적 입원 치료)으로 인하여 경제활동을 영위할 수 있는 근로능력을 완전히 상실하여 변제를 지속할 수 없게 되었습니다.
+2. 각 요건의 소명
+가. 책임질 수 없는 사유 (제1호)
+[사유와 발생 경위 — 예: 진단명·진단일, 근로 불능 기간 등. 증빙 기재]
 
-나. 청산가치 보장 원칙 충족 (제2호)
-본 사건 변제계획인가 당시 확정된 채무자의 청산가치(보유재산 평가액)는 약 1,500만 원이었던 반면, 신청인이 귀원 회생위원 가상계좌로 기납부한 누적 변제금 총액은 1,920만 원에 달하여 청산가치를 초과 변제 완료하였습니다.
+나. 변제받은 금액 (제2호)
+인가 당시 청산가치는 [금액]원이고, 신청인이 현재까지 변제한 총액은 [금액]원입니다(변제금 납부확인서 참조).
 
 다. 변제계획 변경의 불가능 (제3호)
-신청인은 근로능력 완전 상실로 향후 추가적인 가용소득 창출이 불가능하므로 최저 생계비 수준의 소액 변제계획 변경조차 불가능한 상황입니다.
+[변경이 불가능한 사정 — 예: 향후 소득 전망 등]
 
 3. 결 어
-위와 같이 법 제624조 제2항 각호의 요건을 모두 충족하였으므로, 채무자에게 면책 결정을 내려주시기 바랍니다.
+위와 같이 제624조 제2항의 요건을 갖추었으므로 면책결정을 하여 주시기 바랍니다. (면책되지 않는 채권은 제625조 제2항에 따릅니다)
 
 첨  부  서  류
-1. 진단서 및 의사소견서(근로능력 상실 확인) 1부
-2. 법원 변제금 납부확인서(청산가치 초과 입증) 1부
-3. 재산상태 진술서 1부
+1. [사유 소명자료 — 진단서 등] 1부
+2. 변제금 납부확인서 1부
+3. [기타 소명자료]
 
 ${todayStr}
 
 위 신청인(채무자) : ${clientName} (인)
-신청인의 대리인 변호사 : ${activeLawyerName} (인)
+신청인의 대리인 변호사 : ${lawyer} (인)
 
-${courtName} 귀중`;
+${courtLabel} 귀중`;
 
   // 3. 개인회생절차 폐지결정에 대한 즉시항고장
   const immediateAppealDraft = `[즉시항고장]
 
 사   건 : ${caseNumber} 개인회생
 항 고 인(채무자) : ${clientName}
-주   소 : ${clientRequest.region || '서울특별시'}
-연 락 처 : ${clientRequest.phone || ''}
-대 리 인 : 변호사 ${activeLawyerName}
+주   소 : ${address}
+연 락 처 : ${clientRequest.phone || BL}
+대 리 인 : 변호사 ${lawyer}
 
-원 결 정 : ${courtName} 2026. OO. OO.자 개인회생절차폐지결정
+원 결 정 : ${courtLabel} [결정일자]자 개인회생절차폐지결정
 
 항  고  취  지
 
@@ -144,28 +154,30 @@ ${courtName} 귀중`;
 
 항  고  이  유
 
-1. 즉시항고의 적법성 (불변기간 준수)
-원심 법원은 2026. OO. OO. 대법원 전자공고를 통하여 본 사건 개인회생절차 폐지 결정을 공고하였습니다. 항고인은 채무자회생법 제13조 제2항이 규정한 14일의 불변기간 내에 본 즉시항고장을 적법하게 제출합니다.
+1. 즉시항고의 적법성
+원 결정은 [공고일자]에 공고되었고, 항고인은 공고일부터 14일 이내(채무자회생법 제13조 제2항)에 이 즉시항고장을 제출합니다.
 
-2. 원결정 취소의 정당성 (미납 변제금 전액 완납)
-원심 법원은 항고인이 변제금을 ${overdueCount}회 연체하였다는 이유로 절차 폐지 결정을 내렸으나, 항고인은 폐지 공고 직후 지인 및 친족의 긴급 지원을 통하여 미납된 변제금 전액(금 ${totalOverdueAmount.toLocaleString()}원)을 귀원 회생위원 공식 가상계좌로 일시불 완납하였습니다(별첨 이체확인증 참조).
+2. 원 결정의 경위
+원심은 항고인이 변제금을 ${overdueCount > 0 ? `${overdueCount}회` : '[  ]회'} 납부하지 않았다는 등의 이유로 절차폐지결정을 하였습니다.
 
-3. 회생절차 유지의 필요성
-항고인은 성실하고 지속적인 갱생 의지를 가지고 있으며, 이번 일시적 연체는 가족의 긴급 의료비 지출로 인한 일시적 지연이었을 뿐 고의적인 납부 해태가 아닙니다. 미납 변제금 전액이 완전히 보전되었으므로 회생절차를 폐지할 실익이 소멸하였습니다.
+3. 원 결정을 취소하여야 할 사유
+가. 미납 변제금의 납부: 항고인은 [납부일자]에 미납 변제금 ${won(totalOverdueAmount)}을 회생위원 계좌로 납부하였습니다(이체확인증 참조). [해당 없으면 삭제]
+나. 미납 경위: [미납 사유와 경위]
+다. 향후 변제계획 수행 가능성: [소득·지출 현황 및 수행 계획]
 
 4. 결 어
-따라서 원 결정을 취소하고, 본 사건 개인회생절차를 원래대로 속행하여 주시기 바랍니다.
+따라서 원 결정을 취소하여 주시기 바랍니다.
 
 첨  부  서  류
-1. 법원 가상계좌 변제금 전액 납부확인서(이체증) 1부
-2. 납부 계획 소명서 1부
+1. [변제금 납부확인서(이체확인증)] 1부
+2. [수행 가능성 소명자료] 1부
 
 ${todayStr}
 
 위 항고인(채무자) : ${clientName} (인)
-항고인의 대리인 변호사 : ${activeLawyerName} (인)
+항고인의 대리인 변호사 : ${lawyer} (인)
 
-${courtName} 귀중`;
+${courtLabel} 귀중`;
 
   const getDocTitle = () => {
     switch (petitionType) {
@@ -174,7 +186,7 @@ ${courtName} 귀중`;
       case 'SPECIAL_DISCHARGE':
         return '특별면책 신청서 (채무자회생법 제624조 제2항)';
       case 'IMMEDIATE_APPEAL':
-        return '개인회생절차 폐지결정에 대한 즉시항고장 (14일 골든타임)';
+        return '개인회생절차 폐지결정에 대한 즉시항고장 (공고일부터 14일)';
       default:
         return '법원 서식';
     }
@@ -195,15 +207,30 @@ ${courtName} 귀중`;
 
   const activeDraft = getActiveDraft();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(activeDraft);
+  const hasBlanks = /\[[^\]]*\]/.test(activeDraft);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(activeDraft);
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+      return;
+    }
     setCopied(true);
-    toast.success('📋 법원 제출용 서식 전문이 클립보드에 복사되었습니다. (전자소송 바로 붙여넣기 가능)');
+    toast.success(hasBlanks
+      ? '초안을 복사했습니다. [대괄호] 빈칸을 모두 채우고 사실관계를 확인한 뒤 제출하세요.'
+      : '초안을 복사했습니다. 제출 전 내용을 다시 확인하세요.');
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 문서만 A4로 인쇄 (이전: window.print()로 앱 화면 전체가 인쇄됨)
   const handlePrint = () => {
-    window.print();
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('팝업이 차단되어 인쇄 창을 열 수 없습니다.'); return; }
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(getDocTitle())}</title>
+<style>@page{size:A4;margin:20mm}body{font-family:'Batang','Nanum Myeongjo',serif;font-size:12pt;line-height:1.8;color:#111}pre{white-space:pre-wrap;font-family:inherit;margin:0}</style>
+</head><body><pre>${escapeHtml(activeDraft)}</pre><script>window.onload=function(){window.print();}</script></body></html>`);
+    w.document.close();
   };
 
   const handleDownload = () => {
@@ -214,7 +241,7 @@ ${courtName} 귀중`;
     link.download = `${clientName}_${petitionType}_법원제출서식.txt`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('📄 서식 텍스트 파일이 다운로드되었습니다.');
+    toast.success('초안 텍스트 파일을 내려받았습니다. [대괄호] 빈칸을 채운 뒤 사용하세요.');
   };
 
   return (
@@ -231,10 +258,10 @@ ${courtName} 귀중`;
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
-                  대법원 표준 서식 규격
+                  초안 · 빈칸 작성 필요
                 </span>
                 <span className="text-xs text-slate-300 font-medium">
-                  {courtName} • 사건번호: {caseNumber}
+                  {courtLabel} • 사건번호: {caseNumber}
                 </span>
               </div>
               <h3 className="text-base md:text-lg font-black mt-0.5 text-white">

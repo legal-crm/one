@@ -480,8 +480,11 @@ export default async function handler(req, res) {
           .eq('id', contractId)
           .maybeSingle();
 
-        if (!cErr && contractRow && contractRow.remote_sign_token === remoteSignToken) {
-          isAuthorized = true;
+        // 상수 시간 비교 (remote-sign 액션과 동일)
+        if (!cErr && contractRow && typeof contractRow.remote_sign_token === 'string' && contractRow.remote_sign_token) {
+          const a = Buffer.from(contractRow.remote_sign_token);
+          const b = Buffer.from(String(remoteSignToken));
+          if (a.length === b.length && crypto.timingSafeEqual(a, b)) isAuthorized = true;
         }
       } catch (dbErr) {
         console.warn(`[Contract RemoteSignToken DB Check Error]:`, dbErr.message);
@@ -595,7 +598,8 @@ export default async function handler(req, res) {
         explorerUrl,
         contractHash: cleanHash,
         notaryContract: notaryAddress,
-        message: 'KISA 표준 암호학적 무결성 타임스탬프 각인 완료 (릴레이어 지갑 충전 시 즉시 온체인 브로드캐스팅)',
+        // 온체인 전송이 아니다: txHash는 서버가 만든 SHA-256 다이제스트이며 블록체인 트랜잭션이 아님
+        message: '온체인 기록 미실행 — 서버가 계약 해시 다이제스트만 보관했습니다 (릴레이어 키·잔액 설정 시 온체인 기록 가능)',
       });
     } catch (fallbackErr) {
       console.error('[Contract Anchor Fallback Error]:', fallbackErr);
@@ -639,7 +643,7 @@ export default async function handler(req, res) {
           to: onChainTx.to,
           inputData: onChainTx.input,
           hashMatched,
-          statusText: hashMatched ? '100% 온체인 무결성 인증 완료 (원본 일치)' : '온체인 데이터 해시 불일치',
+          statusText: hashMatched ? '온체인 트랜잭션 확인 · 문서 해시 일치' : '온체인 데이터 해시 불일치',
           explorerUrl: `${explorerBase}/tx/${txHash}`,
         });
       }

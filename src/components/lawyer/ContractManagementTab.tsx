@@ -6,6 +6,7 @@ import {
   Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3, Settings2 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { localYmd } from '../../utils/localDate';
 import { useDialog } from '../common/DialogProvider';
 import type { ElectronicContract, ContractStatus } from '../../types';
 import { CONTRACT_STATUS_CONFIG, CONTRACT_DOC_TYPES } from '../../types';
@@ -122,9 +123,10 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       variant: 'danger'
     });
     if (!confirmed) return;
-    await deleteContract(id);
+    const deleted = await deleteContract(id);
     await refreshContracts();
-    toast.success('계약서가 삭제되었습니다');
+    if (deleted) toast.success('계약서가 삭제되었습니다');
+    else toast.error('서버에서 삭제하지 못했습니다. 이 기기 목록에서만 지워졌을 수 있으니 새로고침 후 다시 확인해 주세요.');
   };
 
   // ── 골든타임 재촉 알림톡 사전 확인 모달 오픈 ──
@@ -142,28 +144,36 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     const target = reminderTargetContract;
     const now = new Date().toISOString();
     const channelLabel = channel === 'both' ? '카카오 알림톡(SMS 대체포함)' : channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
-    
-    // 감사 추적(Audit Trail)에 발송 이력 영구 기록
+
+    // 알림톡/SMS 발송 API가 연결되어 있지 않다 → 문구를 복사해 담당자가 직접 보낸다
+    // (이전: 아무것도 보내지 않고 '정상 발송' 안내 + 감사추적에 '발송' 기록 → 허위 이력)
+    let copied = false;
+    try { await navigator.clipboard.writeText(message); copied = true; } catch { copied = false; }
+    if (!copied) {
+      toast.error('재촉 문구를 복사하지 못했습니다. 브라우저 클립보드 권한을 확인해 주세요.');
+      return;
+    }
+
     const updatedContract: ElectronicContract = {
       ...target,
       auditTrail: [
         ...(target.auditTrail || []),
         {
-          action: '골든타임 서명 재촉 알림톡 발송',
+          action: '서명 재촉 문구 복사 (발송은 담당자가 직접)',
           timestamp: now,
           actor: 'lawyer',
-          details: `수신: ${target.clientPhone || '의뢰인'}, 채널: ${channelLabel}, 템플릿: ${templateKey}`
+          details: `수신 예정: ${target.clientPhone || '의뢰인'}, 채널: ${channelLabel}, 템플릿: ${templateKey}`
         }
       ],
-      updatedAt: now
+      // 골든타임(미서명 경과시간) 기준을 초기화하지 않도록 updatedAt은 유지
     };
 
-    await saveContract(updatedContract);
+    const saved = await saveContract(updatedContract);
     if (updatedContract.clientId) {
-      try { await syncContractToCrm(updatedContract.clientId, updatedContract); } catch {}
+      try { await syncContractToCrm(updatedContract.clientId, updatedContract); } catch (e) { console.warn('[Contract] CRM 동기화 실패', e); }
     }
     await refreshContracts();
-    toast.success(`[${target.clientName}] 의뢰인에게 서명 골든타임 재촉 알림톡을 정상 발송했습니다.`);
+    toast.success(`[${target.clientName}] 재촉 문구를 복사했습니다. ${channelLabel}로 직접 보내 주세요. 자동 발송은 되지 않습니다.${saved ? '' : ' (이력은 이 기기에만 저장됨)'}`);
     setReminderTargetContract(null);
   };
 
@@ -185,7 +195,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       CONTRACT_STATUS_CONFIG[c.status]?.label || c.status,
       c.contractDate || '-',
       (c.documents || []).filter(d => d.included).length,
-      c.timestampToken ? 'TSA봉인완료' : '대기'
+      c.timestampToken ? '해시·시점토큰 생성' : '대기'
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -193,7 +203,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `전자계약_회계원장_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `전자계약_회계원장_${localYmd()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     toast.success('계약 원장 CSV 파일이 다운로드되었습니다.');
@@ -205,9 +215,10 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         contract={editingContract} 
         onClose={() => { setEditingContract(null); refreshContracts(); }} 
         onSave={async (c) => { 
-          await saveContract(c); 
+          const ok = await saveContract(c); 
+          if (!ok) toast.error('서버에 저장하지 못했습니다. 이 기기에만 저장되었습니다. 네트워크를 확인하고 다시 저장해 주세요.');
           if (c.clientId) {
-            try { await syncContractToCrm(c.clientId, c); } catch {}
+            try { await syncContractToCrm(c.clientId, c); } catch (e) { console.warn('[Contract] CRM 동기화 실패', e); }
           }
           refreshContracts(); 
         }} 
@@ -540,11 +551,11 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             title="클릭 시 블록체인 원본 검증창 열기"
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>{c.blockchainAnchor.isRealOnChain ? '⛓️ 온체인 완료' : '⛓️ Polygon 각인'}</span>
+                            <span>{c.blockchainAnchor.isRealOnChain ? '⛓️ 온체인 기록' : '🔒 해시 보관(온체인 미기록)'}</span>
                           </button>
                         ) : c.timestampToken ? (
                           <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                            <ShieldCheck className="w-3.5 h-3.5" /> TSA 봉인완료
+                            <ShieldCheck className="w-3.5 h-3.5" /> 해시 봉인
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-400">
@@ -750,7 +761,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">무결성 토큰</span>
-                  <span className="text-xs font-mono font-bold text-emerald-700">{viewingContract.timestampToken ? 'TSA 공인 완료' : '대기중'}</span>
+                  <span className="text-xs font-mono font-bold text-emerald-700" title="시스템이 생성한 시점 토큰입니다 (외부 공인 타임스탬프 기관 발급 아님)">{viewingContract.timestampToken ? '시점토큰 생성(자체)' : '대기중'}</span>
                 </div>
               </div>
 
@@ -792,7 +803,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
 
               {/* 공식 감사추적 인증서 임베딩 */}
               <div className="pt-4 border-t border-slate-200">
-                <h4 className="text-sm font-black text-slate-800 mb-3">전자서명법 공인 감사추적 인증서</h4>
+                <h4 className="text-sm font-black text-slate-800 mb-3">전자계약 감사추적 기록</h4>
                 <AuditTrailCertificate 
                   contract={viewingContract} 
                   onOpenVerifyModal={() => setVerifyModalContract(viewingContract)}
@@ -806,7 +817,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 {viewingContract.blockchainAnchor && (
                   <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>블록체인 분산원장 무결성 영구 각인 완료</span>
+                    <span>{viewingContract.blockchainAnchor.isRealOnChain ? '문서 해시 온체인 기록됨' : '문서 해시 서버 보관 (온체인 미기록)'}</span>
                   </span>
                 )}
               </div>

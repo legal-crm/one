@@ -280,7 +280,7 @@ function ContractConversionModalInner({
         try {
           const clientPhone = request.phone;
           const alimtokText = contractMethod === 'electronic'
-            ? `${firmLabel ? `[${firmLabel}] ` : ''}${activeLawyer.name} 변호사\n\n${request.clientName}님, 사건 수임 계약서가 모바일 전자서명으로 발송되었습니다.\n\n📌 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n📌 서명 기한: 발송 후 72시간 이내\n\n아래 안전 서명 링크에 접속하시어 내용을 확인하신 후 스마트폰 본인인증 및 전자서명을 진행해 주세요.\n\n▶ 모바일 전자서명 링크:\n${signUrl}`
+            ? `${firmLabel ? `[${firmLabel}] ` : ''}${activeLawyer.name} 변호사\n\n${request.clientName}님, 사건 수임 계약서가 모바일 전자서명으로 발송되었습니다.\n\n📌 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n📌 서명 요청: 가능한 빨리 서명해 주세요\n\n아래 안전 서명 링크에 접속하시어 내용을 확인하신 후 스마트폰 본인인증 및 전자서명을 진행해 주세요.\n\n▶ 모바일 전자서명 링크:\n${signUrl}`
             : undefined;
 
           const sendRes = await sendAlimtok(clientPhone, 'contract_signed', {

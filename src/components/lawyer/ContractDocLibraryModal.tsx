@@ -469,7 +469,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
         <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/70 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>모든 서식은 전자서명법 제3조 및 약관규제법 제3조 설명의무 요건을 준수합니다.</span>
+            <span>서식 내용(특히 직접 만든 서식)이 약관규제법상 설명의무 등을 충족하는지는 사용 전 변호사가 확인해야 합니다.</span>
           </span>
 
           <button

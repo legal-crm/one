@@ -15,6 +15,7 @@ import type { ElectronicContract, ContractDocument, ContractDocType, FeeInstallm
 import { CONTRACT_DOC_TYPES } from '../../types';
 import { calculateCourtCosts, generateFeeSchedule, saveContract, getContract, addAuditLog, updateContractStatus, finalizeContractWithIntegrity } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
+import { localYmd, parseLocalYmd, addMonthsClamped } from '../../utils/localDate';
 import { validateBusinessRegistration } from '../../services/ntsService';
 import { 
   STANDARD_LEGAL_TEMPLATES, 
@@ -88,15 +89,16 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         isCustomized: initialContract.courtCosts?.isCustomized ?? false,
       },
       vatIncluded: initialContract.vatIncluded ?? false,
+      // 입금계좌는 변호사가 직접 입력 (이전: 가짜 계좌 '신한은행 110-384-918234 / 법무법인 리걸케어'가 기본값 → 의뢰인이 가짜 계좌로 송금할 위험)
       feeAccount: initialContract.feeAccount || {
-        bankName: '신한은행',
-        accountNumber: '110-384-918234',
-        accountHolder: initialContract.lawFirmName || '법무법인 리걸케어'
+        bankName: '',
+        accountNumber: '',
+        accountHolder: initialContract.lawFirmName || ''
       },
       courtCostAccount: initialContract.courtCostAccount || {
-        bankName: '신한은행',
-        accountNumber: '110-384-918234',
-        accountHolder: initialContract.lawFirmName || '법무법인 리걸케어'
+        bankName: '',
+        accountNumber: '',
+        accountHolder: initialContract.lawFirmName || ''
       },
       sameAsFeeAccount: initialContract.sameAsFeeAccount ?? true,
       successFee: initialContract.successFee || {
@@ -128,7 +130,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const [bizCompany, setBizCompany] = useState(c.businessInfo?.companyName || '');
   const [bizNumber, setBizNumber] = useState(c.businessInfo?.businessNumber || '');
   const [bizRepName, setBizRepName] = useState(c.businessInfo?.representativeName || c.clientName || '');
-  const [bizOpenDate, setBizOpenDate] = useState(c.businessInfo?.openingDate || '20200101');
+  const [bizOpenDate, setBizOpenDate] = useState(c.businessInfo?.openingDate || '');
   const [checkingNts, setCheckingNts] = useState(false);
   const [ntsStatus, setNtsStatus] = useState<'VALID' | 'INVALID' | 'CLOSED' | 'SUSPENDED' | 'PENDING'>(
     c.businessInfo?.ntsStatus || 'PENDING'
@@ -148,8 +150,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // 분납 생성기 상태
   const [downPayment, setDownPayment] = useState(50);
   const [installments, setInstallments] = useState(3);
-  const [downDate, setDownDate] = useState(c.contractDate || new Date().toISOString().slice(0, 10));
-  const [firstDate, setFirstDate] = useState(c.contractDate || new Date().toISOString().slice(0, 10));
+  const [downDate, setDownDate] = useState(c.contractDate || localYmd());
+  const [firstDate, setFirstDate] = useState(c.contractDate || localYmd());
 
   // 법원 실비 단가 설정 패널 상태
   const [showRateSettings, setShowRateSettings] = useState(false);
@@ -158,11 +160,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // 분납 스케줄 일괄 생성 패널 상태
   const [showAutoSchedulePanel, setShowAutoSchedulePanel] = useState(false);
 
-  // 약관 동의 (4대 효력 필수 항목) 및 상세 전문 열람 상태
-  const [agreePrivacy, setAgreePrivacy] = useState(true);
-  const [agreeThirdParty, setAgreeThirdParty] = useState(true);
-  const [agreeProcedure, setAgreeProcedure] = useState(true);
-  const [agreeLegalEffect, setAgreeLegalEffect] = useState(true);
+  // 약관 동의 항목 — 동의는 직접 체크해야 한다 (이전: 모두 체크된 상태로 시작)
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeThirdParty, setAgreeThirdParty] = useState(false);
+  const [agreeProcedure, setAgreeProcedure] = useState(false);
+  const [agreeLegalEffect, setAgreeLegalEffect] = useState(false);
   const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
@@ -280,10 +282,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       update({
         clientName: foundName || c.clientName,
         clientPhone: foundPhone || c.clientPhone,
-        clientAddress: foundAddress || c.clientAddress || '서울특별시 서초구 서초대로',
+        clientAddress: foundAddress || c.clientAddress || '',
         caseCategory: caseCat,
         caseType: caseCat === 'individual_bankruptcy' ? '개인파산 및 면책사건' : '개인회생사건',
-        totalFee: foundFee || c.totalFee || 180,
+        totalFee: foundFee || c.totalFee || 0,
         courtCosts: {
           ...c.courtCosts,
           creditorCount: finalCreditors,
@@ -309,14 +311,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
     const calculatedCourt = (c.courtCosts?.deliveryFee ?? costs.deliveryFee) + (c.courtCosts?.stampFee ?? costs.stampFee) + (c.courtCosts?.debtCertFee ?? costs.debtCertFee) + (c.courtCosts?.miscFee ?? 0) + (c.courtCosts?.provisionalDeposit ?? 0);
 
-    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const today = c.contractDate || localYmd();
     const newItem: FeeInstallment = {
       id: `fee-court-${Date.now()}`,
       round: 0,
       itemType: 'court_cost',
       itemTitle: '송달료 및 부대비용',
       dueDate: today,
-      amount: calculatedCourt > 0 ? calculatedCourt : 500000,
+      amount: calculatedCourt > 0 ? calculatedCourt : 0,
       status: 'pending',
       memo: '송달료, 인지대, 부채증명서 발급 대행비 일체',
     };
@@ -325,7 +327,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   };
 
   const handleAddDownPaymentItem = () => {
-    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const today = c.contractDate || localYmd();
     const newItem: FeeInstallment = {
       id: `fee-down-${Date.now()}`,
       round: 0,
@@ -343,14 +345,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const handleAddInstallmentItem = () => {
     const existing = (c.feeSchedule || []).filter(f => f.itemType === 'installment' || f.round > 0);
     const nextRound = existing.length + 1;
-    let nextDateStr = new Date().toISOString().slice(0, 10);
+    // 로컬 날짜 + 말일 보정 (이전: UTC 파싱 + setMonth → 1/31 다음이 3/3, 한국 오전엔 하루 전 날짜)
+    let nextDateStr = localYmd();
     if (c.feeSchedule && c.feeSchedule.length > 0) {
       const lastItem = c.feeSchedule[c.feeSchedule.length - 1];
-      if (lastItem.dueDate && !isNaN(Date.parse(lastItem.dueDate))) {
-        const d = new Date(lastItem.dueDate);
-        d.setMonth(d.getMonth() + 1);
-        nextDateStr = d.toISOString().slice(0, 10);
-      }
+      const last = parseLocalYmd(lastItem.dueDate || '');
+      if (last) nextDateStr = localYmd(addMonthsClamped(last, 1));
     }
 
     const newItem: FeeInstallment = {
@@ -359,7 +359,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemType: 'installment',
       itemTitle: `${nextRound}차 분할납부`,
       dueDate: nextDateStr,
-      amount: 300000,
+      amount: 0,
       status: 'pending',
       memo: `${nextRound}차 분납 수임료`,
     };
@@ -395,7 +395,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   };
 
   const handleAddNewCustomItem = () => {
-    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const today = c.contractDate || localYmd();
     const newItem: FeeInstallment = {
       id: `fee-custom-${Date.now()}`,
       round: (c.feeSchedule?.length || 0) + 1,
@@ -656,12 +656,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <button
                 type="button"
                 onClick={() => {
-                  update({ clientPostcode: '06647', clientAddress: '서울특별시 서초구 서초대로 250' });
-                  toast.info('표준 도로명 주소가 입력되었습니다. 필요 시 수정해 주세요.');
+                  // 주소 검색 API가 연결되어 있지 않다 → 도로명주소 안내 사이트를 연다 (이전: '서초대로 250' 가짜 주소를 자동 입력)
+                  window.open('https://www.juso.go.kr/openIndexPage.do', '_blank', 'noopener,noreferrer');
+                  toast.info('도로명주소 안내시스템을 새 창으로 열었습니다. 검색한 주소를 아래 칸에 입력해 주세요.');
                 }}
                 className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
               >
-                주소 검색
+                주소 찾기(새 창)
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1522,10 +1523,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
                     <select
-                      value={c.feeAccount?.bankName || '신한은행'}
+                      value={c.feeAccount?.bankName || ''}
                       onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
                       className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold"
                     >
+                      <option value="">은행 선택</option>
                       {MAJOR_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
                     </select>
                   </div>
@@ -1583,10 +1585,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
                       <select
-                        value={c.courtCostAccount?.bankName || '신한은행'}
+                        value={c.courtCostAccount?.bankName || ''}
                         onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
                         className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold"
                       >
+                        <option value="">은행 선택</option>
                         {MAJOR_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
                       </select>
                     </div>
@@ -2011,9 +2014,9 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-base font-black text-slate-800">📜 약관·동의 안내 (4대 법적 효력)</h3>
+          <h3 className="text-base font-black text-slate-800">📜 약관·동의 안내</h3>
           <p className="text-xs text-slate-500 mt-1">
-            법적 분쟁 시 100% 무결성을 입증하기 위해 필수 조항의 상세 내용을 확인하고 개별 동의를 완료해야 합니다.
+            필수 조항의 상세 내용을 확인하고 항목별로 동의해야 합니다. 동의 기록은 분쟁 시 계약 체결 경위를 확인하는 자료가 됩니다.
           </p>
         </div>
 
@@ -2770,7 +2773,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div>
               <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
                 <ShieldCheck className="w-6 h-6 text-brand" />
-                <span>전자 위임계약서 작성 (4대 법적 효력 완비)</span>
+                <span>전자 위임계약서 작성</span>
               </h2>
               <p className="text-sm text-slate-500 mt-1">{c.id} · {c.clientName || '신규 계약'} · {isBusiness ? '사업자 계약' : '개인 계약'}</p>
             </div>
@@ -2815,7 +2818,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   try {
                     const final = await finalizeContractWithIntegrity(c, clientSig, lawyerSig);
                     onSave(final);
-                    toast.success('SHA-256 해시 및 3중 타임스탬프 봉인 계약이 완료되었습니다!');
+                    toast.success('계약 체결을 완료하고 문서 해시(SHA-256)와 시점 토큰을 기록했습니다.');
                     onClose();
                   } catch (e: any) {
                     toast.error(e?.message || '체결 처리 중 오류가 발생했습니다.');
@@ -2827,7 +2830,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer whitespace-nowrap min-h-[44px] shadow-xs transition-colors disabled:opacity-50"
               >
                 {completing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                <span>3중 타임스탬프 체결 및 완료</span>
+                <span>해시 봉인 및 체결 완료</span>
               </button>
             )}
           </div>

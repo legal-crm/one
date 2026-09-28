@@ -187,9 +187,9 @@ function OverdueDefenseGuideModalInner({
                       </span>
                       <span className="text-xs font-bold text-rose-600 dark:text-rose-400">경고 단계</span>
                     </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white">폐지 예정 통지서 발송</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">납부 독촉·폐지 검토 가능</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                      법원에서 &quot;변제금 미납에 따른 개인회생절차 폐지예정 통지서&quot;를 송달합니다. 2주 이내 미납금 납부 또는 사유서 제출이 필요합니다.
+                      미납이 누적되면 회생위원·법원이 납부 독촉이나 사유 소명을 요구하고 폐지를 검토할 수 있습니다(채무자회생법 제621조). 통지·기한은 법원마다 다르니 받은 문서를 담당 변호사에게 바로 보여 주세요.
                     </p>
                   </div>
 
@@ -216,7 +216,7 @@ function OverdueDefenseGuideModalInner({
                     <Landmark className="w-4 h-4 text-brand" />
                     <span>실무상 법원별 폐지 임계치 비교</span>
                   </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">도산재판부 실무 기준</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">참고용 일반 경향 (재판부마다 다름)</span>
                 </div>
 
                 <div className="space-y-2 text-xs">
@@ -229,7 +229,7 @@ function OverdueDefenseGuideModalInner({
                       서울회생법원
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">4~5회차 연체까지 유예 (비교적 유연):</strong> 사정 소명 시 분납이나 변제계획 변경 검토 기회를 적극 부여합니다.
+                      <strong className="text-slate-900 dark:text-white">비교적 유연한 경향:</strong> 연체 초기에 독촉·소명 기회를 주는 경우가 많습니다. 몇 회에서 폐지를 검토할지는 정해져 있지 않습니다.
                     </div>
                   </div>
 
@@ -255,7 +255,7 @@ function OverdueDefenseGuideModalInner({
                       기타 지방법원
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">3회 연체 즉시 엄격 폐지:</strong> 별도 유예 없이 3회 미납 즉시 직권 폐지 결정을 내리는 경우가 많아 각별한 주의가 필요합니다.
+                      <strong className="text-slate-900 dark:text-white">비교적 엄격한 경향:</strong> 연체 누적에 엄격한 경우가 있어 미납이 생기면 바로 담당 변호사와 상의하는 것이 안전합니다.
                     </div>
                   </div>
                 </div>
@@ -273,7 +273,7 @@ function OverdueDefenseGuideModalInner({
                   <span>가장 안전하고 쉬운 해결책: 법원 가상계좌 쪼개기 입금</span>
                 </div>
                 <p className="text-xs text-emerald-900/80 dark:text-emerald-200/80 mt-1 leading-relaxed">
-                  개인회생 변제금은 일반 대출과 달리 <strong>연체이자가 전혀 붙지 않습니다.</strong> 또한 1회차분을 한 번에 다 못 채우더라도 <strong>1만원 단위로 나누어 입금</strong>할 수 있습니다.
+                  한 달 치를 한 번에 채우기 어렵다면 <strong>가능한 금액부터 가상계좌로 나누어 입금</strong>하는 방법을 검토할 수 있습니다. 분납 처리 방식과 최소 금액은 회생위원 안내를 따르세요.
                 </p>
               </div>
 
@@ -399,7 +399,7 @@ function OverdueDefenseGuideModalInner({
                   <span>채무자회생법 제624조 제2항에 따른 특별면책</span>
                 </div>
                 <p className="text-xs text-purple-900/80 dark:text-purple-200/80 mt-1 leading-relaxed">
-                  변제계획을 완료하지 못했더라도, <strong>도저히 갚을 수 없는 불가항력적 사유</strong>가 있고 <strong>청산가치 이상을 이미 납부</strong>했다면 법원이 잔여 채무 전액을 즉시 면책해 주는 제도입니다.
+                  변제계획을 완료하지 못했더라도 <strong>책임질 수 없는 사유</strong>가 있고, <strong>이미 변제한 금액이 파산 시 배당액(청산가치) 이상</strong>이며, <strong>변제계획 변경이 불가능</strong>하면 법원이 면책결정을 할 수 있는 제도입니다. 면책 여부는 법원이 이해관계인 의견을 들은 뒤 판단하며, 면책되지 않는 채권도 있습니다.
                 </p>
               </div>
 
@@ -416,7 +416,7 @@ function OverdueDefenseGuideModalInner({
                     <div>
                       <strong className="text-slate-900 dark:text-white">채무자의 책임 없는 사유로 인한 변제 불능</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        암 등 중증 난치병 진단, 영구 장해 발생, 천재지변, 채무자의 사망 등 객관적으로 근로능력을 상실한 경우
+                        예: 중증 질병·장해로 일을 할 수 없게 된 경우 등. 해당 여부는 사정과 증빙을 보고 법원이 판단합니다.
                       </p>
                     </div>
                   </div>
@@ -428,7 +428,7 @@ function OverdueDefenseGuideModalInner({
                     <div>
                       <strong className="text-slate-900 dark:text-white">청산가치(파산배당액) 보장 원칙 충족</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        지금까지 법원에 납부한 총 변제금 합계액이, 회생 신청 당시 평가된 채무자의 재산 총액(청산가치)보다 많아야 합니다.
+                        채권자들이 지금까지 변제받은 총액이 파산했을 때 받을 수 있었던 배당액(청산가치)보다 적지 않아야(이상이어야) 합니다.
                       </p>
                     </div>
                   </div>
@@ -438,7 +438,7 @@ function OverdueDefenseGuideModalInner({
                       3
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">변제계획의 변경이 극히 곤란할 것</strong>
+                      <strong className="text-slate-900 dark:text-white">변제계획의 변경이 불가능할 것</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
                         월 변제금을 아무리 최소한으로 낮추더라도 추가 변제 수행 자체가 불가능하다는 점이 인정되어야 합니다.
                       </p>
@@ -462,7 +462,7 @@ function OverdueDefenseGuideModalInner({
                   <span>폐지결정 공고일부터 14일: 즉시항고 기간</span>
                 </div>
                 <p className="text-xs text-red-100 leading-relaxed">
-                  법원에서 개인회생 폐지 결정이 내려지더라도, 대법원 전자공고일로부터 <strong>단 14일(불변기간)</strong> 이내에 <strong>즉시항고장을 제출하고 밀린 변제금을 완납</strong>하면 폐지 결정이 취소되고 회생이 그대로 유지됩니다!
+                  폐지결정에 불복하려면 <strong>공고일부터 14일</strong>(채무자회생법 제13조 제2항) 안에 즉시항고장을 내야 합니다. 밀린 변제금을 완납하는 것이 중요하지만, <strong>폐지결정이 취소될지는 법원이 판단</strong>합니다.
                 </p>
               </div>
 
@@ -477,7 +477,7 @@ function OverdueDefenseGuideModalInner({
                     <div>
                       <strong className="text-slate-900 dark:text-white">대법원 공고일 및 14일 기한 계산</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        폐지 결정은 송달이 아닌 대한민국 법원 홈페이지 &quot;전자공고&quot;에 게재된 날의 다음 날부터 기산하여 14일째 되는 날 자정에 마감됩니다. 하루라도 늦으면 재항고가 불가능합니다.
+                        공고가 있으면 공고일부터 14일 안에 제기해야 합니다. 기산일과 마감일은 담당 변호사가 결정문·공고를 보고 확인합니다. 기간이 지나면 즉시항고를 할 수 없습니다.
                       </p>
                     </div>
                   </div>
@@ -505,9 +505,9 @@ function OverdueDefenseGuideModalInner({
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
                     <span className="font-black text-red-600 dark:text-red-400 text-sm">STEP 4</span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">법원의 폐지 결정 취소 및 인가 효력 회복</strong>
+                      <strong className="text-slate-900 dark:text-white">항고법원의 판단</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        재판부에서 미납 변제금 완납을 확인하면 원결정을 취소하고 회생절차를 원래대로 정상화합니다.
+                        항고법원이 미납금 완납 여부와 앞으로의 수행 가능성 등을 보고 원결정 취소 여부를 판단합니다. 결과는 보장되지 않습니다.
                       </p>
                     </div>
                   </div>
@@ -525,7 +525,7 @@ function OverdueDefenseGuideModalInner({
         {/* 하단 푸터 액션바 */}
         <div className="p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            {caseData.assignedLawyerName ? `${caseData.assignedLawyerName} 전담 배정` : '마이김변 전담 도산 변호인단'}
+            {caseData.assignedLawyerName ? `${caseData.assignedLawyerName} 전담 배정` : '담당 변호사 미배정'}
           </div>
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button

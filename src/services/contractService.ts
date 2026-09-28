@@ -391,16 +391,18 @@ export async function saveContract(contract: ElectronicContract): Promise<boolea
   return true;
 }
 
-export async function deleteContract(id: string): Promise<void> {
+/** @returns 서버 삭제 성공 여부 (Supabase 미설정 로컬 전용 환경은 true) */
+export async function deleteContract(id: string): Promise<boolean> {
   const contracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts.filter((c: any) => c.id !== id)));
   
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase.from('electronic_contracts').delete().eq('id', id);
-      if (error) logSupabaseError('deleteContract', error);
-    } catch (e) { logSupabaseError('deleteContract (exception)', e); }
+      if (error) { logSupabaseError('deleteContract', error); return false; }
+    } catch (e) { logSupabaseError('deleteContract (exception)', e); return false; }
   }
+  return true;
 }
 
 // ── 새 계약 생성 ──
@@ -476,7 +478,7 @@ export function createContract(data: {
     linkedDiagnosisId: data.linkedDiagnosisId,
     documents,
     status: 'drafting',
-    contractDate: new Date().toISOString().split('T')[0],
+    contractDate: localYmd(),
     isBusiness: data.isBusiness ?? false,
     businessInfo: data.businessInfo,
     authorityStatus: data.isBusiness ? (data.businessInfo?.ntsStatus === 'VALID' ? 'REPRESENTATIVE_VERIFIED' : 'UNVERIFIED') : 'REPRESENTATIVE_VERIFIED',
@@ -591,7 +593,7 @@ ${firmName}은 위임 사무 처리를 위해 아래 의뢰인의 신분증 사�
 
 의뢰인: ${clientName}
 제출 서류: □ 주민등록증  □ 운전면허증  □ 여권  □ 기타(      )
-제출일: ${new Date().toISOString().split('T')[0]}
+제출일: ${localYmd()}
 
 수령인: ${lawyerName}`,
 
@@ -762,12 +764,18 @@ export async function finalizeContractWithIntegrity(
     timestamp: anchorInfo.anchoredAt,
     actor: 'system',
     documentHash: finalHash,
-    details: `Polygon Tx: ${anchorInfo.txHash.slice(0, 18)}... | Block #${anchorInfo.blockNumber.toLocaleString()}${anchorInfo.isRealOnChain ? '' : ' (온체인 미전송)'}`,
+    details: anchorInfo.isRealOnChain
+      ? `Tx: ${anchorInfo.txHash.slice(0, 18)}... | Block #${anchorInfo.blockNumber.toLocaleString()}`
+      : `서버 보관 다이제스트: ${anchorInfo.txHash.slice(0, 18)}... (온체인 미전송 — 트랜잭션 아님)`,
     ip: contract.identityVerification?.ipAddress || '',
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'System',
   });
 
-  await saveContract(completedContract);
+  // 저장 실패를 삼키지 않는다 — 호출 측이 '체결 완료'로 안내하지 않도록 예외로 알림
+  const saved = await saveContract(completedContract);
+  if (!saved) {
+    throw new Error('체결본을 서버에 저장하지 못했습니다. 이 기기에만 저장되었습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.');
+  }
   return completedContract;
 }
 
@@ -842,7 +850,7 @@ export function seedMockContracts(): void {
         ...(isComp ? [
           { action: '위임인 카카오페이 본인인증 완료', timestamp: `${m.date}T10:15:00.000Z`, actor: 'client' as const },
           { action: '위임인 전자서명 날인 완료', timestamp: `${m.date}T10:15:20.000Z`, actor: 'client' as const },
-          { action: '계약 체결 완료 (4대 법적 효력 충족)', timestamp: `${m.date}T10:15:25.000Z`, actor: 'system' as const, documentHash: finalHash },
+          { action: '[DEV 데모] 계약 체결 완료', timestamp: `${m.date}T10:15:25.000Z`, actor: 'system' as const, documentHash: finalHash },
           { action: '블록체인 분산원장 영구 앵커링 (Polygon PoS)', timestamp: `${m.date}T10:15:30.000Z`, actor: 'system' as const, documentHash: finalHash, details: `Polygon Tx: ${txHash?.slice(0, 18)}...` }
         ] : [])
       ],
@@ -851,5 +859,7 @@ export function seedMockContracts(): void {
     };
   });
 
-  saveContracts(contracts);
+  // 데모 데이터는 이 브라우저(localStorage)에만 둔다 — 개발 빌드가 운영 Supabase를 보더라도 가짜 계약이 DB에 올라가지 않도록
+  // (이전: saveContracts()로 Supabase upsert)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
 }

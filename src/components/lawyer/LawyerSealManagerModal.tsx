@@ -47,8 +47,15 @@ export default function LawyerSealManagerModal({
     type: 'firmLogoUrl' | 'lawyerSealUrl'
   ) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
+    // 래스터 이미지(PNG/JPEG/WebP)만 허용 — SVG는 스크립트를 담을 수 있어 제외 (accept 속성은 힌트일 뿐이라 직접 검사)
+    const okType = /^image\/(png|jpe?g|webp)$/i.test(file.type) && !/\.svg$/i.test(file.name);
+    if (!okType) {
+      toast.error('PNG, JPG, WebP 이미지만 올릴 수 있습니다.');
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       toast.error('파일 크기는 2MB 이하여야 합니다.');
       return;
@@ -58,7 +65,7 @@ export default function LawyerSealManagerModal({
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setSealInfo(prev => ({ ...prev, [type]: dataUrl }));
-      toast.success(`${type === 'firmLogoUrl' ? '로고' : '직인'} 이미지가 업로드되었습니다.`);
+      toast.success(`${type === 'firmLogoUrl' ? '로고' : '도장'} 이미지를 불러왔습니다. [설정 저장하기]를 눌러야 저장됩니다.`);
     };
     reader.readAsDataURL(file);
   };
@@ -68,9 +75,15 @@ export default function LawyerSealManagerModal({
       ...sealInfo,
       updatedAt: new Date().toISOString(),
     };
-    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
+    try {
+      localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
+    } catch (err) {
+      console.error('[LawyerSealManager] 저장 실패', err);
+      toast.error('이 브라우저의 저장 공간이 부족해 저장하지 못했습니다. 이미지 크기를 줄여 다시 시도해 주세요.');
+      return;
+    }
     onSaveSealInfo(updated);
-    toast.success('법무법인 로고 및 변호사 직인 설정이 저장되었습니다.');
+    toast.success('로고·도장 이미지를 이 브라우저에 저장했습니다.');
     onClose();
   };
 
@@ -102,7 +115,7 @@ export default function LawyerSealManagerModal({
           <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900">
             <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              등록하신 로고와 직인(도장)은 <strong>수임계약서, 소송위임장, 사실조회신청서, 법원 보정서</strong> 등 PDF 전자문서 생성 시 규격에 맞춰 자동 날인되어 출력됩니다.
+              ⚠️ 등록한 로고·도장 이미지는 아직 계약서·위임장·보정서 등 서식에 <strong>자동으로 찍히지 않습니다</strong>(연동 준비 중). 이미지는 이 브라우저에만 저장됩니다.
             </p>
           </div>
 
@@ -129,7 +142,7 @@ export default function LawyerSealManagerModal({
               <input 
                 type="file" 
                 ref={logoInputRef}
-                accept="image/png, image/jpeg, image/svg+xml"
+                accept="image/png, image/jpeg, image/webp"
                 onChange={e => handleFileUpload(e, 'firmLogoUrl')}
                 className="hidden" 
               />
@@ -159,8 +172,7 @@ export default function LawyerSealManagerModal({
             {/* 2. 변호사 공인 직인/도장 (인장) */}
             <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 flex flex-col items-center text-center space-y-3">
               <div className="flex items-center gap-1">
-                <span className="text-xs font-bold text-slate-700">변호사 공인 직인(인장)</span>
-                <span className="text-[10px] bg-red-100 text-red-700 font-black px-1.5 rounded">필수</span>
+                <span className="text-xs font-bold text-slate-700">변호사 도장 이미지</span>
               </div>
 
               <div className="w-24 h-24 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden p-2 shadow-xs relative">
@@ -211,7 +223,7 @@ export default function LawyerSealManagerModal({
 
           {/* 자동 날인 옵션 체크박스 */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
-            <span className="font-bold text-slate-800 block">자동 날인 연동 설정</span>
+            <span className="font-bold text-slate-800 block">자동 날인 사용 여부 (연동 준비 중 — 현재 서식에 반영되지 않음)</span>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
                 <input 

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { validateUploadFile } from '../../../utils/fileSecurity';
 import CourtCaseModal from './CourtCaseModal';
 import { saveBankruptcyCase } from '../../../services/companionService';
+import { parseLocalYmd } from '../../../utils/localDate';
 
 interface BankruptcyCompanionDashboardProps {
   caseData: BankruptcyCompanionCase;
@@ -28,9 +29,12 @@ export default function BankruptcyCompanionDashboard({
   const nextStage = timelines
     .filter(s => s.status !== 'completed' && s.targetDate)
     .sort((a, b) => String(a.targetDate).localeCompare(String(b.targetDate)))[0];
-  const nextDday = nextStage?.targetDate
-    ? Math.ceil((new Date(nextStage.targetDate).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
-    : null;
+  const nextDday = (() => {
+    const due = parseLocalYmd(String(nextStage?.targetDate || ''));
+    if (!due) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / 86400000);
+  })();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -13,7 +13,7 @@ interface CreditorMeetingGuideModalProps {
 export default function CreditorMeetingGuideModal({
   isOpen,
   onClose,
-  courtName = '서울회생법원',
+  courtName = '',
   caseNumber = '사건 접수 준비중',
   meetingDate = '기일 지정 대기중',
   meetingPlace = '회생법정'
@@ -82,7 +82,7 @@ export default function CreditorMeetingGuideModal({
                 <span>신분증 원본 (주민등록증, 운전면허증, 여권 중 1개 필수)</span>
               </div>
               <p className="text-[11px] text-red-700/80 dark:text-red-300/70 pl-6 leading-relaxed">
-                신분증이 없으면 법정에 입정할 수 없으며, 불출석 처리될 수 있습니다. 모바일 신분증도 가능하나 실물 신분증 지참을 권장합니다.
+                신분증이 없으면 본인 확인이 어려워 불출석으로 처리될 수 있습니다. 실물 신분증 지참을 권장합니다.
               </p>
             </div>
           </div>
@@ -97,7 +97,7 @@ export default function CreditorMeetingGuideModal({
               <div className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block">지정 시간 15분 전 법정 입정</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">지정 시간보다 여유 있게 도착 (10~15분 전 권장)</span>
                   <p className="text-[11px] text-slate-500 mt-0.5">방청석에 앉아 계시면 판사님이 사건번호와 신청인 성함을 순서대로 호명합니다.</p>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export default function CreditorMeetingGuideModal({
                 대부분의 금융기관 채권자는 법정에 출석하지 않습니다.
               </p>
               <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/70 leading-relaxed">
-                금융기관은 서면으로 의견을 제출하므로 집회 당일에 채권자가 출석해 항의하는 경우는 99% 없습니다. 긴장하지 마시고 편안한 마음으로 출석하시면 됩니다.
+                채권자가 실제로 출석하는 경우는 많지 않지만, 출석해 질문할 수도 있습니다. 질문을 받으면 사실대로 짧게 답하고, 모르는 내용은 대리인과 상의하겠다고 말씀하시면 됩니다.
               </p>
             </div>
           </div>

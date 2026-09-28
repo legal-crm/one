@@ -32,15 +32,19 @@ interface Props {
   onSave: (updatedDoc: ContractDocument) => void;
 }
 
-export const ContractDocEditModal: React.FC<Props> = ({
+// Rules of Hooks: isOpen/doc 가드는 훅을 쓰는 본문 바깥에서 처리 (이전: 조기 return 뒤에 useState 8개 → 열고 닫을 때 크래시)
+export const ContractDocEditModal: React.FC<Props> = (props) => {
+  if (!props.isOpen || !props.doc) return null;
+  return <ContractDocEditModalInner key={props.doc.id} {...props} doc={props.doc} />;
+};
+
+const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = ({
   isOpen,
   doc,
   contractContext,
   onClose,
   onSave,
 }) => {
-  if (!isOpen || !doc) return null;
-
   const [title, setTitle] = useState(doc.title);
   const [type, setType] = useState<ContractDocType>(doc.type);
   const [signatureRequired, setSignatureRequired] = useState<'client' | 'lawyer' | 'both' | 'none'>(doc.signatureRequired);

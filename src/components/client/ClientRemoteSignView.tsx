@@ -856,7 +856,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
               <span>1단계: 전자서명 본인확인 (공인 인증 수단 선택)</span>
             </h3>
             <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-              전자서명법 제3조 규정 준수
+              전자서명 (전자서명법 제3조)
             </span>
           </div>
 
@@ -976,7 +976,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                   <span>2단계: 중요 조항 직접 자필확약 입력</span>
                 </h3>
                 <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-                  약관규제법 제3조 준수
+                  중요 조항 설명
                 </span>
               </div>
 

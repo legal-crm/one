@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { ContractDocType, ContractDocument } from '../types';
+import { localYmd } from '../utils/localDate';
 
 export interface LawyerContractTemplate {
   id: string;
@@ -29,6 +30,8 @@ export interface PlaceholderVariables {
   totalFee?: number;
   totalFeeKorean?: string;
   vatStatus?: string;
+  /** 계약의 부가세 별도 청구 여부 (vatStatus가 없을 때 문구 결정) */
+  vatIncluded?: boolean;
   feeScheduleText?: string;
   contractDate?: string;
 }
@@ -151,7 +154,7 @@ export const STANDARD_LEGAL_TEMPLATES: LawyerContractTemplate[] = [
 3. 채권자집회 기일 출석 지원 및 사건 진행에 부수되는 법률 상담 일체
 
 제 2 조 (수임료 및 납부 방법)
-1. 갑이 을에게 지급할 ==총 수임료는 일금 {{총수임료}}원정(부가세 별도)==으로 한다.
+1. 갑이 을에게 지급할 ==총 수임료는 일금 {{총수임료}}원정({{부가세여부}})==으로 한다.
 2. 법원 송달료, 인지대 등 공과금성 법원 실비용은 별도 산정하여 갑이 부담한다.
 3. 수임료 분할납부 시에는 본 계약서에 첨부된 분납 스케줄에 따라 정해진 기일에 성실히 납부하여야 한다.
 
@@ -193,7 +196,7 @@ export const STANDARD_LEGAL_TEMPLATES: LawyerContractTemplate[] = [
 개인회생(또는 파산·면책) 신청 및 절차 일체의 대리 및 법률자문.
 
 제 2 조 (수임료 및 분납 조건)
-1. ==총 수임료: {{총수임료}}원 (부가세 별도)==
+1. ==총 수임료: {{총수임료}}원 ({{부가세여부}})==
 2. 착수금 납부 후 잔여 금액은 약정된 납부일에 분할 납부한다.
 3. ==[기한이익 상실 특약] 갑이 수임료 분납금을 정당한 사유 없이 2회 이상 연속 연체할 경우, 기한의 이익을 즉시 상실하며 을은 잔여금 전액 청구 및 법원 보정서류 제출을 일시 중단할 수 있다.==
 
@@ -439,9 +442,11 @@ export function applyTemplatePlaceholders(content: string, vars: PlaceholderVari
   const lawFirmName = vars.lawFirmName || '법무법인';
   const totalFeeStr = vars.totalFee ? ((vars.totalFee * 10000).toLocaleString() + '원') : '협의 금액';
   const totalFeeKorean = vars.totalFeeKorean || (vars.totalFee ? `${(vars.totalFee * 10000).toLocaleString()}원 상당` : '협의 금액');
-  const vatStatus = vars.vatStatus || '부가가치세 포함';
+  // 계약의 부가세 설정을 따른다 (이전: 설정과 무관하게 '부가가치세 포함'을 넣고, 일부 서식은 '(부가세 별도)' 고정 → 한 계약서 안에서 모순)
+  const vatStatus = vars.vatStatus
+    || (vars.vatIncluded === true ? '부가가치세 별도' : vars.vatIncluded === false ? '부가가치세 포함' : '부가가치세 포함 여부 별도 약정');
   const feeScheduleText = vars.feeScheduleText || '수임료는 상호 약정한 분납 일정에 따라 성실히 납부하기로 한다.';
-  const contractDate = vars.contractDate || new Date().toISOString().split('T')[0];
+  const contractDate = vars.contractDate || localYmd();
 
   return content
     .replace(/\{\{의뢰인명\}\}/g, clientName)

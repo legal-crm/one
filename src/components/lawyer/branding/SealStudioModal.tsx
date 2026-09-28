@@ -23,6 +23,12 @@ interface SealStudioProps {
 type StudioTab = 'personal' | 'corporate' | 'background-remover' | 'signature' | 'settings';
 
 // 한글 ➔ 법률 및 주요 인장 한자 자동 변환 사전
+/**
+ * 직함·기관명 한자 변환표 (뜻이 하나로 정해진 용어만)
+ * ⚠️ 이름(성·이름)은 자동 변환하지 않는다. 같은 음에 한자가 여러 개라(정: 鄭/丁, 조: 趙/曺, 민: 閔/敏/珉 …)
+ *   음절별 자동 변환은 틀린 인장을 만든다(예: 김민지 → 金閔池, 이사랑 → 理事랑). 이름 한자는 사용자가 직접 입력한다.
+ *   '대표'·'이사'·'감사'·'인' 같은 짧은 단어도 이름 안에서 잘못 바뀌므로 제외.
+ */
 const HANJA_MAP: Record<string, string> = {
   '대표이사': '代表理事',
   '대표변호사': '代表辯護士',
@@ -31,37 +37,33 @@ const HANJA_MAP: Record<string, string> = {
   '법률사무소': '法律事務所',
   '주식회사': '株式會社',
   '지배인': '支配人',
-  '대표': '代表',
-  '이사': '理事',
-  '감사': '監事',
   '직인': '職印',
   '인장': '印章',
-  '인': '印',
-  '의인': '之印',
-  // 주요 한국 성씨
-  '김': '金', '이': '李', '박': '朴', '정': '鄭', '최': '崔',
-  '조': '趙', '강': '姜', '윤': '尹', '장': '張', '임': '林',
-  '한': '韓', '신': '申', '오': '吳', '서': '徐', '권': '權',
-  '황': '黃', '안': '安', '송': '宋', '류': '柳', '전': '全',
-  '홍': '洪', '고': '高', '문': '文', '양': '梁', '손': '孫',
-  '배': '裵', '백': '白', '허': '許', '유': '劉', '남': '南',
-  '심': '沈', '노': '盧', '하': '河', '곽': '郭', '성': '成',
-  '차': '車', '주': '朱', '우': '禹', '구': '具', '라': '羅',
-  '민': '閔', '진': '陳', '지': '池', '엄': '嚴', '채': '蔡',
-  '원': '元', '천': '千', '방': '方', '공': '孔', '현': '玄',
-  '변': '卞', '염': '廉', '길': '吉', '동': '東', '무': '武',
 };
 
-function convertToHanja(text: string): string {
+export function convertToHanja(text: string): string {
   let res = text;
-  const multiKeys = Object.keys(HANJA_MAP).sort((a, b) => b.length - a.length);
-  for (const k of multiKeys) {
-    if (res.includes(k)) {
-      res = res.replaceAll(k, HANJA_MAP[k]);
-    }
+  const keys = Object.keys(HANJA_MAP).sort((a, b) => b.length - a.length);
+  for (const k of keys) {
+    if (res.includes(k)) res = res.split(k).join(HANJA_MAP[k]);
   }
-  return res.split('').map(ch => HANJA_MAP[ch] || ch).join('');
+  return res;
 }
+
+/** 등록 정보 저장 (저장 공간 부족 등 실패 시 false — 호출 측이 성공 안내를 하지 않도록) */
+function persistSealInfoLocal(lawyerId: string, info: LawyerSealInfo): boolean {
+  try {
+    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(info));
+    return true;
+  } catch (e) {
+    console.error('[SealStudio] 저장 실패', e);
+    toast.error('이 브라우저의 저장 공간이 부족해 저장하지 못했습니다. 로고·도장 이미지를 줄이거나 다른 항목을 삭제한 뒤 다시 시도해 주세요.');
+    return false;
+  }
+}
+
+// 자필 서명으로 인정할 최소 획 길이(캔버스 픽셀) — 점 하나·짧은 선 등록 방지 (SignatureCanvas와 같은 취지)
+const MIN_SIGN_STROKE = 120;
 
 // 인주 색상 프리셋
 const INK_COLORS = [
@@ -112,16 +114,16 @@ export default function SealStudioModal({
   const [inkTexture, setInkTexture] = useState<boolean>(true);
 
   // 1. 일반 도장 상태
-  const [personalText, setPersonalText] = useState<string>(lawyerName || '홍길동');
+  const [personalText, setPersonalText] = useState<string>(lawyerName || '');
   const [personalLang, setPersonalLang] = useState<'ko' | 'hanja'>('ko');
   const [selectedPersonalCard, setSelectedPersonalCard] = useState<number>(3); // 4자 원형 기본 선택
   const [personalDataUrls, setPersonalDataUrls] = useState<string[]>([]);
 
   // 2. 법인 도장 상태 (기본 상호명을 로펌 풀네임으로 매핑하여 모두사인과 동일한 7~8자 최적 둘레 제공)
+  // 상호는 등록된 사무소명만 사용 (이전: 사무소명이 없으면 '법무법인 {변호사명}'·'법무법인 정의'를 지어냄)
   const [corpOuterText, setCorpOuterText] = useState<string>(() => {
-    if (firmName && firmName !== '법무법인' && firmName.length > 3) return firmName;
-    if (lawyerName) return `법무법인 ${lawyerName}`;
-    return '법무법인 정의';
+    if (firmName && firmName !== '법무법인') return firmName;
+    return '';
   });
   const [corpInnerText, setCorpInnerText] = useState<string>('대표변호사');
   const [corpSymbol, setCorpSymbol] = useState<'★' | '●'>('★');
@@ -145,6 +147,8 @@ export default function SealStudioModal({
   const [signPenColor, setSignPenColor] = useState<string>('#1E293B');
   const [signPenWidth, setSignPenWidth] = useState<number>(4);
   const [hasSignature, setHasSignature] = useState(false);
+  const signStrokeLenRef = useRef(0);
+  const signLastPtRef = useRef<{ x: number; y: number } | null>(null);
 
   // 종합 설정 상태
   const [sealInfo, setSealInfo] = useState<LawyerSealInfo>(() => {
@@ -185,7 +189,7 @@ export default function SealStudioModal({
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let clean = rawName.replace(/\s+/g, '').trim() || '홍길동';
+    let clean = rawName.replace(/\s+/g, '').trim() || '이름';
     if (lang === 'hanja') {
       clean = convertToHanja(clean);
     }
@@ -433,7 +437,7 @@ export default function SealStudioModal({
     }
 
     // 텍스트 한글/한자 변환
-    let outerStr = outerTextRaw.replace(/\s+/g, '').trim() || '법무법인정의';
+    let outerStr = outerTextRaw.replace(/\s+/g, '').trim() || '상호입력';
     let innerStr = innerTextRaw.replace(/\s+/g, '').trim() || '대표변호사';
 
     // 외경 상호명이 4자 이하(예: '법무법인', '정의')인 경우 한국 공인 인장 관례상 '의인'/'之印' 자동 보정하여 둘레 완성
@@ -627,10 +631,10 @@ export default function SealStudioModal({
       lawyerSealUrl: targetUrl,
       updatedAt: new Date().toISOString(),
     };
+    if (!persistSealInfoLocal(lawyerId, updated)) return;
     setSealInfo(updated);
-    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
     onSaveSealInfo(updated);
-    toast.success(`✨ [${sealTitle}]이(가) 변호사 공인 직인으로 즉시 등록되었습니다!`);
+    toast.success(`[${sealTitle}] 이미지를 변호사 도장으로 등록했습니다 (이 브라우저에 저장). 등록 인감과는 별개입니다.`);
     if (!isInline && onClose) {
       onClose();
     }
@@ -763,7 +767,9 @@ export default function SealStudioModal({
     reader.readAsDataURL(file);
   };
 
+  // 개발 환경 전용 샘플 (운영에서는 가짜 '김변호인' 도장이 변호사 도장으로 등록될 수 있어 숨김)
   const handleLoadSampleSeal = () => {
+    if (!import.meta.env.DEV) return;
     const sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = 400;
     sampleCanvas.height = 400;
@@ -808,16 +814,20 @@ export default function SealStudioModal({
   const handleApplyProcessedAsSeal = (target: 'firmLogoUrl' | 'lawyerSealUrl') => {
     const canvas = processedCanvasRef.current;
     if (!canvas) return;
+    if (!uploadedRawImg || canvas.width === 0 || canvas.height === 0) {
+      toast.error('먼저 이미지를 올리고 배경 제거 결과를 확인해 주세요.');
+      return;
+    }
     const url = canvas.toDataURL('image/png');
     const updated: LawyerSealInfo = {
       ...sealInfo,
       [target]: url,
       updatedAt: new Date().toISOString(),
     };
+    if (!persistSealInfoLocal(lawyerId, updated)) return;
     setSealInfo(updated);
-    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
     onSaveSealInfo(updated);
-    toast.success(`✨ ${target === 'firmLogoUrl' ? '법무법인 로고' : '변호사 공인 직인'}으로 등록되었습니다!`);
+    toast.success(`${target === 'firmLogoUrl' ? '사무소 로고' : '변호사 도장 이미지'}로 등록했습니다 (이 브라우저에 저장).`);
   };
 
   // =============================================================
@@ -840,14 +850,15 @@ export default function SealStudioModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     setIsDrawing(true);
-    setHasSignature(true);
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+    const pt = { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    signLastPtRef.current = pt;
     ctx.beginPath();
-    ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
+    ctx.moveTo(pt.x, pt.y);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -863,17 +874,24 @@ export default function SealStudioModal({
     const scaleY = canvas.height / rect.height;
     ctx.strokeStyle = signPenColor;
     ctx.lineWidth = signPenWidth;
-    ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
+    const pt = { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    ctx.lineTo(pt.x, pt.y);
     ctx.stroke();
+    const last = signLastPtRef.current;
+    if (last) signStrokeLenRef.current += Math.hypot(pt.x - last.x, pt.y - last.y);
+    signLastPtRef.current = pt;
+    if (!hasSignature && signStrokeLenRef.current >= MIN_SIGN_STROKE) setHasSignature(true);
   };
 
-  const stopDrawing = () => setIsDrawing(false);
+  const stopDrawing = () => { setIsDrawing(false); signLastPtRef.current = null; };
   const clearSignature = () => {
     const canvas = signCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    signStrokeLenRef.current = 0;
+    signLastPtRef.current = null;
     setHasSignature(false);
   };
 
@@ -896,7 +914,7 @@ export default function SealStudioModal({
   const handleApplySignature = () => {
     const canvas = signCanvasRef.current;
     if (!canvas || !hasSignature) {
-      toast.error('먼저 서명을 그려주세요.');
+      toast.error('서명을 조금 더 길게 그려 주세요. (점이나 짧은 선은 서명으로 등록하지 않습니다)');
       return;
     }
     const url = canvas.toDataURL('image/png');
@@ -905,10 +923,10 @@ export default function SealStudioModal({
       signUrl: url,
       updatedAt: new Date().toISOString(),
     };
+    if (!persistSealInfoLocal(lawyerId, updated)) return;
     setSealInfo(updated);
-    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
     onSaveSealInfo(updated);
-    toast.success('✨ 변호사 전자서명이 등록되었습니다!');
+    toast.success('변호사 서명 이미지를 등록했습니다 (이 브라우저에 저장).');
   };
 
   // 전체 설정 저장
@@ -917,9 +935,9 @@ export default function SealStudioModal({
       ...sealInfo,
       updatedAt: new Date().toISOString(),
     };
-    localStorage.setItem(`legal_crm_lawyer_seal_${lawyerId}`, JSON.stringify(updated));
+    if (!persistSealInfoLocal(lawyerId, updated)) return;
     onSaveSealInfo(updated);
-    toast.success('브랜딩 및 자동 날인 연동 설정이 안전하게 저장되었습니다.');
+    toast.success('로고·도장·서명 설정을 이 브라우저에 저장했습니다. (다른 기기에는 자동으로 옮겨지지 않습니다)');
     if (!isInline && onClose) onClose();
   };
 
@@ -941,11 +959,11 @@ export default function SealStudioModal({
                 도장 입력 & 브랜딩 스튜디오
               </h2>
               <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black border border-amber-400/30">
-                모두사인 규격 지원
+                도장·서명 이미지
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              {firmName} {lawyerName} 변호사 전자서명·공인 직인 날인 센터
+              {firmName} {lawyerName} 변호사 도장·서명 이미지 관리 (등록 인감·법인인감과는 별개)
             </p>
           </div>
         </div>
@@ -1016,6 +1034,7 @@ export default function SealStudioModal({
                   placeholder="이름을 입력하고 만들기 버튼을 눌러주세요."
                   maxLength={10}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  aria-label="도장에 새길 이름"
                 />
               </div>
 
@@ -1046,6 +1065,12 @@ export default function SealStudioModal({
                 만들기
               </button>
             </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              {personalLang === 'hanja'
+                ? "한자 모드는 '변호사·법무법인·대표변호사' 같은 직함만 한자로 바꿉니다. 이름은 음이 같아도 한자가 여러 개라 자동으로 바꾸지 않으니, 한자 이름은 입력칸에 직접 한자로 입력하세요."
+                : '생성된 도장은 이미지일 뿐이며 주민센터에 등록한 인감이나 법인인감이 아닙니다.'}
+            </p>
 
             {/* 8대 프리셋 도장 그리드 (모두사인 카드 레이아웃) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
@@ -1129,7 +1154,7 @@ export default function SealStudioModal({
                   className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>선택 도장 공인 직인으로 등록</span>
+                  <span>선택 도장을 내 도장으로 등록</span>
                 </button>
               </div>
             </div>
@@ -1305,7 +1330,7 @@ export default function SealStudioModal({
                   className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>선택 도장 공인 직인으로 등록</span>
+                  <span>선택 도장을 내 도장으로 등록</span>
                 </button>
               </div>
             </div>
@@ -1356,13 +1381,15 @@ export default function SealStudioModal({
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleLoadSampleSeal}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
-                >
-                  샘플 종이도장 불러오기
-                </button>
+                {import.meta.env.DEV && (
+                  <button
+                    type="button"
+                    onClick={handleLoadSampleSeal}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
+                  >
+                    [DEV] 샘플 종이도장 불러오기
+                  </button>
+                )}
                 <input 
                   type="file" 
                   ref={fileInputRef}
@@ -1501,7 +1528,7 @@ export default function SealStudioModal({
                     className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.98]"
                   >
                     <Stamp className="w-4 h-4" />
-                    <span>변호사 공인 직인으로 등록</span>
+                    <span>변호사 도장 이미지로 등록</span>
                   </button>
 
                   <button
@@ -1528,7 +1555,7 @@ export default function SealStudioModal({
               <div>
                 <p className="font-bold mb-0.5">전자 서명(Sign) 직접 그리기 패드</p>
                 <p className="text-blue-900 leading-relaxed">
-                  마우스 또는 터치펜으로 자필 서명을 직접 그려보세요. 투명 배경의 벡터 스타일 PNG로 자동 추출됩니다.
+                  마우스 또는 터치펜으로 자필 서명을 직접 그려보세요. 투명 배경 PNG 이미지로 저장됩니다.
                 </p>
               </div>
             </div>
@@ -1662,9 +1689,9 @@ export default function SealStudioModal({
             <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 flex items-start gap-3 text-xs text-slate-800">
               <Layers className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold mb-0.5">현재 등록된 브랜딩 에셋 및 법률 문서 자동 날인</p>
+                <p className="font-bold mb-0.5">등록된 로고·도장·서명 이미지</p>
                 <p className="text-slate-600 leading-relaxed">
-                  등록된 로고, 공인 직인, 자필 서명은 플랫폼 내에서 발급되는 각종 서식에 규격에 맞춰 자동 배치됩니다.
+                  ⚠️ 현재 계약서·위임장·보정서 등 서식에는 이 이미지가 <strong>자동으로 찍히지 않습니다</strong>(연동 준비 중). 이미지는 이 브라우저에만 저장되며, 필요하면 PNG로 내려받아 사용하세요.
                 </p>
               </div>
             </div>
@@ -1697,8 +1724,7 @@ export default function SealStudioModal({
               {/* 2. 직인 */}
               <div className="p-4 rounded-2xl border-2 border-red-100 bg-red-50/30 flex flex-col items-center text-center space-y-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">변호사 공인 직인 (도장)</span>
-                  <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-black">필수</span>
+                  <span className="text-xs font-bold text-slate-800">변호사 도장 이미지</span>
                 </div>
                 <div className="w-24 h-24 rounded-full bg-white border border-red-200 flex items-center justify-center overflow-hidden p-2 shadow-xs relative">
                   {sealInfo.lawyerSealUrl ? (
@@ -1749,7 +1775,7 @@ export default function SealStudioModal({
             {/* 자동 날인 체크박스 */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">
               <span className="text-xs font-black text-slate-900 block">
-                전자문서 발급 시 자동 날인 연동 옵션
+                자동 날인 사용 여부 (연동 준비 중 — 현재 서식에 반영되지 않음)
               </span>
               <div className="space-y-2.5 text-xs text-slate-700">
                 <label className="flex items-center gap-2.5 cursor-pointer font-medium p-2 rounded-xl hover:bg-slate-50 transition-colors">
