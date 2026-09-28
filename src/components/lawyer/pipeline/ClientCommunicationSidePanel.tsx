@@ -209,7 +209,7 @@ export default function ClientCommunicationSidePanel({
     e.target.value = '';
 
     setIsTranscribing(true);
-    setUploadProgressText('구글 드라이브 업로드 & Gemini AI 전사 중...');
+    setUploadProgressText('녹음 파일 처리 중 (드라이브 업로드 · AI 대화록)...');
 
     try {
       const driveRes = await uploadRecordingToDrive(file, crmExt.googleDriveConfig, activeLawyer.email);
@@ -218,41 +218,46 @@ export default function ClientCommunicationSidePanel({
         filename: file.name,
         url: driveRes.url,
         driveFileId: driveRes.driveFileId,
-        uploadedAt: new Date().toISOString(),
+        uploadDate: new Date().toISOString(),
         duration: 0,
-      };
-
-      const aiRes = await generateAiCallSummary(file, {
-        customerName: clientName,
-        phone: clientRequest.phone,
-        managerName: activeLawyer.name,
-        caseType: crmExt.caseType === 'bankruptcy' ? '개인파산·면책' : '개인회생'
-      });
-
-      // 드라이브 업로드 성공 시에만 녹취 링크 저장
+      } as RecordingItem;
       const uploaded = driveRes.status === 'success';
-      const updatedRecordings = uploaded ? [newRec, ...(crmExt.recordings || [])] : (crmExt.recordings || []);
-      const updated: CrmClientExtension = {
-        ...crmExt,
-        recordings: updatedRecordings,
-        aiSummary: aiRes,
-        lastActivityAt: new Date().toISOString()
-      };
 
-      if (onUpdateExt) {
-        onUpdateExt(updated);
+      // AI 대화록은 별도로 시도 — 실패해도 업로드된 녹음은 저장 (이전: AI 실패 시 드라이브 파일이 기록 없이 남음)
+      let aiRes: string | null = null;
+      let aiError = '';
+      try {
+        aiRes = await generateAiCallSummary(file, {
+          customerName: clientName,
+          phone: clientRequest.phone,
+          managerName: activeLawyer.name,
+          caseType: crmExt.caseType === 'bankruptcy' ? '개인파산·면책' : '개인회생'
+        });
+      } catch (aiErr: any) {
+        aiError = aiErr?.message || 'AI 대화록 생성 실패';
       }
-      if (uploaded) {
-        setPlayingRecording(newRec);
-        toast.success('통화 녹취 업로드 및 AI 대화록 작성이 완료되었습니다.');
-      } else {
-        toast.warning(driveRes.status === 'not_configured'
-          ? 'AI 대화록은 작성했지만, 구글 드라이브 연동이 설정되지 않아 녹음 파일은 저장되지 않았습니다.'
-          : 'AI 대화록은 작성했지만, 구글 드라이브 업로드에 실패해 녹음 파일은 저장되지 않았습니다.');
+
+      if (uploaded || aiRes) {
+        const updated: CrmClientExtension = {
+          ...crmExt,
+          recordings: uploaded ? [newRec, ...(crmExt.recordings || [])] : (crmExt.recordings || []),
+          ...(aiRes ? { aiSummary: aiRes } : {}),
+          lastActivityAt: new Date().toISOString()
+        };
+        if (onUpdateExt) onUpdateExt(updated);
       }
+      if (uploaded) setPlayingRecording(newRec);
+
+      const driveMsg = uploaded ? '녹음 파일을 구글 드라이브에 저장했습니다' :
+        driveRes.status === 'not_configured' ? '구글 드라이브 연동이 설정되지 않아 녹음 파일은 저장되지 않았습니다' :
+        '구글 드라이브 업로드에 실패해 녹음 파일은 저장되지 않았습니다';
+      const aiMsg = aiRes ? 'AI 대화록을 작성했습니다' : `AI 대화록은 작성하지 못했습니다 (${aiError})`;
+      if (uploaded && aiRes) toast.success(`${driveMsg}. ${aiMsg}.`);
+      else if (uploaded || aiRes) toast.warning(`${driveMsg}. ${aiMsg}.`);
+      else toast.error(`${driveMsg}. ${aiMsg}.`);
     } catch (err: any) {
       console.error(err);
-      toast.error(`녹취 분석 실패: ${err.message || '오류 발생'}`);
+      toast.error(`녹취 처리 실패: ${err.message || '오류 발생'}`);
     } finally {
       setIsTranscribing(false);
       setUploadProgressText('');
@@ -785,7 +790,7 @@ export default function ClientCommunicationSidePanel({
           templateDesc={confirmModalConfig.desc}
           emoji={confirmModalConfig.emoji}
           defaultMessage={confirmModalConfig.defaultMessage}
-          firmName={activeLawyer.lawFirmName || activeLawyer.firm || '법무법인'}
+          firmName={activeLawyer.firmName || activeLawyer.firm || '법무법인'}
           lawyerName={activeLawyer.name || '담당 변호사'}
           stageNumber={pipelineStage}
           milestone={confirmModalConfig.milestone}

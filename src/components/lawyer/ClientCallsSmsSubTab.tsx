@@ -294,9 +294,9 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
         filename: file.name,
         url: driveRes.url,
         driveFileId: driveRes.driveFileId,
-        uploadedAt: new Date().toISOString(),
+        uploadDate: new Date().toISOString(),
         duration: 0,
-      };
+      } as RecordingItem;
 
       setUploadProgressText('Gemini 3.5 Transcribe로 화자분리 및 대화록 작성 중...');
 
@@ -959,7 +959,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-slate-800 truncate">{rec.filename}</p>
                         <span className="text-[10px] text-slate-400 font-mono">
-                          {new Date(rec.uploadedAt).toLocaleString()}
+                          {new Date(rec.uploadDate || (rec as any).uploadedAt).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

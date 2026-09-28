@@ -90,7 +90,7 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${selectedForm.name}</title>
+          <title>${String(selectedForm.name).replace(/[<>&"']/g, '')}</title>
           <meta charset="utf-8" />
           <style>
             @page { size: A4 portrait; margin: 45mm 20mm 30mm 20mm; }

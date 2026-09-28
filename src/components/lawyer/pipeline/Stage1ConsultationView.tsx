@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
 import { addClientNotification } from '../../../services/clientNotificationService';
 import { useDialog } from '../../common/DialogProvider';
+import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 
 interface Stage1ConsultationViewProps {
   clientRequest: ConsultRequest;
@@ -41,9 +42,9 @@ export default function Stage1ConsultationView({
   const dependents = fp.dependents ?? (fp.minorChildren ?? 0); // 본인 제외 부양가족 수
   const householdSize = dependents + 1; // 가구원 수
 
-  // 2026년 기준 중위소득 60% 법정 최저생계비 (만원 단위)
-  const livingCostMap: Record<number, number> = { 1: 133, 2: 221, 3: 282, 4: 343, 5: 402, 6: 459 };
-  const minLivingCost = livingCostMap[householdSize] || (133 + dependents * 60);
+  // 2026년 기준 중위소득 60% 생계비 (만원 단위) — 공통 상수 사용
+  // (이전: 자체 표 {1:133, 2:221...}을 써서 2026 공시값(1인 153.9만)과 달랐음)
+  const minLivingCost = Math.round(getLivingExpense(householdSize) / 10000);
   const availableIncome = Math.max(0, income - minLivingCost);
   const isAvailableIncomeSufficient = availableIncome > 0;
 
@@ -52,8 +53,12 @@ export default function Stage1ConsultationView({
   const assetRatio = debtTotal > 0 ? Math.min(100, Math.round((assetsTotal / debtTotal) * 100)) : 0;
 
   // 요건 3: 결격사유 및 리스크 스크리닝
-  const isDebtUnderLimit = debtTotal > 0 && debtTotal <= 150000;
-  const debtLimitPercentage = Math.min(100, Math.round((debtTotal / 100000) * 100)); // 무담보 10억 기준 퍼센트
+  // 채무한도: 무담보 10억 / 담보 15억을 각각 판정 (채무자회생법 제579조 제1호)
+  // 이전: 총채무 15억 이하면 통과 → 무담보 12억도 '적격'으로 표시
+  const securedDebt = (fp.debts || []).filter((d: any) => d?.type === 'secured').reduce((s: number, d: any) => s + (Number(d?.principal ?? d?.amount) || 0), 0);
+  const unsecuredDebt = Math.max(0, debtTotal - securedDebt);
+  const isDebtUnderLimit = debtTotal > 0 && unsecuredDebt <= 100000 && securedDebt <= 150000;
+  const debtLimitPercentage = Math.min(100, Math.round((unsecuredDebt / 100000) * 100)); // 무담보 10억 기준 퍼센트
   const hasRecentDischarge = Boolean((clientRequest as any)?.hasRecentDischarge || (fp as any)?.hasRecentDischarge);
   const coinCryptoLoss = fp.debtTypes?.coinCrypto || fp.speculativeLoss || 0;
   const recentLoans = fp.debtTypes?.recentLoans || 0;
@@ -98,9 +103,10 @@ export default function Stage1ConsultationView({
   const displayClientName = isContactShared ? `${realName} (${stealthName})` : stealthName;
 
   // 체크리스트 상태
-  const [debtCheckPassed, setDebtCheckPassed] = useState(() => debtTotal > 0 && debtTotal <= 150000); // 15억 이하
-  const [incomeCheckPassed, setIncomeCheckPassed] = useState(() => isBankruptcy ? true : income > 133); // 중위소득 1인 생계비 기준
-  const [article595Passed, setArticle595Passed] = useState(true); // 595조 결격사유 없음
+  const [debtCheckPassed, setDebtCheckPassed] = useState(() => isDebtUnderLimit); // 무담보 10억·담보 15억 이하
+  const [incomeCheckPassed, setIncomeCheckPassed] = useState(() => isBankruptcy ? true : income > minLivingCost); // 가구원수 기준 생계비 초과
+  // 제595조(면책불허가 사유 등)는 자동 판정할 근거 데이터가 없으므로 변호사가 직접 확인해야 함 (이전: 기본 '결격사유 없음')
+  const [article595Passed, setArticle595Passed] = useState(false);
   const [caseTypeConfirmed, setCaseTypeConfirmed] = useState(() => crmExt?.crmStatus !== 'requested');
 
   // 아코디언 섹션 토글
@@ -111,6 +117,10 @@ export default function Stage1ConsultationView({
 
   // 1 Major Action: 적격 확정 및 Gate 1 통과 (2단계 확인 팝업 적용)
   const handleConfirmEligibility = async () => {
+    if (!allConditionsMet) {
+      await dialog.alert({ title: '적격 요건 미확인', message: '채무 한도·소득 요건·제595조 결격사유 확인을 모두 마친 뒤 확정할 수 있습니다.', variant: 'warning' });
+      return;
+    }
     const confirmed = await dialog.confirm({
       title: '⚖️ 신청 적격 요건 확정',
       message: `채무 한도, 소득 요건 및 제595조 결격사유 점검을 완료하고 의뢰인을 [수임 계약 준비] 상태로 전환하시겠습니까?`,
@@ -141,7 +151,8 @@ export default function Stage1ConsultationView({
       emoji: '📱',
       linkTab: 'diagnosis',
     });
-    toast.success(`${clientRequest.clientName}님께 적격 판정 및 수임 절차 안내 알림톡이 전송되었습니다.`);
+    // 알림톡은 발송하지 않음 — 의뢰인 앱 알림만 등록 (이전: '알림톡이 전송되었습니다')
+    toast.success(`${clientRequest.clientName}님 앱에 적격 판정 안내 알림을 등록했습니다.`);
   };
 
   return (
@@ -211,8 +222,8 @@ export default function Stage1ConsultationView({
                   <span>제안서 조건 수정 / 재발송</span>
                 </button>
               )}
-              {/* 시연 및 실무 편의를 위한 고객 열람 시뮬레이션 버튼 */}
-              <button
+              {/* 시연용 고객 열람 시뮬레이션 — 개발 환경에서만 (운영에서는 의뢰인 동의 없이 실명·연락처를 공개하게 됨) */}
+              {import.meta.env.DEV && <button
                 type="button"
                 onClick={() => {
                   setIsSimulatedShared(true);
@@ -224,7 +235,7 @@ export default function Stage1ConsultationView({
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>🧪 [시뮬레이션] 고객 제안서 확인 & 전화상담 요청</span>
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -278,7 +289,7 @@ export default function Stage1ConsultationView({
 
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <a
-                href={`tel:${(clientRequest.phone || '01066237195').replace(/[^0-9]/g, '')}`}
+                href={clientRequest.phone ? `tel:${clientRequest.phone.replace(/[^0-9]/g, '')}` : undefined}
                 className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-emerald-500/30 transition-all flex items-center gap-1.5 press-scale cursor-pointer"
               >
                 <Phone className="w-4 h-4 text-slate-950" />
@@ -421,7 +432,7 @@ export default function Stage1ConsultationView({
                 isDebtExceedingAssets ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isDebtExceedingAssets ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                {isDebtExceedingAssets ? '충족 (채무초과)' : '미달 (자산초과 기각위험)'}
+                {isDebtExceedingAssets ? '채무초과 (충족)' : '자산이 채무 이상 (청산가치 검토 필요)'}
               </span>
             </div>
 
@@ -684,7 +695,7 @@ export default function Stage1ConsultationView({
                     </tr>
                     <tr className="text-[11px]">
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">잔여 법정 한도</td>
-                      <td className="py-1 text-right font-mono font-black text-emerald-600">+{Math.max(0, 100000 - debtTotal).toLocaleString()}만원</td>
+                      <td className="py-1 text-right font-mono font-black text-emerald-600">+{Math.max(0, 100000 - unsecuredDebt).toLocaleString()}만원</td>
                     </tr>
                   </tbody>
                 </table>
@@ -703,7 +714,7 @@ export default function Stage1ConsultationView({
                 <span className="text-slate-400">0억</span>
                 <span className="text-blue-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse" />
-                  현재 {debtTotal.toLocaleString()}만원 ({debtLimitPercentage}%)
+                  무담보 {unsecuredDebt.toLocaleString()}만원 ({debtLimitPercentage}%){securedDebt > 0 ? ` · 담보 ${securedDebt.toLocaleString()}만원 (15억 상한)` : ''}
                 </span>
                 <span className="text-slate-400">10억 상한</span>
               </div>

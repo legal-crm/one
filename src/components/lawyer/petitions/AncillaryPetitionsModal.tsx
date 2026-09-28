@@ -12,6 +12,7 @@ import type {
   LevyReleasePetition 
 } from '../../../types/courtPetitionTypes';
 import ModalPortal from '../../common/ModalPortal';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 
 interface AncillaryPetitionsModalProps {
   isOpen: boolean;
@@ -30,8 +31,12 @@ function AncillaryPetitionsModalInner({
 }: AncillaryPetitionsModalProps) {
 
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const mainCaseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '2026개회 (접수 예정)';
+  // 사건 데이터만 사용 — 미입력은 빈칸으로 두고 서식에서 직접 입력 (이전: 서울회생법원·가짜 사건번호)
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
+  const mainCaseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '';
+  const pInfo: any = crmExt.petitionInfo || {};
+  const debtorRrnMasked = pInfo.rrnFront ? `${pInfo.rrnFront}-*******` : '';
+  const debtorAddr = pInfo.residentAddress || (clientRequest.financialProfile as any)?.address || '';
 
   const [activeTab, setActiveTab] = useState<'stay' | 'exempt' | 'prohibition' | 'release'>('stay');
 
@@ -40,16 +45,17 @@ function AncillaryPetitionsModalInner({
     id: 'stay-1',
     clientId: clientRequest.id,
     debtorName: clientName,
-    debtorRrn: '820415-1******',
-    debtorAddress: '서울특별시 마포구 마포대로 123',
+    // 이전: 가짜 주민번호·주소·집행법원·집행사건번호·채권자(신한카드)·제3채무자·청구금액 1,850만원이 기본값
+    debtorRrn: debtorRrnMasked,
+    debtorAddress: debtorAddr,
     courtName,
     mainCaseNumber,
-    executionCourt: '서울동부지방법원',
-    executionCaseNumber: '2026타채 54321호',
+    executionCourt: '',
+    executionCaseNumber: '',
     executionType: 'SALARY_ATTACHMENT',
-    creditorName: '주식회사 신한카드',
-    thirdPartyDebtor: '주식회사 넥스트소프트 (급여 지급처)',
-    claimAmount: 18500000,
+    creditorName: '',
+    thirdPartyDebtor: '',
+    claimAmount: 0,
     stayReason: '신청인은 귀원에 개인회생개시신청을 하여 현재 심리 중에 있는바, 만일 위 채권자의 급여 압류 및 전부·추심명령에 기한 강제집행이 속행된다면 신청인은 최저생계마저 위협받고 회생절차의 원활한 진행이 불가능하게 되므로, 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 기하여 위 강제집행 절차의 즉각적인 중지를 구합니다.',
     createdAt: new Date().toISOString().split('T')[0]
   });
@@ -62,9 +68,9 @@ function AncillaryPetitionsModalInner({
     courtName,
     mainCaseNumber,
     exemptCategory: 'HOUSING_LEASE_DEPOSIT',
-    targetAssetName: '서울특별시 마포구 마포대로 123 아파트 101호 주거용 임차보증금 반환채권',
-    totalAssetAmount: 30000000,
-    requestedExemptAmount: 30000000, // 서울 소액보증금 5,500만 한도 내 전액
+    targetAssetName: debtorAddr ? `${debtorAddr} 주거용 임차보증금 반환채권` : '',
+    totalAssetAmount: 0,
+    requestedExemptAmount: 0,
     petitionReason: '위 재산은 주택임대차보호법 제8조 및 동법 시행령 제10조가 정하는 우선변제를 받을 수 있는 보증금 중 일정액에 해당하는바, 채무자 회생 및 파산에 관한 법률 제383조 제2항 및 제580조 제3항에 따라 개인회생재단(청산가치)에서 면제하여 주시기를 구합니다.',
     createdAt: new Date().toISOString().split('T')[0]
   });
@@ -76,12 +82,13 @@ function AncillaryPetitionsModalInner({
     debtorName: clientName,
     courtName,
     mainCaseNumber,
-    confirmationDate: '2026. 06. 20.',
-    executionCourt: '서울동부지방법원',
-    executionCaseNumber: '2026타채 54321호',
-    seizingCreditorName: '주식회사 신한카드',
-    thirdPartyDebtor: '주식회사 넥스트소프트',
-    releaseReason: '위 개인회생사건에 관하여 채무자회생법 제615조 제2항에 따라 변제계획인가결정이 확정되었으므로, 종전에 행하여진 강제집행(압류 및 추심명령)은 그 효력을 상실하였습니다. 이에 압류의 해제를 신청합니다.',
+    confirmationDate: '',
+    executionCourt: '',
+    executionCaseNumber: '',
+    seizingCreditorName: '',
+    thirdPartyDebtor: '',
+    // 인가결정 시 중지된 강제집행의 효력 상실: 채무자회생법 제615조 제3항 (이전: 제2항으로 오기)
+    releaseReason: '위 개인회생사건에 관하여 변제계획인가결정이 있었으므로, 채무자회생법 제615조 제3항에 따라 중지되었던 강제집행(압류 및 추심명령)은 그 효력을 잃었습니다. 이에 압류의 해제를 신청합니다.',
     createdAt: new Date().toISOString().split('T')[0]
   });
 
@@ -93,14 +100,14 @@ function AncillaryPetitionsModalInner({
     const notice = `[법무법인 의뢰인 안내: 불법 채권추심 응대 매뉴얼]\n\n` +
       `신청인: ${clientName} 님\n` +
       `법원 및 사건번호: ${courtName} ${mainCaseNumber}\n` +
-      `대리인: 법무법인 (담당: ${activeLawyerName} 변호사)\n\n` +
+      `대리인: ${getOfficeProfile(activeLawyerName).firmName || ''} (담당: ${activeLawyerName} 변호사)\n\n` +
       `1. 채권추심원(사채, 대부, 카드사) 전화 수신 시 응대 요령:\n` +
       `"현재 법원에 개인회생 사건번호 [${mainCaseNumber}]가 정식 접수되었으며 법률대리인이 선임되어 있습니다. 모든 연락은 대리인 변호사 사무실로 하시기 바랍니다."\n\n` +
       `2. 불법추심 경고 고지:\n` +
       `채권의 공정한 추심에 관한 법률 제8조의2(대리인 선임 시 채무자 직접 연락 금지)에 따라, 본 통보 이후 채무자에게 직접 방문하거나 반복적으로 전화·문자를 전송하는 행위는 2,000만 원 이하의 과태료 처분 대상입니다.`;
 
     navigator.clipboard.writeText(notice);
-    toast.success('📱 의뢰인 전송용 불법추심 방어 가이드가 클립보드에 복사되었습니다! (카카오톡 발송 가능)');
+    toast.success('의뢰인 안내용 불법추심 대응 문구를 클립보드에 복사했습니다.');
   };
 
   return (
@@ -328,7 +335,7 @@ function AncillaryPetitionsModalInner({
                   압 류 해 제 신 청 서
                 </h1>
                 <p className="text-xs text-slate-500 pt-1">
-                  (채무자 회생 및 파산에 관한 법률 제615조 제2항에 의한 압류실효)
+                  (채무자 회생 및 파산에 관한 법률 제615조 제3항에 의한 압류실효)
                 </p>
               </div>
 

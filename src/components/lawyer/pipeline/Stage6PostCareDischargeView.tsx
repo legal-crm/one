@@ -18,22 +18,29 @@ export default function Stage6PostCareDischargeView({
   crmExt,
   onOpenPostCareModal,
 }: Stage6PostCareDischargeViewProps) {
-  const [commencedDate, setCommencedDate] = useState('2026.04.15');
-  const [virtualAccount, setVirtualAccount] = useState('신한은행 110-384-918231 (법원 전용)');
-  const [creditorsMeetingDate, setCreditorsMeetingDate] = useState('2026.07.20 14:00 (제3법정)');
-  const [paidMonths, setPaidMonths] = useState(12);
-  const totalMonths = 36;
+  // 사건 데이터에서만 가져옴 (이전: 모든 의뢰인에게 같은 가짜 계좌 '신한은행 110-384-918231'·집회일·12회 납입을 표시)
+  const ds = crmExt?.decisionSummary;
+  const cc: any = crmExt?.courtCase || {};
+  const virtualAccount = ds?.virtualAccountNumber
+    ? `${ds.virtualAccountBank || ''} ${ds.virtualAccountNumber}`.trim()
+    : (cc.courtVirtualAccount || '');
+  const creditorsMeetingDate: string = cc.creditorMeetingDate || '';
 
   const clientName = clientRequest.clientName || '신청인';
 
   const handleSendPaymentGuide = () => {
+    if (!virtualAccount) {
+      toast.error('등록된 법원 가상계좌가 없습니다. 개시결정 요약에서 가상계좌를 먼저 등록해 주세요.');
+      return;
+    }
     addClientNotification({
       type: 'status_change',
       title: `[적립금 납부 안내] ${clientName}님, 법원 가상계좌(${virtualAccount})로 당월 변제금 입금을 진행해주세요.`,
       emoji: '🏦',
       linkTab: 'diagnosis',
     });
-    toast.success(`${clientName}님께 가상계좌 납부 일정 알림톡이 발송되었습니다.`);
+    // 알림톡은 발송하지 않음 — 의뢰인 앱 알림만 등록 (이전: '알림톡이 발송되었습니다')
+    toast.success(`${clientName}님 앱에 가상계좌 납부 안내 알림을 등록했습니다.`);
   };
 
   return (
@@ -55,7 +62,7 @@ export default function Stage6PostCareDischargeView({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                개시결정 후 90일 이내 가상계좌 적립금 납부 누락을 방지하고 집회 기일에 맞춰 고객에게 사전 알림톡을 발송합니다.
+                가상계좌 적립금 납부 누락을 방지하고 채권자집회 기일 전에 의뢰인에게 출석을 안내하세요.
               </p>
             </div>
           </div>
@@ -78,7 +85,7 @@ export default function Stage6PostCareDischargeView({
               className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
             >
               <Send className="w-3.5 h-3.5 text-purple-600" />
-              <span>가상계좌 안내톡 발송</span>
+              <span>가상계좌 안내 (앱 알림)</span>
             </button>
           </div>
         </div>
@@ -88,14 +95,14 @@ export default function Stage6PostCareDischargeView({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <span className="font-bold text-slate-500 block">법원 가상계좌 정보</span>
-          <div className="font-mono font-black text-base text-slate-900">{virtualAccount}</div>
+          <div className="font-mono font-black text-base text-slate-900">{virtualAccount || '미등록'}</div>
           <p className="text-[11px] text-slate-500">인가결정 전 매월 변제금을 적립하는 법원 보관금 계좌</p>
         </div>
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <span className="font-bold text-slate-500 block">채권자집회 기일</span>
-          <div className="font-mono font-black text-base text-slate-900">{creditorsMeetingDate}</div>
-          <p className="text-[11px] text-slate-500">신분증 지참 필수, 1회 불출석 시 기각 사유가 되므로 지도 철저</p>
+          <div className="font-mono font-black text-base text-slate-900">{creditorsMeetingDate || '기일 미등록'}</div>
+          <p className="text-[11px] text-slate-500">신분증 지참 필수. 불출석 시 절차상 불이익이 있을 수 있으니 사전에 안내하세요.</p>
         </div>
       </div>
     </div>

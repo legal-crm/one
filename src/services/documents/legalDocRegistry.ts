@@ -58,7 +58,7 @@ export interface LegalDocItem {
   precedentSnippet?: string;     // 로펌 과거 모범 선례 기재례
 }
 
-// 80여 종 법원 서식 전수 카탈로그
+// 법원 서식 카탈로그 (8개 카테고리, 약 110종 — 이전 주석의 '80여 종'은 실제 수와 달랐음)
 export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
   // ── 1. 본신청 및 필수 서식 (CORE) ──
   {

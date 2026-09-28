@@ -53,8 +53,8 @@ function CourtDocumentExportModalInner({
 }: CourtDocumentExportModalProps) {
 
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || '2026개회(접수예정)';
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
+  const caseNumber = crmExt.courtCase?.caseNumber || '';
 
   // 모바일 제출 동의 상태 (기존 저장값 또는 신청 시점 기준)
   const consent = plan.clientSubmissionConsent || {

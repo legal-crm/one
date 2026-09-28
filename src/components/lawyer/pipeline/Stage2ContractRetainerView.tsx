@@ -1,4 +1,7 @@
-import { DELIVERY_UNIT_FEE_KRW } from '../../../services/court/courtFees';
+import { DELIVERY_UNIT_FEE_KRW, calcCourtFees } from '../../../services/court/courtFees';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
+import { localYmd } from '../../../utils/localDate';
+import { computePipelineGates } from './pipelineGates';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileCheck2, Calculator, Send, CheckCircle2, AlertTriangle, 
@@ -45,7 +48,8 @@ interface Stage2ContractRetainerViewProps {
   crmExt?: CrmClientExtension;
   activeLawyer: User;
   activeStaff?: StaffMember | null;
-  onUpdateStatus: (newStatus: any) => void;
+  /** @returns 상태 저장 여부 (false면 취소·차단·저장 실패) */
+  onUpdateStatus: (newStatus: any) => void | boolean | Promise<boolean | void>;
   onAdvanceToNextStage: () => void;
   onOpenContractSubTab?: () => void;
   onOpenPowerOfAttorneyModal?: () => void;
@@ -54,7 +58,7 @@ interface Stage2ContractRetainerViewProps {
 
 // 실무 필수 특약사항 추천 목록
 const PRESET_SPECIAL_TERMS = [
-  { id: 'allcare', label: '인가 전액 보증', text: '변호사 보수는 최종 인가결정 시까지 추가 청구하지 아니하며, 일체의 회생위원 보정권고 대응을 포함한다.' },
+  { id: 'allcare', label: '인가 시까지 추가보수 없음', text: '변호사 보수는 최종 인가결정 시까지 추가 청구하지 아니하며, 일체의 회생위원 보정권고 대응을 포함한다.' },
   { id: 'refund', label: '기각 시 50% 환불', text: '의뢰인의 고의·중과실 및 허위진술이 없는 상태에서 법원의 기각결정 또는 불허가 결정이 확정된 경우 착수금의 50%를 환불한다.' },
   { id: 'trustee', label: '외부회생위원 보정비용 면제', text: '법원 외부회생위원 선임에 따른 예납금(150,000원)은 실비로 정산하며, 보정 대응에 따른 추가 수임료는 일체 면제한다.' },
   { id: 'cancel_refund', label: '접수 전 철회 시 실비 외 전액 환불', text: '개시신청서 법원 접수 전 의뢰인의 요청으로 위임계약이 해지된 경우, 기발생 실비를 제외한 수임료 전액을 반환한다.' },
@@ -75,18 +79,14 @@ export default function Stage2ContractRetainerView({
   const dialog = useDialog();
 
   // 선행 조건: 제안서 발송 및 의뢰인 확인 여부
-  const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
-  const isContactShared = Boolean(
-    clientRequest.status === 'contracted' ||
-    crmExt?.crmStatus === 'contracted' ||
-    clientRequest.phoneConsultationRequested || 
-    clientRequest.contactDisclosureStatus === 'contact_shared' ||
-    crmExt?.isContactShared ||
-    (clientRequest.phone && !clientRequest.phone.includes('*'))
-  );
+  // 파이프라인 게이트와 같은 산식 (이전: 전화번호에 '*'가 없으면 연락처 공개로 간주)
+  const stage2Gates = computePipelineGates(clientRequest, crmExt);
+  const hasProposalSent = stage2Gates.hasProposalSent || !!(crmExt as any)?.isExternalClient;
+  const isContactShared = stage2Gates.isContactShared;
   // ── 1. 수임료·실비 파라미터 상태 ──
   const [creditorCount, setCreditorCount] = useState<number>(() => {
-    return (crmExt?.debtCertificateOrders?.[0]?.items || []).length || (clientRequest as any)?.creditorCount || 5;
+    // 채권자 수를 모르면 임의값(이전: 5) 대신 채권자목록 → 0 순 (송달료 산식은 최소 1명 기준)
+    return (crmExt?.repaymentPlan?.creditors || []).length || (crmExt?.debtCertificateOrders?.[0]?.items || []).length || Number((clientRequest as any)?.creditorCount) || 0;
   });
   const [isBusinessDebtor, setIsBusinessDebtor] = useState(() => {
     return (clientRequest as any)?.category === 'business' || (clientRequest as any)?.jobType === 'business';
@@ -194,8 +194,12 @@ export default function Stage2ContractRetainerView({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)
-  const stampFee = 28800; // 인지대: 개시 27,000 + 금지명령 1,800
-  const deliveryFee = DELIVERY_UNIT_FEE_KRW * (10 + (creditorCount * 8)); // 송달료
+  // 인지대·송달료: 공통 산식(courtFees.ts) — 전자소송, 금지명령 동시신청 기준
+  // (이전: 28,800원 고정값, 파산 사건에도 회생 인지대 적용)
+  const isBankruptcyCase = crmExt?.caseType === 'bankruptcy' || crmExt?.caseType === 'individual_bankruptcy';
+  const courtFeeCalc = calcCourtFees({ caseType: isBankruptcyCase ? 'bankruptcy' : 'rehab', creditorCount, withProhibition: !isBankruptcyCase, electronic: true });
+  const stampFee = courtFeeCalc.stampFee;
+  const deliveryFee = courtFeeCalc.deliveryFee; // 송달료
   const trusteeDeposit = isBusinessDebtor ? 150000 : 0; // 외부회생위원 선임 예납금
   const totalCourtCost = stampFee + deliveryFee + trusteeDeposit;
 
@@ -237,7 +241,7 @@ export default function Stage2ContractRetainerView({
         } else {
           // 신규 계약서 뼈대 생성
           const lawyerName = activeLawyer.name || '담당 변호사';
-          const lawFirmName = activeLawyer.lawFirmName || '법무법인 로앤';
+          const lawFirmName = (activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || '');
           const newC = createContract({
             clientId: clientRequest.id,
             clientName: clientRequest.clientName,
@@ -273,7 +277,7 @@ export default function Stage2ContractRetainerView({
   const ensureContract = (): ElectronicContract => {
     if (contract) return contract;
     const lawyerName = activeLawyer.name || '담당 변호사';
-    const lawFirmName = activeLawyer.lawFirmName || '법무법인 로앤';
+    const lawFirmName = (activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || '');
     const newC = createContract({
       clientId: clientRequest.id,
       clientName: clientRequest.clientName,
@@ -302,7 +306,7 @@ export default function Stage2ContractRetainerView({
   // 분납 일정 계산 함수 (계약금 + 착수금 + 분납 일정 일괄 조립)
   const buildFeeSchedule = (): FeeInstallment[] => {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = localYmd(today);
     const schedule: FeeInstallment[] = [];
     let roundIndex = 1;
 
@@ -423,10 +427,10 @@ export default function Stage2ContractRetainerView({
               clientPhone: clientRequest.phone,
               clientAddress: clientRequest.financialProfile?.residenceRegion || '',
               lawyerName: activeLawyer.name || '담당 변호사',
-              lawFirmName: activeLawyer.lawFirmName || '법무법인 로앤',
+              lawFirmName: (activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || ''),
               feeClauseText,
               specialTermsText: termsBody,
-              contractDate: contract.contractDate || new Date().toISOString().split('T')[0],
+              contractDate: contract.contractDate || localYmd(),
             }),
           };
         } else {
@@ -702,14 +706,16 @@ ${d.content}
     });
     if (!confirmed) return;
 
+    // 상태 저장이 확정된 뒤에만 계약 완료로 기록 (이전: 상태 변경 확인창을 취소해도 계약서가 '체결 완료'로 저장됨)
+    const statusOk = await onUpdateStatus('contracted');
+    if (statusOk === false) return;
     setIsContractSigned(true);
-    onUpdateStatus('contracted');
 
     if (contract) {
       const completedContract: ElectronicContract = {
         ...contract,
         status: 'completed',
-        contractDate: new Date().toISOString().split('T')[0],
+        contractDate: localYmd(),
         signedAt: new Date().toISOString(),
       };
       saveContract(completedContract);
@@ -723,7 +729,7 @@ ${d.content}
       await onUpdateCrmExt({
         crmStatus: 'contracted',
         totalFee: Math.round(totalLawyerFee / 10000),
-        contractDate: new Date().toISOString().split('T')[0],
+        contractDate: localYmd(),
       });
     }
 
@@ -754,8 +760,12 @@ ${d.content}
 
     if (saved.status === 'completed' || saved.status === 'signed') {
       setIsContractSigned(true);
-      onUpdateStatus('contracted');
-      toast.success('전자계약이 체결 완료되어 CRM 수임료와 사건상태가 동기화되었습니다.');
+      const statusOk = await onUpdateStatus('contracted');
+      if (statusOk === false) {
+        toast.info('전자계약은 저장했지만 사건 상태는 변경되지 않았습니다.');
+        return;
+      }
+      toast.success('전자계약 체결이 CRM 수임료와 사건 상태에 반영되었습니다.');
     } else {
       toast.success('전자계약서 변경사항이 저장되었습니다.');
     }
@@ -1541,7 +1551,7 @@ ${d.content}
                             const nextMonth = new Date(Number(parts[0]), Number(parts[1]) + 1, 0);
                             nextDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(nextMonth.getDate()).padStart(2, '0')}`;
                           } else {
-                            nextDate = new Date().toISOString().split('T')[0];
+                            nextDate = localYmd();
                           }
                           return [
                             ...prev,
@@ -1946,9 +1956,9 @@ ${d.content}
             clientPhone: clientRequest.phone,
             clientAddress: clientRequest.financialProfile?.residenceRegion || '',
             lawyerName: activeLawyer.name || '담당 변호사',
-            lawFirmName: activeLawyer.lawFirmName || '법무법인 로앤',
+            lawFirmName: (activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || ''),
             totalFee: Math.round(totalLawyerFee / 10000),
-            contractDate: contract?.contractDate || new Date().toISOString().split('T')[0],
+            contractDate: contract?.contractDate || localYmd(),
           }}
           onClose={() => {
             setIsDocEditOpen(false);
@@ -2077,7 +2087,7 @@ ${d.content}
 
             <div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between">
               <span className="text-xs text-slate-500 font-bold">
-                ✓ 법무법인 로앤 표준 도산 사건 위임약관 및 전자서명법 제3조 규격 준수
+                ✓ 사무소 위임약관 기반 · 전자서명 동의 절차 포함
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -2208,15 +2218,15 @@ ${d.content}
           isOpen={isLibraryOpen}
           onClose={() => setIsLibraryOpen(false)}
           lawyerName={activeLawyer.name}
-          lawFirmName={activeLawyer.lawFirmName || '법무법인 로앤'}
+          lawFirmName={(activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || '')}
           contractContext={{
             clientName: clientRequest.clientName,
             clientPhone: clientRequest.phone,
             clientAddress: clientRequest.financialProfile?.residenceRegion || '',
             lawyerName: activeLawyer.name || '담당 변호사',
-            lawFirmName: activeLawyer.lawFirmName || '법무법인 로앤',
+            lawFirmName: (activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || ''),
             totalFee: Math.round(totalLawyerFee / 10000),
-            contractDate: contract?.contractDate || new Date().toISOString().split('T')[0],
+            contractDate: contract?.contractDate || localYmd(),
           }}
         />
       )}

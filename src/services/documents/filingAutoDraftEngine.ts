@@ -6,6 +6,8 @@
 
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import { detectCourtJurisdiction } from './courtFilingEngine';
+import { getOfficeProfile } from '../lawyer/officeProfile';
+import { DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from '../repayment/repaymentConstants2026';
 
 export type AutoDraftReviewStatus = 'PENDING_REVIEW' | 'REVIEWED_APPROVED' | 'SUPPLEMENT_REQUIRED';
 
@@ -133,7 +135,7 @@ export function generateAll8AutoDrafts(
   existingState?: AutoDraftSuiteState | null
 ): AutoDraftSuiteState {
   const clientName = clientRequest.clientName || clientRequest.name || '신청인';
-  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
+  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '';
   const jurisdiction = detectCourtJurisdiction(courtName);
   const now = new Date().toISOString();
 
@@ -148,7 +150,13 @@ export function generateAll8AutoDrafts(
   const months = crmExt?.repaymentPlan?.months || 36;
   const totalRepayment = monthlyRepayment * months;
   // 별제권(담보부 채권)을 공제한 무담보 회생채권 기준 법원 표준 변제율 산출
-  const securedAmount = creditors.some(c => c.debtType?.includes('담보') || c.debtType?.includes('별제권')) ? 8050000 : 0;
+  // 담보부 채권 원금 합계 (이전: 담보 채권이 하나라도 있으면 8,050,000원 고정값 차감)
+  const securedAmount = creditors
+    .filter((c: any) => c.isSecured || c.debtType?.includes('담보') || c.debtType?.includes('별제권'))
+    .reduce((s: number, c: any) => s + (Number(c.principal) || 0), 0);
+  const prop: any = (crmExt as any)?.propertyListD5102;
+  const inc: any = (crmExt as any)?.incomeExpenseD5103;
+  const stmt: any = crmExt?.courtStatement;
   const unsecuredPrincipal = (crmExt?.repaymentPlan as any)?.unsecuredPrincipal || Math.max(1, totalPrincipal - securedAmount);
   const repaymentRate = (crmExt?.repaymentPlan as any)?.totalRepaymentRate ?? 
     (unsecuredPrincipal > 0 ? Math.min(100, Math.round((totalRepayment / unsecuredPrincipal) * 100)) : 0);
@@ -176,19 +184,18 @@ export function generateAll8AutoDrafts(
         draftPayload.totalPrincipal = totalPrincipal;
         draftPayload.totalLiquidation = totalLiquidation;
         draftPayload.creditorCount = creditorCount;
-        riskFlags.push({
-          level: 'INFO',
-          message: `${jurisdiction} 기준 관할 법원 자동 지정 완료`,
-        });
+        riskFlags.push(courtName
+          ? { level: 'INFO', message: `관할 법원: ${courtName} (${jurisdiction})` }
+          : { level: 'ALERT', message: '관할 법원이 입력되지 않았습니다. 사건 정보에서 관할 법원을 지정하세요.', targetField: 'courtName' });
         break;
 
       case 'R02':
         note = `채권사 ${creditorCount}개소 · 원금 ${totalPrincipal.toLocaleString()}원 · 대법원 UTF-8 BOM CSV 바인딩`;
-        draftPayload.creditors = creditors.length > 0 ? creditors : [
-          { id: 'c1', creditorName: '국민은행', principal: 15000000, interest: 230000, debtType: '신용대출' },
-          { id: 'c2', creditorName: '신한카드', principal: 8500000, interest: 110000, debtType: '카드론' },
-          { id: 'c3', creditorName: '현대캐피탈', principal: 12500000, interest: 450000, debtType: '신용대출' },
-        ];
+        // 이전: 채권자가 없으면 가짜 채권자 3곳(국민은행·신한카드·현대캐피탈)을 채워 넣음
+        draftPayload.creditors = creditors;
+        if (creditors.length === 0) {
+          riskFlags.push({ level: 'ALERT', message: '채권자목록이 비어 있습니다. 부채증명서를 기준으로 채권자를 등록하세요.', targetField: 'creditors' });
+        }
         draftPayload.totalPrincipal = totalPrincipal;
         riskFlags.push({
           level: 'WARNING',
@@ -200,21 +207,21 @@ export function generateAll8AutoDrafts(
       case 'R06':
         note = `총 청산가치 ${totalLiquidation.toLocaleString()}원 · 11대 자산 가치평가 및 법정공제 적용`;
         draftPayload.totalLiquidationValue = totalLiquidation;
-        draftPayload.depositExemption = 1850000; // 185만원 압류금지
-        draftPayload.insuranceExemption = 1500000; // 150만원 압류금지
-        draftPayload.leaseholdDeposit = 20000000;
-        draftPayload.leaseholdExemption = 55000000; // 서울 소액임차
-        riskFlags.push({
-          level: 'INFO',
-          message: '서울회생법원 소액임차보증금 최우선변제액 5,500만원 자동 공제 적용됨',
-        });
+        draftPayload.depositExemption = DEPOSIT_EXEMPTION_KRW;
+        draftPayload.insuranceExemption = EXEMPT_INSURANCE_REFUND_LIMIT;
+        // 임차보증금·소액보증금 공제는 재산목록(D5102) 입력값 사용 (이전: 보증금 2천만원·서울 5,500만원 공제 고정)
+        draftPayload.leaseholdDeposit = (prop?.leaseDeposits || []).reduce((s: number, l: any) => s + (Number(l.depositAmount) || 0), 0);
+        draftPayload.leaseholdExemption = (prop?.leaseDeposits || []).reduce((s: number, l: any) => s + (Number(l.statutoryExemption) || 0), 0);
+        if (!prop) {
+          riskFlags.push({ level: 'ALERT', message: '재산목록(D5102)이 작성되지 않았습니다.', targetField: 'propertyList' });
+        }
         break;
 
       case 'R08':
         note = `월 순소득 ${monthlyIncome.toLocaleString()}원 · 법정생계비 ${livingExpense.toLocaleString()}원 인정`;
         draftPayload.monthlyNetIncome = monthlyIncome;
         draftPayload.livingExpense = livingExpense;
-        draftPayload.familyCount = 1;
+        draftPayload.familyCount = Number(inc?.expenses?.householdSize) || ((clientRequest.financialProfile as any)?.dependents || 0) + 1;
         draftPayload.incomeType = crmExt?.petitionInfo?.incomeType || 'SALARIED';
         if (monthlyIncome - livingExpense <= 0) {
           riskFlags.push({
@@ -226,9 +233,11 @@ export function generateAll8AutoDrafts(
         break;
 
       case 'R10':
-        note = '학력·경력·채무발생 경위 및 AI 법률 첨삭 완료 · 의뢰인 5문5답 동기화';
-        draftPayload.timelineSummary = '2019년 생활비 대출 개시 ➔ 2022년 금리 인상으로 이자 부담 가중 ➔ 2024년 돌려막기 한계 도달';
-        draftPayload.causes = ['생활비 부족', '고금리 누적'];
+        // 이전: 모든 의뢰인에게 같은 가짜 경위('2019년 생활비 대출 개시 ➔ …')와 'AI 첨삭 완료' 표기
+        note = stmt ? '학력·경력·채무발생 경위 (의뢰인 작성 진술서 기준)' : '의뢰인 진술서 미작성';
+        draftPayload.timelineSummary = [stmt?.story?.initialCauseDetail, stmt?.story?.growthProcessDetail, stmt?.story?.insolvencyTriggerDetail].filter(Boolean).join(' ➔ ');
+        draftPayload.causes = stmt?.story?.initialCauseKeywords || [];
+        if (!stmt) riskFlags.push({ level: 'ALERT', message: '진술서가 작성되지 않았습니다.', targetField: 'narrative' });
         riskFlags.push({
           level: 'WARNING',
           message: '의뢰인의 주관적 진술 사실관계와 통장 고액 출금 내역 간 일치 여부 변호사 확인 필수',
@@ -258,20 +267,21 @@ export function generateAll8AutoDrafts(
         break;
 
       case 'R03':
-        note = `대리인 변호사 ${lawyerName} · 8대 소송대리 수권 및 경유확인서 완료`;
+        note = lawyerName ? `대리인 변호사 ${lawyerName}` : '대리인 정보 미입력';
         draftPayload.lawyerName = lawyerName;
-        draftPayload.lawfirm = '법무법인 리걸케어';
+        draftPayload.lawfirm = getOfficeProfile(lawyerName).firmName || '';
         draftPayload.delegationScope = '개인회생신청, 채권자목록 작성 및 수정, 변제계획안 작성 및 수정, 이의신청, 일체의 소송행위';
         break;
 
       case 'R07':
-        const fileCount = (crmExt?.uploadedFiles || []).length || 8;
-        note = `주민센터·홈택스·정부24·부채증명서 수합 완료 (${fileCount}건 번들 편철)`;
+        // 이전: 파일이 없어도 8건으로 표시, 마스킹 로직 없이 '자동 마스킹 완료'
+        const fileCount = (crmExt?.uploadedFiles || []).length;
+        note = `업로드된 첨부서류 ${fileCount}건`;
         draftPayload.bundledFileCount = fileCount;
-        draftPayload.isMaskingComplete = true;
+        draftPayload.isMaskingComplete = false;
         riskFlags.push({
-          level: 'INFO',
-          message: '신청인 외 제3자 주민등록번호 뒷자리 자동 마스킹 완료',
+          level: 'WARNING',
+          message: '가족관계증명서 등 제3자 주민등록번호 뒷자리 마스킹 여부를 제출 전에 직접 확인하세요.',
         });
         break;
     }
@@ -281,7 +291,8 @@ export function generateAll8AutoDrafts(
       name: def.name,
       badge: def.badge,
       legalFormCode: def.legalFormCode,
-      isDraftReady: true,
+      // 해당 서식의 원천 데이터가 있을 때만 초안 준비 완료 (이전: 항상 true)
+      isDraftReady: !riskFlags.some(f => f.level === 'ALERT'),
       confidenceScore: def.baseConfidence,
       reviewStatus: prevStatus,
       sourceDocuments: def.defaultSources,

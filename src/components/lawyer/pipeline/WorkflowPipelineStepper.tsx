@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
+import { computePipelineGates, pipelineLockReason } from './pipelineGates';
 
 export type PipelineStage = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -30,32 +31,15 @@ export default function WorkflowPipelineStepper({
 }: WorkflowPipelineStepperProps) {
   const dialog = useDialog();
 
-  // 제안서 발송 및 의뢰인 연락처 공개 여부
-  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
-    crmExt?.crmStatus || clientRequest.status || ''
-  );
-  const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
-  const isContactShared = Boolean(
-    isContracted || 
-    clientRequest.isContactShared || 
-    crmExt?.isContactShared || 
-    (clientRequest.phone && !clientRequest.phone.includes('*'))
-  );
-
-  // 선후행 상태 산출
-  const isConsultCompleted = (!!crmExt?.crmStatus && crmExt.crmStatus !== 'requested') || isContracted;
-  const isContractCompleted = isContracted || (isConsultCompleted && !['requested', 'consulting'].includes(crmExt?.crmStatus || ''));
-  const isDocCompleted = isContractCompleted && (crmExt?.uploadedFiles?.length || 0) >= 3;
-  const isFilingCompleted = ['filed', 'commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || '');
-  const isCommenced = ['commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || '');
-  const isDischarged = crmExt?.crmStatus === 'discharged';
-
-  // 단계별 락(Lock) 조건
-  const isStage2Locked = !isContracted && (!hasProposalSent || !isContactShared);
-  const isStage3Locked = !isContractCompleted;
-  const isStage4Locked = !isContractCompleted;
-  const isStage5Locked = !isFilingCompleted && !crmExt?.courtCase?.caseNumber;
-  const isStage6Locked = !isCommenced;
+  // 게이트 산식은 pipelineGates.ts 단일 출처 (CrmTab의 '다음 단계' 이동에도 동일 적용)
+  // 이전: 'document'(서류수집) 상태가 계약완료 목록에 없어 서류 단계 사건이 잠김으로 표시됨
+  const gates = computePipelineGates(clientRequest, crmExt);
+  const { isConsultCompleted, isContractCompleted, isDocCompleted, isFilingCompleted, isCommenced, isDischarged } = gates;
+  const isStage2Locked = gates.locked[2];
+  const isStage3Locked = gates.locked[3];
+  const isStage4Locked = gates.locked[4];
+  const isStage5Locked = gates.locked[5];
+  const isStage6Locked = gates.locked[6];
 
   const stages = [
     {
@@ -123,20 +107,7 @@ export default function WorkflowPipelineStepper({
   // 잠긴 단계 클릭 시 경고 안내 팝업
   const handleStageClick = async (targetStage: PipelineStage, isLocked: boolean) => {
     if (isLocked) {
-      let lockReason = '선행 절차가 아직 완료되지 않았습니다.';
-      if (targetStage >= 2 && (!hasProposalSent || !isContactShared)) {
-        lockReason = !hasProposalSent
-          ? '[Stage 01 맞춤 제안서 발송]이 필요합니다.\n의뢰인에게 제안서를 먼저 작성·발송하고, 의뢰인이 제안서를 확인해야 다음 단계로 이동할 수 있습니다.'
-          : '의뢰인이 발송된 제안서를 확인하고 상담 요청(연락처 공개)을 진행해야 다음 단계로 이동할 수 있습니다.';
-      } else if (targetStage >= 3 && !isContractCompleted) {
-        lockReason = '[Stage 02 계약·착수] 단계에서 수임계약 체결이 완료되어야 서류 수합 및 신청서 작성 단계로 진행할 수 있습니다.';
-      } else if (targetStage >= 4 && !isContractCompleted) {
-        lockReason = '[Stage 02 수임계약 체결]이 완료되어야 법원 전자소송 접수 단계로 진행할 수 있습니다.';
-      } else if (targetStage >= 5 && !isFilingCompleted) {
-        lockReason = '[Stage 04 신청서 작성·접수] 단계에서 대법원 전자소송 정식 접수가 완료되어야 법원 대응 및 보정 단계로 진행할 수 있습니다.';
-      } else if (targetStage === 6 && !isCommenced) {
-        lockReason = '[Stage 05 법원대응·보정] 단계에서 법원의 개시결정이 내려져야 사후관리 및 면책 단계로 진행할 수 있습니다.';
-      }
+      const lockReason = pipelineLockReason(targetStage, gates);
 
       await dialog.alert({
         title: `🔒 Stage 0${targetStage} 잠김 안내`,

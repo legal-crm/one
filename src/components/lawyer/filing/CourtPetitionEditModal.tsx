@@ -68,7 +68,7 @@ function CourtPetitionEditModalInner({
     const p = crmExt.petitionInfo;
     const clientName = p?.clientName || clientRequest.clientName || '신청인';
     const clientPhone = p?.phone || clientRequest.phone || '';
-    const courtName = p?.courtName || crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
+    const courtName = p?.courtName || crmExt.courtCase?.courtName || clientRequest.court || '';
     const residentAddress = p?.residentAddress || (clientRequest as any).address || '';
 
     return {
@@ -396,10 +396,12 @@ function CourtPetitionEditModalInner({
               <div>
                 <label className="block text-slate-700 font-bold mb-1">관할법원 지정 *</label>
                 <select
-                  value={formData.courtName || '서울회생법원'}
+                  value={formData.courtName || ''}
                   onChange={(e) => handleChange('courtName', e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white focus:border-blue-500 focus:outline-hidden"
                 >
+                  {/* 이전: 값이 없으면 서울회생법원이 선택된 것처럼 표시 */}
+                  <option value="">관할법원을 선택하세요</option>
                   {REHAB_COURTS.map(court => (
                     <option key={court} value={court}>{court}</option>
                   ))}

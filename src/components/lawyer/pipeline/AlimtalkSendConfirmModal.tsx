@@ -16,6 +16,7 @@ import {
 import { addClientNotification } from '../../../services/clientNotificationService';
 import type { AlimtokMilestone } from '../../../types';
 import AlimtalkTemplateRegisterModal from './AlimtalkTemplateRegisterModal';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 
 interface AlimtalkSendConfirmModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ export default function AlimtalkSendConfirmModal({
   templateDesc,
   emoji = '💬',
   defaultMessage,
-  firmName = '법무법인',
+  firmName = '',
   lawyerName = '담당 변호사',
   stageNumber = 1,
   milestone = 'consult_booked',
@@ -54,7 +55,6 @@ export default function AlimtalkSendConfirmModal({
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('');
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [isSending, setIsSending] = useState(false);
-  const [fallbackSms, setFallbackSms] = useState(true);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [templateMgtUrl, setTemplateMgtUrl] = useState('https://www.popbill.com/KakaoTalk/?TG=TEMPLATE');
   const [filterStage, setFilterStage] = useState<number | 'all'>(stageNumber);
@@ -84,7 +84,7 @@ export default function AlimtalkSendConfirmModal({
       matched = templates.find(t => t.stage === stageNumber && t.state === '승인');
     }
     if (!matched) {
-      matched = templates.find(t => t.state === '승인') || templates[0];
+      matched = templates.find(t => t.state === '승인');
     }
 
     if (matched) {
@@ -94,7 +94,7 @@ export default function AlimtalkSendConfirmModal({
 
   // 선택된 템플릿 객체
   const selectedTemplate = useMemo(() => {
-    return templates.find(t => t.templateCode === selectedTemplateCode) || templates[0];
+    return templates.find(t => t.templateCode === selectedTemplateCode);
   }, [templates, selectedTemplateCode]);
 
   // 템플릿에 포함된 치환 변수 목록 추출
@@ -116,16 +116,13 @@ export default function AlimtalkSendConfirmModal({
           initialVars[v] = clientName || '고객';
           break;
         case '법무법인':
-          initialVars[v] = firmName || '법무법인';
+          initialVars[v] = firmName || getOfficeProfile(lawyerName).firmName || '';
           break;
         case '담당변호사':
-          initialVars[v] = lawyerName || '담당 변호사';
+          initialVars[v] = lawyerName || '';
           break;
         case '사건유형':
-          initialVars[v] = caseType || '개인회생';
-          break;
-        case '마감기한':
-          initialVars[v] = '3일 이내 (2026.09.16)';
+          initialVars[v] = caseType || '';
           break;
         case '안내링크':
           initialVars[v] = `${origin}/my`;
@@ -133,75 +130,9 @@ export default function AlimtalkSendConfirmModal({
         case '서명링크':
           initialVars[v] = `${origin}?view=sign`;
           break;
-        case '수임료':
-          initialVars[v] = '150만원';
-          break;
-        case '납부항목':
-          initialVars[v] = '착수금 (1차 분납)';
-          break;
-        case '입금금액':
-          initialVars[v] = '500,000원';
-          break;
-        case '입금계좌':
-          initialVars[v] = '신한은행 110-384-918231 (예금주: 법무법인)';
-          break;
-        case '관할법원':
-          initialVars[v] = '서울회생법원';
-          break;
-        case '사건번호':
-          initialVars[v] = '2026개회104291';
-          break;
-        case '상담일시':
-          initialVars[v] = '내일 오후 2:00';
-          break;
-        case '상담방식':
-          initialVars[v] = '유선 전화 심층 상담';
-          break;
-        case '준비사항':
-          initialVars[v] = '신분증, 부채내역, 최근 1년 급여명세서';
-          break;
-        case '미제출서류목록':
-          initialVars[v] = '주민등록초본, 원천징수영수증, 건강보험자격득실확인서';
-          break;
-        case '대상서류':
-          initialVars[v] = '가족관계증명서 상세본';
-          break;
-        case '보완사유':
-          initialVars[v] = '가족 주민번호 뒷자리 마스킹(******) 누락';
-          break;
-        case '결정일자':
-          initialVars[v] = new Date().toLocaleDateString('ko-KR');
-          break;
-        case '다음단계':
-          initialVars[v] = '금지명령 결정 대기 (약 7일 소요)';
-          break;
-        case '다음절차':
-          initialVars[v] = '정식 위임계약 체결 및 필수 서류 수합';
-          break;
-        case '보정요구내용':
-          initialVars[v] = '최근 1년간 계좌 입출금 내역 50만원 이상 소명';
-          break;
-        case '담당사무장':
-          initialVars[v] = '전담 실무 사무장';
-          break;
-        case '직통전화':
-          initialVars[v] = '02-588-1123';
-          break;
-        case '월변제금':
-          initialVars[v] = '620,000원 (36개월)';
-          break;
-        case '1회차납부일':
-          initialVars[v] = '2026년 10월 25일';
-          break;
-        case '법원가상계좌':
-          initialVars[v] = '신한은행 562-901-098231 (서울회생법원)';
-          break;
-        case '집회일시':
-          initialVars[v] = '2026년 11월 12일 오후 2:30';
-          break;
-        case '법정장소':
-          initialVars[v] = '서울회생법원 3호 법정 (법원종합청사)';
-          break;
+        // 그 외 항목(수임료·계좌·사건번호·기일 등)은 사건마다 다르므로 비워 두고 직접 입력받음
+        // (이전: 가짜 계좌 '신한은행 110-384-918231', 사건번호 '2026개회104291', 직통전화 '02-588-1123',
+        //  월변제금·집회일시 등 예시값이 채워진 채 그대로 의뢰인에게 발송될 수 있었음)
         default:
           initialVars[v] = '';
       }
@@ -239,6 +170,11 @@ export default function AlimtalkSendConfirmModal({
     const emptyVars = detectedVars.filter(v => !variableValues[v] || !variableValues[v].trim());
     if (emptyVars.length > 0) {
       toast.error(`[${emptyVars[0]}] 항목의 값을 입력해 주세요.`);
+      return;
+    }
+
+    if (!selectedTemplate || selectedTemplate.state !== '승인') {
+      toast.error('카카오 검수 승인된 템플릿만 발송할 수 있습니다.');
       return;
     }
 
@@ -284,7 +220,10 @@ export default function AlimtalkSendConfirmModal({
         onSent(compiledMessage);
       }
 
-      toast.success(`${clientName}님께 '${selectedTemplate?.templateName}' 팝빌 승인 알림톡이 성공적으로 발송되었습니다.`);
+      const viaFallback = sendRes.channel === 'sms_fallback' || sendRes.channel === 'lms_fallback';
+      toast.success(viaFallback
+        ? `${clientName}님께 알림톡 대신 문자(LMS/SMS)로 발송했습니다.`
+        : `${clientName}님께 '${selectedTemplate?.templateName}' 알림톡 발송을 요청했습니다.`);
       onClose();
     } catch (err: any) {
       toast.error(err?.message || '알림톡 발송 중 오류가 발생했습니다.');
@@ -357,7 +296,7 @@ export default function AlimtalkSendConfirmModal({
                   <Layers className="w-3.5 h-3.5 text-[#1E3A5F]" />
                   <span>팝빌 승인 템플릿 선택</span>
                   <span className="text-[10px] text-slate-400 font-normal">
-                    (총 {templates.length}건 승인)
+                    (승인 {templates.filter(t => t.state === '승인').length}건 / 전체 {templates.length}건)
                   </span>
                 </label>
 
@@ -422,7 +361,7 @@ export default function AlimtalkSendConfirmModal({
                     <span>{selectedTemplate.templateName}</span>
                   </div>
                   <span className="font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded text-[10px]">
-                    ✓ 검수 승인 완료
+                    {selectedTemplate?.state === '승인' ? '✓ 검수 승인' : `⚠ ${selectedTemplate?.state || '상태 미확인'} (발송 불가)`}
                   </span>
                 </div>
               )}
@@ -504,23 +443,16 @@ export default function AlimtalkSendConfirmModal({
                 )}
 
                 <div className="flex items-center justify-between text-[10px] text-[#391B1B]/80 font-medium px-1">
-                  <span>🔒 팝빌 승인 원문 그대로 발송되므로 반려 및 전송 오류가 발생하지 않습니다.</span>
+                  <span>승인된 원문과 변수 치환 결과가 다르면 발송이 반려될 수 있습니다.</span>
                 </div>
               </div>
             </div>
 
             {/* 대체 문자 발송 옵션 */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700 text-xs font-bold">
-                <input
-                  type="checkbox"
-                  checked={fallbackSms}
-                  onChange={(e) => setFallbackSms(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-                />
-                <span>카카오톡 미수신 시 LMS/SMS 대체 발송</span>
-              </label>
-              <span className="text-[10px] text-slate-400 font-medium">100% 수신 보장</span>
+              {/* 이전: 서버에 전달되지 않는 체크박스 + '100% 수신 보장' 문구 — 대체 발송은 서버에서 항상 적용됨 */}
+              <span className="text-slate-700 text-xs font-bold">카카오톡 미수신 시 LMS/SMS 대체 발송 (자동 적용)</span>
+              <span className="text-[10px] text-slate-400 font-medium">수신 여부는 통신 환경에 따라 다를 수 있음</span>
             </div>
           </div>
 

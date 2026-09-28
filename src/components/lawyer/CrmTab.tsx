@@ -55,6 +55,8 @@ import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
 import { checkSpecial24Eligibility, special24FromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
+import { computePipelineGates, pipelineLockReason, stageForStatus } from './pipeline/pipelineGates';
+import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
@@ -637,22 +639,30 @@ export default function CrmTab({
       setEditConsultantId(selectedExt.assignedConsultantId || '');
       setEditStaffId(selectedExt.assignedStaffId || '');
       setDetailTab('info');
-      // 상태 기반 6단계 파이프라인 단계 자동 동기화
-      if (selectedExt.crmStatus === 'requested') {
-        setPipelineStage(1);
-      } else if (['consulting', 'contracted'].includes(selectedExt.crmStatus)) {
-        setPipelineStage(2);
-      } else if (selectedExt.crmStatus === 'document') {
-        setPipelineStage(3);
-      } else if (selectedExt.crmStatus === 'filed') {
-        setPipelineStage(4);
-      } else if (selectedExt.crmStatus === 'commenced') {
-        setPipelineStage(5);
-      } else if (['repaying', 'discharged'].includes(selectedExt.crmStatus)) {
-        setPipelineStage(6);
-      }
+      // 상태 기반 6단계 파이프라인 단계 자동 동기화 (고객 전환 시)
+      setPipelineStage(stageForStatus(selectedExt.crmStatus));
     }
   }, [selectedId]);
+
+  // 같은 고객의 사건 상태가 진행되면 파이프라인도 앞으로만 따라감
+  // (이전: 고객을 다시 선택해야만 단계가 갱신됨)
+  useEffect(() => {
+    if (!selectedExt?.crmStatus) return;
+    const target = stageForStatus(selectedExt.crmStatus);
+    setPipelineStage(prev => (target > prev ? target : prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedExt?.crmStatus]);
+
+  /** Stage 뷰의 '다음 단계' 버튼 — 스텝바와 같은 게이트를 적용 (이전: 조건 없이 이동) */
+  const advancePipelineStage = async (target: PipelineStage) => {
+    if (!selectedClient) return;
+    const gates = computePipelineGates(selectedClient, selectedExt);
+    if (gates.locked[target]) {
+      await dialog.alert({ title: `🔒 Stage 0${target} 잠김 안내`, message: pipelineLockReason(target, gates), variant: 'warning' });
+      return;
+    }
+    setPipelineStage(target);
+  };
 
   // ── 핸들러 ──
   const handleSort = (field: SortField) => {
@@ -747,18 +757,9 @@ export default function CrmTab({
     // 상태 변경 시 2단계 확인 및 선행 조건 검증
     if (editStatus !== ext.crmStatus) {
       const clientReq = requests.find(r => r.id === selectedId);
-      const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
-        ext.crmStatus || clientReq?.status || ''
-      );
-      const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
-      const isContactShared = Boolean(
-        isContracted || 
-        clientReq?.isContactShared || 
-        ext.isContactShared || 
-        (clientReq?.phone && !clientReq.phone.includes('*'))
-      );
+      const editGates = clientReq ? computePipelineGates(clientReq, ext) : null;
 
-      if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(editStatus)) {
+      if (editGates && editGates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(editStatus)) {
         await dialog.alert({
           title: '🔒 선행 단계(제안서 발송) 미완료',
           message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
@@ -1153,18 +1154,9 @@ export default function CrmTab({
     if (ext.crmStatus === newStatus) return;
 
     const clientReq = requests.find(r => r.id === clientId);
-    const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
-      ext.crmStatus || clientReq?.status || ''
-    );
-    const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
-    const isContactShared = Boolean(
-      isContracted || 
-      clientReq?.isContactShared || 
-      ext.isContactShared || 
-      (clientReq?.phone && !clientReq.phone.includes('*'))
-    );
+    const dragGates = clientReq ? computePipelineGates(clientReq, ext) : null;
 
-    if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
+    if (dragGates && dragGates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
       await dialog.alert({
         title: '🔒 선행 단계(제안서 발송) 미완료',
         message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
@@ -1403,35 +1395,26 @@ export default function CrmTab({
   }, [crmData]);
 
   /** 상태 변경 시 cancelled이면 이탈 사유 모달 표시 */
-  const handleStatusChangeWithDropOff = useCallback(async (clientId: string, newStatus: CrmStatus) => {
+  /** @returns 상태가 실제로 저장되었는지 (취소·차단·실패 시 false) */
+  const handleStatusChangeWithDropOff = useCallback(async (clientId: string, newStatus: CrmStatus): Promise<boolean> => {
     if (newStatus === 'cancelled') {
       setDropOffTargetId(clientId);
       setIsDropOffModalOpen(true);
-      return;
+      return false;
     }
     const ext = getCrmExt(clientId);
-    if (ext.crmStatus === newStatus) return;
+    if (ext.crmStatus === newStatus) return true;
 
-    // 선행 제안서 발송 검증
+    // 선행 제안서 발송 검증 (파이프라인 게이트와 같은 산식)
     const clientReq = requests.find(r => r.id === clientId);
-    const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
-      ext.crmStatus || clientReq?.status || ''
-    );
-    const hasProposalSent = Boolean(clientReq?.hasProposalSent || ext.hasProposalSent);
-    const isContactShared = Boolean(
-      isContracted || 
-      clientReq?.isContactShared || 
-      ext.isContactShared || 
-      (clientReq?.phone && !clientReq.phone.includes('*'))
-    );
-
-    if (!isContracted && (!hasProposalSent || !isContactShared) && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
+    const gates = clientReq ? computePipelineGates(clientReq, ext) : null;
+    if (gates && gates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
       await dialog.alert({
         title: '🔒 선행 단계(제안서 발송) 미완료',
         message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
         variant: 'warning'
       });
-      return;
+      return false;
     }
 
     const clientName = clientReq?.clientName || '고객';
@@ -1442,7 +1425,7 @@ export default function CrmTab({
       cancelText: '취소',
       variant: 'primary'
     });
-    if (!confirmed) return;
+    if (!confirmed) return false;
 
     // 일반 상태 변경
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
@@ -1450,8 +1433,9 @@ export default function CrmTab({
       clientId, actor.id, actor.name, actor.role, 'status_change',
       `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[newStatus].label}`
     )];
-    await updateCrmExt(clientId, { crmStatus: newStatus, activities });
-    toast.success(`사건 상태가 [${CRM_STATUS_CONFIG[newStatus].label}](으)로 변경되었습니다.`);
+    const saved = await updateCrmExt(clientId, { crmStatus: newStatus, activities });
+    notifySaved(saved, `사건 상태가 [${CRM_STATUS_CONFIG[newStatus].label}](으)로 변경되었습니다.`);
+    return saved;
   }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt, requests, dialog]);
 
   // ══════════════════════════════════════
@@ -2808,16 +2792,8 @@ export default function CrmTab({
                   const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                   
                   // 실시간 선후행 및 진행 상태 산출
-                  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
-                    selectedExt.crmStatus || selectedClient.status || ''
-                  );
-                  const hasProposalSent = Boolean(selectedClient.hasProposalSent || selectedExt.hasProposalSent);
-                  const isContactShared = Boolean(
-                    isContracted || 
-                    selectedClient.isContactShared || 
-                    selectedExt.isContactShared || 
-                    (selectedClient.phone && !selectedClient.phone.includes('*'))
-                  );
+                  const metaGates = computePipelineGates(selectedClient, selectedExt);
+                  const { isContracted, hasProposalSent, isContactShared } = metaGates;
                   const docCount = (selectedExt.uploadedFiles || []).length;
 
                   const stageMeta: Record<number, { title: string; progressText: string; badgeCls: string; progressPercent: number }> = {
@@ -3133,7 +3109,7 @@ export default function CrmTab({
                           crmExt={selectedExt}
                           activeLawyer={activeLawyer}
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => setPipelineStage(2)}
+                          onAdvanceToNextStage={() => advancePipelineStage(2)}
                           onSwitchCaseType={handleSwitchCaseType}
                           onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
                           onNavigateToChat={() => {
@@ -3161,7 +3137,7 @@ export default function CrmTab({
                           activeLawyer={activeLawyer}
                           activeStaff={activeStaff}
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => setPipelineStage(3)}
+                          onAdvanceToNextStage={() => advancePipelineStage(3)}
                           onOpenContractSubTab={() => {
                             setPipelineViewMode('subtabs');
                             setDetailTab('contracts');
@@ -3176,7 +3152,7 @@ export default function CrmTab({
                         <Stage3DocumentsHubView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onAdvanceToNextStage={() => setPipelineStage(4)}
+                          onAdvanceToNextStage={() => advancePipelineStage(4)}
                           onOpenDocScanner={() => setShowDocScanner(true)}
                           onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
                           onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
@@ -3187,7 +3163,7 @@ export default function CrmTab({
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => setPipelineStage(5)}
+                          onAdvanceToNextStage={() => advancePipelineStage(5)}
                           onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
                           onOpenAncillaryModal={() => setShowAncillaryModal(true)}
                           onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
@@ -3234,7 +3210,7 @@ export default function CrmTab({
                         <Stage5CorrectionCenterView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onAdvanceToNextStage={() => setPipelineStage(6)}
+                          onAdvanceToNextStage={() => advancePipelineStage(6)}
                           onOpenComprehensiveCorrectionModal={() => {
                             setPipelineViewMode('subtabs');
                             setDetailTab('corrections');
@@ -3543,22 +3519,27 @@ export default function CrmTab({
                             {/* 개시결정 이후 단계: 리걸플로형 개시결정 요약본 & 원형 게이지 브리핑 카드 */}
                             {showDecisionCard && (
                               <DecisionSummaryCard
+                                key={selectedClient.id}
                                 clientName={selectedClient.clientName || '의뢰인'}
                                 data={selectedExt.decisionSummary}
-                                onSave={(newSummary) => {
-                                  if (!selectedClient) return;
+                                onSave={async (newSummary) => {
+                                  if (!selectedClient) return false;
+                                  const prevSummary = selectedExt.decisionSummary;
                                   const updatedExt: CrmClientExtension = {
                                     ...selectedExt,
                                     decisionSummary: newSummary,
                                     lastActivityAt: new Date().toISOString(),
                                   };
-                                  saveCrmClient(selectedClient.id, updatedExt);
                                   setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+                                  const ok = await saveCrmClient(selectedClient.id, updatedExt);
 
-                                  // 동행 대시보드로 실데이터(가상계좌, 변제금, 사건번호 등) 즉시 실시간 동기화!
+                                  // 동행 대시보드 동기화 + 가상계좌가 새로 등록·변경된 경우에만 의뢰인 알림
+                                  // (이전: 메모만 고쳐도, 계좌가 비어 있어도 '가상계좌 발급 안내'를 발송)
                                   try {
                                     syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
-                                    addClientNotification({
+                                    const accountChanged = !!newSummary.virtualAccountNumber &&
+                                      (newSummary.virtualAccountNumber !== prevSummary?.virtualAccountNumber || newSummary.virtualAccountBank !== prevSummary?.virtualAccountBank);
+                                    if (accountChanged) addClientNotification({
                                       type: 'status_change',
                                       title: '[법원 가상계좌 발급 안내]',
                                       body: `법원 가상계좌(${newSummary.virtualAccountBank} ${newSummary.virtualAccountNumber}) 및 월 변제금(${newSummary.monthlyPayment.toLocaleString()}원)이 등록되었습니다.`,
@@ -3566,6 +3547,7 @@ export default function CrmTab({
                                       linkTab: 'companion',
                                     });
                                   } catch { /* ignore */ }
+                                  return ok;
                                 }}
                               />
                             )}
@@ -5483,13 +5465,13 @@ export default function CrmTab({
           isOpen={showContractDocLibraryModal}
           onClose={() => setShowContractDocLibraryModal(false)}
           lawyerName={activeLawyer.name}
-          lawFirmName={activeLawyer.firmName || '법무법인 로앤'}
+          lawFirmName={activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || ''}
           contractContext={selectedClient ? {
             clientName: selectedClient.clientName,
             clientPhone: selectedClient.phone,
             clientAddress: selectedClient.financialProfile?.residenceRegion || '',
             lawyerName: activeLawyer.name,
-            lawFirmName: activeLawyer.firmName || '법무법인 로앤',
+            lawFirmName: activeLawyer.firmName || getOfficeProfile(activeLawyer.name).firmName || '',
             totalFee: selectedExt?.totalFee || 300,
             contractDate: new Date().toISOString().split('T')[0],
           } : undefined}

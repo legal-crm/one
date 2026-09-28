@@ -9,6 +9,7 @@
 
 import {
   type CourtFormDataContext,
+  escapeHtml,
   buildCourtCoverHtml,
   buildCourtApplicationBody1Html,
   buildCourtApplicationBody2Html,
@@ -64,7 +65,7 @@ export function openCourtFormPrintWindow(htmlContent: string, title: string = 'ë
     <html lang="ko">
       <head>
         <meta charset="utf-8" />
-        <title>${title}</title>
+        <title>${escapeHtml(title)}</title>
         <style>${COURT_PRINT_CSS}</style>
       </head>
       <body>

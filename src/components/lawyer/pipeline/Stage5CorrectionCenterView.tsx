@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { addClientNotification } from '../../../services/clientNotificationService';
+import { parseLocalYmd } from '../../../utils/localDate';
 
 interface Stage5CorrectionCenterViewProps {
   clientRequest: ConsultRequest;
@@ -21,10 +22,9 @@ export default function Stage5CorrectionCenterView({
   onAdvanceToNextStage,
   onOpenComprehensiveCorrectionModal,
 }: Stage5CorrectionCenterViewProps) {
-  const [caseNumber, setCaseNumber] = useState(crmExt?.courtCase?.caseNumber || clientRequest.caseNumber || '사건 접수 준비중');
-  const [courtName, setCourtName] = useState(crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원');
+  const [caseNumber, setCaseNumber] = useState(crmExt?.courtCase?.caseNumber || clientRequest.caseNumber || '사건번호 미등록');
+  const [courtName, setCourtName] = useState(crmExt?.courtCase?.courtName || clientRequest.court || '관할 법원 미입력');
   const isProhibitionGranted = crmExt?.courtCase?.prohibitionStatus === 'granted' || !!crmExt?.courtCase?.prohibitionGrantedDate;
-  const [selectedTableTab, setSelectedTableTab] = useState<number>(3); // 최근대출금 사용처 소명
 
   const clientName = clientRequest.clientName || '신청인';
 
@@ -34,23 +34,29 @@ export default function Stage5CorrectionCenterView({
     ? crmExt.corrections[0]
     : null;
 
-  const dDayInfo = activeCorrection?.deadline ? (() => {
-    const diff = Math.ceil((new Date(activeCorrection.deadline).getTime() - Date.now()) / 86400000);
-    if (diff > 0) return { text: `제출기한 D-${diff} (${activeCorrection.deadline}까지)`, isUrgent: diff <= 3 };
+  // 마감일까지 남은 날짜 (로컬 자정 기준)
+  // 이전: new Date('YYYY-MM-DD')(UTC 자정)와 현재 시각을 ceil로 비교해 한국 00~09시에 하루씩 어긋났고, 화면에 표시되지도 않았음
+  const deadlineStr: string = (activeCorrection as any)?.deadline || (activeCorrection as any)?.dueDate || '';
+  const deadlineDate = parseLocalYmd(deadlineStr);
+  const dDayInfo = deadlineDate ? (() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((deadlineDate.getTime() - today.getTime()) / 86400000);
+    if (diff > 0) return { text: `제출기한 D-${diff} (${deadlineStr}까지)`, isUrgent: diff <= 3 };
     if (diff === 0) return { text: '오늘 마감 (D-Day)', isUrgent: true };
     return { text: `기한 경과 (D+${Math.abs(diff)})`, isUrgent: true };
   })() : { text: '현재 진행 중인 보정권고 없음', isUrgent: false };
 
-  // 7대 법원 표준 소명서 표 목록
+  // 7대 소명서 표 목록 — 작성 여부는 종합 보정센터에서 관리 (이전: 6/7 '작성 완료'가 고정값으로 표시)
   const sevenTables = [
-    { id: 1, title: '표 1. 총 채무 및 채권자별 채무액 내역표', desc: '채권자목록 원금 및 이자 소명', isReady: true },
-    { id: 2, title: '표 2. 채무 발생 원인 및 변제 경위 소명서', desc: '차입 목적, 생활비·병원비 지출 증빙', isReady: true },
-    { id: 3, title: '표 3. 최근 1년 이내 차입금 사용처 소명표', desc: '대출금 인출 후 송금처 100% 매칭', isReady: true },
-    { id: 4, title: '표 4. 최근 2년 이내 재산 처분대금 사용처표', desc: '부동산/차량 매각대금 은닉 방어', isReady: false },
-    { id: 5, title: '표 5. 가족 명의 재산 형성 경위 소명서', desc: '배우자/부모 명의 취득 자금 출처', isReady: true },
-    { id: 6, title: '표 6. 신용카드 사용 내역 및 환가 소명표', desc: '카드깡/상품권 현금화 의심 차단', isReady: true },
-    { id: 7, title: '표 7. 월 평균 소득 및 필요경비 산정표', desc: '실소득 증빙 및 객관적 생계비 방어', isReady: true },
+    { id: 1, title: '표 1. 총 채무 및 채권자별 채무액 내역표', desc: '채권자목록 원금 및 이자 소명' },
+    { id: 2, title: '표 2. 채무 발생 원인 및 변제 경위 소명서', desc: '차입 목적, 생활비·병원비 지출 증빙' },
+    { id: 3, title: '표 3. 최근 1년 이내 차입금 사용처 소명표', desc: '대출금 인출 후 사용처 소명' },
+    { id: 4, title: '표 4. 최근 2년 이내 재산 처분대금 사용처표', desc: '부동산/차량 매각대금 사용처' },
+    { id: 5, title: '표 5. 가족 명의 재산 형성 경위 소명서', desc: '배우자/부모 명의 취득 자금 출처' },
+    { id: 6, title: '표 6. 신용카드 사용 내역 및 환가 소명표', desc: '카드 사용·현금화 여부 소명' },
+    { id: 7, title: '표 7. 월 평균 소득 및 필요경비 산정표', desc: '실소득 증빙 및 생계비 산정' },
   ];
+  const hasDraft = !!(crmExt as any)?.correctionBriefDraft;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -72,6 +78,9 @@ export default function Stage5CorrectionCenterView({
               </div>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 나의사건 진행내역을 조회하고, 보정기한 내에 대출금 사용처 및 통장 거래내역 소명서를 완비합니다.
+              </p>
+              <p className={`text-xs mt-1.5 font-bold ${dDayInfo.isUrgent ? 'text-rose-600' : 'text-slate-600'}`}>
+                <Clock className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden="true" />{dDayInfo.text}
               </p>
             </div>
           </div>
@@ -108,7 +117,7 @@ export default function Stage5CorrectionCenterView({
             <span className="text-blue-600 font-mono">{courtName}</span>
           </div>
           <div className="text-base font-black text-slate-900 font-mono">{caseNumber}</div>
-          <div className="text-[11px] text-slate-500">대법원 나의사건검색 실시간 연동 중</div>
+          <div className="text-[11px] text-slate-500">진행내역은 [법원] 탭의 나의사건검색에서 조회하세요</div>
         </div>
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
@@ -117,9 +126,9 @@ export default function Stage5CorrectionCenterView({
             <span className="font-mono text-emerald-600">{isProhibitionGranted ? '발령 완료' : '심리 중'}</span>
           </div>
           <div className="text-base font-black text-emerald-700">
-            {isProhibitionGranted ? '🛡️ 채권자 추심 전면 금지 발효' : '⏳ 법원 심리 진행 중'}
+            {isProhibitionGranted ? '🛡️ 금지명령 발령' : '⏳ 법원 심리 진행 중'}
           </div>
-          <div className="text-[11px] text-slate-500">모든 채권사의 독촉 전화 및 압류가 중단됩니다.</div>
+          <div className="text-[11px] text-slate-500">{isProhibitionGranted ? '금지명령 효력 범위 내에서 채권자의 추심·새 강제집행이 금지됩니다.' : '금지명령 결정 전입니다.'}</div>
         </div>
       </div>
 
@@ -134,11 +143,11 @@ export default function Stage5CorrectionCenterView({
               회생위원 7대 법원 표준 소명서
             </span>
             <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-              6 / 7종 완성
+              {hasDraft ? '보정서 초안 저장됨' : '보정서 초안 없음'}
             </span>
           </div>
           <span className="text-[11px] text-slate-500 font-bold">
-            원클릭 AI 초안 연동
+            표를 누르면 종합 보정센터가 열립니다
           </span>
         </div>
 
@@ -148,11 +157,7 @@ export default function Stage5CorrectionCenterView({
               <div 
                 key={tbl.id} 
                 onClick={onOpenComprehensiveCorrectionModal}
-                className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 text-xs cursor-pointer ${
-                  tbl.isReady 
-                    ? 'bg-slate-50/70 hover:bg-blue-50/50 hover:border-blue-300 border-slate-200' 
-                    : 'bg-amber-50/60 hover:bg-amber-50 border-amber-300 ring-1 ring-amber-400/20 shadow-xs'
-                }`}
+                className="p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 text-xs cursor-pointer bg-slate-50/70 hover:bg-blue-50/50 hover:border-blue-300 border-slate-200"
                 title={`${tbl.title} 상세 작성 및 검토`}
               >
                 <div className="min-w-0 flex-1">
@@ -163,12 +168,8 @@ export default function Stage5CorrectionCenterView({
                     {tbl.desc}
                   </p>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 whitespace-nowrap ${
-                  tbl.isReady 
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                    : 'bg-amber-100 text-amber-800 border-amber-300 font-black'
-                }`}>
-                  {tbl.isReady ? '작성 완료' : '자료 보완필요'}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 whitespace-nowrap bg-white text-slate-600 border-slate-200">
+                  센터에서 작성
                 </span>
               </div>
             ))}

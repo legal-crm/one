@@ -25,6 +25,7 @@ import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal'
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
+import { localYmd } from '../../../utils/localDate';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
 
 interface Stage3DocumentsHubViewProps {
@@ -302,7 +303,7 @@ export default function Stage3DocumentsHubView({
   const handleApproveAllPhase1 = () => {
     setDocList(prev => prev.map(d => 
       d.phase === 1 
-        ? { ...d, status: 'APPROVED', approvedAt: new Date().toLocaleDateString() } 
+        ? { ...d, status: 'APPROVED', approvedAt: localYmd() } 
         : d
     ));
     setIsSealKeptInSafe(true);
@@ -387,6 +388,29 @@ export default function Stage3DocumentsHubView({
     reportSend(res, '2차 서류 모바일 간편제출 안내');
   };
 
+  // 이번 주(오늘 포함) 금요일 18:00 — 이전: 날짜 없이 '이번 주 금요일' 문구 고정
+  const nextFridayLabel = () => {
+    const d = new Date();
+    const add = (5 - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + add);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일(금) 18:00`;
+  };
+
+  // 개별 서류 다시 알림 (이전: 아무것도 보내지 않고 '리마인더가 전송되었습니다' 표시)
+  const handleSendDocReminder = async (docName: string) => {
+    if (!ensureOffice()) return;
+    const res = await sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', {
+      clientName: clientRequest.clientName,
+      unsubmittedCount: '1',
+      unsubmittedDocNames: docName,
+      deadline: nextFridayLabel(),
+      firmName: office.firmName,
+      lawyerName: office.lawyerName || '담당 변호사',
+      trackingUrl,
+    });
+    reportSend(res, `${docName} 제출 요청`);
+  };
+
   // 2차 마감 리마인더 발송
   const handleSendPhase2Reminder = async () => {
     if (!ensureOffice()) return;
@@ -395,7 +419,7 @@ export default function Stage3DocumentsHubView({
       clientName: clientRequest.clientName,
       unsubmittedCount: `${unsubmittedPhase2.length}`,
       unsubmittedDocNames: unsubmittedPhase2.slice(0, 3).map(d => d.name).join(', ') + (unsubmittedPhase2.length > 3 ? ' 외' : ''),
-      deadline: '이번 주 금요일 18:00',
+      deadline: nextFridayLabel(),
       firmName: office.firmName,
       lawyerName: office.lawyerName || '담당 변호사',
       trackingUrl,
@@ -407,7 +431,7 @@ export default function Stage3DocumentsHubView({
   const handleApproveDoc = (docId: string) => {
     setDocList(prev => prev.map(d => 
       d.id === docId 
-        ? { ...d, status: 'APPROVED', approvedAt: new Date().toLocaleDateString() } 
+        ? { ...d, status: 'APPROVED', approvedAt: localYmd() } 
         : d
     ));
   };
@@ -833,7 +857,7 @@ export default function Stage3DocumentsHubView({
                 <button
                   type="button"
                   onClick={() => {
-                    toast.success('대행사로부터 부채증명서 실물 서류철이 도착했습니다! 원리금 검수를 시작합니다.');
+                    // 이전: 도착 데이터 없이 '실물 서류철이 도착했습니다!' 토스트
                     setIsAgencyAppModalOpen(true);
                   }}
                   className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
@@ -1333,7 +1357,7 @@ export default function Stage3DocumentsHubView({
                         <button
                           type="button"
                           onClick={() => {
-                            toast.info(`[다시 알림] ${clientRequest.clientName}님께 '${doc.name}' 리마인더가 전송되었습니다.`);
+                            void handleSendDocReminder(doc.name);
                           }}
                           className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all cursor-pointer"
                           title="고객에게 알림톡 다시 알림"

@@ -830,9 +830,12 @@ export const compileTemplateWithVariables = (
   vars: Record<string, string>
 ): string => {
   if (!templateStr) return '';
+  // 변수명은 정규식 특수문자를 이스케이프하고, 값은 치환 함수로 넣어 '$&'·'$1' 같은 패턴이 해석되지 않게 함
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   let result = templateStr;
   for (const [key, val] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`#\\{${key}\\}|\\{\\{${key}\\}\\}`, 'g'), val || '');
+    const k = esc(key);
+    result = result.replace(new RegExp(`#\\{${k}\\}|\\{\\{${k}\\}\\}`, 'g'), () => val || '');
   }
   return result;
 };

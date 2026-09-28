@@ -76,8 +76,9 @@ export default function AlimtalkTemplateRegisterModal({
     '입금일시': '2026.09.16',
     '잔여금액': '1,000,000원',
     '수임료': '150만원',
-    '입금계좌': '신한은행 110-384-918231',
-    '사건번호': '2026개회104291',
+    // 미리보기 전용 예시값 (실제 발송값 아님)
+    '입금계좌': '(예시) OO은행 000-000-000000',
+    '사건번호': '(예시) 20XX개회00000',
     '관할법원': '서울회생법원',
     '안내링크': 'https://mykim.kr/my',
   };
@@ -118,7 +119,9 @@ export default function AlimtalkTemplateRegisterModal({
 
     setTimeout(() => {
       setIsSubmitting(false);
-      toast.success(`[${templateName}] 템플릿이 팝빌/카카오 검수 심사에 성공적으로 접수되었습니다. (검수 상태: 심사중)`);
+      // 이 기능은 팝빌에 제출하지 않음 — 초안을 이 브라우저에 '심사중'으로 저장하고, 실제 심사 신청은 팝빌 관리화면에서 진행
+      // (이전: '팝빌/카카오 검수 심사에 성공적으로 접수되었습니다')
+      toast.success(`[${templateName}] 템플릿 초안을 저장했습니다. 팝빌 템플릿 관리 화면에서 심사를 신청해 주세요.`);
       if (onRegistered) {
         onRegistered(newTemplate);
       }
@@ -139,7 +142,7 @@ export default function AlimtalkTemplateRegisterModal({
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-white">알림톡 신규 템플릿 등록 및 심사 신청</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
-                  팝빌 공식 연동
+                  초안 저장 (심사 신청은 팝빌에서)
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">

@@ -30,6 +30,7 @@ import {
   buildCourtRepaymentPlanHtml,
   buildCourtPowerOfAttorneyHtml,
   buildCourtRequiredDocumentChecklistHtml,
+  escapeHtml,
   type CourtFormDataContext
 } from '../../../services/court/CourtFormHtmlBuilder';
 
@@ -115,7 +116,7 @@ function CourtFormPreviewModalInner({
       }
     } catch (err) {
       console.error('Error building court form HTML:', err);
-      return `<div style="padding: 40px; color: red; text-align: center;">서식 렌더링 중 오류가 발생했습니다: ${String(err)}</div>`;
+      return `<div style="padding: 40px; color: red; text-align: center;">서식 렌더링 중 오류가 발생했습니다: ${escapeHtml(String(err))}</div>`;
     }
   }, [activeCode, ctx]);
 
@@ -133,7 +134,7 @@ function CourtFormPreviewModalInner({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${activeTabMeta.name} - ${clientRequest.clientName || '신청인'}</title>
+          <title>${escapeHtml(activeTabMeta.name)} - ${escapeHtml(clientRequest.clientName || '신청인')}</title>
           <meta charset="utf-8" />
           <style>
             @page {

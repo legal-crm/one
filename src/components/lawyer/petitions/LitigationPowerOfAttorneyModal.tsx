@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import ModalPortal from '../../common/ModalPortal';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 
 interface LitigationPowerOfAttorneyModalProps {
   isOpen: boolean;
@@ -39,15 +40,17 @@ function LitigationPowerOfAttorneyModalInner({
 
   const clientName = clientRequest.clientName || '신청인';
   const clientPhone = clientRequest.phone || '';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || '2026개회 (신청 접수예정)';
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
+  const caseNumber = crmExt.courtCase?.caseNumber || '(사건번호 미부여)';
 
   // 위임인 및 수임인 설정 상태
   const [attorneyType, setAttorneyType] = useState<'individual' | 'lawfirm'>('lawfirm');
-  const [lawFirmName, setLawFirmName] = useState(firmName.includes('법무법인') ? firmName : '법무법인(유한) 한결');
+  // 이전: 사무소명에 '법무법인'이 없으면 가짜 '법무법인(유한) 한결'로 대체
+  const [lawFirmName, setLawFirmName] = useState(firmName || getOfficeProfile(activeLawyerName).firmName || '');
   const [managingLawyer, setManagingLawyer] = useState(activeLawyerName);
-  const [assignedLawyers, setAssignedLawyers] = useState<string[]>([activeLawyerName, '박창호 변호사']);
-  const [firmAddress, setFirmAddress] = useState('서울특별시 서초구 서초대로 250, 8층 (서초동)');
+  // 이전: 가짜 공동수임 변호사 '박창호 변호사'와 서초대로 250 주소가 기본값
+  const [assignedLawyers, setAssignedLawyers] = useState<string[]>([activeLawyerName].filter(Boolean));
+  const [firmAddress, setFirmAddress] = useState(crmExt.petitionInfo?.firmAddress || getOfficeProfile(activeLawyerName).address || '');
 
   // 8대 수권사항 체크 상태
   const [powers, setPowers] = useState({

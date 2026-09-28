@@ -175,7 +175,8 @@ export default function FeeAlimtokModal({
           initialVars[v] = `${origin}/my`;
           break;
         case '문의처':
-          initialVars[v] = `${firmName || '법무법인'} (직통 02-588-1123)`;
+          // 이전: 가짜 직통번호 '02-588-1123'이 기본 입력됨 → 사무소명만 채우고 연락처는 직접 입력
+          initialVars[v] = firmName || '';
           break;
         default:
           initialVars[v] = variableValues[v] || '';
@@ -493,7 +494,7 @@ export default function FeeAlimtokModal({
                 />
                 <span>카카오톡 미수신 시 LMS/SMS 대체 발송</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-medium">100% 수신 보장</span>
+              <span className="text-[10px] text-slate-400 font-medium">수신 여부는 통신 환경에 따라 다를 수 있음</span>
             </div>
           </div>
 

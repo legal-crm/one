@@ -1,4 +1,4 @@
-import { DELIVERY_UNIT_FEE_KRW } from '../../../services/court/courtFees';
+import { DELIVERY_UNIT_FEE_KRW, calcCourtFees } from '../../../services/court/courtFees';
 import React, { useState, useMemo } from 'react';
 import { 
   X, FileText, Download, CheckCircle2, AlertCircle, 
@@ -49,7 +49,7 @@ function BatchFilingPackagingModalInner({
 
   const clientName = clientRequest.clientName || '신청인';
   const caseTypeTitle = isBankruptcy ? '개인파산 및 면책' : '개인회생';
-  const courtName = clientRequest.court || crmExt.courtCase?.courtName || '서울회생법원';
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
 
   // 채권자 목록 추출 (변제계획안 ➔ 부채증명서 발급목록 ➔ 상담 채권자 순으로 fallback)
   const creditors: RepaymentCreditor[] = useMemo(() => {
@@ -68,30 +68,33 @@ function BatchFilingPackagingModalInner({
         id: `cred-${idx + 1}`,
         creditorNumber: idx + 1,
         name,
-        principal: (d.amount || 1000) * 10000,
+        // 상담 입력 채무(만원)만 반영 — 미입력 항목은 0/빈값 (이전: 금액 1,000만원·변제액 360만원·변제율 40%·차용일 2023-01-01 등 임의값)
+        principal: (Number(d.amount ?? d.principal) || 0) * 10000,
         interest: 0,
         isSecured: false,
         isUnconfirmed: false,
         isPriority: preset?.isPriorityDefault ?? false,
         allocationRatio: 1 / Math.max(1, debts.length),
-        monthlyRepayment: 100000,
-        totalRepayment: 3600000,
-        repaymentRate: 40,
+        monthlyRepayment: 0,
+        totalRepayment: 0,
+        repaymentRate: 0,
         zipCode: preset?.zipCode || '',
         address: preset?.address || '',
         serviceAddress: preset?.serviceAddress || '',
         representative: preset?.representative || '',
         bizNumber: preset?.bizNumber || '',
-        debtCauseDetail: '대여금 / 신용대출',
-        borrowedDate: '2023-01-01',
+        debtCauseDetail: '',
+        borrowedDate: '',
       };
     });
   }, [crmExt.repaymentPlan, crmExt.debtCertificateOrders, clientRequest]);
 
   // 실제 법원 인지액 및 송달료 자동 계산 (실서류 4종 전수분석 반영)
-  const stampFee = 32000;
+  // 인지대·송달료 공통 산식 (이전: 32,000원 고정·전자소송 감액 미반영, 표기 단가 5,500원)
   const creditorCount = Math.max(1, creditors.length);
-  const serviceFee = (10 + creditorCount * 8) * DELIVERY_UNIT_FEE_KRW;
+  const courtFee = calcCourtFees({ caseType: isBankruptcy ? 'bankruptcy' : 'rehab', creditorCount, withProhibition: !isBankruptcy, electronic: true });
+  const stampFee = courtFee.stampFee;
+  const serviceFee = courtFee.deliveryFee;
 
   // 1. 초기 슬롯 데이터 매핑 (14단계 표준 편철 순서 + 스마트 다중 파일 매핑)
   const standardTemplates = isBankruptcy ? BANKRUPTCY_10_STANDARD_ORDER : REHAB_14_STANDARD_ORDER;
@@ -417,14 +420,14 @@ function BatchFilingPackagingModalInner({
               <Coins className="w-4 h-4 text-amber-600" />
               <span className="text-slate-600">법정 인지액:</span>
               <span className="font-extrabold text-slate-900">{stampFee.toLocaleString()}원</span>
-              <span className="text-[10px] text-slate-600 font-medium">(신청 3만+금지명령 2천)</span>
+              <span className="text-[10px] text-slate-600 font-medium">{isBankruptcy ? '(파산·면책 신청, 전자소송 10% 감액)' : '(개시신청 3만 + 금지명령 2천, 전자소송 10% 감액)'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Landmark className="w-4 h-4 text-blue-600" />
               <span className="text-slate-600">법정 송달료:</span>
               <span className="font-extrabold text-blue-700">{serviceFee.toLocaleString()}원</span>
               <span className="text-[10px] text-slate-600 font-medium">
-                (기본 10회 5.5만 + 채권자 {creditorCount}명 × 8회 × 5,500원)
+                ({courtFee.deliveryRounds}회 × {DELIVERY_UNIT_FEE_KRW.toLocaleString()}원, 채권자 {creditorCount}명 기준)
               </span>
             </div>
           </div>

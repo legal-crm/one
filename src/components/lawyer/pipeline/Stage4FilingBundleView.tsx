@@ -23,7 +23,8 @@ import AutoDraftReviewSplitModal from '../documents/AutoDraftReviewSplitModal';
 interface Stage4FilingBundleViewProps {
   clientRequest: ConsultRequest;
   crmExt?: CrmClientExtension;
-  onUpdateStatus?: (newStatus: any) => void;
+  /** @returns 상태 저장 여부 */
+  onUpdateStatus?: (newStatus: any) => void | boolean | Promise<boolean | void>;
   onAdvanceToNextStage: () => void;
   onOpenBatchFilingModal?: () => void;
   onOpenAncillaryModal?: () => void;
@@ -62,8 +63,9 @@ export default function Stage4FilingBundleView({
   const dialog = useDialog();
   const [includeProhibition, setIncludeProhibition] = useState(true);
   const [includeStayOrder, setIncludeStayOrder] = useState(true);
-  const [stayExecutionCaseNo, setStayExecutionCaseNo] = useState('2025타채 54321호 (급여압류)');
-  const [isClientConsented, setIsClientConsented] = useState(true);
+  // 중지명령 대상 집행사건번호 — 사건 정보에서만 가져옴 (이전: 가짜 '2025타채 54321호' 기본값)
+  const [stayExecutionCaseNo, setStayExecutionCaseNo] = useState<string>((crmExt as any)?.courtCase?.executionCaseNumber || '');
+  const [isClientConsented, setIsClientConsented] = useState(false);
 
   // 선행 충족 조건 산출
   const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
@@ -82,65 +84,66 @@ export default function Stage4FilingBundleView({
   });
 
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
+  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '관할 법원 미입력';
 
   // 8대 필수 서식 목록 (실시간 데이터 연동 요약 및 상태)
   const standardForms = [
     { 
       code: 'R01', 
       name: '개인회생절차 개시신청서 본안', 
-      isReady: true, 
+      // 준비 여부는 실제 입력 데이터로 판단 (이전: 8종 모두 isReady: true 고정)
+      isReady: !!crmExt?.petitionInfo, 
       badge: 'D5101',
       note: `${courtName} 접수 · 신청인 ${clientName} (${crmExt?.petitionInfo?.incomeType === 'business' ? '영업소득자' : '급여소득자'}) · 환급: ${crmExt?.petitionInfo?.refundBank || (crmExt?.repaymentPlan as any)?.bankName || ''}`
     },
     { 
       code: 'R02', 
       name: '개인회생 채권자목록 (CSV)', 
-      isReady: true, 
+      isReady: (crmExt?.repaymentPlan?.creditors || []).length > 0, 
       badge: 'PDF+CSV',
       note: `채권사 ${(crmExt?.repaymentPlan?.creditors || []).length}개소 · 원금 ${(crmExt?.repaymentPlan?.totalPrincipal || 0).toLocaleString()}원 · 대법원 UTF-8 BOM CSV`
     },
     { 
       code: 'R06', 
       name: '재산목록 (D5102)', 
-      isReady: true, 
+      isReady: !!(crmExt as any)?.propertyListD5102, 
       badge: 'D5102',
-      note: `총 청산가치 ${(crmExt?.repaymentPlan?.totalLiquidationValue || 0).toLocaleString()}원 · 11대 자산 가치평가 완비`
+      note: `총 청산가치 ${(crmExt?.repaymentPlan?.totalLiquidationValue || 0).toLocaleString()}원`
     },
     { 
       code: 'R08', 
       name: '수입 및 지출에 관한 목록 (D5103)', 
-      isReady: true, 
+      isReady: !!(crmExt as any)?.incomeExpenseD5103 || (crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 0) > 0, 
       badge: 'D5103',
-      note: `월 순소득 ${((crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 3500000)).toLocaleString()}원 · 생계비 인정 ${((crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 1500000)).toLocaleString()}원`
+      note: `월 순소득 ${((crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 0)).toLocaleString()}원 · 생계비 ${((crmExt?.repaymentPlan?.calculatedLiving?.finalTotalLivingExpense || 0)).toLocaleString()}원`
     },
     { 
       code: 'R10', 
       name: '진술서 (채무 증대 경위서)', 
-      isReady: true, 
-      badge: 'AI첨삭',
-      note: '학력·경력·채무발생 경위 및 AI 법률 첨삭 완료 · 의뢰인 확인 동기화'
+      isReady: !!crmExt?.courtStatement, 
+      badge: '진술서',
+      note: crmExt?.courtStatement ? '학력·경력·채무발생 경위 (의뢰인 작성분)' : '의뢰인 진술서 미작성'
     },
     { 
       code: 'R04', 
       name: '변제계획안 및 변제예정표', 
-      isReady: true, 
+      isReady: (crmExt?.repaymentPlan?.monthlyRepaymentTotal || 0) > 0, 
       badge: 'D5110',
-      note: `월 ${(crmExt?.repaymentPlan?.monthlyRepaymentTotal || 0).toLocaleString()}원 (${crmExt?.repaymentPlan?.months || 36}개월) · 변제율 ${crmExt?.repaymentPlan?.totalRepaymentRate || 0}% · 최저변제율 충족`
+      note: `월 ${(crmExt?.repaymentPlan?.monthlyRepaymentTotal || 0).toLocaleString()}원 (${crmExt?.repaymentPlan?.months || 36}개월) · 변제율 ${crmExt?.repaymentPlan?.totalRepaymentRate || 0}%`
     },
     { 
       code: 'R03', 
       name: '소송위임장', 
-      isReady: true, 
+      isReady: !!crmExt?.petitionInfo?.lawyerName, 
       badge: '대리권',
-      note: `대리인 변호사 ${crmExt?.petitionInfo?.lawyerName || ''} · 8대 소송대리 수권 및 경유확인서 완료`
+      note: crmExt?.petitionInfo?.lawyerName ? `대리인 변호사 ${crmExt.petitionInfo.lawyerName}` : '대리인 정보 미입력'
     },
     { 
       code: 'R07', 
       name: '첨부서류 일체 (4대 발급처 증빙)', 
-      isReady: true, 
-      badge: '수합완비',
-      note: `주민센터·홈택스·정부24·부채증명서 수합 완료 (${(crmExt?.uploadedFiles || []).length}건 편철)`
+      isReady: (crmExt?.uploadedFiles || []).length > 0, 
+      badge: '첨부',
+      note: `업로드된 첨부서류 ${(crmExt?.uploadedFiles || []).length}건`
     },
   ];
 
@@ -180,7 +183,8 @@ export default function Stage4FilingBundleView({
       const newState = generateAll8AutoDrafts(clientRequest, crmExt, draftSuite);
       setDraftSuite({ ...newState });
       setIsAiGenerating(false);
-      toast.success('1·2차 서류 파싱을 완료하고 8대 전산서식 초안 생성을 마쳤습니다. (옵션 A: 변호사 검토 대기 8건)');
+      // 이전: '1·2차 서류 파싱 완료' 안내 — 실제로는 CRM 입력값으로 초안을 다시 만드는 기능
+      toast.success('CRM 입력 데이터로 8대 서식 초안을 다시 만들었습니다. 변호사 검토가 필요합니다.');
     }, 1000);
   };
 
@@ -306,10 +310,7 @@ export default function Stage4FilingBundleView({
     return true;
   };
 
-  // 원클릭 번들 다운로드
-  const handleDownloadBundle = () => {
-    toast.success('대법원 전자소송 제출용 ZIP 패키지(8대 서식 + 금지/중지명령)가 다운로드되었습니다.');
-  };
+  // (이전: 파일 없이 'ZIP 패키지가 다운로드되었습니다' 토스트만 띄우던 미사용 핸들러 제거 — ZIP은 일괄 패키징 모달에서 생성)
 
   // 법원 접수 완료 처리 (2단계 확인 팝업 적용)
   const handleCompleteFiling = async () => {
@@ -318,18 +319,18 @@ export default function Stage4FilingBundleView({
 
     const confirmed = await dialog.confirm({
       title: '🏛️ 대법원 전자소송 접수 완료 처리',
-      message: '8대 법원 서식(변호사 검토 완료) 및 금지·중지명령신청서의 전자소송 정식 접수를 완료 처리하시겠습니까?\n\n※ 접수 완료 처리 시 사건이 Stage 5(법원대응·보정) 단계로 전환되며 법원 사건번호 관리가 시작됩니다.',
+      message: '대법원 전자소송에서 직접 접수를 마치셨습니까?\n\n이 기능은 전자소송에 서류를 제출하지 않으며, 사건 상태만 [법원 접수]로 기록합니다. 기록 후 법원 사건번호를 사건 정보에 등록해 주세요.',
       confirmText: '접수 완료 승인',
       cancelText: '취소',
       variant: 'primary',
     });
     if (!confirmed) return;
 
+    // 이 버튼은 전자소송에 제출하지 않음 — 변호사가 전자소송에서 직접 접수한 뒤 '접수 완료'로 기록하는 기능
+    const ok = onUpdateStatus ? await onUpdateStatus('filed') : false;
+    if (ok === false) return;
     setIsFilingSubmitted(true);
-    if (onUpdateStatus) {
-      onUpdateStatus('filed');
-    }
-    toast.success('대법원 전자소송 정식 접수가 완료되었습니다. [Gate 4 통과]');
+    toast.success('사건 상태를 [법원 접수]로 기록했습니다. 법원 사건번호를 사건 정보에 등록해 주세요.');
   };
 
   // 전자소송 일괄 패키징 & 접수 클릭 시 선행 조건 검증
@@ -358,7 +359,7 @@ export default function Stage4FilingBundleView({
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                실시간 양방향 데이터 바인딩
+                사건 데이터 연동
               </span>
             </div>
 
@@ -450,7 +451,7 @@ export default function Stage4FilingBundleView({
                 </div>
               </div>
               <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                8종 전산 데이터 연동 완료
+                {standardForms.filter(f => f.isReady).length}/{standardForms.length}종 데이터 입력됨
               </span>
             </div>
 
@@ -532,10 +533,9 @@ export default function Stage4FilingBundleView({
           {/* 하단 데이터 충족 요약 배너 */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">제614조 적합</span>
-              <span className="text-[11px]">청산가치 보장 및 최저변제액 요건 충족</span>
+              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[11px]">제614조 검토</span>
+              <span className="text-[11px]">청산가치 보장·최저변제액 요건은 변제계획안에서 확인하세요</span>
             </div>
-            <span className="text-[11px] text-slate-400">AI 전산 신뢰도 평균 94%</span>
           </div>
         </div>
 
@@ -613,7 +613,7 @@ export default function Stage4FilingBundleView({
                   onChange={(e) => setIncludeStayOrder(e.target.checked)}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="font-medium">중지명령 신청서 ({stayExecutionCaseNo})</span>
+                <span className="font-medium">중지명령 신청서 ({stayExecutionCaseNo || '집행사건번호 미입력'})</span>
               </label>
             </div>
           </div>
@@ -663,7 +663,7 @@ export default function Stage4FilingBundleView({
             </div>
             <p className={`text-xs mt-0.5 ${isFilingSubmitted ? 'text-emerald-800' : 'text-slate-400'}`}>
               {isFilingSubmitted
-                ? '법원 사건번호가 발번되었으며 Stage 5(법원대응·보정)에서 보정권고 관리를 진행합니다.'
+                ? (crmExt?.courtCase?.caseNumber ? `사건번호 ${crmExt.courtCase.caseNumber} · Stage 5(법원대응·보정)에서 보정권고를 관리합니다.` : '접수 완료로 기록되었습니다. 법원 사건번호를 사건 정보에 등록해 주세요.')
                 : '검토 완료된 8대 서식과 부수신청을 결합하여 전자소송을 일괄 접수하거나 접수 완료 처리합니다.'}
             </p>
           </div>

@@ -10,7 +10,8 @@ import { localYmd } from '../../../utils/localDate';
 interface DecisionSummaryCardProps {
   clientName: string;
   data?: DecisionSummaryData;
-  onSave?: (updatedData: DecisionSummaryData) => void;
+  /** @returns 저장 성공 여부 (없으면 성공으로 간주하지 않음) */
+  onSave?: (updatedData: DecisionSummaryData) => boolean | void | Promise<boolean | void>;
   readOnly?: boolean;
 }
 
@@ -65,14 +66,15 @@ export default function DecisionSummaryCard({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsEditing(false);
     if (!onSave) {
       toast.info('이 화면에서는 저장이 지원되지 않습니다.');
       return;
     }
-    onSave(form);
-    toast.success('개시결정 요약 정보가 저장되었습니다.');
+    const ok = await onSave(form);
+    if (ok === false) toast.error('서버 저장에 실패했습니다. 이 기기에만 반영되었으니 네트워크 확인 후 다시 저장해 주세요.');
+    else toast.success('개시결정 요약 정보가 저장되었습니다.');
   };
 
   // SVG 원형 도넛 게이지 파라미터
