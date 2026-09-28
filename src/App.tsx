@@ -43,9 +43,10 @@ import ContractPublicVerifierModal from './components/common/ContractPublicVerif
 import { getContract } from './services/contractService';
 import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
+import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
 
-// [SECURITY] 진짜 관리자 전용 경로 (환경변수 VITE_ADMIN_SECRET_PATH로 분기, 뻔한 ?role=admin은 허니팟으로 유인)
-export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_9k7q';
+// [SECURITY] 관리자 포털 경로는 utils/adminPortal.ts (VITE_ADMIN_SECRET_PATH, 운영 미설정 시 비활성).
+// 뻔한 ?role=admin은 허니팟으로 유인. 실제 인가는 서버(JWT role=admin + MFA aal2)가 판정.
 
 // ── 시연용 시드 (DEV 전용) ──
 // 운영 빌드에서는 가상 상담 요청(req-mock-*, req-amjone-*)·가상 제안서·가상 사건을 주입하지 않는다.
@@ -78,19 +79,9 @@ export default function App() {
     const roleParam = params.get('role');
     if (roleParam === 'admin') return 'honeypot'; // [SECURITY] 공격자/봇은 가짜 허니팟으로 유인
 
-    // [SECURITY Zero-Trust] 관리자 경로 진입 검증
-    const configuredAdminPath = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH;
-    const isTargetingAdmin = roleParam && (
-      (configuredAdminPath && roleParam === configuredAdminPath) ||
-      roleParam === ADMIN_SECRET_ROLE ||
-      roleParam === 'adm_sec_9k7q' ||
-      roleParam === 'adm_sec_auth'
-    );
-
-    if (isTargetingAdmin) {
-      // 지정된 관리자 시크릿 파라미터로 접근 시 관리자 뷰(구글 OAuth 로그인 화면 포함) 허용
-      return 'admin';
-    }
+    // [SECURITY Zero-Trust] 관리자 경로 진입 (하드코딩된 예비 경로 2종 제거, 환경변수 값만 허용)
+    // 진입 후 AdminRole이 서버에서 관리자 권한·MFA를 확인한다.
+    if (isAdminPortalRole(roleParam)) return 'admin';
 
     if (roleParam === 'lawyer') return 'lawyer';
     if (roleParam) return 'client';
@@ -98,11 +89,8 @@ export default function App() {
     // URL에 role 파라미터가 없을 때 → 활성 세션으로 역할 복원
     try {
       if (sessionStorage.getItem('legal_crm_lawyer_session')) return 'lawyer';
-      const adminSession = secureGetItem('legal_crm_admin_session');
-      if (adminSession) {
-        const { timestamp, signature } = JSON.parse(adminSession);
-        if (timestamp && signature && Date.now() - timestamp <= 30 * 60 * 1000) return 'admin';
-      }
+      // 표시용 마커(30분 이내 활동)만 확인 — 권한은 AdminRole이 서버에서 다시 확인
+      if (ADMIN_PORTAL_PATH && readAdminMarker()) return 'admin';
     } catch {}
 
     return 'client';
@@ -393,9 +381,8 @@ export default function App() {
           const lawyerId = sessionStorage.getItem('legal_crm_lawyer_session') || undefined;
           dbRequests = await loadConsultRequests({ lawyerId, includeOpen: true });
         } else if (currentRole === 'admin') {
-          // [ANTI-BOLA] 관리자는 검증된 어드민 세션인 경우에만 조회
-          const adminSession = secureGetItem('legal_crm_admin_session');
-          if (adminSession) {
+          // [ANTI-BOLA] 관리자 화면이 활성일 때만 조회 — 실제 반환 범위는 RLS(is_platform_admin: role=admin AND aal2)가 결정
+          if (readAdminMarker()) {
             dbRequests = await loadConsultRequests({ isAdmin: true });
           }
         }

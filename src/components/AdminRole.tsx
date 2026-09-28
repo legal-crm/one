@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
-import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
-import { createSecureSession, verifySecureSession, refreshSecureSession } from '../utils/secureSession';
+import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout, auditAdminAccessDenied, auditMfaEnrolled } from '../services/auditService';
+import { evaluateAdminAuth, startTotpEnrollment, verifyTotpCode, isValidTotpCode, signOutAdmin, type AdminAuthState, type TotpEnrollment } from '../services/adminAuthService';
+import { ADMIN_PORTAL_PATH, readAdminMarker, writeAdminMarker, touchAdminMarker, clearAdminMarker } from '../utils/adminPortal';
 import { supabase } from '../supabaseClient';
 import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
 import { 
@@ -28,8 +29,7 @@ import {
 import RehabSettingsPanel from './RehabSettingsPanel';
 import PopupEditor from './popup/PopupEditor';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
-import { issueAdminOtp, verifyAdminOtp, getRemainingOtpSeconds } from '../services/otpService';
-import { getHoneypotLogs, clearHoneypotLogs, HoneypotAttackLog } from '../services/honeypotService';
+import { fetchHoneypotLogs, type HoneypotAttackLog } from '../services/honeypotService';
 import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
@@ -255,321 +255,291 @@ export default function AdminRole({
   const [bannerImage, setBannerImage] = useState<string>('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
 
   // ============================================================
-  // [SECURITY] 관리자 인증 — HMAC 서명 + 세션 만료 + 로그인 잠금
+  // [SECURITY] 관리자 인증 — 서버 판정(app_metadata.role) + TOTP MFA(aal2) + 30분 미활동 로그아웃
+  // 화면 분기는 편의용이며, DB 권한은 021 마이그레이션의 is_platform_admin()(role=admin AND aal2)이 판정한다.
+  // (이전: 번들 하드코딩 이메일 목록 + 브라우저가 스스로 만든 HMAC 키 + 브라우저 생성 OTP(demoCode 노출))
   // ============================================================
-  const ADMIN_SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30분
-  const MAX_LOGIN_ATTEMPTS = 5;
-  const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5분
-  const SESSION_KEY = 'legal_crm_admin_session';
+  const MAX_MFA_ATTEMPTS = 5;
+  const MFA_LOCKOUT_MS = 5 * 60 * 1000;
+  const MFA_LOCK_KEY = 'admin_mfa_lock_until';
+  const OAUTH_PENDING_KEY = 'pending_admin_oauth';
 
-  // [SECURITY] 허용된 관리자 구글 계정 화이트리스트 (대표님 전용 계정)
-  const ALLOWED_ADMIN_GOOGLE_EMAILS = [
-    'pipj601@gmail.com',
-    'aimart9999@gmail.com',
-  ];
-
-  // 초기 로드 시 동기적으로 타임스탬프만 확인 (HMAC은 비동기로 후속 검증)
-  const quickCheckSession = (): boolean => {
-    const sessionData = secureGetItem(SESSION_KEY);
-    if (!sessionData) return false;
-    try {
-      const { timestamp, signature } = JSON.parse(sessionData);
-      if (!timestamp || !signature) return false;
-      if (Date.now() - timestamp > ADMIN_SESSION_TIMEOUT_MS) {
-        secureRemoveItem(SESSION_KEY);
-        return false;
-      }
-      return true; // HMAC 검증은 useEffect에서 비동기로 수행
-    } catch {
-      secureRemoveItem(SESSION_KEY);
-      return false;
-    }
-  };
-
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => quickCheckSession());
+  const [authState, setAuthState] = useState<AdminAuthState | { stage: 'checking' }>({ stage: 'checking' });
+  const isLoggedIn = authState.stage === 'ready';
+  const adminEmail = 'email' in authState ? authState.email : '';
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState<boolean>(false);
-  const [loginId, setLoginId] = useState<string>('');
-  const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
-  const [loginAttempts, setLoginAttempts] = useState<number>(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number>(0);
+  const [mfaCode, setMfaCode] = useState<string>('');
+  const [mfaError, setMfaError] = useState<string>('');
+  const [mfaBusy, setMfaBusy] = useState<boolean>(false);
+  const [mfaAttempts, setMfaAttempts] = useState<number>(0);
+  const [mfaLockedUntil, setMfaLockedUntil] = useState<number>(() => Number(sessionStorage.getItem(MFA_LOCK_KEY) || 0));
+  const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
+  const loginAuditedRef = useRef(false);
 
-  // [SECURITY 2FA OTP STATES]
-  const [isOtpStep, setIsOtpStep] = useState<boolean>(false);
-  const [otpInput, setOtpInput] = useState<string>('');
-  const [otpError, setOtpError] = useState<string>('');
-  const [otpRemainingSec, setOtpRemainingSec] = useState<number>(300);
-  const [pendingAdminEmail, setPendingAdminEmail] = useState<string>('');
-  const [demoOtpHint, setDemoOtpHint] = useState<string>('');
-  const [isOtpLoading, setIsOtpLoading] = useState<boolean>(false);
-
-  // [SECURITY HONEYPOT STATE]
-  const [honeypotLogs, setHoneypotLogs] = useState<HoneypotAttackLog[]>(() => getHoneypotLogs());
-  const refreshHoneypotLogs = () => {
-    setHoneypotLogs(getHoneypotLogs());
-  };
-
-  // [SECURITY] 2FA 카운트다운 타이머
-  useEffect(() => {
-    if (!isOtpStep) return;
-    const timer = setInterval(() => {
-      const remain = getRemainingOtpSeconds();
-      setOtpRemainingSec(remain);
-      if (remain <= 0) {
-        setOtpError('보안코드 유효시간이 만료되었습니다. 다시 발송해주세요.');
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isOtpStep]);
-
-  // [SECURITY] 마운트 시 HMAC 서명 비동기 검증
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    const verifyOnMount = async () => {
-      const sessionData = secureGetItem(SESSION_KEY);
-      const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
-      if (!isValid) {
-        secureRemoveItem(SESSION_KEY);
-        setIsLoggedIn(false);
-      }
-    };
-    verifyOnMount();
+  // [SECURITY HONEYPOT] 서버 audit_logs에 기록된 허니팟 시도 (관리자만 조회 가능)
+  const [honeypotLogs, setHoneypotLogs] = useState<HoneypotAttackLog[]>([]);
+  const [honeypotLoading, setHoneypotLoading] = useState<boolean>(false);
+  const [honeypotError, setHoneypotError] = useState<string>('');
+  const refreshHoneypotLogs = useCallback(async () => {
+    setHoneypotLoading(true);
+    const res = await fetchHoneypotLogs();
+    setHoneypotLogs(res.logs);
+    setHoneypotError(res.error || '');
+    setHoneypotLoading(false);
   }, []);
 
-  // [SECURITY] 관리자 로그인 시 기기 세션 자동 등록
+  /** 서버 상태를 다시 읽어 화면 단계를 정한다 (로그인 복귀·MFA 완료·새로고침 공용) */
+  const resolveAdminAuth = useCallback(async () => {
+    const marker = readAdminMarker();
+    if (import.meta.env.DEV && marker?.dev) {
+      setAuthState({ stage: 'ready', email: marker.email });
+      return;
+    }
+
+    let next: AdminAuthState;
+    try {
+      next = await evaluateAdminAuth();
+    } catch {
+      setLoginError('인증 서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.');
+      setAuthState({ stage: 'signed_out' });
+      return;
+    }
+    const initiated = sessionStorage.getItem(OAUTH_PENDING_KEY) === 'true';
+
+    if (next.stage === 'denied') {
+      // 관리자 로그인을 직접 시작한 경우에만 로그아웃 (같은 브라우저의 의뢰인·변호사 로그인은 건드리지 않음)
+      if (initiated) {
+        sessionStorage.removeItem(OAUTH_PENDING_KEY);
+        auditAdminAccessDenied(next.email);
+        await signOutAdmin();
+        setLoginError('이 계정에는 관리자 권한이 없습니다. 권한이 부여된 계정으로 로그인해 주세요.');
+      }
+      clearAdminMarker();
+      setAuthState({ stage: 'signed_out' });
+      return;
+    }
+
+    if (next.stage === 'ready') {
+      // 이 탭에서 로그인을 시작하지 않았고 활동 마커도 없으면(30분 경과·브라우저 재시작) 다시 인증
+      if (!initiated && !marker) {
+        await signOutAdmin();
+        clearAdminMarker();
+        setLoginError('보안을 위해 다시 로그인해 주세요. (30분 미활동 또는 새 세션)');
+        setAuthState({ stage: 'signed_out' });
+        return;
+      }
+      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      writeAdminMarker(next.email);
+      if (initiated && !loginAuditedRef.current) {
+        loginAuditedRef.current = true;
+        auditAdminLogin(next.email);
+        toast.success('관리자 인증이 완료되었습니다.');
+      }
+      setLoginError('');
+      setAuthState(next);
+      return;
+    }
+
+    if (next.stage === 'mfa_verify' || next.stage === 'mfa_enroll') {
+      if (!initiated) {
+        await signOutAdmin();
+        clearAdminMarker();
+        setAuthState({ stage: 'signed_out' });
+        return;
+      }
+      setAuthState(next);
+      return;
+    }
+
+    clearAdminMarker();
+    setAuthState(next);
+  }, []);
+
+  /** 강제 로그아웃 (미활동·권한 변경·원격 차단) */
+  const forceAdminLogout = useCallback(async (message?: string) => {
+    clearAdminMarker();
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    loginAuditedRef.current = false;
+    await signOutAdmin();
+    setAuthState({ stage: 'signed_out' });
+    if (message) {
+      setLoginError(message);
+      dialog.alert({ title: '보안 로그아웃', message, variant: 'info' });
+    }
+  }, [dialog]);
+
+  // 마운트 시 서버 기준 확인 + Auth 이벤트 구독
   useEffect(() => {
-    if (isLoggedIn) {
+    resolveAdminAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // 콜백 안에서 supabase 호출을 바로 하면 교착될 수 있어 다음 틱으로 미룸
+      if (event === 'SIGNED_IN' || event === 'MFA_CHALLENGE_VERIFIED') {
+        setTimeout(() => { resolveAdminAuth(); }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        const marker = readAdminMarker();
+        if (import.meta.env.DEV && marker?.dev) return;
+        clearAdminMarker();
+        setAuthState({ stage: 'signed_out' });
+      }
+    });
+    return () => { subscription?.unsubscribe(); };
+  }, [resolveAdminAuth]);
+
+  // [SECURITY] 관리자 로그인 시 기기 세션 등록 (검증된 이메일 기준 — 019 RLS의 본인 판정과 일치)
+  useEffect(() => {
+    if (isLoggedIn && adminEmail) {
       registerSession({
-        userId: pendingAdminEmail || 'pipj601@gmail.com',
-        userName: '대표 관리자',
-        userEmail: pendingAdminEmail || 'pipj601@gmail.com',
+        userId: adminEmail,
+        userName: '플랫폼 관리자',
+        userEmail: adminEmail,
         userRole: 'ADMIN',
-        firmName: 'my김변 본사 관제센터',
+        firmName: 'my김변 관리자',
       });
     }
-  }, [isLoggedIn, pendingAdminEmail]);
+  }, [isLoggedIn, adminEmail]);
 
-  // [SECURITY] 실시간 세션 가드 (관리자 원격 강제 로그아웃 감시)
+  // [SECURITY] 세션 가드 (원격 강제 로그아웃 반영)
   useSessionGuard({
-    userId: pendingAdminEmail || 'pipj601@gmail.com',
-    isLoggedIn,
-    onForceLogout: () => {
-      secureRemoveItem(SESSION_KEY);
-      setIsLoggedIn(false);
-    },
+    userId: adminEmail,
+    isLoggedIn: isLoggedIn && !!adminEmail,
+    onForceLogout: () => { forceAdminLogout(); },
   });
 
-  // [SECURITY] 지정된 관리자 구글 계정 OAuth 세션 검증
+  // 허니팟 기록은 로그인 후에만 조회 (audit_logs SELECT는 관리자 전용)
   useEffect(() => {
-    if (isLoggedIn) return;
+    if (isLoggedIn) refreshHoneypotLogs();
+  }, [isLoggedIn, refreshHoneypotLogs]);
 
-    const checkGoogleSession = async (session: any) => {
-      if (!session?.user?.email) return;
-      const userEmail = session.user.email.toLowerCase().trim();
-
-      if (ALLOWED_ADMIN_GOOGLE_EMAILS.includes(userEmail)) {
-        sessionStorage.removeItem('pending_admin_oauth');
-        const token = await createSecureSession();
-        secureSetItem(SESSION_KEY, token);
-        setIsLoggedIn(true);
-        setLoginError('');
-        auditAdminLogin(userEmail);
-        toast.success(`[보안 인증 완료] 대표님 계정(${userEmail})으로 관리자 접속되었습니다.`);
-      } else {
-        // 비인가 구글 계정 접근 즉시 차단 및 세션 해제
-        await supabase.auth.signOut();
-        sessionStorage.removeItem('pending_admin_oauth');
-        setLoginError(`접근 거부: 등록되지 않은 관리자 구글 계정입니다. (${userEmail})`);
-        toast.error(`접근 불가: 등록되지 않은 구글 계정(${userEmail})입니다.`);
-        auditAdminLoginFailed(userEmail, 1);
-      }
-    };
-
-    // 1) 초기 세션 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && !isLoggedIn) {
-        checkGoogleSession(session);
-      }
-    });
-
-    // 2) 실시간 Auth 상태 변화 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user && !isLoggedIn) {
-        checkGoogleSession(session);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [isLoggedIn]);
-
-  // [SECURITY] 구글 로그인 시작 핸들러
+  // [SECURITY] 구글 로그인 시작
   const handleGoogleAdminLogin = async () => {
+    if (!ADMIN_PORTAL_PATH) {
+      setLoginError('관리자 포털 경로(VITE_ADMIN_SECRET_PATH)가 설정되지 않았습니다.');
+      return;
+    }
+    if (Date.now() < mfaLockedUntil) {
+      setLoginError(`인증 코드 오류가 반복되어 잠겼습니다. ${Math.ceil((mfaLockedUntil - Date.now()) / 1000)}초 후 다시 시도해 주세요.`);
+      return;
+    }
     try {
       setIsGoogleLoggingIn(true);
       setLoginError('');
-      sessionStorage.setItem('pending_admin_oauth', 'true');
-      const params = new URLSearchParams(window.location.search);
-      const adminRolePath = params.get('role') || (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_9k7q';
+      sessionStorage.setItem(OAUTH_PENDING_KEY, 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/?role=${adminRolePath}`
-        }
+          redirectTo: `${window.location.origin}/?role=${encodeURIComponent(ADMIN_PORTAL_PATH)}`,
+        },
       });
       if (error) throw error;
     } catch (err: any) {
       setIsGoogleLoggingIn(false);
-      sessionStorage.removeItem('pending_admin_oauth');
-      setLoginError(`Google 로그인 시작 실패: ${err.message || err}`);
+      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      setLoginError(`Google 로그인을 시작하지 못했습니다: ${err?.message || err}`);
     }
   };
 
-  // [SECURITY] 30분 미활동 자동 로그아웃 + HMAC 갱신 타이머
+  // [SECURITY MFA] 인증 앱 등록 시작 (최초 1회)
+  const handleStartEnrollment = async () => {
+    setMfaBusy(true);
+    setMfaError('');
+    const res = await startTotpEnrollment();
+    setMfaBusy(false);
+    if (res.ok === false) {
+      setMfaError(res.error);
+      return;
+    }
+    setEnrollment(res.enrollment);
+  };
+
+  // [SECURITY MFA] 6자리 코드 확인 (등록 확인·로그인 2단계 공용)
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (Date.now() < mfaLockedUntil) {
+      setMfaError(`잠시 후 다시 시도해 주세요. (${Math.ceil((mfaLockedUntil - Date.now()) / 1000)}초)`);
+      return;
+    }
+    const factorId = authState.stage === 'mfa_verify' ? authState.factorId : enrollment?.factorId;
+    if (!factorId) {
+      setMfaError('먼저 인증 앱 등록을 시작해 주세요.');
+      return;
+    }
+    if (!isValidTotpCode(mfaCode)) {
+      setMfaError('인증 앱에 표시된 6자리 숫자를 입력해 주세요.');
+      return;
+    }
+    setMfaBusy(true);
+    const wasEnrollment = authState.stage === 'mfa_enroll';
+    const res = await verifyTotpCode(factorId, mfaCode);
+    setMfaBusy(false);
+    if (res.ok) {
+      if (wasEnrollment) auditMfaEnrolled(adminEmail);
+      setMfaCode('');
+      setMfaError('');
+      setMfaAttempts(0);
+      setEnrollment(null);
+      await resolveAdminAuth();
+      return;
+    }
+    const attempts = mfaAttempts + 1;
+    setMfaCode('');
+    auditAdminLoginFailed(adminEmail, attempts, 'mfa');
+    if (attempts >= MAX_MFA_ATTEMPTS) {
+      const until = Date.now() + MFA_LOCKOUT_MS;
+      sessionStorage.setItem(MFA_LOCK_KEY, String(until));
+      setMfaLockedUntil(until);
+      setMfaAttempts(0);
+      auditLoginLocked(adminEmail);
+      setEnrollment(null);
+      await forceAdminLogout();
+      setLoginError(`인증 코드가 ${MAX_MFA_ATTEMPTS}회 틀려 로그아웃되었습니다. 5분 후 다시 로그인해 주세요.`);
+      return;
+    }
+    setMfaAttempts(attempts);
+    setMfaError(`${res.error} (${attempts}/${MAX_MFA_ATTEMPTS})`);
+  };
+
+  const handleCancelMfa = async () => {
+    setEnrollment(null);
+    setMfaCode('');
+    setMfaError('');
+    await forceAdminLogout();
+  };
+
+  // [SECURITY] 30분 미활동 자동 로그아웃 + 1분마다 서버 권한 재확인
   useEffect(() => {
     if (!isLoggedIn) return;
-
-    const handleRefreshSession = async () => {
-      if (isLoggedIn) {
-        const token = await refreshSecureSession();
-        secureSetItem(SESSION_KEY, token);
+    let lastTouch = 0;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastTouch < 15_000) return;
+      lastTouch = now;
+      touchAdminMarker();
+    };
+    const check = async () => {
+      const marker = readAdminMarker();
+      if (!marker) {
+        await forceAdminLogout('30분 동안 활동이 없어 보안을 위해 로그아웃되었습니다.');
+        return;
+      }
+      if (import.meta.env.DEV && marker.dev) return;
+      try {
+        const next = await evaluateAdminAuth();
+        if (next.stage !== 'ready') {
+          await forceAdminLogout('관리자 권한 또는 2단계 인증 상태가 바뀌어 로그아웃되었습니다.');
+        }
+      } catch {
+        // 일시적 네트워크 오류로는 로그아웃하지 않음 (다음 확인에서 재판정)
       }
     };
-
-    const checkExpiry = async () => {
-      const sessionData = secureGetItem(SESSION_KEY);
-      const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
-      if (!isValid) {
-        secureRemoveItem(SESSION_KEY);
-        setIsLoggedIn(false);
-        dialog.alert({ title: '보안 로그아웃', message: '보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.', variant: 'info' });
-      }
-    };
-
-    // 사용자 활동 시 세션 갱신
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, handleRefreshSession));
-
-    // 1분마다 만료 + 서명 확인
-    const interval = setInterval(checkExpiry, 60_000);
-
+    events.forEach(ev => window.addEventListener(ev, onActivity, { passive: true }));
+    const interval = setInterval(check, 60_000);
     return () => {
-      events.forEach(e => window.removeEventListener(e, handleRefreshSession));
+      events.forEach(ev => window.removeEventListener(ev, onActivity));
       clearInterval(interval);
     };
-  }, [isLoggedIn, dialog]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // [SECURITY] 잠금 상태 확인
-    if (Date.now() < lockoutUntil) {
-      const remainSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      setLoginError(`로그인이 잠겼습니다. ${remainSec}초 후 다시 시도해주세요.`);
-      return;
-    }
-
-    if (!loginId.trim() || !loginPassword.trim()) {
-      setLoginError('아이디와 비밀번호를 입력해주세요.');
-      return;
-    }
-
-    const id = loginId.trim().toLowerCase();
-    const pw = loginPassword.trim();
-
-    // [SECURITY] 하드코딩된 인증 우회 제거 및 Supabase Auth 연동 (점진적 전환)
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: id,
-      password: pw
-    });
-
-    if (!error && data.user) {
-      // [SECURITY 2FA] 1차 인증 성공 -> 2차 이메일 OTP 보안코드 발송 및 화면 전환
-      const targetEmail = data.user.email || (id.includes('@') ? id : 'admin@mykim.kr');
-      setPendingAdminEmail(targetEmail);
-      setIsOtpLoading(true);
-      const otpRes = await issueAdminOtp(targetEmail);
-      setIsOtpLoading(false);
-      if (otpRes.demoCode) {
-        setDemoOtpHint(otpRes.demoCode);
-      }
-      setIsOtpStep(true);
-      setOtpError('');
-      setOtpInput('');
-      setOtpRemainingSec(300);
-      toast.info(`[2단계 인증] ${targetEmail}로 6자리 보안코드가 발송되었습니다.`);
-    } else {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        const until = Date.now() + LOCKOUT_DURATION_MS;
-        setLockoutUntil(until);
-        setLoginError(`로그인 ${MAX_LOGIN_ATTEMPTS}회 실패. 5분간 잠금됩니다.`);
-        setLoginAttempts(0);
-        // [AUDIT] 잠금 기록
-        auditLoginLocked(id);
-      } else {
-        setLoginError(`아이디 또는 비밀번호가 올바르지 않습니다. (${newAttempts}/${MAX_LOGIN_ATTEMPTS})`);
-        // [AUDIT] 실패 기록
-        auditAdminLoginFailed(id, newAttempts);
-      }
-    }
-  };
-
-  // [SECURITY 2FA] 6자리 OTP 검증 핸들러
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpInput.trim().length !== 6) {
-      setOtpError('6자리 보안코드를 입력해주세요.');
-      return;
-    }
-
-    const verifyResult = verifyAdminOtp(otpInput.trim());
-    if (verifyResult.valid) {
-      // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
-      const token = await createSecureSession();
-      secureSetItem(SESSION_KEY, token);
-      setIsLoggedIn(true);
-      setIsOtpStep(false);
-      setLoginError('');
-      setLoginId('');
-      setLoginPassword('');
-      setLoginAttempts(0);
-      setDemoOtpHint('');
-      auditAdminLogin(pendingAdminEmail);
-      toast.success('2단계 인증 통과! my김변 관리자 세션이 시작되었습니다.');
-    } else {
-      setOtpError(verifyResult.error || '보안코드가 일치하지 않습니다.');
-      if (verifyResult.remainingAttempts === 0) {
-        setIsOtpStep(false);
-        setLoginError('보안코드 3회 연속 오입력으로 인증이 취소되었습니다. 다시 로그인해주세요.');
-      }
-    }
-  };
-
-  // [SECURITY 2FA] 보안코드 재발송
-  const handleResendOtp = async () => {
-    setIsOtpLoading(true);
-    const otpRes = await issueAdminOtp(pendingAdminEmail);
-    setIsOtpLoading(false);
-    if (otpRes.demoCode) {
-      setDemoOtpHint(otpRes.demoCode);
-    }
-    setOtpRemainingSec(300);
-    setOtpError('');
-    setOtpInput('');
-    toast.success('새로운 6자리 보안코드가 재발송되었습니다.');
-  };
-
-  // [SECURITY 2FA] 인증 취소 (1차 로그인 화면으로 복귀)
-  const handleCancelOtp = () => {
-    setIsOtpStep(false);
-    setOtpError('');
-    setOtpInput('');
-    setDemoOtpHint('');
-  };
+  }, [isLoggedIn, forceAdminLogout]);
 
   const handleLogout = async () => {
     const confirmed = await dialog.confirm({
@@ -579,13 +549,10 @@ export default function AdminRole({
       variant: 'warning'
     });
     if (confirmed) {
-      // [AUDIT] 로그아웃 기록
-      auditAdminLogout('admin');
-      secureRemoveItem(SESSION_KEY);
-      setIsLoggedIn(false);
+      auditAdminLogout(adminEmail || 'unknown');
+      await forceAdminLogout();
     }
   };
-
   // Search/Filter states
   const [clientSearch, setClientSearch] = useState<string>('');
   const [clientStatusFilter, setClientStatusFilter] = useState<string>('all');
@@ -914,6 +881,8 @@ export default function AdminRole({
   };
 
   if (!isLoggedIn) {
+    const portalMissing = !ADMIN_PORTAL_PATH;
+    const isMfaStage = authState.stage === 'mfa_enroll' || authState.stage === 'mfa_verify';
     return (
       <div className="flex flex-col min-h-screen bg-[#07090E] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white items-center justify-center p-4">
         <div className="w-full max-w-md bg-[#0F121C] border border-[#1E293B]/60 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
@@ -925,11 +894,13 @@ export default function AdminRole({
               </div>
               <span className="font-black text-xl tracking-tight text-white">my김변 통합 어드민</span>
             </div>
-            <p className="text-slate-500 text-sm">지정 관리자 구글 계정 전용 보안 접속 센터</p>
+            <p className="text-slate-400 text-sm">
+              {isMfaStage ? '2단계 인증 (인증 앱)' : '관리자 권한이 부여된 계정 전용'}
+            </p>
           </div>
 
-          {loginError && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm p-3.5 rounded-xl space-y-1 text-left animate-fadeIn">
+          {loginError && !isMfaStage && (
+            <div role="alert" className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm p-3.5 rounded-xl space-y-1 text-left animate-fadeIn">
               <div className="flex items-center gap-1.5 font-bold">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
                 <span>접근 제어 안내</span>
@@ -938,74 +909,159 @@ export default function AdminRole({
             </div>
           )}
 
-          {/* Security Notice */}
-          <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 text-center space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-400 uppercase tracking-wide">
-              <Lock className="w-3.5 h-3.5" />
-              <span>보안 인가 관리자 전용 접속</span>
+          {authState.stage === 'checking' ? (
+            <div className="space-y-3" aria-busy="true" aria-label="관리자 인증 상태 확인 중">
+              <div className="h-16 rounded-2xl bg-[#161B26] animate-pulse" />
+              <div className="h-12 rounded-xl bg-[#161B26] animate-pulse" />
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              사전에 등록된 관리자 구글 계정으로만 접근이 허용됩니다.<br/>
-              인가되지 않은 계정은 접근이 즉시 차단됩니다.
-            </p>
-          </div>
-
-
-          {/* Primary Google Login Button */}
-          <div className="space-y-3 pt-1">
-            <button
-              type="button"
-              disabled={isGoogleLoggingIn}
-              onClick={handleGoogleAdminLogin}
-              className="w-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold py-3.5 px-4 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {isGoogleLoggingIn ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-slate-700" />
-                  <span>Google 보안 인증 진행 중...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                  <span>Google 계정으로 관리자 로그인</span>
-                </>
+          ) : isMfaStage ? (
+            <form onSubmit={handleMfaSubmit} className="space-y-4 text-left">
+              {authState.stage === 'mfa_enroll' && !enrollment && (
+                <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 space-y-3">
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    관리자 계정은 인증 앱(Google Authenticator, Microsoft Authenticator 등) 등록이 필요합니다.
+                    등록 후에는 로그인할 때마다 앱에 표시되는 6자리 코드를 입력합니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleStartEnrollment}
+                    disabled={mfaBusy}
+                    className="w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {mfaBusy ? '준비 중…' : '인증 앱 등록 시작'}
+                  </button>
+                </div>
               )}
-            </button>
-          </div>
 
-          {/* Dev Test Quick Bypass */}
-          {import.meta.env.DEV && (
-            <div className="pt-2 border-t border-[#1E293B]/40">
-              <button
-                type="button"
-                onClick={async () => {
-                  const token = await createSecureSession();
-                  secureSetItem(SESSION_KEY, token);
-                  setIsLoggedIn(true);
-                  toast.success('[DEV] 테스트 계정으로 즉시 로그인되었습니다.');
-                }}
-                className="w-full bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
-              >
-                🛠️ 개발용 1초 즉시 로그인 (DEV Only)
-              </button>
-            </div>
+              {authState.stage === 'mfa_enroll' && enrollment && (
+                <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 space-y-3 text-center">
+                  <p className="text-sm text-slate-300">인증 앱으로 QR 코드를 스캔하세요.</p>
+                  <img
+                    src={enrollment.qrCode}
+                    alt="인증 앱 등록용 QR 코드"
+                    className="mx-auto w-44 h-44 bg-white rounded-xl p-2"
+                  />
+                  <div className="text-left space-y-1">
+                    <p className="text-xs text-slate-400">QR을 읽을 수 없으면 아래 키를 직접 입력하세요.</p>
+                    <code className="block break-all text-xs text-slate-200 bg-black/40 rounded-lg p-2 font-mono select-all">{enrollment.secret}</code>
+                  </div>
+                </div>
+              )}
+
+              {(authState.stage === 'mfa_verify' || enrollment) && (
+                <div className="space-y-1.5">
+                  <label htmlFor="admin-mfa-code" className="text-sm text-slate-300 block font-bold">
+                    인증 앱의 6자리 코드
+                  </label>
+                  <input
+                    id="admin-mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={mfaCode}
+                    disabled={mfaBusy}
+                    onChange={(e) => { setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setMfaError(''); }}
+                    aria-invalid={!!mfaError}
+                    aria-describedby={mfaError ? 'admin-mfa-error' : undefined}
+                    className="w-full bg-[#07090E] border border-[#334155] rounded-xl p-3 text-center text-lg tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-100 placeholder-slate-500 disabled:opacity-50"
+                    placeholder="000000"
+                  />
+                  {mfaError && (
+                    <p id="admin-mfa-error" role="alert" className="text-sm text-red-300">{mfaError}</p>
+                  )}
+                </div>
+              )}
+
+              {mfaError && authState.stage === 'mfa_enroll' && !enrollment && (
+                <p role="alert" className="text-sm text-red-300">{mfaError}</p>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelMfa}
+                  disabled={mfaBusy}
+                  className="flex-1 min-h-[44px] bg-[#111622] hover:bg-[#161B26] text-slate-300 font-bold rounded-xl text-sm border border-[#1E293B] whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                >
+                  취소하고 로그아웃
+                </button>
+                {(authState.stage === 'mfa_verify' || enrollment) && (
+                  <button
+                    type="submit"
+                    disabled={mfaBusy || mfaCode.length !== 6}
+                    className="flex-1 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {mfaBusy ? '확인 중…' : '확인'}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 text-center">{adminEmail}</p>
+            </form>
+          ) : (
+            <>
+              {/* Security Notice */}
+              <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 text-center space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-400 tracking-wide">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>관리자 전용 접속</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  서버에 관리자 권한이 등록된 Google 계정만 접속할 수 있고, 로그인 후 인증 앱 2단계 인증을 거칩니다.
+                </p>
+              </div>
+
+              {portalMissing && (
+                <p role="alert" className="text-sm text-amber-300 text-left">
+                  관리자 포털 경로(VITE_ADMIN_SECRET_PATH)가 설정되지 않아 로그인할 수 없습니다.
+                </p>
+              )}
+
+              <div className="space-y-3 pt-1">
+                <button
+                  type="button"
+                  disabled={isGoogleLoggingIn || portalMissing}
+                  onClick={handleGoogleAdminLogin}
+                  className="w-full min-h-[44px] bg-white hover:bg-slate-100 text-slate-900 font-extrabold py-3.5 px-4 rounded-xl text-sm whitespace-nowrap transition-all shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                >
+                  {isGoogleLoggingIn ? (
+                    <span>Google 로그인으로 이동 중…</span>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                      </svg>
+                      <span>Google 계정으로 관리자 로그인</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Dev Test Quick Bypass (DEV 빌드에서만 렌더링·동작. 서버 RLS 권한은 없음) */}
+              {import.meta.env.DEV && (
+                <div className="pt-2 border-t border-[#1E293B]/40">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      writeAdminMarker('dev-admin@localhost', true);
+                      setAuthState({ stage: 'ready', email: 'dev-admin@localhost' });
+                      toast.success('[DEV] 화면 확인용으로 로그인했습니다. (DB 관리자 권한 없음)');
+                    }}
+                    className="w-full min-h-[44px] bg-[#111622] hover:bg-[#161B26] text-indigo-300 font-extrabold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+                  >
+                    개발용 즉시 로그인 (DEV 전용)
+                  </button>
+                </div>
+              )}
+            </>
           )}
-
-          {/* Compliance statement */}
-          <div className="text-xs text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Google 다중 인증(MFA) 및 HMAC 암호화 세션 적용됨</span>
-          </div>
         </div>
       </div>
     );
   }
-
   return (
     <div className="flex flex-col min-h-screen bg-[#07090E] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white">
       <div className="w-full min-h-screen flex flex-col relative">
@@ -5817,57 +5873,45 @@ export default function AdminRole({
                     <div>
                       <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
                         <ShieldAlert className="w-5 h-5 text-red-400" />
-                        <span>🚨 해커 유인용 허니팟(Honeypot) 침입 탐지 현황</span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
-                          실시간 방어 가동 중
-                        </span>
+                        <span>허니팟(가짜 관리자 로그인) 접근 기록</span>
                       </h3>
                       <p className="text-xs text-slate-400 mt-1">
-                        뻔한 관리자 경로(<code className="text-indigo-400 bg-black/40 px-1 py-0.5 rounded font-mono">?role=admin</code>)로 침투를 시도한 외부 공격자/봇 탐지 이력입니다. (2.5초 Tarpit 지연 및 100% 차단)
+                        <code className="text-indigo-300 bg-black/40 px-1 py-0.5 rounded font-mono">?role=admin</code> 가짜 로그인 화면에 입력된 시도입니다. IP는 서버가 요청 헤더로 기록합니다. 기록은 수정·삭제할 수 없습니다. (최근 200건 조회, 표에는 50건 표시)
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={refreshHoneypotLogs}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        disabled={honeypotLoading}
+                        className="min-h-[44px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>새로고침</span>
                       </button>
-                      {honeypotLogs.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            clearHoneypotLogs();
-                            refreshHoneypotLogs();
-                            toast.success('허니팟 침입 로그가 초기화되었습니다.');
-                          }}
-                          className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded-xl text-xs font-bold border border-red-800/50 transition-colors cursor-pointer"
-                        >
-                          로그 비우기
-                        </button>
-                      )}
                     </div>
                   </div>
+
+                  {honeypotError && (
+                    <p role="alert" className="text-sm text-amber-300">{honeypotError}</p>
+                  )}
 
                   {/* Summary Stat Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                     <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
-                      <span className="text-xs text-slate-500 font-bold block">누적 차단 시도</span>
-                      <span className="text-2xl font-black text-white font-mono mt-0.5 block">{honeypotLogs.length}건</span>
+                      <span className="text-xs text-slate-400 font-bold block">조회된 시도</span>
+                      <span className="text-2xl font-black text-white font-mono mt-0.5 block">{honeypotLoading ? '…' : `${honeypotLogs.length}건`}</span>
                     </div>
                     <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
-                      <span className="text-xs text-slate-500 font-bold block">최근 침입 시각</span>
+                      <span className="text-xs text-slate-400 font-bold block">최근 시도 시각</span>
                       <span className="text-sm font-bold text-slate-300 mt-1 block">
-                        {honeypotLogs[0] ? new Date(honeypotLogs[0].timestamp).toLocaleTimeString('ko-KR') : '침입 없음'}
+                        {honeypotLogs[0] ? new Date(honeypotLogs[0].timestamp).toLocaleString('ko-KR') : '기록 없음'}
                       </span>
                     </div>
                     <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
-                      <span className="text-xs text-slate-500 font-bold block">방어 상태</span>
-                      <span className="text-sm font-extrabold text-emerald-400 mt-1 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>100% 차단 성공</span>
+                      <span className="text-xs text-slate-400 font-bold block">서로 다른 IP</span>
+                      <span className="text-sm font-bold text-slate-300 mt-1 block">
+                        {new Set(honeypotLogs.map(l => l.ipAddress).filter(Boolean)).size}개
                       </span>
                     </div>
                   </div>
@@ -5877,44 +5921,38 @@ export default function AdminRole({
                     <table className="w-full text-left text-xs">
                       <thead className="bg-[#161B26] text-slate-400 border-b border-[#1E293B]/80 font-bold uppercase">
                         <tr>
-                          <th className="p-3">침입 시각</th>
-                          <th className="p-3">시도 ID</th>
+                          <th className="p-3">시도 시각</th>
+                          <th className="p-3">입력 ID</th>
+                          <th className="p-3">IP</th>
                           <th className="p-3">비밀번호 길이</th>
-                          <th className="p-3">지연(Tarpit)</th>
                           <th className="p-3">접속 환경 (User Agent)</th>
-                          <th className="p-3 text-center">차단 결과</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/40 bg-[#0F121C]">
                         {honeypotLogs.length > 0 ? (
-                          honeypotLogs.slice(0, 15).map((log) => (
+                          honeypotLogs.slice(0, 50).map((log) => (
                             <tr key={log.id} className="hover:bg-white/5 transition-colors">
                               <td className="p-3 font-mono text-slate-300 whitespace-nowrap">
                                 {new Date(log.timestamp).toLocaleString('ko-KR')}
                               </td>
-                              <td className="p-3 font-mono font-bold text-red-300">
+                              <td className="p-3 font-mono font-bold text-red-300 max-w-[160px] truncate" title={log.attemptedId}>
                                 {log.attemptedId}
                               </td>
-                              <td className="p-3 font-mono text-slate-400">
-                                {'•'.repeat(Math.min(log.passwordLength, 12))} ({log.passwordLength}자)
+                              <td className="p-3 font-mono text-slate-300 whitespace-nowrap">
+                                {log.ipAddress || '미기록'}
                               </td>
-                              <td className="p-3 font-mono text-amber-400">
-                                {log.tarpitMs}ms 지연
+                              <td className="p-3 font-mono text-slate-400">
+                                {log.passwordLength}자
                               </td>
                               <td className="p-3 text-slate-400 max-w-[240px] truncate" title={log.userAgent}>
                                 {log.userAgent}
-                              </td>
-                              <td className="p-3 text-center">
-                                <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-extrabold border border-red-500/30 text-[10px]">
-                                  차단됨 (BLOCKED)
-                                </span>
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-slate-500">
-                              최근 허니팟 침입 시도가 없습니다. 시스템이 안전합니다.
+                            <td colSpan={5} className="p-8 text-center text-slate-400">
+                              {honeypotLoading ? '불러오는 중…' : '기록된 허니팟 접근 시도가 없습니다.'}
                             </td>
                           </tr>
                         )}
@@ -5929,7 +5967,7 @@ export default function AdminRole({
           {/* TAB 8: GLOBAL SECURITY & SESSION MONITOR */}
           {activeTab === 'security' && (
             <div className="space-y-6 animate-fadeIn">
-              <GlobalSessionMonitor currentAdminEmail={pendingAdminEmail || 'pipj601@gmail.com'} />
+              <GlobalSessionMonitor currentAdminEmail={adminEmail} />
             </div>
           )}
 

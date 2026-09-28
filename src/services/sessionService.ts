@@ -258,14 +258,61 @@ export async function getActiveSessions(userId: string): Promise<UserSession[]> 
 /**
  * 전사 모든 세션 목록 조회 (통합 어드민용)
  */
-export async function getAllSessions(): Promise<UserSession[]> {
+export async function getAllSessions(): Promise<{ sessions: UserSession[]; source: 'server' | 'local'; error?: string }> {
   const currentSessionId = getCurrentSessionId();
-  const allSessions = loadStoredSessions();
+  const sortDesc = (list: UserSession[]) => list
+    .map(s => ({ ...s, isCurrentSession: s.id === currentSessionId }))
+    .sort((a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime());
 
-  return allSessions.map(s => ({
-    ...s,
-    isCurrentSession: s.id === currentSessionId,
-  })).sort((a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime());
+  // 이전: 이 브라우저 localStorage만 읽어 '전사' 관제에 다른 기기 세션이 하나도 보이지 않았음
+  if (isSupabaseConfigured) {
+    try {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('user_sessions')
+        .select('*')
+        .gte('last_active_at', since)
+        .order('last_active_at', { ascending: false })
+        .limit(500);
+      if (error) {
+        return { sessions: sortDesc(loadStoredSessions()), source: 'local', error: `서버 세션 목록을 불러오지 못했습니다: ${error.message}` };
+      }
+      return { sessions: sortDesc((data || []).map(rowToSession)), source: 'server' };
+    } catch {
+      return { sessions: sortDesc(loadStoredSessions()), source: 'local', error: '서버 세션 목록을 불러오지 못했습니다.' };
+    }
+  }
+  return { sessions: sortDesc(loadStoredSessions()), source: 'local' };
+}
+
+function rowToSession(r: any): UserSession {
+  const expired = r.status === 'active' && r.expires_at && new Date(r.expires_at).getTime() < Date.now();
+  return {
+    id: r.id,
+    userId: r.user_id,
+    userName: r.user_name,
+    userEmail: r.user_email || undefined,
+    userRole: r.user_role,
+    firmName: r.firm_name || undefined,
+    device: {
+      deviceType: r.device_type,
+      os: r.os,
+      browser: r.browser,
+      userAgent: r.user_agent || '',
+      ipAddress: r.ip_address,
+      location: r.location || '',
+    },
+    isCurrentSession: false,
+    status: expired ? 'expired' : r.status,
+    createdAt: r.created_at,
+    lastActiveAt: r.last_active_at,
+    expiresAt: r.expires_at,
+    revokedAt: r.revoked_at || undefined,
+    revokedBy: r.revoked_by || undefined,
+    revokeReason: r.revoke_reason || undefined,
+    isSuspicious: r.is_suspicious || undefined,
+    suspiciousReason: r.suspicious_reason || undefined,
+  };
 }
 
 /**
@@ -283,14 +330,24 @@ export async function revokeSession(
   if (!target) {
     // 다른 기기 세션(서버에만 존재)
     if (!isSupabaseConfigured) return false;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_sessions')
       .update({ status: 'revoked', revoked_at: now, revoked_by: revokedBy, revoke_reason: reason || '원격 로그아웃 요청' })
-      .eq('id', sessionId);
-    if (error) {
-      console.warn('[SESSION] 원격 세션 종료 실패:', error.message);
+      .eq('id', sessionId)
+      .select('id, user_id');
+    // RLS에 막히면 오류 없이 0행이 갱신되므로 행 수로 성공을 판정
+    if (error || !data || data.length === 0) {
+      console.warn('[SESSION] 원격 세션 종료 실패:', error?.message || '권한 없음 또는 세션 없음');
       return false;
     }
+    writeAuditLog({
+      actor_id: revokedBy,
+      actor_role: revokedBy === 'admin' ? 'admin' : 'lawyer',
+      action: 'logout',
+      target_type: 'user_session',
+      target_id: sessionId,
+      detail: { revokedBy, reason: reason || null, user_id: data[0].user_id },
+    });
     return true;
   }
 
@@ -330,7 +387,7 @@ export async function revokeSession(
   // Supabase 연동 시 DB 업데이트
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_sessions')
         .update({
           status: 'revoked',
@@ -338,10 +395,14 @@ export async function revokeSession(
           revoked_by: revokedBy,
           revoke_reason: target.revokeReason,
         })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select('id');
       if (error) console.warn('[SESSION] 서버 세션 종료 반영 실패:', error.message);
+      // 관리자 강제 종료는 서버 반영이 핵심 — 다른 기기는 서버 상태로만 로그아웃됨
+      if (revokedBy === 'admin' && (error || !data || data.length === 0)) return false;
     } catch (err) {
       console.warn('[SESSION] Supabase revoke error:', err);
+      if (revokedBy === 'admin') return false;
     }
   }
 
@@ -412,9 +473,14 @@ export async function revokeAllOtherSessions(userId: string, currentSessionId?: 
 /**
  * 특정 사용자의 모든 세션 긴급 차단 (통합 어드민용 전사 긴급 조치)
  */
-export async function revokeAllUserSessionsByAdmin(userId: string, reason: string): Promise<number> {
+export async function revokeAllUserSessionsByAdmin(
+  userId: string,
+  reason: string
+): Promise<{ count: number; tokensRevoked: number | null; error?: string }> {
   const allSessions = loadStoredSessions();
   let count = 0;
+  let serverError: string | undefined;
+  let tokensRevoked: number | null = null;
   const now = new Date().toISOString();
 
   allSessions.forEach(s => {
@@ -440,24 +506,41 @@ export async function revokeAllUserSessionsByAdmin(userId: string, reason: strin
   saveStoredSessions(allSessions);
 
   if (isSupabaseConfigured) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_sessions')
       .update({ status: 'revoked', revoked_at: now, revoked_by: 'admin', revoke_reason: reason || '관리자 긴급 보안 조치' })
       .eq('user_id', userId)
-      .eq('status', 'active');
-    if (error) console.warn('[SESSION] 서버 세션 차단 실패:', error.message);
+      .eq('status', 'active')
+      .select('id');
+    if (error) {
+      console.warn('[SESSION] 서버 세션 차단 실패:', error.message);
+      serverError = error.message;
+    } else if (data) {
+      const localIds = new Set(allSessions.map(s => s.id));
+      count += data.filter((r: any) => !localIds.has(r.id)).length;
+    }
+
+    // Supabase Auth 로그인 세션(refresh token) 폐기 — 021 admin_revoke_auth_sessions
+    // (이전: 화면 표시용 user_sessions만 바꿔, 상대가 세션 가드를 무시하면 계속 접속 가능했음)
+    const { data: revoked, error: rpcError } = await supabase.rpc('admin_revoke_auth_sessions', { p_user_id: userId });
+    if (rpcError) {
+      console.warn('[SESSION] 로그인 토큰 폐기 실패:', rpcError.message);
+      serverError = serverError || rpcError.message;
+    } else {
+      tokensRevoked = typeof revoked === 'number' ? revoked : Number(revoked) || 0;
+    }
   }
 
   writeAuditLog({
     actor_id: 'admin',
     actor_role: 'admin',
-    action: 'login_locked',
+    action: 'revoke_auth_sessions',
     target_type: 'user',
     target_id: userId,
-    detail: { count, reason },
+    detail: { count, tokensRevoked, reason, error: serverError || null },
   });
 
-  return count;
+  return { count, tokensRevoked, error: serverError };
 }
 
 /**

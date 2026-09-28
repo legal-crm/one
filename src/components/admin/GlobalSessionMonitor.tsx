@@ -50,11 +50,16 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'revoked'>('active');
   const [onlySuspicious, setOnlySuspicious] = useState<boolean>(false);
 
+  const [source, setSource] = useState<'server' | 'local'>('local');
+  const [loadError, setLoadError] = useState<string>('');
+
   const fetchSessions = useCallback(async () => {
     setIsLoading(true);
     try {
-      const list = await getAllSessions();
-      setSessions(list);
+      const res = await getAllSessions();
+      setSessions(res.sessions);
+      setSource(res.source);
+      setLoadError(res.error || '');
     } catch {
       toast.error('전사 세션 목록을 불러오는 중 오류가 발생했습니다.');
     } finally {
@@ -64,6 +69,9 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
 
   useEffect(() => {
     fetchSessions();
+    // 30초마다 서버 목록 갱신
+    const id = setInterval(fetchSessions, 30_000);
+    return () => clearInterval(id);
   }, [fetchSessions]);
 
   // 기기 아이콘
@@ -82,7 +90,7 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
   const handleKillSession = async (session: UserSession) => {
     const confirmed = await dialog.confirm({
       title: '세션 강제 종료 (Kill Session)',
-      message: `[${session.userName}] 사용자의 [${session.device.os} · ${session.device.browser}] 세션을 강제로 종료하시겠습니까?\n해당 기기에서 즉시 강제 로그아웃 처리됩니다.`,
+      message: `[${session.userName}] 사용자의 [${session.device.os} · ${session.device.browser}] 세션을 종료하시겠습니까?\n해당 기기는 다음 세션 확인(약 15초 이내) 때 로그아웃됩니다. 로그인 토큰까지 폐기하려면 '계정 전면 차단'을 사용하세요.`,
       confirmLabel: '강제 종료',
       cancelLabel: '취소',
       variant: 'danger',
@@ -94,8 +102,10 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
     try {
       const ok = await revokeSession(session.id, 'admin', '통합 관리자에 의한 긴급 강제 종료');
       if (ok) {
-        toast.success(`[${session.userName}]의 세션이 강제 종료되었습니다.`);
+        toast.success(`[${session.userName}]의 세션을 종료 처리했습니다.`);
         await fetchSessions();
+      } else {
+        toast.error('서버에 반영하지 못했습니다. 관리자 권한(2단계 인증 포함)과 네트워크를 확인해 주세요.');
       }
     } catch {
       toast.error('세션 종료 처리 중 오류가 발생했습니다.');
@@ -108,7 +118,7 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
   const handleLockdownUser = async (session: UserSession) => {
     const confirmed = await dialog.confirm({
       title: '계정 세션 전면 차단 (Lockdown)',
-      message: `[${session.userName}] 사용자의 모든 기기 세션을 즉시 강제 종료하고 접속을 차단하시겠습니까?\n해당 계정의 모든 활성 세션이 소멸됩니다.`,
+      message: `[${session.userName}] 사용자의 모든 기기 세션을 종료하고 로그인 토큰(refresh token)을 폐기하시겠습니까?\n이미 발급된 액세스 토큰은 만료(기본 1시간) 전까지 유효할 수 있습니다. 계정을 계속 막으려면 변호사 승인 정지 등 권한도 함께 해제하세요.`,
       confirmLabel: '전면 차단 & 강제 로그아웃',
       cancelLabel: '취소',
       variant: 'danger',
@@ -118,11 +128,15 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
 
     setIsActionLoading(true);
     try {
-      const count = await revokeAllUserSessionsByAdmin(
+      const res = await revokeAllUserSessionsByAdmin(
         session.userId,
         '통합 관리자 보안 명령: 계정 전면 차단'
       );
-      toast.success(`[${session.userName}] 사용자의 모든 세션(${count}건)이 즉시 차단되었습니다.`);
+      if (res.error) {
+        toast.error(`일부만 처리되었습니다: ${res.error}`);
+      } else {
+        toast.success(`[${session.userName}] 세션 ${res.count}건 종료, 로그인 토큰 ${res.tokensRevoked ?? 0}건 폐기`);
+      }
       await fetchSessions();
     } catch {
       toast.error('사용자 전면 차단 중 오류가 발생했습니다.');
@@ -262,6 +276,12 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
             </div>
           </div>
 
+          {loadError && (
+            <div role="alert" className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-2xl p-4">
+              {loadError} 지금은 이 브라우저에 저장된 세션만 표시합니다.
+            </div>
+          )}
+
           {/* ── 필터 및 검색 바 ── */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -334,7 +354,9 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
                   {filteredSessions.length}건
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400">15초마다 실시간 동기화</span>
+              <span className="text-xs text-slate-500">
+                {source === 'server' ? '서버 기준 · 30초마다 갱신' : '이 브라우저 기록만 표시 (서버 미연결)'}
+              </span>
             </div>
 
             <div className="overflow-x-auto">

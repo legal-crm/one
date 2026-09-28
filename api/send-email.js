@@ -3,8 +3,7 @@
 // [SECURITY] 서버 전용 SMTP 자격증명 강제, 클라이언트 비밀번호 전송 완전 차단
 
 import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
 import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
 export default async function handler(req, res) {
@@ -27,39 +26,48 @@ export default async function handler(req, res) {
     });
   }
 
-  // [SECURITY] 2. 인증 검증 (Bearer 세션 토큰 또는 Turnstile 봇 검증)
-  const authHeader = req.headers.authorization;
-  const cfToken = req.body?.turnstileToken || req.headers['x-turnstile-token'];
-
-  let isAuthorized = false;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const user = await verifyAuth(req);
-      if (user) isAuthorized = true;
-    } catch (_) {}
+  // [SECURITY] 2. 인증 검증 — 승인된 변호사(직원 포함) 또는 플랫폼 관리자만
+  // 이전 문제: 제목에 'OTP'·'보안코드'만 넣으면 인증 없이 통과했고, Turnstile 토큰만으로도
+  //   회사 Gmail 계정에서 임의 수신자에게 임의 HTML을 보낼 수 있었다(피싱 중계 가능).
+  //   관리자 OTP 메일은 더 이상 쓰지 않는다(인증 앱 TOTP로 대체).
+  let user = null;
+  try {
+    user = await verifyAuth(req);
+  } catch (_) {
+    user = null;
+  }
+  if (!user) {
+    return res.status(401).json({ ok: false, error: '로그인이 필요합니다.' });
   }
 
-  if (!isAuthorized && cfToken) {
-    const cfCheck = await verifyTurnstileToken(cfToken, ip);
-    if (cfCheck.success) isAuthorized = true;
+  const isAdmin = isAdminWithMfa(req, user);
+  if (!isAdmin) {
+    // 서비스 롤 키가 없으면 조회가 RLS에 막혀 거부된다(실패 시 차단)
+    const { data: account, error: accountError } = await supabase
+      .from('lawyer_accounts')
+      .select('approved')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    if (accountError || !account?.approved) {
+      return res.status(403).json({ ok: false, error: '승인된 변호사 계정만 이메일을 보낼 수 있습니다.' });
+    }
   }
 
-  // OTP 인증 메일인 경우 (관리자 2단계 인증 발송 허용)
   const { recipients, subject, htmlBody } = req.body || {};
-  const isOtpMail = subject && (subject.includes('2단계 인증') || subject.includes('보안코드') || subject.includes('OTP'));
-  if (!isAuthorized && isOtpMail) {
-    isAuthorized = true;
-  }
 
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
-    isAuthorized = true;
+  // [SECURITY] 3. 입력 제한 (수신자 10명, 제목 200자, 본문 100KB)
+  const recipientList = (Array.isArray(recipients) ? recipients : [recipients])
+    .map(r => String(r || '').trim())
+    .filter(Boolean);
+  const EMAIL_RE = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;
+  if (recipientList.length === 0 || recipientList.length > 10 || !recipientList.every(r => r.length <= 254 && EMAIL_RE.test(r))) {
+    return res.status(400).json({ ok: false, error: '수신자 이메일 형식을 확인해 주세요. (최대 10명)' });
   }
-
-  if (!isAuthorized) {
-    return res.status(401).json({
-      ok: false,
-      error: '이메일 발송을 위한 인증 토큰(Bearer) 또는 보안 인증이 필요합니다.'
-    });
+  if (typeof subject !== 'string' || !subject.trim() || subject.length > 200 || /[\r\n]/.test(subject)) {
+    return res.status(400).json({ ok: false, error: '제목은 1~200자, 줄바꿈 없이 입력해 주세요.' });
+  }
+  if (htmlBody != null && (typeof htmlBody !== 'string' || htmlBody.length > 100_000)) {
+    return res.status(400).json({ ok: false, error: '본문이 너무 깁니다. (최대 100KB)' });
   }
 
   // [SECURITY] 3. SMTP 자격증명은 오직 서버 환경변수에서만 로드 (클라이언트에서 비밀번호 전송 완전 차단)
@@ -97,7 +105,7 @@ export default async function handler(req, res) {
 
     const mailOptions = {
       from: `my김변 <${senderGmail}>`,
-      to: Array.isArray(recipients) ? recipients.join(', ') : recipients,
+      to: recipientList.join(', '),
       subject,
       html: htmlBody || '',
     };

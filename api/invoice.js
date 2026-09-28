@@ -8,7 +8,7 @@
 //   - POST /api/invoice/resend      (세금계산서 이메일 재발송)
 
 import { taxinvoiceService, closedownService, SUPPLIER_INFO, getTodayStr, setCorsHeaders, isTaxinvoiceConfigured, isValidCorpNum } from './_lib/popbill-service.js';
-import { withAuth } from './_lib/auth-middleware.js';
+import { withAuth, isAdminWithMfa } from './_lib/auth-middleware.js';
 
 // 팝빌 미설정 시 응답 (이전: ok:true + MOCK 국세청승인번호 → 발행된 것처럼 저장·표시됨)
 const notConfigured = (res, what) => res.status(200).json({
@@ -37,9 +37,10 @@ async function handler(req, res) {
   }
 
   // [SECURITY] 발행·수정·목록·뷰어·재발송은 플랫폼 관리자만 (이전: 로그인한 누구나 임의 사업자번호로 법적 효력 있는 세금계산서 발행 가능)
-  const isAdmin = req.user?.app_metadata?.role === 'admin';
+  // 관리자 판정은 role=admin + 2단계 인증(aal2) 세션 (PART 3-1, DB is_platform_admin과 같은 기준)
+  const isAdmin = isAdminWithMfa(req, req.user);
   if (['issue', 'modify', 'list', 'pdf', 'resend'].includes(action) && !isAdmin) {
-    return res.status(403).json({ ok: false, error: '관리자만 사용할 수 있습니다.' });
+    return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 사용할 수 있습니다.' });
   }
 
   // 1. 사업자등록번호 유효성 확인 (check-corp)

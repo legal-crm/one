@@ -3,10 +3,13 @@ import { ShieldAlert, Lock, AlertTriangle, RefreshCw } from 'lucide-react';
 import { recordHoneypotAttack } from '../../services/honeypotService';
 
 /**
- * 해커 유인용 허니팟(Honeypot) 관리자 로그인 컴포넌트
- * - 뻔한 주소(?role=admin)로 유입된 공격자/봇을 가짜 로그인 창으로 유인
- * - 2.5초 인위적 지연(Tarpit)으로 자동화 무차별 대입 공격(Brute Force) 무력화
- * - 공격자 침입 정보(시도 ID, 시간, User-Agent 등)를 로컬 및 감사 로그에 기록
+ * 허니팟(가짜 관리자 로그인) 화면
+ * - ?role=admin 으로 들어온 요청에 실제 인증과 연결되지 않은 로그인 폼을 보여준다.
+ * - 입력 시도(ID, 비밀번호 길이, User-Agent)는 서버 audit_logs에 기록되고 IP는 서버가 채운다.
+ * - 2.5초 지연은 이 화면의 응답을 늦출 뿐이다. 실제 계정 보호는 Supabase Auth의
+ *   서버 측 시도 제한과 관리자 MFA가 담당한다.
+ * - 정체를 드러내지 않도록 일반 로그인 실패 문구만 표시한다.
+ *   (이전: "IP 영구 기록", "방화벽 영구 차단", "KISA 2026 보안 준수" 등 사실이 아닌 경고 표시)
  */
 export default function HoneypotAdminLogin() {
   const [loginId, setLoginId] = useState('');
@@ -25,20 +28,14 @@ export default function HoneypotAdminLogin() {
     setIsLoading(true);
     setErrorMessage('');
 
-    // 인위적 지연 (Tarpit 2.5초): 공격자의 자동화 도구를 지연시키고 리소스를 소모시킴
-    const startTime = Date.now();
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    const tarpitDuration = Date.now() - startTime;
-
-    // 허니팟 침입 로깅 (비밀번호는 원문이 아닌 길이만 기록하여 보안 준수)
-    recordHoneypotAttack(loginId, loginPassword.length, tarpitDuration);
+    // 서버 기록 (비밀번호는 원문이 아닌 길이만) + 화면 응답 2.5초 지연
+    const record = recordHoneypotAttack(loginId, loginPassword.length);
+    await Promise.all([record, new Promise((resolve) => setTimeout(resolve, 2500))]);
     setAttempts((prev) => prev + 1);
 
     setIsLoading(false);
     setLoginPassword('');
-    setErrorMessage(
-      '인증에 실패했습니다. (보안 경고: 비인가 관리자 경로 접근이 탐지되어 접근 IP와 세션 정보가 보안 관제 센터에 영구 기록되었습니다.)'
-    );
+    setErrorMessage('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
 
   return (
@@ -71,9 +68,9 @@ export default function HoneypotAdminLogin() {
                 <span>접근 통제 경고</span>
               </div>
               <p className="leading-relaxed">{errorMessage}</p>
-              {attempts >= 2 && (
-                <p className="text-[11px] text-red-300/80 pt-1 border-t border-red-500/20">
-                  누적 실패 {attempts}회 — 반복 시도 시 네트워크 방화벽에 의해 해당 대역이 영구 차단됩니다.
+              {attempts >= 3 && (
+                <p className="text-xs text-red-300 pt-1 border-t border-red-500/20">
+                  로그인 실패가 반복되었습니다. 잠시 후 다시 시도해 주세요.
                 </p>
               )}
             </div>
@@ -124,11 +121,6 @@ export default function HoneypotAdminLogin() {
           </div>
         </form>
 
-        <div className="border-t border-[#1E293B]/40 pt-4 text-center">
-          <p className="text-[11px] text-slate-600">
-            🔒 IP 추적 및 무결성 감사 로깅 활성화됨 | KISA 2026 보안 준수
-          </p>
-        </div>
       </div>
     </div>
   );

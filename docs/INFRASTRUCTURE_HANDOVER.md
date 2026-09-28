@@ -497,7 +497,9 @@ VITE_SUPABASE_FLOW_TYPE="implicit"
 
 # ─── 사이트 ───
 VITE_SITE_URL="https://mykim.kr"
-VITE_ADMIN_SECRET_PATH="adm_sec_9k7q"
+# 관리자 포털 경로 (?role=<값>). 운영 필수 — 미설정 시 관리자 포털 비활성. 추측하기 어려운 새 값 사용.
+# 번들에 포함되므로 비밀이 아님. 실제 인가는 app_metadata.role=admin + 인증 앱 2단계(aal2) (021)
+VITE_ADMIN_SECRET_PATH="<추측하기 어려운 경로 값>"
 
 # ─── 은행 계좌 ───
 VITE_BANK_NAME="카카오뱅크"

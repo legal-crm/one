@@ -8,6 +8,22 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
+/** 검증된 JWT의 aal 클레임 (서명 검증은 getUser가 담당) */
+export function getTokenAal(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(String(token).split('.')[1] || '', 'base64url').toString('utf8'));
+    return payload?.aal || 'aal1';
+  } catch {
+    return 'aal1';
+  }
+}
+
+/** 플랫폼 관리자 + 2단계 인증 세션 여부 (verifyAuth로 검증된 user와 같은 요청에서 호출) */
+export function isAdminWithMfa(req, user) {
+  const token = String(req.headers.authorization || '').split(' ')[1] || '';
+  return user?.app_metadata?.role === 'admin' && getTokenAal(token) === 'aal2';
+}
+
 export async function verifyAuth(req, requiredRole = null) {
   // Authorization 헤더에서 Bearer 토큰 추출
   const authHeader = req.headers.authorization;
@@ -33,6 +49,11 @@ export async function verifyAuth(req, requiredRole = null) {
     const userRole = user.app_metadata?.role;
     if (userRole !== requiredRole) {
       throw new Error(`접근 권한이 없습니다. (${requiredRole} 필요)`);
+    }
+    // 관리자 API는 2단계 인증(aal2) 세션만 허용 — DB의 is_platform_admin()(021)과 같은 기준
+    // (토큰 서명은 위 getUser에서 Auth 서버가 이미 검증함)
+    if (requiredRole === 'admin' && getTokenAal(token) !== 'aal2') {
+      throw new Error('관리자 2단계 인증이 필요합니다.');
     }
   }
 
