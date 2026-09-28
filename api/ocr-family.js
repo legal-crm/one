@@ -56,7 +56,7 @@ async function handler(req, res) {
     return res.status(413).json({ ok: false, error: '업로드 가능한 최대 이미지 용량(10MB)을 초과했습니다.' });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (geminiKey && imageBase64) {
     try {

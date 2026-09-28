@@ -7,7 +7,8 @@ import {
   Layers, Percent, Activity, RefreshCw, Send, Check,
   ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet, Users, Mic
 } from 'lucide-react';
-import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
+import { getCourtSearchDeepLink, evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
+import { updateCrmClientExtension } from '../../../services/crmService';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
 import CreditorMeetingGuideModal from './CreditorMeetingGuideModal';
@@ -22,6 +23,8 @@ const ClientPropertyIntakeModal = React.lazy(() => import('../property/ClientPro
 
 interface CompanionDashboardProps {
   caseData: RehabCompanionCase;
+  /** 마이김변 사건 연결 시 의뢰(consult request) ID — 면책신청 요청 등 CRM 기록용 */
+  clientId?: string;
   onOpenPaymentModal: (roundItem: RepaymentRoundItem) => void;
   onOpenCrisisModal: () => void;
   onOpenRegisterModal: () => void;
@@ -31,6 +34,7 @@ interface CompanionDashboardProps {
 
 export default function CompanionDashboard({
   caseData,
+  clientId,
   onOpenPaymentModal,
   onOpenCrisisModal,
   onOpenRegisterModal,
@@ -49,7 +53,7 @@ export default function CompanionDashboard({
 
   // D-Day 계산
   const calculateDday = (dueDateStr?: string): number => {
-    if (!dueDateStr) return 7;
+    if (!dueDateStr) return NaN;
     const due = new Date(dueDateStr);
     const today = new Date();
     const diffTime = due.getTime() - today.getTime();
@@ -58,7 +62,7 @@ export default function CompanionDashboard({
   const dDay = calculateDday(currentTargetRound?.dueDate);
 
   // 통계 계산
-  const totalRounds = caseData?.totalRounds || 36;
+  const totalRounds = caseData?.totalRounds || schedules.length || 0;
   const completedCount = schedules.filter(s => 
     ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
   ).length;
@@ -67,24 +71,21 @@ export default function CompanionDashboard({
   const courtConfirmedCount = schedules.filter(s => s.status === 'court_confirmed').length;
   const receiptCount = schedules.filter(s => s.status === 'receipt_uploaded').length;
   const selfMarkedCount = schedules.filter(s => s.status === 'self_marked').length;
-  const checkNeededCount = schedules.filter(s => s.status === 'overdue_check_needed').length;
+  const checkNeededCount = schedules.filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed').length;
 
-  const monthlyRepaymentAmount = caseData?.monthlyRepaymentAmount || 500000;
+  const monthlyRepaymentAmount = caseData?.monthlyRepaymentAmount || 0;
   const totalScheduledAmount = totalRounds * monthlyRepaymentAmount;
   const totalConfirmedPaidAmount = completedCount * monthlyRepaymentAmount;
   const totalRemainingAmount = Math.max(0, totalScheduledAmount - totalConfirmedPaidAmount);
 
   // 30일 생계 밸런서 계산
-  const cashflow = caseData?.cashflow || {
-    monthlyIncome: 2500000,
-    essentialLivingCost: 1500000,
-    repaymentAmount: monthlyRepaymentAmount,
-    otherFixedExpenses: 300000,
-  };
-  const monthlyIncome = cashflow.monthlyIncome ?? 2500000;
-  const essentialLivingCost = cashflow.essentialLivingCost ?? 1500000;
-  const repaymentAmount = cashflow.repaymentAmount ?? monthlyRepaymentAmount;
-  const otherFixedExpenses = cashflow.otherFixedExpenses ?? 300000;
+  // 입력하지 않은 값은 0 — 임의 소득(250만)·생계비(150만)로 흑자/적자를 판정하지 않는다
+  const cashflow = caseData?.cashflow || { monthlyIncome: 0, essentialLivingCost: 0, repaymentAmount: monthlyRepaymentAmount, otherFixedExpenses: 0 };
+  const monthlyIncome = cashflow.monthlyIncome || 0;
+  const essentialLivingCost = cashflow.essentialLivingCost || 0;
+  const repaymentAmount = cashflow.repaymentAmount || monthlyRepaymentAmount;
+  const otherFixedExpenses = cashflow.otherFixedExpenses || 0;
+  const hasCashflowInput = monthlyIncome > 0;
   const expectedSurplus = monthlyIncome - (essentialLivingCost + repaymentAmount + otherFixedExpenses);
 
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
@@ -120,7 +121,7 @@ export default function CompanionDashboard({
     <div className="space-y-6 text-left animate-fadeIn">
       
       {/* ═══ 0.1 36회차 성실 변제 완납 & 별도 면책신청(제624조) 축하 배너 ═══ */}
-      {completedCount >= totalRounds && (
+      {totalRounds > 0 && completedCount >= totalRounds && (
         <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 border border-purple-500/40 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
           <div className="flex items-start gap-3.5">
             <div className="p-3 rounded-2xl bg-purple-500 text-white shrink-0 shadow-md">
@@ -129,35 +130,44 @@ export default function CompanionDashboard({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-400 text-slate-950">
-                  36개월 완주 완료
+                  {totalRounds}회차 기록 완료
                 </span>
                 <span className="text-xs font-bold text-purple-200">
-                  {completedCount}/{totalRounds}회차 전액 성실 납부
+                  {completedCount}/{totalRounds}회차 납부 기록
                 </span>
               </div>
               <h4 className="text-base font-black tracking-tight text-white">
-                축하합니다! 3~5년간의 긴 여정을 완주하셨습니다.
+                모든 회차의 납부 기록이 등록되었습니다.
               </h4>
               <p className="text-xs text-purple-200/90 leading-relaxed">
-                법률상 필수: 변제 완료 후 법원에 <strong>'별도 면책신청서(채무자회생법 제624조)'</strong>를 제출해야 최종 면책결정(잔여채무 전액 탕감 및 신용정보원 연체코드 해제)이 내려집니다.
+                변제를 마치면 법원이 면책 여부를 결정합니다(채무자회생법 제624조). 면책신청서 제출이 필요한지, 법원 기록상 완납이 확인되는지 담당 변호사 또는 법원에 확인해 주세요. 고객 표시(🟡) 회차는 법원 확인 전 기록입니다.
               </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => {
-              setIsDischargeRequested(true);
-              toast.success('담당 변호사에게 개인회생 면책신청서 제출이 성공적으로 위임 요청되었습니다.');
+            onClick={async () => {
+              // 마이김변 변호사 사건: CRM에 요청 시각을 기록해 담당 변호사가 확인 / 그 외: 사실대로 안내
+              if (caseData.sourceType === 'mykim_lawyer' && clientId) {
+                const ok = await updateCrmClientExtension(clientId, { dischargeRequestedAt: new Date().toISOString() });
+                if (!ok) { toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+                setIsDischargeRequested(true);
+                toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
+              } else {
+                toast.info(caseData.sourceType === 'external_office'
+                  ? '진행 중인 법률사무소에 면책신청 진행을 직접 요청해 주세요.'
+                  : '면책신청은 관할 법원에 직접 제출합니다. [회복 아카데미]에서 서식을 내려받을 수 있습니다.', { duration: 5000 });
+              }
             }}
             disabled={isDischargeRequested}
-            className={`px-5 py-3 rounded-2xl text-xs font-black transition-all shadow-lg cursor-pointer press-scale shrink-0 whitespace-nowrap flex items-center gap-2 ${
+            className={`px-5 min-h-[44px] rounded-2xl text-xs font-black transition-all shadow-lg cursor-pointer press-scale shrink-0 whitespace-nowrap flex items-center gap-2 ${
               isDischargeRequested
                 ? 'bg-emerald-500 text-slate-950 cursor-default'
                 : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white'
             }`}
           >
             <Award className="w-4 h-4" />
-            <span>{isDischargeRequested ? '✅ 면책신청 접수 위임완료' : '🏆 변호사에게 별도 면책신청 위임하기'}</span>
+            <span>{isDischargeRequested ? '✅ 면책신청 요청 전달됨' : (caseData.sourceType === 'mykim_lawyer' ? '담당 변호사에게 면책신청 요청' : '면책신청 방법 안내')}</span>
           </button>
         </div>
       )}
@@ -376,7 +386,7 @@ export default function CompanionDashboard({
         </div>
       )}
 
-      {/* ═══ 1.6. 신우법무사 기준 미납·폐지방어 상시 안내 가이드 배너 ═══ */}
+      {/* ═══ 1.6. 미납·폐지방어 상시 안내 가이드 배너 ═══ */}
       <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 text-white border border-slate-700/60 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -384,7 +394,7 @@ export default function CompanionDashboard({
               도산 전문 실무 가이드
             </span>
             <span className="text-xs text-slate-300 font-medium">
-              신우법무사 기준 인가 후 변제금 관리 수칙
+              인가 후 변제금 관리 수칙 (일반 안내)
             </span>
           </div>
           <h4 className="text-sm md:text-base font-black text-white">
@@ -437,7 +447,7 @@ export default function CompanionDashboard({
         <div className="space-y-3 max-w-xl">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black bg-white/20 text-white px-3 py-1 rounded-full backdrop-blur-sm">
-              {dDay > 0 ? `⚡ 이번 달 변제일까지 D-${dDay}일` : dDay === 0 ? '🔥 오늘이 변제금 납부일입니다!' : '⚠️ 변제일이 도래했습니다'}
+              {Number.isNaN(dDay) ? '납부 일정 미등록' : dDay > 0 ? `⚡ 다음 변제일까지 D-${dDay}일` : dDay === 0 ? '🔥 오늘이 변제금 납부일입니다' : '⚠️ 납부일이 지난 회차가 있습니다'}
             </span>
             <span className="text-xs text-brand-light font-bold">
               {currentTargetRound?.dueDate} 납부 예정
@@ -587,17 +597,18 @@ export default function CompanionDashboard({
         {/* 캘린더 그리드 (6열 or 12열 반응형) */}
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2.5">
           {schedules.map((item) => {
-            const isCourt = item.status === 'court_confirmed';
-            const isReceipt = item.status === 'receipt_uploaded';
-            const isSelf = item.status === 'self_marked';
-            const isOverdue = item.status === 'overdue_check_needed';
-            const isPending = item.status === 'pending';
+            const eff = getEffectiveRoundStatus(item);
+            const isCourt = eff === 'court_confirmed';
+            const isReceipt = eff === 'receipt_uploaded';
+            const isSelf = eff === 'self_marked';
+            const isOverdue = eff === 'overdue_check_needed';
 
             return (
               <button
                 key={item.round}
                 type="button"
                 onClick={() => onOpenPaymentModal(item)}
+                aria-label={`${item.round}회차 ${item.dueDate} ${isCourt ? '법원 확인' : isReceipt ? '증빙 첨부' : isSelf ? '고객 표시' : isOverdue ? '확인 필요' : '예정'}`}
                 className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col justify-between items-center h-20 active:scale-95 group ${
                   isCourt ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 hover:border-emerald-400' :
                   isReceipt ? 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 hover:border-blue-400' :
@@ -618,7 +629,7 @@ export default function CompanionDashboard({
                     {item.dueDate.slice(2, 7)}
                   </span>
                   <span className="text-[9px] font-bold block truncate">
-                    {isCourt || isReceipt || isSelf ? '완료' : '예정'}
+                    {isCourt ? '법원확인' : isReceipt ? '증빙첨부' : isSelf ? '고객표시' : isOverdue ? '확인필요' : '예정'}
                   </span>
                 </div>
               </button>
@@ -650,7 +661,7 @@ export default function CompanionDashboard({
                 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200'
                 : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 border border-red-200'
             }`}>
-              {expectedSurplus >= 0 ? '💡 이번 달 상환 안정권' : '⚠️ 이번 달 적자 예상 (위기)'}
+              {!hasCashflowInput ? '소득 미입력' : expectedSurplus >= 0 ? '💡 이번 달 잔여액 있음' : '⚠️ 이번 달 부족 예상'}
             </span>
           </div>
         </div>
@@ -700,7 +711,11 @@ export default function CompanionDashboard({
         </div>
 
         {/* 적자 예상 시 변호사 & 복지 연결 배너 */}
-        {expectedSurplus < 0 ? (
+        {!hasCashflowInput ? (
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200">
+            월 소득과 생계비가 입력되지 않아 잔여액을 계산하지 않았습니다. 사건 등록 시 소득·생계비를 입력하면 이번 달 여유자금을 확인할 수 있습니다.
+          </div>
+        ) : expectedSurplus < 0 ? (
           <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -720,7 +735,7 @@ export default function CompanionDashboard({
           <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4" />
-              <span>현재 안정적인 잉여금이 유지되고 있습니다. 남은 기간도 성실 상환을 응원합니다!</span>
+              <span>입력하신 금액 기준으로 이번 달 잔여액이 있습니다.</span>
             </div>
             <button
               type="button"
@@ -742,7 +757,7 @@ export default function CompanionDashboard({
               <span>스마트 법원 서류 보관함</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              인가결정문, 변제계획안, 납부 영수증이 종단간 암호화되어 안전하게 보관됩니다.
+              등록한 서류 목록입니다. 이 기기(브라우저)에만 저장되며 담당 사무소로 자동 전송되지 않습니다.
             </p>
           </div>
 
@@ -769,13 +784,17 @@ export default function CompanionDashboard({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => toast.success(`${doc.name} 문서를 열람합니다.`)}
-                className="w-full py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-brand transition-colors cursor-pointer"
-              >
-                문서 열람 / 다운로드
-              </button>
+              {doc.dataUrl ? (
+                <a
+                  href={doc.dataUrl}
+                  download={doc.name}
+                  className="w-full min-h-[44px] flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:text-brand transition-colors cursor-pointer"
+                >
+                  내려받기
+                </a>
+              ) : (
+                <span className="text-[11px] text-slate-600 dark:text-slate-300">파일 원본은 저장되지 않았습니다.</span>
+              )}
             </div>
           ))}
         </div>

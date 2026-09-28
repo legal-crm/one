@@ -11,245 +11,201 @@ import {
   CaseOcrParseResult
 } from '../types';
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
-import { mockLawyers } from '../data';
 import { getAuthHeaders } from '../supabaseClient';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
 const BANKRUPTCY_STORAGE_KEY = 'mykim_bankruptcy_companion_case';
 
-// 36개월/60개월 스케줄 생성 헬퍼
+// 데모 시연용으로 과거에 자동 저장되던 가짜 사건 ID — 실제 사용자 데이터로 보이지 않도록 로드 시 폐기
+const DEMO_REHAB_CASE_IDS = new Set(['case-demo-2026-001']);
+const DEMO_BANKRUPTCY_CASE_IDS = new Set(['bankrupt-demo-001']);
+
+const PAID_STATUSES: RepaymentVerificationStatus[] = ['court_confirmed', 'receipt_uploaded', 'self_marked'];
+
+function todayYmd(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 화면·위험도 판정용 실제 상태
+ * - 납부일이 지났는데 납부 기록이 없으면 '확인 필요(미납 의심)'로 본다 (저장값은 바꾸지 않음)
+ */
+export function getEffectiveRoundStatus(item: RepaymentRoundItem, today: string = todayYmd()): RepaymentVerificationStatus {
+  if (item.status === 'pending' && item.dueDate && item.dueDate < today) return 'overdue_check_needed';
+  return item.status;
+}
+
+/**
+ * 36~60개월 변제 스케줄 생성
+ * - 사용자가 "이미 납부한 회차 수"를 입력한 경우 그 회차들은 '고객 표시(self_marked)'로만 기록한다.
+ *   (기존: 1~13회차를 무조건 '법원 확인', 14회차에 가짜 이체확인증 파일명, 15회차 이후는 입력해도 미반영)
+ */
 export function generateRepaymentSchedules(
-  startYearMonth: string, // '2024-07'
-  totalRounds: number = 36,
-  monthlyAmount: number = 480000,
-  repaymentDay: number = 10,
-  initialCompletedRounds: number = 14
+  startYearMonth: string, // 'YYYY-MM'
+  totalRounds: number,
+  monthlyAmount: number,
+  repaymentDay: number,
+  initialCompletedRounds: number = 0
 ): RepaymentRoundItem[] {
-  const [startYear, startMonth] = (startYearMonth || '2025-07').split('-').map(Number);
+  const [startYear, startMonth] = (startYearMonth || '').split('-').map(Number);
+  if (!startYear || !startMonth || !totalRounds || totalRounds < 1) return [];
+  const day = Math.min(28, Math.max(1, repaymentDay || 1)); // 29~31일 지정 시 짧은 달 날짜 오류 방지
   const items: RepaymentRoundItem[] = [];
 
   for (let i = 1; i <= totalRounds; i++) {
-    const currentMonthIndex = (startMonth || 7) - 1 + (i - 1);
-    const dateYear = (startYear || 2025) + Math.floor(currentMonthIndex / 12);
-    const dateMonth = (currentMonthIndex % 12) + 1;
-    const paddedMonth = String(dateMonth).padStart(2, '0');
-    const paddedDay = String(repaymentDay).padStart(2, '0');
-    const dueDate = `${dateYear}-${paddedMonth}-${paddedDay}`;
-
-    let status: RepaymentVerificationStatus = 'pending';
-    let paidDate: string | undefined = undefined;
-    let actualPaidAmount: number | undefined = undefined;
-
-    if (i <= initialCompletedRounds) {
-      if (i <= 13) {
-        status = 'court_confirmed';
-        paidDate = dueDate;
-        actualPaidAmount = monthlyAmount;
-      } else if (i === 14) {
-        status = 'receipt_uploaded';
-        paidDate = dueDate;
-        actualPaidAmount = monthlyAmount;
-      }
-    } else {
-      status = 'pending';
-    }
-
+    const monthIndex = startMonth - 1 + (i - 1);
+    const y = startYear + Math.floor(monthIndex / 12);
+    const m = (monthIndex % 12) + 1;
+    const dueDate = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const selfDeclared = i <= initialCompletedRounds;
     items.push({
       round: i,
       dueDate,
       scheduledAmount: monthlyAmount,
-      actualPaidAmount,
-      paidDate,
-      status,
-      receiptName: i === 14 ? '2026년_8월_신한이체확인증.pdf' : undefined,
+      actualPaidAmount: selfDeclared ? monthlyAmount : undefined,
+      paidDate: undefined,
+      status: selfDeclared ? 'self_marked' : 'pending',
     });
   }
-
   return items;
 }
 
-// 초기 기본 데모 케이스 시딩 (사용자가 바로 풍부한 기능을 체감할 수 있도록)
-function createDefaultCompanionCase(): RehabCompanionCase {
-  const schedules = generateRepaymentSchedules('2025-07', 36, 480000, 10, 14);
-  
-  return {
-    id: 'case-demo-2026-001',
-    alias: '희망의날개',
-    sourceType: 'external_office',
-    externalOfficeName: '법무법인 율* (타 사무소 진행)',
-    caseType: 'individual_rehab',
-    caseStage: 'approved',
-    courtName: '서울회생법원',
-    caseNumber: '2024개회108492',
-    caseNumberMasked: '2024개회10****',
-    monthlyRepaymentAmount: 480000,
-    repaymentDay: 10,
-    totalRounds: 36,
-    completedRounds: 14,
-    startRepaymentDate: '2025-07',
-    courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
-    assignedLawyerName: '도산 전문 배정 변호사',
-    cashflow: {
-      monthlyIncome: 2800000,
-      essentialLivingCost: 1750000,
-      repaymentAmount: 480000,
-      otherFixedExpenses: 320000,
-    },
-    schedules,
-    documents: [
-      {
-        id: 'doc-1',
-        name: '개인회생_변제계획인가결정문.pdf',
-        type: 'decision',
-        uploadedAt: '2025-06-20T10:00:00Z',
-        fileSize: 1024 * 450,
-      },
-      {
-        id: 'doc-2',
-        name: '확정_변제계획안.pdf',
-        type: 'plan',
-        uploadedAt: '2025-06-20T10:05:00Z',
-        fileSize: 1024 * 320,
-      },
-      {
-        id: 'doc-3',
-        name: '14회차_이체확인증.jpg',
-        type: 'receipt',
-        uploadedAt: '2026-08-10T14:30:00Z',
-        fileSize: 1024 * 180,
-      }
-    ],
-    notificationLevel: 'basic',
-    createdAt: '2025-07-01T00:00:00Z',
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-// 회생동행 사건 불러오기
-export function loadRehabCompanionCase(): RehabCompanionCase {
-  const defaultCase = createDefaultCompanionCase();
+function readCase<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(COMPANION_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return {
-          ...defaultCase,
-          ...parsed,
-          cashflow: {
-            ...defaultCase.cashflow,
-            ...(parsed.cashflow || {})
-          },
-          schedules: Array.isArray(parsed.schedules) && parsed.schedules.length > 0
-            ? parsed.schedules
-            : defaultCase.schedules,
-          documents: Array.isArray(parsed.documents) ? parsed.documents : defaultCase.documents,
-        };
-      }
-    }
-  } catch (err) {
-    console.error('Error loading companion case:', err);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as T) : null;
+  } catch {
+    return null;
   }
-  saveRehabCompanionCase(defaultCase);
-  return defaultCase;
 }
 
-// 회생동행 사건 저장
-export function saveRehabCompanionCase(caseData: RehabCompanionCase, clientId?: string): void {
-  try {
-    const serialized = JSON.stringify({
-      ...caseData,
-      updatedAt: new Date().toISOString()
-    });
-    localStorage.setItem(COMPANION_STORAGE_KEY, serialized);
-    if (clientId) {
-      localStorage.setItem(`${COMPANION_STORAGE_KEY}_${clientId}`, serialized);
+function scopedKey(base: string, clientId?: string) {
+  return clientId ? `${base}_${clientId}` : base;
+}
+
+/** 저장된 회생동행 사건 (없으면 null — 데모 사건을 사용자 사건처럼 보여주지 않는다) */
+export function loadRehabCompanionCase(clientId?: string): RehabCompanionCase | null {
+  const keys = clientId ? [scopedKey(COMPANION_STORAGE_KEY, clientId), COMPANION_STORAGE_KEY] : [COMPANION_STORAGE_KEY];
+  for (const key of keys) {
+    const parsed = readCase<RehabCompanionCase>(key);
+    if (!parsed) continue;
+    if (DEMO_REHAB_CASE_IDS.has(parsed.id)) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      continue;
     }
+    // 다른 의뢰인에게 연결된 전역 사본은 사용하지 않음
+    if (key === COMPANION_STORAGE_KEY && clientId && parsed.clientId && parsed.clientId !== clientId) continue;
+    return {
+      ...parsed,
+      cashflow: {
+        monthlyIncome: 0, essentialLivingCost: 0, repaymentAmount: parsed.monthlyRepaymentAmount || 0, otherFixedExpenses: 0,
+        ...(parsed.cashflow || {}),
+      },
+      schedules: Array.isArray(parsed.schedules) ? parsed.schedules : [],
+      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
+    };
+  }
+  return null;
+}
+
+/** @deprecated loadRehabCompanionCase(clientId) 사용 */
+export function loadRehabCompanionCaseForClient(clientId?: string): RehabCompanionCase | null {
+  return loadRehabCompanionCase(clientId);
+}
+
+// 회생동행 사건 저장 (의뢰인 ID가 있으면 의뢰인별 키에 저장 — 조회 키와 저장 키를 일치시킴)
+export function saveRehabCompanionCase(caseData: RehabCompanionCase, clientId?: string): void {
+  const cid = clientId || caseData.clientId;
+  try {
+    const serialized = JSON.stringify({ ...caseData, clientId: cid, updatedAt: new Date().toISOString() });
+    localStorage.setItem(scopedKey(COMPANION_STORAGE_KEY, cid), serialized);
   } catch (err) {
     console.error('Error saving companion case:', err);
   }
 }
 
 /**
- * 변호사 CRM 등록 데이터(법원 사건번호, 개시결정 요약, 가상계좌 등)를 의뢰인 동행 대시보드로 실시간 동기화
+ * 변호사 CRM 등록 데이터(사건번호, 개시결정 요약, 가상계좌 등)를 의뢰인 동행 대시보드로 동기화
+ * - 의뢰인이 기록한 회차별 납부 상태·영수증·생계 밸런서 값은 보존한다 (기존: 이벤트마다 스케줄을 새로 만들어 납부 기록이 지워짐)
+ * - 값이 없는 항목은 임의 금액(월 변제금 50만, 소득 250만 등)으로 채우지 않는다
  */
 export function syncCompanionWithCrmCase(
   clientId: string,
   crmExt: any,
   clientName: string = '의뢰인'
 ): RehabCompanionCase {
-  const courtName = crmExt.courtCase?.courtName || crmExt.decisionSummary?.courtName || '서울회생법원';
-  const realCaseNumber = crmExt.courtCase?.caseNumber || crmExt.decisionSummary?.caseNumber || '';
-  const caseNumber = realCaseNumber || '사건 접수 준비중';
-  const caseNumberMasked = realCaseNumber 
+  const existing = loadRehabCompanionCase(clientId);
+  const ds = crmExt.decisionSummary || {};
+  const courtName = crmExt.courtCase?.courtName || ds.courtName || existing?.courtName || '';
+  const realCaseNumber = crmExt.courtCase?.caseNumber || ds.caseNumber || '';
+  const caseNumberMasked = realCaseNumber
     ? (realCaseNumber.length > 6 ? `${realCaseNumber.slice(0, -4)}****` : realCaseNumber)
     : '접수 준비중';
-  const monthlyRepayment = crmExt.decisionSummary?.monthlyPayment || (crmExt.repaymentPlan?.monthlyPayment) || 500000;
-  const courtAccount = crmExt.decisionSummary?.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
-  const totalRounds = crmExt.decisionSummary?.totalRounds || crmExt.repaymentPlan?.totalRounds || 36;
-  const completedRounds = crmExt.decisionSummary?.completedRounds || 0;
-  
-  let startYearMonth = '2026-04';
-  let repaymentDay = 10;
-  if (crmExt.decisionSummary?.firstPaymentDate) {
-    startYearMonth = crmExt.decisionSummary.firstPaymentDate.slice(0, 7);
-    const day = parseInt(crmExt.decisionSummary.firstPaymentDate.split('-')[2], 10);
-    if (!isNaN(day)) repaymentDay = day;
+  const monthlyRepayment = Number(ds.monthlyPayment || crmExt.repaymentPlan?.monthlyPayment || 0);
+  const courtAccount = ds.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
+  const totalRounds = Number(ds.totalRounds || crmExt.repaymentPlan?.totalRounds || 0);
+
+  let startYearMonth = '';
+  let repaymentDay = 0;
+  if (ds.firstPaymentDate) {
+    startYearMonth = String(ds.firstPaymentDate).slice(0, 7);
+    const d = parseInt(String(ds.firstPaymentDate).split('-')[2], 10);
+    if (!isNaN(d)) repaymentDay = d;
   }
 
-  // 13단계 또는 CRM 상태 기반 동행 단계 유추
   const stage = crmExt.thirteenStage || crmExt.crmStatus;
   let companionStage: CaseStageType = 'submitted';
-  if (stage === 'confirmation' || stage === 'repaying') {
-    companionStage = 'approved';
-  } else if (stage === 'commencement' || stage === 'commenced') {
-    companionStage = 'commenced';
-  } else if (stage === 'prohibition_order') {
-    companionStage = 'prohibition_ordered';
-  }
+  if (stage === 'confirmation' || stage === 'repaying') companionStage = 'approved';
+  else if (stage === 'commencement' || stage === 'commenced' || stage === 'prohibition_order') companionStage = 'started';
 
-  const schedules = generateRepaymentSchedules(
-    startYearMonth,
-    totalRounds,
-    monthlyRepayment,
-    repaymentDay,
-    completedRounds
-  );
+  // 조건이 같으면 기존 스케줄(납부 기록 포함) 유지, 조건이 바뀌면 새로 만들되 회차별 납부 기록은 옮겨 담는다
+  const fresh = startYearMonth && totalRounds && monthlyRepayment
+    ? generateRepaymentSchedules(startYearMonth, totalRounds, monthlyRepayment, repaymentDay || 1, 0)
+    : [];
+  const prevByRound = new Map((existing?.schedules || []).map(s => [s.round, s]));
+  const schedules = fresh.length > 0
+    ? fresh.map(s => {
+        const prev = prevByRound.get(s.round);
+        return prev && prev.status !== 'pending'
+          ? { ...s, status: prev.status, actualPaidAmount: prev.actualPaidAmount, paidDate: prev.paidDate, receiptName: prev.receiptName, receiptDataUrl: prev.receiptDataUrl, memo: prev.memo }
+          : s;
+      })
+    : (existing?.schedules || []);
+  const completedRounds = schedules.filter(s => PAID_STATUSES.includes(s.status)).length;
 
-  const matchedLawyer = crmExt.assigneeId 
-    ? mockLawyers.find(l => l.id === crmExt.assigneeId) 
-    : null;
-  const assignedLawyerName = crmExt.decisionSummary?.assignedLawyerName || 
-                             crmExt.assignedLawyerName || 
-                             (matchedLawyer ? `${matchedLawyer.name} (${matchedLawyer.firm || '전담 대리인'})` : (crmExt.assigneeId ? '배정 변호사' : '도산 전문 법률대리인'));
+  const assignedLawyerName = ds.assignedLawyerName || crmExt.assignedLawyerName || existing?.assignedLawyerName || '';
 
   const syncedCase: RehabCompanionCase = {
-    id: `case-crm-${clientId}`,
+    id: existing?.id || `case-crm-${clientId}`,
+    clientId,
     alias: clientName,
-    sourceType: 'mykim_internal',
+    sourceType: 'mykim_lawyer',
     caseType: 'individual_rehab',
     caseStage: companionStage,
     courtName,
-    caseNumber,
+    caseNumber: realCaseNumber,
     caseNumberMasked,
     monthlyRepaymentAmount: monthlyRepayment,
-    repaymentDay,
-    totalRounds,
+    repaymentDay: repaymentDay || existing?.repaymentDay || 0,
+    totalRounds: totalRounds || schedules.length,
     completedRounds,
-    startRepaymentDate: startYearMonth,
-    courtVirtualAccount: courtAccount || '법원 가상계좌 (인가결정 후 발급 예정)',
+    startRepaymentDate: startYearMonth || existing?.startRepaymentDate || '',
+    courtVirtualAccount: courtAccount,
     assignedLawyerName,
     cashflow: {
-      monthlyIncome: crmExt.decisionSummary?.monthlyIncome || 2500000,
-      essentialLivingCost: crmExt.decisionSummary?.essentialLivingCost || 1500000,
+      monthlyIncome: existing?.cashflow?.monthlyIncome || Number(ds.monthlyIncome || 0),
+      essentialLivingCost: existing?.cashflow?.essentialLivingCost || Number(ds.essentialLivingCost || 0),
       repaymentAmount: monthlyRepayment,
-      otherFixedExpenses: 300000,
+      otherFixedExpenses: existing?.cashflow?.otherFixedExpenses || 0,
     },
     schedules,
-    documents: [],
-    notificationLevel: 'basic',
-    createdAt: new Date().toISOString(),
+    documents: existing?.documents || [],
+    notificationLevel: existing?.notificationLevel || 'basic',
+    createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -257,28 +213,10 @@ export function syncCompanionWithCrmCase(
   return syncedCase;
 }
 
-/**
- * 특정 의뢰인 ID 기준 동행 케이스 불러오기 (CRM 연동 케이스 우선)
- */
-export function loadRehabCompanionCaseForClient(clientId?: string): RehabCompanionCase {
-  if (clientId) {
-    try {
-      const clientScopedRaw = localStorage.getItem(`${COMPANION_STORAGE_KEY}_${clientId}`);
-      if (clientScopedRaw) {
-        const parsed = JSON.parse(clientScopedRaw);
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-      }
-    } catch { /* ignore */ }
-  }
-  return loadRehabCompanionCase();
-}
-
-
-// 신규 사건 등록 (오픈 온보딩: 타 사무소 / 나홀로 / 마이김변)
+// 신규 사건 등록 (타 사무소 / 나홀로 / 마이김변) — 입력하지 않은 값을 임의 금액으로 채우지 않는다
 export function registerNewCompanionCase(params: {
   alias: string;
+  clientId?: string;
   sourceType: CompanionSourceType;
   externalOfficeName?: string;
   caseType: 'individual_rehab' | 'bankruptcy';
@@ -295,42 +233,40 @@ export function registerNewCompanionCase(params: {
   essentialLivingCost?: number;
   otherFixedExpenses?: number;
 }): RehabCompanionCase {
-  const maskedNumber = params.caseNumber.length > 6 
+  const maskedNumber = params.caseNumber.length > 6
     ? `${params.caseNumber.slice(0, -4)}****`
     : params.caseNumber;
 
   const schedules = generateRepaymentSchedules(
-    params.startRepaymentDate || '2026-01',
-    params.totalRounds || 36,
-    params.monthlyRepaymentAmount || 500000,
-    params.repaymentDay || 10,
+    params.startRepaymentDate,
+    params.totalRounds,
+    params.monthlyRepaymentAmount,
+    params.repaymentDay,
     params.completedRounds || 0
   );
 
-  const inferredStage: CaseStageType = params.caseStage || 
-    (params.completedRounds > 0 ? 'approved' : 'submitted');
-
   const newCase: RehabCompanionCase = {
     id: `case-${Date.now()}`,
+    clientId: params.clientId,
     alias: params.alias || '회원',
     sourceType: params.sourceType,
     externalOfficeName: params.externalOfficeName,
-    caseType: params.caseType,
-    caseStage: inferredStage,
+    caseType: 'individual_rehab',
+    caseStage: params.caseStage || (params.completedRounds > 0 ? 'approved' : 'submitted'),
     courtName: params.courtName,
     caseNumber: params.caseNumber,
     caseNumberMasked: maskedNumber,
     monthlyRepaymentAmount: params.monthlyRepaymentAmount,
     repaymentDay: params.repaymentDay,
     totalRounds: params.totalRounds,
-    completedRounds: params.completedRounds,
+    completedRounds: schedules.filter(s => PAID_STATUSES.includes(s.status)).length,
     startRepaymentDate: params.startRepaymentDate,
     courtVirtualAccount: params.courtVirtualAccount,
     cashflow: {
-      monthlyIncome: params.monthlyIncome || 2500000,
-      essentialLivingCost: params.essentialLivingCost || 1500000,
+      monthlyIncome: params.monthlyIncome || 0,
+      essentialLivingCost: params.essentialLivingCost || 0,
       repaymentAmount: params.monthlyRepaymentAmount,
-      otherFixedExpenses: params.otherFixedExpenses || 300000,
+      otherFixedExpenses: params.otherFixedExpenses || 0,
     },
     schedules,
     documents: [],
@@ -339,68 +275,99 @@ export function registerNewCompanionCase(params: {
     updatedAt: new Date().toISOString(),
   };
 
-  saveRehabCompanionCase(newCase);
+  saveRehabCompanionCase(newCase, params.clientId);
+  return newCase;
+}
+
+/** 파산 사건 등록 — 절차 단계만 만들고 날짜·관재인은 비워 둔다 (사용자·사무소가 입력) */
+export function registerNewBankruptcyCase(params: {
+  alias: string;
+  clientId?: string;
+  sourceType: CompanionSourceType;
+  externalOfficeName?: string;
+  courtName: string;
+  caseNumber: string;
+  caseStage?: CaseStageType;
+}): BankruptcyCompanionCase {
+  const stageIndex = params.caseStage === 'approved' || params.caseStage === 'started' ? 1 : 0;
+  const stages = [
+    ['파산 및 면책 신청서 접수', '법원에 파산·면책 신청서를 접수하는 단계'],
+    ['파산선고 및 파산관재인 선임', '법원의 파산선고와 파산관재인 선임'],
+    ['채권자집회 및 채권조사', '채권자집회 출석 및 관재인 조사'],
+    ['재산 환가·배당 및 소명', '관재인의 재산 조사·환가와 추가 소명'],
+    ['면책 심문', '면책불허가 사유 유무 심리'],
+    ['면책 결정', '면책 결정 및 확정'],
+  ];
+  const newCase: BankruptcyCompanionCase = {
+    id: `bk-${Date.now()}`,
+    alias: params.alias || '회원',
+    sourceType: params.sourceType,
+    externalOfficeName: params.externalOfficeName,
+    courtName: params.courtName,
+    caseNumber: params.caseNumber,
+    caseNumberMasked: params.caseNumber.length > 6 ? `${params.caseNumber.slice(0, -4)}****` : params.caseNumber,
+    timelines: stages.map(([name, desc], i) => ({
+      id: `t-${i + 1}`,
+      stageName: name,
+      description: desc,
+      status: i < stageIndex ? 'completed' : i === stageIndex ? 'in_progress' : 'pending',
+    })),
+    documents: [],
+    notificationLevel: 'basic',
+    createdAt: new Date().toISOString(),
+  };
+  saveBankruptcyCase(newCase, params.clientId);
   return newCase;
 }
 
 // 회차별 납부 상태 업데이트 & 영수증 등록
 export function updateRepaymentRound(
-  round: number, 
+  round: number,
   status: RepaymentVerificationStatus,
   receipt?: { name: string; dataUrl: string },
-  memo?: string
-): RehabCompanionCase {
-  const currentCase = loadRehabCompanionCase();
-  
-  const updatedSchedules = currentCase.schedules.map(item => {
-    if (item.round === round) {
-      return {
-        ...item,
-        status,
-        actualPaidAmount: ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(status) 
-          ? item.scheduledAmount 
-          : undefined,
-        paidDate: ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(status)
-          ? (item.paidDate || new Date().toISOString().split('T')[0])
-          : undefined,
-        receiptName: receipt ? receipt.name : item.receiptName,
-        receiptDataUrl: receipt ? receipt.dataUrl : item.receiptDataUrl,
-        memo: memo !== undefined ? memo : item.memo
-      };
-    }
-    return item;
-  });
+  memo?: string,
+  clientId?: string
+): RehabCompanionCase | null {
+  const currentCase = loadRehabCompanionCase(clientId);
+  if (!currentCase) return null;
+  const isPaid = PAID_STATUSES.includes(status);
 
-  // 완료 회차 수 재계산
-  const completedCount = updatedSchedules.filter(s => 
-    ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
-  ).length;
+  const updatedSchedules = currentCase.schedules.map(item => {
+    if (item.round !== round) return item;
+    return {
+      ...item,
+      status,
+      actualPaidAmount: isPaid ? item.scheduledAmount : undefined,
+      paidDate: isPaid ? (item.paidDate || todayYmd()) : undefined,
+      receiptName: receipt ? receipt.name : item.receiptName,
+      receiptDataUrl: receipt ? receipt.dataUrl : item.receiptDataUrl,
+      memo: memo !== undefined ? memo : item.memo,
+    };
+  });
 
   const updatedCase: RehabCompanionCase = {
     ...currentCase,
     schedules: updatedSchedules,
-    completedRounds: completedCount,
-    updatedAt: new Date().toISOString()
+    completedRounds: updatedSchedules.filter(s => PAID_STATUSES.includes(s.status)).length,
+    updatedAt: new Date().toISOString(),
   };
 
-  saveRehabCompanionCase(updatedCase);
+  saveRehabCompanionCase(updatedCase, clientId || currentCase.clientId);
   return updatedCase;
 }
 
-// 생활위기 SOS 접수
+// 생활위기 SOS 기록 (이 기기에 저장 — 담당 변호사 전달은 호출부에서 CRM 동기화 결과로 안내)
 export function submitLifeCrisisReport(report: Omit<LifeCrisisReport, 'id' | 'createdAt' | 'status'>): LifeCrisisReport {
   const newReport: LifeCrisisReport = {
     ...report,
     id: `crisis-${Date.now()}`,
     createdAt: new Date().toISOString(),
     status: 'submitted',
-    lawyerAdvice: '접수된 사정변경 내용을 검토 중입니다. 필요 시 변제계획 변경신청 또는 상환유예 요건을 자문해 드립니다.'
   };
 
   try {
     const existing = loadLifeCrisisReports();
-    const updated = [newReport, ...existing];
-    localStorage.setItem(CRISIS_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(CRISIS_STORAGE_KEY, JSON.stringify([newReport, ...existing]));
   } catch (err) {
     console.error('Error saving crisis report:', err);
   }
@@ -489,92 +456,15 @@ export async function parseCaseDocumentOcr(file: File): Promise<CaseOcrParseResu
     console.warn('[Real OCR Backend Call Failed, using local heuristic]', err);
   }
 
-  // 백엔드 미응답 시 지능형 패턴 분석 폴백
-  await new Promise(resolve => setTimeout(resolve, 800));
-  const lowerName = fileName.toLowerCase();
-
-  if (lowerName.includes('개시') || lowerName.includes('start')) {
-    return {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '서울회생법원',
-      caseNumber: '2024개회108492',
-      caseStage: 'started',
-      monthlyRepaymentAmount: 480000,
-      repaymentDay: 10,
-      totalRounds: 36,
-      startRepaymentDate: '2025-07',
-      courtVirtualAccount: '신한은행 110-***-849201',
-      confidenceScore: 0.95,
-      detectedDocType: 'decision_start',
-      extractedHighlights: [
-        '문서 유형: 개인회생 개시결정문 인식 완료',
-        '관할: 서울회생법원 제21단독',
-        '사건번호: 2024개회108492 추출 완료',
-        '변제계획안 제출 기일 및 채권자집회 기일 확인'
-      ]
-    };
-  }
-
-  if (lowerName.includes('접수') || lowerName.includes('receipt') || lowerName.includes('신청')) {
-    return {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '수원회생법원',
-      caseNumber: '2025개회204118',
-      caseStage: 'submitted',
-      monthlyRepaymentAmount: 420000,
-      repaymentDay: 25,
-      totalRounds: 36,
-      startRepaymentDate: '2026-03',
-      courtVirtualAccount: '국민은행 940-***-204118',
-      confidenceScore: 0.93,
-      detectedDocType: 'case_receipt',
-      extractedHighlights: [
-        '문서 유형: 전자소송 사건접수증 인식 완료',
-        '관할: 수원회생법원',
-        '사건번호: 2025개회204118 추출 완료',
-        '금지명령 및 중지명령 신청 확인'
-      ]
-    };
-  }
-
-  if (lowerName.includes('인가') || lowerName.includes('approval') || lowerName.includes('결정문')) {
-    return {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '서울회생법원',
-      caseNumber: '2024개회108492',
-      caseStage: 'approved',
-      monthlyRepaymentAmount: 480000,
-      repaymentDay: 10,
-      totalRounds: 36,
-      startRepaymentDate: '2025-07',
-      courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
-      confidenceScore: 0.98,
-      detectedDocType: 'decision_approval',
-      extractedHighlights: [
-        '문서 유형: 변제계획인가결정문 정밀 인식 성공',
-        '인가일자: 2025년 6월 18일 인가 확정',
-        '확정 월 변제금: 480,000원 (총 36회차 분할납부)',
-        '법원 전용 변제금 가상계좌 인식 완료'
-      ]
-    };
-  }
-
-  // 회생/파산 서류 키워드가 없는 경우: 실패 처리
+  // AI 판독 실패·미설정: 파일 이름으로 사건 정보를 지어내지 않고 실패로 안내 (기존: 파일명에 '인가'가 있으면 가짜 사건번호·가상계좌 반환)
   return {
     isValidCourtDoc: false,
-    recognitionStatus: 'invalid_document',
-    failureReason: '업로드된 파일에서 공식 법원 회생·파산 결정문 또는 사건접수증 서식을 확인할 수 없습니다.',
-    guidance: '선명한 법원 결정문/접수증 원본 사진을 다시 올려주시거나, 아래에서 사건번호를 직접 입력해 주세요.',
-    confidenceScore: 0.2,
-    detectedDocType: 'invalid_or_unrelated',
-    extractedHighlights: [
-      '공식 법원 회생/파산 서식 미식별',
-      '사건번호 및 변제 정보 미포함',
-      '직접 입력 또는 재촬영 권장'
-    ]
+    recognitionStatus: 'unreadable',
+    failureReason: '서류를 자동으로 읽지 못했습니다.',
+    guidance: '사건번호와 변제 조건을 직접 입력해 주세요.',
+    confidenceScore: 0,
+    detectedDocType: 'unknown',
+    extractedHighlights: []
   };
 }
 
@@ -644,8 +534,8 @@ export function getCourtRepealStandard(courtName: string = ''): CourtRepealThres
       warningRounds: 3,
       repealRiskRounds: 4,
       leniencyLevel: 'HIGH_FLEXIBLE',
-      description: '서울회생법원은 실무상 4~5회차 연체 시까지 폐지 예고 및 유예 기회를 비교적 폭넓게 부여합니다.',
-      goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+      description: '참고용 일반 경향: 서울회생법원은 연체 초기에 독촉·소명 기회를 주는 경우가 많습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.',
+      goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
     };
   }
   if (norm.includes('수원') || norm.includes('부산')) {
@@ -656,8 +546,8 @@ export function getCourtRepealStandard(courtName: string = ''): CourtRepealThres
       warningRounds: 3,
       repealRiskRounds: 3,
       leniencyLevel: 'MODERATE',
-      description: `${name}은 3회 이상 연체 시 폐지 예고 통지서 발송 및 직권 폐지 심리에 착수합니다.`,
-      goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+      description: `참고용 일반 경향: ${name}은 3회 안팎 연체 시 폐지 절차를 검토하는 경우가 있습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.`,
+      goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
     };
   }
   return {
@@ -666,13 +556,14 @@ export function getCourtRepealStandard(courtName: string = ''): CourtRepealThres
     warningRounds: 2,
     repealRiskRounds: 3,
     leniencyLevel: 'STRICT',
-    description: '기타 지방법원은 3회 연체 시 유예 없이 즉각 폐지 결정을 내리는 엄격한 실무 경향을 보입니다.',
-    goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+    description: '참고용 일반 경향: 지방법원은 연체 누적에 비교적 엄격한 경우가 있습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.',
+    goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
   };
 }
 
 export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEvaluation {
-  const overdueRounds = (caseData.schedules || []).filter(s => s.status === 'overdue_check_needed');
+  // 저장된 '확인 필요' + 납부일이 지났는데 납부 기록이 없는 회차 (기존: 수동 지정한 경우만 집계 → 경보가 사실상 뜨지 않음)
+  const overdueRounds = (caseData.schedules || []).filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed');
   const count = overdueRounds.length;
   const roundNumbers = overdueRounds.map(r => r.round);
   const threshold = getCourtRepealStandard(caseData.courtName);
@@ -685,12 +576,12 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       courtThreshold: threshold,
       stageInfo: {
         stageNumber: 3,
-        stageName: '폐지착수 (4회이상)',
+        stageName: '폐지 위험 (기준 도달)',
         description: `법원의 개인회생 직권 폐지 결정 위험 임계치(${threshold.courtName} 기준 ${threshold.repealRiskRounds}회)를 초과했습니다.`,
         actionTip: '미납금 즉시 분납 또는 긴급 변제계획 변경신청·특별면책 검토가 시급합니다.'
       },
       message: `🚨 변제금 ${count}회차 미납: ${threshold.courtName} 직권 폐지 결정 위험이 최고조에 달했습니다.`,
-      recommendedAction: '폐지 결정 전 즉시 담당 변호사와 상의하여 가상계좌 분납, 변제계획 변경신청 또는 특별면책(법 제624조)을 진행해야 합니다.'
+      recommendedAction: '즉시 담당 변호사와 상의해 미납금 납부, 변제계획 변경신청, 요건이 되면 면책 신청(법 제624조 제2항) 가능 여부를 검토하세요.'
     };
   } else if (count >= 3) {
     return {
@@ -705,7 +596,7 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
         actionTip: '가능한 범위에서 가상계좌로 분할 입금하거나 급여감소 등 사정변경 소명을 준비하세요.'
       },
       message: `⚠️ 변제금 3회차 미납 경고: ${threshold.courtName} 폐지예고 통지서 발송 단계입니다.`,
-      recommendedAction: '법원 가상계좌는 1만원 단위 분납이 가능하므로 가용 자금부터 입금하거나, 소득감소 시 변제계획 변경신청을 요청하세요.'
+      recommendedAction: '가능한 금액부터 가상계좌로 입금하고, 소득이 줄었다면 담당 변호사와 변제계획 변경신청을 검토하세요. (분납 가능 여부는 법원·회생위원 안내에 따릅니다)'
     };
   } else if (count >= 1) {
     return {
@@ -716,10 +607,10 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       stageInfo: {
         stageNumber: 1,
         stageName: '주의 (1~2회)',
-        description: '단순 납부 지연 단계입니다. 연체이자는 발생하지 않으나 누적 방지가 필수적입니다.',
-        actionTip: '법원 가상계좌로 소액이라도 분납 입금하시면 폐지 위험을 선제적으로 예방할 수 있습니다.'
+        description: '납부일이 지났는데 납부 기록이 없는 회차가 있습니다.',
+        actionTip: '이미 납부했다면 이체확인증을 등록해 기록을 정리해 주세요.'
       },
-      message: `⚡ 변제금 ${count}회 미납 주의: 3회 이상 누적 시 법원 폐지 절차가 개시될 수 있습니다.`,
+      message: `⚡ 납부 확인이 안 된 회차 ${count}건: 실제로 냈다면 영수증을 등록하고, 못 냈다면 누적되기 전에 담당 변호사와 상의하세요.`,
       recommendedAction: '법원 가상계좌로 분할 납부하시거나 이번 달 생활위기 SOS를 통해 사전 납부대책을 수립하세요.'
     };
   }
@@ -735,7 +626,7 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       description: '정상 성실 변제 수행 중',
       actionTip: '매월 지정일 자동이체 유지 및 대법원 나의사건검색 대조를 권장합니다.'
     },
-    message: '🟢 성실 납부 진행 중: 인가된 일정대로 안전하게 상환되고 있습니다.',
+    message: '🟢 납부일이 지난 미기록 회차가 없습니다.',
     recommendedAction: '정기적인 납부일 확인과 영수증 등록을 유지해 주세요.'
   };
 }
@@ -755,7 +646,7 @@ export const OFFICIAL_SUPPORT_PROGRAMS: SupportProgram[] = [
     subtitle: '갑작스러운 실직, 질병, 휴·폐업 등으로 생계유지가 곤란한 가구 대상 무상 지원',
     organization: '보건복지부 / 관할 시·군·구청',
     eligibility: '기준 중위소득 75% 이하 & 금융재산 600만 원(주거 800만 원) 이하',
-    benefit: '생계지원금 1인 최대 71만 원 / 4인 최대 183만 원 (최장 6개월), 의료비 최대 300만 원 지원',
+    benefit: '가구원 수별 생계지원금, 의료·주거 지원 (지원 금액·기간은 매년 보건복지부 고시로 정해짐 — 129 문의)',
     contactNumber: '보건복지상담센터 129',
     officialUrl: 'https://www.bokjiro.go.kr',
     targetStages: ['preparing', 'submitted', 'correction', 'started', 'approved'],
@@ -771,7 +662,7 @@ export const OFFICIAL_SUPPORT_PROGRAMS: SupportProgram[] = [
     subtitle: '취업지원 서비스와 함께 구직기간 중 안정적인 생계소득 지원',
     organization: '고용노동부 고용복지플러스센터',
     eligibility: '15~69세 구직자 중 가구 중위소득 60% 이하 & 재산 4억 원 이하',
-    benefit: '구직촉진수당 월 50만 원 × 6개월 (최대 300만 원) + 가족수당 1인당 10만 원',
+    benefit: '구직촉진수당 (월 지급액·기간은 해당 연도 기준 — 고용노동부 1350 문의)',
     contactNumber: '고용노동부 고객상담센터 1350',
     officialUrl: 'https://www.kua.go.kr',
     targetStages: ['preparing', 'submitted', 'started', 'approved', 'completed'],
@@ -1050,101 +941,33 @@ export function getRecommendedBenefits(
   };
 }
 
-// 파산 전용 케이스 불러오기 및 기본값 시딩
-export function loadBankruptcyCase(): BankruptcyCompanionCase {
-  const defaultBankruptcy: BankruptcyCompanionCase = {
-    id: 'bankrupt-demo-001',
-    alias: '새출발2026',
-    sourceType: 'external_office',
-    externalOfficeName: '법무법인 한* (타 사무소 진행)',
-    courtName: '서울회생법원',
-    caseNumberMasked: '2025하단10**** / 2025하면10****',
-    bankruptcyTrusteeName: '박*호 파산관재인 변호사',
-    timelines: [
-      {
-        id: 't-1',
-        stageName: '파산 및 면책 신청서 접수',
-        status: 'completed',
-        targetDate: '2025-11-10',
-        description: '법원에 파산 및 면책 동시 신청서 접수 완료'
-      },
-      {
-        id: 't-2',
-        stageName: '파산선고 및 파산관재인 선임',
-        status: 'completed',
-        targetDate: '2026-02-15',
-        description: '법원의 파산선고 결정 및 전담 파산관재인 배정'
-      },
-      {
-        id: 't-3',
-        stageName: '파산관재인 1차 소명자료 제출',
-        status: 'completed',
-        targetDate: '2026-04-20',
-        description: '과거 3년간 통장거래내역 및 재산 처분내역 소명서 제출 완료'
-      },
-      {
-        id: 't-4',
-        stageName: '제1회 채권자집회 및 의견청취기일',
-        status: 'completed',
-        targetDate: '2026-06-18',
-        description: '법원 법정 출석 및 파산관재인 경과 보고 완료'
-      },
-      {
-        id: 't-5',
-        stageName: '추가 보정자료 검토 및 배당절차',
-        status: 'in_progress',
-        targetDate: '2026-09-25',
-        description: '파산재단 환가 및 채권자 배당 여부 최종 확인 중'
-      },
-      {
-        id: 't-6',
-        stageName: '면책 심문 및 최종 면책결정',
-        status: 'pending',
-        targetDate: '2026-11-30',
-        description: '면책 불허가 사유 유무 최종 판단 및 면책결정문 송달'
-      }
-    ],
-    documents: [
-      { id: 'b-doc-1', name: '파산선고결정문.pdf', uploadedAt: '2026-02-16', status: 'reviewed' },
-      { id: 'b-doc-2', name: '관재인_요청서류_소명서.pdf', uploadedAt: '2026-04-18', status: 'reviewed' },
-    ],
-    notificationLevel: 'basic',
-    createdAt: '2025-11-10T00:00:00Z',
-  };
-
-  try {
-    const raw = localStorage.getItem(BANKRUPTCY_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return {
-          ...defaultBankruptcy,
-          ...parsed,
-          timelines: Array.isArray(parsed.timelines) && parsed.timelines.length > 0
-            ? parsed.timelines
-            : defaultBankruptcy.timelines,
-          documents: Array.isArray(parsed.documents) ? parsed.documents : defaultBankruptcy.documents,
-        };
-      }
+// 파산동행 사건 불러오기 (없으면 null — 데모 사건을 사용자 사건처럼 보여주지 않는다)
+export function loadBankruptcyCase(clientId?: string): BankruptcyCompanionCase | null {
+  const keys = clientId ? [`${BANKRUPTCY_STORAGE_KEY}_${clientId}`, BANKRUPTCY_STORAGE_KEY] : [BANKRUPTCY_STORAGE_KEY];
+  for (const key of keys) {
+    const parsed = readCase<BankruptcyCompanionCase>(key);
+    if (!parsed) continue;
+    if (DEMO_BANKRUPTCY_CASE_IDS.has(parsed.id)) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      continue;
     }
-  } catch (err) {
-    console.error('Error loading bankruptcy case:', err);
+    return {
+      ...parsed,
+      timelines: Array.isArray(parsed.timelines) ? parsed.timelines : [],
+      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
+    };
   }
-
-  try {
-    localStorage.setItem(BANKRUPTCY_STORAGE_KEY, JSON.stringify(defaultBankruptcy));
-  } catch (err) {}
-
-  return defaultBankruptcy;
+  return null;
 }
 
-export function saveBankruptcyCase(data: Partial<BankruptcyCompanionCase>): void {
+/** 기존 사건에 병합 저장 — 사건이 없고 완전한 데이터(id)도 아니면 저장하지 않는다 (부분 값으로 가짜 사건이 생기지 않도록) */
+export function saveBankruptcyCase(data: Partial<BankruptcyCompanionCase>, clientId?: string): void {
   try {
-    const current = loadBankruptcyCase();
-    const merged = { ...current, ...data };
-    localStorage.setItem(BANKRUPTCY_STORAGE_KEY, JSON.stringify(merged));
+    const current = loadBankruptcyCase(clientId);
+    if (!current && !data.id) return;
+    const key = clientId ? `${BANKRUPTCY_STORAGE_KEY}_${clientId}` : BANKRUPTCY_STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify({ ...(current || {}), ...data }));
   } catch (err) {
     console.error('Error saving bankruptcy case:', err);
   }
 }
-

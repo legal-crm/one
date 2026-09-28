@@ -13,11 +13,13 @@ import {
 import { RehabCompanionCase, SupportProgram, SupportCategoryType } from '../../../types';
 
 interface SupportCenterTabProps {
-  caseData?: RehabCompanionCase;
+  caseData?: RehabCompanionCase | null;
 }
 
 export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
-  const currentCase = caseData || loadRehabCompanionCase();
+  // 등록된 사건이 없으면 '신청 준비' 단계 기준으로 추천 (가짜 사건 데이터를 쓰지 않음)
+  const currentCase: RehabCompanionCase = caseData || loadRehabCompanionCase()
+    || ({ caseStage: 'preparing', completedRounds: 0 } as RehabCompanionCase);
   
   const [selectedCategory, setSelectedCategory] = useState<string>('stage_matched');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
@@ -88,7 +90,7 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                 : 'bg-white/10 text-slate-300 border border-white/10'
             }`}>
               <span className={`w-2 h-2 rounded-full ${isLiveApi ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-              <span>{isLiveApi ? '공공데이터포털 실시간 연동 가동' : '공식 공공데이터 기준 검증 16선'}</span>
+              <span>{isLiveApi ? '공공데이터포털 실시간 연동 가동' : '주요 공공 지원제도 안내 (신청 전 기관에서 요건 확인)'}</span>
             </span>
           </div>
 

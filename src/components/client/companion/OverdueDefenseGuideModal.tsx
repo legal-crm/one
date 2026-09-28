@@ -5,7 +5,7 @@ import {
   Flame, Award, DollarSign, RefreshCw, AlertOctagon, HeartHandshake
 } from 'lucide-react';
 import { RehabCompanionCase } from '../../../types';
-import { getCourtRepealStandard } from '../../../services/companionService';
+import { getCourtRepealStandard, getEffectiveRoundStatus } from '../../../services/companionService';
 
 interface OverdueDefenseGuideModalProps {
   isOpen: boolean;
@@ -14,18 +14,17 @@ interface OverdueDefenseGuideModalProps {
   onOpenCrisisModal: () => void;
 }
 
-export default function OverdueDefenseGuideModal({
+function OverdueDefenseGuideModalInner({
   isOpen,
   onClose,
   caseData,
   onOpenCrisisModal
 }: OverdueDefenseGuideModalProps) {
-  if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'partial' | 'modify' | 'special_discharge' | 'appeal'>('matrix');
 
   const courtThreshold = getCourtRepealStandard(caseData.courtName);
-  const overdueCount = (caseData.schedules || []).filter(s => s.status === 'overdue_check_needed').length;
+  const overdueCount = (caseData.schedules || []).filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed').length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
@@ -85,7 +84,7 @@ export default function OverdueDefenseGuideModal({
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>① 분납·추납 비법 (무이자)</span>
+            <span>① 분납·추가 납부</span>
           </button>
 
           <button
@@ -124,7 +123,7 @@ export default function OverdueDefenseGuideModal({
             }`}
           >
             <Clock className="w-4 h-4" />
-            <span>🚨 14일 즉시항고 골든타임</span>
+            <span>🚨 폐지결정과 즉시항고 기간</span>
           </button>
         </div>
 
@@ -176,7 +175,7 @@ export default function OverdueDefenseGuideModal({
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">단순 지연 및 납부 독려</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                      법원에서 즉시 폐지하지는 않으나, 다음 달 변제금과 겹쳐 부담이 급증합니다. 법원 가상계좌로 분할 입금하여 연체를 끊어야 합니다.
+                      곧바로 폐지되지는 않는 경우가 많지만, 다음 달 변제금과 겹쳐 부담이 커집니다. 가능한 금액부터 납부하고 담당 변호사와 상의하세요.
                     </p>
                   </div>
 
@@ -204,7 +203,7 @@ export default function OverdueDefenseGuideModal({
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">법원 직권 폐지 결정</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                      회생위원이 폐지 의견서를 제출하고 재판부가 절차를 폐지합니다. 공고 후 14일 이내 완납+즉시항고하지 않으면 영구 효력을 잃습니다.
+                      회생위원 의견 등을 거쳐 재판부가 절차 폐지를 결정할 수 있습니다. 불복하려면 즉시항고 기간(공고일부터 14일) 안에 제기해야 하며, 인용 여부는 법원이 판단합니다.
                     </p>
                   </div>
                 </div>
@@ -243,7 +242,7 @@ export default function OverdueDefenseGuideModal({
                       수원·부산회생법원
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">3회 연체 시 폐지 착수:</strong> 3회 누적 즉시 폐지 통지서가 발송되며 엄격하게 납부를 요구합니다.
+                      <strong className="text-slate-900 dark:text-white">3회 안팎 연체 시 폐지 검토 가능:</strong> 연체가 누적되면 납부 독촉과 폐지 검토가 진행될 수 있습니다. (재판부·사정에 따라 다름)
                     </div>
                   </div>
 
@@ -460,7 +459,7 @@ export default function OverdueDefenseGuideModal({
               <div className="p-4 rounded-2xl bg-red-600 text-white space-y-2">
                 <div className="flex items-center gap-2 font-black text-base">
                   <AlertTriangle className="w-5 h-5 text-amber-300" />
-                  <span>폐지 결정 공고 후 14일 이내: 마지막 부활의 골든타임</span>
+                  <span>폐지결정 공고일부터 14일: 즉시항고 기간</span>
                 </div>
                 <p className="text-xs text-red-100 leading-relaxed">
                   법원에서 개인회생 폐지 결정이 내려지더라도, 대법원 전자공고일로부터 <strong>단 14일(불변기간)</strong> 이내에 <strong>즉시항고장을 제출하고 밀린 변제금을 완납</strong>하면 폐지 결정이 취소되고 회생이 그대로 유지됩니다!
@@ -516,7 +515,7 @@ export default function OverdueDefenseGuideModal({
               </div>
 
               <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-800 dark:text-red-300">
-                🚨 <strong>14일 경과 시:</strong> 개인회생 사건이 최종 확정 폐지되어 모든 채권자의 압류·추심이 일제히 부활하며, 사건을 처음부터 다시 신청해야 합니다. 폐지 통지를 받으셨다면 1시간도 지체 없이 전담 변호사에게 연락하십시오.
+                🚨 <strong>기간이 지나면:</strong> 폐지결정이 확정되어 채권자의 강제집행·추심이 다시 가능해질 수 있고, 다시 절차를 이용하려면 새로 신청해야 할 수 있습니다. 폐지 관련 통지를 받았다면 바로 담당 변호사에게 연락하세요.
               </div>
             </div>
           )}
@@ -552,4 +551,10 @@ export default function OverdueDefenseGuideModal({
       </div>
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리
+export default function OverdueDefenseGuideModal(props: OverdueDefenseGuideModalProps) {
+  if (!props.isOpen) return null;
+  return <OverdueDefenseGuideModalInner {...props} />;
 }

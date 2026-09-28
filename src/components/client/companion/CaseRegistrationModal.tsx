@@ -7,6 +7,7 @@ import {
 import { CompanionSourceType, CaseStageType, CaseOcrParseResult } from '../../../types';
 import { 
   registerNewCompanionCase, 
+  registerNewBankruptcyCase,
   parseCaseDocumentOcr, 
   getCourtSearchDeepLink 
 } from '../../../services/companionService';
@@ -16,8 +17,11 @@ import { toast } from 'sonner';
 interface CaseRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (registeredType: 'individual_rehab' | 'bankruptcy') => void;
   initialAlias?: string;
+  /** 마이김변 의뢰 ID — 의뢰인별 저장 키로 사용 */
+  clientId?: string;
+  initialCaseType?: 'individual_rehab' | 'bankruptcy';
 }
 
 const COURTS = [
@@ -32,16 +36,18 @@ export default function CaseRegistrationModal({
   isOpen,
   onClose,
   onSuccess,
-  initialAlias = '회원'
+  initialAlias = '회원',
+  clientId,
+  initialCaseType = 'individual_rehab'
 }: CaseRegistrationModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [sourceType, setSourceType] = useState<CompanionSourceType>('external_office');
   const [externalOfficeName, setExternalOfficeName] = useState('');
-  const [caseType, setCaseType] = useState<'individual_rehab' | 'bankruptcy'>('individual_rehab');
+  const [caseType, setCaseType] = useState<'individual_rehab' | 'bankruptcy'>(initialCaseType);
   const [caseStage, setCaseStage] = useState<CaseStageType>('approved');
   
   // 사건 정보
-  const [courtName, setCourtName] = useState('서울회생법원');
+  const [courtName, setCourtName] = useState('');
   const [caseNumber, setCaseNumber] = useState('');
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrHighlights, setOcrHighlights] = useState<string[]>([]);
@@ -54,16 +60,20 @@ export default function CaseRegistrationModal({
   const [showOcrAlertModal, setShowOcrAlertModal] = useState<boolean>(false);
   
   // 변제 조건
-  const [monthlyRepaymentAmount, setMonthlyRepaymentAmount] = useState<number>(480000);
-  const [repaymentDay, setRepaymentDay] = useState<number>(10);
+  const [monthlyRepaymentAmount, setMonthlyRepaymentAmount] = useState<number>(0);
+  const [repaymentDay, setRepaymentDay] = useState<number>(0);
   const [totalRounds, setTotalRounds] = useState<number>(36);
-  const [completedRounds, setCompletedRounds] = useState<number>(14);
-  const [startRepaymentDate, setStartRepaymentDate] = useState<string>('2025-07');
+  const [completedRounds, setCompletedRounds] = useState<number>(0);
+  const [startRepaymentDate, setStartRepaymentDate] = useState<string>('');
   const [courtVirtualAccount, setCourtVirtualAccount] = useState<string>('');
   
   // 소득/생계비
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(2800000);
-  const [essentialLivingCost, setEssentialLivingCost] = useState<number>(1750000);
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
+  const [essentialLivingCost, setEssentialLivingCost] = useState<number>(0);
+  // 🐛 기존: otherFixedExpenses 상태가 선언되지 않아 3단계 화면·등록 시 ReferenceError로 등록 자체가 불가능했음
+  const [otherFixedExpenses, setOtherFixedExpenses] = useState<number>(0);
+  // 열 때마다 현재 보고 있는 모드(회생/파산)로 사건 유형을 맞춤
+  React.useEffect(() => { if (isOpen) setCaseType(initialCaseType); }, [isOpen, initialCaseType]);
   const [isScourtAutofilling, setIsScourtAutofilling] = useState(false);
 
   if (!isOpen) return null;
@@ -80,7 +90,7 @@ export default function CaseRegistrationModal({
       const courtDetail = await fetchCourtCase({
         courtName,
         caseNumber: caseNumber.trim(),
-        clientName: initialAlias || '홍길동',
+        clientName: initialAlias || '',
         forceRefresh: false
       });
 
@@ -89,7 +99,7 @@ export default function CaseRegistrationModal({
         if (courtDetail.finalResult.includes('인가') || courtDetail.finalResult.includes('개시')) {
           setCaseStage('approved');
         } else {
-          setCaseStage('filed');
+          setCaseStage('submitted');
         }
       }
 
@@ -101,8 +111,13 @@ export default function CaseRegistrationModal({
         setCompletedRounds(paidCount);
       }
 
+      if (courtDetail.isMock || !courtDetail.isB2BLive) {
+        // 시연용 데이터로 사건 정보를 채우지 않음
+        toast.info('대법원 자동 조회는 아직 연동되지 않았습니다. [대법원 사이트 열기]로 확인한 내용을 직접 입력해 주세요.', { duration: 5000 });
+        return;
+      }
       setOcrStatus('success');
-      toast.success('🎉 대법원 전산망에서 사건 정보가 성공적으로 자동완성되었습니다!');
+      toast.success('대법원 사건 정보를 불러왔습니다. 내용이 맞는지 확인해 주세요.');
     } catch (err: any) {
       toast.error(err.message || '대법원 정보 조회에 실패했습니다.');
     } finally {
@@ -116,7 +131,7 @@ export default function CaseRegistrationModal({
     setOcrStatus('idle');
     setOcrFailureReason('');
     setOcrFailureHighlights([]);
-    toast.info('Gemini AI가 서류에서 사건번호와 변제계획을 정밀 분석하고 있습니다...');
+    toast.info('AI가 서류를 읽고 있습니다. 서류 이미지는 인식을 위해 AI 서비스(Google Gemini)로 전송됩니다.');
     
     try {
       const result: CaseOcrParseResult = await parseCaseDocumentOcr(file);
@@ -153,7 +168,7 @@ export default function CaseRegistrationModal({
       
       setOcrHighlights(result.extractedHighlights);
       setOcrConfidence(result.confidenceScore);
-      toast.success('🎉 법원 결정문에서 핵심 사건정보가 자동 추출되었습니다!');
+      toast.success('서류에서 사건 정보를 읽었습니다. 사건번호·금액이 맞는지 꼭 확인해 주세요.');
     } catch (err) {
       setIsOcrProcessing(false);
       setOcrStatus('failed');
@@ -178,9 +193,35 @@ export default function CaseRegistrationModal({
       return;
     }
 
+    if (caseType === 'individual_rehab') {
+      if (!courtName || !monthlyRepaymentAmount || !repaymentDay || !totalRounds || !startRepaymentDate) {
+        toast.error('관할 법원, 월 변제금, 납부일, 총 회차, 변제 시작 연월을 입력해 주세요.');
+        return;
+      }
+    } else if (!courtName) {
+      toast.error('관할 법원을 선택해 주세요.');
+      return;
+    }
+
     try {
+      if (caseType === 'bankruptcy') {
+        registerNewBankruptcyCase({
+          alias: initialAlias,
+          clientId,
+          sourceType,
+          externalOfficeName: sourceType === 'external_office' ? externalOfficeName : undefined,
+          courtName,
+          caseNumber: caseNumber.trim(),
+          caseStage,
+        });
+        toast.success('파산동행 사건을 등록했습니다.');
+        onSuccess('bankruptcy');
+        onClose();
+        return;
+      }
       registerNewCompanionCase({
         alias: initialAlias,
+        clientId,
         sourceType,
         externalOfficeName: sourceType === 'external_office' ? externalOfficeName : undefined,
         caseType,
@@ -198,8 +239,8 @@ export default function CaseRegistrationModal({
         otherFixedExpenses: Number(otherFixedExpenses) || 0,
       });
 
-      toast.success('🎉 회생동행 사건이 성공적으로 등록되었습니다!');
-      onSuccess();
+      toast.success('회생동행 사건을 등록했습니다. 이 기기에 저장됩니다.');
+      onSuccess('individual_rehab');
       onClose();
     } catch (err) {
       toast.error('사건 등록 중 오류가 발생했습니다.');
@@ -214,7 +255,7 @@ export default function CaseRegistrationModal({
         <div className="p-6 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850/50">
           <div>
             <span className="text-[11px] font-bold text-brand bg-brand/10 dark:bg-brand/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              전국 모든 회생·파산인 무료 지원
+              무료 이용
             </span>
             <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
               마이김변 2.0 회생동행 간편 등록
@@ -223,7 +264,8 @@ export default function CaseRegistrationModal({
           <button 
             type="button" 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="사건 등록 닫기"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

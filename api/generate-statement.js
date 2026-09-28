@@ -62,7 +62,7 @@ async function handler(req, res) {
     return res.status(400).json({ ok: false, error: '입력된 내용 또는 선택된 키워드가 없습니다.' });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   // AI 연동 실패 시 규칙 기반 정교한 Fallback 진술서 생성 헬퍼
   const generateRuleBasedFallback = () => {

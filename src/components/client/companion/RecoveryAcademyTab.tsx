@@ -54,7 +54,7 @@ const ACADEMY_LESSONS = [
     title: '36회 완납 후 필수! 법원 면책신청서 제출 가이드',
     category: '최종 면책',
     readTime: '3분',
-    summary: '변제금을 모두 완납해도 자동으로 면책되지 않습니다. 법원에 면책신청서를 접수하고 면책결정문이 확정되어야 모든 빚이 법적으로 소멸됩니다.',
+    summary: '변제를 마쳐도 법원의 면책결정이 있어야 남은 채무의 책임이 면제됩니다. 면책신청서 제출이 필요한지 관할 법원 또는 담당 변호사에게 확인하세요. (면책되지 않는 채무도 있습니다)',
     keyPoints: ['법원 변제현황조회서 최종 완납 내역 확인', '면책신청서 작성 및 전자소송 접수', '면책결정문 송달 후 2주 확정 대기']
   }
 ];
@@ -63,7 +63,14 @@ export default function RecoveryAcademyTab() {
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null);
 
   const handleDownloadForm = () => {
-    toast.success('표준 개인회생 면책신청서 서식(HWP/PDF)이 다운로드되었습니다.');
+    // 실제 서식 파일 다운로드 (기존: 토스트만 표시하고 아무것도 내려받지 않음)
+    const a = document.createElement('a');
+    a.href = '/forms/rehab-discharge-application.hwp';
+    a.download = '개인회생_면책신청서.hwp';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.info('면책신청서 서식(HWP)을 내려받습니다. 제출 전 관할 법원 안내와 최신 서식을 확인해 주세요.');
   };
 
   return (

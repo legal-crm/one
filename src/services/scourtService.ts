@@ -158,7 +158,8 @@ export function getCachedCourtCase(caseNumber: string): ScourtCaseDetail | null 
     const ttl = getAdaptiveCacheTTL(data);
     const elapsed = Date.now() - new Date(parsed.cachedAt).getTime();
 
-    if (elapsed > ttl) {
+    // 이전 버전이 캐시한 시연용 데이터는 실제 사건처럼 보이지 않도록 폐기
+    if (data?.isMock || !data?.isB2BLive || elapsed > ttl) {
       localStorage.removeItem(`${CACHE_PREFIX}${cleaned}`);
       return null;
     }
@@ -194,6 +195,7 @@ export function getCacheRemainingText(caseNumber: string): string | null {
 }
 
 export function setCachedCourtCase(caseNumber: string, data: ScourtCaseDetail) {
+  if (data?.isMock || !data?.isB2BLive) return; // 실시간 조회 결과만 캐시
   try {
     const cleaned = caseNumber.replace(/\s+/g, '');
     localStorage.setItem(

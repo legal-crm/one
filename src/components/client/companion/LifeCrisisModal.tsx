@@ -3,11 +3,14 @@ import { X, AlertTriangle, Send, CheckCircle, ShieldAlert, FileText, ArrowRight,
 import { CrisisReasonType, LifeCrisisReport } from '../../../types';
 import { submitLifeCrisisReport } from '../../../services/companionService';
 import { toast } from 'sonner';
+import { updateCrmClientExtension, getCrmClientSync } from '../../../services/crmService';
 
 interface LifeCrisisModalProps {
   isOpen: boolean;
   onClose: () => void;
   caseId: string;
+  /** 마이김변 의뢰 ID — 있으면 담당 변호사 CRM에 기록 */
+  clientId?: string;
   onNavigateToSupport?: () => void;
 }
 
@@ -21,20 +24,21 @@ const CRISIS_REASONS: Array<{ type: CrisisReasonType; label: string; desc: strin
   { type: 'other', label: '기타 사유', desc: '기타 불가피한 경제적 사정변경' },
 ];
 
-export default function LifeCrisisModal({
+function LifeCrisisModalInner({
   isOpen,
   onClose,
   caseId,
+  clientId,
   onNavigateToSupport
 }: LifeCrisisModalProps) {
-  if (!isOpen) return null;
 
   const [selectedReason, setSelectedReason] = useState<CrisisReasonType>('income_reduction');
-  const [estimatedShortage, setEstimatedShortage] = useState<number>(300000);
+  const [estimatedShortage, setEstimatedShortage] = useState<number>(0);
+  const [deliveredToLawyer, setDeliveredToLawyer] = useState(false);
   const [description, setDescription] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) {
       toast.error('상황을 구체적으로 적어주시면 더 정확한 법률·복지 안내가 가능합니다.');
@@ -43,7 +47,7 @@ export default function LifeCrisisModal({
 
     const currentReasonObj = CRISIS_REASONS.find(r => r.type === selectedReason);
 
-    submitLifeCrisisReport({
+    const report = submitLifeCrisisReport({
       caseId,
       reason: selectedReason,
       reasonLabel: currentReasonObj?.label || '사정변경',
@@ -51,8 +55,16 @@ export default function LifeCrisisModal({
       description: description.trim(),
     });
 
+    // 마이김변 의뢰가 있으면 담당 변호사 CRM에 기록 (없으면 이 기기에만 저장됨을 사실대로 안내)
+    let delivered = false;
+    if (clientId) {
+      const prev = (getCrmClientSync(clientId) as any)?.lifeCrisisReports || [];
+      delivered = await updateCrmClientExtension(clientId, { lifeCrisisReports: [report, ...prev].slice(0, 20) } as any);
+    }
+    setDeliveredToLawyer(delivered);
     setIsSubmitted(true);
-    toast.success('생활위기 리포트가 접수되었습니다.');
+    if (delivered) toast.success('생활위기 내용을 담당 변호사에게 전달했습니다.');
+    else toast.info('내용을 이 기기에 저장했습니다. 담당 변호사·사무소에는 직접 연락해 주세요.', { duration: 5000 });
   };
 
   return (
@@ -77,7 +89,8 @@ export default function LifeCrisisModal({
           <button 
             type="button" 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="닫기"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -91,10 +104,10 @@ export default function LifeCrisisModal({
             
             <div className="space-y-2">
               <h4 className="text-lg font-black text-slate-900 dark:text-white">
-                사정변경 검토 리포트가 접수되었습니다
+                {deliveredToLawyer ? '담당 변호사에게 전달했습니다' : '이 기기에 기록했습니다'}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
-                작성하신 내용이 표준 사정변경 양식으로 정리되었습니다. 담당 변호사가 확인 후 변제계획 변경신청 요건을 검토하게 되며, 지금 즉시 이용 가능한 공적 지원제도를 확인해 보세요.
+                {deliveredToLawyer ? '담당 변호사가 내용을 확인하고 변제계획 변경신청 등 대응 방법을 안내합니다.' : '작성하신 내용은 담당 변호사·사무소에 자동 전달되지 않습니다. 납부일 전에 직접 연락해 상의해 주세요.'} 지금 이용할 수 있는 공적 지원제도도 확인해 보세요.
               </p>
             </div>
 
@@ -103,9 +116,9 @@ export default function LifeCrisisModal({
                 💡 마이김변 권장 위기 대응 우선순위
               </span>
               <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
-                <li>보건복지부 긴급복지지원 (생계비 최대 183만 원 무상지원)</li>
-                <li>고용노동부 국민취업지원제도 (월 50만 원 구직촉진수당)</li>
-                <li>법원 변제계획 변경신청 검토 (월 변제금 하향 조정)</li>
+                <li>보건복지부 긴급복지지원 — 위기가구 생계·의료 지원 (보건복지상담센터 129)</li>
+                <li>고용노동부 국민취업지원제도 — 구직촉진수당 (고객상담센터 1350)</li>
+                <li>변제계획 변경신청 검토 — 소득이 줄어든 경우 담당 변호사와 상의</li>
               </ul>
             </div>
 
@@ -154,7 +167,7 @@ export default function LifeCrisisModal({
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                       {r.label}
                     </span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 block mt-0.5">
                       {r.desc}
                     </span>
                   </button>
@@ -215,7 +228,7 @@ export default function LifeCrisisModal({
                 className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
               >
                 <Send className="w-4 h-4" />
-                <span>위기 SOS 접수하기</span>
+                <span>{clientId ? '담당 변호사에게 알리기' : '위기 상황 기록하기'}</span>
               </button>
             </div>
 
@@ -225,4 +238,10 @@ export default function LifeCrisisModal({
       </div>
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리
+export default function LifeCrisisModal(props: LifeCrisisModalProps) {
+  if (!props.isOpen) return null;
+  return <LifeCrisisModalInner {...props} />;
 }

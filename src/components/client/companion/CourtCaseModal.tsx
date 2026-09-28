@@ -24,10 +24,12 @@ export default function CourtCaseModal({
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<ScourtCaseDetail | null>(null);
   const [activeTab, setActiveTab] = useState<'status' | 'dates' | 'deliveries' | 'repayment'>('status');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async (force: boolean = false) => {
     if (!caseNumber) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await fetchCourtCase({
         courtName,
@@ -35,9 +37,16 @@ export default function CourtCaseModal({
         clientName,
         forceRefresh: force
       });
-      setData(res);
+      // 시연용 데이터는 사용자 사건처럼 표시하지 않음
+      if (res.isMock || !res.isB2BLive) {
+        setData(null);
+        setLoadError('대법원 사건 자동 조회는 아직 연동되지 않았습니다. 아래 버튼으로 대법원 사이트에서 직접 확인해 주세요.');
+      } else {
+        setData(res);
+      }
     } catch (err: any) {
-      toast.error(err.message || '법원 사건 정보를 불러오지 못했습니다.');
+      setData(null);
+      setLoadError(err.message || '법원 사건 정보를 불러오지 못했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -81,11 +90,11 @@ export default function CourtCaseModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  대법원 사건 실시간 조회
+                  대법원 사건 조회
                 </h3>
                 {data && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    전산망 연동
+                    자동 조회
                   </span>
                 )}
               </div>
@@ -100,15 +109,16 @@ export default function CourtCaseModal({
               type="button"
               onClick={() => loadData(true)}
               disabled={isLoading}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="새로고침"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="다시 조회"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-brand' : ''}`} />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="조회 창 닫기"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -121,6 +131,24 @@ export default function CourtCaseModal({
             <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
             <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
             <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+          </div>
+        )}
+
+        {/* 조회 불가·사건번호 미등록 안내 */}
+        {!isLoading && !data && (
+          <div className="p-6 space-y-4 text-center">
+            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+              {!caseNumber ? '등록된 사건번호가 없습니다. 사건번호를 등록하면 대법원 사이트에서 바로 조회할 수 있습니다.' : (loadError || '사건 정보를 불러오지 못했습니다.')}
+            </p>
+            {caseNumber && (
+              <button
+                type="button"
+                onClick={handleOpenScourtMobile}
+                className="inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] bg-brand hover:bg-brand-hover text-white rounded-xl text-sm font-bold cursor-pointer whitespace-nowrap"
+              >
+                사건번호 복사 후 대법원 사이트 열기
+              </button>
+            )}
           </div>
         )}
 

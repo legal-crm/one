@@ -122,7 +122,7 @@ function generateMockCourtData(courtName, caseNumber, clientName) {
   const parsed = parseCaseNumber(caseNumber);
   const isRehab = parsed.type === '개회' || caseNumber.includes('개회');
   const caseTypeName = isRehab ? '개인회생' : '개인파산 및 면책';
-  const targetName = clientName || '홍길동';
+  const targetName = clientName || '신청인';
 
   const today = new Date();
   const formatDate = (d) => d.toISOString().split('T')[0];
@@ -340,7 +340,20 @@ async function handler(req, res) {
     }
   }
 
-  // 2. 키 미설정 또는 개발 모드: 고품질 시뮬레이터 데이터 반환 + 공식 딥링크 안내
+  // 2. 실시간 조회 불가(키 미설정·호출 실패):
+  //    운영에서는 시연 데이터를 사용자 사건처럼 반환하지 않는다 (기존: 가짜 판사·기일·보정·납부내역을 실제 사건처럼 표시·3일 캐시)
+  if (process.env.NODE_ENV !== 'development' && process.env.SCOURT_ALLOW_MOCK !== 'true') {
+    return res.status(200).json({
+      ok: false,
+      isB2BLive: false,
+      error: '대법원 사건 자동 조회는 아직 연동되지 않았습니다. 대법원 나의 사건검색에서 직접 확인해 주세요.',
+      courtName,
+      caseNumber,
+      copySummaryText: `${courtName} ${caseNumber}`,
+      mobileUrl: 'https://m.scourt.go.kr',
+      webUrl: 'https://www.scourt.go.kr/portal/information/events/search/search.jsp',
+    });
+  }
   const mockData = generateMockCourtData(courtName, caseNumber, clientName);
 
   return res.status(200).json({

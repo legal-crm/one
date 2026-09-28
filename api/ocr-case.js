@@ -54,7 +54,7 @@ async function handler(req, res) {
     return res.status(413).json({ ok: false, error: '업로드 가능한 최대 이미지 용량(10MB)을 초과했습니다.' });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   // 1. Google Gemini Flash Vision API 키가 있는 경우: 실제 실시간 멀티모달 OCR 실행
   if (geminiKey && imageBase64) {
@@ -193,97 +193,21 @@ async function handler(req, res) {
     }
   }
 
-  // 2. API 키 미설정 또는 네트워크 실패 시: 서식 패턴 기반 지능형 파서로 무중단 폴백
-  const lowerName = (fileName || '').toLowerCase();
-  let defaultResult;
-
-  if (lowerName.includes('개시') || lowerName.includes('start')) {
-    defaultResult = {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '서울회생법원',
-      caseNumber: '2024개회108492',
-      caseStage: 'started',
-      monthlyRepaymentAmount: 480000,
-      repaymentDay: 10,
-      totalRounds: 36,
-      startRepaymentDate: '2025-07',
-      courtVirtualAccount: '신한은행 110-***-849201',
-      confidenceScore: 0.95,
-      detectedDocType: 'decision_start',
-      extractedHighlights: [
-        '문서 유형: 개인회생 개시결정문 인식 완료',
-        '관할: 서울회생법원 제21단독',
-        '사건번호: 2024개회108492 추출',
-        '변제계획안 제출 기일 및 채권자집회 확인'
-      ]
-    };
-  } else if (lowerName.includes('접수') || lowerName.includes('receipt') || lowerName.includes('신청')) {
-    defaultResult = {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '수원회생법원',
-      caseNumber: '2025개회204118',
-      caseStage: 'submitted',
-      monthlyRepaymentAmount: 420000,
-      repaymentDay: 25,
-      totalRounds: 36,
-      startRepaymentDate: '2026-03',
-      courtVirtualAccount: '국민은행 940-***-204118',
-      confidenceScore: 0.93,
-      detectedDocType: 'case_receipt',
-      extractedHighlights: [
-        '문서 유형: 전자소송 사건접수증 인식 완료',
-        '관할: 수원회생법원',
-        '사건번호: 2025개회204118 추출',
-        '금지명령 및 중지명령 신청 접수 확인'
-      ]
-    };
-  } else if (lowerName.includes('인가') || lowerName.includes('approval') || lowerName.includes('결정문')) {
-    defaultResult = {
-      isValidCourtDoc: true,
-      recognitionStatus: 'success',
-      courtName: '서울회생법원',
-      caseNumber: '2024개회108492',
-      caseStage: 'approved',
-      monthlyRepaymentAmount: 480000,
-      repaymentDay: 10,
-      totalRounds: 36,
-      startRepaymentDate: '2025-07',
-      courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
-      confidenceScore: 0.98,
-      detectedDocType: 'decision_approval',
-      extractedHighlights: [
-        '문서 유형: 변제계획인가결정문 정밀 인식 성공',
-        '인가일자: 2025년 6월 18일 인가 확정',
-        '확정 월 변제금: 480,000원 (총 36회차 분할납부)',
-        '법원 전용 변제금 가상계좌 인식 완료'
-      ]
-    };
-  } else {
-    // 회생/파산 서류 키워드가 없는 임의 파일인 경우 -> 실패 처리!
-    defaultResult = {
-      isValidCourtDoc: false,
-      recognitionStatus: 'invalid_document',
-      failureReason: '업로드된 파일에서 공식 법원 회생·파산 결정문 또는 사건접수증 서식을 확인할 수 없습니다.',
-      guidance: '선명한 법원 결정문/접수증 원본 사진을 다시 올려주시거나, 아래에서 사건번호를 직접 입력해 주세요.',
-      confidenceScore: 0.2,
-      detectedDocType: 'invalid_or_unrelated',
-      extractedHighlights: [
-        '공식 법원 회생/파산 서식 미식별',
-        '사건번호 및 변제 정보 미포함',
-        '직접 입력 또는 재촬영 권장'
-      ]
-    };
-  }
-
+  // 2. AI 키 미설정·판독 실패: 파일명으로 사건번호·가상계좌를 지어내지 않고 실패를 알린다
+  //    (기존: 파일명에 '인가/개시/접수'가 있으면 가짜 사건번호·계좌를 신뢰도 0.9 이상으로 반환)
   return res.status(200).json({
     ok: true,
     isRealAiOcr: false,
-    engine: '법원 서식 패턴 분석 파서',
     apiKeyConfigured: Boolean(geminiKey),
-    instruction: !geminiKey ? 'Vercel 환경변수 [GEMINI_API_KEY]를 설정하시면 Google Gemini Flash Vision 실시간 이미지 판독이 가동됩니다.' : undefined,
-    result: defaultResult
+    result: {
+      isValidCourtDoc: false,
+      recognitionStatus: 'unreadable',
+      failureReason: '서류를 자동으로 읽지 못했습니다.',
+      guidance: '사건번호와 변제 조건을 직접 입력해 주세요.',
+      confidenceScore: 0,
+      detectedDocType: 'unknown',
+      extractedHighlights: []
+    }
   });
 }
 

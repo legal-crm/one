@@ -917,6 +917,8 @@ export interface CrmClientExtension {
   crmStatus: CrmStatus;
   /** 의뢰인이 마이페이지에서 면책신청서 제출을 요청한 시각 (변호사 CRM 확인용) */
   dischargeRequestedAt?: string;
+  /** 의뢰인 회생동행 생활위기 SOS 기록 (최근 20건) */
+  lifeCrisisReports?: LifeCrisisReport[];
   assigneeId?: string;               // 통합 담당자 ID (변호사/사무장/직원 무관)
   // ── 하위 호환 (마이그레이션 후 제거 예정) ──
   assignedLawyerId?: string;
@@ -2643,6 +2645,8 @@ export interface BankruptcyCompanionCase {
   sourceType: CompanionSourceType;
   externalOfficeName?: string;
   courtName: string;
+  /** 실제 사건번호 (대법원 조회용) — 마스킹 번호로 조회하던 문제 방지 */
+  caseNumber?: string;
   caseNumberMasked: string;
   bankruptcyTrusteeName?: string; // 파산관재인
   timelines: BankruptcyTimelineItem[];

@@ -4,18 +4,33 @@ import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, AlertCircle, Sh
 import { toast } from 'sonner';
 import { validateUploadFile } from '../../../utils/fileSecurity';
 import CourtCaseModal from './CourtCaseModal';
+import { saveBankruptcyCase } from '../../../services/companionService';
 
 interface BankruptcyCompanionDashboardProps {
   caseData: BankruptcyCompanionCase;
+  clientId?: string;
+  onCaseUpdated?: (updated: BankruptcyCompanionCase) => void;
   onOpenCrisisModal: () => void;
 }
 
 export default function BankruptcyCompanionDashboard({
   caseData,
+  clientId,
+  onCaseUpdated,
   onOpenCrisisModal
 }: BankruptcyCompanionDashboardProps) {
-  const [uploadedFiles, setUploadedFiles] = useState(caseData?.documents || []);
+  const uploadedFiles = caseData?.documents || [];
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+  const timelines = caseData?.timelines || [];
+  const doneCount = timelines.filter(s => s.status === 'completed').length;
+  const currentIdx = timelines.findIndex(s => s.status === 'in_progress');
+  // 다음 주요 기일: 완료되지 않은 단계 중 날짜가 입력된 가장 이른 단계 (기존: '2026.09.25' 고정 표시)
+  const nextStage = timelines
+    .filter(s => s.status !== 'completed' && s.targetDate)
+    .sort((a, b) => String(a.targetDate).localeCompare(String(b.targetDate)))[0];
+  const nextDday = nextStage?.targetDate
+    ? Math.ceil((new Date(nextStage.targetDate).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
+    : null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,15 +42,18 @@ export default function BankruptcyCompanionDashboard({
       return;
     }
 
+    e.target.value = '';
     const newDoc = {
       id: `b-doc-${Date.now()}`,
       name: file.name,
       uploadedAt: new Date().toISOString().split('T')[0],
       status: 'pending' as const
     };
-
-    setUploadedFiles(prev => [newDoc, ...prev]);
-    toast.success(`${file.name} 관재인 소명 서류가 등록되었습니다.`);
+    // 목록(파일명·날짜)만 이 기기에 기록 — 파일은 관재인·사무소에 자동 제출되지 않음 (기존: '등록되었습니다' 안내 후 새로고침하면 사라짐)
+    const updated = { ...caseData, documents: [newDoc, ...uploadedFiles] };
+    saveBankruptcyCase(updated, clientId);
+    onCaseUpdated?.(updated);
+    toast.success(`'${file.name}'을(를) 제출 준비 목록에 기록했습니다. 파산관재인 제출은 관재인 안내 방법(우편·이메일 등) 또는 담당 사무소를 통해 진행해 주세요.`, { duration: 6000 });
   };
 
   return (
@@ -49,14 +67,14 @@ export default function BankruptcyCompanionDashboard({
               개인파산·면책 절차 모드
             </span>
             <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold">
-              {caseData.sourceType === 'external_office' ? '타 사무소 진행' : '마이김변 전담 변호사'}
+              {caseData.sourceType === 'external_office' ? '타 사무소 진행' : caseData.sourceType === 'self_litigant' ? '나홀로 진행' : '마이김변 변호사'}
             </span>
           </div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">
             🕊️ <span className="text-purple-600 dark:text-purple-400">{caseData.alias}</span> 님의 파산동행
           </h2>
           <p className="text-xs text-slate-500">
-            {caseData.courtName} | 사건번호: {caseData.caseNumberMasked} | 담당 파산관재인: {caseData.bankruptcyTrusteeName || '미지정'}
+            {caseData.courtName} | 사건번호: {caseData.caseNumberMasked || '미등록'} | 담당 파산관재인: {caseData.bankruptcyTrusteeName || '미등록'}
           </p>
         </div>
 
@@ -67,10 +85,10 @@ export default function BankruptcyCompanionDashboard({
               <span>다음 주요 기일 D-Day</span>
             </div>
             <p className="text-sm font-black text-slate-900 dark:text-white">
-              2026.09.25 (보정검토)
+              {nextStage ? `${nextStage.targetDate} (${nextStage.stageName})` : '등록된 기일 없음'}
             </p>
-            <span className="text-[11px] text-slate-500 block">
-              파산관재인 소명자료 추가 제출 기한
+            <span className="text-[11px] text-slate-600 dark:text-slate-300 block">
+              {nextDday === null ? '법원·관재인에게 받은 기일을 등록하면 D-Day를 표시합니다.' : nextDday >= 0 ? `D-${nextDday}` : `${-nextDday}일 지남`}
             </span>
           </div>
 
@@ -96,7 +114,7 @@ export default function BankruptcyCompanionDashboard({
             <span>파산·면책 절차 타임라인</span>
           </h3>
           <span className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 px-3 py-1 rounded-full">
-            5단계 진행 중 (총 6단계)
+            {timelines.length === 0 ? '단계 미등록' : currentIdx >= 0 ? `${currentIdx + 1}단계 진행 중 (총 ${timelines.length}단계)` : `${doneCount}/${timelines.length}단계 완료`}
           </span>
         </div>
 
@@ -164,9 +182,9 @@ export default function BankruptcyCompanionDashboard({
             <FileText className="w-5 h-5 text-purple-600" />
             <span>파산관재인 제출 및 소명 서류함</span>
           </h3>
-          <label className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]">
+          <label className="px-3.5 min-h-[44px] bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]">
             <Upload className="w-3.5 h-3.5" />
-            <span>서류 추가 업로드</span>
+            <span>제출 서류 기록</span>
             <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileUpload} />
           </label>
         </div>
@@ -181,8 +199,8 @@ export default function BankruptcyCompanionDashboard({
                   <p className="text-[10px] text-slate-400">등록일: {doc.uploadedAt}</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
-                {doc.status === 'reviewed' ? '검토 완료' : '제출 대기'}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${doc.status === 'reviewed' ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300' : 'text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300'}`}>
+                {doc.status === 'reviewed' ? '검토 완료' : '제출 준비'}
               </span>
             </div>
           ))}
@@ -194,7 +212,7 @@ export default function BankruptcyCompanionDashboard({
         isOpen={isCourtModalOpen}
         onClose={() => setIsCourtModalOpen(false)}
         courtName={caseData.courtName}
-        caseNumber={caseData.caseNumberMasked.replace(/\*/g, '0')}
+        caseNumber={caseData.caseNumber || ''}
         clientName={caseData.alias}
       />
     </div>

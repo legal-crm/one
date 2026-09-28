@@ -11,16 +11,17 @@ interface RepaymentPaymentModalProps {
   onSuccess: () => void;
   roundItem: RepaymentRoundItem | null;
   courtVirtualAccount?: string;
+  clientId?: string;
 }
 
-export default function RepaymentPaymentModal({
+function RepaymentPaymentModalInner({
   isOpen,
   onClose,
   onSuccess,
   roundItem,
-  courtVirtualAccount = '신한은행 110-***-849201'
+  courtVirtualAccount = '',
+  clientId
 }: RepaymentPaymentModalProps) {
-  if (!isOpen || !roundItem) return null;
 
   const [status, setStatus] = useState<RepaymentVerificationStatus>(
     roundItem.status === 'pending' ? 'self_marked' : roundItem.status
@@ -58,13 +59,15 @@ export default function RepaymentPaymentModal({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      updateRepaymentRound(
+      const saved = updateRepaymentRound(
         roundItem.round,
         status,
         receiptFile || undefined,
-        memo
+        memo,
+        clientId
       );
-      toast.success(`${roundItem.round}회차 납부 기록이 갱신되었습니다.`);
+      if (!saved) { toast.error('사건 정보를 찾지 못해 저장하지 못했습니다. 사건을 먼저 등록해 주세요.'); return; }
+      toast.success(`${roundItem.round}회차 납부 기록을 이 기기에 저장했습니다.`);
       onSuccess();
       onClose();
     } catch (err) {
@@ -305,4 +308,10 @@ export default function RepaymentPaymentModal({
       </div>
     </div>
   );
+}
+
+// Rules of Hooks: isOpen 가드는 훅을 쓰는 본문 바깥에서 처리 (열고 닫을 때 훅 개수 불일치 크래시 방지)
+export default function RepaymentPaymentModal(props: RepaymentPaymentModalProps) {
+  if (!props.isOpen || !props.roundItem) return null;
+  return <RepaymentPaymentModalInner {...props} />;
 }
