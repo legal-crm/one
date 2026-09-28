@@ -3,6 +3,8 @@ import { X, Printer, Download, Scale, CheckCircle2, AlertTriangle, FileText } fr
 import { toast } from 'sonner';
 import type { BankruptcyFullCaseData } from '../../../types/bankruptcyTypes';
 import ModalPortal from '../../common/ModalPortal';
+import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
+import { localYmd } from '../../../utils/localDate';
 
 interface PrintableBankruptcyPetitionModalProps {
   isOpen: boolean;
@@ -24,7 +26,7 @@ function PrintableBankruptcyPetitionModalInner({
 
   const handleDownloadPdf = () => {
     window.print();
-    toast.info('인쇄 창에서 "PDF로 저장"을 선택하시면 법원 제출 규격의 파산·면책 정식 서식 PDF로 저장됩니다.');
+    toast.info('인쇄 창에서 "PDF로 저장"을 선택하면 PDF로 저장됩니다. 관할 법원 서식과 대조한 뒤 사용하세요.');
   };
 
   const p = data.petition;
@@ -35,6 +37,16 @@ function PrintableBankruptcyPetitionModalInner({
   const r = lc.residence;
   const t = lc.taxArrears;
   const docs = data.requiredDocs || [];
+  // 빈칸은 빈칸으로 인쇄 (이전: 가짜 주민번호 800101-1******·서울시청 주소·'서초대로 456' 송달장소·'2022-03-01' 등)
+  const BLANK = '\u00A0'.repeat(14);
+  const office = getOfficeProfile(p.attorneyName);
+  const riskItems = Object.values(s.disallowanceScreening || {}).filter(Boolean).length;
+  const estate = data.totalLiquidationEstate || 0;
+  const income = p.monthlyNetIncome || 0;
+  const disposable = lc.budgetLedger?.disposableIncome || 0;
+  const lawsuitLabel: Record<string, string> = {
+    LOAN_LAWSUIT: '대여금 소송', PAYMENT_ORDER: '지급명령', SEIZURE_COLLECTION: '채권 압류·추심', CHATTEL_SEIZURE: '유체동산 압류', AUCTION: '부동산 경매', OTHER: '기타',
+  };
 
   return (
     <ModalPortal>
@@ -49,10 +61,10 @@ function PrintableBankruptcyPetitionModalInner({
             </span>
             <div>
               <h3 className="font-extrabold text-sm text-white">
-                대법원·회생법원 표준 개인파산 및 면책 8대 정식 서식 출력 패키지
+                개인파산 및 면책 신청서류 초안 (7종)
               </h3>
               <p className="text-[11px] text-slate-400">
-                신청인: {p.debtorName} · 관할: {p.courtName} · 관재인 5대 조사재산 & 미제출 사유서 완비
+                신청인: {p.debtorName} · 관할: {p.courtName || '미지정'} · 빈칸·사실관계 확인 후 사용
               </p>
             </div>
           </div>
@@ -126,23 +138,23 @@ function PrintableBankruptcyPetitionModalInner({
               <div className="space-y-2 text-sm font-sans border-b border-slate-200 pb-6">
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">신 &nbsp; 청 &nbsp; 인 :</span>
-                  <span className="font-bold">{p.debtorName} (주민번호: {p.debtorRrn || '800101-1******'})</span>
+                  <span className="font-bold">{p.debtorName} (주민번호: {p.debtorRrn || BLANK})</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">등록기준지 :</span>
-                  <span>{p.registeredDomicile || '서울특별시 중구 세종대로 110'}</span>
+                  <span>{p.registeredDomicile || BLANK}</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">주 &nbsp; &nbsp; &nbsp; 소 :</span>
-                  <span>{p.debtorAddress || '서울특별시 마포구 마포대로 123'}</span>
+                  <span>{p.debtorAddress || BLANK}</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">송 달 장 소 :</span>
-                  <span>{p.serviceAddress || '대리인 법률사무소 (서울특별시 서초구 서초대로 456, 501호)'}</span>
+                  <span>{p.serviceAddress || (office.address ? `대리인 사무소 (${office.address})` : BLANK)}</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">대 &nbsp; 리 &nbsp; 인 :</span>
-                  <span>변호사 {p.attorneyName || '담당변호사'}</span>
+                  <span>{office.firmName ? `${office.firmName} ` : ''}변호사 {p.attorneyName || BLANK}</span>
                 </div>
               </div>
 
@@ -159,20 +171,23 @@ function PrintableBankruptcyPetitionModalInner({
               {/* 신 청 이 유 */}
               <div className="space-y-3 font-sans leading-relaxed text-justify">
                 <h3 className="font-bold text-base text-slate-900">【 신 청 이 유 】</h3>
+                {/* 입력값에 따라 문장을 고른다 (이전: 재산이 있어도 '전무(0원)', 소득 비교 없이 '최저생계비 미달', 점검 항목이 체크돼도 '불허가사유 없음'을 고정 인쇄) */}
                 <p className="indent-4">
-                  1. 채무자는 현재 지급불능의 상태에 빠져 있습니다. 채무자의 총 채무액은 원금 <strong>{(p.totalDebtPrincipal || 0).toLocaleString()}원</strong>에 달하는 반면, 채무자가 보유한 재산은 법정 면제재산 및 압류금지 재산을 공제하면 실질적 환가 가치가 <strong>{(data.totalLiquidationEstate || 0).toLocaleString()}원</strong>으로 전무(0원)하여 변제능력이 완전히 상실되었습니다.
+                  1. 채무자는 현재 지급불능의 상태에 있습니다. 채무자의 총 채무액은 원금 <strong>{(p.totalDebtPrincipal || 0).toLocaleString()}원</strong>이고, 면제재산 및 압류금지 재산을 공제한 환가 대상 재산은 <strong>{estate.toLocaleString()}원</strong>{estate === 0 ? '으로 사실상 없습니다' : '으로 채무 총액에 크게 못 미칩니다'}.
                 </p>
                 <p className="indent-4">
-                  2. 채무자는 현재 월 소득이 <strong>{(p.monthlyNetIncome || 0).toLocaleString()}원</strong>에 불과하여 2026년 기준 국민기초생활보장 최저생계비에도 미치지 못하므로 정기적인 변제 재원을 마련할 수 없는 절대적 빈곤 상태입니다.
+                  2. 채무자의 월 소득은 <strong>{income.toLocaleString()}원</strong>{p.minimumLivingCost ? `이고, 가구원 ${p.householdMembersCount || 1}인 기준 생계비는 ${p.minimumLivingCost.toLocaleString()}원입니다` : '입니다'}. {disposable <= 0 ? '필수 생계비를 제외하면 채무를 변제할 여유 소득이 없습니다.' : '[여유 소득이 있음에도 파산을 신청하는 사정을 기재]'}
                 </p>
                 <p className="indent-4">
-                  3. 채무자에게는 채무자회생법 제564조 각 호에 해당하는 면책불허가사유가 존재하지 아니하며, 성실하고 불운한 채무자로서 갱생할 수 있도록 본 신청에 이르렀습니다.
+                  3. {riskItems === 0
+                    ? '채무자는 채무자회생법 제564조 제1항 각 호의 면책불허가사유에 해당하는 사실이 없다고 진술합니다.'
+                    : `채무자에게는 면책불허가사유와 관련하여 소명이 필요한 사정 ${riskItems}건이 있으며, 그 경위는 진술서에서 소명합니다. [재량면책(제564조 제2항) 사정 기재]`}
                 </p>
               </div>
 
               <div className="pt-8 text-center space-y-3 font-sans">
                 <p className="text-sm font-bold">
-                  {p.filingDate || new Date().toISOString().split('T')[0]}
+                  {p.filingDate || localYmd()}
                 </p>
                 <div className="flex justify-end pr-8">
                   <div className="text-left space-y-1">
@@ -181,7 +196,7 @@ function PrintableBankruptcyPetitionModalInner({
                   </div>
                 </div>
                 <div className="pt-6 font-bold text-lg text-slate-900">
-                  {p.courtName || '서울회생법원 귀중'}
+                  {p.courtName ? `${p.courtName} 귀중` : `${BLANK}법원 귀중`}
                 </div>
               </div>
             </div>
@@ -224,25 +239,25 @@ function PrintableBankruptcyPetitionModalInner({
 
               {/* 8대 면책불허가사유 점검표 */}
               <div className="space-y-2">
-                <h4 className="font-bold text-sm text-slate-900">3. 채무자회생법 제564조 면책불허가사유 점검</h4>
+                <h4 className="font-bold text-sm text-slate-900">3. 면책불허가 관련 사정 점검 (채무자회생법 제564조 제1항 참고)</h4>
                 <table className="w-full text-xs border border-slate-300">
                   <thead className="bg-slate-100 font-bold">
                     <tr>
-                      <th className="border border-slate-300 p-2 text-left">법정 불허가 사유 항목</th>
+                      <th className="border border-slate-300 p-2 text-left">점검 항목</th>
                       <th className="border border-slate-300 p-2 w-24 text-center">해당 여부</th>
                       <th className="border border-slate-300 p-2 text-left">비고 및 소명</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { key: 'gamblingOrSpeculation', label: '1. 도박, 사행성 게임, 가상자산/주식 과다 낭비' },
-                      { key: 'fraudulentLoan', label: '2. 대출 직전 허위 소득/재직증명 제출 (신용사기)' },
-                      { key: 'preferentialPayment', label: '3. 파산 직전 친인척 채무만 우선 변제 (편파변제)' },
-                      { key: 'concealmentOfAssets', label: '4. 재산 은닉, 타인 명의 이전, 헐값 처분' },
-                      { key: 'falseCreditorList', label: '5. 채권자목록 고의 누락 (허위 작성)' },
-                      { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산)/5년(회생) 이내 면책 이력' },
-                      { key: 'falseReportToTrustee', label: '7. 파산관재인에 대한 허위 진술 및 거부' },
-                      { key: 'creditTransactionBeforeFiling', label: '8. 파산 직전 무리한 신용카드/대출 발생' },
+                      { key: 'gamblingOrSpeculation', label: '1. 도박·사행행위 또는 과다한 낭비' },
+                      { key: 'fraudulentLoan', label: '2. 허위 소득·재직 자료로 차용' },
+                      { key: 'preferentialPayment', label: '3. 특정 채권자에게만 변제' },
+                      { key: 'concealmentOfAssets', label: '4. 재산 은닉·명의이전·헐값 처분' },
+                      { key: 'falseCreditorList', label: '5. 채권자목록 누락·허위 기재' },
+                      { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산)/5년(회생) 이내 면책' },
+                      { key: 'falseReportToTrustee', label: '7. 관재인·법원에 대한 허위 설명·자료 거부' },
+                      { key: 'creditTransactionBeforeFiling', label: '8. 신청 직전 신용카드·대출 이용' },
                     ].map(item => {
                       const isChecked = (s.disallowanceScreening as any)[item.key];
                       return (
@@ -252,7 +267,7 @@ function PrintableBankruptcyPetitionModalInner({
                             {isChecked ? <span className="text-rose-600">해당</span> : <span className="text-emerald-700">해당없음</span>}
                           </td>
                           <td className="border border-slate-300 p-2 text-slate-500">
-                            {isChecked ? '별도 소명서 첨부' : '법정 요건 부합'}
+                            {isChecked ? '소명 필요 (진술서 기재)' : '-'}
                           </td>
                         </tr>
                       );
@@ -313,7 +328,7 @@ function PrintableBankruptcyPetitionModalInner({
                       </td>
                       <td className="border border-slate-300 p-2 text-center">
                         {item.isNonDischargeable ? (
-                          <span className="text-rose-600 font-bold">비면책(조세)</span>
+                          <span className="text-rose-600 font-bold">비면책(제566조)</span>
                         ) : (
                           <span className="text-emerald-700">면책대상</span>
                         )}
@@ -321,7 +336,7 @@ function PrintableBankruptcyPetitionModalInner({
                       <td className="border border-slate-300 p-2 text-[11px]">
                         {item.lawsuitInfo?.hasLawsuit ? (
                           <span>
-                            [{item.lawsuitInfo.lawsuitType}] {item.lawsuitInfo.courtName} {item.lawsuitInfo.caseNumber}
+                            [{lawsuitLabel[item.lawsuitInfo.lawsuitType || 'OTHER'] || '기타'}] {item.lawsuitInfo.courtName} {item.lawsuitInfo.caseNumber}
                           </span>
                         ) : (
                           <span className="text-slate-400">-</span>
@@ -351,7 +366,7 @@ function PrintableBankruptcyPetitionModalInner({
             <div className="space-y-6 pt-10 border-t-2 border-slate-300 break-after-page font-sans">
               <div className="text-center space-y-1 mb-6">
                 <h2 className="text-xl font-bold tracking-wider">재 &nbsp; 산 &nbsp; 목 &nbsp; 록</h2>
-                <p className="text-xs text-slate-500">(1,110만 원 면제재산 및 파산관재인 5대 특수 조사재산 표기)</p>
+                <p className="text-xs text-slate-500">(면제재산 공제 및 파산관재인 주요 조사재산 표기)</p>
               </div>
 
               {/* 기본 재산 */}
@@ -502,7 +517,7 @@ function PrintableBankruptcyPetitionModalInner({
                         {r?.residenceType === 'OTHER' && '기타 거주'}
                       </td>
                       <td className="border border-slate-300 p-2 bg-slate-100 font-bold w-32">거주시작 시점</td>
-                      <td className="border border-slate-300 p-2 font-mono">{r?.startDate || '2022-03-01'}</td>
+                      <td className="border border-slate-300 p-2 font-mono">{r?.startDate || BLANK}</td>
                     </tr>
                     <tr>
                       <td className="border border-slate-300 p-2 bg-slate-100 font-bold">임차보증금 / 월세</td>
@@ -511,7 +526,7 @@ function PrintableBankruptcyPetitionModalInner({
                       </td>
                       <td className="border border-slate-300 p-2 bg-slate-100 font-bold">명의인 / 관계</td>
                       <td className="border border-slate-300 p-2">
-                        {r?.ownerName || '임대인'} ({r?.ownerRelation || '소유자'})
+                        {r?.ownerName || BLANK}{r?.ownerRelation ? ` (${r.ownerRelation})` : ''}
                       </td>
                     </tr>
                     {(r?.freeStayReason) && (
@@ -526,7 +541,7 @@ function PrintableBankruptcyPetitionModalInner({
 
               {/* 비면책 조세 체납표 */}
               <div className="space-y-2">
-                <h4 className="font-bold text-sm text-slate-900">2. 비면책 조세 및 공과금 체납 현황</h4>
+                <h4 className="font-bold text-sm text-slate-900">2. 조세 및 공과금 체납 현황</h4>
                 <table className="w-full text-xs border border-slate-300">
                   <thead className="bg-slate-100 font-bold">
                     <tr>
@@ -552,13 +567,13 @@ function PrintableBankruptcyPetitionModalInner({
                   </tbody>
                 </table>
                 <p className="text-[11px] text-slate-500 pt-1">
-                  * 채무자회생법 제566조 제1호에 따라 조세 등 채권은 면책결정에도 불구하고 변제 책임이 유지됨을 확인합니다.
+                  * 조세 채권은 면책결정이 있어도 책임이 면제되지 않습니다(채무자회생법 제566조 제1호). 건강보험료·국민연금 등 공과금의 비면책 여부는 담당 변호사가 확인합니다.
                 </p>
               </div>
 
               {/* 가계수지표 (월 가용소득 0원 입증) */}
               <div className="space-y-2">
-                <h4 className="font-bold text-sm text-slate-900">3. 가계수지표 (월 가용소득 0원 입증)</h4>
+                <h4 className="font-bold text-sm text-slate-900">3. 가계수지표</h4>
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <table className="w-full border border-slate-300">
                     <thead className="bg-slate-100 font-bold">
@@ -609,7 +624,7 @@ function PrintableBankruptcyPetitionModalInner({
 
                 <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex justify-between items-center text-xs font-bold text-emerald-950">
                   <span>월 잉여 가용소득 (A - B):</span>
-                  <span className="font-mono text-sm">{(lc.budgetLedger.disposableIncome || 0).toLocaleString()}원 (개인회생 변제계획 수립 불가 · 파산 적격 완벽 입증)</span>
+                  <span className="font-mono text-sm">{(lc.budgetLedger.disposableIncome || 0).toLocaleString()}원</span>
                 </div>
               </div>
             </div>
@@ -620,7 +635,7 @@ function PrintableBankruptcyPetitionModalInner({
             <div className="space-y-6 pt-10 border-t-2 border-slate-300 break-after-page font-sans">
               <div className="text-center space-y-1 mb-6">
                 <h2 className="text-xl font-bold tracking-wider">자 &nbsp; 료 &nbsp; 제 &nbsp; 출 &nbsp; 목 &nbsp; 록</h2>
-                <p className="text-xs text-slate-500">(서울회생법원 실무준칙 개인파산 필수 소명자료 및 미제출 사유서)</p>
+                <p className="text-xs text-slate-500">(소명자료 제출 현황 및 미제출 사유)</p>
               </div>
 
               <table className="w-full text-xs border border-slate-300">
@@ -645,15 +660,19 @@ function PrintableBankruptcyPetitionModalInner({
                         <td className="border border-slate-300 p-2 text-center font-bold">
                           {isSubmitted ? (
                             <span className="text-emerald-700">제출</span>
-                          ) : (
+                          ) : doc.status === 'UNOBTAINABLE' ? (
                             <span className="text-amber-700">미제출</span>
+                          ) : (
+                            <span className="text-slate-500">준비중</span>
                           )}
                         </td>
                         <td className="border border-slate-300 p-2 text-slate-700">
                           {isSubmitted ? (
-                            <span className="text-slate-400 font-mono">첨부 완료</span>
+                            <span className="text-slate-400 font-mono">첨부</span>
+                          ) : doc.status === 'UNOBTAINABLE' ? (
+                            <span className="font-bold text-amber-900">{doc.unobtainableReason || '[미제출 사유 기재]'}</span>
                           ) : (
-                            <span className="font-bold text-amber-900">{doc.unobtainableReason || '해당 사유 없음'}</span>
+                            <span className="text-slate-400">-</span>
                           )}
                         </td>
                       </tr>
@@ -664,7 +683,7 @@ function PrintableBankruptcyPetitionModalInner({
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
                 <p className="font-bold text-slate-800">※ 파산관재인 및 법원 안내사항:</p>
-                <p>위 미제출 자료는 채무자에게 해당 재산이 부존재하거나 객관적 발급 불가 사유로 인해 부득이하게 제출하지 못한 것이며, 추후 법원 또는 파산관재인의 보정요구 시 사실조회 촉탁 등을 통하여 성실히 소명하겠습니다.</p>
+                <p>미제출 자료는 위 사유란에 적은 사정으로 제출하지 못한 것이며, 법원 또는 파산관재인의 보정요구가 있으면 추가로 소명하겠습니다.</p>
               </div>
             </div>
           )}
@@ -683,11 +702,11 @@ function PrintableBankruptcyPetitionModalInner({
                 </div>
                 <div className="flex">
                   <span className="w-24 font-bold text-slate-700">위 &nbsp; 임 &nbsp; 인 :</span>
-                  <span>{p.debtorName} (주민등록번호: {p.debtorRrn || '800101-1******'})</span>
+                  <span>{p.debtorName} (주민등록번호: {p.debtorRrn || BLANK})</span>
                 </div>
                 <div className="flex">
                   <span className="w-24 font-bold text-slate-700">수 &nbsp; 임 &nbsp; 인 :</span>
-                  <span>변호사 {p.attorneyName}</span>
+                  <span>{office.firmName ? `${office.firmName} ` : ''}변호사 {p.attorneyName || BLANK}{office.address ? ` (${office.address})` : ''}</span>
                 </div>
               </div>
 
@@ -706,7 +725,7 @@ function PrintableBankruptcyPetitionModalInner({
 
               <div className="pt-12 text-center space-y-4">
                 <p className="text-sm font-bold">
-                  {p.filingDate || new Date().toISOString().split('T')[0]}
+                  {p.filingDate || localYmd()}
                 </p>
                 <div className="flex justify-end pr-12">
                   <div className="text-left space-y-2 text-sm">

@@ -39,6 +39,9 @@ interface DebtCertificateTabProps {
   crmExt: CrmClientExtension;
   onUpdateCrmExt: (updates: Partial<CrmClientExtension>) => Promise<void>;
   onNavigateToRepayment?: () => void;
+  /** 인증서 금고 열람 기록에 남길 담당자 */
+  actorName?: string;
+  actorRole?: string;
 }
 
 
@@ -48,6 +51,8 @@ export default function DebtCertificateTab({
   crmExt,
   onUpdateCrmExt,
   onNavigateToRepayment,
+  actorName,
+  actorRole,
 }: DebtCertificateTabProps) {
   // 주문/발급 데이터 상태
   const [order, setOrder] = useState<DebtCertificateOrder>(() => {
@@ -546,10 +551,13 @@ export default function DebtCertificateTab({
         {/* ── 의뢰인 공동인증서 / 금융인증서 안전 금고 위젯 ── */}
         <div className="pt-5">
           <CertificateVaultCard
+            key={clientId}
             clientId={clientId}
             clientRequest={clientRequest}
             crmExt={crmExt}
             onUpdateCrmExt={onUpdateCrmExt}
+            actorName={actorName}
+            actorRole={actorRole}
           />
         </div>
 

@@ -7,7 +7,6 @@ import {
   ChevronRight, RefreshCw, FileWarning, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { saveBankruptcyCase } from '../../../services/companionService';
 import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 import type { 
@@ -39,11 +38,11 @@ export default function BankruptcyManagementTab({
   clientRequest,
   crmExt,
   onUpdateCrmExt,
-  activeLawyerName = '담당 변호사',
+  activeLawyerName = '',
   onOpenBatchFiling
 }: BankruptcyManagementTabProps) {
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
+  const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
   // 상담 입력값만 사용 (이전: 미입력 시 채무 8,000만 원·소득 80만 원을 가정)
   const rawDebt = (clientRequest.financialProfile?.debtTotal || 0) * 10000;
   const rawIncome = (clientRequest.financialProfile?.income || 0) * 10000;
@@ -214,34 +213,63 @@ export default function BankruptcyManagementTab({
   // 7. 파산 15대 필수자료제출목록 (미제출 사유 인라인 입력 지원)
   const [requiredDocs, setRequiredDocs] = useState<BankruptcyRequiredDoc[]>(() => {
     if (savedBk?.requiredDocs && savedBk.requiredDocs.length > 0) return savedBk.requiredDocs;
-    return [
-      { id: 'bd-1', itemNumber: 1, category: '인적서류', title: '가족관계증명서 (상세)', detailDescription: '상세본 필수', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-2', itemNumber: 2, category: '인적서류', title: '혼인관계증명서 (상세)', detailDescription: '이혼이력 포함', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-3', itemNumber: 3, category: '인적서류', title: '주민등록초본 (말소/주소변동 전체 포함)', detailDescription: '과거 주소 변동 전체', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-4', itemNumber: 4, category: '인적서류', title: '주민등록등본', detailDescription: '세대원 전체 표기', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-5', itemNumber: 5, category: '세금서류', title: '지방세 세목별 과세증명서', detailDescription: '과거 5년간 전국 자치단체', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-6', itemNumber: 6, category: '재산서류', title: '자동차등록원부 (갑/을부)', detailDescription: '차량 유무 불문 발급', isMandatory: false, status: 'SUBMITTED' },
-      { id: 'bd-7', itemNumber: 7, category: '재산서류', title: '부동산 등기사항전부증명서 (해당시)', detailDescription: '소유 또는 최근 매각분', isMandatory: false, status: 'UNOBTAINABLE', unobtainableReason: '신청인 소유 부동산 일체 없어 미제출' },
-      { id: 'bd-8', itemNumber: 8, category: '보험서류', title: '생존자 보험가입내역조회서 및 해약환급금확인서', detailDescription: '내보험다보여 발급', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-9', itemNumber: 9, category: '금융서류', title: '통장 입출금 거래내역서 (과거 1년~2년)', detailDescription: '주거래 은행 전 계좌', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-10', itemNumber: 10, category: '소득서류', title: '폐업사실증명원 또는 소득금액증명', detailDescription: '소득 0원인 경우 사실증명원', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-11', itemNumber: 11, category: '건보서류', title: '건강보험료 자격득실확인서 및 납부확인서', detailDescription: '최근 3년분', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-12', itemNumber: 12, category: '특수소명', title: '최근 1년 내 처분재산(1,000만 이상) 매매계약서 및 영수증', detailDescription: '대금사용처 소명', isMandatory: false, status: 'UNOBTAINABLE', unobtainableReason: '최근 1년 내 1,000만 원 이상 처분한 재산 일체 없음' },
-      { id: 'bd-13', itemNumber: 13, category: '주거서류', title: '임대차계약서 사본 및 무상거주확인서', detailDescription: '현재 거주지 증명', isMandatory: true, status: 'SUBMITTED' },
-      { id: 'bd-14', itemNumber: 14, category: '특수소명', title: '최근 2년 이내 이혼 관련 판결서 또는 재산분할 합의서', detailDescription: '이혼 해당자 필수', isMandatory: false, status: 'UNOBTAINABLE', unobtainableReason: '최근 2년 이내 이혼 사실 없으므로 비해당' },
-      { id: 'bd-15', itemNumber: 15, category: '대리서류', title: '소송위임장 및 인감증명서', detailDescription: '변호사 대리 선임용', isMandatory: true, status: 'SUBMITTED' },
+    // 모든 서류는 '준비중'으로 시작 (이전: 12종을 '제출완료'로, 3종은 '부동산 없음'·'처분재산 없음'·'이혼 사실 없음' 같은
+    //  의뢰인 사실을 지어낸 미제출 사유로 채워 법원 제출용 자료제출목록에 인쇄)
+    const base: Array<[string, string, string, boolean]> = [
+      ['인적서류', '가족관계증명서 (상세)', '상세본 필수', true],
+      ['인적서류', '혼인관계증명서 (상세)', '이혼이력 포함', true],
+      ['인적서류', '주민등록초본 (말소/주소변동 전체 포함)', '과거 주소 변동 전체', true],
+      ['인적서류', '주민등록등본', '세대원 전체 표기', true],
+      ['세금서류', '지방세 세목별 과세증명서', '관할 법원 요구 기간 확인', true],
+      ['재산서류', '자동차등록원부 (갑/을부)', '해당 여부 확인', false],
+      ['재산서류', '부동산 등기사항전부증명서 (해당시)', '소유 또는 최근 매각분', false],
+      ['보험서류', '보험가입내역조회서 및 해약환급금확인서', '내보험다보여 등', true],
+      ['금융서류', '통장 입출금 거래내역서', '관할 법원 요구 기간 확인', true],
+      ['소득서류', '소득금액증명 또는 사실증명원', '소득 유무에 따라', true],
+      ['건보서류', '건강보험 자격득실확인서 및 납부확인서', '관할 법원 요구 기간 확인', true],
+      ['특수소명', '최근 처분재산 매매계약서 및 대금 사용처 자료', '해당 시', false],
+      ['주거서류', '임대차계약서 사본 또는 무상거주확인서', '현재 거주지 증명', true],
+      ['특수소명', '최근 이혼 관련 판결서 또는 재산분할 합의서', '해당 시', false],
+      ['대리서류', '소송위임장', '변호사 대리 선임용', true],
     ];
+    return base.map(([category, title, detailDescription, isMandatory], i) => ({
+      id: `bd-${i + 1}`, itemNumber: i + 1, category, title, detailDescription, isMandatory, status: 'PREPARING' as const,
+    }));
   });
 
   // 총 환가 가치 (파산재단 가액) 계산: 기본 자산 + 퇴직금 환가액
   const totalLiquidationEstate = useMemo(() => {
-    const basicLiquidation = assets.reduce((sum, a) => sum + a.liquidationValue, 0);
-    const severanceLiquidation = investigationAssets.severancePay.liquidationAmount || 0;
+    const basicLiquidation = assets.reduce((sum, a) => sum + (a.liquidationValue || 0), 0);
+    // 퇴직금 체크를 해제하면 환가액도 빼야 한다 (이전: 해제해도 1/2 금액이 남음)
+    const severanceLiquidation = investigationAssets.severancePay.hasSeverance ? (investigationAssets.severancePay.liquidationAmount || 0) : 0;
     return basicLiquidation + severanceLiquidation;
   }, [assets, investigationAssets.severancePay]);
 
-  // 파산폐지(동시폐지) 적격 판정
+  // 환가 대상 재산 0원 여부 (동시폐지 여부는 법원이 결정 — 제317조. 여기서는 참고 지표로만 사용)
   const isSimultaneousDismissalEligible = totalLiquidationEstate === 0;
+
+  // 재산 항목 편집 (이전: setAssets가 없어 재산을 입력할 수 없었고, 모든 행이 '환가배제 0원'으로 표시)
+  const recalcAsset = (a: BankruptcyAssetItem): BankruptcyAssetItem => {
+    const liquidationValue = Math.max(0, (a.marketValue || 0) - (a.seniorLien || 0) - (a.statutoryExemption || 0));
+    return { ...a, liquidationValue, isExcludedFromEstate: liquidationValue === 0 };
+  };
+  const handleAddAsset = () => setAssets(prev => [...prev, recalcAsset({
+    id: `ast-${Date.now()}`, assetName: '', assetCategory: 'OTHER', marketValue: 0, seniorLien: 0,
+    statutoryExemption: 0, appliedExemptionType: 'NONE', liquidationValue: 0, isExcludedFromEstate: true,
+  })]);
+  const updateAsset = (id: string, patch: Partial<BankruptcyAssetItem>) =>
+    setAssets(prev => prev.map(a => (a.id === id ? recalcAsset({ ...a, ...patch }) : a)));
+
+  // 가계수지표 편집 (이전: setBudget이 없어 지출이 항상 0원 → 소득 전액이 잉여소득으로 인쇄)
+  const updateBudget = (patch: Partial<typeof budget>) => setBudget(prev => {
+    const n = { ...prev, ...patch };
+    n.totalIncome = (n.earnedIncome || 0) + (n.pensionOrWelfare || 0) + (n.familySupport || 0);
+    n.totalLivingExpense = (n.housingRent || 0) + (n.foodAndDailySupplies || 0) + (n.medicalExpenses || 0)
+      + (n.utilitiesAndCommunication || 0) + (n.educationExpenses || 0) + (n.transportation || 0) + (n.clothingExpenses || 0);
+    n.disposableIncome = n.totalIncome - n.totalLivingExpense;
+    n.isDisposableZeroOrNegative = n.disposableIncome <= 0;
+    return n;
+  });
 
   // 전체 파산 데이터 객체
   const fullCaseData: BankruptcyFullCaseData = useMemo(() => ({
@@ -251,7 +279,10 @@ export default function BankruptcyManagementTab({
     investigationAssets,
     livingCondition: {
       residence,
-      familyMembers: [{ id: 'fm-1', relationship: '본인', name: clientName, age: 45, job: '무직/일용직', monthlyIncome: rawIncome, isCohabiting: true, isDependent: true }],
+      // 나이·직업은 입력값이 없으므로 비워 둔다 (이전: 45세·'무직/일용직' 고정값을 저장)
+      familyMembers: savedBk?.livingCondition?.familyMembers?.length
+        ? savedBk.livingCondition.familyMembers
+        : [{ id: 'fm-1', relationship: '본인', name: clientName, age: 0, job: '', monthlyIncome: rawIncome, isCohabiting: true, isDependent: true }],
       taxArrears,
       budgetLedger: budget
     },
@@ -270,13 +301,10 @@ export default function BankruptcyManagementTab({
     setIsSaving(true);
     try {
       await onUpdateCrmExt({
-        bankruptcyData: fullCaseData
+        bankruptcyData: { ...fullCaseData, lastSavedAt: new Date().toISOString() }
       });
-      saveBankruptcyCase({
-        courtName: petition.courtName,
-        alias: clientName,
-      });
-      toast.success('개인파산 및 면책 동시신청 데이터가 성공적으로 저장되었습니다.');
+      // (이전: saveBankruptcyCase를 clientId 없이 호출해 이 기기의 다른 의뢰인 파산동행 기록을 덮어쓸 수 있었음 → 제거)
+      toast.success('개인파산·면책 신청 자료를 사건 정보에 저장했습니다.');
     } catch (err) {
       console.error(err);
       toast.error('파산 데이터 저장 중 오류가 발생했습니다.');
@@ -351,9 +379,9 @@ export default function BankruptcyManagementTab({
       id: `c-${Date.now()}`,
       creditorName: '',
       debtCause: 'CASH_LOAN',
-      debtCauseDetail: '신용대출',
-      borrowedDate: new Date().toISOString().split('T')[0],
-      principal: 10000000,
+      debtCauseDetail: '',
+      borrowedDate: '',
+      principal: 0,
       interest: 0,
       isNonDischargeable: false
     };
@@ -378,8 +406,8 @@ export default function BankruptcyManagementTab({
                   개인파산 및 면책 동시신청 관리 센터
                 </h3>
                 {isSimultaneousDismissalEligible ? (
-                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    ✨ 동시폐지(관재인 비용 절감) 적격 판정
+                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-300" title="동시폐지 여부는 법원이 결정합니다(채무자회생법 제317조). 관재인 선임 여부는 관할 실무에 따라 다릅니다.">
+                    입력된 환가 대상 재산 0원 (동시폐지·관재 여부는 법원 판단)
                   </span>
                 ) : (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
@@ -388,7 +416,7 @@ export default function BankruptcyManagementTab({
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                신청인: <strong className="text-slate-800">{clientName}</strong> · 총채무: {petition.totalDebtPrincipal.toLocaleString()}원 · 가용소득: {budget.disposableIncome.toLocaleString()}원 · 관할: {petition.courtName}
+                신청인: <strong className="text-slate-800">{clientName}</strong> · 총채무: {petition.totalDebtPrincipal.toLocaleString()}원 · 가용소득: {budget.disposableIncome.toLocaleString()}원 · 관할: {petition.courtName || '미지정'}
               </p>
             </div>
           </div>
@@ -417,7 +445,7 @@ export default function BankruptcyManagementTab({
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 cursor-pointer press-scale whitespace-nowrap"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>파산·면책 8대 서식 출력/PDF</span>
+              <span>파산·면책 신청서류 초안 출력</span>
             </button>
           </div>
         </div>
@@ -426,15 +454,15 @@ export default function BankruptcyManagementTab({
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 text-xs">
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between">
             <span className="text-slate-500 font-medium">1. 가용소득 판정:</span>
-            <span className="font-extrabold font-mono text-emerald-600">
-              {budget.disposableIncome <= 0 ? '0원 이하 (변제불능 합격)' : `+${budget.disposableIncome.toLocaleString()}원 (회생 권고)`}
+            <span className={`font-extrabold font-mono ${budget.disposableIncome <= 0 ? 'text-slate-700' : 'text-amber-600'}`}>
+              {budget.disposableIncome <= 0 ? '0원 이하' : `+${budget.disposableIncome.toLocaleString()}원 (개인회생 가능성 검토)`}
             </span>
           </div>
 
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between">
             <span className="text-slate-500 font-medium">2. 환가재산 (청산가치):</span>
             <span className="font-extrabold font-mono text-blue-600">
-              {totalLiquidationEstate.toLocaleString()}원 (전액 면제 인정)
+              {totalLiquidationEstate.toLocaleString()}원 (입력 기준)
             </span>
           </div>
 
@@ -448,7 +476,7 @@ export default function BankruptcyManagementTab({
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between">
             <span className="text-slate-500 font-medium">4. 면책불허가 리스크:</span>
             <span className={`font-bold ${riskCount === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {riskCount === 0 ? '안전 (사유 없음)' : `${riskCount}건 주의/방어필요`}
+              {riskCount === 0 ? '체크된 항목 없음' : `${riskCount}건 검토 필요`}
             </span>
           </div>
         </div>
@@ -518,7 +546,7 @@ export default function BankruptcyManagementTab({
                 value={petition.serviceAddress || ''} 
                 onChange={(e) => setPetition({ ...petition, serviceAddress: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
-                placeholder="예: 서울특별시 서초구 서초대로 456, 501호 (담당변호사)"
+                placeholder="비워 두면 사무소 설정의 주소로 인쇄됩니다"
               />
             </div>
           </div>
@@ -584,7 +612,7 @@ export default function BankruptcyManagementTab({
         <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
           <div className="border-b border-slate-100 pb-4">
             <h4 className="font-bold text-sm text-slate-900">
-              채무자회생법 제564조 면책불허가사유 8대 항목 자가진단 및 과거 법적이력
+              면책불허가 관련 8개 점검 항목 (채무자회생법 제564조 제1항 참고) 및 과거 법적이력
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
               해당 사항이 있을 경우 파산관재인의 심문 대상이 되므로 사전 방어 논리를 소명해야 합니다.
@@ -601,9 +629,11 @@ export default function BankruptcyManagementTab({
                   checked={statement.pastDischargeHistory?.hasPastDischarge || false}
                   onChange={(e) => setStatement({
                     ...statement,
+                    // 경과 여부는 면책일을 확인해 판단해야 하므로 자동으로 '부적격' 처리하지 않는다
                     pastDischargeHistory: {
+                      ...(statement.pastDischargeHistory || {}),
                       hasPastDischarge: e.target.checked,
-                      isElapsedEligible: !e.target.checked
+                      isElapsedEligible: statement.pastDischargeHistory?.isElapsedEligible ?? true,
                     }
                   })}
                   className="w-4 h-4 rounded text-purple-600"
@@ -648,14 +678,15 @@ export default function BankruptcyManagementTab({
           {/* 8대 불허가 항목 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-2">
             {[
-              { key: 'gamblingOrSpeculation', label: '1. 도박, 사행성 게임, 가상자산/주식 과다 낭비', hint: '손실액 전액 청산가치 가산 또는 재량면책 검토 필요' },
-              { key: 'fraudulentLoan', label: '2. 대출 직전 허위 소득/재직증명 제출 (신용사기)', hint: '형사 고소 및 비면책채권 지정 리스크' },
-              { key: 'preferentialPayment', label: '3. 파산 직전 친인척 채무만 우선 변제 (편파변제)', hint: '관재인의 부인권 행사 대상' },
-              { key: 'concealmentOfAssets', label: '4. 재산 은닉, 타인 명의 이전, 헐값 처분', hint: '사해행위 취소 소송 및 면책불허가 사유' },
-              { key: 'falseCreditorList', label: '5. 채권자목록 고의 누락 (허위 작성)', hint: '누락된 채권은 면책 효력 미적용' },
-              { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산) / 5년(회생) 이내 면책 이력', hint: '법정 기간 미경과 시 기각 처분' },
-              { key: 'falseReportToTrustee', label: '7. 파산관재인에 대한 허위 진술 및 서류 제출 거부', hint: '설명의무 위반' },
-              { key: 'creditTransactionBeforeFiling', label: '8. 파산 신청 직전(1~2개월) 신용카드/대출 발생', hint: '상환의사 없는 차용으로 간주될 위험' },
+              // 힌트는 제564조 제1항 각 호와의 관계를 보수적으로 적는다. 해당해도 재량면책(제564조 제2항) 여지가 있다.
+              { key: 'gamblingOrSpeculation', label: '1. 도박·사행행위 또는 과다한 낭비', hint: '제6호 관련 — 재산 감소·채무 부담 경위 소명, 재량면책 검토' },
+              { key: 'fraudulentLoan', label: '2. 허위 소득·재직 자료로 차용', hint: '제2호(신용거래로 재산 취득) 등 관련 여부 검토' },
+              { key: 'preferentialPayment', label: '3. 특정 채권자(친인척 등)에게만 변제', hint: '관재인 부인권 대상 가능, 제1호(제651조 등) 관련 여부 검토' },
+              { key: 'concealmentOfAssets', label: '4. 재산 은닉·명의이전·헐값 처분', hint: '제1호(사기파산죄 등) 관련 여부 검토' },
+              { key: 'falseCreditorList', label: '5. 채권자목록 누락·허위 기재', hint: '제3호 관련. 악의로 누락한 청구권은 비면책(제566조 제7호)' },
+              { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산) / 5년(회생) 이내 면책 이력', hint: '제4호 — 면책일 확인 필요' },
+              { key: 'falseReportToTrustee', label: '7. 관재인·법원에 대한 허위 설명 또는 자료 제출 거부', hint: '제5호(채무자 의무 위반) 관련' },
+              { key: 'creditTransactionBeforeFiling', label: '8. 신청 직전 신용카드·대출 이용', hint: '경위 소명 필요 (사유 해당 여부는 사실관계에 따라 판단)' },
             ].map(item => {
               const isChecked = (statement.disallowanceScreening as any)[item.key];
               return (
@@ -745,7 +776,8 @@ export default function BankruptcyManagementTab({
                               serviceAddress: preset.serviceAddress,
                               representative: preset.representative,
                               bizNumber: preset.bizNumber,
-                              isNonDischargeable: preset.isPriorityDefault ?? item.isNonDischargeable
+                              // 우선권(조세 등)과 비면책(제566조)은 다른 개념 — 프리셋으로 비면책을 자동 지정하지 않는다
+                              isNonDischargeable: item.isNonDischargeable
                             } : item));
                             toast.success(`'${preset.officialName}' 공식 송달주소가 적용되었습니다!`);
                           }}
@@ -779,7 +811,7 @@ export default function BankruptcyManagementTab({
                         }}
                         className="rounded text-rose-600"
                       />
-                      <span>비면책채권(조세/벌금)</span>
+                      <span title="제566조 각 호(조세·벌금 등, 고의 불법행위 손해배상, 임금·퇴직금, 양육비·부양료, 악의로 누락한 청구권 등)">비면책채권(제566조)</span>
                     </label>
                     <button 
                       onClick={() => setCreditors(prev => prev.filter(item => item.id !== c.id))}
@@ -806,7 +838,7 @@ export default function BankruptcyManagementTab({
                       <option value="PURCHASE_GOODS">물품대금</option>
                       <option value="INDEMNITY">구상금 채무</option>
                       <option value="GUARANTEE">연대보증 채무</option>
-                      <option value="OTHER">조세 및 기타</option>
+                      <option value="OTHER">기타</option>
                     </select>
                   </div>
                   <div>
@@ -1015,32 +1047,52 @@ export default function BankruptcyManagementTab({
         <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6 shadow-xs">
           <div className="border-b border-slate-100 pb-4">
             <h4 className="font-bold text-sm text-slate-900">
-              기본 재산목록 & 🌟 파산관재인 5대 심층 조사재산 (리걸플로 실무 규격)
+              기본 재산목록 & 파산관재인 주요 조사재산
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              채무자회생법 제383조(면제재산 1,110만 원) 공제와 함께 파산관재인이 최우선 조사하는 5대 특수재산을 소명합니다.
+              면제재산(채무자회생법 제383조) 공제와 함께 파산관재인이 주로 조사하는 재산(처분재산·반환보증금·이혼 재산분할·상속·퇴직금)을 소명합니다.
             </p>
           </div>
 
-          {/* 1. 기본 재산목록 (1,110만 공제) */}
+          {/* 1. 기본 재산목록 — 직접 입력, 환가액 = max(0, 평가액 - 담보 - 면제·공제액) */}
           <div className="space-y-3">
-            <h5 className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
-              <span>🏦</span> 신청인 기본 재산 (면제재산 및 압류금지 공제)
-            </h5>
+            <div className="flex items-center justify-between">
+              <h5 className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                <span>🏦</span> 신청인 기본 재산 (면제재산 및 압류금지 공제)
+              </h5>
+              <button
+                type="button"
+                onClick={handleAddAsset}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3 h-3" /> 재산 추가
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500">면제·공제액은 면제재산 결정(제383조)·압류금지 기준에 따라 직접 입력하세요. 금액 기준은 시행령 개정에 따라 바뀔 수 있습니다.</p>
             <div className="space-y-2">
+              {assets.length === 0 && (
+                <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">입력된 재산이 없습니다.</div>
+              )}
               {assets.map(ast => (
-                <div key={ast.id} className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-slate-900">{ast.assetName}</span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      평가액: {ast.marketValue.toLocaleString()}원 - 법정공제: {ast.statutoryExemption.toLocaleString()}원 ({ast.appliedExemptionType})
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-md">
-                      환가배제(자유재산)
+                <div key={ast.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50 grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs items-center">
+                  <input type="text" value={ast.assetName} placeholder="재산명 (예: 임차보증금)" aria-label="재산명"
+                    onChange={(e) => updateAsset(ast.id, { assetName: e.target.value })}
+                    className="sm:col-span-2 border border-slate-200 rounded-lg p-1.5" />
+                  <input type="number" value={ast.marketValue || ''} placeholder="평가액" aria-label="평가액"
+                    onChange={(e) => updateAsset(ast.id, { marketValue: Number(e.target.value) || 0 })}
+                    className="border border-slate-200 rounded-lg p-1.5 font-mono text-right" />
+                  <input type="number" value={ast.seniorLien || ''} placeholder="담보채무" aria-label="담보채무"
+                    onChange={(e) => updateAsset(ast.id, { seniorLien: Number(e.target.value) || 0 })}
+                    className="border border-slate-200 rounded-lg p-1.5 font-mono text-right" />
+                  <input type="number" value={ast.statutoryExemption || ''} placeholder="면제·공제액" aria-label="면제·공제액"
+                    onChange={(e) => updateAsset(ast.id, { statutoryExemption: Number(e.target.value) || 0 })}
+                    className="border border-slate-200 rounded-lg p-1.5 font-mono text-right" />
+                  <div className="flex items-center justify-end gap-2">
+                    <span className={`font-mono font-bold ${ast.liquidationValue > 0 ? 'text-rose-700' : 'text-slate-600'}`}>
+                      환가 {ast.liquidationValue.toLocaleString()}원
                     </span>
-                    <div className="font-mono font-bold text-slate-900 mt-1">0원</div>
+                    <button type="button" aria-label="재산 삭제" onClick={() => setAssets(prev => prev.filter(x => x.id !== ast.id))}
+                      className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               ))}
@@ -1071,7 +1123,7 @@ export default function BankruptcyManagementTab({
 
               {investigationAssets.disposedAssets1Year.length === 0 ? (
                 <div className="text-center py-4 bg-white/60 rounded-xl border border-dashed border-purple-200 text-xs text-slate-500">
-                  최근 1년 내 처분한 부동산 또는 고가 재산 없음 (양호)
+                  입력된 처분재산 없음 — 해당 사실이 없는지 의뢰인에게 확인하세요
                 </div>
               ) : (
                 investigationAssets.disposedAssets1Year.map(disp => (
@@ -1172,7 +1224,7 @@ export default function BankruptcyManagementTab({
 
               {investigationAssets.returnedDeposits2Years.length === 0 ? (
                 <div className="text-center py-4 bg-white/60 rounded-xl border border-dashed border-purple-200 text-xs text-slate-500">
-                  최근 2년간 반환받은 종전 임차보증금 없음 (양호)
+                  입력된 반환 보증금 없음 — 해당 사실이 없는지 의뢰인에게 확인하세요
                 </div>
               ) : (
                 investigationAssets.returnedDeposits2Years.map(ret => (
@@ -1622,18 +1674,17 @@ export default function BankruptcyManagementTab({
 
           {/* 3. 가계수지표 */}
           <div className="space-y-3 pt-4 border-t border-slate-200">
-            <h4 className="font-bold text-sm text-slate-900">가계수지표 (월 가용소득 0원 입증)</h4>
+            <h4 className="font-bold text-sm text-slate-900">가계수지표</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <span className="font-bold text-slate-700 block">월 총 수입 (A)</span>
-                <div className="flex justify-between items-center">
-                  <span>근로/알바 소득</span>
-                  <span className="font-mono font-bold">{budget.earnedIncome.toLocaleString()}원</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>생계급여/기초연금</span>
-                  <span className="font-mono font-bold">{budget.pensionOrWelfare.toLocaleString()}원</span>
-                </div>
+                {([['earnedIncome', '근로/알바 소득'], ['pensionOrWelfare', '생계급여/기초연금'], ['familySupport', '가족 지원금']] as const).map(([k, label]) => (
+                  <label key={k} className="flex justify-between items-center gap-2">
+                    <span>{label}</span>
+                    <input type="number" value={(budget as any)[k] || ''} onChange={(e) => updateBudget({ [k]: Number(e.target.value) || 0 } as any)}
+                      className="w-32 border border-slate-200 rounded-lg p-1 font-mono text-right bg-white" aria-label={label} />
+                  </label>
+                ))}
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200 font-bold">
                   <span>수입 합계</span>
                   <span className="font-mono text-blue-600">{budget.totalIncome.toLocaleString()}원</span>
@@ -1642,18 +1693,16 @@ export default function BankruptcyManagementTab({
 
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <span className="font-bold text-slate-700 block">월 필수 생계비 지출 (B)</span>
-                <div className="flex justify-between items-center">
-                  <span>주거비 (월세)</span>
-                  <span className="font-mono font-bold">{budget.housingRent.toLocaleString()}원</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>의료비 / 약값</span>
-                  <span className="font-mono font-bold">{budget.medicalExpenses.toLocaleString()}원</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>식비 및 공과금</span>
-                  <span className="font-mono font-bold">{(budget.foodAndDailySupplies + budget.utilitiesAndCommunication).toLocaleString()}원</span>
-                </div>
+                {([
+                  ['housingRent', '주거비 (월세·관리비)'], ['foodAndDailySupplies', '식비·생필품'], ['utilitiesAndCommunication', '공과금·통신비'],
+                  ['medicalExpenses', '의료비 / 약값'], ['educationExpenses', '교육비'], ['transportation', '교통비'], ['clothingExpenses', '피복비'],
+                ] as const).map(([k, label]) => (
+                  <label key={k} className="flex justify-between items-center gap-2">
+                    <span>{label}</span>
+                    <input type="number" value={(budget as any)[k] || ''} onChange={(e) => updateBudget({ [k]: Number(e.target.value) || 0 } as any)}
+                      className="w-32 border border-slate-200 rounded-lg p-1 font-mono text-right bg-white" aria-label={label} />
+                  </label>
+                ))}
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200 font-bold">
                   <span>지출 합계</span>
                   <span className="font-mono text-rose-600">{budget.totalLivingExpense.toLocaleString()}원</span>
@@ -1663,7 +1712,7 @@ export default function BankruptcyManagementTab({
 
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 font-bold flex justify-between items-center">
               <span>월 잉여 가용소득 (A - B):</span>
-              <span className="font-mono text-sm">{budget.disposableIncome.toLocaleString()}원 (개인회생 변제금 납부 불가능 증명 완료)</span>
+              <span className="font-mono text-sm">{budget.disposableIncome.toLocaleString()}원{budget.disposableIncome > 0 ? ' (잉여소득 있음 — 개인회생 가능성 검토)' : ''}</span>
             </div>
           </div>
         </div>
@@ -1675,14 +1724,14 @@ export default function BankruptcyManagementTab({
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h4 className="font-bold text-sm text-slate-900">
-                서울회생법원 실무준칙 개인파산 15대 필수자료제출목록 및 미제출 사유서
+                개인파산 자료제출목록 (15항목) 및 미제출 사유
               </h4>
               <p className="text-xs text-slate-500 mt-0.5">
-                미제출 서류의 경우 사유를 작성하면 법원 정식 양식의 <strong>'자료제출목록 및 미제출 사유서'</strong>로 자동 출력됩니다.
+                관할 법원이 요구하는 자료 목록과 대조해 사용하세요. 미제출 사유는 사실대로 직접 작성해야 하며 초안 출력에 반영됩니다.
               </p>
             </div>
             <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-lg border border-purple-200">
-              제출 {requiredDocs.filter(d => d.status === 'SUBMITTED').length}건 / 미제출·소명 {requiredDocs.filter(d => d.status !== 'SUBMITTED').length}건
+              제출 {requiredDocs.filter(d => d.status === 'SUBMITTED').length}건 / 미제출 {requiredDocs.filter(d => d.status === 'UNOBTAINABLE').length}건 / 준비중 {requiredDocs.filter(d => d.status === 'PREPARING').length}건
             </span>
           </div>
 
@@ -1721,11 +1770,11 @@ export default function BankruptcyManagementTab({
                           setRequiredDocs(prev => prev.map(x => x.id === d.id ? { 
                             ...x, 
                             status: 'UNOBTAINABLE',
-                            unobtainableReason: x.unobtainableReason || '해당 사유 없음 또는 발급 불가로 미제출'
+                            unobtainableReason: x.unobtainableReason || ''
                           } : x));
                         }}
                         className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                          !isSubmitted 
+                          d.status === 'UNOBTAINABLE'
                             ? 'bg-amber-600 text-white shadow-xs' 
                             : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                         }`}
@@ -1735,7 +1784,7 @@ export default function BankruptcyManagementTab({
                     </div>
                   </div>
 
-                  {!isSubmitted && (
+                  {d.status === 'UNOBTAINABLE' && (
                     <div className="pt-2 border-t border-slate-200">
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-amber-800 shrink-0">

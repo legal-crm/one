@@ -58,6 +58,7 @@ import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/Workflow
 import { computePipelineGates, pipelineLockReason, stageForStatus } from './pipeline/pipelineGates';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
+import { formatVaultDday } from '../../services/vault/certificateVaultService';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
@@ -3051,7 +3052,7 @@ export default function CrmTab({
                           <span>인증서 금고</span>
                           {selectedExt.certificateVault?.npki && (
                             <span className="text-[10px] bg-emerald-700/80 px-1.5 py-0.2 rounded font-mono">
-                              D-{selectedExt.certificateVault.npki.daysRemaining}
+                              {formatVaultDday(selectedExt.certificateVault.npki.validTo)}
                             </span>
                           )}
                         </button>
@@ -3293,7 +3294,7 @@ export default function CrmTab({
                         key: 'vault', 
                         label: '인증서 금고', 
                         icon: '🔐', 
-                        count: selectedExt.certificateVault?.npki ? `D-${selectedExt.certificateVault.npki.daysRemaining}` : null 
+                        count: selectedExt.certificateVault?.npki ? formatVaultDday(selectedExt.certificateVault.npki.validTo) : null 
                       },
                       { 
                         key: 'debt-certs', 
@@ -4433,12 +4434,15 @@ export default function CrmTab({
 
                         {/* ── 의뢰인 인증서 안전 금고 위젯 (문서 탭 상단) ── */}
                         <CertificateVaultCard
+                          key={selectedId}
                           clientId={selectedId}
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           onUpdateCrmExt={async (patch) => {
                             await saveOrThrow(selectedId, patch);
                           }}
+                          actorName={activeStaff?.name || activeLawyer.name || undefined}
+                          actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
                         />
 
                         {/* Progress Dashboard */}
@@ -4961,12 +4965,15 @@ export default function CrmTab({
                   {detailTab === 'vault' && selectedClient && (
                     <div className="space-y-4">
                       <CertificateVaultCard
+                        key={selectedId}
                         clientId={selectedId}
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
                         onUpdateCrmExt={async (updates) => {
                           await saveOrThrow(selectedId, updates);
                         }}
+                        actorName={activeStaff?.name || activeLawyer.name || undefined}
+                        actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
                       />
                     </div>
                   )}
@@ -4974,6 +4981,7 @@ export default function CrmTab({
                   {/* ══════════ [9] 부채증명서 발급 대행 탭 ══════════ */}
                   {detailTab === 'debt-certs' && selectedClient && (
                     <DebtCertificateTab
+                      key={selectedId}
                       clientId={selectedId}
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
@@ -4981,6 +4989,8 @@ export default function CrmTab({
                         await saveOrThrow(selectedId, updates);
                       }}
                       onNavigateToRepayment={() => setDetailTab('repayment')}
+                      actorName={activeStaff?.name || activeLawyer.name || undefined}
+                      actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
                     />
                   )}
 
@@ -5000,6 +5010,7 @@ export default function CrmTab({
                   {/* ══════════ [11] 개인파산 및 면책 동시신청 종합 관리 탭 (개인파산) ══════════ */}
                   {detailTab === 'bankruptcy' && selectedClient && (
                     <BankruptcyManagementTab
+                      key={selectedId}
                       clientId={selectedId}
                       clientRequest={selectedClient}
                       crmExt={selectedExt}

@@ -12,8 +12,10 @@ import {
   copyWithAutoZeroize, 
   createAccessLog, 
   shredCertificateVault,
-  simulateFinancialRelayRequest,
-  saveCertificateVault
+  buildFinancialRelayGuide,
+  recordFinancialRelayGuide,
+  computeDaysRemaining,
+  formatLocalDate,
 } from '../../../services/vault/certificateVaultService';
 
 interface CertificateVaultModalProps {
@@ -22,7 +24,18 @@ interface CertificateVaultModalProps {
   vault: CertificateVaultData;
   onUpdateVault: (updated: CertificateVaultData) => Promise<void>;
   onClose: () => void;
+  /** 열람 기록에 남길 담당자 이름 (이전: '김수현 (수임사무장)'·'이진우 대표변호사' 하드코딩) */
+  actorName?: string;
+  actorRole?: string;
 }
+
+/** Base64 길이로 실제 파일 크기 표시 (이전: 2.1 KB / 1.8 KB 고정) */
+const formatB64Size = (b64?: string) => {
+  if (!b64) return '크기 확인 불가';
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  const bytes = Math.max(0, Math.floor((b64.length * 3) / 4) - pad);
+  return bytes >= 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${bytes} B`;
+};
 
 type TabType = 'npki' | 'financial' | 'audit' | 'consent';
 
@@ -31,7 +44,7 @@ const PURPOSE_PRESETS = [
   '신한카드/캐피탈/저축은행 온라인 부채내역 조회 및 발급',
   '대법원 전자소송(ECFS) 포털 당사자 본인인증 및 사건조회',
   '어카운트인포/국세청/위택스 공공 서류 전수조회',
-  '부채발급 대행사(원클릭, 윈행정사 등) 안전 전송',
+  // (삭제) '부채발급 대행사(…) 안전 전송' — 의뢰인 인증서를 제3자에게 넘기는 목적은 위임 범위 밖일 수 있어 기본 선택지에서 제외
 ];
 
 export default function CertificateVaultModal({
@@ -40,6 +53,8 @@ export default function CertificateVaultModal({
   vault,
   onUpdateVault,
   onClose,
+  actorName = '담당자(이름 미확인)',
+  actorRole = '담당자',
 }: CertificateVaultModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('npki');
   
@@ -52,14 +67,10 @@ export default function CertificateVaultModal({
 
   // 클립보드 30초 자동 소거 상태
   const [zeroizeRemaining, setZeroizeRemaining] = useState<number | null>(null);
-  const cancelZeroizeRef = useRef<(() => void) | null>(null);
+  const cancelZeroizeRef = useRef<((clearNow?: boolean) => void) | null>(null);
 
-  // 금융인증서 릴레이 상태
+  // 금융인증서 원격 승인 안내 (자동 발송·번호 생성 없음)
   const [relayTargetCreditor, setRelayTargetCreditor] = useState('국민은행');
-  const [activeRelayNumber, setActiveRelayNumber] = useState<string | null>(
-    vault.financial?.lastRelayNumber || null
-  );
-  const [isRelayWaiting, setIsRelayWaiting] = useState(false);
 
   // 영구 파기(Shredding) 확인 모달
   const [showShredConfirm, setShowShredConfirm] = useState(false);
@@ -68,12 +79,14 @@ export default function CertificateVaultModal({
   const npki = vault.npki;
   const financial = vault.financial;
   const isShredded = vault.status === 'shredded';
+  // 저장된 daysRemaining은 업로드 시점 값이라 매번 재계산
+  const npkiDays = npki ? computeDaysRemaining(npki.validTo) : null;
 
-  // 언마운트 시 클립보드 타이머 해제
+  // 언마운트(모달 닫기) 시 타이머 해제 + 클립보드 즉시 소거 시도
   useEffect(() => {
     return () => {
       if (cancelZeroizeRef.current) {
-        cancelZeroizeRef.current();
+        cancelZeroizeRef.current(true);
       }
     };
   }, []);
@@ -91,24 +104,14 @@ export default function CertificateVaultModal({
     setIsDecrypting(true);
     try {
       // 복호화
-      let plain = '';
-      if (npki.encryptedPassword === 'dGhpcy1pcy1hbi1lbmNyeXB0ZWQtcGFzc3dvcmQtbW9jaw==') {
-        // 데모 시드용 비밀번호
-        plain = 'lawyer2026!@#';
-      } else {
-        plain = await decryptCertPassword(npki.encryptedPassword, npki.iv);
-      }
+      // (삭제) 특정 암호문이면 고정 비밀번호를 돌려주던 데모 백도어
+      const plain = await decryptCertPassword(npki.encryptedPassword, npki.iv);
 
       setDecryptedPassword(plain);
       setShowDecryptGate(false);
 
       // 감사 로그 기록
-      const log = createAccessLog(
-        '김수현 (수임사무장)',
-        '수임사무장',
-        'password_view',
-        finalPurpose
-      );
+      const log = createAccessLog(actorName, actorRole, 'password_view', finalPurpose);
 
       const updatedVault: CertificateVaultData = {
         ...vault,
@@ -116,7 +119,7 @@ export default function CertificateVaultModal({
       };
 
       await onUpdateVault(updatedVault);
-      toast.success('인증서 비밀번호가 복호화되었습니다. (사법 감사로그 영구 기록됨)');
+      toast.success('인증서 비밀번호가 복호화되었습니다. 열람 기록이 이 브라우저에 저장되었습니다.');
     } catch (err: any) {
       toast.error(err.message || '비밀번호 복호화 실패');
     } finally {
@@ -136,14 +139,18 @@ export default function CertificateVaultModal({
       decryptedPassword,
       30,
       (sec) => setZeroizeRemaining(sec),
-      () => {
+      (ok) => {
         setZeroizeRemaining(null);
-        toast.info('보안을 위해 클립보드가 자동 소거(Zeroize)되었습니다.');
+        if (ok) toast.info('클립보드를 비웠습니다.');
+        else toast.error('클립보드 자동 소거에 실패했습니다 (브라우저 권한/포커스). 다른 텍스트를 복사해 직접 덮어써 주세요.', { duration: 8000 });
+      },
+      (ok) => {
+        if (ok) toast.success('비밀번호가 복사되었습니다. 30초 후 클립보드 소거를 시도합니다.');
+        else toast.error('클립보드 복사에 실패했습니다. 화면의 비밀번호를 직접 입력해 주세요.');
       }
     );
 
     cancelZeroizeRef.current = cancel;
-    toast.success('비밀번호가 복사되었습니다. 30초 후 클립보드에서 자동 삭제됩니다.');
   };
 
   // 3. 파일 다운로드
@@ -151,7 +158,7 @@ export default function CertificateVaultModal({
     if (!npki?.derBase64) return;
     downloadBase64File(npki.derBase64, npki.derFileName || 'signCert.der');
 
-    const log = createAccessLog('김수현 (수임사무장)', '수임사무장', 'file_download', 'signCert.der 공개키 인증서 다운로드');
+    const log = createAccessLog(actorName, actorRole, 'file_download', 'signCert.der 공개키 인증서 다운로드');
     onUpdateVault({ ...vault, accessLogs: [log, ...vault.accessLogs] });
     toast.success('signCert.der 파일이 다운로드되었습니다.');
   };
@@ -160,62 +167,45 @@ export default function CertificateVaultModal({
     if (!npki?.keyBase64) return;
     downloadBase64File(npki.keyBase64, npki.keyFileName || 'signPri.key');
 
-    const log = createAccessLog('김수현 (수임사무장)', '수임사무장', 'file_download', 'signPri.key 개인키 파일 다운로드');
+    const log = createAccessLog(actorName, actorRole, 'file_download', 'signPri.key 개인키 파일 다운로드');
     onUpdateVault({ ...vault, accessLogs: [log, ...vault.accessLogs] });
-    toast.success('signPri.key 개인키 파일이 다운로드되었습니다.');
+    toast.success('signPri.key 개인키 파일이 다운로드되었습니다. 사용 후 PC에서 삭제해 주세요.');
   };
 
-  // 4. 금융인증서 릴레이 요청
-  const handleSendFinancialRelay = async () => {
+  // 4. 금융인증서 원격 승인 안내 문구 복사
+  // (이전: Math.random 2자리 번호를 만들어 '발송되었습니다' 표시 + '의뢰인 승인 완료 시뮬레이션' 버튼)
+  const handleCopyFinancialRelayGuide = async () => {
     if (!financial || isShredded) return;
-
-    setIsRelayWaiting(true);
-    const { updatedVault, relayNumber } = simulateFinancialRelayRequest(
-      vault, 
-      '김수현 (수임사무장)', 
-      relayTargetCreditor
-    );
-    setActiveRelayNumber(relayNumber);
-    await onUpdateVault(updatedVault);
-
-    toast.success(
-      `[${relayTargetCreditor}] 부채발급용 금융인증서 2자리 승인번호 [${relayNumber}] 확인 요청이 ${financial.relayPhone}으로 발송되었습니다.`,
-      { duration: 6000 }
-    );
-
-    setTimeout(() => {
-      setIsRelayWaiting(false);
-    }, 1500);
+    const text = buildFinancialRelayGuide(clientRequest.clientName || '', relayTargetCreditor);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+      return;
+    }
+    await onUpdateVault(recordFinancialRelayGuide(vault, actorName, actorRole, relayTargetCreditor));
+    toast.success('원격 승인 안내 문구가 복사되었습니다. 자동 발송되지 않으니 채팅·문자로 전달해 주세요.', { duration: 6000 });
   };
 
-  // 5. 금융인증서 승인 완료 시뮬레이션
-  const handleSimulateRelayApprove = async () => {
-    if (!financial) return;
-    const log = createAccessLog(
-      clientRequest.clientName || '의뢰인',
-      '의뢰인',
-      'relay_request',
-      `의뢰인이 모바일 금융인증서 앱에서 승인번호 [${activeRelayNumber || '42'}]를 확인하고 로그인을 승인했습니다.`
-    );
-    const updatedVault: CertificateVaultData = {
-      ...vault,
-      financial: {
-        ...financial,
-        relayStatus: 'approved',
-      },
-      accessLogs: [log, ...vault.accessLogs],
-    };
-    await onUpdateVault(updatedVault);
-    toast.success('의뢰인이 금융인증서 원격 승인을 완료했습니다! 부채조회를 계속 진행할 수 있습니다.');
-  };
-
-  // 6. 영구 파기(Shredding)
+  // 5. 이 브라우저 사본 삭제
   const handleExecuteShred = async () => {
-    const shredded = shredCertificateVault(vault, '이진우 대표변호사', shredReason);
+    const shredded = shredCertificateVault(vault, actorName, shredReason);
     await onUpdateVault(shredded);
     setShowShredConfirm(false);
     setDecryptedPassword(null);
-    toast.error('인증서 파일 및 암호화 키가 영구 파기(Crypto-Shredding)되었습니다.');
+    toast.success('이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 삭제했습니다. 내려받은 파일·다른 기기 사본은 따로 삭제해야 합니다.', { duration: 8000 });
+  };
+
+  // 6. 미등록 시 제출 요청 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 전송되었습니다' 표시)
+  const handleCopySubmitRequest = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `[${clientRequest.clientName || '의뢰인'}님] 부채증명서 발급·전자소송 진행을 위해 마이페이지 > 인증서 제출에서 공동인증서를 등록해 주세요. ${origin}/?tab=mypage`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('인증서 제출 요청 문구가 복사되었습니다. 자동 발송되지 않으니 채팅·문자로 전달해 주세요.');
+    } catch {
+      toast.error('클립보드 복사에 실패했습니다.');
+    }
   };
 
   return (
@@ -234,12 +224,12 @@ export default function CertificateVaultModal({
                 </h3>
                 {isShredded ? (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold">
-                    영구 파기됨
+                    사본 삭제됨
                   </span>
                 ) : (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" />
-                    브라우저 암호화 보관
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3" />
+                    이 브라우저에만 보관
                   </span>
                 )}
               </div>
@@ -270,7 +260,7 @@ export default function CertificateVaultModal({
             공동인증서 (NPKI)
             {npki && !isShredded && (
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300">
-                D-{npki.daysRemaining}
+                {npkiDays === null ? '만료일 미확인' : npkiDays <= 0 ? '만료' : `D-${npkiDays}`}
               </span>
             )}
           </button>
@@ -301,7 +291,7 @@ export default function CertificateVaultModal({
             }`}
           >
             <Clock className="w-4 h-4" />
-            사법 감사추적 로그
+            열람 기록
             <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
               {vault.accessLogs.length}
             </span>
@@ -316,7 +306,7 @@ export default function CertificateVaultModal({
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            위임 동의 및 영구 파기
+            위임 동의 및 사본 삭제
           </button>
         </div>
 
@@ -328,12 +318,12 @@ export default function CertificateVaultModal({
               {isShredded ? (
                 <div className="p-6 bg-rose-950/20 border border-rose-900/30 rounded-2xl text-center space-y-2">
                   <AlertOctagon className="w-10 h-10 text-rose-400 mx-auto" />
-                  <h4 className="text-sm font-bold text-rose-300">인증서가 영구 파기(Shredded)되었습니다</h4>
+                  <h4 className="text-sm font-bold text-rose-300">이 브라우저의 인증서 사본이 삭제되었습니다</h4>
                   <p className="text-xs text-rose-400/80">
-                    사건 면책 종결 또는 고객 철회로 인해 암호화 키와 바이너리가 복구 불가능하게 삭제되었습니다.
+                    이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웠습니다. 이전에 내려받은 파일이나 다른 기기의 사본은 이 기능으로 삭제되지 않습니다.
                   </p>
                   <p className="text-[11px] text-slate-400">
-                    파기 일시: {new Date(vault.shreddedAt || '').toLocaleString('ko-KR')} | 담당: {vault.shreddedBy}
+                    삭제 일시: {vault.shreddedAt ? new Date(vault.shreddedAt).toLocaleString('ko-KR') : '-'} | 담당: {vault.shreddedBy || '-'}
                   </p>
                 </div>
               ) : npki ? (
@@ -354,21 +344,27 @@ export default function CertificateVaultModal({
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">일련번호</span>
-                        <span className="font-mono text-slate-200">{npki.serialNumber || '2025-08-94102941'}</span>
+                        <span className="font-mono text-slate-200 break-all">{npki.serialNumber || '확인 불가'}</span>
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">유효기간 만료일</span>
-                        <span className="font-mono text-slate-200">{npki.validTo.slice(0, 10)}</span>
+                        <span className="font-mono text-slate-200">{formatLocalDate(npki.validTo)}</span>
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
                         <span className="text-slate-400 block text-[11px]">잔여 유효기간</span>
-                        <span className={`font-bold ${npki.daysRemaining <= 30 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                          {npki.daysRemaining}일 남음
-                        </span>
+                        {npkiDays === null ? (
+                          <span className="font-bold text-slate-400">확인 불가</span>
+                        ) : npkiDays <= 0 ? (
+                          <span className="font-bold text-rose-400">만료됨</span>
+                        ) : (
+                          <span className={`font-bold ${npkiDays <= 30 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {npkiDays}일 남음
+                          </span>
+                        )}
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">보안 규격</span>
-                        <span className="text-emerald-400 font-semibold">Web Crypto AES-GCM (앱 내장 키 — 서버 KMS 전환 필요)</span>
+                        <span className="text-slate-400 block text-[11px]">보안 수준</span>
+                        <span className="text-amber-400 font-semibold">비밀번호만 AES-GCM (앱 내장 키) · 인증서 파일은 미암호화 — 서버 KMS 전환 필요</span>
                       </div>
                     </div>
                   </div>
@@ -385,7 +381,7 @@ export default function CertificateVaultModal({
                           <FileText className="w-4 h-4 text-blue-400" />
                           <div>
                             <span className="text-xs font-mono font-medium text-slate-200">signCert.der</span>
-                            <span className="block text-[10px] text-slate-400">공개키 인증서 (2.1 KB)</span>
+                            <span className="block text-[10px] text-slate-400">공개키 인증서 ({formatB64Size(npki.derBase64)})</span>
                           </div>
                         </div>
                         <button
@@ -402,7 +398,7 @@ export default function CertificateVaultModal({
                           <FileText className="w-4 h-4 text-amber-400" />
                           <div>
                             <span className="text-xs font-mono font-medium text-slate-200">signPri.key</span>
-                            <span className="block text-[10px] text-slate-400">개인키 파일 (1.8 KB)</span>
+                            <span className="block text-[10px] text-slate-400">개인키 파일 ({formatB64Size(npki.keyBase64)})</span>
                           </div>
                         </div>
                         <button
@@ -425,7 +421,7 @@ export default function CertificateVaultModal({
                           인증서 비밀번호 보안 열람
                         </h5>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          열람 시 사용 목적이 사법 감사로그에 영구 기록되며, 클립보드 복사 시 30초 후 자동 삭제됩니다.
+                          열람 시 사용 목적이 이 브라우저의 열람 기록에 남으며, 클립보드 복사 시 30초 후 소거를 시도합니다.
                         </p>
                       </div>
                     </div>
@@ -450,7 +446,7 @@ export default function CertificateVaultModal({
                       <div className="p-4 bg-slate-900 rounded-xl border border-blue-500/30 space-y-3 animate-in fade-in duration-150">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-blue-300">
-                            열람 목적 선택 (전자서명법 및 변호사법 제3조 준수)
+                            열람 목적 선택 (의뢰인이 동의한 위임 범위 안에서만 사용)
                           </span>
                           <button
                             onClick={() => setShowDecryptGate(false)}
@@ -516,7 +512,7 @@ export default function CertificateVaultModal({
                           className="w-full py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          사유 확인 및 복호화 실행 (감사기록 남김)
+                          사유 확인 및 복호화 실행 (열람 기록 남김)
                         </button>
                       </div>
                     )}
@@ -554,7 +550,7 @@ export default function CertificateVaultModal({
                             <div className="flex items-center justify-between text-[11px]">
                               <span className="text-amber-400 font-semibold flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                30초 후 클립보드 자동 소거(Zeroize) 예정
+                                30초 후 클립보드 소거 시도 예정
                               </span>
                               <span className="font-mono text-slate-300 font-bold">
                                 {zeroizeRemaining}초 남음
@@ -577,14 +573,14 @@ export default function CertificateVaultModal({
                   <KeyRound className="w-8 h-8 text-slate-400 mx-auto" />
                   <h4 className="text-sm font-bold text-slate-300">등록된 공동인증서가 없습니다</h4>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    의뢰인에게 모바일/PC 안심 인증서 제출 마법사 링크를 발송하여 인증서 파일과 비밀번호를 안전하게 수합하세요.
+                    의뢰인이 마이페이지 &gt; 인증서 제출에서 인증서 파일과 비밀번호를 등록하면 여기에 표시됩니다. (의뢰인이 등록한 기기와 같은 브라우저에서만 보입니다)
                   </p>
                   <button
-                    onClick={() => toast.success('의뢰인에게 인증서 안전 제출 알림톡이 전송되었습니다.')}
+                    onClick={handleCopySubmitRequest}
                     className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    인증서 제출 요청 알림톡 발송
+                    <Copy className="w-3.5 h-3.5" />
+                    제출 요청 문구 복사 (자동 발송 아님)
                   </button>
                 </div>
               )}
@@ -600,9 +596,9 @@ export default function CertificateVaultModal({
                   금융인증서 클라우드 운영 원리
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  금융인증서는 금융결제원 클라우드에 영구 저장되므로 파일 형태(`.der`, `.key`) 다운로드가 불가능합니다.
-                  대신, 법률사무소에서 부채증명서 발급 사이트에 접속한 후 아래 <strong>[실시간 2자리 승인번호 릴레이]</strong>를 실행하면,
-                  의뢰인의 스마트폰으로 카카오톡 알림톡과 금융인증서 푸시가 즉시 발송되어 의뢰인이 2자리 번호를 선택함으로써 대리 로그인을 완료할 수 있습니다.
+                  금융인증서는 금융결제원 클라우드에 보관되므로 파일(`.der`, `.key`)로 내려받을 수 없습니다.
+                  발급기관 사이트에서 금융인증서 로그인을 시작하면 의뢰인 휴대폰에 인증 요청이 가고, 의뢰인이 직접 승인해야 합니다.
+                  이 앱은 금융결제원과 연동되어 있지 않아 요청을 보내거나 승인 여부를 확인하지 못합니다. 아래 버튼은 의뢰인에게 보낼 안내 문구만 복사합니다.
                 </p>
               </div>
 
@@ -618,15 +614,15 @@ export default function CertificateVaultModal({
                     <span className="text-violet-300 font-medium">금융결제원 (YESKEY) 클라우드</span>
                   </div>
                   <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block text-[11px]">유효기간</span>
-                    <span className="text-emerald-400 font-medium">3년 (2028년 만료)</span>
+                    <span className="text-slate-400 block text-[11px]">유효기간 만료일</span>
+                    <span className="text-slate-200 font-mono">{formatLocalDate(financial?.expiresAt)}</span>
                   </div>
                 </div>
               </div>
 
               {/* 실시간 승인번호 릴레이 실행 박스 */}
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4 space-y-3">
-                <h5 className="text-xs font-bold text-slate-200">실시간 원격 승인번호 릴레이</h5>
+                <h5 className="text-xs font-bold text-slate-200">원격 승인 안내 문구</h5>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex-1 min-w-[200px]">
                     <label className="text-[11px] text-slate-400 block mb-1">발급 대상 기관/은행 선택</label>
@@ -646,39 +642,21 @@ export default function CertificateVaultModal({
                   </div>
                   <div className="pt-5">
                     <button
-                      onClick={handleSendFinancialRelay}
-                      disabled={isRelayWaiting}
-                      className="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-xl transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap"
+                      onClick={handleCopyFinancialRelayGuide}
+                      disabled={!financial || isShredded}
+                      className="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap"
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      {isRelayWaiting ? '발송중...' : '승인 요청 알림톡 발송'}
+                      <Copy className="w-3.5 h-3.5" />
+                      안내 문구 복사 (자동 발송 아님)
                     </button>
                   </div>
                 </div>
-
-                {/* 발송된 승인번호 표시 및 시뮬레이션 */}
-                {activeRelayNumber && (
-                  <div className="p-4 bg-slate-900 rounded-xl border border-violet-500/30 space-y-3 animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-xs text-slate-400 block">발송된 2자리 승인번호</span>
-                        <div className="text-2xl font-black text-violet-400 font-mono tracking-wider">
-                          [ {activeRelayNumber} ]
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleSimulateRelayApprove}
-                        className="px-3 py-2 text-xs font-bold text-violet-200 bg-violet-950 hover:bg-violet-900 border border-violet-700 rounded-xl transition-colors flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        의뢰인 승인 완료 시뮬레이션
-                      </button>
-                    </div>
-                    <p className="text-xs text-slate-300">
-                      의뢰인이 스마트폰 금융인증서 화면에서 위 번호 <strong>[{activeRelayNumber}]</strong>를 터치하면 기관 로그인이 최종 승인됩니다.
-                    </p>
-                  </div>
+                {!financial && (
+                  <p className="text-[11px] text-slate-400">등록된 금융인증서 정보가 없습니다.</p>
                 )}
+                <p className="text-[11px] text-slate-400">
+                  승인번호는 발급기관 화면에 표시된 번호를 전화 등으로 직접 알려 주세요. 이 앱은 번호를 만들거나 승인 결과를 확인하지 않습니다.
+                </p>
               </div>
             </div>
           )}
@@ -688,9 +666,9 @@ export default function CertificateVaultModal({
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div>
-                  <h5 className="text-xs font-bold text-slate-200">전자서명법 공인 사법 감사추적 기록</h5>
+                  <h5 className="text-xs font-bold text-slate-200">열람 기록 (이 브라우저)</h5>
                   <p className="text-[11px] text-slate-400">
-                    모든 비밀번호 열람, 파일 다운로드, 릴레이 요청 일시 및 목적이 위변조 불가능하게 영구 보존됩니다.
+                    비밀번호 열람, 파일 다운로드, 안내 문구 복사 일시와 목적을 이 브라우저에 기록합니다. 서버에 저장되지 않으며 위변조 방지 기능은 없습니다.
                   </p>
                 </div>
                 <span className="text-xs font-mono text-slate-400">총 {vault.accessLogs.length}건</span>
@@ -713,7 +691,9 @@ export default function CertificateVaultModal({
                           }`}>
                             {log.targetItem === 'password_view' ? '비밀번호 열람' :
                              log.targetItem === 'file_download' ? '파일 다운로드' :
-                             log.targetItem === 'auto_shred' ? '영구 파기' : '원격 릴레이'}
+                             log.targetItem === 'auto_shred' ? '사본 삭제' :
+                             log.targetItem === 'register' ? '등록' :
+                             log.targetItem === 'revocation' ? '철회' : '원격 승인 안내'}
                           </span>
                           <span className="font-bold text-slate-200">{log.actorName}</span>
                           <span className="text-slate-400 text-[11px]">({log.actorRole})</span>
@@ -747,9 +727,15 @@ export default function CertificateVaultModal({
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
                     의뢰인 위임 목적 제한 동의서 (Consent Deed)
                   </h5>
-                  <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
-                    체결 완료
-                  </span>
+                  {vault.consent?.agreed ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
+                      의뢰인 동의함
+                    </span>
+                  ) : (
+                    <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
+                      동의 기록 없음
+                    </span>
+                  )}
                 </div>
 
                 <div className="p-3 bg-slate-900 rounded-xl text-xs text-slate-300 space-y-2 leading-relaxed">
@@ -757,16 +743,16 @@ export default function CertificateVaultModal({
                     <strong>1. 위임 목적의 한정:</strong> 본 인증서는 개인회생/파산 신청을 위한 각 금융기관 부채증명서 발급 대행 및 대법원 전자소송 서류 열람·제출 목적으로만 사용됩니다.
                   </p>
                   <p>
-                    <strong>2. 일체 금융거래 금지:</strong> 예금 인출, 이체, 대출 실행 등 본 위임 목적 외의 금융 행위는 절대 불가능하며 기술적으로 차단됩니다.
+                    <strong>2. 금융거래 금지:</strong> 예금 인출, 이체, 대출 실행 등 위임 목적 외의 금융 행위에 사용하지 않습니다. (동의서상 약정이며, 이 앱이 기술적으로 차단하지는 않습니다)
                   </p>
                   <p>
-                    <strong>3. 파기 권한:</strong> 사건 종결(면책 결정) 또는 의뢰인의 요청 시 즉시 복구 불가능하게 파기됩니다.
+                    <strong>3. 삭제:</strong> 사건 종결 또는 의뢰인 요청 시 사무소에 보관된 사본(이 브라우저·내려받은 파일 포함)을 삭제합니다.
                   </p>
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-slate-400 pt-1">
-                  <span>체결 일시: {vault.consent?.agreedAt ? new Date(vault.consent.agreedAt).toLocaleString('ko-KR') : '2026-03-01'}</span>
-                  <span className="font-semibold text-slate-200">서명: {vault.consent?.clientSignature || clientRequest.clientName}</span>
+                  <span>동의 일시: {vault.consent?.agreedAt ? new Date(vault.consent.agreedAt).toLocaleString('ko-KR') : '-'}</span>
+                  <span className="font-semibold text-slate-200">서명: {vault.consent?.clientSignature || '-'}</span>
                 </div>
               </div>
 
@@ -775,9 +761,9 @@ export default function CertificateVaultModal({
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
                   <div>
-                    <h5 className="text-xs font-bold text-rose-300">인증서 완전 영구 파기 (Crypto-Shredding)</h5>
+                    <h5 className="text-xs font-bold text-rose-300">이 브라우저의 인증서 사본 삭제</h5>
                     <p className="text-[11px] text-rose-400/80 mt-0.5">
-                      면책 결정이 확정되었거나 의뢰인의 위임 계약이 종료된 경우, 모든 인증서 바이너리와 암호화 키를 복구 불가능하게 삭제합니다.
+                      이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웁니다. 내려받은 파일, 다른 기기·브라우저의 사본은 남으므로 따로 삭제해야 합니다.
                     </p>
                   </div>
                 </div>
@@ -788,12 +774,12 @@ export default function CertificateVaultModal({
                     className="px-4 py-2 text-xs font-bold text-rose-200 bg-rose-900/50 hover:bg-rose-900 border border-rose-700/60 rounded-xl transition-colors flex items-center gap-1.5"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    인증서 안전 영구 파기 실행
+                    이 브라우저 사본 삭제
                   </button>
                 ) : (
                   <div className="text-xs text-rose-300 font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-rose-400" />
-                    이미 영구 파기가 완료된 상태입니다.
+                    이 브라우저의 사본은 이미 삭제되었습니다.
                   </div>
                 )}
               </div>
@@ -805,7 +791,7 @@ export default function CertificateVaultModal({
         <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-800 bg-slate-950/50">
           <div className="text-xs text-slate-400 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>전자서명법 제3조 및 개인정보보호법 안전성 확보조치 준수</span>
+            <span>이 브라우저에만 저장 · 인증서 파일 미암호화 · 서버 KMS 전환 전 운영 사용 주의</span>
           </div>
           <button
             onClick={onClose}
@@ -821,10 +807,11 @@ export default function CertificateVaultModal({
             <div className="w-full max-w-md bg-slate-900 border border-rose-700 rounded-2xl p-5 space-y-4 shadow-2xl">
               <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
                 <AlertOctagon className="w-5 h-5" />
-                인증서 영구 파기 확인 (복구 불가)
+                이 브라우저 사본 삭제 확인
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                파기를 실행하면 <strong>공동인증서 파일(.der, .key) 및 암호화 키가 즉시 소거</strong>되어 이후 어떤 관리자도 복구할 수 없습니다. 계속하시겠습니까?
+                <strong>이 브라우저에 저장된 공동인증서 파일(.der, .key)과 암호화된 비밀번호를 비웁니다.</strong> 이 브라우저에서는 다시 열람할 수 없습니다.
+                이미 내려받은 파일, 다른 기기·브라우저의 사본은 삭제되지 않습니다. 계속하시겠습니까?
               </p>
 
               <div>
@@ -848,7 +835,7 @@ export default function CertificateVaultModal({
                   onClick={handleExecuteShred}
                   className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition-colors shadow-md"
                 >
-                  영구 파기 실행
+                  사본 삭제 실행
                 </button>
               </div>
             </div>

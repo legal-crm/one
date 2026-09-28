@@ -1,11 +1,14 @@
 /**
- * 의뢰인 공동인증서(NPKI) 및 금융인증서 안전 금고(Certificate Vault) 코어 서비스
- * - Web Crypto API 기반 AES-256-GCM 종단간 암호화 (E2EE / Zero-Knowledge)
- * - NPKI X.509 파싱 및 만료일 D-Day 산출
- * - 30초 자동 클립보드 소거 (Clipboard Auto-Zeroize)
- * - 법적 사법 감사추적 로그 (Audit Trail)
- * - 금융인증서 실시간 2자리 승인번호 릴레이 (Relay Protocol)
- * - 면책 종결 / 의뢰인 철회 시 완전 영구 파기 (Crypto-Shredding)
+ * 의뢰인 공동인증서(NPKI) 및 금융인증서 보관함(Certificate Vault) 코어 서비스
+ *
+ * 실제 보안 수준 (과장 금지 — 이전 주석의 "E2EE / Zero-Knowledge"는 사실이 아님):
+ * - 비밀번호만 Web Crypto AES-GCM으로 암호화. 키는 앱 번들에 내장된 고정 시드(FALLBACK_KEY_SEED)에서
+ *   파생되므로 번들을 보유한 누구나 복호화 가능 → 서버 KMS/사용자별 키로 전환 전까지 출시 차단 항목.
+ * - signPri.key / signCert.der 파일은 Base64 원문 그대로 localStorage에 저장 (암호화 안 됨).
+ * - 보관 위치는 현재 브라우저(localStorage)뿐. crmService가 Supabase 저장 전 제거하므로 기기 간 공유되지 않음.
+ * - 감사 로그도 같은 localStorage 레코드에 있으므로 위변조 방지·영구 보존이 아님.
+ * - 클립보드 30초 소거는 브라우저 권한/포커스에 따라 실패할 수 있음 (결과를 onZeroized로 전달).
+ * - 파기는 이 브라우저의 사본만 비움. 내려받은 파일·다른 기기 사본은 남음.
  */
 
 import type { 
@@ -222,20 +225,65 @@ export function inspectDerCertificate(derBase64: string, defaultClientName: stri
 }
 
 /**
+ * 만료일(ISO)까지 남은 일수를 "오늘(로컬 자정)" 기준 달력 일수로 재계산한다.
+ * 업로드 시점에 저장된 daysRemaining은 시간이 지나도 갱신되지 않으므로 표시할 때마다 이 함수를 쓴다.
+ * @returns 남은 일수(만료 시 0 이하), 만료일을 알 수 없으면 null
+ */
+export function computeDaysRemaining(validTo: string | undefined | null, now: Date = new Date()): number | null {
+  if (!validTo) return null;
+  const end = new Date(validTo);
+  if (isNaN(end.getTime())) return null;
+  const endLocal = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((endLocal.getTime() - todayLocal.getTime()) / 86400000);
+}
+
+/** 배지용 D-day 문자열: 'D-12' | '만료' | '만료일 미확인' */
+export function formatVaultDday(validTo: string | undefined | null, now: Date = new Date()): string {
+  const d = computeDaysRemaining(validTo, now);
+  if (d === null) return '만료일 미확인';
+  return d <= 0 ? '만료' : `D-${d}`;
+}
+
+/** ISO 일시를 로컬 날짜(YYYY-MM-DD)로 표시. 값이 없거나 잘못되면 '확인 불가' */
+export function formatLocalDate(iso: string | undefined | null): string {
+  if (!iso) return '확인 불가';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '확인 불가';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
  * 30초 자동 소거 클립보드 복사 (Zeroize)
- * @returns 취소 함수 (컴포넌트 언마운트 시 클리어용)
+ * - onCopied(ok): 최초 복사 성공 여부
+ * - onZeroized(ok): 소거(빈 문자열 덮어쓰기) 성공 여부. 실패 시 사용자에게 수동 삭제를 안내해야 한다.
+ * @returns 취소 함수. clearNow=true면 타이머를 멈추고 즉시 소거를 시도한다 (언마운트 시 사용).
  */
 export function copyWithAutoZeroize(
-  text: string, 
+  text: string,
   durationSeconds: number = 30,
   onProgress?: (remainingSec: number) => void,
-  onZeroized?: () => void
-): () => void {
-  navigator.clipboard.writeText(text).catch(err => {
-    console.warn('Clipboard write error:', err);
-  });
+  onZeroized?: (ok: boolean) => void,
+  onCopied?: (ok: boolean) => void
+): (clearNow?: boolean) => void {
+  const clip = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+  const clearClipboard = async (): Promise<boolean> => {
+    if (!clip) return false;
+    try { await clip.writeText(''); return true; } catch { return false; }
+  };
+
+  if (!clip) {
+    if (onCopied) onCopied(false);
+  } else {
+    clip.writeText(text).then(
+      () => { if (onCopied) onCopied(true); },
+      (err) => { console.warn('Clipboard write error:', err); if (onCopied) onCopied(false); }
+    );
+  }
 
   let remaining = durationSeconds;
+  let done = false;
   if (onProgress) onProgress(remaining);
 
   const intervalId = setInterval(() => {
@@ -244,14 +292,18 @@ export function copyWithAutoZeroize(
 
     if (remaining <= 0) {
       clearInterval(intervalId);
-      // 클립보드 덮어쓰기 (공백/소거)
-      navigator.clipboard.writeText('').catch(() => {});
-      if (onZeroized) onZeroized();
+      done = true;
+      clearClipboard().then((ok) => { if (onZeroized) onZeroized(ok); });
     }
   }, 1000);
 
-  return () => {
+  return (clearNow?: boolean) => {
     clearInterval(intervalId);
+    if (clearNow && !done) {
+      done = true;
+      // 언마운트 경로: 결과 콜백은 호출하지 않음 (컴포넌트가 이미 사라짐)
+      void clearClipboard();
+    }
   };
 }
 
@@ -278,14 +330,15 @@ export function createAccessLog(
 }
 
 /**
- * 인증서 완전 영구 파기 (Crypto-Shredding / Zeroize)
+ * 인증서 사본 삭제 (이 브라우저의 localStorage 레코드에서 파일·암호문을 비움)
+ * 주의: 내려받은 파일, 다른 기기/브라우저의 사본, 백업은 삭제되지 않는다.
  */
 export function shredCertificateVault(
   vault: CertificateVaultData,
   actorName: string,
   reason: string = '사건 종결/면책 확정에 따른 개인정보 파기'
 ): CertificateVaultData {
-  const log = createAccessLog(actorName, '관리책임자', 'auto_shred', `영구 파기 실행: ${reason}`);
+  const log = createAccessLog(actorName, '담당자', 'auto_shred', `이 브라우저 사본 삭제: ${reason}`);
   
   return {
     ...vault,
@@ -312,33 +365,38 @@ export function shredCertificateVault(
 }
 
 /**
- * 금융인증서 실시간 2자리 승인번호 원격 릴레이 요청 시뮬레이션
+ * 금융인증서 원격 승인 "안내 문구" 생성
+ * (이전: simulateFinancialRelayRequest — Math.random으로 2자리 번호를 지어내고 '발송'으로 기록.
+ *  실제 승인번호는 발급기관 사이트 화면에만 표시되며, 이 앱은 금융결제원과 연동되어 있지 않다.)
  */
-export function simulateFinancialRelayRequest(
+export function buildFinancialRelayGuide(clientName: string, creditorName: string): string {
+  return `[${clientName || '의뢰인'}님] ${creditorName} 부채증명서 발급을 위해 금융인증서 로그인 승인이 필요합니다. `
+    + `곧 휴대폰 금융인증서 앱(또는 은행 앱)에 인증 요청이 표시되면, 담당자가 전화로 알려드리는 번호와 같은지 확인한 뒤 승인해 주세요. `
+    + `번호가 다르거나 요청하지 않은 인증이면 승인하지 마시고 사무실로 연락해 주세요.`;
+}
+
+/** 금융인증서 원격 승인 안내를 전달했다는 사실만 기록 (번호·발송 여부를 지어내지 않음) */
+export function recordFinancialRelayGuide(
   vault: CertificateVaultData,
   actorName: string,
+  actorRole: string,
   creditorName: string
-): { updatedVault: CertificateVaultData; relayNumber: string } {
-  const relayNumber = Math.floor(10 + Math.random() * 90).toString(); // 2자리 숫자 (예: 42)
+): CertificateVaultData {
   const log = createAccessLog(
-    actorName, 
-    '담당자', 
-    'relay_request', 
-    `[${creditorName}] 부채증명서 발급을 위한 금융인증서 2자리 승인번호[${relayNumber}] 실시간 확인 요청 발송`
+    actorName,
+    actorRole,
+    'relay_request',
+    `[${creditorName}] 금융인증서 원격 승인 안내 문구 복사 (자동 발송 아님)`
   );
-
-  const updatedVault: CertificateVaultData = {
+  return {
     ...vault,
     financial: vault.financial ? {
       ...vault.financial,
       lastRelayRequestAt: new Date().toISOString(),
-      relayStatus: 'requested',
-      lastRelayNumber: relayNumber,
+      lastRelayNumber: undefined,
     } : undefined,
     accessLogs: [log, ...vault.accessLogs]
   };
-
-  return { updatedVault, relayNumber };
 }
 
 /**
@@ -372,82 +430,4 @@ export function saveCertificateVault(vault: CertificateVaultData): void {
   }
 }
 
-/**
- * 초기 시드 데이터 생성기 (기존 고객에 대한 실감형 데모 금고 데이터)
- */
-/** @deprecated DEV 시연 전용 — 운영 코드에서 호출하지 말 것 (가짜 인증서·동의 서명·열람 기록 생성) */
-export function generateSeedVaultData(clientId: string, clientName: string = '홍길동', phone: string = '010-5291-8842'): CertificateVaultData {
-  const now = new Date();
-  const validTo = new Date(now.getTime() + 184 * 86400000).toISOString(); // 약 6개월 후 만료
-
-  return {
-    id: `vault_${clientId}`,
-    clientId,
-    clientName,
-    status: 'active',
-    createdAt: new Date(now.getTime() - 14 * 86400000).toISOString(),
-    updatedAt: now.toISOString(),
-    npki: {
-      derFileName: 'signCert.der',
-      derBase64: 'MIIEmTCCA4GgAwIBAgIEW...MOCK_DER_SAMPLE_DATA...',
-      keyFileName: 'signPri.key',
-      keyBase64: 'MIIEvgIBADANBgkqhkiG9w0B...MOCK_KEY_SAMPLE_DATA...',
-      encryptedPassword: 'dGhpcy1pcy1hbi1lbmNyeXB0ZWQtcGFzc3dvcmQtbW9jaw==',
-      iv: 'MTIzNDU2Nzg5MDEy',
-      subjectName: `${clientName}(${clientName}01)`,
-      issuer: '금융결제원 (yessign)',
-      serialNumber: '2025-08-94102941',
-      validFrom: new Date(now.getTime() - 180 * 86400000).toISOString(),
-      validTo,
-      isExpired: false,
-      daysRemaining: 184
-    },
-    financial: {
-      registered: true,
-      provider: 'yeskey',
-      relayPhone: phone,
-      cloudAccountId: `${phone.replace(/-/g, '')}@yeskey.or.kr`,
-      registeredAt: new Date(now.getTime() - 14 * 86400000).toISOString(),
-      expiresAt: new Date(now.getTime() + 900 * 86400000).toISOString(),
-      validMonths: 36,
-      relayStatus: 'idle',
-    },
-    consent: {
-      agreed: true,
-      agreedAt: new Date(now.getTime() - 14 * 86400000).toISOString(),
-      clientSignature: `${clientName} (모바일 전자 자필 서명)`,
-      allowedPurposes: [
-        '개인회생/파산 신청용 금융기관 부채증명서 발급 대행',
-        '대법원 전자소송(ECFS) 사건 조회 및 서류 접수',
-        '금융결제원 어카운트인포 및 신용정보원 전수조회'
-      ],
-      prohibitedPurposesNotice: true
-    },
-    accessLogs: [
-      {
-        id: 'log_seed_1',
-        timestamp: new Date(now.getTime() - 14 * 86400000).toISOString(),
-        actorName: '시스템',
-        actorRole: '보안엔진',
-        targetItem: 'password_view',
-        purpose: '의뢰인 안심 인증서 제출 및 AES-256 종단간 암호화 보관 체결'
-      },
-      {
-        id: 'log_seed_2',
-        timestamp: new Date(now.getTime() - 10 * 86400000).toISOString(),
-        actorName: '김수현',
-        actorRole: '수임사무장',
-        targetItem: 'password_view',
-        purpose: '국민은행 및 신한카드 온라인 부채증명서 원클릭 대리 발급'
-      },
-      {
-        id: 'log_seed_3',
-        timestamp: new Date(now.getTime() - 3 * 86400000).toISOString(),
-        actorName: '이진우',
-        actorRole: '담당변호사',
-        targetItem: 'file_download',
-        purpose: '대법원 전자소송 포털 당사자 본인인증 및 접수 동의 서명'
-      }
-    ]
-  };
-}
+// (삭제됨) generateSeedVaultData: 가짜 인증서, 동의 서명, 가상 인물 열람 기록을 만들던 시연용 생성기. 호출처 없이 운영 번들에 포함되어 제거.

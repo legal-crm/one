@@ -131,7 +131,7 @@ export default function ClientCertificateSubmissionModal({
         const derBase64 = await fileToBase64(derFile);
         const keyBase64 = await fileToBase64(keyFile);
 
-        // 클라이언트 사이드 Web Crypto AES-256 암호화
+        // 비밀번호만 Web Crypto AES-GCM 암호화 (키는 앱 내장 — 서버 KMS 전환 전까지 강한 보호 아님). 인증서 파일은 원본 저장.
         const { encryptedPassword, iv } = await encryptCertPassword(password);
 
         const inspected = parsedMeta || inspectDerCertificate(derBase64, clientName);
@@ -197,7 +197,7 @@ export default function ClientCertificateSubmissionModal({
       await onSaveVault(newVault);
 
       // 인증서는 개인키 보호를 위해 서버로 전송하지 않고 이 기기에만 보관된다 (사무소 원격 전달은 미구현)
-      toast.success('인증서를 이 기기에 암호화해 보관했습니다. 사무소 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 5000 });
+      toast.success('인증서를 이 기기에 보관했습니다 (법률사무소로 자동 전송되지 않음). 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 6000 });
       onClose();
     } catch (err: any) {
       toast.error(err.message || '인증서 등록 중 오류가 발생했습니다.');
@@ -454,7 +454,7 @@ export default function ClientCertificateSubmissionModal({
                   <div className="text-center space-y-1">
                     <h4 className="text-sm font-bold text-white">인증서 비밀번호 입력</h4>
                     <p className="text-xs text-slate-400">
-                      입력하신 비밀번호는 암호화(AES-256-GCM)되어 이 기기(브라우저)에만 저장되며 서버로 전송되지 않습니다. 사무소 전달이 필요하면 담당 변호사와 전달 방법을 상의해 주세요.
+                      입력하신 비밀번호는 암호화(AES-GCM)되어 이 기기(브라우저)에만 저장되며 서버로 전송되지 않습니다. 단, 암호화 키가 앱에 내장되어 있어 이 기기에 접근할 수 있는 사람으로부터 완전히 보호되지는 않으며, 인증서 파일(signPri.key 등)은 암호화 없이 저장됩니다. 공용 PC에서는 등록하지 마세요.
                     </p>
                   </div>
 
@@ -567,7 +567,7 @@ export default function ClientCertificateSubmissionModal({
                     className="mt-0.5 rounded text-blue-600 focus:ring-0"
                   />
                   <span>
-                    <strong>[필수] 사건 종결 및 요청 시 영구 파기 권한:</strong><br />
+                    <strong>[필수] 사건 종결 및 요청 시 삭제:</strong><br />
                     면책 결정 확정 또는 본인의 요청 시 저장된 인증서 파일과 비밀번호가 삭제됨에 동의합니다.
                   </span>
                 </label>
@@ -636,7 +636,7 @@ export default function ClientCertificateSubmissionModal({
               className="px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-md flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              {isSubmitting ? '암호화 저장 중...' : '안전 금고에 인증서 제출 완료'}
+              {isSubmitting ? '저장 중...' : '이 기기에 인증서 저장'}
             </button>
           )}
         </div>

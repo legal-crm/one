@@ -24,7 +24,7 @@ import type { FamilyMemberItem } from '../../types/incomeExpenseTypes';
 import { LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES } from '../../types';
 import CreditorMeetingGuideModal from './companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from './vault/ClientCertificateSubmissionModal';
-import { loadCertificateVault, saveCertificateVault, shredCertificateVault } from '../../services/vault/certificateVaultService';
+import { loadCertificateVault, saveCertificateVault, shredCertificateVault, formatVaultDday, formatLocalDate } from '../../services/vault/certificateVaultService';
 const Fast2ndDocHubModal = React.lazy(() => import('./Fast2ndDocHubModal'));
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
@@ -128,13 +128,14 @@ export default function MyPageView({
 
   // ── 의뢰인 인증서 안전 금고 상태 ──
   const [isCertSubmissionModalOpen, setIsCertSubmissionModalOpen] = useState(false);
-  const targetClientId = activeRequest?.id || requests[0]?.id || 'client-self';
+  // (이전: 요청이 없으면 'client-self' 공용 키 → 같은 브라우저의 다른 사용자와 인증서 금고가 섞임)
+  const targetClientId = activeRequest?.id || requests[0]?.id || '';
   const [clientVault, setClientVault] = useState<CertificateVaultData | null>(() => {
-    return loadCertificateVault(targetClientId);
+    return targetClientId ? loadCertificateVault(targetClientId) : null;
   });
 
   useEffect(() => {
-    const loaded = loadCertificateVault(targetClientId);
+    const loaded = targetClientId ? loadCertificateVault(targetClientId) : null;
     setClientVault(loaded);
   }, [targetClientId, refreshTick]);
 
@@ -3238,12 +3239,12 @@ export default function MyPageView({
                           <div>
                             <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                               공동·금융인증서 안전 금고
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                Zero-Knowledge E2EE
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                이 기기에만 저장
                               </span>
                             </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                              부채증명서 신속 발급 및 대법원 전자소송 대리를 위한 전용 보안 보관소
+                              현재 인증서는 이 브라우저에만 저장되며 법률사무소로 자동 전송되지 않습니다. 전달 방법은 담당 사무소와 상의해 주세요.
                             </p>
                           </div>
                         </div>
@@ -3251,7 +3252,13 @@ export default function MyPageView({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setIsCertSubmissionModalOpen(true)}
+                            onClick={() => {
+                              if (!targetClientId) {
+                                toast.error('진행 중인 상담 신청이 있어야 인증서를 등록할 수 있습니다.');
+                                return;
+                              }
+                              setIsCertSubmissionModalOpen(true);
+                            }}
                             className="px-3.5 py-2 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
                           >
                             <Upload className="w-3.5 h-3.5" />
@@ -3270,11 +3277,11 @@ export default function MyPageView({
                             </span>
                             {clientVault?.status === 'shredded' ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                                영구 파기됨
+                                삭제됨
                               </span>
                             ) : clientVault?.npki ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                보관중 (D-{clientVault.npki.daysRemaining})
+                                보관중 ({formatVaultDday(clientVault.npki.validTo)})
                               </span>
                             ) : (
                               <span className="text-[10px] text-slate-400">미등록</span>
@@ -3282,8 +3289,8 @@ export default function MyPageView({
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                             {clientVault?.npki
-                              ? `${clientVault.npki.issuer} 발급 | 파일 암호화 완료 (${clientVault.npki.validTo.slice(0, 10)} 만료)`
-                              : '인증서 파일 등록 시 10~30여 개 금융사 부채증명서가 원스톱 대리 발급됩니다.'}
+                              ? `${clientVault.npki.issuer} 발급 | 비밀번호 암호화·파일은 원본 저장 (${formatLocalDate(clientVault.npki.validTo)} 만료)`
+                              : '인증서를 등록하면 법률사무소가 부채증명서 발급 등에 사용할 수 있습니다. (현재 이 기기에만 저장)'}
                           </p>
                         </div>
 
@@ -3295,7 +3302,7 @@ export default function MyPageView({
                             </span>
                             {clientVault?.financial?.registered ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400">
-                                클라우드 연동중
+                                등록 정보 있음
                               </span>
                             ) : (
                               <span className="text-[10px] text-slate-400">미연동</span>
@@ -3303,8 +3310,8 @@ export default function MyPageView({
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                             {clientVault?.financial?.registered
-                              ? `실시간 원격 승인번호 수신 대기 (${clientVault.financial.relayPhone})`
-                              : '금융결제원 클라우드에 보관되며 실시간 휴대폰 승인번호로 연동됩니다.'}
+                              ? `사무소가 발급 사이트에서 로그인하면 휴대폰(${clientVault.financial.relayPhone})으로 온 요청을 직접 확인 후 승인해 주세요.`
+                              : '금융인증서는 금융결제원 클라우드에 보관되며, 사용 시 휴대폰에서 직접 승인합니다.'}
                           </p>
                         </div>
                       </div>
@@ -3315,7 +3322,7 @@ export default function MyPageView({
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                              법률사무소 안전 확인 기록 (투명성 보증)
+                              이 기기의 열람 기록
                             </span>
                             <span className="text-[10px] text-slate-400 font-mono">최근 {Math.min(2, clientVault.accessLogs.length)}건 표시</span>
                           </div>
@@ -3341,14 +3348,14 @@ export default function MyPageView({
                       {clientVault && clientVault.status !== 'shredded' && (
                         <div className="pt-2 flex items-center justify-between text-xs">
                           <span className="text-[11px] text-slate-400">
-                            사건이 종결되었거나 위임을 철회하려면 인증서를 즉시 영구 파기할 수 있습니다.
+                            사건이 종결되었거나 위임을 철회하려면 이 기기에 저장된 인증서를 삭제할 수 있습니다.
                           </span>
                           <button
                             type="button"
                             onClick={async () => {
                               const ok = await dialog.confirm({
                                 title: '인증서 삭제',
-                                message: '저장된 인증서 파일과 비밀번호를 삭제합니다. 삭제 후에는 복구할 수 없습니다.\n삭제하시겠습니까?',
+                                message: '이 기기에 저장된 인증서 파일과 비밀번호를 삭제합니다. 법률사무소에 이미 전달한 사본은 사무소에 삭제를 요청해 주세요.\n삭제하시겠습니까?',
                                 confirmText: '삭제',
                                 variant: 'danger'
                               });
@@ -3358,7 +3365,7 @@ export default function MyPageView({
                               saveCertificateVault(shredded);
                               await updateCrmClientExtension(targetClientId, { certificateVault: shredded });
                               setClientVault(shredded);
-                              toast.success('인증서 파일과 비밀번호를 삭제했습니다.');
+                              toast.success('이 기기에 저장된 인증서 파일과 비밀번호를 삭제했습니다.');
                             }}
                             className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline whitespace-nowrap cursor-pointer min-h-[44px]"
                           >
@@ -3509,7 +3516,7 @@ export default function MyPageView({
   />
 
   {/* 🔐 의뢰인 안심 인증서 제출 마법사 모달 */}
-  {isCertSubmissionModalOpen && (
+  {isCertSubmissionModalOpen && targetClientId && (
     <ClientCertificateSubmissionModal
       clientId={targetClientId}
       clientName={profile?.name || userAlias || '신청인'}
