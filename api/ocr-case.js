@@ -101,16 +101,17 @@ async function handler(req, res) {
 2. 공식 서류(결정문, 접수증 등)이며 사건번호(예: 202*개회*, 202*하단*)가 명확하게 보일 때만 "isValidCourtDoc": true 로 출력하세요.
 `;
 
-      const modelNames = ['gemini-3.6-flash', 'gemini-flash-latest'];
+      // 이전: 존재하지 않는 'gemini-3.6-flash'를 먼저 호출해 매번 1회 실패
       let candidateText = null;
-      let usedModel = 'gemini-3.6-flash';
+      const modelNames = ['gemini-2.5-flash', 'gemini-flash-latest'];
+      let usedModel = 'gemini-2.5-flash';
 
       for (const model of modelNames) {
         try {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          // 키는 URL 쿼리 대신 헤더로 전송`n          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
           const response = await fetch(geminiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
             body: JSON.stringify({
               contents: [
                 {

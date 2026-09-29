@@ -7,7 +7,8 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CertificateVaultData, CertificateAccessLog } from '../../../types';
 import { 
-  decryptCertPassword, 
+  openNpkiSecrets,
+  isLegacyNpki,
   downloadBase64File, 
   copyWithAutoZeroize, 
   createAccessLog, 
@@ -64,6 +65,9 @@ export default function CertificateVaultModal({
   const [customPurpose, setCustomPurpose] = useState('');
   const [decryptedPassword, setDecryptedPassword] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  // 의뢰인이 별도로 알려 준 보관 PIN (저장하지 않음). 연 개인키 파일은 이 모달이 열려 있는 동안만 메모리에 둔다.
+  const [vaultPin, setVaultPin] = useState('');
+  const [openedKeyBase64, setOpenedKeyBase64] = useState<string | null>(null);
 
   // 클립보드 30초 자동 소거 상태
   const [zeroizeRemaining, setZeroizeRemaining] = useState<number | null>(null);
@@ -103,11 +107,16 @@ export default function CertificateVaultModal({
 
     setIsDecrypting(true);
     try {
-      // 복호화
-      // (삭제) 특정 암호문이면 고정 비밀번호를 돌려주던 데모 백도어
-      const plain = await decryptCertPassword(npki.encryptedPassword, npki.iv);
+      if (!vaultPin) {
+        toast.error('의뢰인에게 받은 보관 PIN을 입력해 주세요.');
+        return;
+      }
+      // [PART 4] 의뢰인 보관 PIN으로만 열린다 (이전: 앱 내장 고정 키로 누구나 복호화)
+      const opened = await openNpkiSecrets(npki, vaultPin);
 
-      setDecryptedPassword(plain);
+      setDecryptedPassword(opened.password);
+      setOpenedKeyBase64(opened.keyBase64);
+      setVaultPin('');
       setShowDecryptGate(false);
 
       // 감사 로그 기록
@@ -164,8 +173,12 @@ export default function CertificateVaultModal({
   };
 
   const handleDownloadKey = () => {
-    if (!npki?.keyBase64) return;
-    downloadBase64File(npki.keyBase64, npki.keyFileName || 'signPri.key');
+    // 개인키는 보관 PIN으로 연 뒤에만 내려받을 수 있다
+    if (!openedKeyBase64) {
+      toast.error('개인키 파일은 보관 PIN으로 먼저 열어야 내려받을 수 있습니다.');
+      return;
+    }
+    downloadBase64File(openedKeyBase64, npki?.keyFileName || 'signPri.key');
 
     const log = createAccessLog(actorName, actorRole, 'file_download', 'signPri.key 개인키 파일 다운로드');
     onUpdateVault({ ...vault, accessLogs: [log, ...vault.accessLogs] });
@@ -193,6 +206,7 @@ export default function CertificateVaultModal({
     await onUpdateVault(shredded);
     setShowShredConfirm(false);
     setDecryptedPassword(null);
+    setOpenedKeyBase64(null);
     toast.success('이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 삭제했습니다. 내려받은 파일·다른 기기 사본은 따로 삭제해야 합니다.', { duration: 8000 });
   };
 
@@ -398,7 +412,7 @@ export default function CertificateVaultModal({
                           <FileText className="w-4 h-4 text-amber-400" />
                           <div>
                             <span className="text-xs font-mono font-medium text-slate-200">signPri.key</span>
-                            <span className="block text-[10px] text-slate-400">개인키 파일 ({formatB64Size(npki.keyBase64)})</span>
+                            <span className="block text-[10px] text-slate-400">개인키 파일 ({openedKeyBase64 ? formatB64Size(openedKeyBase64) : isLegacyNpki(npki) ? '재등록 필요' : '보관 PIN으로 잠김'})</span>
                           </div>
                         </div>
                         <button
@@ -421,12 +435,18 @@ export default function CertificateVaultModal({
                           인증서 비밀번호 보안 열람
                         </h5>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          열람 시 사용 목적이 이 브라우저의 열람 기록에 남으며, 클립보드 복사 시 30초 후 소거를 시도합니다.
+                          의뢰인이 정한 보관 PIN으로만 열립니다(앱·서버에 키 없음). 열람 목적이 이 브라우저 기록에 남고, 클립보드 복사 시 30초 후 소거를 시도합니다.
                         </p>
                       </div>
                     </div>
 
-                    {!decryptedPassword && !showDecryptGate && (
+                    {isLegacyNpki(npki) && (
+                      <div className="p-3 bg-amber-950/30 border border-amber-700/40 rounded-xl text-xs text-amber-200 leading-relaxed">
+                        이전 방식(앱 내장 키)으로 저장된 인증서라 열 수 없습니다. 이 기기의 평문 개인키는 삭제했습니다. 의뢰인에게 보관 PIN을 정해 다시 등록해 달라고 요청해 주세요.
+                      </div>
+                    )}
+
+                    {!decryptedPassword && !showDecryptGate && !isLegacyNpki(npki) && (
                       <div className="flex items-center justify-between p-3.5 bg-slate-900/90 rounded-xl border border-slate-800">
                         <span className="font-mono text-base tracking-widest text-slate-400 select-none">
                           ••••••••••••••••
@@ -506,13 +526,26 @@ export default function CertificateVaultModal({
                           />
                         )}
 
+                        <div>
+                          <label htmlFor="vault-open-pin" className="text-xs text-slate-300 block mb-1">의뢰인 보관 PIN (전화 등 별도 경로로 받은 값)</label>
+                          <input
+                            id="vault-open-pin"
+                            type="password"
+                            autoComplete="off"
+                            value={vaultPin}
+                            onChange={(e) => setVaultPin(e.target.value)}
+                            placeholder="보관 PIN 입력"
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                        </div>
+
                         <button
                           onClick={handleExecuteDecrypt}
                           disabled={isDecrypting}
                           className="w-full py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          사유 확인 및 복호화 실행 (열람 기록 남김)
+                          {isDecrypting ? '여는 중...' : '사유 확인 후 PIN으로 열기 (열람 기록 남김)'}
                         </button>
                       </div>
                     )}

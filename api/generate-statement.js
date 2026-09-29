@@ -2,7 +2,7 @@
 // POST /api/generate-statement
 
 import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth, isAdminWithMfa } from './_lib/auth-middleware.js';
+import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
@@ -80,6 +80,79 @@ async function handleMarketing(req, res) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// [PART 4] 통화 녹음 요약 (mode: 'call-summary')
+//   이전: 변호사 브라우저가 localStorage/VITE_ 번들에 있는 Gemini 키로 Google에 직접 녹음 파일을 전송
+//   현재: 승인된 변호사(직원 포함) 또는 관리자(2단계 인증)만, 서버 키로 호출. 모델은 서버 허용 목록에서만 선택.
+//   Vercel 요청 본문 한도(약 4.5MB) 때문에 오디오 base64는 4MB까지만 받는다.
+// ─────────────────────────────────────────────────────────────
+const CALL_SUMMARY_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
+const CALL_SUMMARY_MAX_BASE64 = 4 * 1024 * 1024;
+const AUDIO_MIME_ALLOW = /^audio\/(mpeg|mp3|mp4|m4a|x-m4a|aac|wav|x-wav|webm|ogg|amr|3gpp)$/;
+
+async function handleCallSummary(req, res) {
+  let user = null;
+  try { user = await verifyAuth(req); } catch (_) { user = null; }
+  if (!user) return res.status(401).json({ ok: false, error: '로그인이 필요합니다.' });
+  if (!isAdminWithMfa(req, user)) {
+    const { data: account, error: accountError } = await supabase
+      .from('lawyer_accounts')
+      .select('approved')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    if (accountError || !account?.approved) {
+      return res.status(403).json({ ok: false, error: '승인된 변호사 계정만 통화 요약을 사용할 수 있습니다.' });
+    }
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!geminiKey) {
+    return res.status(503).json({ ok: false, configured: false, error: '서버에 GEMINI_API_KEY가 설정되지 않았습니다.' });
+  }
+
+  const { audioBase64, mimeType, prompt } = req.body || {};
+  if (typeof audioBase64 !== 'string' || audioBase64.length === 0) {
+    return res.status(400).json({ ok: false, error: '녹음 파일이 없습니다.' });
+  }
+  if (audioBase64.length > CALL_SUMMARY_MAX_BASE64) {
+    return res.status(413).json({ ok: false, error: '녹음 파일이 너무 큽니다. 약 3MB 이하 파일만 요약할 수 있습니다.' });
+  }
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(audioBase64.slice(0, 2000))) {
+    return res.status(400).json({ ok: false, error: '녹음 파일 형식이 올바르지 않습니다.' });
+  }
+  const safeMime = typeof mimeType === 'string' && AUDIO_MIME_ALLOW.test(mimeType) ? mimeType : 'audio/mpeg';
+  const promptText = typeof prompt === 'string' ? prompt.slice(0, 12000) : '';
+  if (!promptText.trim()) return res.status(400).json({ ok: false, error: '요약 지시문이 없습니다.' });
+
+  // 함수 최대 실행 시간(vercel.json maxDuration 60초) 안에서만 재시도
+  const deadline = Date.now() + 52000;
+  for (const model of CALL_SUMMARY_MODELS) {
+    const remaining = deadline - Date.now();
+    if (remaining < 8000) break;
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: safeMime, data: audioBase64 } }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
+        }),
+        signal: AbortSignal.timeout(remaining),
+      });
+      if (!r.ok) {
+        console.warn(`[call-summary] ${model} HTTP ${r.status}`);
+        continue;
+      }
+      const data = await r.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (text) return res.status(200).json({ ok: true, text, model });
+    } catch (e) {
+      console.warn(`[call-summary] ${model} failed`, e?.message);
+    }
+  }
+  return res.status(200).json({ ok: false, error: 'AI가 요약을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' });
+}
+
 async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
@@ -89,6 +162,9 @@ async function handler(req, res) {
 
   if (req.body?.mode === 'marketing' || req.body?.mode === 'marketing-ping') {
     return handleMarketing(req, res);
+  }
+  if (req.body?.mode === 'call-summary') {
+    return handleCallSummary(req, res);
   }
 
   // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
@@ -122,17 +198,25 @@ async function handler(req, res) {
     });
   }
 
-  const {
-    caseType = 'rehab',
-    applicantName = '신청인',
-    rawVoiceOrText = '',
-    selectedKeywords = [],
-    totalDebtAmount = 0,
-    monthlyIncome = 0,
-    tone = 'formal',
-    courtName = '회생법원',
-    interviewAnswers = null
-  } = req.body || {};
+  // [PART 4] 입력 길이·형식 제한 (이전: 길이 제한 없음, selectedKeywords가 배열이 아니면 .join에서 500)
+  const body = req.body || {};
+  const caseType = body.caseType === 'bankruptcy' ? 'bankruptcy' : 'rehab';
+  const applicantName = clipText(body.applicantName, 40) || '신청인';
+  const rawVoiceOrText = typeof body.rawVoiceOrText === 'string' ? body.rawVoiceOrText.slice(0, 8000) : '';
+  const selectedKeywords = Array.isArray(body.selectedKeywords)
+    ? body.selectedKeywords.map(k => clipText(k, 40)).filter(Boolean).slice(0, 20)
+    : [];
+  const totalDebtAmount = Number.isFinite(Number(body.totalDebtAmount)) ? Number(body.totalDebtAmount) : 0;
+  const monthlyIncome = Number.isFinite(Number(body.monthlyIncome)) ? Number(body.monthlyIncome) : 0;
+  const tone = ['formal', 'concise', 'emotional'].includes(body.tone) ? body.tone : 'formal';
+  const courtName = clipText(body.courtName, 40) || '회생법원';
+  let interviewAnswers = null;
+  if (body.interviewAnswers && typeof body.interviewAnswers === 'object') {
+    interviewAnswers = {};
+    for (const k of ['upbringing', 'healthAndMedical', 'firstDebtCause', 'debtGrowthProcess', 'insolvencyCrisis', 'futureResolution']) {
+      if (typeof body.interviewAnswers[k] === 'string') interviewAnswers[k] = body.interviewAnswers[k].slice(0, 2000);
+    }
+  }
 
   const hasInterviewAnswers = interviewAnswers && Object.values(interviewAnswers).some(v => typeof v === 'string' && v.trim().length > 0);
 
@@ -254,10 +338,11 @@ ${hasInterviewAnswers ? `
 
       for (const model of modelNames) {
         try {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          // 키는 URL 쿼리 대신 헤더로 (이전: ?key= → 프록시·로그에 남을 수 있음)
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
           const response = await fetch(geminiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {

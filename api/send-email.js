@@ -53,6 +53,12 @@ export default async function handler(req, res) {
     }
   }
 
+  // [PART 4] 계정 단위 한도 추가 (이전: IP 단위만 — IP를 바꾸면 한 계정으로 계속 발송 가능)
+  const userLimit = checkMultiTierRateLimit(`email:user:${user.id}`, RATE_LIMIT_TIERS.STANDARD);
+  if (userLimit.isLimited) {
+    return res.status(429).json({ ok: false, error: `이메일 발송 한도를 초과했습니다. (${Math.ceil(userLimit.retryAfter / 60)}분 후 재시도 가능)` });
+  }
+
   const { recipients, subject, htmlBody } = req.body || {};
 
   // [SECURITY] 3. 입력 제한 (수신자 10명, 제목 200자, 본문 100KB)
@@ -117,7 +123,8 @@ export default async function handler(req, res) {
     console.error('[Email Send Error]', err);
     return res.status(200).json({ 
       ok: false, 
-      error: err.message || 'Gmail SMTP 발송에 실패했습니다.' 
+      // SMTP 서버 응답 원문은 서버 로그에만 남긴다 (이전: err.message를 그대로 반환)
+      error: '이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' 
     });
   }
 }

@@ -203,13 +203,12 @@ POPBILL_IS_TEST="false"     # "true"=테스트, "false"=운영
 
 ### 필요 환경변수
 ```bash
-# 서버리스 (Vercel)
+# 서버리스 (Vercel) 전용 — VITE_ 접두사 금지 (번들에 포함되어 누구나 볼 수 있음)
 GEMINI_API_KEY="<Google AI Studio에서 발급>"
-
-# 프론트엔드 (Vite) — 클라이언트 직접 호출 시
-VITE_GEMINI_API_KEY="<동일 키 또는 별도 키>"
 ```
-> 키 미설정 시 스마트 룰베이스 폴백 또는 `localStorage.getItem('lm_geminiApiKey')` 사용자 직접 입력 모드로 전환
+> 모든 Gemini 호출(진술서·OCR·통화 요약·마케팅 칼럼)은 서버(`/api/generate-statement`, `/api/ocr-*`)에서만 합니다. 브라우저 직접 호출과 `localStorage` 키 입력 모드는 PART 4에서 삭제했습니다.
+> 키가 없으면 진술서는 룰베이스 초안, 통화 요약·OCR은 실패로 안내합니다.
+> ⚠️ Vercel 환경변수에 `VITE_GEMINI_API_KEY`·`VITE_GOOGLE_API_KEY`가 남아 있다면 삭제하세요.
 
 ---
 
@@ -234,7 +233,9 @@ VITE_GEMINI_API_KEY="<동일 키 또는 별도 키>"
 ```bash
 VITE_PORTONE_STORE_ID="store-6dc40c8f-40cb-41c8-95be-36ddaf8467d0"
 VITE_PORTONE_CHANNEL_KEY="channel-key-6d8962ba-a8fd-4b92-aa46-7b0b17c67489"
-VITE_PORTONE_API_SECRET="<포트원 콘솔에서 발급>"  # 선택
+
+# 서버리스 전용 (본인인증 결과 서버 검증 — /api/contract?action=identity-verify) · VITE_ 접두사 금지
+PORTONE_API_SECRET="<포트원 콘솔에서 발급>"  # 필수 (없으면 본인인증 검증이 503)
 ```
 
 ---
@@ -373,9 +374,9 @@ TURNSTILE_SECRET_KEY="<Cloudflare 시크릿 키>"        # 서버리스
 ### ① 국세청 사업자등록 진위확인
 | 항목 | 값 |
 |:---|:---|
-| **엔드포인트** | `POST https://api.odcloud.kr/api/nts-businessman/v1/validate` |
-| **구현 파일** | `src/services/ntsService.ts` |
-| **환경변수** | `VITE_NTS_SERVICE_KEY` (`.env` L6에 설정됨) |
+| **엔드포인트** | `POST https://api.odcloud.kr/api/nts-businessman/v1/validate` (서버 중계: `POST /api/benefits?action=nts-validate`, 로그인 필수) |
+| **구현 파일** | `src/services/ntsService.ts` → `api/benefits.js` |
+| **환경변수** | `NTS_SERVICE_KEY` (서버 전용). 이전 이름 `VITE_NTS_SERVICE_KEY`도 서버에서 읽지만 클라이언트는 참조하지 않음 — 이름 변경 권장 |
 
 ### ② 행안부 공공서비스 복지 혜택 조회
 | 항목 | 값 |
@@ -509,13 +510,13 @@ VITE_BANK_HOLDER="진성호(몬스터랩)"
 # ─── PortOne ───
 VITE_PORTONE_STORE_ID="store-6dc40c8f-40cb-41c8-95be-36ddaf8467d0"
 VITE_PORTONE_CHANNEL_KEY="channel-key-6d8962ba-a8fd-4b92-aa46-7b0b17c67489"
-VITE_PORTONE_API_SECRET="<포트원 시크릿>"
 
-# ─── 국세청 ───
-VITE_NTS_SERVICE_KEY="<NTS 인증키>"
-
-# ─── Gemini AI ───
-VITE_GEMINI_API_KEY="<Gemini API 키>"
+# ─── 서버 전용 (VITE_ 접두사 금지 — Vercel 환경변수) ───
+PORTONE_API_SECRET="<포트원 시크릿>"
+NTS_SERVICE_KEY="<국세청 진위확인 인증키>"
+GEMINI_API_KEY="<Gemini API 키>"
+# 선택: 추가로 허용할 CORS Origin (쉼표 구분, https만). 운영에서는 *.vercel.app 패턴을 허용하지 않음
+CORS_ALLOWED_ORIGINS=""
 
 # ─── Turnstile ───
 VITE_TURNSTILE_SITE_KEY="<사이트 키>"
@@ -523,8 +524,11 @@ VITE_TURNSTILE_SITE_KEY="<사이트 키>"
 # ─── Google Drive ───
 VITE_GOOGLE_SCRIPT_URL="<GAS Web App URL>"
 
-# ─── 세션 암호화 ───
-VITE_SESSION_SECRET="<세션 암호화 키>"
+# ─── (폐지) VITE_SESSION_SECRET ───
+# 앱은 더 이상 이 변수를 읽지 않습니다(PART 4-3: 브라우저 필드 암호화 제거).
+# 기존 암호문 이관 스크립트 실행 시 LEGACY_SESSION_SECRET으로 한 번만 넘기고, 이관 후 Vercel에서 삭제하세요:
+#   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... LEGACY_SESSION_SECRET="<기존 값>" \
+#     node supabase/scripts/decrypt-legacy-consult-fields.mjs [--apply]
 ```
 
 ---

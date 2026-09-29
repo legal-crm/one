@@ -36,100 +36,11 @@ export class StatementAiService {
       console.warn('[StatementAiService] API fetch failed, trying client-side fallback', apiErr);
     }
 
-    // 2. 클라이언트 직접 호출 (VITE_GEMINI_API_KEY 확인)
-    const clientKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
-    if (clientKey) {
-      try {
-        const clientResult = await this.callGeminiDirect(clientKey, payload);
-        if (clientResult) return clientResult;
-      } catch (clientErr) {
-        console.warn('[StatementAiService] Client direct call failed', clientErr);
-      }
-    }
+    // 2. (삭제) 브라우저 직접 Gemini 호출 — VITE_GEMINI_API_KEY가 번들에 포함되어 누구나 키를 볼 수 있었음.
+    //    AI 작성은 서버(/api/generate-statement)만 사용한다.
 
     // 3. 오프라인 / Fallback 스마트 룰베이스 엔진
     return this.generateSmartFallback(payload);
-  }
-
-  /**
-   * 클라이언트 직접 Gemini 2.5 Flash 호출
-   */
-  private static async callGeminiDirect(
-    apiKey: string,
-    payload: GenerateStatementAiPayload
-  ): Promise<GenerateStatementAiResponse | null> {
-    const isRehab = payload.caseType === 'rehab';
-    const prompt = `
-당신은 대한민국 법원 회생·파산 실무에 정통한 최고 수준의 법률 전문가입니다.
-의뢰인(고객)이 음성 인식이나 일상 메모로 털어놓은 사연을 바탕으로, 대한민국 법원(회생법원/지방법원)에 제출할 공식 【진술서】를 완성도 높은 법률 문체로 작성해주세요.
-
-[사건 및 의뢰인 정보]
-- 신청 사건 유형: ${isRehab ? '개인회생' : '개인파산 및 면책'}
-- 신청인 성명: ${payload.applicantName || '신청인'}
-- 관할 법원: ${payload.courtName || '서울회생법원'}
-- 총 채무 규모: 약 ${payload.totalDebtAmount ? payload.totalDebtAmount.toLocaleString() : '미기재'}만 원
-- 선택된 주요 사유: ${(payload.selectedKeywords || []).join(', ') || '생계 곤란'}
-- 희망 문체 톤: ${payload.tone === 'concise' ? '간결하고 명확하게' : payload.tone === 'emotional' ? '진솔하고 호소력 있게' : '정중하고 격식 있는 법률 문체'}
-
-[고객의 음성 녹음 내용 / 사연 메모]:
-"""
-${payload.rawVoiceOrText || '(키워드 및 인터뷰 기반 작성)'}
-"""
-${payload.interviewAnswers ? `
-[신청인 6대 심층 인생 Q&A 인터뷰 답변]:
-- Q1. 성장 환경 및 가정 배경: ${payload.interviewAnswers.upbringing || '특이사항 없음'}
-- Q2. 건강 및 질병/의료비 간병 사정: ${payload.interviewAnswers.healthAndMedical || '특이사항 없음'}
-- Q3. 첫 경제활동 및 채무 발생 계기: ${payload.interviewAnswers.firstDebtCause || '특이사항 없음'}
-- Q4. 채무 증대 과정 (돌려막기, 고금리 등): ${payload.interviewAnswers.debtGrowthProcess || '특이사항 없음'}
-- Q5. 더 이상 갚을 수 없게 된 결정적 순간 (지급불능): ${payload.interviewAnswers.insolvencyCrisis || '특이사항 없음'}
-- Q6. 회생/파산을 통한 갱생과 재기 다짐: ${payload.interviewAnswers.futureResolution || '특이사항 없음'}
-` : ''}
-
-[지침]:
-1. 대법원 양식에 맞추어 다음 4단 섹션으로 구분하여 유효한 JSON으로만 작성하세요 (마크다운 없이 순수 JSON):
-{
-  "sections": {
-    "initialCause": "1. 채무 발생 원인 문단",
-    "growthProcess": "2. 채무 증대 경위 문단",
-    "insolvencyTrigger": "3. 지급불능 사정 문단",
-    "resolution": "4. 반성과 갱생 다짐 문단"
-  },
-  "fullFormattedText": "법원 정식 서식 통합 전문",
-  "safetyWarnings": ["사기죄 의심, 편파변제 의심 등 주의 문구 (없으면 빈 배열)"],
-  "suggestedKeywords": ["핵심 키워드"]
-}
-`;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          response_mime_type: 'application/json'
-        }
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        const clean = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-        const parsed = JSON.parse(clean);
-        return {
-          ok: true,
-          source: 'gemini_ai',
-          sections: parsed.sections,
-          fullFormattedText: parsed.fullFormattedText,
-          safetyWarnings: parsed.safetyWarnings || [],
-          suggestedKeywords: parsed.suggestedKeywords || payload.selectedKeywords || []
-        };
-      }
-    }
-    return null;
   }
 
   /**

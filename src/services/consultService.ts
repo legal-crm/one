@@ -1,6 +1,10 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ConsultRequest, ConsultMessage } from '../types';
-import { encryptField, decryptField, encryptString, decryptString } from '../utils/cryptoField';
+import { isLegacyEncryptedField, isLegacyEncryptedString, LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER } from '../utils/cryptoField';
+
+// [PART 4] 브라우저 "암호화"(번들 키) 제거 — 평문 저장 + RLS. 이관 전 레거시 암호문은 덮어쓰지 않도록 추적한다.
+const legacyEncryptedProfileIds = new Set<string>();
+const legacyEncryptedMessageIds = new Set<string>();
 import { validateAndSanitizeConsultRequest } from '../schemas/consultSchema';
 
 // ============================================================
@@ -31,11 +35,12 @@ function logSupabaseError(operation: string, error: any) {
 }
 
 
-// ConsultRequest → DB row 변환 (financial_profile AES-256-GCM 암호화 저장)
+// ConsultRequest → DB row 변환
+// 레거시 암호문 행은 financial_profile을 보내지 않아 기존 값을 보존한다(화면에는 빈 프로필로 보이므로 덮어쓰면 유실).
 async function requestToRow(request: ConsultRequest) {
-  const encryptedProfile = await encryptField(request.financialProfile || {});
+  const keepLegacyProfile = legacyEncryptedProfileIds.has(request.id);
 
-  return {
+  const row: Record<string, unknown> = {
     id: request.id,
     client_id: request.clientId || 'client-temp',
     client_name: request.clientName || '익명 의뢰인',
@@ -50,7 +55,7 @@ async function requestToRow(request: ConsultRequest) {
     proposals: request.proposals || [],
     title: request.title || '',
     content: request.content || '',
-    financial_profile: encryptedProfile,
+    financial_profile: request.financialProfile || {},
     phone_consultation_requested: request.phoneConsultationRequested ?? false,
     safe_number: request.safeNumber || null,
     safe_number_assigned_at: request.safeNumberAssignedAt || null,
@@ -59,6 +64,8 @@ async function requestToRow(request: ConsultRequest) {
     created_at: request.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  if (keepLegacyProfile) delete row.financial_profile;
+  return row;
 }
 
 // ── 역할별 DB 동기화 컨텍스트 (012 엄격 RLS 대응) ──
@@ -132,10 +139,17 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
       if (!uid) return; // 비로그인: 로컬에만 보관 (로그인 후 본인 ID로 이관되어 저장)
       const own = changed.filter(r => r.clientId === uid);
       if (own.length === 0) return;
-      const payload = await Promise.all(own.map(requestToRow));
-      const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
-      if (error) logSupabaseError('syncRequestsToDb(client)', error);
-      else markSynced(own);
+      // 일괄 upsert는 모든 행의 컬럼이 같아야 하므로, financial_profile을 보존할 레거시 행은 따로 보낸다
+      const legacyRows = own.filter(r => legacyEncryptedProfileIds.has(r.id));
+      const normalRows = own.filter(r => !legacyEncryptedProfileIds.has(r.id));
+      let ok = true;
+      for (const group of [normalRows, legacyRows]) {
+        if (group.length === 0) continue;
+        const payload = await Promise.all(group.map(requestToRow));
+        const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
+        if (error) { ok = false; logSupabaseError('syncRequestsToDb(client)', error); }
+      }
+      if (ok) markSynced(own);
       return;
     }
 
@@ -178,7 +192,10 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
 
 // DB row → ConsultRequest 변환 (financial_profile 자동 복호화)
 async function rowToRequest(row: any): Promise<ConsultRequest> {
-  const decryptedProfile = await decryptField<any>(row.financial_profile);
+  const legacyProfile = isLegacyEncryptedField(row.financial_profile);
+  if (legacyProfile) legacyEncryptedProfileIds.add(row.id);
+  else legacyEncryptedProfileIds.delete(row.id);
+  const decryptedProfile = legacyProfile ? {} : row.financial_profile;
 
   return {
     id: row.id,
@@ -324,7 +341,7 @@ export async function saveConsultRequest(request: ConsultRequest): Promise<void>
   else requests.push(safeRequest);
   setLocalData(REQUESTS_STORAGE_KEY, requests);
 
-  // DB 전송은 역할별 권한 경로로 (financial_profile은 requestToRow에서 AES-256-GCM 암호화)
+  // DB 전송은 역할별 권한 경로로 (평문 저장, 접근은 012 RLS가 제한)
   await syncRequestsToDb([safeRequest]);
 }
 
@@ -473,16 +490,15 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
       if (error) {
         logSupabaseError('loadConsultMessages', error);
       } else if (data) {
-        // [SECURITY Message Decryption] DB 저장 암호문 자동 복호화 (평문 하위 호환 100% 보장)
-        return await Promise.all(data.map(async (row: any) => ({
+        return data.map((row: any) => ({
           id: row.id,
           consultRequestId: row.consult_request_id,
           senderType: row.sender_type,
           senderId: row.sender_id,
           senderName: row.sender_name,
-          message: await decryptString(row.message),
+          message: readStoredMessage(row.id, row.message),
           createdAt: row.created_at,
-        })));
+        }));
       }
     } catch (e) {
       logSupabaseError('loadConsultMessages (exception)', e);
@@ -491,10 +507,15 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
   
   const allMessages = getLocalData<ConsultMessage[]>(MESSAGES_STORAGE_KEY, []);
   const filtered = allMessages.filter(m => requestIds.includes(m.consultRequestId));
-  return await Promise.all(filtered.map(async m => ({
-    ...m,
-    message: await decryptString(m.message),
-  })));
+  return filtered.map(m => ({ ...m, message: readStoredMessage(m.id, m.message) }));
+}
+
+function readStoredMessage(id: string, stored: string): string {
+  if (isLegacyEncryptedString(stored)) {
+    legacyEncryptedMessageIds.add(id);
+    return LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER;
+  }
+  return stored;
 }
 
 export async function saveConsultMessage(message: ConsultMessage): Promise<void> {
@@ -506,8 +527,8 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<void>
 
   if (isSupabaseConfigured) {
     try {
-      // [SECURITY Message Encryption] 메시지 본문 AES-256-GCM 암호화 후 DB 전송
-      const encryptedMessageText = await encryptString(message.message);
+      // 레거시 암호문 메시지는 안내 문구로 덮어쓰지 않는다
+      if (legacyEncryptedMessageIds.has(message.id)) return;
 
       const { error } = await supabase.from('consult_messages').upsert({
         id: message.id,
@@ -515,7 +536,7 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<void>
         sender_type: message.senderType,
         sender_id: message.senderId,
         sender_name: message.senderName,
-        message: encryptedMessageText,
+        message: message.message,
         created_at: message.createdAt,
       }, { onConflict: 'id' });
       if (error) {
@@ -532,15 +553,15 @@ export async function saveAllConsultMessages(messages: ConsultMessage[]): Promis
   
   if (isSupabaseConfigured && messages.length > 0) {
     try {
-      const payload = await Promise.all(messages.map(async msg => ({
+      const payload = messages.filter(msg => !legacyEncryptedMessageIds.has(msg.id)).map(msg => ({
         id: msg.id,
         consult_request_id: msg.consultRequestId,
         sender_type: msg.senderType,
         sender_id: msg.senderId,
         sender_name: msg.senderName,
-        message: await encryptString(msg.message),
+        message: msg.message,
         created_at: msg.createdAt,
-      })));
+      }));
       const { error } = await supabase.from('consult_messages').upsert(payload, { onConflict: 'id' });
       if (error) {
         logSupabaseError('saveAllConsultMessages', error);

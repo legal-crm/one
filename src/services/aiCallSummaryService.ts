@@ -31,6 +31,7 @@ export interface CallSummaryContext {
 }
 
 import { REHABILITATION_DOMAIN_KEYWORDS, AVAILABLE_AI_MODELS } from '../types/leadTypes';
+import { getAuthHeaders } from '../supabaseClient';
 
 export { REHABILITATION_DOMAIN_KEYWORDS, AVAILABLE_AI_MODELS };
 
@@ -150,32 +151,24 @@ export const parseAiTranscript = (rawText: string | null | undefined): ParsedAiS
  * Gemini 3.5 Transcribe & Gemini 3.5 Flash를 이용한 통화 녹음 파일 STT 및 2단계 요약 생성
  * (화자분리 전사 + 타임스탬프 + 95대 회생/파산 전문 어휘 주입)
  */
+const CALL_SUMMARY_MAX_FILE_BYTES = 3 * 1024 * 1024;
+
 export const generateAiCallSummary = async (
   file: File,
   context?: CallSummaryContext,
   customPrompt?: string
 ): Promise<string> => {
-  // 1. API 키 확인 (localStorage 사용자 입력값 우선, 그 후 Vite 환경변수)
-  const userKey = typeof window !== 'undefined' 
-    ? (localStorage.getItem('lm_geminiApiKey') || localStorage.getItem('gemini_api_key')) 
-    : null;
-  const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
-  const apiKey = userKey || envKey || '';
+  // [PART 4] Gemini 키는 서버 환경변수(GEMINI_API_KEY)에만 둔다.
+  // 이전: localStorage('lm_geminiApiKey')나 번들(VITE_GEMINI_API_KEY)의 키로 브라우저가 Google에 녹음을 직접 전송.
+  try {
+    localStorage.removeItem('lm_geminiApiKey');
+    localStorage.removeItem('gemini_api_key');
+  } catch { /* ignore */ }
 
-  // 2. 키가 없으면 실패로 처리 (이전: 실제 녹음과 무관한 가짜 상담 요약·대화록을 생성해 저장)
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('AI 통화 요약 API 키가 설정되지 않았습니다. [알림 및 설정]에서 Gemini API 키를 등록해 주세요.');
+  // Vercel 요청 본문 한도(약 4.5MB) — base64 변환 후 4MB 이하가 되도록 원본 3MB로 제한
+  if (file.size > CALL_SUMMARY_MAX_FILE_BYTES) {
+    throw new Error('녹음 파일이 너무 큽니다. 3MB 이하 파일만 AI 요약할 수 있습니다. (긴 통화는 나눠서 올려 주세요)');
   }
-
-  // 3. 모델 라인업 및 Fallback 설정 (기본: gemini-3.5-transcribe, fallback: gemini-3.5-flash)
-  const VALID_MODELS = ['gemini-3.5-transcribe', 'gemini-3.5-flash', 'gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
-  const FALLBACK_MODEL = 'gemini-3.5-flash';
-  let selectedModel = typeof window !== 'undefined' ? (localStorage.getItem('lm_geminiModel') || 'gemini-3.5-transcribe') : 'gemini-3.5-transcribe';
-
-  if (!VALID_MODELS.includes(selectedModel)) {
-    selectedModel = 'gemini-3.5-transcribe';
-  }
-
   try {
     const base64Data = await fileToBase64(file);
     const domainKeywordsStr = REHABILITATION_DOMAIN_KEYWORDS.join(', ');
@@ -202,61 +195,17 @@ ${customPrompt || DEFAULT_AI_PROMPT}
 
     const mimeType = file.type || (file.name.endsWith('.m4a') ? 'audio/m4a' : file.name.endsWith('.wav') ? 'audio/wav' : 'audio/mp3');
 
-    // Helper: Call Gemini Generative Language API
-    const callGeminiModel = async (modelName: string): Promise<string | null> => {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: promptText },
-                {
-                  inlineData: {
-                    mimeType: mimeType,
-                    data: base64Data
-                  }
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8192
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Model ${modelName} returned ${response.status}: ${errorText}`);
-      }
-
-      const json = await response.json();
-      return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
-    };
-
-    // 1차 시도: 선택된 모델 (gemini-3.5-transcribe)
-    try {
-      const resultText = await callGeminiModel(selectedModel);
-      if (resultText) return resultText;
-    } catch (firstError: any) {
-      console.warn(`[aiCallSummaryService] Model ${selectedModel} failed, trying fallback to ${FALLBACK_MODEL}:`, firstError);
-      
-      // Fallback 시도: gemini-3.5-flash
-      if (selectedModel !== FALLBACK_MODEL) {
-        try {
-          const fallbackResult = await callGeminiModel(FALLBACK_MODEL);
-          if (fallbackResult) return fallbackResult;
-        } catch (fallbackError) {
-          console.warn('[aiCallSummaryService] Fallback model failed too:', fallbackError);
-        }
-      }
+    const res = await fetch('/api/generate-statement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ mode: 'call-summary', audioBase64: base64Data, mimeType, prompt: promptText }),
+    });
+    let data: any = null;
+    try { data = await res.json(); } catch { data = null; }
+    if (res.ok && data?.ok && typeof data.text === 'string' && data.text.trim()) {
+      return data.text.trim();
     }
-
-    throw new Error('AI 모델이 결과를 반환하지 않았습니다. 잠시 후 다시 시도해 주세요.');
+    throw new Error(data?.error || `AI 통화 요약 요청이 실패했습니다. (${res.status})`);
   } catch (error: any) {
     console.warn('[aiCallSummaryService] Gemini API call failed:', error);
     throw error instanceof Error ? error : new Error('AI 통화 요약 생성에 실패했습니다.');

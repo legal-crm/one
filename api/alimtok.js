@@ -57,7 +57,8 @@ export default async function handler(req, res) {
   const forwarded = req.headers['x-forwarded-for'];
   const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
   const tier = isStatus ? RATE_LIMIT_TIERS.STANDARD : RATE_LIMIT_TIERS.STRICT;
-  const rateLimit = checkMultiTierRateLimit(`alimtok:${ip}`, tier);
+  // 조회와 발송 버킷 분리 (이전: 같은 키를 써서 상태 조회가 STRICT 발송 한도를 소진)
+  const rateLimit = checkMultiTierRateLimit(`alimtok:${isStatus ? 'status' : 'send'}:${ip}`, tier);
 
   res.setHeader('X-RateLimit-Limit', tier.minute.max);
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining);

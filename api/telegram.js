@@ -83,7 +83,15 @@ export default async function handler(req, res) {
   const chatId = callerBotToken
     ? (reqChatId || telegram?.chatId)
     : process.env.TELEGRAM_ADMIN_CHAT_ID;
-  const contentText = String(markdown || text || message || '').slice(0, 4000);
+  // [PART 4] 비로그인(Turnstile만 통과) 요청은 관리자 채팅방에 서식 없는 짧은 글로만 전달
+  //   이전: 익명 사용자가 4,000자 본문과 parse_mode(HTML/Markdown)를 정해 관리자 채팅에
+  //   '시스템 알림'처럼 보이는 카드·링크를 꾸며 보낼 수 있었다.
+  const ALLOWED_PARSE_MODES = new Set(['Markdown', 'MarkdownV2', 'HTML']);
+  const rawText = String(markdown || text || message || '');
+  const contentText = authedUser
+    ? rawText.slice(0, 4000)
+    : `[비로그인 요청 · 내용 미검증]\n${rawText.replace(/[\u0000-\u0008\u000b-\u001f]/g, ' ').slice(0, 1500)}`;
+  const effectiveParseMode = authedUser && ALLOWED_PARSE_MODES.has(parseMode) ? parseMode : undefined;
 
   const results = {
     telegram: { attempted: false, ok: false },
@@ -118,7 +126,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             chat_id: chatId,
             text: contentText,
-            parse_mode: parseMode,
+            ...(effectiveParseMode ? { parse_mode: effectiveParseMode } : {}),
           }),
           signal: AbortSignal.timeout(8000),
         }
@@ -126,7 +134,8 @@ export default async function handler(req, res) {
       const data = await telegramRes.json();
       results.telegram.ok = !!data.ok;
       if (!data.ok) {
-        results.telegram.error = data.description || 'Telegram API 오류';
+        console.warn('[Telegram API Error]', data.description);
+        results.telegram.error = 'Telegram 알림 전송에 실패했습니다.';
       }
     } catch (err) {
       console.error('[Telegram API Exception]', err);
@@ -147,7 +156,8 @@ export default async function handler(req, res) {
       });
       results.slack.ok = slackRes.ok;
       if (!slackRes.ok) {
-        results.slack.error = await slackRes.text();
+        console.warn('[Slack Webhook Error]', slackRes.status);
+        results.slack.error = `Slack 알림 전송에 실패했습니다. (${slackRes.status})`;
       }
     } catch (err) {
       console.error('[Slack Webhook Exception]', err);

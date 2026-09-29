@@ -50,6 +50,10 @@ function resolveNetworkConfig(req, { allowNetworkSwitch = false } = {}) {
   return { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client };
 }
 
+function rpcHostOnly(url) {
+  try { return new URL(url).host; } catch { return ''; }
+}
+
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -415,7 +419,8 @@ export default async function handler(req, res) {
         network: networkName,
         isMainnet: isMainnet,
         chainId: currentChain.id,
-        rpcUrl: rpcUrl,
+        // RPC URL 경로·쿼리에 공급자 API 키가 들어갈 수 있어 호스트만 반환 (이전: 인증 없는 status가 전체 URL 반환)
+        rpcUrl: rpcHostOnly(rpcUrl),
         blockHeight: Number(blockNumber),
         explorerBase: explorerBase,
         hasRelayerKey,
@@ -431,7 +436,8 @@ export default async function handler(req, res) {
         network: networkName,
         isMainnet: isMainnet,
         chainId: currentChain.id,
-        rpcUrl: rpcUrl,
+        // RPC URL 경로·쿼리에 공급자 API 키가 들어갈 수 있어 호스트만 반환 (이전: 인증 없는 status가 전체 URL 반환)
+        rpcUrl: rpcHostOnly(rpcUrl),
         notaryContract: notaryAddress,
         error: err.message || 'Polygon RPC 노드 연결 실패',
       });
@@ -495,17 +501,12 @@ export default async function handler(req, res) {
     }
 
     // C. 무인가 요청 차단 및 서킷 브레이커 위반 누적
+    // [PART 4] 이전: 비인가 요청도 전역 서킷 브레이커 실패로 누적 → 익명 사용자가 POST 10번으로
+    //   모든 사용자의 앵커링을 30분간 멈출 수 있었다(DoS). 비인가 요청은 IP 단위 Rate Limit만 적용한다.
     if (!isAuthorized) {
-      const penalty = recordCircuitFailure(
-        'blockchain_anchor', 
-        10, 
-        30 * 60 * 1000, 
-        '무인가 온체인 앵커링 공격 시도 급증 감지'
-      );
       return res.status(401).json({
         ok: false,
         error: '접근 권한이 없습니다. 유효한 로그인 세션(Authorization) 또는 1회용 전자서명 토큰이 필요합니다.',
-        circuitBreakerTriggered: penalty.triggered,
       });
     }
 
@@ -516,7 +517,6 @@ export default async function handler(req, res) {
 
     const cleanHash = documentHash.replace(/^0x/, '').toLowerCase();
     if (cleanHash.length !== 64 || !/^[0-9a-f]{64}$/.test(cleanHash)) {
-      recordCircuitFailure('blockchain_anchor', 10, 30 * 60 * 1000, '비정상 해시 문자열 공격 시도');
       return res.status(400).json({ ok: false, error: '유효한 32바이트(64자리) 16진수 SHA-256 해시여야 합니다.' });
     }
 
@@ -599,7 +599,6 @@ export default async function handler(req, res) {
         explorerUrl: null,
         referenceBlockNumber: currentBlock,
         anchoredAt: now.toISOString(),
-        explorerUrl,
         contractHash: cleanHash,
         notaryContract: notaryAddress,
         // 온체인 전송이 아니다: txHash는 서버가 만든 SHA-256 다이제스트이며 블록체인 트랜잭션이 아님

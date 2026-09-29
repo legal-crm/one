@@ -2264,76 +2264,125 @@
 
 ---
 
+> **점검 메모 (2026-09-29)**
+> - **브라우저 번들에 비밀 키가 들어 있었습니다.** 운영 Vercel 환경에 `VITE_NTS_SERVICE_KEY`(공공데이터포털 인증키)와 `VITE_SESSION_SECRET`(상담 메시지·재무 프로필 암호화 키)이 설정되어 있어 누구나 JS 번들에서 읽을 수 있었습니다. `VITE_GEMINI_API_KEY`를 넣으면 같은 방식으로 노출되는 코드 경로(진술서, 통화 녹음 요약)도 남아 있었습니다.
+> - `VITE_PORTONE_API_SECRET`은 코드에서 쓰이지 않습니다. 본인인증 검증은 이미 서버의 `PORTONE_API_SECRET`을 씁니다. 인수인계 문서만 틀려 있었습니다.
+> - **CORS가 운영에서도 `*-mykim.vercel.app`, `legal-crm*.vercel.app` 패턴을 허용했습니다.** 누구나 같은 이름 규칙으로 Vercel 프로젝트를 만들 수 있습니다.
+> - **익명 사용자가 블록체인 앵커링을 30분간 멈출 수 있었습니다.** 인증 없는 POST 10번이 전역 서킷 브레이커를 발동시켰습니다. 앵커링 폴백 응답은 선언되지 않은 변수(`explorerUrl`) 때문에 **항상 500**이었습니다.
+> - **LeadMaster 통화·문자 테이블 4개가 공개 anon 키로 전부 읽기·쓰기 가능했습니다**(20260916). 전 사무소 의뢰인 전화번호·문자 본문 조회, 사무소 휴대폰으로 임의 문자 발송 대기열 등록이 가능했습니다.
+
 ### 4-1. 서버리스 API 보안 인프라 (`api/_lib/`)
-- [ ] **인증 미들웨어 (`auth-middleware.js`)** — Supabase Service Role Bearer 토큰 검증, `X-Request-ID`, 분당 60회 Rate Limit
-- [ ] **Strict CORS 화이트리스트 (`cors-helper.js`)** — 와일드카드 배제, `mykim.kr`/`vercel.app` 한정
-- [ ] **다단계 Rate Limiter (`rate-limiter.js`)** — STRICT/STANDARD/RELAXED 3-Tier, 1분/10분/30분 슬라이딩 윈도우, 30분 위반자 격리(Jail), 비상 서킷 브레이커
-- [ ] **Cloudflare Turnstile 봇 방어 (`turnstile-validator.js`)** — 서버 측 토큰 검증
-- [ ] **팝빌 SDK 싱글톤 (`popbill-service.js`)** — 공급자 정보 초기화
+- [x] **인증 미들웨어 (`auth-middleware.js`)** — `supabase.auth.getUser()`로 토큰 서버 검증, 관리자는 `app_metadata.role=admin` + aal2
+  - ℹ️ '분당 60회'·`X-Request-ID`는 `withAuth`를 쓰는 `api/invoice.js`에만 적용됩니다. 나머지 API는 각자 다단계 Rate Limiter를 씁니다.
+  - ⚠️ `SUPABASE_SERVICE_ROLE_KEY`가 없으면 anon 키로 조용히 대체됩니다. 이때 변호사 승인 조회가 RLS에 막혀 발송 API가 전부 거부됩니다(실패 시 차단).
+- [x] **CORS (`cors-helper.js`)** *(수정)*
+  - ⛔→✅ 운영(`VERCEL_ENV=production`)에서는 `mykim.kr`, `www.mykim.kr`, `legal-crm-xi.vercel.app`과 `CORS_ALLOWED_ORIGINS`만 허용합니다. `*.vercel.app` 패턴·localhost는 프리뷰/개발 배포에서만 허용합니다.
+  - ✅ `Access-Control-Allow-Credentials` 제거(인증은 Bearer 헤더), `Vary: Origin` 추가, `X-Turnstile-Token` 헤더 허용.
+  - ℹ️ CORS는 브라우저 제한일 뿐입니다. 실제 보호는 각 API의 인증·Turnstile·Rate Limit입니다.
+- [x] **다단계 Rate Limiter (`rate-limiter.js`)** — STRICT/STANDARD/RELAXED, 1·10·30분 창, 위반 시 Jail
+  - 🐛 메모리 정리가 거의 동작하지 않던 버그 수정 (다른 키의 만료 타임스탬프를 정리하지 않아 `length === 0` 조건이 성립하지 않음) *(수정)*
+  - ❌ **상태가 함수 인스턴스 메모리에 있습니다.** 인스턴스마다 따로 세고 콜드 스타트 때 초기화됩니다. 동시 인스턴스가 N개면 실제 한도는 N배입니다. 전역 한도가 필요하면 Upstash Redis/Vercel KV 같은 공유 저장소가 필요합니다(출시 전 결정).
+  - 🐛 알림톡 상태 조회와 발송이 같은 키를 써서, 조회가 STRICT 발송 한도를 소진하던 문제 → 버킷 분리 *(수정)*
+- [x] **Turnstile (`turnstile-validator.js`)** — 운영에서 비밀키가 없거나 검증 서버 오류면 거부(fail-closed) 확인
+- [x] **팝빌 (`popbill-service.js`)** — 비밀키는 환경변수만 사용
+  - ⚠️ LinkID·사업자번호·담당자 연락처가 코드 기본값으로 들어 있습니다. 환경변수로 옮기는 것을 권장합니다.
 
 ---
 
-### 4-2. 서버리스 API 엔드포인트 (11개)
-| # | 엔드포인트 | 기능 | 외부 연동 |
+### 4-2. 서버리스 API 엔드포인트 (12개)
+| # | 엔드포인트 | 인증 | 이번 점검 결과 |
 |:-:|:---|:---|:---|
-| 1 | `api/alimtok.js` | 카카오 알림톡 + SMS/LMS Failover + 잔여 포인트 + 템플릿 조회 | Popbill SDK |
-| 2 | `api/benefits.js` | 공적 복지 혜택 조회 (16대 공적제도) + 1시간 캐싱 | 공공데이터포털 |
-| 3 | `api/contract.js` | 블록체인 SHA-256 앵커링 + RPC 상태 + 온체인 검증 + 서킷 브레이커 | Polygon/Viem |
-| 4 | `api/debt-discovery.js` | 4대 기관 채무/체납/계좌 전수조회 + 간편인증 | CODEF API |
-| 5 | `api/generate-statement.js` | Gemini AI 법원 4단 진술서 자동 작성 | Gemini 2.5 Flash |
-| 6 | `api/invoice.js` | 전자세금계산서 정발행/수정/뷰어/이메일 + `withAuth` | Popbill SDK |
-| 7 | `api/ocr-case.js` | 법원 결정문 멀티모달 OCR (10MB DoS 방어) | Gemini Flash Vision |
-| 8 | `api/ocr-family.js` | 주민등록표/가족관계증명서 OCR + 만 나이/부양가족 판별 | Gemini Flash Vision |
-| 9 | `api/scourt-proxy.js` | 대법원 나의사건검색 스크래핑 중계 | CODEF B2B |
-| 10 | `api/send-email.js` | Gmail SMTP 발송 (OTP/고객 알림) + Strict Rate Limit | Nodemailer |
-| 11 | `api/telegram.js` | Telegram Bot + Slack Webhook 듀얼 알림 + SSRF 방어 | Telegram/Slack |
+| 1 | `api/alimtok.js` | 로그인 + 승인 변호사/관리자(aal2) | 조회·발송 Rate Limit 버킷 분리 *(수정)*. ⚠️ 템플릿 불일치 시 SMS/LMS로 임의 문구가 나갈 수 있음 |
+| 2 | `api/benefits.js` | 복지 조회: 없음 / NTS: 로그인 | **국세청 진위확인 서버 중계 추가**(`?action=nts-validate`) *(수정)*. ⚠️ 복지 조회는 쿼리 파라미터로 필터하지 않음 |
+| 3 | `api/contract.js` | 액션별 | 폴백 응답 500 버그, 익명 서킷 브레이커 DoS, `status`의 RPC URL(공급자 키 포함 가능) 노출 → 호스트만 반환 *(수정)*. ⚠️ `identity-verify`는 로그인 사용자가 임의 인증 ID를 조회할 수 있음(소유 확인 없음), `anchor`는 모든 로그인 사용자가 릴레이어 가스를 쓸 수 있음 |
+| 4 | `api/debt-discovery.js` | 로그인 또는 Turnstile | ⚠️ 실데이터 없음(항상 시뮬레이션), Rate Limit 없음 |
+| 5 | `api/generate-statement.js` | 진술서: 로그인/Turnstile, 통화 요약: 승인 변호사/관리자, 마케팅: 관리자 | **통화 요약 모드 추가**(`mode:'call-summary'`) *(수정)*. 키를 URL 쿼리 → 헤더로, 입력 길이·형식 제한(이전: 배열 아닌 키워드로 500) *(수정)*. `maxDuration` 60초 |
+| 6 | `api/invoice.js` | `withAuth` + 발행 계열 관리자(aal2) | ⚠️ 팝빌 오류 원문을 응답에 포함 |
+| 7 | `api/ocr-case.js` | 로그인 또는 Turnstile | 존재하지 않는 모델(`gemini-3.6-flash`) 선호출 제거, 키를 헤더로 *(수정)* |
+| 8 | `api/ocr-family.js` | 로그인 또는 Turnstile | 변경 없음 |
+| 9 | `api/scourt-proxy.js` | 로그인 또는 Turnstile | ⚠️ 사건번호+이름만 알면 누구나 CODEF 과금 조회 가능, `forceRefresh`로 캐시 우회 |
+| 10 | `api/send-email.js` | 승인 변호사/관리자 | 계정 단위 한도 추가, SMTP 오류 원문 비노출 *(수정)* |
+| 11 | `api/telegram.js` | 로그인 또는 Turnstile | 비로그인 요청은 서식 없는 1,500자 글 + '[비로그인 요청 · 내용 미검증]' 표시, `parse_mode` 허용 목록, 외부 응답 원문 비노출 *(수정)* |
+| 12 | `api/inquiry.js` | 액션별 (3-6) | 변경 없음 |
+
+- ⚠️ `scourt-proxy`·`debt-discovery`·`generate-statement`·`ocr-case`는 `NODE_ENV==='development'`이면 인증을 건너뜁니다. 운영 환경변수에 이 값이 들어가지 않도록 확인해야 합니다.
 
 ---
 
 ### 4-3. 암호화 & 보안 유틸리티
-- [ ] **AES-256-GCM 필드 레벨 암호화 (`cryptoField.ts`)** — DB 민감 데이터
-- [ ] **AES-256-GCM 인증서 볼트 (`certificateVaultService.ts`)** — 30초 클립보드 자동 삭제, Zeroize
-- [ ] **HMAC 서명 세션 토큰 (`secureSession.ts`)** — 위변조 검증
-- [ ] **난독화 보안 스토리지 (`secureStorage.ts`)**
-- [ ] **분산 트레이싱 (`tracking.ts`)** — `X-Request-ID` HTTP 헤더 주입
-- [ ] **기기 탐지 (`deviceDetector.ts`)** — OS/브라우저/기기 유형 판별 + UUID
+- [x] ⛔→✅ **필드 암호화 (`cryptoField.ts`) 제거** — `consult_requests.financial_profile`, `consult_messages.message` *(수정)*
+  - 이전: 키가 `VITE_SESSION_SECRET`(번들에 포함) 또는 코드 고정값이라 번들을 가진 누구나 복호화할 수 있었습니다. 환경변수가 없으면 탭마다 임의 키를 만들어 담당 변호사도 읽지 못하는 데이터가 생겼습니다.
+  - 현재: 새 데이터는 평문으로 저장하고, 보호는 RLS(012: 당사자만 조회)·TLS·Supabase 디스크 암호화가 맡습니다. 번들에는 키가 없습니다.
+  - 기존 암호문은 서버 전용 일회성 스크립트 `supabase/scripts/decrypt-legacy-consult-fields.mjs`로 평문으로 되돌립니다(기본 미리보기, `--apply`로 반영).
+  - 이관 전 남은 암호문은 화면에 '이전 방식으로 저장된 메시지' 안내로 표시하고, **저장 대상에서 빼서 덮어쓰지 않습니다**(재무 프로필은 해당 컬럼을 보내지 않음).
+  - 화면 문구 정정: '1:1 대화 AES-256 암호화', '왓츠앱 수준의 저장 암호화', 채팅 배지 '암호화 저장' → TLS·접근 제한 사실대로. 칼럼 예시의 '종단간 암호화' 표현 삭제.
+  - 공개 보안센터(`public/security.html`)의 'AES-256-GCM 필드 암호화', '해커가 DB를 탈취해도 해독할 수 없음', '가족·회사에 알려지는 것은 절대 불가능' 문구도 사실대로 고쳤습니다.
+  - ⚠️ 같은 페이지의 '미진행 상담 30일 후 자동 파기'는 서버에서 동작하는지 확인하지 못했습니다(PART 5에서 확인).
+  - **배포 순서**: ① 스크립트 미리보기 → ② `--apply` → ③ Vercel에서 `VITE_SESSION_SECRET` 삭제. 스크립트 전에 배포해도 데이터는 보존되지만 기존 메시지는 안내 문구로 보입니다.
+- [x] ⛔→✅ **인증서 보관함 — 의뢰인 보관 PIN 암호화** *(수정)*
+  - 이전: 번들 내장 고정 시드(`FALLBACK_KEY_SEED`)로 비밀번호만 암호화, 개인키 파일(`signPri.key`)은 평문 localStorage.
+  - 현재: 인증서 비밀번호와 **개인키 파일**을 의뢰인이 정한 보관 PIN으로 암호화합니다. PBKDF2-SHA256(무작위 salt, 310,000회) → AES-256-GCM. PIN·키는 어디에도 저장하지 않습니다.
+  - PIN 규칙: 6자 이상, 같은 숫자 반복·연속 숫자 불가, 인증서 비밀번호와 달라야 함. 사무소는 의뢰인이 전화 등 별도 경로로 알려 준 PIN을 입력해야 비밀번호를 보거나 개인키를 내려받을 수 있습니다.
+  - 이전 방식 보관분은 열 수 없으므로 불러올 때 평문 개인키·암호문을 지우고 '재등록 필요'로 표시합니다.
+  - ⚠️ 짧은 PIN은 기기를 가진 사람이 대입 공격으로 풀 수 있습니다. PIN을 잊으면 복구할 수 없습니다(재등록). 보관 위치는 여전히 의뢰인 기기뿐이고 사무소로 전달하는 기능은 없습니다.
+  - 확인: 암호화→복호화 왕복, 틀린 PIN 거부, PIN 규칙을 esbuild 번들로 실행해 확인했습니다.
+- [x] **`secureSession.ts`** — 없음. 관리자 HMAC 세션은 PART 3-1에서 Supabase 인증 + TOTP로 대체하고 삭제했습니다.
+- [x] **`secureStorage.ts`** — 암호화하지 않습니다. 민감 키를 sessionStorage로, 나머지를 localStorage로 나누는 역할만 합니다.
+  - ⚠️ `consultService`는 같은 키(`legal_crm_requests`/`_messages`)를 `localStorage`에 평문으로 직접 씁니다.
+- [x] **`tracking.ts`** — 페이지당 요청 ID 1개. `auditService`만 사용합니다. 보안 기능은 아닙니다.
+- [x] **`deviceDetector.ts`** — UA 파싱 + `crypto.randomUUID` 세션 ID. ⚠️ IP 조회(`api.ipify.org`)는 CSP `connect-src`에 없어 운영에서 차단됩니다.
 
 ---
 
 ### 4-4. 옴니채널 알림 시스템 (`notificationService.ts`)
-- [ ] **텔레그램 봇** — 신규 상담/광고 주문 카드 서식 렌더링
-- [ ] **Gmail SMTP** — 관리자 OTP 및 고객 알림 발송
-- [ ] **Slack 웹훅** — 듀얼 알림 중계 및 SSRF 방어
-- [ ] **브라우저 웹 푸시** — Web Push API
-- [ ] **카카오 알림톡/SMS Failover** — 18종 마일스톤별 템플릿 자동 컴파일
+- [x] **텔레그램** — `/api/telegram` 경유(관리자 봇 채팅방은 서버 환경변수로 고정)
+- [x] **이메일** — `/api/send-email` 경유, 승인 변호사/관리자만
+- [x] **Slack** — 서버 환경변수(`SLACK_ADMIN_WEBHOOK_URL`)로만 사용, `hooks.slack.com` 외 차단
+- [ ] ⚠️ **브라우저 알림** — 현재 탭의 `Notification`만. 서비스 워커·푸시 구독이 없어 Web Push가 아닙니다.
+- [ ] ⚠️ **카카오 알림톡/SMS** — 브라우저 쪽 `sendSmsNotification`/`sendKakaoNotification`은 '준비 중' 스텁입니다. 서버 `api/alimtok.js`의 템플릿 코드 대부분(`MYKIM_ATS_*`)은 팝빌 등록이 확인되지 않아, 실제로는 SMS/LMS 대체 발송이 됩니다.
 
 ---
 
 ### 4-5. 커스텀 훅 (7개)
-- [ ] `useCopilotPermissions`: AI Copilot 역할 기반 접근 제어
-- [ ] `usePageMeta`: 브라우저 `document.title` 동적 변경
-- [ ] `usePermissions`: 스태프 역할별 탭/액션 권한 판정
-- [ ] `useProposalDraft`: 제안서 초안 디바운스 임시저장/복구
-- [ ] `useProposalTemplates`: 의견서 템플릿/수임료 프리셋/Q&A 스니펫 CRUD
-- [ ] `useSessionGuard`: 30분 미활동 감시, 다중 탭 원격 로그아웃, 세션 무결성
-- [ ] `useSpeechRecognition`: Web Speech API 래퍼, 실시간 STT, 무음 감지
+- [x] 7개 모두 존재합니다.
+- ⚠️ `usePermissions`·`useCopilotPermissions`는 **화면 표시용 판정**입니다. 실제 권한은 RLS가 막아야 합니다. `activeStaff`가 없으면 OWNER로 간주합니다.
+- ⚠️ `useSessionGuard`는 15초 폴링 + 다른 탭 로그아웃 수신만 합니다. 30분 미활동 로그아웃은 관리자·의뢰인에만 있고 **변호사 화면에는 없습니다.**
+- ℹ️ `useProposalDraft`·`useProposalTemplates`는 localStorage에 평문 저장합니다.
 
 ---
 
 ### 4-6. 외부 API 연동 총괄표
-| 서비스 | 연동 서비스 파일 | API 엔드포인트 | 용도 |
+| 서비스 | 호출 위치 | 키 위치 | 용도 |
 |:---|:---|:---|:---|
-| **Google Gemini 2.5 Flash** | `statementAiService`, `aiCallSummaryService`, `marketingAiService` | `generativelanguage.googleapis.com` | 진술서 AI/통화 녹음 요약/블로그 자동 작성 |
-| **Gemini Vision** | `api/ocr-case.js`, `api/ocr-family.js`, `companionService` | `generativelanguage.googleapis.com` | 결정문 OCR, 가족관계증명서 OCR |
-| **PortOne V2** | `portoneService.ts` | `api.portone.io` | 본인인증 (PASS/카카오/토스/SMS) |
-| **Popbill** | `taxInvoiceService`, `alimtokService` | `api/invoice.js`, `api/alimtok.js` | 전자세금계산서, 카카오 알림톡 |
-| **CODEF B2B** | `scourtService`, `debtDiscoveryService` | `api/scourt-proxy.js`, `api/debt-discovery.js` | 대법원 사건 조회, 채무 전수조회 |
-| **Polygon PoS** | `blockchainAnchorService` | `api/contract.js` | 전자계약 블록체인 앵커링 |
-| **공공데이터포털** | `ntsService`, `companionService` | `apis.data.go.kr` | 사업자 진위확인, 공적 복지 조회 |
-| **Pollinations AI** | `marketingAiService` | `image.pollinations.ai` | 블로그 이미지 자동 생성 |
-| **Telegram Bot API** | `notificationService` | `api.telegram.org` | 실시간 알림 중계 |
-| **Google Apps Script** | `communicationService` | `script.google.com` | 통화 녹음 Drive 업로드 |
-| **국민연금공단** | `jobHistoryService` | CODEF 스크래핑 | 직장 경력 조회 |
+| **Google Gemini** | 서버만: `api/generate-statement.js`(진술서·통화 요약·마케팅), `api/ocr-case.js`, `api/ocr-family.js` | 서버 `GEMINI_API_KEY` *(수정: 브라우저 직접 호출 2곳 삭제)* | 진술서, 통화 녹음 요약, 칼럼, OCR |
+| **PortOne V2** | SDK는 브라우저, 결과 검증은 `api/contract.js` | 공개 `VITE_PORTONE_STORE_ID/CHANNEL_KEY`, 서버 `PORTONE_API_SECRET` | 본인인증 |
+| **Popbill** | `api/invoice.js`, `api/alimtok.js` | 서버 | 세금계산서, 알림톡 |
+| **CODEF** | `api/scourt-proxy.js`, `api/debt-discovery.js` | 서버 | 사건 조회, 채무 조회(시뮬레이션) |
+| **Polygon PoS** | `api/contract.js` | 서버 (RPC·릴레이어 키) | 계약 해시 앵커링 |
+| **공공데이터포털** | `api/benefits.js` (복지, **국세청 진위확인** *(수정)*) | 서버 `DATA_GO_KR_API_KEY`, `NTS_SERVICE_KEY` | 복지 조회, 사업자 진위확인 |
+| **Pollinations** | 브라우저 이미지 URL | 없음 | 칼럼 이미지 (제3자에 프롬프트 전달) |
+| **Telegram / Slack** | `api/telegram.js` | 서버 | 관리자 알림 |
+| **Google Apps Script** | 브라우저 `communicationService` | `VITE_GOOGLE_SCRIPT_URL` | 통화 녹음 Drive 업로드. ⚠️ URL을 아는 누구나 쓸 수 있는 엔드포인트 |
+
+---
+
+### 4-7. RLS 정리 (`026_infra_rls_cleanup.sql`) *(추가)*
+- [x] 앱이 쓰지 않는 설정 테이블 6개(`notification_channel_settings`, `client_memos`, `fee_notification_settings`, `custom_roles`, `copilot_cases`, `copilot_rulesets`) → 관리자(aal2) 전용. 이전: 로그인한 누구나(의뢰인 포함) 읽기·수정.
+- [x] LeadMaster 4개 테이블(`communication_logs`, `pending_sms`, `pending_calls`, `sms_templates`) → anon 차단, 승인 변호사·활성 직원·관리자만(`is_firm_user()`).
+  - ⚠️ **안드로이드 앱이 anon 키로 접속 중이면 실행 후 동기화가 멈춥니다.** 앱을 사무소 계정으로 로그인하도록 바꾼 뒤 실행해야 합니다.
+  - ❌ 사무소 구분 컬럼이 없어 **사무소 간 분리는 아직 안 됩니다**(`tenant_id` 추가 필요).
+- [x] `diagnosis_config`의 `authenticated_modify_config`(로그인한 누구나 진단 문항 수정) 제거.
+- [ ] ❌ 남은 전체 허용 정책: 004 코파일럿 검토 테이블 12개(authenticated ALL), `diagnosis_results` UPDATE, `staff_activities`, `alimtok_logs` INSERT. 소유 컬럼 확인 후 정리해야 합니다.
+- [ ] ⚠️ `phase1_*.sql`·`phase2_*.sql`은 파일명 순서상 026 뒤에 정렬되고 `allow_anon_all_*`을 다시 만듭니다. **반드시 006보다 먼저 실행**하고, 이후 재실행하지 마세요.
+- [ ] ❌ 026은 실행해 보지 못했습니다.
+
+---
+
+### 4-8. 검증
+- `npx tsc --noEmit` 오류 수 기준선(233) 유지, `npm run build` 통과, `node --check api/**/*.js` 통과.
+- 운영 번들에서 `generativelanguage.googleapis.com`, `api.odcloud.kr`, `VITE_NTS_SERVICE_KEY`, `lm_geminiApiKey` 문자열 0건.
+- 실제 Gemini·국세청·팝빌·Polygon 호출과 026 마이그레이션은 키·DB가 없어 확인하지 못했습니다.
+- **배포 전 할 일**: Vercel에 `NTS_SERVICE_KEY` 추가(또는 기존 값 유지 후 이름 변경), `VITE_GEMINI_API_KEY`·`VITE_GOOGLE_API_KEY` 삭제. 상담 데이터 이관 스크립트(4-3) 실행 후 `VITE_SESSION_SECRET` 삭제. 코드는 더 이상 이 변수를 읽지 않으므로 번들에는 들어가지 않습니다.
 
 ---
 
@@ -2344,14 +2393,14 @@
 | 단계 | 점검 영역 | 핵심 검증 항목 | 담당 | 판정 |
 |:---:|:---|:---|:---:|:---:|
 | **G1** | 데이터베이스 보안 | Supabase RLS 활성화 — 타인 데이터 접근 격리 | 백엔드 | [ ] |
-| **G2** | 환경변수 분리 | `VITE_SUPABASE_*`, `VITE_PORTONE_*`, `VITE_ADMIN_SECRET_PATH` 주입 | 데브옵스 | [ ] |
+| **G2** | 환경변수 분리 | 공개값 `VITE_SUPABASE_*`, `VITE_PORTONE_STORE_ID/CHANNEL_KEY`, `VITE_ADMIN_SECRET_PATH` / 서버 전용 `PORTONE_API_SECRET`, `NTS_SERVICE_KEY`, `GEMINI_API_KEY` (비밀에 `VITE_` 금지) | 데브옵스 | [ ] |
 | **G3** | 포트원 실운영 | 테스트 → 라이브 상점 키 전환 | 백엔드 | [ ] |
 | **G4** | 팝빌 실운영 | 테스트 → 실운영 LinkID/SecretKey 전환 | 재무/백엔드 | [ ] |
 | **G5** | 카카오 비즈메시지 | 발신번호 가입증명원 제출 + 18종 템플릿 검수 승인 | 마케팅 | [ ] |
 | **G6** | 텔레그램/이메일 | `api/telegram.js`, `api/send-email.js` 발송 테스트 완료 | 운영 | [ ] |
 | **G7** | 빌드 무결성 | `npm run build` TypeScript 컴파일 에러 0건 | 프론트엔드 | [ ] |
 | **G8** | SEO 등록 | 네이버 서치어드바이저 + 구글 서치콘솔 `sitemap.xml` 제출 | 마케팅 | [ ] |
-| **G9** | Gemini API 키 | `VITE_GEMINI_API_KEY` 프로덕션 키 + 할당량 확인 | 백엔드 | [ ] |
+| **G9** | Gemini API 키 | 서버 전용 `GEMINI_API_KEY` 프로덕션 키 + 할당량 확인 (`VITE_GEMINI_API_KEY`는 삭제 — 번들 노출) | 백엔드 | [ ] |
 | **G10** | CODEF API | 대법원 스크래핑/채무조회 실운영 인증 키 전환 | 백엔드 | [ ] |
 | **G11** | Polygon RPC | 메인넷 RPC URL + 프라이빗 키 환경변수 주입 | 백엔드 | [ ] |
 | **G12** | CORS 화이트리스트 | `cors-helper.js`에 프로덕션 도메인(`mykim.kr`) 등록 | 보안 | [ ] |

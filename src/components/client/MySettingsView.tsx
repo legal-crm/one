@@ -325,8 +325,8 @@ export default function MySettingsView({
                 <div className="flex items-start gap-2.5">
                   <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">1:1 대화 AES-256 암호화</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">상담 메시지 및 금융 프로필 DB 저장 시 필드 암호화</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">1:1 대화 접근 제한</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">전송 구간 TLS 암호화, 상담 당사자(본인·선택한 변호사)만 조회 가능</span>
                   </div>
                 </div>
 
@@ -360,7 +360,7 @@ export default function MySettingsView({
                   <span>🔒</span> my김변 스텔스 보안 보증
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                  본 서비스는 왓츠앱 수준의 저장 암호화(AES-256)와 텔레그램 수준의 데이터 자폭권을 지원하여, 채무 사실이 가족, 직장, 외부 광고망에 노출되지 않도록 철저히 보호합니다.
+                  상담 내용은 전송 구간(TLS)으로 암호화되어 오가고, 데이터베이스 접근 규칙에 따라 본인과 선택한 변호사만 조회할 수 있습니다. 원하면 언제든 상담 기록을 삭제할 수 있습니다. 종단간 암호화(E2EE)는 아닙니다.
                 </p>
               </div>
             </div>

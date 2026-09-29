@@ -16,7 +16,7 @@ interface BannerProps {
   onClose: () => void;
 }
 
-// [SECURITY] 법률상담 비밀유지 + 보안 안내 배너 (AES-256 암호화 및 텔레그램식 자폭권 보장)
+// [SECURITY] 법률상담 비밀유지 + 보안 안내 배너 (TLS 전송 + RLS 접근 제한, 기록 삭제 안내)
 function ChatPrivacyBanner({ onClose }: BannerProps) {
   return (
     <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
@@ -24,7 +24,7 @@ function ChatPrivacyBanner({ onClose }: BannerProps) {
       <div>
         <strong className="font-bold">🔒 법률상담 비밀 보호 안내</strong>
         <span className="block mt-0.5 text-indigo-700 dark:text-indigo-300 text-sm">
-          1:1 대화와 재정 정보는 전송 구간(TLS)과 저장 시 암호화되며, 선택하신 변호사와 법령상 필요한 경우 외에는 열람·제공되지 않습니다. 필요하면 언제든지 <strong>'기록 완전삭제'</strong>로 상담 기록을 파기할 수 있습니다.
+          1:1 대화와 재정 정보는 전송 구간(TLS)으로 암호화되어 오가며, 데이터베이스 접근 규칙상 본인과 선택하신 변호사만 조회할 수 있습니다. 법령상 필요한 경우 외에는 제3자에게 제공되지 않습니다. 필요하면 언제든지 <strong>'기록 완전삭제'</strong>로 상담 기록을 파기할 수 있습니다.
         </span>
       </div>
       <button 
@@ -856,7 +856,7 @@ export default function ChatView({
               </h2>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
                 <ShieldCheck className="w-3 h-3" aria-hidden="true" />
-                <span className="whitespace-nowrap">암호화 저장</span>
+                <span className="whitespace-nowrap">당사자만 열람</span>
               </span>
             </div>
 

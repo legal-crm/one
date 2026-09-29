@@ -94,12 +94,16 @@ export function checkMultiTierRateLimit(key, tier = RATE_LIMIT_TIERS.STRICT) {
   record.timestamps.push(now);
   ipTracker.set(key, record);
 
-  // 메모리 정리: 5,000개 초과 시 만료된 키 전수 삭제
+  // 메모리 정리: 5,000개 초과 시 만료된 키 삭제
+  // 이전: 다른 키의 타임스탬프는 접근될 때만 정리돼서 `timestamps.length === 0` 조건이 거의 성립하지 않았다(메모리 계속 증가).
+  // 현재: 가장 긴 창(30분)이 지난 타임스탬프를 여기서 걸러낸 뒤 판정한다.
   if (ipTracker.size > 5000) {
+    const LONGEST_WINDOW_MS = 30 * 60 * 1000;
     for (const [k, v] of ipTracker.entries()) {
-      if (now > v.jailedUntil && v.timestamps.length === 0) {
-        ipTracker.delete(k);
-      }
+      if (now <= v.jailedUntil) continue;
+      const fresh = v.timestamps.filter(t => now - t < LONGEST_WINDOW_MS);
+      if (fresh.length === 0) ipTracker.delete(k);
+      else v.timestamps = fresh;
     }
   }
 

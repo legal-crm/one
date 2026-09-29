@@ -1,12 +1,15 @@
 /**
  * 의뢰인 공동인증서(NPKI) 및 금융인증서 보관함(Certificate Vault) 코어 서비스
  *
- * 실제 보안 수준 (과장 금지 — 이전 주석의 "E2EE / Zero-Knowledge"는 사실이 아님):
- * - 비밀번호만 Web Crypto AES-GCM으로 암호화. 키는 앱 번들에 내장된 고정 시드(FALLBACK_KEY_SEED)에서
- *   파생되므로 번들을 보유한 누구나 복호화 가능 → 서버 KMS/사용자별 키로 전환 전까지 출시 차단 항목.
- * - signPri.key / signCert.der 파일은 Base64 원문 그대로 localStorage에 저장 (암호화 안 됨).
+ * [PART 4] 보안 방식 (사실대로):
+ * - 인증서 비밀번호와 개인키 파일(signPri.key)을 **의뢰인이 정한 보관 PIN**으로 암호화한다.
+ *   PIN → PBKDF2-SHA256(무작위 16바이트 salt, 310,000회) → AES-256-GCM 키. PIN과 키는 어디에도 저장하지 않는다.
+ * - 앱 번들·서버에는 복호화 키가 없다. PIN을 모르면 이 앱 운영자도 열 수 없다(PIN을 잊으면 복구 불가 → 재등록).
+ *   이전: 번들에 내장된 고정 시드(FALLBACK_KEY_SEED)로 비밀번호만 암호화하고 개인키는 평문 저장.
+ * - 공개 인증서(signCert.der)는 만료일·발급기관 표시를 위해 암호화하지 않는다(공개 정보).
+ * - 짧은 PIN은 기기를 손에 넣은 사람이 대입 공격으로 풀 수 있다 → 6자 이상, 인증서 비밀번호와 다르게 받는다.
  * - 보관 위치는 현재 브라우저(localStorage)뿐. crmService가 Supabase 저장 전 제거하므로 기기 간 공유되지 않음.
- * - 감사 로그도 같은 localStorage 레코드에 있으므로 위변조 방지·영구 보존이 아님.
+ * - 감사 로그는 같은 localStorage 레코드에 있으므로 위변조 방지·영구 보존이 아님.
  * - 클립보드 30초 소거는 브라우저 권한/포커스에 따라 실패할 수 있음 (결과를 onZeroized로 전달).
  * - 파기는 이 브라우저의 사본만 비움. 내려받은 파일·다른 기기 사본은 남음.
  */
@@ -21,85 +24,89 @@ import type {
 
 const VAULT_STORAGE_KEY_PREFIX = 'legal_crm_cert_vault_';
 
-// ── 내부 암호화 키 파생 설정 ──
-const ENVELOPE_SALT = new TextEncoder().encode('LEGAL_CRM_CERT_VAULT_SALT_v1_2026');
-const FALLBACK_KEY_SEED = 'LEGAL_STEALTH_SECURE_VAULT_KEY_MATERIAL_KR';
+// ── 보관 PIN 기반 키 파생 ──
+const PIN_KDF_ITERATIONS = 310_000;
+export const VAULT_PIN_MIN_LENGTH = 6;
 
-/**
- * Web Crypto API를 사용한 AES-GCM 대칭키 획득
- */
-async function getCryptoKey(): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(FALLBACK_KEY_SEED),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveKey']
-  );
+const bytesToB64 = (bytes: Uint8Array): string => {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+};
+const b64ToBytes = (b64: string): Uint8Array => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 
+async function deriveVaultKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), { name: 'PBKDF2' }, false, ['deriveKey']);
   return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: ENVELOPE_SALT,
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    keyMaterial,
+    { name: 'PBKDF2', salt, iterations: PIN_KDF_ITERATIONS, hash: 'SHA-256' },
+    material,
     { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt', 'decrypt']
   );
 }
 
-/**
- * 인증서 비밀번호 AES-GCM-256 암호화
- */
-export async function encryptCertPassword(plainPassword: string): Promise<{ encryptedPassword: string; iv: string }> {
+/** 보관 PIN 규칙 검사. 문제가 있으면 안내 문구, 없으면 null */
+export function validateVaultPin(pin: string, certPassword?: string): string | null {
+  if (!pin || pin.length < VAULT_PIN_MIN_LENGTH) return `보관 PIN은 ${VAULT_PIN_MIN_LENGTH}자 이상으로 정해 주세요.`;
+  if (/^(\d)\1+$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin)) return '같은 숫자 반복이나 연속 숫자는 쓸 수 없습니다.';
+  if (certPassword && pin === certPassword) return '보관 PIN은 인증서 비밀번호와 다르게 정해 주세요.';
+  return null;
+}
+
+export interface SealedNpkiSecrets {
+  encVersion: 'pin-v1';
+  pinSalt: string;
+  iv: string;
+  encryptedPassword: string;
+  keyIv: string;
+  encryptedKey: string;
+}
+
+/** 인증서 비밀번호 + 개인키 파일(Base64)을 보관 PIN으로 암호화 */
+export async function sealNpkiSecrets(certPassword: string, keyBase64: string, pin: string): Promise<SealedNpkiSecrets> {
+  const pinError = validateVaultPin(pin, certPassword);
+  if (pinError) throw new Error(pinError);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveVaultKey(pin, salt);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyIv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const [pwCipher, keyCipher] = await Promise.all([
+    crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(certPassword)),
+    crypto.subtle.encrypt({ name: 'AES-GCM', iv: keyIv }, key, enc.encode(keyBase64)),
+  ]);
+  return {
+    encVersion: 'pin-v1',
+    pinSalt: bytesToB64(salt),
+    iv: bytesToB64(iv),
+    encryptedPassword: bytesToB64(new Uint8Array(pwCipher)),
+    keyIv: bytesToB64(keyIv),
+    encryptedKey: bytesToB64(new Uint8Array(keyCipher)),
+  };
+}
+
+/** 보관 PIN으로 인증서 비밀번호와 개인키 파일을 연다. PIN이 틀리면 오류 */
+export async function openNpkiSecrets(npki: NpkiCertificateMeta, pin: string): Promise<{ password: string; keyBase64: string }> {
+  if (npki.encVersion !== 'pin-v1' || !npki.pinSalt || !npki.encryptedPassword || !npki.encryptedKey || !npki.keyIv) {
+    throw new Error('이전 방식으로 저장된 인증서라 열 수 없습니다. 의뢰인에게 보관 PIN을 정해 다시 등록해 달라고 요청해 주세요.');
+  }
   try {
-    const key = await getCryptoKey();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encodedData = new TextEncoder().encode(plainPassword);
-
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encodedData
-    );
-
-    const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
-    const ivBase64 = btoa(String.fromCharCode(...iv));
-
-    return {
-      encryptedPassword: encryptedBase64,
-      iv: ivBase64
-    };
-  } catch (err) {
-    console.error('Password encryption failed:', err);
-    throw new Error('인증서 비밀번호 암호화에 실패했습니다.');
+    const key = await deriveVaultKey(pin, b64ToBytes(npki.pinSalt));
+    const dec = new TextDecoder();
+    const [pw, keyFile] = await Promise.all([
+      crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(npki.iv) }, key, b64ToBytes(npki.encryptedPassword)),
+      crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(npki.keyIv) }, key, b64ToBytes(npki.encryptedKey)),
+    ]);
+    return { password: dec.decode(pw), keyBase64: dec.decode(keyFile) };
+  } catch {
+    throw new Error('보관 PIN이 올바르지 않습니다.');
   }
 }
 
-/**
- * 암호화된 인증서 비밀번호 AES-GCM-256 복호화
- */
-export async function decryptCertPassword(encryptedBase64: string, ivBase64: string): Promise<string> {
-  try {
-    const key = await getCryptoKey();
-    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-    const ciphertext = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      ciphertext
-    );
-
-    return new TextDecoder().decode(decrypted);
-  } catch (err) {
-    console.error('Password decryption failed:', err);
-    throw new Error('인증서 비밀번호 복호화에 실패했습니다. 키가 일치하지 않거나 훼손되었습니다.');
-  }
+/** 보관 PIN 방식이 아닌(이전 고정 시드 방식) 인증서인지 */
+export function isLegacyNpki(npki?: NpkiCertificateMeta | null): boolean {
+  return !!npki && npki.encVersion !== 'pin-v1';
 }
 
 /**
@@ -351,6 +358,9 @@ export function shredCertificateVault(
       keyBase64: '',
       encryptedPassword: '',
       iv: '',
+      encryptedKey: '',
+      keyIv: '',
+      pinSalt: '',
       isExpired: true,
       daysRemaining: 0,
     } : undefined,
@@ -411,6 +421,16 @@ export function loadCertificateVault(clientId: string): CertificateVaultData | n
     if (parsed?.npki?.derBase64?.includes('MOCK_') || parsed?.npki?.keyBase64?.includes('MOCK_')) {
       localStorage.removeItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`);
       return null;
+    }
+    // [PART 4] 이전 고정 시드 방식 레코드: 개인키 파일이 평문으로 남아 있고 비밀번호는 더 이상 열 수 없다.
+    //   평문 개인키·암호문을 이 기기에서 지우고 '재등록 필요' 상태로 둔다(메타데이터·동의·기록은 유지).
+    if (parsed?.npki && isLegacyNpki(parsed.npki) && (parsed.npki.keyBase64 || parsed.npki.encryptedPassword)) {
+      parsed.npki = { ...parsed.npki, keyBase64: '', encryptedPassword: '', iv: '', encVersion: 'legacy-cleared' };
+      parsed.accessLogs = [
+        createAccessLog('시스템', '자동', 'revocation', '이전 방식(앱 내장 키) 보관분의 평문 개인키·비밀번호 암호문 삭제 — 보관 PIN으로 재등록 필요'),
+        ...(parsed.accessLogs || []),
+      ];
+      try { localStorage.setItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`, JSON.stringify(parsed)); } catch { /* ignore */ }
     }
     return parsed;
   } catch (err) {

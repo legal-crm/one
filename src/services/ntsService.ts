@@ -1,9 +1,11 @@
 // ============================================================
 // 국세청 사업자등록정보 진위확인 및 상태조회 서비스
-// 공공데이터포털(data.go.kr) 국세청 API 연동 (API 키 미설정 시 Mock 시뮬레이션 지원)
+// 공공데이터포털(data.go.kr) 국세청 API — 서버(/api/benefits?action=nts-validate) 경유 (키 미설정 시 개발 환경에서만 시뮬레이션)
 // ============================================================
 
-const NTS_SERVICE_KEY = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_NTS_SERVICE_KEY) || '';
+// [PART 4] 공공데이터포털 인증키는 서버 환경변수(NTS_SERVICE_KEY)에만 둔다.
+// 이전: VITE_NTS_SERVICE_KEY가 번들에 포함되어 브라우저가 api.odcloud.kr에 키를 직접 전송했다.
+import { getAuthHeaders } from '../supabaseClient';
 
 export interface NtsValidateParams {
   businessNumber: string; // 10자리 (하이픈 포함 가능)
@@ -71,92 +73,72 @@ export async function validateBusinessRegistration(params: NtsValidateParams): P
     };
   }
 
-  // 실제 공공데이터포털 API 키가 있으면 호출
-  if (NTS_SERVICE_KEY) {
-    try {
-      const url = `https://api.odcloud.kr/api/nts-businessman/v1/validate?serviceKey=${encodeURIComponent(NTS_SERVICE_KEY)}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          businesses: [
-            {
-              b_no: cleanBizNum,
-              start_dt: cleanDate,
-              p_nm: cleanRepName,
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`국세청 API 응답 오류: HTTP ${response.status}`);
-      }
-
-      const json = await response.json();
-      const item = json.data?.[0];
-
-      if (!item) {
-        throw new Error('국세청 조회 결과 데이터가 없습니다.');
-      }
-
-      const isValid = item.valid === '01'; // 01: 일치, 02: 불일치
-      const statusCode = item.status?.b_stt_cd || (isValid ? '01' : '02');
-      const statusName = item.status?.b_stt || (isValid ? '계속사업자' : '등록정보 불일치');
-
-      let status: 'VALID' | 'INVALID' | 'CLOSED' | 'SUSPENDED' = 'VALID';
-      if (!isValid) {
-        status = 'INVALID';
-      } else if (statusCode === '02') {
-        status = 'SUSPENDED';
-      } else if (statusCode === '03') {
-        status = 'CLOSED';
-      }
-
-      return {
-        success: true,
-        isValid,
-        status,
-        statusCode,
-        statusName,
-        taxType: item.status?.tax_type || '-',
-        // 국세청 API는 거래번호를 주지 않음 → 조회 시각 기반 내부 참조값임을 명시 (이전: 'NTS-TX-…'로 공식 번호처럼 표시)
-        txId: `LOCAL-REF-${Date.now()}`,
-        checkedAt: new Date().toISOString(),
-        error: isValid ? undefined : (item.valid_msg || '국세청에 등록된 대표자명 또는 개업일자와 일치하지 않습니다.'),
-      };
-    } catch (err: any) {
-      // 실제 조회 실패는 실패로 반환 (이전: 시뮬레이션으로 폴백 → 장애 중에도 '계속사업자(정상)' 표시)
-      console.warn('[NTS Service] API 호출 실패:', err.message);
-      return {
-        success: false,
-        isValid: false,
-        status: 'INVALID',
-        statusCode: '',
-        statusName: '국세청 조회 실패',
-        txId: '',
-        checkedAt: new Date().toISOString(),
-        error: '국세청 사업자 상태 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.',
-      };
-    }
-  }
-
-  // 키 미설정: 개발 환경에서만 시뮬레이션 (이전: 운영에서도 모든 번호를 '계속사업자(정상)'·가짜 거래번호로 통과)
-  if (import.meta.env.DEV) {
-    return simulateDemoNtsValidation(cleanBizNum, cleanDate, cleanRepName);
-  }
-  return {
+  const failure = (statusName: string, error: string): NtsValidateResult => ({
     success: false,
     isValid: false,
     status: 'INVALID',
     statusCode: '',
-    statusName: '국세청 조회 미설정',
+    statusName,
     txId: '',
     checkedAt: new Date().toISOString(),
-    error: '국세청 사업자 진위확인 서비스가 설정되지 않아 확인하지 못했습니다.',
+    error,
+  });
+
+  let data: any = null;
+  try {
+    const response = await fetch('/api/benefits?action=nts-validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ b_no: cleanBizNum, start_dt: cleanDate, p_nm: cleanRepName }),
+    });
+    try { data = await response.json(); } catch { data = null; }
+    if (!response.ok && data?.configured !== false) {
+      return failure('국세청 조회 실패', data?.error || '국세청 사업자 상태 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  } catch (err: any) {
+    console.warn('[NTS Service] 서버 호출 실패:', err?.message);
+    // 로컬 개발 서버(vite)에는 /api가 없으므로 DEV에서는 시뮬레이션으로 진행
+    if (import.meta.env.DEV) return simulateDemoNtsValidation(cleanBizNum, cleanDate, cleanRepName);
+    return failure('국세청 조회 실패', '국세청 사업자 상태 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+
+  if (data?.configured === false) {
+    // 키 미설정: 개발 환경에서만 시뮬레이션 (이전: 운영에서도 모든 번호를 '계속사업자(정상)'·가짜 거래번호로 통과)
+    if (import.meta.env.DEV) return simulateDemoNtsValidation(cleanBizNum, cleanDate, cleanRepName);
+    return failure('국세청 조회 미설정', '국세청 사업자 진위확인 서비스가 설정되지 않아 확인하지 못했습니다.');
+  }
+
+  const item = data?.ok ? data.item : null;
+  if (!item) {
+    return failure('국세청 조회 실패', data?.error || '국세청 조회 결과 데이터가 없습니다.');
+  }
+
+  const isValid = item.valid === '01'; // 01: 일치, 02: 불일치
+  const statusCode = item.status?.b_stt_cd || (isValid ? '01' : '02');
+  const statusName = item.status?.b_stt || (isValid ? '계속사업자' : '등록정보 불일치');
+
+  let status: 'VALID' | 'INVALID' | 'CLOSED' | 'SUSPENDED' = 'VALID';
+  if (!isValid) {
+    status = 'INVALID';
+  } else if (statusCode === '02') {
+    status = 'SUSPENDED';
+  } else if (statusCode === '03') {
+    status = 'CLOSED';
+  }
+
+  return {
+    success: true,
+    isValid,
+    status,
+    statusCode,
+    statusName,
+    taxType: item.status?.tax_type || '-',
+    // 국세청 API는 거래번호를 주지 않음 → 조회 시각 기반 내부 참조값임을 명시
+    txId: `LOCAL-REF-${Date.now()}`,
+    checkedAt: new Date().toISOString(),
+    error: isValid ? undefined : (item.valid_msg || '국세청에 등록된 대표자명 또는 개업일자와 일치하지 않습니다.'),
   };
 }
-
 /**
  * 데모 모드 시뮬레이션
  */
@@ -206,6 +188,3 @@ async function simulateDemoNtsValidation(bNo: string, startDt: string, pNm: stri
   };
 }
 
-export function isNtsConfigured(): boolean {
-  return !!NTS_SERVICE_KEY;
-}

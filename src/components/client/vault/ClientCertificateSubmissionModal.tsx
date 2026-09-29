@@ -6,7 +6,9 @@ import {
 import { toast } from 'sonner';
 import type { CertificateVaultData, NpkiCertificateMeta, FinancialCertMeta } from '../../../types';
 import { 
-  encryptCertPassword, 
+  sealNpkiSecrets,
+  validateVaultPin,
+  VAULT_PIN_MIN_LENGTH,
   fileToBase64, 
   inspectDerCertificate,
   createAccessLog,
@@ -48,6 +50,9 @@ export default function ClientCertificateSubmissionModal({
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // 보관 PIN: 비밀번호·개인키 파일을 이 PIN으로 암호화 (PIN은 저장하지 않음 — 사무소에는 별도로 알려 줌)
+  const [vaultPin, setVaultPin] = useState('');
+  const [vaultPinConfirm, setVaultPinConfirm] = useState('');
 
   // 동의서 상태
   // 필수 동의는 의뢰인이 직접 체크해야 한다 (미리 체크 금지)
@@ -120,6 +125,11 @@ export default function ClientCertificateSubmissionModal({
         toast.error('비밀번호가 일치하지 않거나 비어있습니다.');
         return;
       }
+      const pinError = validateVaultPin(vaultPin, password) || (vaultPin !== vaultPinConfirm ? '보관 PIN이 일치하지 않습니다.' : null);
+      if (pinError) {
+        toast.error(pinError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -131,8 +141,8 @@ export default function ClientCertificateSubmissionModal({
         const derBase64 = await fileToBase64(derFile);
         const keyBase64 = await fileToBase64(keyFile);
 
-        // 비밀번호만 Web Crypto AES-GCM 암호화 (키는 앱 내장 — 서버 KMS 전환 전까지 강한 보호 아님). 인증서 파일은 원본 저장.
-        const { encryptedPassword, iv } = await encryptCertPassword(password);
+        // [PART 4] 비밀번호와 개인키 파일을 의뢰인 보관 PIN으로 암호화 (이전: 앱 내장 고정 키로 비밀번호만 암호화, 개인키는 평문)
+        const sealed = await sealNpkiSecrets(password, keyBase64, vaultPin);
 
         const inspected = parsedMeta || inspectDerCertificate(derBase64, clientName);
 
@@ -140,9 +150,8 @@ export default function ClientCertificateSubmissionModal({
           derFileName: derFile.name,
           derBase64,
           keyFileName: keyFile.name,
-          keyBase64,
-          encryptedPassword,
-          iv,
+          keyBase64: '',
+          ...sealed,
           subjectName: inspected.subjectName,
           issuer: inspected.issuer,
           serialNumber: inspected.serialNumber || '',
@@ -454,7 +463,7 @@ export default function ClientCertificateSubmissionModal({
                   <div className="text-center space-y-1">
                     <h4 className="text-sm font-bold text-white">인증서 비밀번호 입력</h4>
                     <p className="text-xs text-slate-400">
-                      입력하신 비밀번호는 암호화(AES-GCM)되어 이 기기(브라우저)에만 저장되며 서버로 전송되지 않습니다. 단, 암호화 키가 앱에 내장되어 있어 이 기기에 접근할 수 있는 사람으로부터 완전히 보호되지는 않으며, 인증서 파일(signPri.key 등)은 암호화 없이 저장됩니다. 공용 PC에서는 등록하지 마세요.
+                      인증서 비밀번호와 개인키 파일(signPri.key)은 아래에서 정하는 <strong>보관 PIN</strong>으로 암호화되어 이 기기(브라우저)에만 저장되며 서버로 전송되지 않습니다. PIN은 어디에도 저장되지 않아 PIN을 모르면 누구도 열 수 없습니다. 공용 PC에서는 등록하지 마세요.
                     </p>
                   </div>
 
@@ -477,6 +486,32 @@ export default function ClientCertificateSubmissionModal({
                         placeholder="비밀번호 다시 입력"
                         value={passwordConfirm}
                         onChange={(e) => setPasswordConfirm(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-700/50">
+                      <label htmlFor="vault-pin" className="text-[11px] text-slate-300 block mb-1">보관 PIN ({VAULT_PIN_MIN_LENGTH}자 이상, 인증서 비밀번호와 다르게)</label>
+                      <input
+                        id="vault-pin"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="보관 PIN 입력"
+                        value={vaultPin}
+                        onChange={(e) => setVaultPin(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="vault-pin-confirm" className="text-[11px] text-slate-300 block mb-1">보관 PIN 확인</label>
+                      <input
+                        id="vault-pin-confirm"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="보관 PIN 다시 입력"
+                        value={vaultPinConfirm}
+                        onChange={(e) => setVaultPinConfirm(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
                       />
                     </div>
@@ -505,7 +540,7 @@ export default function ClientCertificateSubmissionModal({
                       보관 및 사용 방식 안내
                     </span>
                     <p className="text-[11px] text-emerald-400/80 leading-relaxed">
-                      비밀번호는 평문으로 저장하지 않습니다. 이 보관함은 현재 기기 안에만 저장되며, 사무소가 인증서를 쓰려면 별도 전달 절차가 필요합니다. 인증서 제출이 부담되시면 제출하지 않고 사무소와 다른 발급 방법을 상의하셔도 됩니다.
+                      사무소가 인증서를 쓰려면 보관 PIN이 필요합니다. PIN은 채팅이 아닌 전화 등 별도 경로로 담당자에게만 알려 주세요. PIN을 잊으면 복구할 수 없어 다시 등록해야 합니다. 인증서 제출이 부담되시면 제출하지 않고 사무소와 다른 발급 방법을 상의하셔도 됩니다.
                     </p>
                   </div>
                 </>
@@ -620,6 +655,13 @@ export default function ClientCertificateSubmissionModal({
                   if (certType === 'npki' && (!password || password !== passwordConfirm)) {
                     toast.error('비밀번호가 일치하지 않습니다.');
                     return;
+                  }
+                  if (certType === 'npki') {
+                    const pinError = validateVaultPin(vaultPin, password) || (vaultPin !== vaultPinConfirm ? '보관 PIN이 일치하지 않습니다.' : null);
+                    if (pinError) {
+                      toast.error(pinError);
+                      return;
+                    }
                   }
                   setCurrentStep('consent');
                 }

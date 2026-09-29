@@ -2675,9 +2675,14 @@ export interface NpkiCertificateMeta {
   derFileName: string;
   derBase64: string;          // Base64 인코딩된 signCert.der
   keyFileName: string;
-  keyBase64: string;          // Base64 인코딩된 signPri.key
-  encryptedPassword: string;  // AES-GCM-256 암호화된 비밀번호
-  iv: string;                 // 초기화 벡터 (Base64)
+  keyBase64: string;          // (이전 방식) 평문 signPri.key — PIN 방식에서는 항상 빈 값, encryptedKey 사용
+  encryptedPassword: string;  // 보관 PIN으로 AES-GCM 암호화한 인증서 비밀번호 (Base64)
+  iv: string;                 // 비밀번호 암호문 IV (Base64)
+  /** 'pin-v1': 의뢰인 보관 PIN(PBKDF2) 암호화 / 'legacy-cleared': 이전 방식 보관분을 지움(재등록 필요) / 없음: 이전 방식 */
+  encVersion?: 'pin-v1' | 'legacy-cleared';
+  pinSalt?: string;           // PBKDF2 salt (Base64)
+  encryptedKey?: string;      // 보관 PIN으로 암호화한 signPri.key (Base64)
+  keyIv?: string;             // 개인키 암호문 IV (Base64)
   subjectName: string;        // 의뢰인 성명 (CN)
   issuer: string;             // 발급기관 (yessign, CrossCert, SignKorea, TradeSign 등)
   serialNumber?: string;
