@@ -18,6 +18,7 @@ import { calculateRepayment, RehabUserInput, RehabCalculationResult, formatCurre
 import { DEFAULT_POLICY_CONFIG_2026, getCourtNameForAddress, chooseFavorableCourt } from '../../config/PolicyConfig';
 import { RehabChatConfig } from '../../types';
 import RehabResultReport from './RehabResultReport';
+import { auditDiagnosisSubmit } from '../../../services/auditService';
 import ChatbotRenderer from './templates/ChatbotRenderer';
 import { ChatbotTemplateId, ThemeMode, ChatbotColorPalette, getTemplateById, DEFAULT_DARK_PALETTE, DEFAULT_LIGHT_PALETTE, CHATBOT_TEMPLATES, InteractiveBlockConfig, InteractiveBlockState } from './templates/ChatbotTemplateConfig';
 import { fetchGlobalSettings } from '../../services/googleSheetService';
@@ -3591,6 +3592,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             clearInterval(phaseInterval);
             const calculationResult = calculateRepayment(input, policyConfig);
             setResult(calculationResult);
+            // [PART 3-2] 관리자 KPI '진단 완료' 집계용 서버 기록 (금액·개인정보 없이 완료 사실만)
+            auditDiagnosisSubmit('chatbot-v2');
 
             const statusEmoji = calculationResult.status === 'POSSIBLE' ? '🟢' :
                 calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';

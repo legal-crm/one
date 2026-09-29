@@ -57,7 +57,7 @@ interface IndexHistoryItem {
   url: string;
   target: string;
   timestamp: string;
-  status: 'success' | 'pending';
+  status: 'success' | 'pending' | 'memo';
 }
 
 const DEFAULT_PORTALS: PortalConfig[] = [
@@ -68,7 +68,7 @@ const DEFAULT_PORTALS: PortalConfig[] = [
     badgeBg: 'bg-blue-500/10',
     badgeTextColor: 'text-blue-400',
     borderColor: 'border-blue-500/30',
-    account: 'beanhull@gmail.com',
+    account: '회사 관리 계정',
     loginMethod: '구글 계정 직접 로그인',
     verificationTag: '<meta name="google-site-verification" content="GSC_VERIFICATION_CODE" />',
     sitemapSubmitted: true,
@@ -76,7 +76,7 @@ const DEFAULT_PORTALS: PortalConfig[] = [
     syndicationActive: true,
     consoleUrl: 'https://search.google.com/search-console',
     steps: [
-      { id: 'g1', title: '구글 계정 (beanhull@gmail.com) 서치콘솔 로그인', desc: 'search.google.com 접속 후 속성(mykim.kr) 추가', completed: true },
+      { id: 'g1', title: '구글 계정 (회사 관리 계정) 서치콘솔 로그인', desc: 'search.google.com 접속 후 속성(mykim.kr) 추가', completed: true },
       { id: 'g2', title: '소유권 확인 메타태그 등록', desc: 'HTML 태그 방식을 선택하여 발급된 고유 코드를 head에 등록', completed: false },
       { id: 'g3', title: 'sitemap.xml 제출', desc: '좌측 메뉴 [Sitemaps]에서 https://mykim.kr/sitemap.xml 제출', completed: true },
       { id: 'g4', title: '주요 페이지 URL 색인 요청 (Inspection)', desc: '핵심 랜딩 및 기사 페이지를 URL 검사 후 색인 요청', completed: false }
@@ -112,7 +112,7 @@ const DEFAULT_PORTALS: PortalConfig[] = [
     badgeBg: 'bg-cyan-500/10',
     badgeTextColor: 'text-cyan-400',
     borderColor: 'border-cyan-500/30',
-    account: 'beanhull@gmail.com',
+    account: '회사 관리 계정',
     loginMethod: '구글 서치콘솔 계정 연동 로그인 (GSC Import 지원)',
     verificationTag: '<meta name="msvalidate.01" content="BING_VERIFICATION_CODE" />',
     sitemapSubmitted: true,
@@ -120,7 +120,7 @@ const DEFAULT_PORTALS: PortalConfig[] = [
     syndicationActive: true,
     consoleUrl: 'https://www.bing.com/webmasters',
     steps: [
-      { id: 'b1', title: '구글 계정 (beanhull@gmail.com)으로 Bing 웹마스터 로그인', desc: 'Google Search Console 연동 가져오기 버튼으로 1초 동기화 가능', completed: true },
+      { id: 'b1', title: '회사 구글 계정으로 Bing 웹마스터 로그인', desc: 'Google Search Console 연동 가져오기로 사이트를 불러올 수 있음', completed: false },
       { id: 'b2', title: '소유권 확인 및 사이트맵 자동 가져오기', desc: 'GSC 데이터 임포트 시 사이트맵 및 인증 자동 연동', completed: true },
       { id: 'b3', title: 'IndexNow 프로토콜 활성화', desc: '새 페이지 생성 시 즉시 빙/네이버에 푸시되는 IndexNow API 키 구성', completed: false },
       { id: 'b4', title: 'Copilot / Bing Chat 인용 모니터링', desc: 'MS Copilot AI 검색엔진에서 my김변 서비스 인용 상태 점검', completed: false }
@@ -146,15 +146,15 @@ export default function SeoGeoManager() {
   const [indexHistory, setIndexHistory] = useState<IndexHistoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('mykim_seo_index_history');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        // 과거 버전이 심어둔 가짜 '전송 성공' 기록(id 1~3) 제거
+        const parsed: IndexHistoryItem[] = JSON.parse(saved);
+        return parsed.filter(h => !['1', '2', '3'].includes(h.id));
+      }
     } catch {
       // ignore
     }
-    return [
-      { id: '1', url: 'https://mykim.kr/sitemap.xml', target: 'Google & Naver Ping', timestamp: '2025-02-15 14:20', status: 'success' },
-      { id: '2', url: 'https://mykim.kr/articles/crypto-stock-debt.html', target: 'IndexNow (Bing)', timestamp: '2025-02-18 10:15', status: 'success' },
-      { id: '3', url: 'https://mykim.kr/guide/debt-agent.html', target: 'Naver 수집요청', timestamp: '2025-02-20 17:40', status: 'success' }
-    ];
+    return [];
   });
 
   // 상태 로컬스토리지 자동 저장
@@ -216,10 +216,11 @@ export default function SeoGeoManager() {
       url: indexUrlInput.trim(),
       target,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      status: 'success'
+      // 실제 전송 기능이 없음 — '메모'로만 기록 (이전: 전송 없이 'success'로 기록하고 '전송되었습니다' 안내)
+      status: 'memo'
     };
     setIndexHistory(prev => [newItem, ...prev.slice(0, 19)]);
-    toast.success(`[${target}] 색인 핑 및 수집 요청이 전송되었습니다.`);
+    toast.info(`[${target}] 요청 메모를 남겼습니다. 실제 색인 요청은 해당 웹마스터 도구에서 직접 진행하세요.`);
   };
 
   // llms.txt 내용
@@ -364,9 +365,9 @@ my김변(mykim.kr)은 변호사간 협업 사이트인 김변호사(kimbyun.co.k
             <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
             <div className="text-xs md:text-sm text-slate-300 leading-relaxed">
               <span className="font-bold text-white">마스터 계정 정보 안내:</span> 구글 서치 콘솔(
-              <span className="text-indigo-400 font-mono font-bold">beanhull@gmail.com</span>), 네이버 서치어드바이저(
+              <span className="text-indigo-400 font-mono font-bold">회사 관리 계정</span>), 네이버 서치어드바이저(
               <span className="text-emerald-400 font-mono font-bold">2882a@naver.com</span>), 빙 웹마스터 도구(구글 로그인{' '}
-              <span className="text-cyan-400 font-mono font-bold">beanhull@gmail.com</span>) 정보가 기본 연동되어 있습니다. 각 포털별 체크리스트를 클릭하여 진행 상태를 실시간 기록하고 관리하세요.
+              <span className="text-cyan-400 font-mono font-bold">회사 관리 계정</span>) 정보가 기본 연동되어 있습니다. 각 포털별 체크리스트를 클릭하여 진행 상태를 실시간 기록하고 관리하세요.
             </div>
           </div>
 
@@ -518,7 +519,7 @@ my김변(mykim.kr)은 변호사간 협업 사이트인 김변호사(kimbyun.co.k
               <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
                 <span className="text-indigo-400 font-bold block">1. 구글 서치콘솔 최적화 요령</span>
                 <p className="text-slate-400 leading-relaxed">
-                  <span className="text-slate-200 font-bold">beanhull@gmail.com</span> 계정으로 접속 후 [URL 검사] 메뉴에서 새 기사나 가이드의 URL을 입력하고 &apos;실제 URL 테스트&apos; &gt; &apos;색인 생성 요청&apos;을 누르면 24시간 내 우선 수집됩니다.
+                  <span className="text-slate-200 font-bold">회사 관리 계정</span> 계정으로 접속 후 [URL 검사] 메뉴에서 새 기사나 가이드의 URL을 입력하고 &apos;실제 URL 테스트&apos; &gt; &apos;색인 생성 요청&apos;을 누르면 24시간 내 우선 수집됩니다.
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
@@ -530,7 +531,7 @@ my김변(mykim.kr)은 변호사간 협업 사이트인 김변호사(kimbyun.co.k
               <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
                 <span className="text-cyan-400 font-bold block">3. 빙 웹마스터 & ChatGPT AI 연동</span>
                 <p className="text-slate-400 leading-relaxed">
-                  <span className="text-slate-200 font-bold">beanhull@gmail.com</span> 구글 계정으로 연동하면 구글의 모든 검증 상태가 빙으로 즉시 복제됩니다. 빙의 색인 데이터는 OpenAI ChatGPT 검색 엔진의 핵심 출처가 됩니다.
+                  <span className="text-slate-200 font-bold">회사 관리 계정</span> 구글 계정으로 연동하면 구글의 모든 검증 상태가 빙으로 즉시 복제됩니다. 빙의 색인 데이터는 OpenAI ChatGPT 검색 엔진의 핵심 출처가 됩니다.
                 </p>
               </div>
             </div>
@@ -1032,9 +1033,8 @@ my김변(mykim.kr)은 변호사간 협업 사이트인 김변호사(kimbyun.co.k
                         <span>{item.timestamp}</span>
                       </div>
                     </div>
-                    <span className="self-start sm:self-center px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px] border border-emerald-500/20 flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      전송 성공 (200 OK)
+                    <span className="self-start sm:self-center px-2 py-0.5 rounded bg-slate-500/10 text-slate-300 font-bold text-xs border border-slate-500/30">
+                      메모 (자동 전송 없음)
                     </span>
                   </div>
                 ))

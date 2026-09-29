@@ -1115,6 +1115,9 @@ export interface ConsultRequest {
   title: string;
   content: string;
   financialProfile: FinancialProfile;
+  /** 관리자 스팸 숨김 (023, 원문은 보존) */
+  adminHidden?: boolean;
+  adminHiddenReason?: string;
   phoneConsultationRequested?: boolean;
   safeNumber?: string;
   safeNumberAssignedAt?: string;
@@ -1938,6 +1941,8 @@ export interface SuccessReview {
   content: string;
   tags: string[];
   rating?: number;
+  /** 실제 이용 후기가 아닌 가상 상담 절차 예시 (별점·이용 인증·변호사 연결 미표시) */
+  isExample?: boolean;
 }
 
 export interface MainBanner {

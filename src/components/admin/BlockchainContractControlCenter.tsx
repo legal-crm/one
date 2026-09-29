@@ -43,6 +43,7 @@ import {
 } from '../../services/blockchainAnchorService';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 import BlockchainConfigModal from './BlockchainConfigModal';
+import { useDialog } from '../common/DialogProvider';
 
 export default function BlockchainContractControlCenter() {
   const [contracts, setContracts] = useState<ElectronicContract[]>([]);
@@ -53,6 +54,7 @@ export default function BlockchainContractControlCenter() {
   // [SECURITY] 서킷 브레이커 실시간 동결/감시 상태
   const [circuitStatus, setCircuitStatus] = useState<CircuitBreakerStatus | null>(null);
   const [isUpdatingCircuit, setIsUpdatingCircuit] = useState(false);
+  const dialog = useDialog();
 
   // 전수 감사 스캔 상태
   const [isAuditingAll, setIsAuditingAll] = useState(false);
@@ -134,9 +136,13 @@ export default function BlockchainContractControlCenter() {
 
   // 관리자 수동 긴급 정지 핸들러 (Freeze)
   const handleManualFreeze = async () => {
-    if (!window.confirm('🚨 긴급 정지(Emergency Freeze) 발동 확인\n\n모든 신규 전자계약의 Polygon 온체인 앵커링이 30분간 즉시 일시 정지(동결)됩니다.\n릴레이어 가스비 소모 및 트랜잭션 전송이 전면 차단됩니다.\n\n정말 긴급 정지를 발동하시겠습니까?')) {
-      return;
-    }
+    const confirmed = await dialog.confirm({
+      title: '긴급 정지 (30분)',
+      message: '신규 전자계약의 온체인 기록 요청을 30분간 거부합니다.\n정지 상태는 요청을 받은 서버 인스턴스의 메모리에만 저장되므로, 다른 인스턴스로 간 요청은 막지 못할 수 있습니다.',
+      confirmText: '긴급 정지',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     setIsUpdatingCircuit(true);
     try {
       const res = await freezeCircuitBreaker('관리자 관제탑에서 수동 긴급 정지 발동');
@@ -167,13 +173,13 @@ export default function BlockchainContractControlCenter() {
       }
 
       setAuditResult({
-        total: contracts.length,
+        total: validCount + tamperedCount, // 이전: 비교하지 않은 계약까지 포함한 전체 건수
         valid: validCount,
         tampered: tamperedCount,
       });
 
       if (tamperedCount === 0) {
-        toast.success(`전사 계약서 전수 검증 완료: 위·변조 0건 (100% 무결성)`);
+        toast.success(`저장된 해시 비교 완료: 불일치 0건 (${validCount}건 대조, 온체인 조회는 건별 진위 검증에서 확인)`);
       } else {
         toast.error(`⚠️ 경고: 해시 불일치 의심 계약서 ${tamperedCount}건 감지됨`);
       }
@@ -232,7 +238,7 @@ export default function BlockchainContractControlCenter() {
                 🚨 비상 서킷 브레이커 발동: 비정상 무리한 호출 감지로 온체인 각인이 일시 정지(동결)되었습니다.
               </h3>
               <p className="text-xs text-red-200 mt-0.5">
-                사유: {circuitStatus.reason || '비인가 호출 및 공격 시도 급증 감지'} (릴레이어 가스비 소모 100% 방어 중)
+                사유: {circuitStatus.reason || '비인가 호출 급증'} (이 서버 인스턴스 기준 — 다른 인스턴스는 별도)
               </p>
             </div>
           </div>
@@ -273,9 +279,9 @@ export default function BlockchainContractControlCenter() {
               }`}>
                 {isMainnetActive ? 'POLYGON POS MAINNET (EVM-137)' : 'POLYGON AMOY TESTNET'}
               </span>
-              <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                {isMainnetActive ? '실제 온체인 트랜잭션 활성화' : '온체인 실시간 노드 동기화'}
+              <span className={`flex items-center gap-1 text-xs font-bold ${networkStatus?.ok ? 'text-emerald-400' : 'text-amber-300'}`}>
+                <span className={`w-2 h-2 rounded-full ${networkStatus?.ok ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                {!networkStatus?.ok ? '노드 응답 없음' : networkStatus?.hasRelayerKey ? '노드 연결 · 릴레이어 키 있음' : '노드 연결 · 릴레이어 키 없음(온체인 기록 안 됨)'}
               </span>
             </div>
             <h2 className="text-xl font-black text-white mt-1">
@@ -398,7 +404,7 @@ export default function BlockchainContractControlCenter() {
             </span>
           </div>
           <div className="text-sm font-black text-white truncate">
-            {networkStatus?.relayerBalance || '무료 Amoy 네트워크 (0원 가스)'}
+            {networkStatus?.relayerBalance || (networkStatus?.hasRelayerKey ? '잔액 조회 실패' : '릴레이어 키 없음 — 온체인 기록 안 됨')}
           </div>
           <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 truncate">
             <span>보안 서킷브레이커</span>
@@ -422,7 +428,9 @@ export default function BlockchainContractControlCenter() {
           </div>
           <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5">
             <span>블록체인 영구 각인</span>
-            <span className="font-bold text-blue-400">{anchoredCount}건 ({completedCount > 0 ? Math.round((anchoredCount / completedCount) * 100) : 100}%)</span>
+            <span className="font-bold text-blue-400">
+              {anchoredCount}건{completedCount > 0 ? ` (${Math.round((anchoredCount / completedCount) * 100)}%)` : ''} · 온체인 {contracts.filter(c => c.blockchainAnchor?.isRealOnChain).length}건
+            </span>
           </div>
         </div>
 
@@ -433,18 +441,21 @@ export default function BlockchainContractControlCenter() {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               사후 위·변조 검증률
             </span>
-            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
-              100% AUTHENTIC
-            </span>
+            <span className="text-xs text-slate-300">저장된 해시 비교</span>
           </div>
-          <div className="text-lg font-black text-emerald-400 flex items-center gap-1.5">
-            <CheckCircle2 className="w-5 h-5" />
-            <span>위·변조 0건</span>
-          </div>
-          <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5">
-            <span>전수 대조 판정</span>
+          {/* 이전: 검사 여부와 무관하게 '100% AUTHENTIC · 위·변조 0건 · 상시 무결성 보증' 고정 표시 */}
+          {auditResult ? (
+            <div className={`text-lg font-black flex items-center gap-1.5 ${auditResult.tampered > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {auditResult.tampered > 0 ? <AlertTriangle className="w-5 h-5" aria-hidden="true" /> : <CheckCircle2 className="w-5 h-5" aria-hidden="true" />}
+              <span>불일치 {auditResult.tampered}건</span>
+            </div>
+          ) : (
+            <div className="text-lg font-black text-slate-300">검사 전</div>
+          )}
+          <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5">
+            <span>대조 결과</span>
             <span className="text-slate-300">
-              {auditResult ? `${auditResult.valid}건 검증 통과` : '상시 무결성 보증'}
+              {auditResult ? `${auditResult.valid}/${auditResult.total}건 일치` : '전수 스캔을 실행하세요'}
             </span>
           </div>
         </div>
@@ -568,8 +579,10 @@ export default function BlockchainContractControlCenter() {
                                 {copiedId === `tx-${c.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                               </button>
                             </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              Block #{anchor.blockNumber?.toLocaleString() || '46,945,120'}
+                            <div className="text-xs text-slate-400 mt-0.5">
+                              {anchor.isRealOnChain && anchor.blockNumber
+                                ? `Block #${anchor.blockNumber.toLocaleString()}`
+                                : '온체인 기록 없음 (다이제스트)'}
                             </div>
                           </div>
                         ) : (
@@ -580,10 +593,16 @@ export default function BlockchainContractControlCenter() {
                       {/* 상태 배지 */}
                       <td className="py-3 px-4">
                         {anchor ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {anchor.isRealOnChain ? '온체인 각인완료' : '암호학적 각인완료'}
-                          </span>
+                          anchor.isRealOnChain ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                              <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                              온체인 기록
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                              해시만 보관 (온체인 아님)
+                            </span>
+                          )
                         ) : isCompleted ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800">
                             체결완료
@@ -598,7 +617,7 @@ export default function BlockchainContractControlCenter() {
                       {/* 액션 버튼 */}
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          {anchor?.explorerUrl && (
+                          {anchor?.isRealOnChain && anchor?.explorerUrl && (
                             <a
                               href={anchor.explorerUrl}
                               target="_blank"

@@ -432,7 +432,7 @@ export function formatTelegramAdConfirmedCard(order: AdOrder): string {
     `• 노출 만료일: *${expiresStr}*`,
     `• 세금계산서: *${order.taxInvoice ? `국세청 정발행 (${ntsNum})` : '미발행/직접처리'}*`,
     `━━━━━━━━━━━━━━━━━━━━`,
-    `⚡ 플랫폼에 광고 배너/노출이 즉시 활성화되었습니다.`,
+    `주문 상태를 활성으로 바꿨습니다. 공개 화면 노출은 별도로 확인하세요.`,
   ].join('\n');
 }
 
@@ -441,7 +441,6 @@ export function formatTelegramAdConfirmedCard(order: AdOrder): string {
  */
 export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boolean; message?: string }> {
   try {
-    const settings = loadNotificationSettings();
     const markdown = formatTelegramAdOrderCard(order);
     const plainText = `[광고 신청] ${order.lawyerName} - ${order.productName} (${order.totalPrice.toLocaleString()}원 / 입금자: ${order.depositorName || order.lawyerName})`;
 
@@ -461,10 +460,7 @@ export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boole
         title: '💳 [신규 광고 신청] 입금 대기 안내',
         message: plainText,
         markdown,
-        telegram: settings.telegram.connected ? {
-          botToken: settings.telegram.botToken,
-          chatId: settings.telegram.chatId,
-        } : undefined,
+        // 관리자 알림은 서버 관리자 봇·채널로만 (이전: 신청한 변호사 브라우저의 개인 봇 토큰·채팅방으로 전송)
       }),
     });
 
@@ -494,7 +490,6 @@ export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boole
  */
 export async function notifyAdminAdConfirmed(order: AdOrder): Promise<{ ok: boolean; message?: string }> {
   try {
-    const settings = loadNotificationSettings();
     const markdown = formatTelegramAdConfirmedCard(order);
     const plainText = `[광고 승인 완료] ${order.lawyerName} - ${order.productName} (${order.totalPrice.toLocaleString()}원) 활성화 완료`;
 
@@ -505,10 +500,7 @@ export async function notifyAdminAdConfirmed(order: AdOrder): Promise<{ ok: bool
         title: '✅ [광고 활성화 완료]',
         message: plainText,
         markdown,
-        telegram: settings.telegram.connected ? {
-          botToken: settings.telegram.botToken,
-          chatId: settings.telegram.chatId,
-        } : undefined,
+        // 관리자 알림은 서버 관리자 봇·채널로만 (이전: 신청한 변호사 브라우저의 개인 봇 토큰·채팅방으로 전송)
       }),
     });
 

@@ -158,6 +158,11 @@ export async function loadAdminContractAnchors(): Promise<ElectronicContract[]> 
       if (!rpcError && rpcData && Array.isArray(rpcData)) {
         return rpcData.map(rowToContract);
       }
+      // 권한 거부(관리자·2단계 인증 아님)는 다른 경로로 우회 조회하지 않음 (이전: 조용히 직접 조회·로컬 데이터로 대체)
+      if (rpcError && /admin only|42501/i.test(`${rpcError.message} ${rpcError.code}`)) {
+        logSupabaseError('get_admin_contract_anchors (권한 없음)', rpcError);
+        return [];
+      }
 
       // 2. RPC 미배포 또는 폴백 시 보안 제한 컬럼만 조회 (민감 서류/서명/주소 제외)
       const { data, error } = await supabase

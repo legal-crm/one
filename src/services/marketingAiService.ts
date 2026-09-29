@@ -7,6 +7,8 @@
  * - 가격 덤핑 역경매 배제, 승소율 과장 금지
  */
 
+import { getAuthHeaders } from '../supabaseClient';
+
 // --- 이미지 소스 타입 ---
 export type ImageSourceType = 'pollinations' | 'gradient';
 
@@ -122,7 +124,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
     label: '카드/신용',
     topic: '개인회생 중 신용카드 정지 시점과 신용점수 회복 시기 (2026년 기준)',
     theme: '서류혁신',
-    title: "[2026 최신] 개인회생 중 신용카드 정지 시점과 신용점수 완벽 회복 로드맵",
+    title: "[2026 최신] 개인회생 중 신용카드 정지 시점과 신용점수 회복 로드맵",
     badge: "네이버 블로그 2,500자 SEO 칼럼 + 이미지 4컷",
     format: "네이버 블로그 스마트에디터 최적화 (대표 썸네일 1컷 + 본문 인포그래픽 3컷 탑재)",
     summary: "개인회생 신청 시 신용카드가 언제 정지되는지, 체크카드와 은행 거래는 가능한지, 그리고 면책 후 신용점수가 정상화되는 골든타임을 상세히 분석합니다.",
@@ -135,7 +137,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 (개인회생과 신용카드 정지 & 신용점수 회복 로드맵)
 
 ■ 서론: 신용카드 돌려막기의 끝, 언제 정지되고 언제 회복될까요?
-매달 결제일마다 카드 리볼빙과 돌려막기로 간신히 버티고 계신가요? 개인회생을 고민하면서도 "신용카드가 당장 정지되면 일상생활은 어떻게 하지?"라는 두려움 때문에 신청을 미루는 분들이 많습니다. 오늘 마이김변 도산법률연구팀에서는 2026년 최신 법원 실무를 기준으로 신용카드 정지 시점과 신용점수 완벽 회복 전략을 투명하게 공개합니다.
+매달 결제일마다 카드 리볼빙과 돌려막기로 간신히 버티고 계신가요? 개인회생을 고민하면서도 "신용카드가 당장 정지되면 일상생활은 어떻게 하지?"라는 두려움 때문에 신청을 미루는 분들이 많습니다. 오늘 마이김변 도산법률연구팀에서는 2026년 최신 법원 실무를 기준으로 신용카드 정지 시점과 신용점수 회복 전략을 투명하게 공개합니다.
 
 ■ 1. 신용카드는 정확히 언제 정지될까요?
 개인회생 서류를 법원에 접수하면 1~2주 내로 '금지명령'이 발송됩니다. 
@@ -168,7 +170,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 3) 특수기록 삭제 후 600~700점대 기본 점수로 복귀하며, 소액 체크카드 실적 누적으로 우량 신용등급 도약 가능
 
 [📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
-(010 번호 유출 0% 신용회복 전문 변호사 안심 상담 배너)
+(010 번호 비공개 신용회복 전문 변호사 안심 상담 배너)
 
 ■ 결론: 더 늦기 전에 원금을 탕감받는 길을 선택하세요
 카드 돌려막기는 결국 눈덩이처럼 불어나는 이자 때문에 파국을 맞이합니다. 혼자 끙끙 앓지 마시고, 지금 마이김변에서 010 번호 노출 없이 안심 가명으로 신용카드 채무 탕감 견적을 받아보세요.
@@ -184,7 +186,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
         prompt: "A stylish Korean modern desk with cut credit cards, glowing golden financial graph trending upward, subtle gavel, cinematic lighting, photorealistic 8k, dark blue and gold tones",
         previewGradient: "from-blue-950 via-slate-900 to-indigo-950",
         previewTitle: "신용카드 정지 시점과 신용점수 회복",
-        previewSub: "2026 최신 법원 실무 기준 완벽 해설 & 010 번호 노출 0%",
+        previewSub: "2026 최신 법원 실무 기준 해설 & 010 번호 비공개",
         tag: "대표 썸네일 (1080x1080)"
       },
       {
@@ -196,7 +198,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
         prompt: "Vector infographic comparing red descending credit score chart of unpaid credit debt vs green ascending rehabilitation recovery line, minimalist fintech design",
         previewGradient: "from-slate-900 via-rose-950/40 to-indigo-950/40",
         previewTitle: "돌려막기 방치 vs 회생 면책 비교",
-        previewSub: "연체이자 누적 vs 원금 최대 90% 탕감 후 신용점수 정상화",
+        previewSub: "연체이자 누적 vs 원금 일부 감면(사안별 상이) 후 신용점수 정상화",
         tag: "비교 인포그래픽"
       },
       {
@@ -255,7 +257,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 ■ 1. 주택담보대출이 있는 경우: '별제권'의 원리
 주택담보대출은 개인회생 채권에 포함되지만, 법적으로 '별제권'으로 취급됩니다.
 - 별제권이란: 담보권자가 회생 절차와 상관없이 담보물을 경매에 부칠 수 있는 권리입니다.
-- 집을 지키는 비결: 회생 월 변제금과 별도로 주담대 원리금 또는 이자를 연체 없이 정상 납부하면, 은행은 경매를 실행하지 않고 거주를 보장합니다.
+- 집을 지키는 비결: 회생 월 변제금과 별도로 주담대 원리금 또는 이자를 연체 없이 정상 납부하면, 경매 가능성을 낮출 수 있습니다(담보권자·법원 판단에 따라 다름).
 
 [📷 이미지 2: 본문 삽입 인포그래픽 #1]
 (별제권·질권설정 대출 vs 일반 신용대출 회생 처리 절차도)
@@ -268,7 +270,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 보증서 발급 대출의 경우 대출 연장 심사에서 회생 신청 사실이 영향을 줄 수 있으므로, 신청 전 만기를 최대한 연장해두는 것이 핵심 실무 팁입니다.
 
 [📷 이미지 3: 본문 삽입 UI 목업 #2]
-(주거 안심 보장 변호사 3인 실시간 안심 견적 비교)
+(주거 문제 상담 변호사 3인 실시간 안심 견적 비교)
 
 ■ 3. 집주인(임대인)에게 통보가 갈까요?
 - 법원에서 임대인에게 직접 "이 사람이 회생을 신청했다"고 통지하지는 않습니다.
@@ -302,19 +304,19 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
         prompt: "Detailed process flowchart comparing mortgage separate rights vs general unsecured debts in Korean rehabilitation, clean corporate vector style",
         previewGradient: "from-slate-900 via-teal-950/40 to-indigo-950/40",
         previewTitle: "별제권 vs 일반신용 회생 처리도",
-        previewSub: "이자 정상 상환 시 경매 없이 주거권 100% 방어",
+        previewSub: "이자 정상 상환 시 경매 위험을 줄이는 대응(사안별 상이)",
         tag: "비교 인포그래픽"
       },
       {
         id: "rent-img-3",
         order: 3,
-        title: "기능 화면: 주거 안심 보장 변호사 3인 실시간 안심 견적 비교",
+        title: "기능 화면: 주거 문제 상담 변호사 3인 실시간 안심 견적 비교",
         role: "주거 보호 특화 변호사 직접 선택 화면 입증",
         insertPosition: "3번 섹션 상단",
         prompt: "Mobile app UI showing three vetted Korean bankruptcy lawyers specialized in real estate loan defense with transparent quotes, modern dark UI",
         previewGradient: "from-teal-950 via-slate-900 to-sky-950",
         previewTitle: "주거권 보호 전문 변호사 직접 비교",
-        previewSub: "부동산·임대차 방어 승소 사례 검증 변호사 복수 지정",
+        previewSub: "부동산·임대차 방어 처리 사례 검증 변호사 복수 지정",
         tag: "앱 UI 목업"
       },
       {
@@ -341,19 +343,19 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
   {
     presetKey: 'stealth-privacy',
     label: '스텔스가명',
-    topic: '사설 브로커 DB 영업의 덫 vs 010 번호 유출 0% 마이김변 스텔스 가명',
+    topic: '사설 브로커 DB 영업의 덫 vs 010 번호 비공개 마이김변 스텔스 가명',
     theme: '안심탐색',
-    title: "사설 브로커 DB 영업의 덫 vs 010 번호 유출 0% 마이김변 스텔스 가명",
+    title: "사설 브로커 DB 영업의 덫 vs 010 번호 비공개 마이김변 스텔스 가명",
     badge: "네이버 블로그 2,500자 개인정보 보호 칼럼 + 이미지 4컷",
     format: "네이버 블로그 스마트에디터 최적화 (보안 메커니즘 시각화)",
-    summary: "포털 무료 상담 신청 시 개인정보가 사설 대출 브로커에게 불법 유통되는 실태를 고발하고, 국내 유일 010 번호 비공개 '스텔스 가명'의 기술적 신뢰도를 밝힙니다.",
+    summary: "포털 무료 상담 신청 시 개인정보가 사설 대출 브로커에게 불법 유통되는 실태를 고발하고, 010 번호 비공개 '스텔스 가명'의 기술적 신뢰도를 밝힙니다.",
     answerFirst: [
       "1. 포털 무료 상담에 010 번호를 남기면 사설 브로커에게 DB가 판매되어 하루 수십 통의 스팸 전화가 쏟아집니다.",
-      "2. 마이김변은 변호사에게조차 실제 번호를 노출하지 않는 국내 유일 '스텔스 가명' 특허 기술을 적용했습니다.",
-      "3. 영업 전화 0통 보장! 검증된 도산 전문 변호사 3인의 견적을 안심하고 직접 비교하세요."
+      "2. 마이김변은 변호사에게조차 실제 번호를 노출하지 않는 '스텔스 가명' 기능을 적용했습니다.",
+      "3. 번호 공개 없이 검증된 도산 전문 변호사 3인의 견적을 안심하고 직접 비교하세요."
     ],
     fullBody: `[📷 이미지 1: 대표 썸네일 삽입 위치]
-(010 번호 유출 0% — 사설 대출 스팸 없는 안심 회생)
+(010 번호 비공개 — 사설 대출 스팸 없는 안심 회생)
 
 ■ 서론: "무료 상담 신청 후 하루 20통 대출 전화에 시달렸습니다"
 실제 많은 채무자분들이 털어놓으시는 충격적인 현실입니다. 절박한 마음에 인터넷 포털의 '회생 무료 상담' 창에 이름과 전화번호를 적었다가, 정작 변호사는 만나보지도 못하고 불법 대출 중개업자들의 빗발치는 전화에 시달렸다는 사연이 넘쳐납니다.
@@ -367,11 +369,11 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 [📷 이미지 2: 본문 삽입 인포그래픽 #1]
 (사설 DB 불법 유통 경로 vs 마이김변 종단간 암호화 스텔스 가명)
 
-■ 2. 마이김변의 혁신: 국내 유일 '스텔스 가명' 시스템
+■ 2. 마이김변의 혁신: '스텔스 가명' 시스템
 마이김변은 이러한 폐단을 근절하기 위해 의뢰인의 실제 연락처(010)를 시스템에서 원천 격리하는 기술을 개발했습니다.
 - 010 번호 완전 비공개: 변호사 사무실에도 오직 임의 생성된 안심 가명(예: '희망찬나무77')만 전달
-- 영업 스팸 전화 0통: 내가 원할 때만 인앱 안심 채팅으로 질문하고 답변 확인
-- 변호사법 제34조 100% 준수: 부당한 알선 수수료나 가격 덤핑 없이, 변호사의 실제 승소 후기와 전문 분야를 투명하게 공개
+- 번호를 먼저 알리지 않는 상담: 내가 원할 때만 인앱 안심 채팅으로 질문하고 답변 확인
+- 변호사법 제34조를 고려한 구조: 부당한 알선 수수료나 가격 덤핑 없이, 변호사의 실제 상담 후기와 전문 분야를 투명하게 공개
 
 [📷 이미지 3: 본문 삽입 UI 목업 #2]
 (안심 가명 생성 및 변호사 프로필 직접 선택 인터페이스)
@@ -381,7 +383,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 - 비용, 수임 조건, 처리 기간을 한 화면에서 객관적으로 비교할 수 있습니다.
 
 [📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
-(영업 전화 0통 보장! 안심 가명으로 변호사 견적 받기)
+(번호 공개 없이 안심 가명으로 변호사 견적 받기)
 
 ■ 결론: 비밀이 보장되어야 진정한 법적 구제가 시작됩니다
 개인정보 유출 걱정 없이, 010 번호 없는 마이김변 스텔스 가명으로 떳떳하게 다시 일어서세요.`,
@@ -389,13 +391,13 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       {
         id: "stealth-img-1",
         order: 1,
-        title: "대표 썸네일: 010 번호 유출 0% — 사설 대출 스팸 없는 안심 회생",
-        role: "개인정보 완벽 보안 강조 대표 썸네일",
+        title: "대표 썸네일: 010 번호 비공개 — 사설 대출 스팸 없는 안심 회생",
+        role: "개인정보 보호 강조 대표 썸네일",
         insertPosition: "본문 최상단",
         prompt: "A futuristic neon padlock and digital shield deflecting spam phone notifications, dark purple and cyber blue aesthetic, high tech cinematic",
         previewGradient: "from-purple-950 via-slate-900 to-indigo-950",
-        previewTitle: "010 번호 유출 0% 스텔스 가명",
-        previewSub: "사설 브로커 스팸 전화 0통! 100% 익명 안심 회생",
+        previewTitle: "010 번호 비공개 스텔스 가명",
+        previewSub: "사설 브로커 번호 비공개! 100% 익명 안심 회생",
         tag: "대표 썸네일 (1080x1080)"
       },
       {
@@ -407,7 +409,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
         prompt: "Comparison infographic showing red hacked data leak pipelines on left vs secure green encrypted safe vault on right, clean UI illustration",
         previewGradient: "from-slate-900 via-purple-950/40 to-emerald-950/40",
         previewTitle: "사설 DB 유출 vs 스텔스 가명 비교",
-        previewSub: "불법 DB 거래 0통 스팸 차단 · 변호사에게도 번호 비공개",
+        previewSub: "번호 비공개로 DB 유출 위험 감소 · 변호사에게도 번호 비공개",
         tag: "비교 인포그래픽"
       },
       {
@@ -425,12 +427,12 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       {
         id: "stealth-img-4",
         order: 4,
-        title: "CTA 배너: 영업 전화 0통 보장! 안심 가명으로 변호사 견적 받기",
+        title: "CTA 배너: 번호 공개 없이 안심 가명으로 변호사 견적 받기",
         role: "스텔스 가명 상담 전환 배너",
         insertPosition: "본문 최하단",
         prompt: "Banner with glowing emerald CTA button '안심 가명 견적 받기' and purple security shield badge, high conversion fintech design",
         previewGradient: "from-purple-950 via-slate-900 to-emerald-950",
-        previewTitle: "영업 스팸 0통! 안심 가명 견적 받기",
+        previewTitle: "번호 비공개! 안심 가명 견적 받기",
         previewSub: "010 번호 단 1자리도 넘기지 않고 전문 변호사 견적 비교",
         tag: "전환 CTA 배너"
       }
@@ -440,7 +442,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       { label: "글자 수", value: "2,510자" },
       { label: "삽입 이미지", value: "총 4컷" },
       { label: "권장 폰트", value: "나눔고딕 15pt" },
-      { label: "포함 요소", value: "사설 DB 유통 고발, 스텔스 가명 특허 구조" }
+      { label: "포함 요소", value: "사설 DB 유통 고발, 스텔스 가명 구조" }
     ]
   },
   {
@@ -669,7 +671,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       "3. 법원별 실무 차이가 크므로, 관할 법원 실무준칙에 정통한 도산 전문 변호사 선임이 필수입니다."
     ],
     fullBody: `[📷 이미지 1: 대표 썸네일 삽입 위치]
-(주식·코인 투자 채무 개인회생 — 법원 실무준칙 완벽 해설)
+(주식·코인 투자 채무 개인회생 — 법원 실무준칙 해설)
 
 ■ 서론: "코인 빚도 나라에서 탕감해 주나요?"
 주식과 코인 시장의 급락으로 전 재산을 잃고 수억 원의 빚만 남은 청년과 가장들이 많습니다. 과거에는 투자 손실금을 도박처럼 취급하여 탕감이 어렵다는 인식이 있었으나, 회생법원의 패러다임이 완전히 바뀌었습니다.
@@ -686,11 +688,11 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 - 따라서 직장 주소지나 실거주지를 기반으로 유리한 법원을 선택하거나, 투자 손실 경위를 설득력 있게 소명하는 진술서 전략이 승패를 가릅니다.
 
 [📷 이미지 3: 본문 삽입 UI 목업 #2]
-(투자 채무 전문 변호사 승소 사례 및 안심 견적 비교)
+(투자 채무 전문 변호사 처리 사례 및 안심 견적 비교)
 
 ■ 3. 사기죄 고소나 편파변제 위험 피하는 법
 - 투자 손실 직전 대출금을 특정 지인에게 먼저 갚았다면 '편파변제'로 부인권 대상이 될 수 있습니다.
-- 마이김변의 도산 전문 변호사들이 사전 거래내역을 철저히 검토하여 법적 리스크를 완벽 차단해 드립니다.
+- 마이김변의 도산 전문 변호사들이 사전 거래내역을 철저히 검토하여 법적 리스크를 함께 검토합니다.
 
 [📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
 (투자 실패 채무 010 번호 없이 안심 가명으로 상담받기)
@@ -701,13 +703,13 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       {
         id: "crypto-img-1",
         order: 1,
-        title: "대표 썸네일: 주식·코인 투자 채무 개인회생 — 법원 실무준칙 완벽 해설",
+        title: "대표 썸네일: 주식·코인 투자 채무 개인회생 — 법원 실무준칙 해설",
         role: "투자 실패 채무자 구제 대표 썸네일",
         insertPosition: "본문 최상단",
         prompt: "Volatile crypto and stock candlestick charts in background, glowing legal scales of justice in foreground, cinematic dark tech lighting, 8k",
         previewGradient: "from-amber-950 via-slate-900 to-slate-950",
         previewTitle: "주식·코인 투자 빚도 탕감 가능할까?",
-        previewSub: "서울·수원·부산회생법원 실무준칙 & 원금 최대 90% 탕감",
+        previewSub: "서울·수원·부산회생법원 실무준칙 & 원금 일부 감면(사안별 상이)",
         tag: "대표 썸네일 (1080x1080)"
       },
       {
@@ -725,13 +727,13 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
       {
         id: "crypto-img-3",
         order: 3,
-        title: "기능 화면: 투자 채무 전문 변호사 승소 사례 및 안심 견적 비교",
-        role: "투자 채무 탕감 승소 이력 변호사 선택 UI 입증",
+        title: "기능 화면: 투자 채무 전문 변호사 처리 사례 및 안심 견적 비교",
+        role: "투자 채무 상담 변호사 선택 UI",
         insertPosition: "3번 섹션 상단",
-        prompt: "Smartphone app showing verified lawyer profiles with 90%+ discharge case studies for cryptocurrency debt, modern UI",
+        prompt: "Smartphone app showing verified lawyer profiles with general case information for cryptocurrency debt, modern UI",
         previewGradient: "from-amber-950 via-slate-900 to-blue-950",
         previewTitle: "투자 채무 전문 변호사 직접 비교",
-        previewSub: "코인·주식 회생 승소 사례 검증 변호사 복수 지정",
+        previewSub: "코인·주식 회생 처리 사례 검증 변호사 복수 지정",
         tag: "앱 UI 목업"
       },
       {
@@ -763,11 +765,11 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
     title: "개인회생 단점 5가지와 현실적인 대비법 총정리 (2026 솔직 분석)",
     badge: "네이버 블로그 2,500자 솔직 팩트체크 칼럼 + 이미지 4컷",
     format: "네이버 블로그 스마트에디터 최적화 (루머 vs 팩트 인포그래픽 탑재)",
-    summary: "개인회생의 단점으로 꼽히는 신용거래 제한, 직장 불이익 루머, 가족 영향 여부 등 5가지 쟁점을 솔직하게 분석하고 피해를 0%로 줄이는 현실적 대비책을 제시합니다.",
+    summary: "개인회생의 단점으로 꼽히는 신용거래 제한, 직장 불이익 루머, 가족 영향 여부 등 5가지 쟁점을 솔직하게 분석하고 피해를 줄이는 현실적 대비책을 제시합니다.",
     answerFirst: [
       "1. 단점 1: 신용카드 사용 정지 ➔ 체크카드 및 은행 거래 정상 이용으로 즉시 대체 가능합니다.",
-      "2. 단점 2: 직장이나 가족 통보 우려 ➔ 법원 우편물 송달장소를 대리인 사무실로 지정하여 100% 비밀이 보장됩니다.",
-      "3. 단점 3: 복잡한 서류 준비 ➔ 마이김변 30분 모바일 패키징으로 완벽 해결됩니다."
+      "2. 단점 2: 직장이나 가족 통보 우려 ➔ 법원 우편물 송달장소를 대리인 사무실로 지정하여 비밀 유지에 유의해 진행합니다.",
+      "3. 단점 3: 복잡한 서류 준비 ➔ 마이김변 30분 모바일 패키징으로 준비 부담을 줄일 수 있습니다."
     ],
     fullBody: `[📷 이미지 1: 대표 썸네일 삽입 위치]
 (개인회생 단점 5가지와 팩트체크 — 불이익 없이 극복하는 법)
@@ -787,7 +789,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 
 ■ 2. 단점보다 압도적으로 큰 장점
 - 모든 빚 독촉과 압류 즉시 중단 (금지명령 1~2주 내 결정)
-- 이자 100% 탕감, 원금 최대 90% 탕감
+- 이자 감면(사안별 상이), 원금 일부 감면(사안별 상이)
 - 면책 후 모든 연체 기록 삭제 및 신용점수 정상 회복
 
 [📷 이미지 3: 본문 삽입 UI 목업 #2]
@@ -925,7 +927,7 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
         prompt: "Financial calculation bar chart illustrating gross income minus minimum living cost equals monthly rehabilitation installment, clean vector",
         previewGradient: "from-slate-900 via-teal-950/40 to-indigo-950/40",
         previewTitle: "2026 최저생계비와 월 변제금 공식",
-        previewSub: "월 소득 - 법정 최저생계비 = 월 변제금 (원금 최대 90% 탕감)",
+        previewSub: "월 소득 - 법정 최저생계비 = 월 변제금 (원금 일부 감면(사안별 상이))",
         tag: "비교 인포그래픽"
       },
       {
@@ -969,160 +971,72 @@ export const DDOK_BLOG_PRESETS_DATA: BlogContentData[] = [
 export async function generateBlogContentWithGemini(
   topic: string,
   theme: string,
-  apiKey?: string
+  _apiKey?: string
 ): Promise<BlogContentData> {
-  // 1. API 키가 없으면 주제와 가장 유사한 8대 프리셋 중 하나를 선택하여 반환
-  const resolvedKey = apiKey || 
-    (typeof window !== 'undefined' ? localStorage.getItem('marketing_gemini_api_key') || localStorage.getItem('gemini_api_key') : null);
-
-  if (!resolvedKey) {
-    return findBestPresetOrFallback(topic, theme);
-  }
-
-  // 2. Gemini API 호출
-  const systemPrompt = `당신은 대한민국 최고 수준의 리걸테크 및 도산법률 전문 마케팅 디렉터입니다.
-주제: "${topic}"
-강조 테마: "${theme}"
-
-플랫폼 핵심 가치:
-1. 010 실제 전화번호를 변호사 사무실에도 노출하지 않는 '스텔스 가명' 시스템 (영업 스팸 전화 0통 보장)
-2. 변호사법 제34조 완벽 준수:
-   - '자가진단' 용어 절대 금지 ➔ '010 번호 없는 안심 가명 상담/견적' 사용
-   - 가격 덤핑 역경매 배제, 승소율 단정 금지
-   - 의뢰인이 검증된 변호사 프로필을 직접 확인하고 복수 지정
-3. 40종 서류 지옥 탈출:
-   - 스마트폰 AI 음성 진술서 & Fast 2nd DocHub 30분 서류 패키징
-
-아래 JSON 스키마를 만족하는 네이버 블로그 D.I.A.+ 최적화 칼럼과 4컷 삽입 이미지 상세 기획을 작성하세요.
-
-JSON Schema:
-{
-  "title": "클릭률을 높이는 네이버 스마트블록 검색 최적화 제목",
-  "summary": "핵심 요약 1~2문장",
-  "answerFirst": [
-    "1. Answer-First 핵심 요약 1",
-    "2. Answer-First 핵심 요약 2",
-    "3. Answer-First 핵심 요약 3"
-  ],
-  "fullBody": "2,000자 이상 D.I.A.+ 스타일 칼럼 (본문 중간에 [📷 이미지 1], [📷 이미지 2], [📷 이미지 3], [📷 이미지 4] 표시와 설명 포함)",
-  "blogImages": [
-    {
-      "id": "gen-img-1",
-      "order": 1,
-      "title": "대표 썸네일 제목",
-      "role": "검색 결과 클릭률 극대화 1:1 대표 썸네일",
-      "insertPosition": "본문 최상단",
-      "prompt": "Imagen 3 / Nano Banana 2 English photorealistic prompt, 8k resolution, cinematic lighting",
-      "previewGradient": "from-blue-950 via-slate-900 to-indigo-950",
-      "previewTitle": "이미지 중앙 메인 볼드 헤드라인 (12~18자)",
-      "previewSub": "이미지 하단 설명 문구 (20~30자)",
-      "tag": "대표 썸네일 (1080x1080)"
-    },
-    {
-      "id": "gen-img-2",
-      "order": 2,
-      "title": "비교 인포그래픽 제목",
-      "role": "주제 맞춤 문제점 vs 해결책 비교 시각화",
-      "insertPosition": "본문 2번 섹션 상단",
-      "prompt": "Vector comparison infographic English prompt, clean fintech UI style",
-      "previewGradient": "from-slate-900 via-rose-950/40 to-indigo-950/40",
-      "previewTitle": "비교 인포그래픽 메인 헤드라인",
-      "previewSub": "핵심 대비 요약 설명",
-      "tag": "비교 인포그래픽"
-    },
-    {
-      "id": "gen-img-3",
-      "order": 3,
-      "title": "앱 UI 목업 제목",
-      "role": "30분 서류 패키징 또는 안심 가명 상담 UI 시각화",
-      "insertPosition": "본문 3번 섹션 상단",
-      "prompt": "Smartphone mockup floating in dark space showing Korean legal tech app screen, 3d render",
-      "previewGradient": "from-indigo-950 via-slate-900 to-cyan-950",
-      "previewTitle": "UI 목업 메인 헤드라인",
-      "previewSub": "스마트폰 모바일 혁신 기능 설명",
-      "tag": "앱 UI 목업"
-    },
-    {
-      "id": "gen-img-4",
-      "order": 4,
-      "title": "전환 CTA 배너 제목",
-      "role": "010 번호 없는 안심 가명 상담 전환 배너",
-      "insertPosition": "본문 최하단",
-      "prompt": "Horizontal conversion banner with glowing emerald CTA button, high contrast",
-      "previewGradient": "from-indigo-950 via-slate-900 to-emerald-950",
-      "previewTitle": "전환 배너 메인 헤드라인",
-      "previewSub": "010 번호 노출 없이 안심 상담 안내 문구",
-      "tag": "전환 CTA 배너"
-    }
-  ],
-  "hashtags": ["#개인회생", "#스텔스가명", "#마이김변", "#채무탕감", "#도산전문변호사"]
-}
-반드시 순수 JSON만 반환하세요.`;
-
+  // [PART 3-7] 서버(/api/generate-statement mode=marketing)가 환경변수 키로 호출 — 브라우저 키 사용 제거
+  // (이전: localStorage 평문 키를 URL 쿼리 ?key= 로 Google에 직접 전송)
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${resolvedKey}`;
-    const response = await fetch(url, {
+    const res = await fetch('/api/generate-statement', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: {
-          temperature: 0.4,
-          response_mime_type: 'application/json'
-        }
-      })
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ mode: 'marketing', topic, theme }),
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (rawText) {
-        const clean = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-        const parsed = JSON.parse(clean);
-
-        return {
-          presetKey: 'custom-gemini',
-          label: 'AI 생성',
-          topic,
-          theme,
-          title: parsed.title || topic,
-          badge: "네이버 블로그 2,500자 D.I.A.+ 칼럼 (Gemini Pro 생성)",
-          format: "네이버 블로그 스마트에디터 최적화 (4컷 이미지 세트 탑재)",
-          summary: parsed.summary || `${topic}에 대한 심층 법률 칼럼입니다.`,
-          answerFirst: parsed.answerFirst || [
-            "1. 2026년 기준 실무준칙에 맞춘 합법적 채무 탕감 방안을 검토합니다.",
-            "2. 사설 브로커 DB 유출 위험 없이 010 번호 없는 스텔스 가명 상담을 제공합니다.",
-            "3. 40종 서류 지옥을 30분 모바일 패키징으로 해결합니다."
-          ],
-          fullBody: parsed.fullBody || '',
-          blogImages: (parsed.blogImages || []).map((img: any, idx: number) => ({
-            id: `gen-img-${idx + 1}`,
-            order: idx + 1,
-            title: img.title || `이미지 ${idx + 1}`,
-            role: img.role || '본문 시각화',
-            insertPosition: img.insertPosition || '본문 삽입',
-            prompt: img.prompt || 'Cinematic legal visual, dark moody lighting, 8k render',
-            previewGradient: img.previewGradient || (idx === 0 ? 'from-blue-950 via-slate-900 to-indigo-950' : idx === 1 ? 'from-slate-900 via-rose-950/40 to-indigo-950/40' : idx === 2 ? 'from-indigo-950 via-slate-900 to-cyan-950' : 'from-indigo-950 via-slate-900 to-emerald-950'),
-            previewTitle: img.previewTitle || topic,
-            previewSub: img.previewSub || '010 번호 유출 없는 마이김변 안심 리걸테크',
-            tag: img.tag || (idx === 0 ? '대표 썸네일' : idx === 1 ? '비교 인포그래픽' : idx === 2 ? '앱 UI 목업' : '전환 CTA 배너')
-          })),
-          hashtags: parsed.hashtags || ["#개인회생", "#스텔스가명", "#마이김변", "#채무탕감"],
-          specs: [
-            { label: "글자 수", value: "2,500자 이상" },
-            { label: "삽입 이미지", value: "총 4컷 (Gemini 2.5 Flash 맞춤 생성)" },
-            { label: "권장 폰트", value: "나눔고딕 15pt / 행간 180%" },
-            { label: "컴플라이언스", value: "변호사법 제34조 100% 준수 검수 완료" }
-          ]
-        };
-      }
+    const json = await res.json().catch(() => null);
+    if (json?.ok && json.content) {
+      const parsed = json.content;
+      return {
+        presetKey: 'custom-gemini',
+        label: 'AI 생성',
+        topic,
+        theme,
+        title: parsed.title || topic,
+        badge: '네이버 블로그 정보성 칼럼 (AI 초안)',
+        format: '네이버 블로그 스마트에디터용 (이미지 4컷 기획 포함)',
+        summary: parsed.summary || `${topic}에 대한 정보성 칼럼 초안입니다.`,
+        answerFirst: Array.isArray(parsed.answerFirst) ? parsed.answerFirst.slice(0, 3) : [],
+        fullBody: typeof parsed.fullBody === 'string' ? parsed.fullBody : '',
+        blogImages: (Array.isArray(parsed.blogImages) ? parsed.blogImages : []).slice(0, 4).map((img: any, idx: number) => ({
+          id: `gen-img-${idx + 1}`,
+          order: idx + 1,
+          title: img.title || `이미지 ${idx + 1}`,
+          role: img.role || '본문 시각화',
+          insertPosition: img.insertPosition || '본문 삽입',
+          prompt: img.prompt || 'Calm professional legal consultation scene, soft lighting, no text',
+          previewGradient: idx === 0 ? 'from-blue-950 via-slate-900 to-indigo-950' : idx === 1 ? 'from-slate-900 via-rose-950/40 to-indigo-950/40' : idx === 2 ? 'from-indigo-950 via-slate-900 to-cyan-950' : 'from-indigo-950 via-slate-900 to-emerald-950',
+          previewTitle: img.previewTitle || topic,
+          previewSub: img.previewSub || '',
+          tag: img.tag || (idx === 0 ? '대표 썸네일' : idx === 1 ? '비교 인포그래픽' : idx === 2 ? '앱 UI 목업' : '전환 CTA 배너'),
+        })),
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 10) : ['#개인회생', '#개인파산'],
+        specs: [
+          { label: '생성', value: 'Gemini 2.5 Flash (서버 호출)' },
+          { label: '삽입 이미지', value: '4컷 기획' },
+          // 이전: '변호사법 제34조를 고려한 구조 검수 완료' — 실제 검수는 하지 않았음
+          { label: '게시 전 확인', value: '변호사 광고 규정 검토 필요 (결과 보장·근거 없는 수치 금지)' },
+        ],
+      };
     }
+    if (json && json.error) console.warn('[MarketingAI] 서버 생성 실패 → 프리셋 사용:', json.error);
   } catch (err) {
-    console.warn('Gemini API call failed, using best preset fallback:', err);
+    console.warn('[MarketingAI] 서버 호출 실패 → 프리셋 사용:', err);
   }
-
-  // 3. API 실패 시 가장 적합한 프리셋 데이터 반환
   return findBestPresetOrFallback(topic, theme);
+}
+
+/** 관리자: 서버 AI 연결 확인 (키 존재·권한) */
+export async function testMarketingAiConnection(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const res = await fetch('/api/generate-statement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ mode: 'marketing-ping' }),
+    });
+    const json = await res.json().catch(() => null);
+    if (json?.ok) return { ok: true, message: '서버 AI 키가 설정되어 있습니다.' };
+    return { ok: false, message: json?.error || `서버 응답 오류 (${res.status})` };
+  } catch {
+    return { ok: false, message: '서버에 연결하지 못했습니다.' };
+  }
 }
 
 /**

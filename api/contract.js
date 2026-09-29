@@ -22,24 +22,25 @@ import { verifyAuth, supabase } from './_lib/auth-middleware.js';
 import { setCorsHeaders } from './_lib/cors-helper.js';
 
 // 동적 네트워크 해석 헬퍼 (환경변수 기본값 + 프론트엔드 어드민 설정 오버라이드 지원)
-function resolveNetworkConfig(req) {
-  const reqNetwork = req.body?.network || req.query?.network;
-  const isMainnet = reqNetwork ? (reqNetwork === 'mainnet') : (process.env.POLYGON_NETWORK === 'mainnet');
+// [PART 3-5] 네트워크·RPC·공증 주소는 서버 환경변수로만 결정한다.
+// (이전: 요청 본문/쿼리의 rpcUrl·notaryContract·network를 그대로 써서
+//  - 비로그인 status/verify로 서버가 임의 URL에 접속(SSRF)하고
+//  - 로그인만 하면 anchor로 릴레이어 개인키 서명 트랜잭션을 임의 RPC·임의 주소·메인넷으로 보내 가스를 소모시킬 수 있었음)
+// allowNetworkSwitch: 읽기 전용(status/verify)에서만 고정된 두 네트워크 중 선택 허용
+function resolveNetworkConfig(req, { allowNetworkSwitch = false } = {}) {
+  const reqNetwork = allowNetworkSwitch ? (req.body?.network || req.query?.network) : null;
+  const isMainnet = reqNetwork === 'mainnet' || reqNetwork === 'amoy'
+    ? reqNetwork === 'mainnet'
+    : process.env.POLYGON_NETWORK === 'mainnet';
   const currentChain = isMainnet ? polygon : polygonAmoy;
   const networkName = isMainnet ? 'Polygon PoS Mainnet (EVM-137)' : 'Polygon Amoy Testnet (EVM-80002)';
   const explorerBase = isMainnet ? 'https://polygonscan.com' : 'https://amoy.polygonscan.com';
-  
-  const customRpc = req.body?.rpcUrl || req.query?.rpcUrl;
-  const rpcUrl = customRpc && typeof customRpc === 'string' && customRpc.trim() !== '' 
-    ? customRpc.trim() 
-    : (isMainnet 
-        ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon.drpc.org')
-        : (process.env.POLYGON_AMOY_RPC || 'https://polygon-amoy.drpc.org'));
 
-  const customNotary = req.body?.notaryContract || req.query?.notaryContract;
-  const notaryAddress = customNotary && typeof customNotary === 'string' && customNotary.trim() !== ''
-    ? customNotary.trim()
-    : (process.env.POLYGON_NOTARY_CONTRACT || '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1');
+  const rpcUrl = isMainnet
+    ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon.drpc.org')
+    : (process.env.POLYGON_AMOY_RPC || 'https://polygon-amoy.drpc.org');
+
+  const notaryAddress = process.env.POLYGON_NOTARY_CONTRACT || '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1';
 
   const client = createPublicClient({
     chain: currentChain,
@@ -101,10 +102,12 @@ export default async function handler(req, res) {
     try {
       const user = await verifyAuth(req, 'admin');
       const { durationMs, reason } = req.body || {};
+      // 1분~24시간으로 제한 (이전: 임의 값 허용)
+      const safeDuration = Math.min(24 * 60 * 60 * 1000, Math.max(60 * 1000, Number(durationMs) || 30 * 60 * 1000));
       const result = manualFreeze(
         'blockchain_anchor', 
-        durationMs || (30 * 60 * 1000), 
-        reason || `관리자(${user.email || user.id})에 의한 수동 긴급 정지 발동`
+        safeDuration, 
+        String(reason || `관리자(${user.email || user.id})에 의한 수동 긴급 정지 발동`).slice(0, 200)
       );
       return res.status(200).json({ ok: true, data: result });
     } catch (authErr) {
@@ -386,7 +389,7 @@ export default async function handler(req, res) {
   // 1. [STATUS] 블록체인 노드 연결 및 릴레이어 지갑 상태 조회
   // ─────────────────────────────────────────────────────────────
   if (action === 'status') {
-    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);
+    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req, { allowNetworkSwitch: true });
     try {
       const blockNumber = await client.getBlockNumber();
 
@@ -574,9 +577,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // B. 릴레이어 키 미설정 또는 잔액 0 시 -> 실시간 블록 높이 기반 암호학적 타임스탬프 영구 각인 (무중단 안전망)
+    // B. 릴레이어 키 미설정 또는 잔액 0 → 온체인 기록 없이 서버 다이제스트만 보관 (블록 높이는 참고값)
     try {
-      let currentBlock = 46945000;
+      let currentBlock = null; // 이전: 조회 실패 시 고정값 46945000
       try {
         currentBlock = Number(await client.getBlockNumber());
       } catch (_) {}
@@ -585,15 +588,16 @@ export default async function handler(req, res) {
       const digestSeed = `POLYGON::${currentChain.id}::CID:${contractId}::HASH:${cleanHash}::BLOCK:${currentBlock}::AT:${now.toISOString()}`;
       const digestHex = crypto.createHash('sha256').update(digestSeed).digest('hex');
       const fallbackTxHash = `0x${digestHex}`;
-      const explorerUrl = `${explorerBase}/tx/${fallbackTxHash}`;
 
       return res.status(200).json({
         ok: true,
         isRealOnChain: false,
         network: networkName,
         chainId: currentChain.id,
+        // 온체인 트랜잭션이 아니므로 탐색기 링크를 주지 않음 (이전: 존재하지 않는 tx의 PolygonScan 링크)
         txHash: fallbackTxHash,
-        blockNumber: currentBlock,
+        explorerUrl: null,
+        referenceBlockNumber: currentBlock,
         anchoredAt: now.toISOString(),
         explorerUrl,
         contractHash: cleanHash,
@@ -618,7 +622,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'txHash는 필수입니다.' });
     }
 
-    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);
+    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req, { allowNetworkSwitch: true });
     try {
       let onChainTx = null;
 
@@ -648,13 +652,15 @@ export default async function handler(req, res) {
         });
       }
 
-      // 온체인 조회 미확인된 경우: 포맷 및 다이제스트 정합성 확인
+      // 온체인에서 찾지 못함 — 아무것도 검증하지 않았음을 그대로 알린다
+      // (이전: '암호학적 타임스탬프 서명 일치'로 표시하고 존재하지 않는 tx의 탐색기 링크를 반환)
       return res.status(200).json({
         ok: true,
         verifiedOnChain: false,
+        hashMatched: false,
         txHash,
-        statusText: '암호학적 타임스탬프 서명 일치 (오프체인 보관 검증)',
-        explorerUrl: `${explorerBase}/tx/${txHash}`,
+        statusText: '온체인에서 해당 트랜잭션을 찾지 못했습니다 (검증되지 않음)',
+        explorerUrl: null,
       });
     } catch (err) {
       console.error('[Contract Verify Error]:', err);

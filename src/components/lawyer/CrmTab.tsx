@@ -93,7 +93,7 @@ import {
 import { 
   loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
   deleteStaffMember, createActivityLog, createCrmNote, createDefaultCrmExtension,
-  deleteCrmClient, softDeleteCrmClient, restoreCrmClient, cleanupRecycleBin,
+  softDeleteCrmClient, restoreCrmClient, cleanupRecycleBin, RECYCLE_BIN_RETENTION_DAYS,
   formatPhone, checkDuplicatePhone,
   approveDocument, rejectDocument, requestDocument,
   type CrmDataStore 
@@ -385,9 +385,12 @@ export default function CrmTab({
   useEffect(() => {
     loadCrmData().then(data => {
       setCrmData(data);
-      // 30일 경과 휴지통 자동 정리
-      const cleaned = cleanupRecycleBin();
-      if (cleaned > 0) toast.info(`휴지통 ${cleaned}건 자동 정리됨`);
+      // 보관 기간(30일) 지난 휴지통 정리 — 이 브라우저 + 서버(본인 권한 범위)
+      cleanupRecycleBin().then(r => {
+        const total = Math.max(r.localDeleted, r.serverDeleted);
+        if (total > 0) toast.info(`휴지통에서 보관 기간이 지난 ${total}건을 영구 삭제했습니다.`);
+        if (r.serverError) console.warn('[CRM] 서버 휴지통 정리 실패:', r.serverError);
+      });
     });
     // 작업자 = 로그인한 직원(없으면 대표 변호사 본인)
     // 이전: staff_members에서 아무 사무소의 첫 OWNER 행을 골라 작업자로 쓰고, 없으면 OWNER 행을 자동 생성
@@ -1363,34 +1366,35 @@ export default function CrmTab({
   }, [getCrmExt, updateCrmExt]);
 
   /** 휴지통 이동 (소프트 삭제) */
-  const handleSoftDelete = useCallback(async (clientId: string) => {
+  const handleSoftDelete = useCallback(async (clientId: string): Promise<boolean> => {
     const confirmed = await dialog.confirm({
       title: '휴지통 이동',
-      message: '해당 고객 사건을 휴지통으로 이동하시겠습니까?\n휴지통으로 이동된 사건은 필요 시 언제든지 복원할 수 있습니다.',
+      message: `해당 고객 사건을 휴지통으로 이동하시겠습니까?\n${RECYCLE_BIN_RETENTION_DAYS}일 안에는 복원할 수 있고, 그 뒤에는 영구 삭제됩니다.`,
       confirmText: '휴지통 이동',
       variant: 'warning'
     });
-    if (!confirmed) return;
+    if (!confirmed) return false;
 
-    await softDeleteCrmClient(clientId);
-    const store = { ...crmData };
-    if (store[clientId]) {
-      store[clientId] = { ...store[clientId], deletedAt: new Date().toISOString() };
-      setCrmData(store);
-    }
-    toast.success('휴지통으로 이동되었습니다.');
-  }, [crmData, dialog]);
+    const { serverOk } = await softDeleteCrmClient(clientId);
+    setCrmData(prev => prev[clientId]
+      ? { ...prev, [clientId]: { ...prev[clientId], deletedAt: new Date().toISOString() } }
+      : prev);
+    if (serverOk) toast.success('휴지통으로 이동했습니다.');
+    else toast.warning('이 브라우저에서만 휴지통으로 이동했습니다. 서버에는 반영되지 않았습니다.');
+    return true;
+  }, [dialog]);
 
-  /** 휴지통 복원 */
+  /** 휴지통 복원 (삭제 전 진행 단계 유지) */
   const handleRestore = useCallback(async (clientId: string) => {
-    await restoreCrmClient(clientId);
+    const { serverOk } = await restoreCrmClient(clientId);
     setCrmData(prev => {
       if (!prev[clientId]) return prev;
       const { deletedAt: _d, ...rest } = prev[clientId];
-      return { ...prev, [clientId]: { ...rest, crmStatus: 'requested' } as CrmClientExtension };
+      return { ...prev, [clientId]: rest as CrmClientExtension };
     });
-    toast.success('복원되었습니다.');
-  }, [crmData]);
+    if (serverOk) toast.success('복원했습니다.');
+    else toast.warning('이 브라우저에서만 복원했습니다. 서버에는 반영되지 않았습니다.');
+  }, []);
 
   /** 상태 변경 시 cancelled이면 이탈 사유 모달 표시 */
   /** @returns 상태가 실제로 저장되었는지 (취소·차단·실패 시 false) */
@@ -1832,7 +1836,7 @@ export default function CrmTab({
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm animate-fadeIn">
           <Trash2 className="w-5 h-5 text-red-500" />
           <span className="font-bold text-red-700">🗑️ 휴지통 보기</span>
-          <span className="text-red-500 text-xs">삭제된 건이 표시됩니다. 30일 후 자동 영구 삭제됩니다.</span>
+          <span className="text-red-700 text-xs">삭제된 건이 표시됩니다. {RECYCLE_BIN_RETENTION_DAYS}일이 지나면 CRM 화면을 열 때 영구 삭제됩니다.</span>
           <button onClick={() => setShowTrash(false)} className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 whitespace-nowrap">닫기</button>
         </div>
       )}
@@ -2742,21 +2746,10 @@ export default function CrmTab({
                         <button 
                           type="button"
                           onClick={async () => {
-                            const confirmed = await dialog.confirm({
-                              title: '고객 데이터 아카이브',
-                              message: `${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브(휴지통 이동)하시겠습니까?`,
-                              confirmText: '아카이브',
-                              variant: 'warning'
-                            });
-                            if (!confirmed) return;
-                            await deleteCrmClient(selectedId);
-                            setCrmData(prev => {
-                              const next = { ...prev };
-                              delete next[selectedId];
-                              return next;
-                            });
-                            setSelectedId('');
-                            toast.success(`${selectedClient?.clientName} 고객 데이터가 아카이브되었습니다.`);
+                            // 이전: '휴지통 이동'이라 안내하고 실제로는 이 브라우저에서 즉시 영구 삭제(deleteCrmClient)
+                            //       → 휴지통에 나타나지 않고 복원 불가, 서버 행은 그대로 남음
+                            const moved = await handleSoftDelete(selectedId);
+                            if (moved) setSelectedId('');
                           }}
                           className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
                           title="아카이브 / 휴지통 이동"

@@ -74,10 +74,16 @@ export default async function handler(req, res) {
     }
   }
 
-  // 1. 텔레그램 토큰/채팅ID 결정 (요청값 -> telegram 객체 -> 서버 환경변수 순서)
-  const botToken = reqBotToken || telegram?.botToken || process.env.TELEGRAM_ADMIN_BOT_TOKEN;
-  const chatId = reqChatId || telegram?.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
-  const contentText = markdown || text || message || '';
+  // 1. 텔레그램 토큰/채팅ID 결정
+  //  - 사용자 지정 봇(로그인 사용자): 요청의 botToken + chatId
+  //  - 서버 관리자 봇: 채팅방은 항상 서버 환경변수의 관리자 채팅방
+  //    (이전: 관리자 봇 토큰을 쓰면서 chatId만 바꿔 임의 채팅방으로 관리자 봇 메시지를 보낼 수 있었음)
+  const callerBotToken = reqBotToken || telegram?.botToken;
+  const botToken = callerBotToken || process.env.TELEGRAM_ADMIN_BOT_TOKEN;
+  const chatId = callerBotToken
+    ? (reqChatId || telegram?.chatId)
+    : process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const contentText = String(markdown || text || message || '').slice(0, 4000);
 
   const results = {
     telegram: { attempted: false, ok: false },

@@ -4,7 +4,7 @@
 
 import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './_lib/popbill-service.js';
 import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
+import { verifyAuth, isAdminWithMfa, supabase as authSupabase } from './_lib/auth-middleware.js';
 
 // [SECURITY] 발신번호는 서버에 등록된 번호만 사용 (이전: 요청 본문의 sender를 그대로 사용 → 임의 발신번호 지정 가능)
 // 버튼 링크는 https만 허용 (피싱 링크 삽입 방지)
@@ -84,6 +84,34 @@ export default async function handler(req, res) {
     return res.status(401).json({ ok: false, error: authErr.message || '로그인이 필요합니다.' });
   }
 
+  // [PART 3-5] 역할 확인
+  //  - 상태·템플릿·잔액 조회(사업자번호·발신번호·포인트 노출): 관리자(2단계 인증)만
+  //  - 발송: 관리자 또는 승인된 변호사 계정만
+  // (이전: 로그인만 하면 의뢰인도 회사 발신번호로 임의 문구 문자를 보낼 수 있었고 사업자 정보도 조회 가능)
+  //  - 승인 템플릿 목록(action=templates): 승인 변호사도 가능 (단, 팝빌 관리 SSO URL은 관리자에게만)
+  const isAdmin = isAdminWithMfa(req, req.user);
+  const isTemplatesOnly = action === 'templates';
+  if (isStatus && !isTemplatesOnly && !isAdmin) {
+    return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 조회할 수 있습니다.' });
+  }
+  if ((!isStatus || isTemplatesOnly) && !isAdmin) {
+    const { data: account, error: accountError } = await authSupabase
+      .from('lawyer_accounts')
+      .select('approved')
+      .eq('auth_user_id', req.user.id)
+      .maybeSingle();
+    if (accountError || !account?.approved) {
+      return res.status(403).json({ ok: false, error: '승인된 변호사 계정만 알림톡을 보낼 수 있습니다.' });
+    }
+  }
+  // 사용자 단위 발송 한도 (IP 한도와 별도 — IP를 바꿔 우회하는 경우 대비, 인스턴스 메모리 기준)
+  if (!isStatus) {
+    const userLimit = checkMultiTierRateLimit(`alimtok-user:${req.user.id}`, RATE_LIMIT_TIERS.STRICT);
+    if (userLimit.isLimited) {
+      return res.status(429).json({ ok: false, error: `발송 한도를 초과했습니다. ${Math.ceil(userLimit.retryAfter / 60)}분 후 다시 시도해 주세요.`, retryAfter: userLimit.retryAfter });
+    }
+  }
+
   if (isStatus) {
     if (!POPBILL_CONFIG.isConfigured) {
       return res.status(200).json({
@@ -125,17 +153,20 @@ export default async function handler(req, res) {
           ok: true,
           configured: true,
           templates,
-          templateMgtUrl,
+          // 팝빌 관리 화면 SSO 로그인 URL은 회사 계정 접근이므로 관리자에게만
+          templateMgtUrl: isAdmin ? templateMgtUrl : 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE',
         });
       }
 
+      // 조회 실패를 0P로 표시하지 않도록 null + 오류 사유 반환 (이전: 오류도 '0 P'로 보임)
+      let balanceError = null;
       const balance = await new Promise((resolve, reject) => {
         kakaoService.getBalance(corpNum, (res) => resolve(res), (err) => reject(err));
-      }).catch(() => 0);
+      }).catch((e) => { balanceError = e?.message || '잔액 조회 실패'; return null; });
 
       const partnerBalance = await new Promise((resolve, reject) => {
         kakaoService.getPartnerBalance(corpNum, (res) => resolve(res), (err) => reject(err));
-      }).catch(() => 0);
+      }).catch(() => null);
 
       const senders = await new Promise((resolve, reject) => {
         kakaoService.getSenderNumberList(corpNum, (res) => resolve(res), (err) => reject(err));
@@ -153,10 +184,11 @@ export default async function handler(req, res) {
         userId: POPBILL_CONFIG.userId,
         plusFriendId: POPBILL_CONFIG.plusFriendId,
         senderPhone: POPBILL_CONFIG.senderPhone,
-        balance: typeof balance === 'number' ? balance : 0,
-        partnerBalance: typeof partnerBalance === 'number' ? partnerBalance : 0,
+        balance: typeof balance === 'number' ? balance : null,
+        partnerBalance: typeof partnerBalance === 'number' ? partnerBalance : null,
+        balanceError,
         channelStatus: plusFriends.length > 0 ? 'CONNECTED' : 'STANDBY',
-        statusMessage: '팝빌 카카오 알림톡/문자 서비스 정상 연동 활성화됨',
+        statusMessage: plusFriends.length > 0 ? '팝빌 연동 확인됨' : '팝빌 키는 설정됐지만 카카오 채널이 조회되지 않았습니다.',
         senders,
         plusFriends,
         templates,

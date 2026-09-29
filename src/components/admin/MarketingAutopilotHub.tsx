@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
-import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType, generatePollinationsUrl } from '../../services/marketingAiService';
+import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, testMarketingAiConnection, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType, generatePollinationsUrl } from '../../services/marketingAiService';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -42,7 +42,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
     format: "네이버 블로그 스마트에디터 최적화 (대표 썸네일 1컷 + 본문 인포그래픽 3컷 탑재)",
     summary: "최근 기준금리 동결에도 불구하고 늘어난 이자 부담에 시달리는 분들을 위해, 번호 유출 없이 변호사를 직접 고르고 30분 만에 서류를 완성하는 마이김변 3단 솔루션을 심층 분석합니다.",
     fullBody: `[📷 이미지 1: 대표 썸네일 삽입 위치]
-(기준금리 동결과 채무자의 현실 — 010 번호 유출 0% 개인회생 가이드)
+(기준금리 동결과 채무자의 현실 — 010 번호 비공개 개인회생 가이드)
 
 ■ 서론: 금리 동결 속, 채무자들의 시름은 왜 더 깊어질까요?
 최근 한국은행의 기준금리 동결 발표가 있었지만, 실제 채무자분들이 체감하는 금융 환경은 여전히 가혹합니다. 연체이자 부담과 금융권의 추심 압박 속에서 '개인회생이나 파산을 알아보고 싶어도', 포털에 전화번호를 남겼다가 하루 수십 통의 대출 영업 전화에 시달릴까 두려워 망설이시는 분들이 너무나 많습니다.
@@ -53,9 +53,9 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 [📷 이미지 2: 본문 삽입 인포그래픽 #1]
 (사설 DB 수집 vs 마이김변 스텔스 가명 비교 도표)
 
-■ 2. 마이김변의 혁신 1: 010 번호 유출 0% '스텔스 가명' 시스템
+■ 2. 마이김변의 혁신 1: 010 번호 비공개 '스텔스 가명' 시스템
 마이김변(my김변)은 국내 최초로 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다.
-- 영업 전화 0통 보장: 내가 원할 때만, 안전한 인앱 안심 채팅으로 소통
+- 번호 비공개 상담: 내가 원할 때만, 안전한 인앱 안심 채팅으로 소통
 - 변호사 직접 탐색: 법조 경력, 승소 후기, 전문 분야를 투명하게 직접 확인 후 복수 지정
 - 역경매가 아닌 '고객 주도형 다중 안심 상담': 변호사법 제34조를 완벽히 준수하며 가격 덤핑 없이 정당한 실력으로 승부
 
@@ -71,7 +71,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 회생과 파산은 성실하지만 불운한 채무자를 구제하기 위한 헌법상의 제도입니다. 혼자 끙끙 앓다 기회를 놓치지 마시고, 지금 마이김변에서 010 번호 유출 없이 내 안심 가명으로 변호사 리스트를 확인하고 무료 안심 견적을 받아보세요.
 
 [📷 이미지 4: 엔딩 CTA 배너 삽입 위치]
-(010 번호 유출 0% 안심 가명 상담 신청 바로가기 — 마이김변 공식 배너)
+(010 번호 비공개 안심 가명 상담 신청 바로가기 — 마이김변 공식 배너)
 
 ※ 본 콘텐츠는 리걸테크 플랫폼 마이김변의 기술적 편의성을 안내하는 정보성 칼럼이며, 개별 법률 상담 및 소송 대리는 의뢰인이 선택한 독립된 법률사무소가 수행합니다.`,
     blogImages: [
@@ -91,12 +91,12 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
         id: "blog-img-2",
         order: 2,
         title: "인포그래픽: 사설 DB 영업 vs 마이김변 스텔스 가명",
-        role: "문제점 환기 및 010 번호 유출 0% 기술 신뢰도 제공",
+        role: "문제점 환기 및 010 번호 비공개 기술 신뢰도 제공",
         insertPosition: "2번 섹션 (스텔스 가명 시스템 설명 상단)",
         prompt: "A clean modern vector comparison infographic: left side showing red spam phone calls and leaked numbers, right side showing a glowing cyan security lock shield protecting user identity, dark tech style",
         previewGradient: "from-slate-900 via-rose-950/40 to-emerald-950/40",
         previewTitle: "사설 DB vs 마이김변 비교",
-        previewSub: "영업 전화 0통 · 010 번호 비공개 · 변호사 직접 선택",
+        previewSub: "010 번호 비공개 · 변호사 직접 선택",
         tag: "비교 인포그래픽"
       },
       {
@@ -147,7 +147,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 
 [16~27초: 솔루션 (마이김변 스텔스 가명)]
 (화면 연출: 마이김변 앱에서 '스텔스 가명' 켜지며 실시간 변호사 프로필 3명 터치)
-성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다."
+성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다."
 
 [28~35초: 심리스 루프(Seamless Loop) & 고정 댓글 CTA]
 (화면 연출: 고정 댓글 화살표 펄스 애니메이션 후, 첫 장면의 질문으로 자연스럽게 이어지는 문장 아웃트로)
@@ -156,7 +156,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
     cueSheet: [
       { time: "00~03초", action: "부재중 전화 30통 폭탄 모션 + 줌인 (인사말 없음)", script: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요." },
       { time: "04~15초", action: "포털 번호 입력 망설이는 인물 + 스팸 경고음", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 100통 쏟아질까 봐 겁나시죠?" },
-      { time: "16~27초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 3명 터치", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 유출 0%로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
+      { time: "16~27초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 3명 터치", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
       { time: "28~35초", action: "고정 댓글 강조 + 루프 브릿지 문장으로 첫 장면 연결", script: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 완전히 벗어나는 비결은 바로," }
     ],
     visualPrompt: "Cinematic vertical 9:16 shot, modern dark neon Korean legal office, stressed person looking at smartphone with glowing shield UI, 8k resolution, dramatic lighting",
@@ -194,7 +194,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
       { page: 2, headline: "혹시 매달 '이자만' 갚고 계신가요?", subtext: "월급 받아서 대출 이자 내면 남는 돈 0원... 더 이상 버티기 어렵다면", visualDesc: "스마트폰 계좌 잔액 0원과 늘어나는 이자 그래프" },
       { page: 3, headline: "법적 구제 제도가 있지만 망설여지는 이유", subtext: "'인터넷에 상담 글 올렸더니 하루 종일 대출 스팸 전화가 와요'", visualDesc: "화면 위로 쏟아지는 붉은색 스팸 알림 아이콘들" },
       { page: 4, headline: "사설 브로커의 번호 장사 vs 안전한 해결책", subtext: "내 소중한 010 개인정보가 불법 유통되는 구조를 피해야 합니다", visualDesc: "사설 DB 유출 경로와 경고 그래픽" },
-      { page: 5, headline: "첫 번째: 010 번호 유출 0% '스텔스 가명'", subtext: "내 진짜 번호는 가리고, 안심 가명으로만 안전하게 상담 진행", visualDesc: "마이김변 보안 쉴드(Shield)와 가명 생성 인터페이스" },
+      { page: 5, headline: "첫 번째: 010 번호 비공개 '스텔스 가명'", subtext: "내 진짜 번호는 가리고, 안심 가명으로만 안전하게 상담 진행", visualDesc: "마이김변 보안 쉴드(Shield)와 가명 생성 인터페이스" },
       { page: 6, headline: "두 번째: 변호사 직접 탐색 & 복수 안심 견적", subtext: "경력과 승소 사례를 투명하게 확인하고 마음에 드는 변호사를 직접 선택", visualDesc: "도산 전문 변호사 프로필 카드 3개 비교 화면" },
       { page: 7, headline: "세 번째: 40종 서류, 말로 쓰는 AI 음성 진술서", subtext: "동사무소 서류 지옥 탈출! 스마트폰으로 말만 하면 30분 패키징 완성", visualDesc: "음성 파형이 법원 표준 진술서로 자동 변환되는 UI" },
       { page: 8, headline: "핵심 요약: 번호 없이 시작하는 안심 회생", subtext: "혼자 앓지 말고 합법적 제도의 보호를 안전하게 받으세요", visualDesc: "3단계 체크리스트 정리 그래픽" },
@@ -232,13 +232,13 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 수임료나 조건도 제대로 비교 못 하고 덤터기 쓰는 경우도 수두룩해.
 
 [3/4]
-그래서 마이김변이 '010 번호 유출 0%' 스텔스 가명 시스템을 만든 거래.
+그래서 마이김변이 '010 번호 비공개' 스텔스 가명 시스템을 만든 거래.
 
 내 진짜 번호는 단 1글자도 넘기지 않고,
 검증된 도산 전문 변호사들 프로필이랑 승소 후기 직접 확인한 다음
 마음에 드는 변호사 3명한테 동시에 안심 견적을 받아볼 수 있음.
 
-진짜 010 번호 없이 가명으로만 소통하니까 영업 전화 0통 보장됨. 신기하지?
+진짜 010 번호 없이 가명으로만 소통하니까 번호를 먼저 알리지 않아도 돼.
 
 [4/4]
 더 이상 혼자 속으로 앓으면서 버티지 마.
@@ -268,10 +268,10 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 "상담받으려다 대출 영업 사원들에게 번호 털리는 건 아닐까?"
 
 가장으로서 짊어진 무게, 더 이상 혼자 속으로 삼키지 마십시오.
-국내 유일의 리걸테크 플랫폼 [마이김변]은 소상공인과 가장 여러분의 비밀을 철저히 지켜드립니다.
+리걸테크 플랫폼 [마이김변]은 소상공인과 가장 여러분의 비밀을 철저히 지켜드립니다.
 
 🔒 마이김변 3대 안심 약속:
-1. 010 번호 유출 0% — '스텔스 가명'으로 신분 철저 보호 (영업 전화 0통 보장)
+1. 010 번호 비공개 — '스텔스 가명'으로 신분 철저 보호 (번호 비공개 상담)
 2. 검증된 도산 전문 변호사 직접 탐색 & 투명한 다중 견적
 3. 복잡한 40종 서류, 스마트폰으로 말만 하면 30분 만에 원스톱 패키징
 
@@ -413,8 +413,8 @@ function TabTodayAutopilot({
   const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string; time: string; status: string; icon: any; color: string } | null>(null);
 
   const channels = [
-    { id: 'blog', name: '네이버 블로그', time: '10:00', status: 'completed', icon: FileText, color: 'text-emerald-400' },
-    { id: 'shorts', name: '유튜브 쇼츠', time: '12:30', status: 'publishing', icon: Video, color: 'text-red-400' },
+    { id: 'blog', name: '네이버 블로그', time: '10:00', status: 'pending', icon: FileText, color: 'text-emerald-400' },
+    { id: 'shorts', name: '유튜브 쇼츠', time: '12:30', status: 'pending', icon: Video, color: 'text-red-400' },
     { id: 'cardnews', name: '인스타 카드뉴스', time: '14:00', status: 'pending', icon: ImageIcon, color: 'text-pink-400' },
     { id: 'threads', name: '스레드 단상', time: '17:30', status: 'pending', icon: MessageCircle, color: 'text-white' },
     { id: 'facebook', name: '페이스북 페이지', time: '18:40', status: 'pending', icon: Facebook, color: 'text-blue-400' },
@@ -422,7 +422,7 @@ function TabTodayAutopilot({
   ];
 
   const handleApproveAll = () => {
-    toast.success('오늘의 6채널 배포가 일괄 승인되었습니다.');
+    toast.info('채널 자동 게시 연동이 없습니다. 생성된 글·이미지를 내려받아 각 채널에 직접 게시하세요.');
   };
 
   return (
@@ -444,23 +444,10 @@ function TabTodayAutopilot({
         </div>
         
         <div className="lg:w-64 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-[#1E293B]/60 pt-6 lg:pt-0 lg:pl-6">
-          <div className="mb-2 flex justify-between items-center text-sm">
-            <span className="text-slate-400">컴플라이언스 점수</span>
-            <span className="text-emerald-400 font-bold">98 / 100</span>
-          </div>
-          <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-4">
-            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '98%' }}></div>
-          </div>
-          
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-slate-300">완전자동 무검수 모드</span>
-            <button 
-              onClick={() => setAutoMode(!autoMode)}
-              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${autoMode ? 'bg-indigo-500' : 'bg-slate-700'}`}
-            >
-              <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${autoMode ? 'translate-x-6' : ''}`} />
-            </button>
-          </div>
+          {/* 이전: 고정 '컴플라이언스 점수 98/100'과 동작하지 않는 '완전자동 무검수 모드' 토글 */}
+          <p role="note" className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 leading-relaxed">
+            자동 광고 규정 검수와 채널 자동 게시 기능은 없습니다. 게시 전 결과 보장·근거 없는 수치 표현이 없는지 직접 확인하세요.
+          </p>
           
           <button 
             onClick={handleApproveAll}
@@ -510,7 +497,7 @@ function TabTodayAutopilot({
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-200">{ch.name}</h4>
-                  <p className="text-xs text-slate-400">발행 예정: {ch.time}</p>
+                  <p className="text-xs text-slate-400">권장 게시 시각: {ch.time}</p>
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded-lg border ${
@@ -518,7 +505,7 @@ function TabTodayAutopilot({
                 ch.status === 'publishing' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                 'bg-slate-800 text-slate-400 border-slate-700'
               }`}>
-                {ch.status === 'completed' ? '완료' : ch.status === 'publishing' ? '진행중' : '대기중'}
+                {ch.status === 'completed' ? '완료' : ch.status === 'publishing' ? '진행중' : '수동 게시'}
               </span>
             </div>
             
@@ -882,7 +869,7 @@ function ContentDetailModal({
                 <div className="bg-[#141A28] border-l-4 border-amber-500 rounded-r-xl p-4 my-4 space-y-1">
                   <span className="text-xs font-bold text-amber-400">⚠️ 사설 DB 수집의 현실</span>
                   <p className="text-xs sm:text-sm text-slate-300">
-                    "상담 번호를 남기자마자 대부업체와 정체불명의 대행사로부터 하루 20통이 넘는 전화가 걸려왔습니다." — 실제 이용자 상담 사례
+                    "상담 번호를 남기자마자 대부업체와 정체불명의 대행사로부터 하루 20통이 넘는 전화가 걸려왔습니다." — 예시 문구 (실제 사례 아님)
                   </p>
                 </div>
               </div>
@@ -892,7 +879,7 @@ function ContentDetailModal({
                 <div className="space-y-3 pt-4">
                   <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                     <span className="w-2 h-5 rounded-full bg-indigo-500 inline-block"></span>
-                    1. 010 번호 유출 0%, '스텔스 가명'이 필요한 이유
+                    1. 010 번호 비공개, '스텔스 가명'이 필요한 이유
                   </h3>
                   <div className={`w-full h-48 sm:h-60 rounded-2xl bg-gradient-to-br ${content.blogImages[1].previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-lg relative overflow-hidden`}>
                     <div className="z-10 flex justify-between items-start">
@@ -1054,7 +1041,7 @@ function ContentDetailModal({
                       </div>
                       <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-200">
                         <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변 안심 리걸테크</span>
-                        <span className="drop-shadow-sm">010 번호 유출 0%</span>
+                        <span className="drop-shadow-sm">010 번호 비공개</span>
                       </div>
                     </div>
 
@@ -1188,7 +1175,7 @@ function ContentDetailModal({
                       {/* Footer Bar */}
                       <div className="z-10 pt-3 border-t border-white/10 flex justify-between items-center text-[11px]">
                         <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <ShieldCheck size={13} /> 010 번호 유출 0%
+                          <ShieldCheck size={13} /> 010 번호 비공개
                         </span>
                         <span className="text-indigo-300 font-medium">
                           {slide.page === 10 ? '📌 프로필 링크에서 확인' : '옆으로 넘기기 ➔'}
@@ -1294,234 +1281,56 @@ function ContentDetailModal({
 
 // --- TAB 2: Gemini 키 관리 ---
 function TabKeyManagement() {
-  const [showModal, setShowModal] = useState(false);
-  const [activeApiKey, setActiveApiKey] = useState(() => {
-    return typeof window !== 'undefined' ? (localStorage.getItem('marketing_gemini_api_key') || '') : '';
-  });
-  const [isTestingKey, setIsTestingKey] = useState(false);
-  const [modalKeyInput, setModalKeyInput] = useState('');
-  const [modalRole, setModalRole] = useState('블로그 전문 작가 & 이미지 디렉터');
+  // [PART 3-7] Gemini 키는 서버 환경변수(GEMINI_API_KEY)에만 둔다.
+  // 이전: 관리자가 입력한 키를 localStorage에 평문 저장하고 브라우저에서 URL 쿼리(?key=)로 Google에 직접 전송했으며,
+  //       실제로 없는 계정 5개('AIzaSyD...xQ9A' 등)와 가짜 사용률·'rate-limited' 상태를 표시했다.
+  const [isTesting, setIsTesting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
-  const keys = [
-    { id: 1, role: '뉴스분석관 & 검수관', name: 'Account #1', key: 'AIzaSyD...xQ9A', status: 'active', usage: 45, icon: Search },
-    { id: 2, role: '블로그 전문 작가', name: 'Account #2', key: activeApiKey ? (activeApiKey.slice(0, 7) + '...' + activeApiKey.slice(-4)) : 'AIzaSyA...m2P1', status: activeApiKey ? 'active' : 'active', usage: 82, icon: FileText },
-    { id: 3, role: '숏폼 스크립트 디렉터', name: 'Account #3', key: 'AIzaSyM...k8L0', status: 'rate-limited', usage: 98, icon: Video },
-    { id: 4, role: '소셜 스토리텔러', name: 'Account #4', key: 'AIzaSyC...v4N2', status: 'active', usage: 30, icon: MessageCircle },
-    { id: 5, role: '비주얼 프롬프트 아티스트', name: 'Account #5', key: 'AIzaSyP...t5X3', status: 'active', usage: 15, icon: ImageIcon },
-  ];
-
-  const handleTestKey = async (testKey?: string) => {
-    const keyToTest = testKey || activeApiKey;
-    if (!keyToTest) {
-      toast.error('테스트할 Gemini API Key를 먼저 입력하거나 등록해주세요.');
-      return;
-    }
-    setIsTestingKey(true);
-    const toastId = toast.loading('Gemini 2.5 Flash API 연결 테스트 중...');
+  useEffect(() => {
+    // 과거 버전이 저장한 평문 키 제거
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keyToTest}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Respond with OK' }] }]
-        })
-      });
-      if (res.ok) {
-        toast.success('Gemini 2.5 Flash API 연결 성공! 실시간 AI 4컷 이미지 및 칼럼 생성이 활성화되었습니다.', { id: toastId });
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        toast.error(`API 연결 실패: ${errData?.error?.message || res.statusText}`, { id: toastId });
-      }
-    } catch (err: any) {
-      toast.error(`연결 오류: ${err.message || '네트워크 확인 필요'}`, { id: toastId });
-    } finally {
-      setIsTestingKey(false);
-    }
-  };
+      localStorage.removeItem('marketing_gemini_api_key');
+      localStorage.removeItem('gemini_api_key');
+    } catch { /* ignore */ }
+  }, []);
 
-  const handleSaveActiveKey = (key: string) => {
-    const clean = key.trim();
-    if (!clean) {
-      toast.error('API Key를 입력해주세요.');
-      return;
-    }
-    localStorage.setItem('marketing_gemini_api_key', clean);
-    setActiveApiKey(clean);
-    toast.success('Gemini API Key가 성공적으로 저장되었습니다.');
-    handleTestKey(clean);
+  const handleTest = async () => {
+    setIsTesting(true);
+    setResult(null);
+    const res = await testMarketingAiConnection();
+    setResult(res);
+    setIsTesting(false);
   };
 
   return (
     <div className="space-y-6">
-      {/* Active Key Banner */}
-      <div className="bg-[#111622] rounded-2xl border border-indigo-500/30 p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Key size={20} className="text-indigo-400" />
-              마케팅 오토파일럿 활성 Gemini 2.5 Flash API Key
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              네이버 블로그 4컷 이미지(Nano Banana 2 / Imagen 3 프롬프트) 및 D.I.A.+ 칼럼 자동 생성에 사용됩니다.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${activeApiKey ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-              {activeApiKey ? '연결 완료 (ACTIVE)' : '프리셋 모드 동작 중'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input 
-            type="password"
-            value={activeApiKey}
-            onChange={(e) => setActiveApiKey(e.target.value)}
-            placeholder="AIzaSy... 형식의 Gemini API Key를 입력하세요"
-            className="flex-1 bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            onClick={() => handleSaveActiveKey(activeApiKey)}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all press-scale min-h-[44px] cursor-pointer whitespace-nowrap shadow-sm"
-          >
-            저장 및 즉시 적용
-          </button>
-          <button
-            onClick={() => handleTestKey()}
-            disabled={isTestingKey}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors min-h-[44px] cursor-pointer whitespace-nowrap flex items-center gap-1.5"
-          >
-            {isTestingKey ? <Loader2 size={14} className="animate-spin text-indigo-400" /> : <Sparkles size={14} className="text-amber-400" />}
-            {isTestingKey ? '테스트 중...' : '연결 테스트'}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 shadow-sm">
+      <div className="bg-[#111622] rounded-2xl border border-indigo-500/30 p-6 space-y-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Key size={20} className="text-indigo-400" />
-            Gemini Pro 멀티-계정 풀 (5-Keys)
+            <Key size={20} className="text-indigo-400" aria-hidden="true" />
+            AI 생성 연결 (서버 키)
           </h2>
-          <p className="text-sm text-slate-400 mt-1">API 요금 한도 도달 시 자동으로 다음 키로 페일오버(Failover) 됩니다.</p>
+          <p className="text-sm text-slate-300 mt-1 leading-relaxed">
+            칼럼 생성은 서버(/api/generate-statement)가 환경변수 <code className="font-mono text-indigo-300">GEMINI_API_KEY</code>로 호출합니다.
+            키는 브라우저에 저장하거나 입력하지 않습니다. 관리자(2단계 인증) 세션에서만 사용할 수 있습니다.
+          </p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-sm text-slate-300">오토 페일오버 작동 중</span>
-          </div>
-          <button 
-            onClick={() => setShowModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors press-scale flex items-center gap-2 min-h-[44px] cursor-pointer"
-          >
-            <Plus size={16} /> API Key 등록
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleTest}
+          disabled={isTesting}
+          className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold whitespace-nowrap transition-colors disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+        >
+          {isTesting ? '확인 중…' : '서버 연결 확인'}
+        </button>
+        {result && (
+          <p role="status" className={`text-sm ${result.ok ? 'text-emerald-300' : 'text-amber-300'}`}>{result.message}</p>
+        )}
+        <p className="text-xs text-slate-400">
+          키가 없거나 실패하면 저장된 프리셋 칼럼을 보여줍니다. 생성된 글은 게시 전에 변호사 광고 규정(결과 보장·근거 없는 수치 금지) 검토가 필요합니다.
+        </p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {keys.map(k => (
-          <div key={k.id} className="bg-[#111622] border border-[#1E293B]/60 rounded-2xl p-5 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
-            {k.status === 'rate-limited' && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
-            )}
-            {k.status === 'active' && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
-            )}
-            
-            <div className="flex justify-between items-start mb-4 mt-1">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
-                <k.icon size={20} />
-              </div>
-              <span className={`text-[10px] px-2 py-1 rounded-lg border ${
-                k.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                'bg-amber-500/10 text-amber-400 border-amber-500/20'
-              }`}>
-                {k.status === 'active' ? 'ACTIVE' : 'RATE LIMIT'}
-              </span>
-            </div>
-            
-            <h3 className="font-bold text-white text-sm mb-1">{k.role}</h3>
-            <p className="text-xs text-slate-400 mb-4">{k.name}</p>
-            
-            <div className="bg-[#0B0F19] rounded-lg p-2.5 mb-4 border border-slate-800 flex justify-between items-center group/key cursor-pointer">
-              <span className="text-xs font-mono text-slate-300">{k.key}</span>
-              <Eye size={14} className="text-slate-500 group-hover/key:text-white transition-colors" />
-            </div>
-            
-            <div className="space-y-1 mb-4">
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">일일 토큰 사용량</span>
-                <span className={k.usage > 90 ? 'text-amber-400' : 'text-slate-300'}>{k.usage}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full ${k.usage > 90 ? 'bg-amber-500' : 'bg-indigo-500'}`} 
-                  style={{ width: `${k.usage}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            <button 
-              onClick={() => handleTestKey(activeApiKey)}
-              className="w-full py-2 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-colors min-h-[44px] cursor-pointer"
-            >
-              연결 테스트
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-[#111622] rounded-3xl border border-[#1E293B] p-6 w-full max-w-md shadow-lg">
-            <h3 className="text-xl font-bold text-white mb-4">새 Gemini API Key 등록</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-slate-400 mb-1.5">계정 별칭</label>
-                <input type="text" className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" placeholder="예: Account #6" defaultValue="Account #6" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-400 mb-1.5">할당 역할</label>
-                <select 
-                  value={modalRole} 
-                  onChange={(e) => setModalRole(e.target.value)}
-                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 appearance-none"
-                >
-                  <option>블로그 전문 작가 & 이미지 디렉터</option>
-                  <option>뉴스분석관 & 검수관</option>
-                  <option>백업용 예비 풀</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-slate-400 mb-1.5">API Key</label>
-                <input 
-                  type="password" 
-                  value={modalKeyInput}
-                  onChange={(e) => setModalKeyInput(e.target.value)}
-                  className="w-full bg-[#0B0F19] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" 
-                  placeholder="AIzaSy..." 
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 min-h-[44px] cursor-pointer">취소</button>
-              <button 
-                onClick={() => {
-                  if (modalKeyInput.trim()) {
-                    handleSaveActiveKey(modalKeyInput);
-                  }
-                  setShowModal(false);
-                }}
-                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 min-h-[44px] cursor-pointer font-medium"
-              >
-                저장 및 테스트
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2132,7 +1941,7 @@ function TabContentStudio({
                           </div>
                           <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-200">
                             <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변 안심 리걸테크</span>
-                            <span className="drop-shadow-sm">010 번호 유출 0%</span>
+                            <span className="drop-shadow-sm">010 번호 비공개</span>
                           </div>
                         </div>
 
@@ -2483,7 +2292,7 @@ function TabContentStudio({
 
                         <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px]">
                           <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                            <ShieldCheck size={12} /> 010 번호 유출 0%
+                            <ShieldCheck size={12} /> 010 번호 비공개
                           </span>
                           <span className="text-amber-300 font-medium">
                             {selectedSlide === 9 ? '📌 프로필 링크에서 확인' : '옆으로 넘기기 ➔'}
@@ -2584,7 +2393,7 @@ function TabContentStudio({
                   <input 
                     type="text"
                     readOnly
-                    value="010 번호 유출 없는 안심 가명 변호사 견적 비교 ➔ https://mykim.kr (영업 전화 0통 보장)"
+                    value="010 번호 유출 없는 안심 가명 변호사 견적 비교 ➔ https://mykim.kr (번호 비공개 상담)"
                     className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
                   />
                 </div>
@@ -2702,7 +2511,7 @@ function TabContentStudio({
                   {[
                     { time: '00~03초', label: '⚡ 0.3초 훅', script: '아직도 빚 상담에 010 번호 남기나요? 절대 금지 ❌', action: '중앙 볼드 텍스트 팝업 + 빨간 X 모션', prompt: 'dramatic red X mark over phone number input field, dark moody smartphone screen, urgent warning vibe, no text, no watermark', color: 'from-cyan-900/80' },
                     { time: '04~11초', label: '😱 충격', script: '한 번 남긴 번호로 20곳 넘게 영업전화가 옵니다. 상담 한번 받으려다 스팸 지옥에 빠지는 거죠.', action: '전화기 스팸 알림 쏟아지는 모션 1.2배속', prompt: 'smartphone screen overwhelmed with spam call notifications flooding in, dark dramatic lighting, anxiety inducing visual, no text, no watermark', color: 'from-rose-900/80' },
-                    { time: '12~18초', label: '🛡️ 해결', script: '마이김변은 010 번호 대신 가명으로 변호사 3명에게 동시 견적을 받습니다. 번호 유출 0%.', action: '스텔스 가명 쉴드 ON + 변호사 프로필 3장', prompt: 'futuristic green privacy shield protecting smartphone, three professional lawyer cards floating nearby, clean dark UI aesthetic, no text, no watermark', color: 'from-emerald-900/80' },
+                    { time: '12~18초', label: '🛡️ 해결', script: '마이김변은 010 번호 대신 가명으로 변호사 3명에게 동시 견적을 받습니다. 번호 비공개.', action: '스텔스 가명 쉴드 ON + 변호사 프로필 3장', prompt: 'futuristic green privacy shield protecting smartphone, three professional lawyer cards floating nearby, clean dark UI aesthetic, no text, no watermark', color: 'from-emerald-900/80' },
                     { time: '19~22초', label: '👆 CTA', script: '프로필 링크에서 지금 바로 확인하세요!', action: '프로필 링크 손가락 제스처 + 초고속 엔딩', prompt: 'finger tapping glowing profile link button on phone screen, sparkle effect, fast dynamic energy, dark background, no text, no watermark', color: 'from-purple-900/80' },
                   ].map((scene, idx) => {
                     const bgUrl = generatePollinationsUrl(scene.prompt, { width: 608, height: 1080, seed: 8800 + idx, nologo: true });

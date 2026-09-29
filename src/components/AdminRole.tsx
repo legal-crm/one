@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
-import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout, auditAdminAccessDenied, auditMfaEnrolled } from '../services/auditService';
+import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout, auditAdminAccessDenied, auditMfaEnrolled, auditViewClient } from '../services/auditService';
 import { evaluateAdminAuth, startTotpEnrollment, verifyTotpCode, isValidTotpCode, signOutAdmin, type AdminAuthState, type TotpEnrollment } from '../services/adminAuthService';
 import { ADMIN_PORTAL_PATH, readAdminMarker, writeAdminMarker, touchAdminMarker, clearAdminMarker } from '../utils/adminPortal';
 import { supabase } from '../supabaseClient';
@@ -31,10 +31,16 @@ import PopupEditor from './popup/PopupEditor';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 import { fetchHoneypotLogs, type HoneypotAttackLog } from '../services/honeypotService';
 import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
+import PlatformDashboard, { isSpamBlocked } from './admin/PlatformDashboard';
+import { maskPhoneNumber, maskPersonName, maskEmailAddress } from '../utils/piiMask';
+import { adminSetConsultStatus, adminSetConsultHidden, adminReopenStaleConsult } from '../services/consultService';
+import { adminLoadInquiries, adminReplyInquiry } from '../services/inquiryService';
+import { localYmd } from '../utils/localDate';
+import { fetchPlatformActivity, type PlatformActivityLog } from '../services/platformActivityService';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
 import { notifyAdminAdConfirmed } from '../services/notificationService';
-import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/adOrderService';
+import { loadAdOrders, updateAdOrder, subscribeToAdOrders, syncAdOrdersFromServer } from '../services/adOrderService';
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
 import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
@@ -143,7 +149,8 @@ export default function AdminRole({
   const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
   const [invoiceIssuing, setInvoiceIssuing] = useState(false);
   const [invoiceResult, setInvoiceResult] = useState<{ok: boolean; message: string} | null>(null);
-  const [confirmDepositorVerified, setConfirmDepositorVerified] = useState(true);
+  const [confirmDepositorVerified, setConfirmDepositorVerified] = useState(false);
+  const [confirmPaidDate, setConfirmPaidDate] = useState<string>(() => localYmd());
   const [confirmIssueTaxInvoice, setConfirmIssueTaxInvoice] = useState(true);
   const [confirmCorpNum, setConfirmCorpNum] = useState('');
   const [confirmCorpName, setConfirmCorpName] = useState('');
@@ -154,7 +161,9 @@ export default function AdminRole({
   // 입금 확인 모달 열릴 때 대상 주문 정보 기반 폼 초기화
   useEffect(() => {
     if (invoiceConfirmOrder) {
-      setConfirmDepositorVerified(true);
+      // 통장 대조 체크는 관리자가 직접 (이전: 기본 체크되어 버튼 한 번으로 입금 확인)
+      setConfirmDepositorVerified(false);
+      setConfirmPaidDate(localYmd());
       setConfirmIssueTaxInvoice(true);
       // 가짜 기본값 제거 (이전: '120-81-47521'·'tax@lawyer.example.com' → 제3자 사업자번호로 세금계산서가 발행될 수 있었음)
       setConfirmCorpNum(invoiceConfirmOrder.buyerCorpNum || '');
@@ -201,7 +210,8 @@ export default function AdminRole({
   const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis' | 'popup' | 'adbanner'>('news');
 
   // Ad Banner (프리미엄 변호사 쇼케이스 광고) CRUD states
-  const [adminAdBanners, setAdminAdBanners] = useState<AdBanner[]>(initialAdBanners);
+  // [PART 3-4] 시드 광고(가상 변호사·'인가율 98%' 등 근거 없는 수치)는 DEV 전용. 편집 내용은 저장되지 않음(아래 안내)
+  const [adminAdBanners, setAdminAdBanners] = useState<AdBanner[]>(import.meta.env.DEV ? initialAdBanners : []);
   const [editingAdBanner, setEditingAdBanner] = useState<AdBanner | null>(null);
   const [isAdBannerCreateMode, setIsAdBannerCreateMode] = useState(false);
   const [adBannerForm, setAdBannerForm] = useState({
@@ -411,6 +421,89 @@ export default function AdminRole({
     if (isLoggedIn) refreshHoneypotLogs();
   }, [isLoggedIn, refreshHoneypotLogs]);
 
+  // [PART 3-2] 플랫폼 활동 로그 — 서버(audit_logs member_activity) 우선, 실패 시 이 브라우저 기록
+  const [serverActivity, setServerActivity] = useState<PlatformActivityLog[] | null>(null);
+  const [serverActivityError, setServerActivityError] = useState<string>('');
+  const [serverActivityLoading, setServerActivityLoading] = useState<boolean>(false);
+  const refreshServerActivity = useCallback(async () => {
+    setServerActivityLoading(true);
+    const res = await fetchPlatformActivity();
+    if (res.error) {
+      setServerActivity(null);
+      setServerActivityError(res.error);
+    } else {
+      setServerActivity(res.logs);
+      setServerActivityError('');
+    }
+    setServerActivityLoading(false);
+  }, []);
+  useEffect(() => {
+    if (isLoggedIn) refreshServerActivity();
+  }, [isLoggedIn, refreshServerActivity]);
+  // [PART 3-4] 광고 주문: 서버(ad_orders) 전체를 불러와 병합 — 다른 기기에서 신청한 주문도 표시
+  const [adOrdersServerError, setAdOrdersServerError] = useState<string>('');
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let alive = true;
+    syncAdOrdersFromServer().then(res => {
+      if (!alive) return;
+      setAdminAdOrders(res.orders);
+      setAdOrdersServerError(res.error || '');
+    });
+    return () => { alive = false; };
+  }, [isLoggedIn]);
+  // [PART 3-6] 의뢰인 1:1 문의: 서버(/api/inquiry admin-list)에서 불러오고 답변도 서버에 저장
+  // (이전: 이 브라우저의 시연 문의만 표시, 답변은 화면에만 저장되어 의뢰인에게 전달되지 않았음)
+  const [inquiriesFromServer, setInquiriesFromServer] = useState<boolean>(false);
+  const [inquiryServerError, setInquiryServerError] = useState<string>('');
+  const refreshServerInquiries = useCallback(async () => {
+    const res = await adminLoadInquiries();
+    if (res.ok === false) {
+      setInquiriesFromServer(false);
+      setInquiryServerError(res.error);
+      return;
+    }
+    setInquiries(res.items.map((i): ClientInquiry => ({
+      id: i.id,
+      clientId: '',
+      clientName: i.clientName || (i.isMember ? '회원' : '비회원'),
+      category: i.category as ClientInquiry['category'],
+      contactInfo: i.contactInfo,
+      title: i.title,
+      content: i.content,
+      attachments: (i.attachments || []).map((a, idx) => ({ id: `${i.id}-att-${idx}`, fileName: a.fileName, fileSize: a.fileSize, fileType: a.fileType, dataUrl: a.dataUrl || '' })) as ClientInquiry['attachments'],
+      createdAt: i.createdAt,
+      replyContent: i.replyContent,
+      repliedAt: i.repliedAt,
+      status: i.status === 'replied' ? 'replied' : 'pending',
+    })));
+    setInquiriesFromServer(true);
+    setInquiryServerError('');
+  }, [setInquiries]);
+  useEffect(() => {
+    if (isLoggedIn) refreshServerInquiries();
+  }, [isLoggedIn, refreshServerInquiries]);
+
+  /** 답변 저장 (서버 문의면 서버에 먼저 저장) */
+  const saveInquiryReply = async (id: string, reply: string): Promise<boolean> => {
+    if (inquiriesFromServer) {
+      const res = await adminReplyInquiry(id, reply);
+      if (res.ok === false) {
+        toast.error(`답변을 저장하지 못했습니다: ${res.error}`);
+        return false;
+      }
+    }
+    setInquiries(prev => prev.map(inq => inq.id === id
+      ? (reply
+        ? { ...inq, replyContent: reply, repliedAt: new Date().toISOString(), status: 'replied' as const }
+        : { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const })
+      : inq));
+    if (!inquiriesFromServer) toast.warning('서버 문의 목록을 불러오지 못해 이 브라우저에만 저장했습니다. 의뢰인에게 전달되지 않습니다.');
+    return true;
+  };
+  const platformLogs: PlatformActivityLog[] = serverActivity ?? activityLogs;
+  const platformLogsSource: 'server' | 'local' = serverActivity ? 'server' : 'local';
+
   // [SECURITY] 구글 로그인 시작
   const handleGoogleAdminLogin = async () => {
     if (!ADMIN_PORTAL_PATH) {
@@ -576,10 +669,17 @@ export default function AdminRole({
   const [memberPage, setMemberPage] = useState<number>(1);
 
   // Client memos (admin internal notes)
+  // 이 탭(sessionStorage)에만 임시 저장 — 서버 저장 없음, 창을 닫으면 삭제
   const [clientMemos, setClientMemos] = useState<Record<string, string>>(() => {
-    const saved = secureGetItem('legal_crm_client_memos');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = secureGetItem('legal_crm_client_memos');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
   });
+  const [clientActionBusy, setClientActionBusy] = useState<boolean>(false);
+  const viewedClientRef = useRef<string>('');
 
   // Sorting states
   const [clientSortKey, setClientSortKey] = useState<'name' | 'status' | 'debt' | 'date'>('date');
@@ -698,14 +798,18 @@ export default function AdminRole({
   }, 0);
 
   // 2. Client monitoring list filtering (respecting compliance)
+  // [PART 3-3] 관리자 목록에는 실명 대신 가명/마스킹 이름을 쓰고, 검색도 가명·요청 ID로만 한다
+  const clientDisplayName = (r: ConsultRequest) => r.stealthNickname || maskPersonName(r.clientName);
   const filteredClients = requests.filter(r => {
-    const matchesSearch = r.clientName.toLowerCase().includes(clientSearch.toLowerCase());
-    const matchesStatus = clientStatusFilter === 'all' || r.status === clientStatusFilter;
+    const q = clientSearch.trim().toLowerCase();
+    const matchesSearch = !q || clientDisplayName(r).toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+    const matchesStatus = clientStatusFilter === 'all'
+      || (clientStatusFilter === 'hidden' ? isSpamBlocked(r) : r.status === clientStatusFilter);
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
     const dir = clientSortDir === 'asc' ? 1 : -1;
     switch (clientSortKey) {
-      case 'name': return dir * a.clientName.localeCompare(b.clientName, 'ko');
+      case 'name': return dir * clientDisplayName(a).localeCompare(clientDisplayName(b), 'ko');
       case 'status': return dir * a.status.localeCompare(b.status);
       case 'debt': return dir * (a.financialProfile.debtTotal - b.financialProfile.debtTotal);
       case 'date': return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -715,10 +819,61 @@ export default function AdminRole({
 
   const selectedClient = requests.find(r => r.id === selectedClientId);
 
-  // Mask client phone and detailed asset values to comply with Personal Data Protection Act
-  const maskPhone = (phone: string) => {
-    if (!phone) return '';
-    return phone.replace(/(\d{3})-(\d{3,4})-(\d{4})/, '$1-****-$3');
+  // 형식과 무관하게 앞 3·뒤 4자리만 표시 (이전: 하이픈 형식만 가려 '01012345678'은 전체 노출)
+  const maskPhone = (phone: string) => maskPhoneNumber(phone);
+
+  // 장기 미응답: 요청 대기·지정 응답 상태로 48시간 이상 제안서가 없는 요청
+  const STALE_HOURS = 48;
+  const staleRequests = requests.filter(r =>
+    !isSpamBlocked(r) &&
+    (r.status === 'requested' || r.status === 'responding') &&
+    (r.proposals || []).length === 0 &&
+    Date.now() - new Date(r.createdAt).getTime() > STALE_HOURS * 3_600_000
+  ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  // 의뢰인 상세 열람 서버 감사 기록 (같은 건 연속 선택은 1회)
+  const handleSelectClient = (id: string) => {
+    setSelectedClientId(id);
+    if (id && viewedClientRef.current !== id) {
+      viewedClientRef.current = id;
+      auditViewClient(adminEmail || 'admin', 'admin', id);
+    }
+  };
+
+  /** 관리자 상태 변경 — 서버 RPC 성공 후에만 화면 반영 */
+  const handleAdminStatusChange = async (req: ConsultRequest, newStatus: ConsultRequest['status']) => {
+    if (newStatus === req.status) return;
+    setClientActionBusy(true);
+    const res = await adminSetConsultStatus(req.id, newStatus);
+    setClientActionBusy(false);
+    if (res.ok === false) {
+      toast.error(`상태를 바꾸지 못했습니다: ${res.error}`);
+      return;
+    }
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: newStatus } : r));
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰 상태 변경: ${req.id} (${req.status} → ${newStatus})`);
+    toast.success('상태를 변경했습니다.');
+  };
+
+  /** 장기 미응답 요청 오픈 매칭 재공개 */
+  const handleReopenStale = async (req: ConsultRequest) => {
+    const confirmed = await dialog.confirm({
+      title: '오픈 매칭으로 재공개',
+      message: `요청 ${req.id}는 ${Math.floor((Date.now() - new Date(req.createdAt).getTime()) / 3_600_000)}시간 동안 제안서가 없습니다.\n전체 승인 변호사가 볼 수 있는 오픈 매칭으로 전환할까요?\n특정 변호사에게 배정하지 않으며, 가능하면 의뢰인 동의를 먼저 받으세요.`,
+      confirmText: '재공개',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
+    setClientActionBusy(true);
+    const res = await adminReopenStaleConsult(req.id, `${STALE_HOURS}시간 이상 미응답`);
+    setClientActionBusy(false);
+    if (res.ok === false) {
+      toast.error(`재공개하지 못했습니다: ${res.error}`);
+      return;
+    }
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, requestType: 'open', status: 'requested' } : r));
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `장기 미응답 요청 오픈 매칭 재공개: ${req.id}`);
+    toast.success('오픈 매칭으로 재공개했습니다.');
   };
 
   // 3. Lawyer approval directory filtering
@@ -775,35 +930,48 @@ export default function AdminRole({
   const paginatedActiveBilling = billingActiveLawyers.slice(startIndexBilling, startIndexBilling + BILLING_ITEMS_PER_PAGE);
 
   // Handlers
+  /**
+   * 스팸 숨김/해제 — 서버 RPC(023)로 플래그만 바꾸고 원문은 보존한다.
+   * (이전: 의뢰인이 쓴 제목·본문을 '[노출 차단] …' 문구로 덮어써 서버 원본이 사라지고, 해제할 수 없었음)
+   */
   const handleToggleBlockRequest = async (reqId: string) => {
-    // Toggles request content to [노출 제한] and status to closed (spam filtering)
+    const target = requests.find(r => r.id === reqId);
+    if (!target) return;
+    const hide = !target.adminHidden;
     const confirmed = await dialog.confirm({
-      title: '스팸 의뢰글 노출 차단',
-      message: '이 의뢰글을 불량 스팸성 글로 판단하여 노출을 전면 차단하시겠습니까?\n(변호사 대기 목록에서 즉시 숨겨집니다)',
-      confirmText: '노출 차단',
+      title: hide ? '스팸 의뢰글 숨김' : '숨김 해제',
+      message: hide
+        ? '이 의뢰글을 광고·장난 등 정책 위반 글로 숨길까요?\n변호사 목록에서 사라지고 상태가 종료로 바뀝니다. 원문은 보존되며 나중에 해제할 수 있습니다.'
+        : '숨김을 해제하고 이전 상태로 되돌릴까요?',
+      confirmText: hide ? '숨김' : '해제',
       variant: 'warning'
     });
     if (!confirmed) return;
 
-    setRequests(prev => prev.map(r => {
-      if (r.id === reqId) {
-        return {
-          ...r,
-          title: `[노출 차단] 어드민에 의해 스팸 글로 분류되었습니다.`,
-          content: `이 요청글은 광고/장난 등 플랫폼 정책에 위반되는 비정상 유입 데이터로 판명되어 관리자에 의해 비공개 처리되었습니다.`,
-          status: 'closed'
-        };
-      }
-      return r;
-    }));
-    toast.success('스팸 노출 제한 처리가 완료되었습니다.');
+    setClientActionBusy(true);
+    const res = await adminSetConsultHidden(reqId, hide, hide ? '관리자 스팸 판정' : undefined);
+    setClientActionBusy(false);
+    if (res.ok === false) {
+      toast.error(`처리하지 못했습니다: ${res.error}`);
+      return;
+    }
+    setRequests(prev => prev.map(r => r.id === reqId
+      ? { ...r, adminHidden: hide, adminHiddenReason: hide ? '관리자 스팸 판정' : undefined, status: (res.status || r.status) as ConsultRequest['status'] }
+      : r));
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `${hide ? '스팸 숨김' : '숨김 해제'}: ${reqId}`);
+    toast.success(hide ? '숨김 처리했습니다.' : '숨김을 해제했습니다.');
   };
 
   const handleApproveLawyer = async (lawyerId: string) => {
     const targetLawyer = lawyers.find(l => l.id === lawyerId);
+    // 자격 서류가 전혀 없으면 승인하지 않음 (이전: 클릭만으로 '검증 완료' 부여)
+    if (targetLawyer && targetLawyer.licenseStatus !== 'suspended' && !targetLawyer.licenseNumber && !targetLawyer.licenseImageData) {
+      toast.error('등록번호나 등록증이 제출되지 않아 승인할 수 없습니다. 먼저 제출을 요청하세요.');
+      return;
+    }
     const confirmed = await dialog.confirm({
-      title: '변호사 자격 승인',
-      message: `[${targetLawyer?.name || '해당 변호사'}] 대리인의 자격 심사를 승인하시겠습니까?\n승인 즉시 플랫폼 내 활동 및 실시간 상담 매칭이 개시됩니다.`,
+      title: targetLawyer?.licenseStatus === 'suspended' ? '정지 해제' : '변호사 자격 승인',
+      message: `[${targetLawyer?.name || '해당 변호사'}]를 승인할까요?\n대한변협 검색 결과와 등록번호를 직접 대조했는지 확인하세요.\n서버 권한은 해당 변호사가 소셜 로그인으로 계정을 연결한 경우에만 적용됩니다.`,
       confirmText: '승인 처리'
     });
     if (!confirmed) return;
@@ -827,11 +995,13 @@ export default function AdminRole({
     });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
     // DB 권한(lawyer_accounts.approved) 동기화 — 매핑이 없으면 변호사 첫 OAuth 로그인 후 다시 승인 필요
-    setLawyerDbApproval(lawyerId, true).then(linked => {
-      if (!linked) toast.info('DB 접근 권한은 해당 변호사가 소셜 로그인으로 계정을 연결한 뒤 다시 승인하면 활성화됩니다.');
-    });
-    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인 완료: ${lawyerId}`);
-    toast.success('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인: ${lawyerId}`);
+    const linked = await setLawyerDbApproval(lawyerId, true).catch(() => false);
+    if (linked) {
+      toast.success('승인했습니다. 서버 권한도 반영되었습니다.');
+    } else {
+      toast.warning('화면에는 승인으로 표시했지만 서버 권한은 반영되지 않았습니다. 변호사가 소셜 로그인으로 계정을 연결한 뒤 다시 승인하세요.');
+    }
   };
 
   const handleSuspendLawyer = async (lawyerId: string) => {
@@ -861,24 +1031,13 @@ export default function AdminRole({
       return next;
     });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
-    setLawyerDbApproval(lawyerId, false).catch(() => {});
-    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
-    toast.success('대리인 라이선스 정지 처리가 완료되었습니다.');
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 승인 정지: ${lawyerId}`);
+    // 이전: 서버 실패를 무시하고 '정지 완료'로 안내
+    const linked = await setLawyerDbApproval(lawyerId, false).catch(() => false);
+    if (linked) toast.success('정지했습니다. 서버 권한도 해제되었습니다.');
+    else toast.warning('화면에는 정지로 표시했지만 서버 권한은 바뀌지 않았습니다(계정 미연결 또는 권한 오류). 세션 관제에서 계정 차단도 검토하세요.');
   };
-
-  const handleChangeLawyerPlan = (lawyerId: string, matchedCountTarget: number) => {
-    // Simulates changing active subscription plan via mock stats matchedCount
-    setLawyers(prev => prev.map(l => {
-      if (l.id === lawyerId) {
-        return {
-          ...l,
-          matchedCount: matchedCountTarget
-        };
-      }
-      return l;
-    }));
-    alert('구독 플랜 한도가 수동 조정되었습니다.');
-  };
+  // (이전 handleChangeLawyerPlan: 요금제 대신 matchedCount(매칭 실적)를 10/90/130으로 덮어써 실적·요금 추정치를 조작했음 — 제거)
 
   if (!isLoggedIn) {
     const portalMissing = !ADMIN_PORTAL_PATH;
@@ -1204,491 +1363,15 @@ export default function AdminRole({
 
           {/* TAB 1: PLATFORM DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Stat grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">누적 상담 신청 건수</span>
-                    <span className="text-2xl font-black text-indigo-400">{totalRequestsCount}개</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
-                    <Users className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">진행 사건 전환율</span>
-                    <span className="text-2xl font-black text-emerald-400">{conversionRate}%</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">등록 파트너 대리인</span>
-                    <span className="text-2xl font-black text-sky-400">
-                      {totalLawyersCount}명 {pendingLawyersCount > 0 && <strong className="text-red-400 text-sm font-bold">({pendingLawyersCount} 대기)</strong>}
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/10">
-                    <Briefcase className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">일일 방문자수</span>
-                    <span className="text-2xl font-black text-rose-400">248명</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/10">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">오늘 신규 가입자</span>
-                    <span className="text-2xl font-black text-indigo-400">
-                      {members.filter(m => {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        return m.createdAt.startsWith(todayStr);
-                      }).length}명
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
-                    <UserPlus className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">시스템 서버 상태</span>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                      </span>
-                      <span className="text-sm font-black text-emerald-400 uppercase tracking-wider">ONLINE</span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
-                    <Server className="w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-
-              {/* AI 사건 분석 구독 현황 */}
-              {(() => {
-                const aiEnabledLawyers = lawyers.filter(l => l.role === 'LAWYER' && l.aiCaseAnalysisEnabled);
-                const totalLawyerOnly = lawyers.filter(l => l.role === 'LAWYER').length;
-                return (
-                  <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 flex items-start gap-4">
-                    <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/10 shrink-0 mt-0.5">
-                      <Microscope className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-slate-500 font-bold uppercase">AI 사건 분석 구독</span>
-                        <span className="text-lg font-black text-violet-400">
-                          {aiEnabledLawyers.length}<span className="text-sm text-slate-500 font-bold">/{totalLawyerOnly}명</span>
-                        </span>
-                      </div>
-                      {aiEnabledLawyers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {aiEnabledLawyers.slice(0, 5).map(l => (
-                            <span key={l.id} className="bg-violet-500/10 text-violet-300 border border-violet-500/20 text-xs font-bold px-2 py-0.5 rounded-lg">
-                              {l.name}
-                            </span>
-                          ))}
-                          {aiEnabledLawyers.length > 5 && (
-                            <span className="text-xs text-slate-500 font-bold self-center">외 {aiEnabledLawyers.length - 5}명</span>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-600">아직 AI 사건 분석을 활성화한 변호사가 없습니다.</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Graphical Analysis grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Platform Health and Compliance status */}
-                <div className="md:col-span-2 bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#1E293B]/50 pb-3">
-                    <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                      <span>변호사법 제34조 알선수수료 배제 준수율</span>
-                    </h3>
-                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded font-mono">COMPLIANT</span>
-                  </div>
-
-                  <div className="space-y-3.5 text-sm leading-relaxed text-slate-500">
-                    <p>my김변 플랫폼은 가입 변호사로부터 <strong>사건 성사당 수임 소개 수수료를 1원도 징수하지 않습니다.</strong></p>
-                    <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-2">
-                      <div className="flex justify-between text-[13px]">
-                        <span>• 사건 당 중개 수수료 수취율</span>
-                        <strong className="text-emerald-400">0.0% (완전 합법)</strong>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span>• 소비자 매칭 자율 선택 모델 준수</span>
-                        <strong className="text-emerald-400">100% 준수 (임의 배정 없음)</strong>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span>• 정액 광고료/구독료 정산 상태</span>
-                        <strong className="text-indigo-400">월 고정형 SaaS 과금</strong>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Estimation Box */}
-                <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="font-bold text-base text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-indigo-400" />
-                    <span>이달 예상 플랫폼 매출 (MRR)</span>
-                  </h3>
-                  <div className="space-y-3 text-center py-2">
-                    <span className="text-sm text-slate-600 block uppercase font-bold">월 고정 회원제 정산액</span>
-                    <strong className="text-2xl font-black text-indigo-400">{estimateMRR.toLocaleString()} 원</strong>
-                    <span className="text-xs text-slate-450 block leading-tight">* 소속 변호사 {totalLawyersCount}명의 구독 멤버십 징수 추정액입니다.</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* SignUp & Traffic Analytics Chart Panel */}
-              <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#1E293B]/50 pb-3 gap-3">
-                  <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
-                    <BarChart2 className="w-4 h-4 text-indigo-400" />
-                    <span>가입자 추이 및 방문자(유입량) 분석</span>
-                  </h3>
-                  <div className="flex bg-[#0B0F19] p-0.5 rounded-lg border border-[#1E293B]/60">
-                    <button
-                      onClick={() => setDashboardSortType('weekly')}
-                      className={`text-sm font-black px-2.5 py-1 rounded-md transition-all ${
-                        dashboardSortType === 'weekly' 
-                          ? 'bg-indigo-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-white'
-                      }`}
-                    >
-                      주별 보기 (최근 4주)
-                    </button>
-                    <button
-                      onClick={() => setDashboardSortType('monthly')}
-                      className={`text-sm font-black px-2.5 py-1 rounded-md transition-all ${
-                        dashboardSortType === 'monthly' 
-                          ? 'bg-indigo-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-white'
-                      }`}
-                    >
-                      월별 보기 (최근 6개월)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Chart Visualization */}
-                <div className="space-y-6">
-                  <div className="flex items-end justify-between h-48 pt-4 px-2 sm:px-6 bg-[#0B0F19]/40 rounded-xl border border-[#1E293B]/30 gap-3 sm:gap-6">
-                    {/* Y-axis Labels */}
-                    <div className="flex flex-col justify-between h-full text-xs text-slate-600 font-mono pr-2 border-r border-[#1E293B]/30 pb-4">
-                      <span>{dashboardSortType === 'weekly' ? '250명' : '1000명'}</span>
-                      <span>{dashboardSortType === 'weekly' ? '125명' : '500명'}</span>
-                      <span>0명</span>
-                    </div>
-
-                    {/* Chart Bars */}
-                    {(dashboardSortType === 'weekly' ? [
-                      { label: '1주차', signups: 8, traffic: 120 },
-                      { label: '2주차', signups: 12, traffic: 160 },
-                      { label: '3주차', signups: 15, traffic: 190 },
-                      { label: '4주차 (현재)', signups: 19, traffic: 248 }
-                    ] : [
-                      { label: '1월', signups: 30, traffic: 450 },
-                      { label: '2월', signups: 35, traffic: 510 },
-                      { label: '3월', signups: 42, traffic: 600 },
-                      { label: '4월', signups: 48, traffic: 720 },
-                      { label: '5월', signups: 55, traffic: 850 },
-                      { label: '6월 (현재)', signups: 64, traffic: 980 }
-                    ]).map((data, index) => {
-                      const maxTraffic = dashboardSortType === 'weekly' ? 250 : 1000;
-                      const maxSignups = dashboardSortType === 'weekly' ? 25 : 80;
-                      const trafficHeight = Math.min((data.traffic / maxTraffic) * 100, 100);
-                      const signupHeight = Math.min((data.signups / maxSignups) * 100, 100);
-
-                      return (
-                        <div key={index} className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
-                          <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-32 relative">
-                            
-                            {/* Tooltip */}
-                            <div className="absolute -top-10 scale-0 group-hover:scale-100 bg-slate-900 border border-[#1E293B] rounded-lg p-2 text-sm text-slate-200 z-10 transition-all shadow-xl pointer-events-none whitespace-nowrap">
-                              <div className="font-bold text-slate-100 mb-0.5">{data.label}</div>
-                              <div className="flex items-center gap-1.5 text-indigo-400">
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                가입자: {data.signups}명
-                              </div>
-                              <div className="flex items-center gap-1.5 text-rose-500">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                유입량: {data.traffic}명
-                              </div>
-                            </div>
-
-                            {/* Traffic Bar (Background/Taller) */}
-                            <div 
-                              style={{ height: `${trafficHeight}%` }} 
-                              className="w-3 sm:w-5 bg-gradient-to-t from-rose-500/20 to-rose-500/80 rounded-t-sm sm:rounded-t transition-all duration-500 group-hover:brightness-125"
-                            />
-                            {/* Signup Bar (Foreground/Shorter) */}
-                            <div 
-                              style={{ height: `${signupHeight}%` }} 
-                              className="w-3 sm:w-5 bg-gradient-to-t from-indigo-500/20 to-indigo-500/80 rounded-t-sm sm:rounded-t transition-all duration-500 group-hover:brightness-125"
-                            />
-                          </div>
-                          
-                          {/* Label */}
-                          <span className="text-sm text-slate-500 mt-2 font-medium truncate max-w-full text-center">
-                            {data.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Chart Legend */}
-                  <div className="flex items-center justify-center gap-6 text-sm border-t border-[#1E293B]/20 pt-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-sm bg-gradient-to-t from-indigo-500/20 to-indigo-500/80" />
-                      <span className="text-slate-500">신규 가입자수</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-sm bg-gradient-to-t from-rose-500/20 to-rose-500/80" />
-                      <span className="text-slate-500">일일 방문자수 (유입량)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 마케팅 유입 채널별 효과 및 회원가입 종합 현황 분석 */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* 1) 회원가입 종합 요약 지표 */}
-                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="font-bold text-base text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-indigo-400" />
-                    <span>실시간 가입 및 회원 종합 지표</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
-                      <span className="text-slate-600 font-bold block mb-1">전체 회원수</span>
-                      <strong className="text-lg font-black text-slate-200">{members.length}명</strong>
-                    </div>
-                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
-                      <span className="text-slate-600 font-bold block mb-1">오늘 신규 가입</span>
-                      <strong className="text-lg font-black text-indigo-400">
-                        {members.filter(m => {
-                          const todayStr = new Date().toISOString().split('T')[0];
-                          return m.createdAt.startsWith(todayStr);
-                        }).length}명
-                      </strong>
-                    </div>
-                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
-                      <span className="text-slate-600 font-bold block mb-1">정상 활동 회원</span>
-                      <strong className="text-lg font-black text-emerald-400">
-                        {members.filter(m => m.status === 'active').length}명
-                      </strong>
-                    </div>
-                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
-                      <span className="text-slate-600 font-bold block mb-1">정지 회원 / 대기</span>
-                      <strong className="text-lg font-black text-red-400">
-                        {members.filter(m => m.status === 'suspended').length}명
-                        <span className="text-slate-600 text-sm font-normal"> / {members.filter(m => m.status === 'pending').length}명</span>
-                      </strong>
-                    </div>
-                    <div className="bg-[#07090E]/65 p-3 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col justify-between">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-600 font-bold">탈퇴 회원수</span>
-                        <strong className="text-lg font-black text-slate-500">
-                          {members.filter(m => m.status === 'withdrawn').length}명
-                        </strong>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1.5">
-                        <div 
-                          style={{ 
-                            width: `${members.length > 0 ? Math.round((members.filter(m => m.status === 'withdrawn').length / members.length) * 100) : 0}%` 
-                          }} 
-                          className="bg-slate-500 h-full rounded-full" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2) 마케팅 유입 채널별 전환 효과 분석 (Funnel Analytics) */}
-                <div className="lg:col-span-2 bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#1E293B]/50 pb-3">
-                    <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
-                      <TrendingUp className="w-4 h-4 text-indigo-400" />
-                      <span>마케팅 유입 경로별 전환율 (Funnel)</span>
-                    </h3>
-                    
-                    {/* 최우수 마케팅 채널 계산 */}
-                    {(() => {
-                      const channels: ('email' | 'google' | 'kakao' | 'naver' | 'sms')[] = ['naver', 'kakao', 'google', 'sms', 'email'];
-                      let bestChannel = '없음';
-                      let maxConv = -1;
-
-                      channels.forEach(ch => {
-                        const chUsers = members.filter(m => m.loginChannel === ch);
-                        if (chUsers.length > 0) {
-                          const chUserIds = chUsers.map(u => u.id);
-                          const chConsults = activityLogs.filter(log => log.action === 'CONSULT_REQUEST' && chUserIds.includes(log.memberId)).length;
-                          const convRate = (chConsults / chUsers.length) * 100;
-                          if (convRate > maxConv) {
-                            maxConv = convRate;
-                            bestChannel = ch === 'naver' ? '네이버' : ch === 'kakao' ? '카카오' : ch === 'google' ? '구글' : ch === 'sms' ? 'SMS인증' : '이메일';
-                          }
-                        }
-                      });
-
-                      return maxConv > 0 ? (
-                        <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs px-2 py-0.5 rounded font-black tracking-wider uppercase flex items-center gap-1">
-                          🏆 최우수 채널: {bestChannel} ({Math.round(maxConv)}% 전환)
-                        </span>
-                      ) : null;
-                    })()}
-                  </div>
-
-                  {/* 채널 테이블 및 상세 마케팅 성과 매트릭스 */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="text-slate-600 font-bold border-b border-[#1E293B]/30 pb-2">
-                          <th className="pb-2">가입 채널</th>
-                          <th className="pb-2 text-center">가입수</th>
-                          <th className="pb-2 text-center">상담 신청수</th>
-                          <th className="pb-2 text-center">상담 전환율</th>
-                          <th className="pb-2 text-right">인당 계산기 실행수</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#1E293B]/20">
-                        {['naver', 'kakao', 'google', 'sms', 'email'].map(ch => {
-                          const chUsers = members.filter(m => m.loginChannel === ch);
-                          const chUserIds = chUsers.map(u => u.id);
-                          const chConsults = activityLogs.filter(log => log.action === 'CONSULT_REQUEST' && chUserIds.includes(log.memberId)).length;
-                          const chCalculates = activityLogs.filter(log => log.action === 'CALCULATE' && chUserIds.includes(log.memberId)).length;
-                          const convRate = chUsers.length > 0 ? Math.round((chConsults / chUsers.length) * 100) : 0;
-                          const avgCalculates = chUsers.length > 0 ? (chCalculates / chUsers.length).toFixed(1) : '0.0';
-                          
-                          const label = ch === 'naver' ? '💬 네이버 간편' : ch === 'kakao' ? '💬 카카오 간편' : ch === 'google' ? '💬 구글 간편' : ch === 'sms' ? '📱 휴대폰인증' : '✉️ 일반이메일';
-                          const color = ch === 'naver' ? 'text-emerald-400' : ch === 'kakao' ? 'text-yellow-400' : ch === 'google' ? 'text-indigo-400' : ch === 'sms' ? 'text-sky-400' : 'text-slate-350';
-
-                          return (
-                            <tr key={ch} className="hover:bg-[#0B0F19]/20 transition-colors">
-                              <td className={`py-2.5 font-bold ${color}`}>{label}</td>
-                              <td className="py-2.5 text-center font-semibold text-slate-100">{chUsers.length}명</td>
-                              <td className="py-2.5 text-center font-semibold text-slate-100">{chConsults}건</td>
-                              <td className="py-2.5 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  <strong className="text-emerald-400 font-extrabold">{convRate}%</strong>
-                                  <div className="w-12 bg-slate-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
-                                    <div style={{ width: `${convRate}%` }} className="bg-emerald-500 h-full rounded-full" />
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-2.5 text-right font-mono text-slate-300">{avgCalculates}회/인</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  <p className="text-sm text-slate-600 leading-normal">
-                    * 상담 전환율 = (해당 유입 채널 가입자의 총 상담신청 건수 / 총 가입자 수) × 100 <br />
-                    * 인당 계산기 실행수 = (해당 채널 가입자의 자가진단 계산 실행 횟수 / 총 가입자 수). 수치가 높을수록 서비스 적극 관여 고객입니다.
-                  </p>
-                </div>
-              </div>
-
-              {/* 🤝 전담 선임 현황 + 취소 사유 분석 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">🤝 전담 선임 현황</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-center">
-                      <strong className="text-lg font-black text-emerald-400 block">3명</strong>
-                      <span className="text-xs text-emerald-400/70 font-bold">활성 선임</span>
-                    </div>
-                    <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 text-center">
-                      <strong className="text-lg font-black text-indigo-400 block">2명</strong>
-                      <span className="text-xs text-indigo-400/70 font-bold">이달 신규</span>
-                    </div>
-                    <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center">
-                      <strong className="text-lg font-black text-red-400 block">2건</strong>
-                      <span className="text-xs text-red-400/70 font-bold">취소</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 mt-2">
-                    {[
-                      { name: '홍길*', lawyer: '이소민', status: 'active', date: '07/10' },
-                      { name: '박영*', lawyer: '김영수', status: 'active', date: '07/14' },
-                      { name: '이민*', lawyer: '최은서', status: 'active', date: '07/13' },
-                      { name: '김철*', lawyer: '이소민', status: 'cancelled', date: '07/05', reason: '응답 느림' },
-                      { name: '정수*', lawyer: '김영수', status: 'cancelled', date: '06/28', reason: '비용 부담' },
-                    ].map((a, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm py-1.5 px-2 rounded-lg hover:bg-[#0B0F19]/30">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-1.5 h-1.5 rounded-full ${a.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                          <span className="text-white font-bold">{a.name}</span>
-                          <span className="text-slate-600">→</span>
-                          <span className="text-slate-400">{a.lawyer}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-600 font-mono text-xs">{a.date}</span>
-                          {a.reason && <span className="text-red-400 text-xs">{a.reason}</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">📊 취소 사유 분석</h3>
-                  <p className="text-xs text-slate-600">서비스 고도화를 위한 취소 원인 통계</p>
-                  <div className="space-y-3">
-                    {[
-                      { reason: '응답이 너무 느려요', count: 2, pct: 40, color: 'bg-red-500' },
-                      { reason: '비용이 부담되어요', count: 1, pct: 20, color: 'bg-amber-500' },
-                      { reason: '다른 변호사 희망', count: 1, pct: 20, color: 'bg-indigo-500' },
-                      { reason: '상담 불만족', count: 1, pct: 20, color: 'bg-slate-500' },
-                    ].map((item, i) => (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-300 font-bold">{item.reason}</span>
-                          <span className="text-slate-500">{item.count}건 ({item.pct}%)</span>
-                        </div>
-                        <div className="w-full bg-[#0B0F19] rounded-full h-2">
-                          <div className={`${item.color} h-2 rounded-full transition-all`} style={{ width: `${item.pct}%` }}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-[#0B0F19] rounded-xl p-3 border border-[#1E293B]/30 mt-2">
-                    <span className="text-xs text-amber-400 font-bold flex items-center gap-1">💡 인사이트</span>
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">"응답 속도"가 취소 원인 1위입니다. 변호사 응답 SLA 정책 도입을 검토하세요.</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+            <PlatformDashboard
+              requests={requests}
+              lawyers={lawyers}
+              members={members}
+              logs={platformLogs}
+              logsSource={platformLogsSource}
+              adOrders={adminAdOrders}
+              estimateMRR={estimateMRR}
+            />
           )}
 
           {/* TAB 2: CLIENT MONITORING */}
@@ -1698,18 +1381,48 @@ export default function AdminRole({
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
                   { label: '전체 의뢰', value: requests.length, icon: '📋', color: 'text-white', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-                  { label: '요청 대기', value: requests.filter(r => r.status === 'requested').length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                  { label: '요청 대기', value: requests.filter(r => r.status === 'requested' && !isSpamBlocked(r)).length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
                   { label: '지정 응답', value: requests.filter(r => r.status === 'responding').length, icon: '💬', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
                   { label: '상담 중', value: requests.filter(r => r.status === 'counseling').length, icon: '🤝', color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-                  { label: '수임/종결', value: requests.filter(r => r.status === 'closed').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                  { label: '평균 채무', value: `${requests.length > 0 ? Math.round(requests.reduce((s, r) => s + r.financialProfile.debtTotal, 0) / requests.length).toLocaleString() : 0}만`, icon: '💰', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
+                  { label: '종결(숨김 제외)', value: requests.filter(r => r.status === 'closed' && !isSpamBlocked(r)).length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                  { label: '스팸 숨김', value: requests.filter(isSpamBlocked).length, icon: '🚫', color: 'text-rose-300', bg: 'bg-rose-500/10 border-rose-500/20' },
                 ].map((stat, i) => (
                   <div key={i} className={`${stat.bg} border rounded-xl p-3 text-center space-y-1`}>
-                    <span className="text-lg">{stat.icon}</span>
+                    <span className="text-lg" aria-hidden="true">{stat.icon}</span>
                     <div className={`text-lg font-extrabold ${stat.color}`}>{stat.value}</div>
-                    <div className="text-xs text-slate-500 font-bold">{stat.label}</div>
+                    <div className="text-xs text-slate-300 font-bold">{stat.label}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* 장기 미응답 요청 구제 */}
+              <div className="bg-[#111622] p-4 rounded-xl border border-amber-500/30 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-sm font-extrabold text-amber-200">장기 미응답 요청 ({staleRequests.length}건)</h3>
+                  <span className="text-xs text-slate-400">요청 대기·지정 응답 상태로 {STALE_HOURS}시간 이상 제안서가 없는 건 · 특정 변호사 임의 배정은 하지 않습니다</span>
+                </div>
+                {staleRequests.length === 0 ? (
+                  <p className="text-sm text-slate-400">해당하는 요청이 없습니다.</p>
+                ) : (
+                  <ul className="divide-y divide-[#1E293B]/40 text-sm">
+                    {staleRequests.slice(0, 10).map(r => (
+                      <li key={r.id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <button type="button" onClick={() => handleSelectClient(r.id)} className="text-left text-slate-200 hover:text-white cursor-pointer">
+                          <span className="font-bold">{clientDisplayName(r)}</span>
+                          <span className="text-slate-400"> · {r.id} · {Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 3_600_000)}시간 경과 · 지정 변호사 {(r.selectedLawyerIds || []).length}명</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={clientActionBusy || r.requestType === 'open'}
+                          onClick={() => handleReopenStale(r)}
+                          className="min-h-[44px] px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 text-xs font-bold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {r.requestType === 'open' ? '이미 오픈 매칭' : '오픈 매칭으로 재공개'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* Search Control */}
@@ -1717,10 +1430,11 @@ export default function AdminRole({
                 <div className="relative w-full sm:max-w-xs">
                   <input 
                     type="text" 
-                    placeholder="의뢰인 성명 검색..." 
+                    placeholder="가명 또는 요청 ID 검색..." 
+                    aria-label="의뢰 검색 (가명 또는 요청 ID)"
                     value={clientSearch}
                     onChange={(e) => setClientSearch(e.target.value)}
-                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-400"
                   />
                   <span className="absolute left-3 top-2 text-slate-600 text-sm">🔍</span>
                 </div>
@@ -1734,7 +1448,9 @@ export default function AdminRole({
                   <option value="requested">요청 대기</option>
                   <option value="responding">지정 응답</option>
                   <option value="counseling">상담 중</option>
-                  <option value="closed">수임/종결</option>
+                  <option value="closed">종결</option>
+                  <option value="contracted">계약 체결</option>
+                  <option value="hidden">스팸 숨김</option>
                 </select>
 
                 <select
@@ -1744,8 +1460,8 @@ export default function AdminRole({
                 >
                   <option value="date-desc">최신 등록순</option>
                   <option value="date-asc">오래된 순</option>
-                  <option value="name-asc">이름 가나다순</option>
-                  <option value="name-desc">이름 역순</option>
+                  <option value="name-asc">가명 가나다순</option>
+                  <option value="name-desc">가명 역순</option>
                   <option value="debt-desc">채무 많은순</option>
                   <option value="debt-asc">채무 적은순</option>
                   <option value="status-asc">상태순</option>
@@ -1771,25 +1487,25 @@ export default function AdminRole({
                       <tbody className="divide-y divide-[#1E293B]/30">
                         {paginatedClients.map(c => {
                           const isSelected = c.id === selectedClientId;
-                          const isSpamBlocked = c.title.includes('[노출 차단]');
-                          const statusLabel = c.status === 'requested' ? '요청 대기' : c.status === 'responding' ? '지정 응답' : c.status === 'counseling' ? '상담 중' : c.status === 'closed' ? '수임 종결' : c.status;
+                          const rowBlocked = isSpamBlocked(c);
+                          const statusLabel = c.status === 'requested' ? '요청 대기' : c.status === 'responding' ? '지정 응답' : c.status === 'counseling' ? '상담 중' : c.status === 'closed' ? '종결' : c.status === 'contracted' ? '계약 체결' : c.status;
                           return (
                             <tr 
                               key={c.id}
-                              onClick={() => setSelectedClientId(c.id)}
+                              onClick={() => handleSelectClient(c.id)}
                               className={`cursor-pointer transition-colors ${
                                 isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/40'
-                              } ${isSpamBlocked ? 'opacity-40' : ''}`}
+                              } ${rowBlocked ? 'opacity-60' : ''}`}
                             >
                               <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                                <span>{c.clientName}</span>
-                                {isSpamBlocked && (
+                                <span>{clientDisplayName(c)}</span>
+                                {rowBlocked && (
                                   <span className="bg-red-500/15 text-red-400 border border-red-500/20 text-xs px-1 py-0.2 rounded font-extrabold uppercase">
                                     SPAM
                                   </span>
                                 )}
                               </td>
-                              <td className="p-3 font-mono text-slate-500">{maskPhone(c.phone)}</td>
+                              <td className="p-3 font-mono text-slate-300">{maskPhone(c.phone)}</td>
                               <td className="p-3">
                                 <span className={`text-xs px-2 py-0.5 rounded border ${
                                   c.status === 'requested' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
@@ -1871,7 +1587,7 @@ export default function AdminRole({
                       <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                         <div>
                           <span className="text-xs text-indigo-400 font-bold block uppercase tracking-wider">CLIENT INFO MONITORS</span>
-                          <h3 className="text-base font-extrabold text-white">{selectedClient.clientName} 의뢰 모니터링</h3>
+                          <h3 className="text-base font-extrabold text-white">{clientDisplayName(selectedClient)} 의뢰 모니터링</h3>
                         </div>
                         <span className="text-sm bg-[#0B0F19] border border-[#1E293B]/60 text-slate-500 px-2 py-0.5 rounded">
                           ID: {selectedClient.id}
@@ -1885,18 +1601,23 @@ export default function AdminRole({
                           <span className="text-xs text-slate-500 font-bold block">진행 상태</span>
                           <select
                             value={selectedClient.status}
-                            onChange={(e) => {
-                              const newStatus = e.target.value;
-                              setRequests(prev => prev.map(r => r.id === selectedClient.id ? { ...r, status: newStatus as any } : r));
-                              onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰 상태 변경: ${selectedClient.clientName} → ${newStatus}`);
-                            }}
-                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg px-2 py-1.5 text-sm text-white font-bold cursor-pointer"
+                            disabled={clientActionBusy || !!selectedClient.adminHidden}
+                            aria-label="진행 상태 변경"
+                            onChange={(e) => handleAdminStatusChange(selectedClient, e.target.value as ConsultRequest['status'])}
+                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg px-2 py-1.5 text-sm text-white font-bold cursor-pointer disabled:opacity-50"
                           >
                             <option value="requested">⏳ 요청 대기</option>
                             <option value="responding">💬 지정 응답</option>
+                            <option value="comparing">📊 제안 비교</option>
                             <option value="counseling">🤝 상담 중</option>
-                            <option value="closed">✅ 수임/종결</option>
+                            <option value="contracted">📝 계약 체결</option>
+                            <option value="closed">✅ 종결</option>
+                            <option value="cancelled">↩️ 취소</option>
+                            {!['requested', 'responding', 'comparing', 'counseling', 'contracted', 'closed', 'cancelled'].includes(selectedClient.status) && (
+                              <option value={selectedClient.status}>{selectedClient.status}</option>
+                            )}
                           </select>
+                          <span className="text-xs text-slate-400 block">서버에 바로 반영 · 감사 로그 기록</span>
                         </div>
                         {/* Registration Info */}
                         <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 space-y-1.5">
@@ -1948,14 +1669,11 @@ export default function AdminRole({
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5 uppercase">
                               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                              <span>Zero-Knowledge 법률 데이터 무결성 보호</span>
-                            </span>
-                            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                              서류 열람 원천 차단
+                              <span>관리자 열람 범위 안내</span>
                             </span>
                           </div>
-                          <p className="leading-relaxed text-[12.5px] text-slate-400">
-                            변호사법 제26조(비밀유지의무) 및 개인정보 보호법에 의거하여, 의뢰인의 민감 제출 서류(신분증, 인감, 부채증명원 등) 및 1:1 비밀 상담 대화는 <strong>사건 당사자(의뢰인 및 담당 배정 변호사)만 접근</strong>할 수 있으며, 최고관리자 계정에서도 조회가 원천 격리(Zero-Knowledge)되어 안전하게 보호됩니다.
+                          <p className="leading-relaxed text-sm text-slate-300">
+                            의뢰인 제출 서류와 1:1 상담 대화는 이 화면에 표시하지 않습니다. 신청 내용·재무 정보는 스팸·분쟁 확인 목적으로만 열람하고, 이 의뢰를 열면 열람 기록이 서버 감사 로그에 남습니다. 이름·연락처는 마스킹해 표시합니다.
                           </p>
                         </div>
 
@@ -2075,26 +1793,40 @@ export default function AdminRole({
                         </div>
 
                         {/* Spam filter action */}
-                        {!selectedClient.title.includes('[노출 차단]') ? (
-                          <div className="bg-red-950/20 border border-red-500/10 p-4 rounded-xl space-y-2.5">
-                            <span className="text-[13px] font-bold text-red-400 block flex items-center gap-1">
-                              <EyeOff className="w-3.5 h-3.5" />
-                              <span>불량 광고 및 허위 의뢰글 숨김</span>
+                        {!selectedClient.adminHidden && !isSpamBlocked(selectedClient) ? (
+                          <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-xl space-y-2.5">
+                            <span className="text-sm font-bold text-red-300 flex items-center gap-1">
+                              <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
+                              <span>광고·허위 의뢰글 숨김</span>
                             </span>
-                            <p className="text-sm leading-relaxed text-slate-500">
-                              해당 게시물이 광고글, 장난, 또는 변호사법상 의뢰가 아닌 유해글로 판정되면 노출을 영구 차단할 수 있습니다. (클릭 시 제목 및 내용이 치환되며 대기열에서 즉시 숨겨집니다)
+                            <p className="text-sm leading-relaxed text-slate-300">
+                              광고·장난 등 정책 위반 글이면 변호사 목록에서 숨길 수 있습니다. 원문은 보존되고 나중에 해제할 수 있습니다.
                             </p>
                             <button 
+                              type="button"
+                              disabled={clientActionBusy}
                               onClick={() => handleToggleBlockRequest(selectedClient.id)}
-                              className="w-full bg-red-600/10 hover:bg-red-600 hover:text-white text-red-400 py-2 rounded-[200px] text-sm font-extrabold border border-red-500/20 transition-all flex items-center justify-center gap-1"
+                              className="w-full min-h-[44px] bg-red-600/10 hover:bg-red-600 hover:text-white text-red-300 py-2 rounded-xl text-sm font-extrabold border border-red-500/30 transition-all flex items-center justify-center gap-1 whitespace-nowrap disabled:opacity-50 cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
-                              <span>이 의뢰글 노출 영구 차단</span>
+                              <EyeOff className="w-4 h-4" aria-hidden="true" />
+                              <span>이 의뢰글 숨기기</span>
+                            </button>
+                          </div>
+                        ) : selectedClient.adminHidden ? (
+                          <div className="bg-red-500/5 border border-red-500/25 p-4 rounded-xl space-y-2 text-sm">
+                            <p className="text-red-300 font-bold">숨김 처리된 의뢰입니다{selectedClient.adminHiddenReason ? ` (${selectedClient.adminHiddenReason})` : ''}.</p>
+                            <button
+                              type="button"
+                              disabled={clientActionBusy}
+                              onClick={() => handleToggleBlockRequest(selectedClient.id)}
+                              className="w-full min-h-[44px] bg-[#111622] hover:bg-[#161B26] text-slate-200 border border-[#1E293B] rounded-xl text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer"
+                            >
+                              숨김 해제 (이전 상태로 복원)
                             </button>
                           </div>
                         ) : (
-                          <div className="bg-red-500/5 border border-red-500/25 p-4 rounded-xl text-center text-red-400 text-sm font-bold leading-normal">
-                            🔒 본 의뢰글은 스팸 필터링에 의거하여 노출이 완벽히 차단된 상태입니다.
+                          <div className="bg-red-500/5 border border-red-500/25 p-4 rounded-xl text-sm text-red-300 leading-normal">
+                            이전 방식으로 차단된 의뢰입니다(제목·본문이 차단 문구로 바뀌어 원문이 남아 있지 않습니다).
                           </div>
                         )}
 
@@ -2104,12 +1836,11 @@ export default function AdminRole({
                           <textarea
                             value={clientMemos[selectedClient.id] || ''}
                             onChange={(e) => setClientMemos(prev => ({ ...prev, [selectedClient.id]: e.target.value }))}
-                            placeholder="이 의뢰인에 대한 내부 메모를 작성하세요 (관리자만 볼 수 있습니다)"
-                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[80px]"
+                            placeholder="내부 메모 (개인정보는 적지 마세요)"
+                            aria-label="관리자 내부 메모"
+                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-400 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[80px]"
                           />
-                          {clientMemos[selectedClient.id] && (
-                            <span className="text-xs text-emerald-500 font-bold">✓ 자동 저장됨</span>
-                          )}
+                          <span className="text-xs text-slate-400 block">이 탭에만 임시 저장됩니다. 창을 닫으면 사라지고 서버에는 저장되지 않습니다.</span>
                         </div>
                       </div>
                     </>
@@ -2241,7 +1972,7 @@ export default function AdminRole({
                                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                   : 'bg-red-500/10 text-red-400 border-red-500/20'
                                 }`}>
-                                  {isApproved ? '정식 파트너' : '승인 대기중'}
+                                  {isApproved ? '정식 파트너' : l.licenseStatus === 'suspended' ? '정지' : '승인 대기중'}
                                 </span>
                               </td>
                               <td className="p-3 text-right font-bold text-slate-200 text-xs">
@@ -2394,12 +2125,17 @@ export default function AdminRole({
                             <div className="bg-[#111622] p-2.5 rounded-lg border border-[#1E293B]/40 flex items-center justify-between text-xs">
                               <div>
                                 <span className="text-slate-400 block text-[11px]">사업자등록번호</span>
-                                <span className="font-mono text-white font-bold">{selectedLawyer.businessNumber || '120-88-12345'}</span>
+                                {/* 이전: 미등록이면 가짜 번호 '120-88-12345', 국세청 상태는 모두 '계속사업자 (정상) ✅' 고정 */}
+                                <span className="font-mono text-white font-bold">{selectedLawyer.businessNumber || '미등록'}</span>
                               </div>
                               <div className="text-right">
-                                <span className="text-slate-400 block text-[11px] mb-0.5">국세청(NTS) 상태</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                  계속사업자 (정상) ✅
+                                <span className="text-slate-400 block text-xs mb-0.5">국세청(NTS) 조회 결과</span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                                  selectedLawyer.ntsStatus === 'VALID' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : selectedLawyer.ntsStatus === 'INVALID' ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                                    : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+                                }`}>
+                                  {selectedLawyer.ntsStatus === 'VALID' ? '계속사업자 (가입 시 조회)' : selectedLawyer.ntsStatus === 'INVALID' ? '휴·폐업 또는 조회 실패' : '조회 기록 없음'}
                                 </span>
                               </div>
                             </div>
@@ -2434,7 +2170,7 @@ export default function AdminRole({
                                 • 변호사 등록번호: <strong className="text-white">{selectedLawyer.licenseNumber}</strong>
                                 {selectedLawyer.licenseStatus && (
                                   <span className={`ml-2 text-sm font-bold px-1.5 py-0.5 rounded ${selectedLawyer.licenseStatus === 'pending' ? 'bg-amber-500/10 text-amber-400' : selectedLawyer.licenseStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                                    {selectedLawyer.licenseStatus === 'pending' ? '심사 대기' : selectedLawyer.licenseStatus === 'verified' ? '검증 완료' : '반려됨'}
+                                    {selectedLawyer.licenseStatus === 'pending' ? '심사 대기' : selectedLawyer.licenseStatus === 'verified' ? '관리자 승인' : selectedLawyer.licenseStatus === 'suspended' ? '정지' : '반려됨'}
                                   </span>
                                 )}
                               </div>
@@ -2454,10 +2190,10 @@ export default function AdminRole({
                                 className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-blue-300 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
-                                <span>대한변협 '나의 변호사' 공식 자격 대조 ↗</span>
+                                <span>대한변협 변호사 검색 (새 창)</span>
                               </a>
-                              <p className="text-[11px] text-slate-400 mt-1 leading-normal">
-                                ※ 대한변호사협회 등록원부에서 개업 여부와 등록번호 일치를 5초 만에 확인하실 수 있습니다.
+                              <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                이름으로 검색됩니다. 자동 대조는 하지 않으니 등록번호·개업 여부·소속을 직접 비교하세요.
                               </p>
                             </div>
 
@@ -2488,44 +2224,10 @@ export default function AdminRole({
                           </div>
                         )}
 
-                        {/* Subscription manual control */}
-                        <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-3">
-                          <span className="text-[13px] font-bold text-indigo-400 block">💳 로펌 정액 멤버십 플랜 제어</span>
-                          
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 10)}
-                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
-                                selectedLawyer.matchedCount <= 50 
-                                ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
-                                : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
-                              }`}
-                            >
-                              Basic 요금제
-                            </button>
-                            
-                            <button 
-                              onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 90)}
-                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
-                                selectedLawyer.matchedCount > 50 && selectedLawyer.matchedCount <= 100
-                                ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
-                                : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
-                              }`}
-                            >
-                              Pro 요금제
-                            </button>
-
-                            <button 
-                              onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 130)}
-                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
-                                selectedLawyer.matchedCount > 100
-                                ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
-                                : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
-                              }`}
-                            >
-                              Enterprise
-                            </button>
-                          </div>
+                        {/* 요금제: 결제 연동 전이라 변경 기능 없음 (이전: 버튼이 matchedCount 매칭 실적을 덮어써 요금·실적을 조작) */}
+                        <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-1.5">
+                          <span className="text-sm font-bold text-indigo-300 block">요금제</span>
+                          <p className="text-sm text-slate-300">결제 연동 전이라 요금제를 바꿀 수 없습니다. 매출 화면의 구독료는 매칭 건수({selectedLawyer.matchedCount}건) 구간으로 만든 추정치입니다.</p>
                         </div>
 
                         {/* AI 유료 기능 관리 */}
@@ -2605,7 +2307,7 @@ export default function AdminRole({
                                   onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION',
                                     `AI 기능 메모 업데이트: ${selectedLawyer.name}`
                                   );
-                                  alert('메모가 저장되었습니다.');
+                                  toast.success('메모가 저장되었습니다.');
                                 }}
                                 className="bg-violet-600/20 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/20 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
                               >
@@ -2723,8 +2425,11 @@ export default function AdminRole({
               {billingSubTab === 'active' && (
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (활성 파트너)</h3>
-                    <span className="text-sm text-slate-500 font-mono">총 {billingActiveLawyers.length}명 대리인 활성 구독 중</span>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-200">구독료 추정 명세 (활성 변호사)</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">요금제는 매칭 건수 구간으로 추정한 값입니다. 결제 연동 전이라 실제 청구·수납 기록은 없습니다.</p>
+                    </div>
+                    <span className="text-sm text-slate-400 font-mono">활성 {billingActiveLawyers.length}명</span>
                   </div>
                   
                   <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
@@ -2733,7 +2438,7 @@ export default function AdminRole({
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">정산 대상 변호사</th>
                           <th className="p-3">구독료 멤버십</th>
-                          <th className="p-3">월 고정 징수액</th>
+                          <th className="p-3">추정 월 구독료</th>
                           <th className="p-3">수납 상태</th>
                           <th className="p-3 text-right">플랫폼 매칭 참여 실적</th>
                         </tr>
@@ -2773,12 +2478,12 @@ export default function AdminRole({
                               <td className="p-3">{planName}</td>
                               <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
                               <td className="p-3">
-                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded flex items-center gap-1 w-max">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                  <span>정상수납</span>
+                                {/* 결제 연동 전 — 수납 여부를 알 수 없음 (이전: 모든 변호사에 '정상수납' 고정 표시) */}
+                                <span className="bg-slate-500/10 text-slate-300 border border-slate-500/30 text-xs px-2 py-0.5 rounded w-max inline-block">
+                                  결제 기록 없음
                                 </span>
                               </td>
-                              <td className="p-3 text-right text-slate-350">{l.matchedCount}회 매칭참여</td>
+                              <td className="p-3 text-right text-slate-300">{l.matchedCount}회 매칭참여</td>
                             </tr>
                           );
                         })}
@@ -2936,14 +2641,14 @@ export default function AdminRole({
                     <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
                       <span className="text-xs text-amber-400/80 font-bold block uppercase">입금 대기</span>
                       <strong className="text-xl font-black text-amber-400">{adminAdOrders.filter(o => o.status === 'pending').length}건</strong>
-                      <p className="text-sm text-slate-600">{adminAdOrders.filter(o => o.status === 'pending').reduce((s,o) => s + o.totalPrice, 0).toLocaleString()}원</p>
+                      <p className="text-sm text-slate-400">{adminAdOrders.filter(o => o.status === 'pending').reduce((s,o) => s + o.totalPrice, 0).toLocaleString()}원</p>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
                       <span className="text-xs text-emerald-400/80 font-bold block uppercase">활성 광고</span>
                       <strong className="text-xl font-black text-emerald-400">{adminAdOrders.filter(o => o.status === 'active').length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
-                      <span className="text-xs text-indigo-400/80 font-bold block uppercase">이달 광고 매출</span>
+                      <span className="text-xs text-indigo-300 font-bold block">집행 중 광고 월 환산액</span>
                       <strong className="text-xl font-black text-indigo-400">{adminAdOrders.filter(o => o.status === 'active').reduce((s,o) => s + o.monthlyPrice, 0).toLocaleString()}원</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-slate-500/20 space-y-2">
@@ -2951,6 +2656,11 @@ export default function AdminRole({
                       <strong className="text-xl font-black text-slate-400">{adminAdOrders.filter(o => o.status === 'cancelled' || o.status === 'expired').length}건</strong>
                     </div>
                   </div>
+                  {adOrdersServerError && (
+                    <p role="alert" className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                      서버 광고 주문을 불러오지 못해 이 브라우저 기록만 표시합니다: {adOrdersServerError}
+                    </p>
+                  )}
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-slate-400">상태 필터:</span>
                     {[{v:'all',l:'전체'},{v:'pending',l:'입금대기'},{v:'active',l:'활성'},{v:'cancelled',l:'취소'}].map(f => (
@@ -3082,12 +2792,23 @@ export default function AdminRole({
                               className="w-4 h-4 mt-0.5 rounded border-slate-750 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                             />
                             <div className="space-y-0.5">
-                              <span className="font-bold text-white block">카카오뱅크 계좌 실입금 확인 완료</span>
-                              <span className="text-slate-400 block text-[11px]">
-                                통장에 <strong className="text-emerald-300">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</strong>이 입금자명 <strong className="text-emerald-300">{invoiceConfirmOrder.depositorName || invoiceConfirmOrder.lawyerName}</strong>으로 입금된 것을 확인했습니다.
+                              <span className="font-bold text-white block">통장 입금 내역을 직접 확인했습니다</span>
+                              <span className="text-slate-300 block text-xs">
+                                <strong className="text-emerald-300">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</strong>, 입금자명 <strong className="text-emerald-300">{invoiceConfirmOrder.depositorName || invoiceConfirmOrder.lawyerName}</strong> — 은행 연동이 없어 자동 대조하지 않습니다.
                               </span>
                             </div>
                           </label>
+                          <div className="mt-3 flex items-center gap-2 text-xs">
+                            <label htmlFor="confirm-paid-date" className="text-slate-300 font-bold whitespace-nowrap">실제 입금일</label>
+                            <input
+                              id="confirm-paid-date"
+                              type="date"
+                              value={confirmPaidDate}
+                              max={localYmd()}
+                              onChange={e => setConfirmPaidDate(e.target.value)}
+                              className="p-2 rounded-lg bg-[#0B0F19] border border-[#1E293B] text-white outline-none focus:border-emerald-500"
+                            />
+                          </div>
                         </div>
 
                         {/* 국세청 전자세금계산서 발행 옵션 */}
@@ -3173,7 +2894,7 @@ export default function AdminRole({
                             취소
                           </button>
                           <button
-                            disabled={invoiceIssuing || !confirmDepositorVerified}
+                            disabled={invoiceIssuing || !confirmDepositorVerified || !confirmPaidDate}
                             onClick={async () => {
                               setInvoiceIssuing(true);
                               const order = invoiceConfirmOrder;
@@ -3223,10 +2944,12 @@ export default function AdminRole({
                               const expDate = new Date();
                               expDate.setMonth(expDate.getMonth() + order.contractMonths);
 
+                              // 입금일은 관리자가 통장에서 확인한 날짜 (이전: 버튼을 누른 시각을 입금 시각으로 기록)
+                              const paidAtIso = confirmPaidDate ? new Date(`${confirmPaidDate}T12:00:00`).toISOString() : now.toISOString();
                               const updatedOrder: AdOrder = {
                                 ...order,
                                 status: 'active',
-                                paidAt: now.toISOString(),
+                                paidAt: paidAtIso,
                                 activatedAt: now.toISOString(),
                                 expiresAt: expDate.toISOString(),
                                 taxInvoice: invoiceData,
@@ -3236,15 +2959,21 @@ export default function AdminRole({
                                 buyerEmail: confirmEmail || order.buyerEmail,
                               };
 
-                              // 3. 주문 목록 업데이트 (로컬 스토리지 및 브로드캐스트 동기화)
-                              updateAdOrder(updatedOrder);
+                              // 3. 주문 목록 업데이트 (서버 반영 결과 확인)
+                              const saved = await updateAdOrder(updatedOrder);
                               setAdminAdOrders(loadAdOrders());
+                              onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `광고 입금 확인·활성화: ${order.id} (${order.totalPrice.toLocaleString()}원)`);
 
-                              // 4. 관리자 알림 발송 (광고 승인 및 활성화 완료)
+                              // 4. 관리자 알림 발송 (서버 관리자 봇)
                               notifyAdminAdConfirmed(updatedOrder);
 
-                              toast.success(`[${order.lawyerName}] 입금 확인 완료! 광고가 활성화되었습니다.`);
-                              setInvoiceResult({ ok: true, message: '✅ 입금 확인 및 광고 활성화 처리가 완료되었습니다.' });
+                              if (saved.serverOk) {
+                                toast.success(`[${order.lawyerName}] 입금 확인을 저장했습니다.`);
+                                setInvoiceResult({ ok: true, message: '입금 확인과 주문 활성화를 저장했습니다. 공개 화면 노출은 광고 배너에서 따로 확인하세요.' });
+                              } else {
+                                toast.warning(`이 브라우저에만 저장했습니다: ${saved.error || '서버 반영 실패'}`);
+                                setInvoiceResult({ ok: true, message: `이 브라우저에만 저장했습니다. 서버 반영 실패: ${saved.error || ''}` });
+                              }
                               setTimeout(() => {
                                 setInvoiceConfirmOrder(null);
                                 setInvoiceIssuing(false);
@@ -3425,7 +3154,7 @@ export default function AdminRole({
                                   ...order,
                                   status: 'cancelled' as const,
                                   modifiedTaxInvoice: {
-                                    itemKey: res.data?.itemKey || `mod-${Date.now()}`,
+                                    itemKey: res.data?.itemKey || '', // 이전: 가짜 관리키 `mod-${Date.now()}` (팝빌 관리키와 불일치)
                                     ntsConfirmNum: res.data?.ntsConfirmNum || '',
                                     modifyCode,
                                     modifyReason: modifyReason || (modifyCode === 4 ? '계약의 해제' : '공급가액 변동'),
@@ -3436,8 +3165,9 @@ export default function AdminRole({
                                     status: 'issued',
                                   }
                                 };
-                                updateAdOrder(cancelledOrder);
+                                const cancelSaved = await updateAdOrder(cancelledOrder);
                                 setAdminAdOrders(loadAdOrders());
+                                if (!cancelSaved.serverOk) toast.warning(`취소 상태는 이 브라우저에만 저장했습니다: ${cancelSaved.error || '서버 반영 실패'}`);
                                 // 발행 ≠ 국세청 전송 완료 (전송은 팝빌이 이후 처리)
                                 setModifyResult({ ok: true, message: '✅ 수정세금계산서가 발행되었습니다. 국세청 전송 상태는 팝빌에서 확인하세요.' });
                                 toast.success('광고 취소 및 수정세금계산서 발행이 완료되었습니다.');
@@ -3491,7 +3221,7 @@ export default function AdminRole({
                           <FileText className="w-5 h-5 text-indigo-400" />
                           전자세금계산서 발행 및 국세청 전송 관리
                         </h3>
-                        <p className="text-xs text-slate-500 mt-1">팝빌 연동을 통해 국세청으로 전송된 정발행 및 수정세금계산서(계약해제/환불) 전체 내역입니다.</p>
+                        <p className="text-sm text-slate-400 mt-1">이 화면에서 발행한 정발행·수정세금계산서 기록입니다(광고 주문 기준). 국세청 전송 결과는 팝빌에서 확인하세요.</p>
                       </div>
                       <button
                         onClick={() => {
@@ -3552,7 +3282,7 @@ export default function AdminRole({
                           </thead>
                           <tbody className="divide-y divide-[#1E293B]/30">
                             {invoicedOrders.length === 0 ? (
-                              <tr><td colSpan={10} className="p-8 text-center text-slate-600 font-semibold">발행된 세금계산서가 없습니다.</td></tr>
+                              <tr><td colSpan={10} className="p-8 text-center text-slate-400 font-semibold">발행된 세금계산서가 없습니다.</td></tr>
                             ) : invoicedOrders.map(order => (
                               <React.Fragment key={order.id}>
                                 {/* 1. 당초 정발행 행 */}
@@ -3568,14 +3298,15 @@ export default function AdminRole({
                                   <td className="p-3">
                                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                      {order.modifiedTaxInvoice ? '수정발행됨' : '발행완료'}
+                                      {order.modifiedTaxInvoice ? '수정발행됨' : '발행'}
                                     </span>
+                                    <span className="block text-xs text-slate-400 mt-0.5">국세청 전송 상태는 팝빌에서 확인</span>
                                   </td>
                                   <td className="p-3 text-right" onClick={e => e.stopPropagation()}>
                                     <div className="flex items-center justify-end gap-1.5">
                                       <button
                                         onClick={async () => {
-                                          if (!order.taxInvoice?.itemKey) return;
+                                          if (!order.taxInvoice?.itemKey) { toast.error('팝빌 관리키가 없어 뷰어를 열 수 없습니다.'); return; }
                                           setPdfLoadingOrderId(order.id);
                                           const res = await getTaxInvoicePdfUrl(order.taxInvoice.itemKey);
                                           if (res.ok && res.data?.url) {
@@ -3641,7 +3372,7 @@ export default function AdminRole({
                                     <td className="p-3 font-mono text-xs text-red-400/80">{order.modifiedTaxInvoice.ntsConfirmNum || '-'}</td>
                                     <td className="p-3">
                                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 inline-flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>국세청 차감완료
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>수정발행 (전송 미확인)
                                       </span>
                                     </td>
                                     <td className="p-3 text-right">
@@ -3977,7 +3708,7 @@ export default function AdminRole({
                         <button 
                           onClick={() => {
                             if (!formTitle.trim() || !formContent.trim() || !formExcerpt.trim()) {
-                              alert('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
+                              toast.error('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
                               return;
                             }
                             const targetLawyer = lawyers.find(l => l.id === formAuthorId) || lawyers[0];
@@ -3997,7 +3728,7 @@ export default function AdminRole({
                                 imageUrl: formImageUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600'
                               };
                               setNewsArticles(prev => [newArt, ...prev]);
-                              alert('신규 법률 기사가 성공적으로 게재 등록되었습니다!');
+                              toast.success('신규 법률 기사가 게재 등록되었습니다');
                             } else if (editingArticle) {
                               setNewsArticles(prev => prev.map(a => a.id === editingArticle.id ? {
                                 ...a,
@@ -4011,7 +3742,7 @@ export default function AdminRole({
                                 authorAvatar: targetLawyer.avatar,
                                 imageUrl: formImageUrl.trim() || a.imageUrl
                               } : a));
-                              alert('법률 아티클 정보가 정상적으로 수정 반영되었습니다!');
+                              toast.success('법률 아티클 정보가 수정 반영되었습니다');
                             }
                             setIsCreateMode(false);
                             setEditingArticle(null);
@@ -4233,7 +3964,7 @@ export default function AdminRole({
                         <button 
                           onClick={() => {
                             if (!qaQuestion.trim() || !qaAnswer.trim() || !qaAuthor.trim()) {
-                              alert('질문, 답변 및 의뢰인 작성자 가명을 모두 기입해 주세요.');
+                              toast.error('질문, 답변 및 의뢰인 작성자 가명을 모두 기입해 주세요.');
                               return;
                             }
                             const targetLawyer = lawyers.find(l => l.id === qaLawyerId) || lawyers[0];
@@ -4249,7 +3980,7 @@ export default function AdminRole({
                                 badge: qaBadge.trim() || '실시간 답변'
                               };
                               setQas(prev => [newQa, ...prev]);
-                              alert('새로운 상담사례 Q&A가 정상 등록되었습니다!');
+                              toast.success('새로운 상담사례 Q&A가 정상 등록되었습니다');
                             } else if (editingQa) {
                               setQas(prev => prev.map(q => q.id === editingQa.id ? {
                                 ...q,
@@ -4261,7 +3992,7 @@ export default function AdminRole({
                                 lawyerAvatar: targetLawyer.avatar,
                                 badge: qaBadge.trim() || q.badge
                               } : q));
-                              alert('상담사례 정보가 성공적으로 변경되었습니다!');
+                              toast.success('상담사례 정보가 변경되었습니다');
                             }
                             setIsQaCreateMode(false);
                             setEditingQa(null);
@@ -4476,13 +4207,13 @@ export default function AdminRole({
                         <button 
                           onClick={() => {
                             if (!reviewTitle.trim() || !reviewContent.trim() || !reviewAuthor.trim()) {
-                              alert('후기 제목, 내용 및 의뢰인 작성자명을 모두 기입해 주세요.');
+                              toast.error('후기 제목, 내용 및 의뢰인 작성자명을 모두 기입해 주세요.');
                               return;
                             }
                             const targetLawyer = lawyers.find(l => l.id === reviewLawyerId) || lawyers[0];
                             const cleanTags = reviewTagsText.trim()
                               ? reviewTagsText.split(/[,，\s]+/).map(t => t.startsWith('#') ? t.trim() : `#${t.trim()}`).filter(t => t !== '#')
-                              : ["#도산성공", "#부채탕감"];
+                              : ["#상담후기"];
 
                             if (isReviewCreateMode) {
                               const newRev: SuccessReview = {
@@ -4499,7 +4230,7 @@ export default function AdminRole({
                                 tags: cleanTags
                               };
                               setReviews(prev => [newRev, ...prev]);
-                              alert('새로운 도산 성공후기가 공식 게재되었습니다!');
+                              toast.success('후기가 게재되었습니다. 실제 이용자 동의를 받은 후기만 게재해 주세요.');
                             } else if (editingReview) {
                               setReviews(prev => prev.map(r => r.id === editingReview.id ? {
                                 ...r,
@@ -4514,7 +4245,7 @@ export default function AdminRole({
                                 content: reviewContent.trim(),
                                 tags: cleanTags
                               } : r));
-                              alert('성공후기 정보가 성공적으로 수정되었습니다!');
+                              toast.success('성공후기 정보가 수정되었습니다');
                             }
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
@@ -4544,8 +4275,8 @@ export default function AdminRole({
                         </thead>
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {reviews.map(rev => {
-                            const isTotalFree = rev.remainingDebt === 0;
-                            const cutPct = Math.round(((rev.originalDebt - rev.remainingDebt) / rev.originalDebt) * 100);
+                            const hasDebtFigures = !rev.isExample && rev.originalDebt > 0;
+                            const cutPct = hasDebtFigures ? Math.round(((rev.originalDebt - rev.remainingDebt) / rev.originalDebt) * 100) : 0;
                             return (
                               <tr key={rev.id} className="hover:bg-[#0B0F19]/25 transition-colors">
                                 <td className="p-3 shrink-0 whitespace-nowrap">
@@ -4556,11 +4287,13 @@ export default function AdminRole({
                                 <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate">
                                   <div className="flex flex-col gap-0.5">
                                     <span>{rev.title}</span>
-                                    <span className="text-sm text-emerald-400 font-bold font-mono">원금 {cutPct}% 면제</span>
+                                    {rev.isExample
+                                      ? <span className="text-xs text-slate-400 font-bold">예시(가상) · 공개 화면에 수치 미표시</span>
+                                      : hasDebtFigures && <span className="text-xs text-slate-400 font-mono">내부 기록: 원금 약 {cutPct}% 감면 (공개 화면 미표시)</span>}
                                   </div>
                                 </td>
                                 <td className="p-3 font-bold text-slate-200 font-mono">
-                                  {rev.originalDebt.toLocaleString()}만 ➔ {isTotalFree ? '100% 탕감(전액면제)' : `${rev.remainingDebt.toLocaleString()}만`}
+                                  {hasDebtFigures ? `${rev.originalDebt.toLocaleString()}만 ➔ ${rev.remainingDebt.toLocaleString()}만` : '—'}
                                 </td>
                                 <td className="p-3 text-slate-350">{rev.lawyerName}</td>
                                 <td className="p-3 text-slate-450">{rev.author}</td>
@@ -4702,7 +4435,7 @@ export default function AdminRole({
                         <button 
                           onClick={() => {
                             if (!bannerTitle.trim() || !bannerSubtitle.trim()) {
-                              alert('배너 제목과 부제 설명을 작성해 주세요.');
+                              toast.error('배너 제목과 부제 설명을 작성해 주세요.');
                               return;
                             }
                             if (isBannerCreateMode) {
@@ -4715,7 +4448,7 @@ export default function AdminRole({
                                 image: bannerImage.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200'
                               };
                               setBanners(prev => [...prev, newBann]);
-                              alert('새로운 메인 배너 캐러셀 슬라이드가 추가 등록되었습니다!');
+                              toast.success('새로운 메인 배너 캐러셀 슬라이드가 추가 등록되었습니다');
                             } else if (editingBanner) {
                               setBanners(prev => prev.map(b => b.id === editingBanner.id ? {
                                 ...b,
@@ -4725,7 +4458,7 @@ export default function AdminRole({
                                 color: bannerColor.trim() || b.color,
                                 image: bannerImage.trim() || b.image
                               } : b));
-                              alert('메인 배너 캐러셀 설정이 완료되었습니다!');
+                              toast.success('메인 배너 캐러셀 설정이 완료되었습니다');
                             }
                             setIsBannerCreateMode(false);
                             setEditingBanner(null);
@@ -4881,7 +4614,7 @@ export default function AdminRole({
                         <button 
                           onClick={() => {
                             if (!noticeTitle.trim() || !noticeContent.trim()) {
-                              alert('공지사항 제목과 상세 본문을 모두 입력해 주세요.');
+                              toast.error('공지사항 제목과 상세 본문을 모두 입력해 주세요.');
                               return;
                             }
                             if (isNoticeCreateMode) {
@@ -4894,7 +4627,7 @@ export default function AdminRole({
                                 views: 0
                               };
                               setNotices(prev => [newNotice, ...prev]);
-                              alert('신규 공지사항이 성공적으로 등록되었습니다!');
+                              toast.success('신규 공지사항이 등록되었습니다');
                             } else if (editingNotice) {
                               setNotices(prev => prev.map(n => n.id === editingNotice.id ? {
                                 ...n,
@@ -4902,7 +4635,7 @@ export default function AdminRole({
                                 content: noticeContent.trim(),
                                 isImportant: noticeIsImportant
                               } : n));
-                              alert('공지사항이 성공적으로 수정되었습니다!');
+                              toast.success('공지사항이 수정되었습니다');
                             }
                             setIsNoticeCreateMode(false);
                             setEditingNotice(null);
@@ -4999,6 +4732,15 @@ export default function AdminRole({
                 const selectedLawyerInq = inquirySourceFilter !== 'client' ? lawyerInquiries.find(inq => inq.id === selectedLawyerInquiryId) : null;
                 return (
                   <div className="space-y-4 animate-fadeIn">
+                    <div className={`text-sm rounded-xl p-3 border flex items-center justify-between gap-2 ${inquiriesFromServer ? 'text-slate-300 bg-[#111622] border-[#1E293B]/60' : 'text-amber-200 bg-amber-500/10 border-amber-500/30'}`}>
+                      <span>
+                        {inquiriesFromServer
+                          ? '의뢰인 문의는 서버 기준입니다. 답변은 의뢰인의 문의 내역에 바로 표시됩니다.'
+                          : `서버 문의 목록을 불러오지 못해 이 브라우저 기록만 표시합니다${inquiryServerError ? `: ${inquiryServerError}` : ''}.`}
+                        {' '}변호사 문의는 아직 이 브라우저 기록만 표시합니다.
+                      </span>
+                      <button type="button" onClick={refreshServerInquiries} className="min-h-[44px] px-3 rounded-xl bg-[#0B0F19] border border-[#1E293B] text-xs font-bold text-slate-200 whitespace-nowrap cursor-pointer">새로고침</button>
+                    </div>
                     {/* Source Filter Tabs */}
                     <div className="flex items-center gap-2 bg-[#111622] rounded-xl border border-[#1E293B]/60 p-1.5">
                       {([
@@ -5186,14 +4928,14 @@ export default function AdminRole({
                                     confirmText: '삭제',
                                     variant: 'danger'
                                   });
-                                  if (confirmed) {
-                                    setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq));
+                                  if (confirmed && await saveInquiryReply(selectedInq.id, '')) {
                                     setReplyText('');
-                                    toast.success('답변이 삭제되었습니다.');
+                                    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변 삭제: ${selectedInq.id}`);
+                                    toast.success('답변을 삭제했습니다.');
                                   }
                                 }} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button onClick={() => { if (!replyText.trim()) { toast.error('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); toast.success('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                              <button onClick={async () => { if (!replyText.trim()) { toast.error('답변 내용을 입력해 주세요.'); return; } if (await saveInquiryReply(selectedInq.id, replyText.trim())) { onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); if (inquiriesFromServer) toast.success('답변을 저장했습니다. 의뢰인의 문의 내역에 표시됩니다.'); } }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
@@ -5298,7 +5040,7 @@ export default function AdminRole({
                       }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-sm text-slate-500 hover:text-white transition-colors">
                         <RotateCcw className="w-3.5 h-3.5" /> 기본값 복원
                       </button>
-                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); toast.success('진단 문항이 저장되었습니다.'); } catch { toast.error('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
+                      <button onClick={async () => { setDiagSaving(true); try { const r = await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: adminEmail || 'admin' }); if (r.success) toast.success('진단 문항을 저장했습니다.'); else toast.error(`저장하지 못했습니다: ${r.error || '서버 오류'}`); } catch { toast.error('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
                         <Save className="w-3.5 h-3.5" /> {diagSaving ? '저장 중...' : '전체 저장'}
                       </button>
                     </div>
@@ -5371,10 +5113,15 @@ export default function AdminRole({
                       <strong className="text-xl font-black text-slate-400">{adminAdBanners.filter(b => !b.isActive).length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
-                      <span className="text-xs text-indigo-400/80 font-bold block uppercase">월 광고 매출 (예상)</span>
-                      <strong className="text-xl font-black text-indigo-400">{(adminAdBanners.filter(b => b.isActive).length * 500000).toLocaleString()}원</strong>
+                      <span className="text-xs text-indigo-300 font-bold block">집행 중 광고 주문</span>
+                      <strong className="text-xl font-black text-indigo-400">{adminAdOrders.filter(o => o.status === 'active').length}건</strong>
                     </div>
                   </div>
+
+                  <p role="note" className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                    이 목록은 저장되지 않습니다(새로고침하면 사라짐). 공개 사이트의 쇼케이스 광고와도 아직 연결되어 있지 않습니다.
+                    광고 소재에는 근거 없는 인가율·수임 건수 같은 수치를 쓰지 마세요(변호사 광고 규정).
+                  </p>
 
                   {/* Create button */}
                   {!isAdBannerCreateMode && !editingAdBanner && (
@@ -5441,7 +5188,7 @@ export default function AdminRole({
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-450 block uppercase font-bold">부제 (경력/실적)</label>
-                          <input type="text" placeholder="예: 서울회생법원 인가율 98%" value={adBannerForm.subtitle}
+                          <input type="text" placeholder="예: 개인회생·파산 사건 전담 (근거 없는 수치 금지)" value={adBannerForm.subtitle}
                             onChange={(e) => setAdBannerForm(prev => ({ ...prev, subtitle: e.target.value }))}
                             className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
                         </div>
@@ -5488,7 +5235,7 @@ export default function AdminRole({
                           className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer">취소하기</button>
                         <button
                           onClick={() => {
-                            if (!adBannerForm.title.trim() || !adBannerForm.lawyerName.trim()) { alert('변호사 선택과 광고 타이틀은 필수입니다.'); return; }
+                            if (!adBannerForm.title.trim() || !adBannerForm.lawyerName.trim()) { toast.error('변호사 선택과 광고 타이틀은 필수입니다.'); return; }
                             if (isAdBannerCreateMode) {
                               const nb: AdBanner = {
                                 id: `ad-banner-${Date.now()}`, lawyerId: adBannerForm.lawyerId, lawyerName: adBannerForm.lawyerName,
@@ -5496,14 +5243,14 @@ export default function AdminRole({
                                 tagline: adBannerForm.tagline.trim(), gradient: adBannerForm.gradient, isActive: adBannerForm.isActive,
                               };
                               setAdminAdBanners(prev => [...prev, nb]);
-                              alert('프리미엄 광고가 등록되었습니다!');
+                              toast.success('프리미엄 광고가 등록되었습니다');
                             } else if (editingAdBanner) {
                               setAdminAdBanners(prev => prev.map(b => b.id === editingAdBanner.id ? {
                                 ...b, lawyerId: adBannerForm.lawyerId, lawyerName: adBannerForm.lawyerName,
                                 lawyerAvatar: adBannerForm.lawyerAvatar, title: adBannerForm.title.trim(), subtitle: adBannerForm.subtitle.trim(),
                                 tagline: adBannerForm.tagline.trim(), gradient: adBannerForm.gradient, isActive: adBannerForm.isActive,
                               } : b));
-                              alert('광고가 수정되었습니다!');
+                              toast.success('광고가 수정되었습니다');
                             }
                             setIsAdBannerCreateMode(false); setEditingAdBanner(null);
                           }}
@@ -5576,10 +5323,9 @@ export default function AdminRole({
                     <span className="text-lg">💡</span>
                     <div className="space-y-1">
                       <span className="text-xs text-amber-400 font-bold block">프리미엄 광고 운영 안내</span>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        이 광고는 의뢰인 홈페이지 중간("검증된 전문 변호사가 함께합니다" 섹션)에 카드 형태로 노출됩니다.<br/>
-                        활성 상태의 광고만 노출되며, 동일 등급 내 매 로드 시 <strong className="text-slate-400">랜덤 셔플 정렬</strong>로 운영됩니다.<br/>
-                        월 50만원 (부가세 별도) · 최대 슬롯 제한 없음. 숨김 토글로 즉시 노출/비노출 전환 가능.
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        의뢰인 홈페이지의 쇼케이스 영역은 현재 코드에 포함된 시연 데이터만 개발 환경에서 표시하며, 운영에서는 숨겨집니다.
+                        이 화면의 등록·수정·숨김은 저장·공개 반영 기능이 연결된 뒤에 효력이 생깁니다.
                       </p>
                     </div>
                   </div>
@@ -5659,7 +5405,7 @@ export default function AdminRole({
 
                   <button
                     type="button"
-                    onClick={() => alert(`쿨다운 시간이 ${matchingCooldownHours === 0 ? '무제한(제한 없음)' : matchingCooldownHours + '시간'}으로 변경되었습니다.`)}
+                    onClick={() => toast.success(`쿨다운 시간이 ${matchingCooldownHours === 0 ? '무제한(제한 없음)' : matchingCooldownHours + '시간'}으로 변경되었습니다.`)}
                     className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-extrabold transition-all cursor-pointer"
                   >
                     정책 저장
@@ -5808,7 +5554,7 @@ export default function AdminRole({
                           'ADMIN_ACTION',
                           `기본 홈페이지 환경설정 및 법률약관 정보 갱신 적용 완료`
                         );
-                        alert('기본 환경 설정 및 약관이 성공적으로 저장 및 전역 반영되었습니다!');
+                        toast.success('기본 환경 설정 및 약관이 저장 및 전역 반영되었습니다');
                       }}
                       className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-[200px] text-sm transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
                     >
@@ -5994,7 +5740,9 @@ export default function AdminRole({
             const totalPendingCount = members.filter(m => m.status === 'pending').length;
             const totalWithdrawnCount = members.filter(m => m.status === 'withdrawn').length;
             const totalDormantCount = members.filter(m => m.status === 'dormant').length;
-            const todaySignupsCount = members.filter(m => m.createdAt.startsWith(new Date().toISOString().split('T')[0])).length;
+            // 로컬(KST) 날짜 기준 (이전: UTC 날짜라 00~09시 가입자가 전날로 집계)
+            const memberLocalYmd = (m: Member) => { const d = new Date(m.createdAt); return Number.isNaN(d.getTime()) ? '' : localYmd(d); };
+            const todaySignupsCount = members.filter(m => memberLocalYmd(m) === localYmd()).length;
 
 
             const channelCounts = members.reduce((acc, m) => {
@@ -6011,8 +5759,8 @@ export default function AdminRole({
             const getSignupCountForDateOffset = (offset: number) => {
               const d = new Date();
               d.setDate(d.getDate() - offset);
-              const dateStr = d.toISOString().split('T')[0];
-              return members.filter(m => m.createdAt.startsWith(dateStr)).length;
+              const dateStr = localYmd(d);
+              return members.filter(m => memberLocalYmd(m) === dateStr).length;
             };
 
             const signupData = [6, 5, 4, 3, 2, 1, 0].map(offset => {
@@ -6048,10 +5796,10 @@ export default function AdminRole({
 
             const selectedMember = members.find(m => m.id === selectedMemberId);
             const selectedMemberLogs = selectedMemberId 
-              ? activityLogs.filter(log => log.memberId === selectedMemberId)
+              ? platformLogs.filter(log => log.memberId === selectedMemberId)
               : [];
 
-            const filteredGlobalLogs = activityLogs.filter(log => {
+            const filteredGlobalLogs = platformLogs.filter(log => {
               const matchesAction = activityActionFilter === 'all' || log.action === activityActionFilter;
               return matchesAction;
             });
@@ -6073,7 +5821,7 @@ export default function AdminRole({
                 // If it is a lawyer/staff, also sync approved flag in lawyers state
                 if (current.role === 'LAWYER' || current.role === 'STAFF') {
                   setLawyers(prev => prev.map(l => l.id === memberId ? { ...l, approved: newStatus === 'active' } : l));
-                  setLawyerDbApproval(memberId, newStatus === 'active').catch(() => {});
+                  setLawyerDbApproval(memberId, newStatus === 'active').catch(() => toast.error('서버 승인 상태를 바꾸지 못했습니다. 관리자 권한을 확인해 주세요.'));
                 }
 
                 onLogActivity(
@@ -6121,7 +5869,7 @@ export default function AdminRole({
               }
               const confirmed = await dialog.confirm({
                 title: '회원 강제 탈퇴 처리',
-                message: `정말로 회원 [${current.alias}]을 강제 탈퇴 처리하시겠습니까?\n이메일, 연락처 등 모든 개인 식별 정보가 즉시 완전 파기되며 복구할 수 없습니다.`,
+                message: `회원 [${current.alias}]을 탈퇴 처리할까요?\n이 브라우저의 회원 목록에서 이메일·연락처를 지웁니다.${current.role === 'LAWYER' || current.role === 'STAFF' ? '\n변호사·직원은 서버 승인도 해제합니다.' : ''}\n서버에 저장된 상담 요청·로그인 계정은 이 조치로 삭제되지 않습니다(별도 파기 절차 필요).`,
                 confirmText: '강제 탈퇴',
                 variant: 'danger'
               });
@@ -6140,8 +5888,9 @@ export default function AdminRole({
                   return m;
                 }));
 
-                // If lawyer/staff, de-approve
+                // If lawyer/staff, de-approve (서버 승인 해제 포함 — 이전: 화면에서만 미승인으로 표시)
                 if (current.role === 'LAWYER' || current.role === 'STAFF') {
+                  setLawyerDbApproval(memberId, false).catch(() => toast.error('서버 승인 해제에 실패했습니다. 변호사 탭에서 다시 정지해 주세요.'));
                   setLawyers(prev => prev.map(l => {
                     if (l.id === memberId) {
                       return {
@@ -6160,7 +5909,7 @@ export default function AdminRole({
                   '(탈퇴한 회원)',
                   current.role,
                   'WITHDRAWAL',
-                  `관리자 수동 조치에 의한 계정 강제 탈퇴 및 개인정보 파기 완료`
+                  `관리자 탈퇴 처리 (회원 목록의 연락처 삭제)`
                 );
 
                 // Add admin log
@@ -6169,26 +5918,16 @@ export default function AdminRole({
                   '최고관리자',
                   'ADMIN',
                   'ADMIN_ACTION',
-                  `회원 강제 탈퇴 및 개인식별정보 영구 파기 처리: ${current.id} (${current.role})`
+                  `회원 탈퇴 처리: ${current.id} (${current.role})`
                 );
 
-                toast.success('회원 강제 탈퇴 및 개인정보 파기가 완료되었습니다.');
+                toast.success('탈퇴 처리했습니다. 서버의 상담 기록·계정 파기는 별도로 진행해야 합니다.');
               }
             };
 
-            const maskEmail = (email?: string) => {
-              if (!email) return '-';
-              const parts = email.split('@');
-              if (parts.length !== 2) return email;
-              const name = parts[0];
-              const domain = parts[1];
-              return `${name.substring(0, Math.min(3, name.length))}****@${domain}`;
-            };
-
-            const maskPhone = (phone?: string) => {
-              if (!phone) return '-';
-              return phone.replace(/(\d{3})-(\d{3,4})-(\d{4})/, '$1-****-$3');
-            };
+            // 형식과 무관한 마스킹 (이전: 하이픈 형식 전화번호만 가리고, '@' 없는 값은 원문 그대로 표시)
+            const maskEmail = (email?: string) => maskEmailAddress(email);
+            const maskPhone = (phone?: string) => maskPhoneNumber(phone);
 
             return (
               <div className="space-y-6 animate-fadeIn text-left">
@@ -6858,12 +6597,12 @@ export default function AdminRole({
                                   <span className="font-mono">{new Date(log.createdAt).toLocaleTimeString()}</span>
                                 </div>
                                 <p className="text-slate-200 text-sm font-semibold leading-normal">{log.details}</p>
-                                <span className="text-sm text-slate-600 block font-mono">IP: {log.ipAddress}</span>
+                                <span className="text-sm text-slate-400 block font-mono">IP: {log.ipAddress || '미기록'}</span>
                               </div>
                             ))}
 
                             {selectedMemberLogs.length === 0 && (
-                              <div className="text-center py-6 text-slate-600 text-sm pl-0">
+                              <div className="text-center py-6 text-slate-400 text-sm pl-0">
                                 타임라인에 수집된 가입자 활동 내역이 아직 없습니다.
                               </div>
                             )}
@@ -6875,17 +6614,32 @@ export default function AdminRole({
                       <div className="space-y-4 animate-fadeIn">
                         <div className="flex justify-between items-center border-b border-[#1E293B]/60 pb-3">
                           <div className="space-y-1 text-left">
-                            <span className="text-xs text-indigo-400 font-black block uppercase tracking-wider">PLATFORM AUDIT TRAIL MONITOR</span>
                             <h3 className="text-base font-extrabold text-white flex items-center gap-1.5">
-                              <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
-                              <span>실시간 통합 플랫폼 활동 피드</span>
+                              <Activity className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                              <span>플랫폼 활동 로그</span>
                             </h3>
+                            <span className={`text-xs block ${platformLogsSource === 'server' ? 'text-slate-400' : 'text-amber-300'}`}>
+                              {platformLogsSource === 'server'
+                                ? '서버 기록 (IP·시각은 서버 기준, 수정·삭제 불가) · 최근 500건'
+                                : `이 브라우저 기록만 표시${serverActivityError ? ` — 서버 조회 실패: ${serverActivityError}` : ''}`}
+                            </span>
                           </div>
 
+                          <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={refreshServerActivity}
+                            disabled={serverActivityLoading}
+                            className="min-h-[44px] px-3 bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl text-xs font-bold text-slate-200 whitespace-nowrap hover:bg-[#161B26] disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>새로고침</span>
+                          </button>
                           <select 
                             value={activityActionFilter}
                             onChange={(e) => setActivityActionFilter(e.target.value)}
-                            className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2 py-1 text-xs font-black text-slate-500 focus:outline-none"
+                            aria-label="활동 유형 필터"
+                            className="min-h-[44px] bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2 py-1 text-xs font-bold text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           >
                             <option value="all">모든 액션</option>
                             <option value="SIGNUP">가입 (SIGNUP)</option>
@@ -6895,25 +6649,29 @@ export default function AdminRole({
                             <option value="CHAT_SEND">채팅 (CHAT)</option>
                             <option value="STATUS_CHANGE">상태변경 (STATUS)</option>
                             <option value="ADMIN_ACTION">관리자조치 (ADMIN)</option>
+                            <option value="SETTINGS">설정 변경 (SETTINGS)</option>
+                            <option value="WITHDRAWAL">탈퇴 (WITHDRAWAL)</option>
+                            <option value="QNA_BROWSE">Q&A 열람 (QNA)</option>
                           </select>
+                          </div>
                         </div>
 
                         {/* Scrolling live feed */}
                         <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1 text-sm">
-                          {filteredGlobalLogs.slice(0, 25).map(log => {
+                          {filteredGlobalLogs.slice(0, 100).map(log => {
                             const isClient = log.role === 'CLIENT';
                             return (
                               <div key={log.id} className="bg-[#0B0F19]/45 border border-[#1E293B]/30 hover:border-slate-800 p-3 rounded-xl space-y-1.5 transition-all">
                                 <div className="flex justify-between items-center">
                                   <div className="flex items-center gap-1.5">
                                     <span className={`text-xs font-black px-1 rounded-sm text-white ${
-                                      log.action === 'SIGNUP' ? 'bg-orange-650' :
-                                      log.action === 'LOGIN' ? 'bg-blue-650' :
-                                      log.action === 'CALCULATE' ? 'bg-purple-650' :
-                                      log.action === 'CONSULT_REQUEST' ? 'bg-indigo-650' :
-                                      log.action === 'CHAT_SEND' ? 'bg-slate-655' :
-                                      log.action === 'STATUS_CHANGE' ? 'bg-emerald-650' :
-                                      'bg-red-650'
+                                      log.action === 'SIGNUP' ? 'bg-orange-700' :
+                                      log.action === 'LOGIN' ? 'bg-blue-700' :
+                                      log.action === 'CALCULATE' ? 'bg-purple-700' :
+                                      log.action === 'CONSULT_REQUEST' ? 'bg-indigo-700' :
+                                      log.action === 'CHAT_SEND' ? 'bg-slate-600' :
+                                      log.action === 'STATUS_CHANGE' ? 'bg-emerald-700' :
+                                      'bg-red-700'
                                     }`}>
                                       {log.action}
                                     </span>
@@ -6924,22 +6682,27 @@ export default function AdminRole({
                                       {log.role}
                                     </span>
                                   </div>
-                                  <span className="font-mono text-slate-600 text-xs">
-                                    {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                  <span className="font-mono text-slate-400 text-xs">
+                                    {new Date(log.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                   </span>
                                 </div>
-                                <p className="text-slate-350 leading-normal text-[13px] font-medium">{log.details}</p>
-                                <div className="flex justify-between items-center text-xs text-slate-600 font-mono">
-                                  <span>ID: {log.memberId}</span>
-                                  <span>IP: {log.ipAddress}</span>
+                                <p className="text-slate-300 leading-normal text-[13px] font-medium">{log.details}</p>
+                                <div className="flex justify-between items-center gap-2 text-xs text-slate-400 font-mono">
+                                  <span className="truncate">
+                                    ID: {log.memberId}
+                                    {'verifiedEmail' in log && (log as PlatformActivityLog).verifiedEmail
+                                      ? ` · 로그인 ${(log as PlatformActivityLog).verifiedEmail}`
+                                      : ''}
+                                  </span>
+                                  <span className="shrink-0">IP: {log.ipAddress || '미기록'}</span>
                                 </div>
                               </div>
                             );
                           })}
 
                           {filteredGlobalLogs.length === 0 && (
-                            <div className="text-center py-12 text-slate-600 text-sm">
-                              수집된 실시간 활동 로그 내역이 존재하지 않습니다.
+                            <div className="text-center py-12 text-slate-400 text-sm">
+                              {serverActivityLoading ? '불러오는 중…' : '기록된 활동 로그가 없습니다.'}
                             </div>
                           )}
                         </div>

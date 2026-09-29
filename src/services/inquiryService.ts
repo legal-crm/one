@@ -52,6 +52,24 @@ export function loadMyInquiries() {
   return call<{ items: InquiryPublic[] }>('mine', { method: 'GET' });
 }
 
+export interface AdminInquiry extends InquiryPublic {
+  clientName: string;
+  isMember: boolean;
+  contactInfo?: string;
+  source?: string;
+  attachments?: { fileName: string; fileSize: number; fileType: string; dataUrl?: string }[];
+}
+
+/** 관리자: 서버에 접수된 전체 문의 (2단계 인증 관리자만) */
+export function adminLoadInquiries() {
+  return call<{ items: AdminInquiry[] }>('admin-list', { method: 'GET' });
+}
+
+/** 관리자: 답변 저장 (빈 문자열이면 답변 삭제) */
+export function adminReplyInquiry(id: string, replyContent: string) {
+  return call<{ item: InquiryPublic }>('admin-reply', { method: 'POST', body: JSON.stringify({ id, replyContent }) });
+}
+
 /** 기존 화면(ClientInquiry 타입) 호환 변환 */
 export function toClientInquiry(i: InquiryPublic, clientName: string): ClientInquiry {
   return {

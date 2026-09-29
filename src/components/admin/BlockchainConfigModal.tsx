@@ -168,7 +168,7 @@ export default function BlockchainConfigModal({
                 분산원장 네트워크 선택
               </span>
               <span className="text-[11px] text-slate-400 font-normal">
-                변경 즉시 신규 전자계약 앵커링에 적용
+                조회 화면 전용 · 실제 기록 네트워크·RPC·공증 주소는 서버 환경변수(POLYGON_*)로만 결정
               </span>
             </label>
 
@@ -289,6 +289,9 @@ export default function BlockchainConfigModal({
               <Cpu className="w-3.5 h-3.5 text-emerald-400" />
               온체인 릴레이어 트랜잭션 브로드캐스팅 정책
             </label>
+            <p role="note" className="text-xs text-amber-300">
+              서버는 이 선택과 RPC·공증 주소 입력을 사용하지 않습니다(보안상 서버 환경변수만 사용). 릴레이어 키가 있고 잔액이 있으면 온체인 기록, 없으면 해시만 보관합니다.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"

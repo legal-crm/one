@@ -8,7 +8,7 @@
 
 import crypto from 'crypto';
 import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth, supabase } from './_lib/auth-middleware.js';
+import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
@@ -72,8 +72,52 @@ async function handler(req, res) {
     return res.status(200).json({ ok: true, items });
   }
 
+  // ── [PART 3-6] 관리자: 전체 문의 목록 (2단계 인증 관리자만) ──
+  // 이전: 관리자 화면은 자기 브라우저 저장소의 시연 문의만 보여 실제 접수된 문의를 볼 수 없었음
+  if (action === 'admin-list') {
+    const user = await getUser(req);
+    if (!user || !isAdminWithMfa(req, user)) return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 조회할 수 있습니다.' });
+    const { data, error } = await supabase.from(TABLE).select('id, data').order('id', { ascending: false }).limit(300);
+    if (error) return res.status(500).json({ ok: false, error: '문의 목록을 불러오지 못했습니다.' });
+    const items = (data || []).map(r => {
+      const d = r.data || {};
+      return {
+        ...toPublic(r.id, d),
+        clientName: d.clientName || '',
+        isMember: Boolean(d.ownerUserId),
+        contactInfo: d.contactInfo || undefined,
+        source: d.source || 'web',
+        // 첨부는 관리자에게만 원본 제공
+        attachments: (d.attachments || []).map(a => ({ fileName: a.fileName, fileSize: a.fileSize, fileType: a.fileType, dataUrl: a.dataUrl })),
+      };
+    }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return res.status(200).json({ ok: true, items });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
   const body = req.body || {};
+
+  // ── [PART 3-6] 관리자: 답변 등록·수정·삭제 (의뢰인 '내 문의'·비회원 조회에 그대로 반영) ──
+  if (action === 'admin-reply') {
+    const user = await getUser(req);
+    if (!user || !isAdminWithMfa(req, user)) return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 답변할 수 있습니다.' });
+    const id = clip(body.id, 80);
+    const reply = typeof body.replyContent === 'string' ? body.replyContent.trim().slice(0, 4000) : '';
+    if (!id) return res.status(400).json({ ok: false, error: '문의번호가 없습니다.' });
+    const { data: row } = await supabase.from(TABLE).select('id, data').eq('id', id).maybeSingle();
+    if (!row) return res.status(404).json({ ok: false, error: '문의를 찾을 수 없습니다.' });
+    const d = row.data || {};
+    const next = reply
+      ? { ...d, replyContent: reply, repliedAt: new Date().toISOString(), repliedBy: user.email || user.id, status: 'replied' }
+      : { ...d, replyContent: undefined, repliedAt: undefined, repliedBy: undefined, status: 'pending' };
+    const { error } = await supabase.from(TABLE).update({ data: next }).eq('id', id);
+    if (error) return res.status(500).json({ ok: false, error: '답변을 저장하지 못했습니다.' });
+    await supabase.from('audit_logs').insert({
+      actor_id: user.email || user.id, actor_role: 'admin', action: reply ? 'inquiry_reply' : 'inquiry_reply_delete',
+      target_type: 'client_inquiry', target_id: id, auth_uid: user.id, auth_email: user.email || null, ip_address: ip || null,
+    }).then(() => {}, () => {});
+    return res.status(200).json({ ok: true, item: toPublic(id, next) });
+  }
 
   // ── 로그인 회원 본인 문의 전체 삭제 (마이페이지 데이터 삭제) ──
   if (action === 'delete-mine') {

@@ -932,7 +932,9 @@ export default function ClientRole({
   // 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 상품)
   const [showcasePage, setShowcasePage] = useState(0);
   const [showcaseHovered, setShowcaseHovered] = useState(false);
-  const [shuffledShowcaseAds] = useState(() => [...adBanners].filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
+  // [PART 3-4] data.ts 시드 광고(가상 변호사·'인가율 98%·누적 842건' 등 근거 없는 수치)는 DEV 전용.
+  // 실제 광고 소재 저장·승인 경로가 없어 운영에서는 섹션을 숨긴다(빈 배열이면 렌더링하지 않음).
+  const [shuffledShowcaseAds] = useState(() => (import.meta.env.DEV ? [...adBanners] : []).filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
 
   useEffect(() => {
     if (showcaseHovered || shuffledShowcaseAds.length === 0) return;
@@ -1444,6 +1446,12 @@ export default function ClientRole({
   // Pre-fill request form from review card
   const handleReviewClick = (rev: SuccessReview) => {
     // 후기 클릭 시 해당 변호사의 프로필 모달을 엽니다 (로톡 스타일)
+    // 상담 절차 예시(가상)는 특정 변호사와 연결하지 않으므로 전문가 목록으로 이동
+    if (rev.isExample || !rev.lawyerId) {
+      setActiveTab('lawyers');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     handleOpenLawyerProfile(rev.lawyerId);
   };
 
@@ -2597,13 +2605,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="flex items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-xl text-[#0f172a] flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-[#1E3A5F]" />
-                  <span>실제 이용 후기</span>
+                  <span>{reviews.length > 0 && reviews.every(r => r.isExample) ? '상담은 이렇게 진행돼요 (예시)' : '이용 후기 · 상담 예시'}</span>
                 </h3>
                 <button
                   onClick={() => { setActiveTab('reviews'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-sm sm:text-base text-[#3B82F6] font-bold hover:underline shrink-0"
+                  className="min-h-[44px] text-sm sm:text-base text-[#3B82F6] font-bold hover:underline shrink-0"
                 >
-                  후기 더 보기 →
+                  더 보기 →
                 </button>
               </div>
 
@@ -2642,34 +2650,52 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div key={`${setIdx}-${rev.id}`} className="w-[330px] sm:w-[370px] shrink-0">
                               <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
                                 <div className="space-y-3 text-left">
-                                  <div className="flex items-center gap-1.5 mb-2" aria-label={`별점 ${rev.rating ?? 5}점 (5점 만점)`}>
-                                    {/* 실제 후기 별점 반영 (미입력 시 5점) */}
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                      <Star
-                                        key={i}
-                                        aria-hidden="true"
-                                        className={`w-4 h-4 ${i <= (rev.rating ?? 5) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
-                                      />
-                                    ))}
-                                    <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
-                                  </div>
+                                  {rev.isExample ? (
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                      {/* 가상 예시에는 별점·이용 인증을 붙이지 않는다 */}
+                                      <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md">예시(가상)</span>
+                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md">{rev.category}</span>
+                                    </div>
+                                  ) : typeof rev.rating === 'number' ? (
+                                    <div className="flex items-center gap-1.5 mb-2" aria-label={`별점 ${rev.rating}점 (5점 만점)`}>
+                                      {/* 실제 후기 별점만 표시 (미입력 시 별점 생략) */}
+                                      {[1, 2, 3, 4, 5].map(i => (
+                                        <Star
+                                          key={i}
+                                          aria-hidden="true"
+                                          className={`w-4 h-4 ${i <= (rev.rating ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
+                                        />
+                                      ))}
+                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md">{rev.tags?.[0] || rev.category || '개인회생'}</span>
+                                    </div>
+                                  )}
                                   <h4 className="font-bold text-base text-slate-900 leading-snug line-clamp-1">
                                     {rev.title}
                                   </h4>
                                   <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                    "{rev.content}"
+                                    {rev.isExample ? rev.content : `"${rev.content}"`}
                                   </p>
                                 </div>
-                                <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-500 font-semibold">{rev.author}</span>
-                                    <div className="flex items-center gap-1.5">
-                                      <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />
-                                      <span className="font-semibold text-slate-700">{rev.lawyerName}</span>
-                                    </div>
+                                {rev.isExample ? (
+                                  <div className="pt-3 border-t border-slate-100">
+                                    <p className="text-xs text-slate-500 leading-relaxed">실제 이용자 후기가 아닌 상담 절차 설명용 가상 예시입니다. 결과는 개별 사정과 법원 판단에 따라 달라집니다.</p>
                                   </div>
-                                  <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" />이용 인증</span>
-                                </div>
+                                ) : (
+                                  <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-slate-500 font-semibold">{rev.author}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        {rev.lawyerAvatar && <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />}
+                                        <span className="font-semibold text-slate-700">{rev.lawyerName}</span>
+                                      </div>
+                                    </div>
+                                    <span className="text-xs text-slate-500">후기는 이용자의 주관적 의견이며, 사건 결과는 개별 사정에 따라 다릅니다.</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))

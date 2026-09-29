@@ -44,6 +44,7 @@ import { getContract } from './services/contractService';
 import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
+import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
 
 // [SECURITY] 관리자 포털 경로는 utils/adminPortal.ts (VITE_ADMIN_SECRET_PATH, 운영 미설정 시 비활성).
 // 뻔한 ?role=admin은 허니팟으로 유인. 실제 인가는 서버(JWT role=admin + MFA aal2)가 판정.
@@ -61,6 +62,22 @@ const SEED_CASE_IDS = new Set(SEED_CASES.map(c => c.id));
 /** 운영 환경에서 과거에 저장된 시연 데이터 식별 */
 const isProdSeedRequest = (id: string) => import.meta.env.PROD && SEED_REQUEST_IDS.has(id);
 const isProdSeedCase = (id: string) => import.meta.env.PROD && SEED_CASE_IDS.has(id);
+
+// [PART 3-2] 가상 회원 18명·가상 활동 로그 16건(가짜 IP·가짜 상담 대화)도 DEV 전용.
+// (이전: 운영 관리자 대시보드의 회원 수·가입 채널·전환율·활동 피드에 그대로 섞여 표시됨)
+const SEED_MEMBERS: Member[] = import.meta.env.DEV ? initialMembers : [];
+const SEED_ACTIVITY_LOGS: ActivityLog[] = import.meta.env.DEV ? initialActivityLogs : [];
+// 운영 번들에 시드 본문(가짜 이메일·전화·대화)이 포함되지 않도록 ID만 명시 (data.ts initialMembers / initialActivityLogs)
+const SEED_MEMBER_IDS = new Set([
+  'lawyer-1', 'lawyer-2', 'lawyer-3', 'staff-1', 'lawyer-4', 'lawyer-5', 'lawyer-ex-1', 'lawyer-ex-2',
+  'client-1', 'client-2', 'client-3', 'client-4', 'client-5', 'client-today-1', 'client-today-2',
+  'client-withdrawn-1', 'client-withdrawn-2', 'client-dormant-1',
+]);
+const SEED_LOG_IDS = new Set(Array.from({ length: 16 }, (_, i) => `log-${i + 1}`));
+const stripProdSeedMembers = (list: Member[]): Member[] =>
+  import.meta.env.PROD ? list.filter(m => m && !SEED_MEMBER_IDS.has(m.id)) : list;
+const stripProdSeedLogs = (list: ActivityLog[]): ActivityLog[] =>
+  import.meta.env.PROD ? list.filter(l => l && !SEED_LOG_IDS.has(l.id)) : list;
 
 /** [SECURITY] 로컬 저장소·시드에서 과거 평문 비밀번호 필드를 제거 (변호사 인증은 Supabase Auth 전용) */
 function stripLawyerSecrets(list: LawyerType[]): LawyerType[] {
@@ -454,17 +471,17 @@ export default function App() {
   const [members, setMembers] = useState<Member[]>(() => {
     try {
       const saved = secureGetItem('legal_crm_members');
-      return saved ? JSON.parse(saved) : initialMembers;
+      return saved ? stripProdSeedMembers(JSON.parse(saved)) : SEED_MEMBERS;
     } catch {
-      return initialMembers;
+      return SEED_MEMBERS;
     }
   });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
     try {
       const saved = secureGetItem('legal_crm_activity_logs');
-      return saved ? JSON.parse(saved) : initialActivityLogs;
+      return saved ? stripProdSeedLogs(JSON.parse(saved)) : SEED_ACTIVITY_LOGS;
     } catch {
-      return initialActivityLogs;
+      return SEED_ACTIVITY_LOGS;
     }
   });
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
@@ -485,7 +502,17 @@ export default function App() {
 
   const [reviews, setReviews] = useState<SuccessReview[]>(() => {
     const saved = secureGetItem('legal_crm_reviews');
-    return saved ? JSON.parse(saved) : initialReviews;
+    if (!saved) return initialReviews;
+    try {
+      const parsed: SuccessReview[] = JSON.parse(saved);
+      // 예전 기본 데이터(rev-1~rev-20: 결과 수치가 들어간 가상 후기)가 저장돼 있으면 걷어내고 절차 예시로 대체
+      const LEGACY_SEED_REVIEW_ID = /^rev-([1-9]|1\d|20)$/;
+      const cleaned = Array.isArray(parsed) ? parsed.filter(r => !LEGACY_SEED_REVIEW_ID.test(r.id)) : [];
+      if (cleaned.length === 0) return initialReviews;
+      return cleaned;
+    } catch {
+      return initialReviews;
+    }
   });
 
   const [banners, setBanners] = useState<MainBanner[]>(() => {
@@ -608,22 +635,25 @@ export default function App() {
     }
 
     if (savedMembers) {
-      setMembers(JSON.parse(savedMembers));
+      setMembers(stripProdSeedMembers(JSON.parse(savedMembers)));
     } else {
-      setMembers(initialMembers);
+      setMembers(SEED_MEMBERS);
     }
 
     if (savedLogs) {
-      setActivityLogs(JSON.parse(savedLogs));
+      setActivityLogs(stripProdSeedLogs(JSON.parse(savedLogs)));
     } else {
-      setActivityLogs(initialActivityLogs);
+      setActivityLogs(SEED_ACTIVITY_LOGS);
     }
 
+    // [PART 3-6] 시연 문의('파란고래_38' 등)는 DEV 전용. 실제 문의는 관리자 화면이 서버(/api/inquiry admin-list)에서 불러온다
+    const seedInquiryIds = new Set(['inquiry-1', 'inquiry-2']); // data.ts initialInquiries (운영 번들에 본문 미포함)
     const savedInquiries = secureGetItem('legal_crm_inquiries');
     if (savedInquiries) {
-      setInquiries(JSON.parse(savedInquiries));
+      const parsed: ClientInquiry[] = JSON.parse(savedInquiries);
+      setInquiries(import.meta.env.PROD ? parsed.filter(i => !seedInquiryIds.has(i.id)) : parsed);
     } else {
-      setInquiries(initialInquiries);
+      setInquiries(import.meta.env.DEV ? initialInquiries : []);
     }
   }, []);
 
@@ -707,11 +737,14 @@ export default function App() {
       memberName,
       role,
       action,
-      details,
-      ipAddress: `121.138.45.${Math.floor(10 + Math.random() * 200)}`,
+      details: sanitizeActivityDetails(action, details),
+      // 브라우저는 자신의 공인 IP를 알 수 없음 — IP는 서버 기록(audit_logs, 021 트리거)에만 남는다
+      // (이전: 121.138.45.x 난수로 만든 가짜 IP를 저장·표시)
+      ipAddress: '',
       createdAt: new Date().toISOString()
     };
-    setActivityLogs(prev => [newLog, ...prev.slice(0, 199)]); // Keep up to 200 logs
+    setActivityLogs(prev => [newLog, ...prev.slice(0, 199)]); // 이 브라우저 기록은 최근 200건
+    recordMemberActivity(newLog);
   };
 
   // Reset entire database to default mock
@@ -739,8 +772,8 @@ export default function App() {
       saveAllConsultMessages(initialConsultMessages).catch(() => {});
 
       setCases(initialCases);
-      setMembers(initialMembers);
-      setActivityLogs(initialActivityLogs);
+      setMembers(SEED_MEMBERS);
+      setActivityLogs(SEED_ACTIVITY_LOGS);
       window.location.reload();
     }
   };

@@ -179,21 +179,23 @@ export async function saveDiagnosisConfig(config: DiagnosisConfig): Promise<{ su
   }
 
   try {
-    // 기존 활성 설정 비활성화
-    await supabase
-      .from('diagnosis_config')
-      .update({ is_active: false })
-      .eq('is_active', true);
-
-    // 새 설정 삽입
-    const { error } = await supabase.from('diagnosis_config').insert({
+    // 새 설정을 먼저 넣고, 성공한 뒤에만 이전 활성 설정을 끈다
+    // (이전: 먼저 모두 비활성화 → 삽입 실패 시 활성 설정이 하나도 없는 상태가 됨)
+    const { data: inserted, error } = await supabase.from('diagnosis_config').insert({
       questions: config.questions,
       is_active: true,
       updated_by: config.lastUpdatedBy,
       updated_at: new Date().toISOString(),
-    });
+    }).select('id').single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !inserted) return { success: false, error: error?.message || '저장 결과를 확인하지 못했습니다.' };
+
+    const { error: deactivateError } = await supabase
+      .from('diagnosis_config')
+      .update({ is_active: false })
+      .eq('is_active', true)
+      .neq('id', inserted.id);
+    if (deactivateError) return { success: false, error: `새 설정은 저장됐지만 이전 설정을 끄지 못했습니다: ${deactivateError.message}` };
     // [AUDIT] 설정 변경 기록
     auditConfigUpdate(config.lastUpdatedBy || 'admin', 'diagnosis_config');
     return { success: true };

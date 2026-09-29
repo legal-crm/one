@@ -2,15 +2,93 @@
 // POST /api/generate-statement
 
 import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
+import { verifyAuth, isAdminWithMfa } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+
+// ─────────────────────────────────────────────────────────────
+// [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
+//   - Gemini 키는 서버 환경변수만 사용 (이전: 관리자 브라우저 localStorage 평문 저장 + URL 쿼리로 전송)
+//   - 관리자(2단계 인증)만 호출 가능
+//   - 프롬프트에 결과 보장·근거 없는 수치·"100% 준수" 같은 단정 표현 금지를 명시
+// ─────────────────────────────────────────────────────────────
+const clipText = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : '');
+
+function buildMarketingPrompt(topic, theme) {
+  return `당신은 대한민국 개인회생·파산 정보 칼럼 작가입니다. 아래 주제로 네이버 블로그용 정보성 칼럼을 작성하세요.
+주제: "${topic}"
+강조 테마: "${theme}"
+
+반드시 지킬 것 (변호사 광고 규정·표시광고법):
+- 결과를 보장하거나 단정하지 않는다 (예: "100% 탕감", "무조건 면책", "경매 없이 보장", "스팸 0통 보장" 금지)
+- 근거 없는 수치·통계·성공률·"국내 유일"·"특허" 같은 표현을 쓰지 않는다
+- "변호사법 100% 준수", "검수 완료" 같은 자기 인증 문구를 쓰지 않는다
+- 법원 판단은 사건마다 다르다는 점과, 개별 사안은 변호사 상담이 필요하다는 점을 본문에 밝힌다
+- 플랫폼 기능은 사실만 설명한다: 의뢰인이 변호사를 직접 선택, 상담 시 가명 사용 가능, 수임은 선택한 법률사무소가 수행
+
+아래 JSON만 반환하세요:
+{
+  "title": "검색 친화적 제목 (과장 금지)",
+  "summary": "핵심 요약 1~2문장",
+  "answerFirst": ["핵심 요약 1", "핵심 요약 2", "핵심 요약 3"],
+  "fullBody": "1,800자 이상 본문. 중간에 [📷 이미지 1]~[📷 이미지 4] 위치 표시",
+  "blogImages": [
+    { "title": "대표 썸네일 제목", "role": "역할", "insertPosition": "본문 최상단", "prompt": "English image prompt, no text", "previewTitle": "12~18자 헤드라인", "previewSub": "20~30자 설명", "tag": "대표 썸네일 (1080x1080)" },
+    { "title": "비교 인포그래픽", "role": "역할", "insertPosition": "본문 2번 섹션", "prompt": "English prompt", "previewTitle": "헤드라인", "previewSub": "설명", "tag": "비교 인포그래픽" },
+    { "title": "앱 화면", "role": "역할", "insertPosition": "본문 3번 섹션", "prompt": "English prompt", "previewTitle": "헤드라인", "previewSub": "설명", "tag": "앱 UI 목업" },
+    { "title": "상담 안내 배너", "role": "역할", "insertPosition": "본문 최하단", "prompt": "English prompt", "previewTitle": "헤드라인", "previewSub": "설명", "tag": "전환 CTA 배너" }
+  ],
+  "hashtags": ["#개인회생", "#개인파산"]
+}`;
+}
+
+async function handleMarketing(req, res) {
+  let user = null;
+  try { user = await verifyAuth(req); } catch (_) { user = null; }
+  if (!user || !isAdminWithMfa(req, user)) {
+    return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 사용할 수 있습니다.' });
+  }
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!geminiKey) {
+    return res.status(200).json({ ok: false, configured: false, error: '서버에 GEMINI_API_KEY가 설정되지 않았습니다.' });
+  }
+  if (req.body?.mode === 'marketing-ping') {
+    return res.status(200).json({ ok: true, configured: true });
+  }
+  const topic = clipText(req.body?.topic, 200);
+  const theme = clipText(req.body?.theme, 60);
+  if (!topic) return res.status(400).json({ ok: false, error: '주제를 입력해 주세요.' });
+
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildMarketingPrompt(topic, theme) }] }],
+        generationConfig: { temperature: 0.4, response_mime_type: 'application/json' },
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!r.ok) return res.status(200).json({ ok: false, error: `AI 응답 오류 (${r.status})` });
+    const data = await r.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(clean);
+    return res.status(200).json({ ok: true, content: parsed });
+  } catch (e) {
+    return res.status(200).json({ ok: false, error: 'AI 생성에 실패했습니다.' });
+  }
+}
 
 async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  if (req.body?.mode === 'marketing' || req.body?.mode === 'marketing-ping') {
+    return handleMarketing(req, res);
   }
 
   // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)

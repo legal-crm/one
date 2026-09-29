@@ -3,7 +3,14 @@
 
 import type { AdOrder } from '../types';
 import { mockAdOrders } from '../data';
-import { supabase } from '../supabaseClient';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+
+// [PART 3-4] 가상 광고 주문 5건(김우진·이소민 등, 가짜 입금일)은 DEV 전용.
+// (이전: 운영에서도 목록이 비면 다시 채워져 매출·입금 대기·TOP5에 섞였음)
+const SEED_ORDERS: AdOrder[] = import.meta.env.DEV ? mockAdOrders : [];
+const SEED_ORDER_IDS = new Set(['ado-1', 'ado-2', 'ado-3', 'ado-4', 'ado-6']);
+const stripProdSeedOrders = (list: AdOrder[]) =>
+  import.meta.env.PROD ? list.filter(o => o && !SEED_ORDER_IDS.has(o.id)) : list;
 
 const STORAGE_KEY = 'crm_ad_orders';
 const CHANNEL_NAME = 'crm_ad_orders_channel';
@@ -22,24 +29,67 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
  * 광고 주문 목록 로드 (localStorage 우선, 없으면 mockAdOrders)
  */
 export function loadAdOrders(): AdOrder[] {
-  if (typeof window === 'undefined') return mockAdOrders;
+  if (typeof window === 'undefined') return SEED_ORDERS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+      if (Array.isArray(parsed)) return stripProdSeedOrders(parsed);
     }
   } catch (e) {
     console.error('[AdOrderService] loadAdOrders parse error:', e);
   }
-
-  // 초기화되지 않은 경우 mockAdOrders 저장 후 반환
+  // 저장된 목록이 없을 때만 시드(DEV) — 빈 목록([])은 그대로 유지
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockAdOrders));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_ORDERS));
   } catch { /* ignore */ }
-  return mockAdOrders;
+  return SEED_ORDERS;
+}
+
+function rowToAdOrder(r: any): AdOrder {
+  return {
+    id: r.id,
+    lawyerId: r.lawyer_id,
+    lawyerName: r.lawyer_name || '',
+    productId: r.product_id || '',
+    productName: r.product_name || '',
+    contractMonths: Number(r.contract_months) || 1,
+    monthlyPrice: Number(r.monthly_price) || 0,
+    totalPrice: Number(r.total_price) || 0,
+    status: r.status,
+    requestedAt: r.requested_at,
+    paidAt: r.paid_at || undefined,
+    activatedAt: r.activated_at || undefined,
+    expiresAt: r.expires_at || undefined,
+    depositorName: r.depositor_name || undefined,
+    region: r.region || undefined,
+    taxInvoice: r.tax_invoice || undefined,
+    modifiedTaxInvoice: r.modified_tax_invoice || undefined,
+    buyerCorpNum: r.buyer_corp_num || undefined,
+    buyerCorpName: r.buyer_corp_name || undefined,
+    buyerCEOName: r.buyer_ceo_name || undefined,
+    buyerEmail: r.buyer_email || undefined,
+  };
+}
+
+/**
+ * 관리자: 서버(ad_orders, 024 RLS)의 전체 주문을 불러와 이 브라우저 목록과 병합
+ * (이전: 각 브라우저 localStorage만 사용해 다른 기기에서 신청한 광고를 관리자가 볼 수 없었음)
+ */
+export async function syncAdOrdersFromServer(): Promise<{ orders: AdOrder[]; error?: string }> {
+  const local = loadAdOrders();
+  if (!isSupabaseConfigured) return { orders: local, error: '서버 미설정' };
+  try {
+    const { data, error } = await supabase.from('ad_orders').select('*').order('requested_at', { ascending: false }).limit(1000);
+    if (error) return { orders: local, error: error.message };
+    const server = (data || []).map(rowToAdOrder);
+    const serverIds = new Set(server.map(o => o.id));
+    const merged = [...server, ...local.filter(o => !serverIds.has(o.id))];
+    saveAllAdOrders(merged);
+    return { orders: merged };
+  } catch (e) {
+    return { orders: local, error: e instanceof Error ? e.message : '서버 조회 실패' };
+  }
 }
 
 /**
@@ -106,7 +156,7 @@ export function saveNewAdOrder(newOrder: AdOrder): void {
 /**
  * 관리자가 입금 확인/승인 또는 취소 처리 시 업데이트
  */
-export function updateAdOrder(updatedOrder: AdOrder): void {
+export async function updateAdOrder(updatedOrder: AdOrder): Promise<{ serverOk: boolean; error?: string }> {
   const current = loadAdOrders();
   const updated = current.map(o => o.id === updatedOrder.id ? updatedOrder : o);
   saveAllAdOrders(updated);
@@ -121,17 +171,27 @@ export function updateAdOrder(updatedOrder: AdOrder): void {
     } catch { /* ignore */ }
   }
 
-  // Supabase 동기화 시도
+  // 서버 반영 (024: 관리자만 UPDATE 가능). 이전: 결과를 버려 실패해도 알 수 없었음
+  if (!isSupabaseConfigured) return { serverOk: false, error: '서버 미설정' };
   try {
-    supabase.from('ad_orders').update({
+    const { data, error } = await supabase.from('ad_orders').update({
       status: updatedOrder.status,
-      paid_at: updatedOrder.paidAt,
-      activated_at: updatedOrder.activatedAt,
-      expires_at: updatedOrder.expiresAt,
-      tax_invoice: updatedOrder.taxInvoice,
-      modified_tax_invoice: updatedOrder.modifiedTaxInvoice,
-    }).eq('id', updatedOrder.id).then(() => {});
-  } catch { /* ignore */ }
+      paid_at: updatedOrder.paidAt || null,
+      activated_at: updatedOrder.activatedAt || null,
+      expires_at: updatedOrder.expiresAt || null,
+      tax_invoice: updatedOrder.taxInvoice || null,
+      modified_tax_invoice: updatedOrder.modifiedTaxInvoice || null,
+      buyer_corp_num: updatedOrder.buyerCorpNum || null,
+      buyer_corp_name: updatedOrder.buyerCorpName || null,
+      buyer_ceo_name: updatedOrder.buyerCEOName || null,
+      buyer_email: updatedOrder.buyerEmail || null,
+    }).eq('id', updatedOrder.id).select('id');
+    if (error) return { serverOk: false, error: error.message };
+    if (!data || data.length === 0) return { serverOk: false, error: '서버에 주문이 없거나 권한이 없습니다.' };
+    return { serverOk: true };
+  } catch (e) {
+    return { serverOk: false, error: e instanceof Error ? e.message : '서버 반영 실패' };
+  }
 }
 
 /**
@@ -168,13 +228,16 @@ export function subscribeToAdOrders(
   }
 
   // 3. Storage 이벤트 핸들러 (구형 브라우저 호환)
+  // 이전: 키가 바뀔 때마다(상태 변경 포함) 첫 주문을 '신규'로 알려 같은 알림이 반복됐음 → 새 ID만 신규로 처리
+  let knownIds = new Set(loadAdOrders().map(o => o.id));
   const handleStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY && e.newValue) {
       try {
         const fresh: AdOrder[] = JSON.parse(e.newValue);
-        if (fresh.length > 0) {
-          onCreated(fresh[0]);
-        }
+        const added = fresh.filter(o => !knownIds.has(o.id));
+        knownIds = new Set(fresh.map(o => o.id));
+        if (added.length > 0) added.forEach(o => onCreated(o));
+        else if (onUpdated && fresh[0]) onUpdated(fresh[0]);
       } catch { /* ignore */ }
     }
   };

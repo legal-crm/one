@@ -91,7 +91,7 @@ export default function AlimtalkControlCenter() {
     const config = ALIMTOK_MILESTONE_CONFIG[testMilestone];
     if (config) {
       setTestCustomText(
-        `[my김변 테스트 발송]\n\n담당자: ${testReceiver}님\n발송유형: ${config.label}\n\n내일 팝빌 실제 연동 시 실시간 카카오 알림톡이 정상 전달됩니다.\n발송일시: ${new Date().toLocaleString('ko-KR')}`
+        `[my김변 테스트 발송]\n\n담당자: ${testReceiver}님\n발송유형: ${config.label}\n\n관리자 테스트 메시지입니다.\n발송일시: ${new Date().toLocaleString('ko-KR')}`
       );
     }
   }, [testMilestone, testReceiver]);
@@ -117,12 +117,11 @@ export default function AlimtalkControlCenter() {
       setTestResult(res);
 
       if (res.ok) {
-        if (res.mock) {
-          toast.info('모의 발송 성공 (팝빌 미연동 상태: 내일 API 키 설정 시 실발송됩니다)');
-        } else if (res.channel === 'lms_fallback' || res.channel === 'sms_fallback') {
-          toast.success('알림톡 미승인 상태로 대체문자(LMS/SMS) 정상 발송되었습니다.');
+        // 접수 ≠ 수신 완료 (실제 도달 여부는 팝빌 전송내역에서 확인)
+        if (res.channel === 'lms_fallback' || res.channel === 'sms_fallback') {
+          toast.success('알림톡이 접수되지 않아 문자(LMS/SMS)로 대체 접수했습니다.');
         } else {
-          toast.success('카카오 알림톡이 정상 발송되었습니다!');
+          toast.success('카카오 알림톡 발송을 접수했습니다. 수신 여부는 팝빌 전송내역에서 확인하세요.');
         }
         fetchLogs();
       } else {
@@ -163,7 +162,7 @@ export default function AlimtalkControlCenter() {
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                 : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
             }`}>
-              {status?.configured ? '🟢 팝빌 실발송 모드 활성' : '🟡 팝빌 연동 준비 모드 (모의 발송)'}
+              {status?.configured ? '팝빌 키 설정됨 (실발송)' : '팝빌 미설정 — 발송되지 않음'}
             </span>
           </div>
           <p className="text-xs md:text-sm text-slate-300">
@@ -177,7 +176,7 @@ export default function AlimtalkControlCenter() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white transition-all cursor-pointer border border-white/10"
           >
             <HelpCircle className="w-4 h-4 text-amber-400" />
-            <span>내일 실연동 가이드</span>
+            <span>연동 설정 안내</span>
           </button>
           <button
             onClick={() => { fetchStatus(); fetchLogs(); }}
@@ -195,10 +194,10 @@ export default function AlimtalkControlCenter() {
         <div className="bg-amber-950/30 border border-amber-500/40 p-5 rounded-2xl space-y-3 text-xs text-amber-200 animate-fadeIn">
           <div className="flex items-center gap-2 font-extrabold text-sm text-amber-300">
             <Sparkles className="w-4 h-4" />
-            <span>내일 팝빌 실제 연동 체크리스트 (5분 완료)</span>
+            <span>팝빌 연동 설정 항목</span>
           </div>
           <p className="text-slate-300 leading-relaxed">
-            코드 배포는 완벽하게 완료되었습니다! 내일 팝빌 관리자 콘솔에서 발급받은 계정 정보를 Vercel 환경변수(Environment Variables)에 등록하시면 <strong>코드 수정 없이 즉시 100% 실발송</strong>으로 자동 전환됩니다.
+            아래 값을 Vercel 환경변수에 등록하면 실발송으로 전환됩니다. 카카오 채널 연결, 발신번호 사전등록, 템플릿 심사 승인은 팝빌 콘솔에서 별도로 끝내야 합니다.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#0B0F17] p-4 rounded-xl border border-amber-500/20 font-mono text-[11px] text-slate-300">
             <div>
@@ -211,7 +210,7 @@ export default function AlimtalkControlCenter() {
             </div>
             <div>
               <span className="text-amber-400 font-bold block mb-1">필수 환경변수 3: POPBILL_CORP_NUM</span>
-              <code>5213901355 (하이픈 없는 사업자번호)</code>
+              <code>하이픈 없는 사업자등록번호 10자리</code>
             </div>
             <div>
               <span className="text-amber-400 font-bold block mb-1">필수 환경변수 4: POPBILL_SENDER_PHONE</span>
@@ -231,12 +230,16 @@ export default function AlimtalkControlCenter() {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-white">
-              {(status?.balance || 0).toLocaleString()}
+              {typeof status?.balance === 'number' ? status.balance.toLocaleString() : '—'}
             </span>
-            <span className="text-xs text-slate-400 font-medium">P</span>
+            {typeof status?.balance === 'number' && <span className="text-xs text-slate-400 font-medium">P</span>}
           </div>
-          <p className="text-[11px] text-slate-500">
-            알림톡 약 {Math.floor((status?.balance || 0) / 8.5).toLocaleString()}건 발송 가능
+          <p className="text-xs text-slate-400">
+            {!status?.configured
+              ? '팝빌 미설정'
+              : typeof status?.balance === 'number'
+                ? '건당 단가는 팝빌 요금제에 따라 다릅니다'
+                : `조회 실패${(status as any)?.balanceError ? `: ${(status as any).balanceError}` : ''}`}
           </p>
         </div>
 
@@ -248,12 +251,12 @@ export default function AlimtalkControlCenter() {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-base font-black text-white">
-              {status?.plusFriendId || '@mykim'}
+              {status?.plusFriendId || '미설정'}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>비즈니스 채널 연동 규격</span>
+          <div className={`flex items-center gap-1.5 text-xs font-bold ${status?.channelStatus === 'CONNECTED' ? 'text-emerald-400' : 'text-amber-300'}`}>
+            {status?.channelStatus === 'CONNECTED' && <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />}
+            <span>{status?.channelStatus === 'CONNECTED' ? '팝빌에서 채널 조회됨' : status?.configured ? '채널 조회되지 않음' : '팝빌 미설정'}</span>
           </div>
         </div>
 
@@ -265,11 +268,13 @@ export default function AlimtalkControlCenter() {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-base font-black text-white">
-              {status?.senderPhone || '1544-0000'}
+              {status?.senderPhone || '미설정'}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">
-            전기통신사업법 사전등록 승인
+          <p className="text-xs text-slate-400">
+            {Array.isArray((status as any)?.senders) && (status as any).senders.length > 0
+              ? `팝빌 등록 발신번호 ${(status as any).senders.length}개 조회됨`
+              : '팝빌 등록 발신번호 조회 결과 없음'}
           </p>
         </div>
 
@@ -280,15 +285,47 @@ export default function AlimtalkControlCenter() {
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-emerald-400">
-              100% 무중단 보장
+            <span className="text-lg font-black text-emerald-400">
+              사용 (대체문자 C)
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">
-            카톡 미수신 시 문자로 즉시 전환
+          <p className="text-xs text-slate-400">
+            알림톡 접수 실패 시 문자로 대체 접수 · 문자도 실패할 수 있음
           </p>
         </div>
       </div>
+
+      {/* ── 2-1. 팝빌 등록 템플릿 (서버 조회값) ── */}
+      {status?.configured && (
+        <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B] space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-extrabold text-white">팝빌 등록 템플릿</h3>
+            {(status as any)?.templateMgtUrl && (
+              <a
+                href={(status as any).templateMgtUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-indigo-300 hover:underline whitespace-nowrap"
+              >
+                팝빌에서 심사·관리 (새 창)
+              </a>
+            )}
+          </div>
+          {Array.isArray((status as any)?.templates) && (status as any).templates.length > 0 ? (
+            <ul className="divide-y divide-[#1E293B] text-sm">
+              {((status as any).templates as any[]).slice(0, 30).map((t, i) => (
+                <li key={t.templateCode || i} className="py-2 flex items-center justify-between gap-3">
+                  <span className="text-slate-200 truncate">{t.templateName || t.templateCode}</span>
+                  <span className="text-xs font-mono text-slate-400 shrink-0">{t.templateCode}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-400">조회된 템플릿이 없습니다. 팝빌에 등록·승인된 템플릿이 없으면 알림톡 대신 문자로 대체 발송됩니다.</p>
+          )}
+          <p className="text-xs text-slate-400">팝빌 목록 조회는 승인된 템플릿만 반환합니다. 심사 진행 상태는 팝빌 관리 화면에서 확인하세요.</p>
+        </div>
+      )}
 
       {/* ── 3. 실시간 알림톡 테스트 발송기 (관리자 전용) ── */}
       <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B] space-y-4">
@@ -303,7 +340,7 @@ export default function AlimtalkControlCenter() {
             </div>
           </div>
           <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-            비용: 알림톡 8.5원 / 대체문자 LMS 33원
+            실제 발송되며 팝빌 포인트가 차감됩니다
           </span>
         </div>
 

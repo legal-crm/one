@@ -29,7 +29,8 @@ export type AuditAction =
   | 'access_denied'
   | 'mfa_enrolled'
   | 'honeypot_attempt'
-  | 'revoke_auth_sessions';
+  | 'revoke_auth_sessions'
+  | 'member_activity';
 
 export type ActorRole = 'admin' | 'lawyer' | 'client' | 'system' | 'anonymous';
 

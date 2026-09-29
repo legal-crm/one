@@ -894,62 +894,92 @@ export function formatMoney(amount: number | undefined): string {
 }
 
 /** 소프트 삭제 (deletedAt 설정) */
-export async function softDeleteCrmClient(clientId: string): Promise<void> {
+/** 휴지통 보관 기간 */
+export const RECYCLE_BIN_RETENTION_DAYS = 30;
+
+/**
+ * 소프트 삭제 (deletedAt 설정)
+ * @returns serverOk — 서버 반영 여부 (Supabase 미설정이면 true). RLS에 막혀 0행이면 false.
+ */
+export async function softDeleteCrmClient(clientId: string): Promise<{ serverOk: boolean }> {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   const ext = store[clientId];
-  if (!ext) return;
+  if (!ext) return { serverOk: false };
   ext.deletedAt = new Date().toISOString();
   store[clientId] = ext;
   setLocalData(CRM_STORAGE_KEY, store);
 
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('crm_clients').update({
-        deleted_at: ext.deletedAt,
-        updated_at: new Date().toISOString(),
-      }).eq('client_id', clientId);
-    } catch (e) {
-      console.warn('[CRM] Supabase soft delete failed', e);
-    }
+  if (!isSupabaseConfigured) return { serverOk: true };
+  try {
+    const { data, error } = await supabase.from('crm_clients').update({
+      deleted_at: ext.deletedAt,
+      updated_at: new Date().toISOString(),
+    }).eq('client_id', clientId).select('client_id');
+    // 이전: 반환 오류를 확인하지 않아 서버 실패가 조용히 묻혔음
+    if (error) { console.warn('[CRM] 서버 휴지통 이동 실패:', error.message); return { serverOk: false }; }
+    return { serverOk: (data || []).length > 0 };
+  } catch (e) {
+    console.warn('[CRM] Supabase soft delete failed', e);
+    return { serverOk: false };
   }
 }
 
-/** 소프트 삭제 복원 */
-export async function restoreCrmClient(clientId: string): Promise<void> {
+/** 소프트 삭제 복원 — 삭제 전 진행 단계를 유지 (이전: 항상 '요청 대기'로 초기화) */
+export async function restoreCrmClient(clientId: string): Promise<{ serverOk: boolean }> {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   const ext = store[clientId];
-  if (!ext) return;
+  if (!ext) return { serverOk: false };
   delete ext.deletedAt;
-  ext.crmStatus = 'requested';
   store[clientId] = ext;
   setLocalData(CRM_STORAGE_KEY, store);
 
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('crm_clients').update({
-        deleted_at: null,
-        crm_status: 'requested',
-        updated_at: new Date().toISOString(),
-      }).eq('client_id', clientId);
-    } catch (e) {
-      console.warn('[CRM] Supabase restore failed', e);
-    }
+  if (!isSupabaseConfigured) return { serverOk: true };
+  try {
+    const { data, error } = await supabase.from('crm_clients').update({
+      deleted_at: null,
+      updated_at: new Date().toISOString(),
+    }).eq('client_id', clientId).select('client_id');
+    if (error) { console.warn('[CRM] 서버 복원 실패:', error.message); return { serverOk: false }; }
+    return { serverOk: (data || []).length > 0 };
+  } catch (e) {
+    console.warn('[CRM] Supabase restore failed', e);
+    return { serverOk: false };
   }
 }
 
-/** 휴지통 자동 정리 — 30일 경과 건 영구 삭제, 삭제 건수 반환 */
-export function cleanupRecycleBin(): number {
+/**
+ * 휴지통 정리 — 보관 기간이 지난 건을 이 브라우저와 서버(본인 권한 범위, RLS)에서 영구 삭제
+ * (이전: 이 브라우저 저장소에서만 지워 서버 행은 영구 보관됐는데 화면에는 '30일 후 자동 영구 삭제'로 안내)
+ */
+export async function cleanupRecycleBin(): Promise<{ localDeleted: number; serverDeleted: number; serverError?: string }> {
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  let deletedCount = 0;
+  const cutoffMs = Date.now() - RECYCLE_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  let localDeleted = 0;
   for (const [id, ext] of Object.entries(store)) {
-    if (ext.deletedAt && new Date(ext.deletedAt).getTime() < cutoff) {
+    if (ext.deletedAt && new Date(ext.deletedAt).getTime() < cutoffMs) {
       delete store[id];
-      deletedCount++;
+      localDeleted++;
     }
   }
-  if (deletedCount > 0) setLocalData(CRM_STORAGE_KEY, store);
-  return deletedCount;
+  if (localDeleted > 0) setLocalData(CRM_STORAGE_KEY, store);
+
+  let serverDeleted = 0;
+  let serverError: string | undefined;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('crm_clients')
+        .delete()
+        .not('deleted_at', 'is', null)
+        .lt('deleted_at', new Date(cutoffMs).toISOString())
+        .select('client_id');
+      if (error) serverError = error.message;
+      else serverDeleted = (data || []).length;
+    } catch (e) {
+      serverError = e instanceof Error ? e.message : '서버 정리 실패';
+    }
+  }
+  return { localDeleted, serverDeleted, serverError };
 }
 
 // ============================================================

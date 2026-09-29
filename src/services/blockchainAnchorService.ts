@@ -186,12 +186,14 @@ export async function anchorContractToBlockchain(
     if (response.ok) {
       const data = await response.json();
       if (data.ok) {
+        const onChain = Boolean(data.isRealOnChain);
         return {
           network: data.network || (isMainnet ? DEFAULT_MAINNET_NAME : DEFAULT_NETWORK_NAME),
           txHash: data.txHash,
-          blockNumber: data.blockNumber,
+          // 온체인이 아니면 블록 번호·탐색기 링크를 저장하지 않음 (존재하지 않는 tx로 오인 방지)
+          blockNumber: onChain ? data.blockNumber : undefined,
           anchoredAt: data.anchoredAt || new Date().toISOString(),
-          explorerUrl: data.explorerUrl || `${explorerBase}/tx/${data.txHash}`,
+          explorerUrl: onChain ? (data.explorerUrl || `${explorerBase}/tx/${data.txHash}`) : undefined,
           verifyUrl,
           contractHash: finalHash,
           smartContractAddress: data.notaryContract || notaryContract,
@@ -204,21 +206,19 @@ export async function anchorContractToBlockchain(
     console.warn('[BlockchainAnchor] 서버 릴레이어 호출 실패 -> 로컬 암호학적 다이제스트 폴백 적용:', err);
   }
 
-  // 2. 오프라인/로컬 환경용 무중단 암호학적 타임스탬프 각인 (안전망)
+  // 2. 서버 호출 실패 시: 온체인 기록 없이 로컬 다이제스트만 보관
+  // (이전: 고정 기준값 + 해시로 만든 가짜 블록 번호와 존재하지 않는 tx의 PolygonScan 링크를 저장)
   const now = new Date();
   const txSeed = `POLYGON::${notaryContract}::HASH:${finalHash}::CID:${contract.id}::TIME:${now.toISOString()}`;
   const txRaw = await calculateSha256(txSeed);
   const txHash = `0x${txRaw}`;
-  const baseBlock = isMainnet ? 68900000 : 46945000;
-  const pseudoRandomOffset = Math.abs(parseInt(txRaw.slice(0, 6), 16) % 9999);
-  const blockNumber = baseBlock + pseudoRandomOffset;
 
   return {
     network: isMainnet ? DEFAULT_MAINNET_NAME : DEFAULT_NETWORK_NAME,
     txHash,
-    blockNumber,
+    blockNumber: undefined,
     anchoredAt: now.toISOString(),
-    explorerUrl: `${explorerBase}/tx/${txHash}`,
+    explorerUrl: undefined,
     verifyUrl,
     contractHash: finalHash,
     smartContractAddress: notaryContract,
@@ -266,7 +266,7 @@ export async function verifyTxOnChain(txHash: string, documentHash?: string): Pr
 
   return {
     verifiedOnChain: false,
-    statusText: '암호학적 타임스탬프 서명 일치 (오프체인 보관)',
+    statusText: '온체인 검증을 하지 못했습니다 (서버 응답 없음)',
   };
 }
 
@@ -327,9 +327,10 @@ export function verifyContractBlockchainAnchor(
   return {
     isValid: true,
     isAnchored: true,
-    statusText: anchor.isRealOnChain 
-      ? '✅ Polygon 온체인 실시간 검증 완료: 분산원장 무결성 일치' 
-      : '✅ 블록체인 암호학적 원본 검증 성공: 문서 위·변조 없음 (100% 무결성)',
+    // 저장된 두 해시를 비교한 결과일 뿐 온체인 조회가 아님 (온체인 확인은 verifyTxOnChain)
+    statusText: anchor.isRealOnChain
+      ? '저장된 해시 일치 · 온체인 기록 있음 (온체인 대조는 별도 조회)'
+      : '저장된 해시 일치 · 온체인 기록 없음 (서버 보관 다이제스트)',
     txHash: anchor.txHash,
     blockNumber: anchor.blockNumber,
     anchoredAt: anchor.anchoredAt,

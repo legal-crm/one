@@ -140,10 +140,10 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
     }
 
     if (syncRole === 'admin') {
-      const payload = await Promise.all(changed.map(requestToRow));
-      const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
-      if (error) logSupabaseError('syncRequestsToDb(admin)', error);
-      else markSynced(changed);
+      // [PART 3-3] 관리자는 행 전체 upsert를 하지 않는다.
+      // (이전: 바뀐 행 전체를 덮어써 관리자가 불러온 뒤 의뢰인·변호사가 바꾼 제안서·상태가 사라질 수 있었음)
+      // 관리자 변경은 컬럼 단위 RPC(adminSetConsultStatus/Hidden/Reopen, 023)로만 서버에 반영한다.
+      markSynced(changed);
       return;
     }
 
@@ -205,6 +205,8 @@ async function rowToRequest(row: any): Promise<ConsultRequest> {
     ...(row.created_by_lawyer_id ? { createdByLawyerId: row.created_by_lawyer_id } : {}),
     // 변호사 마스킹 뷰: 계약 체결(또는 본인 등록) 건만 실제 연락처가 내려옴
     ...(row.contact_visible === true ? { contactDisclosureStatus: 'contact_shared' as const } : {}),
+    // 023 관리자 숨김 (관리자 조회에만 존재 — 변호사 뷰에는 숨김 행이 내려오지 않음)
+    ...(row.admin_hidden === true ? { adminHidden: true, adminHiddenReason: row.admin_hidden_reason || undefined } : {}),
   };
 }
 
@@ -274,6 +276,38 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
       return false;
     })
     .filter(r => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
+}
+
+// ── 관리자 전용 RPC (023, is_platform_admin: role=admin AND aal2) ──
+type AdminRpcResult = { ok: true; status: string } | { ok: false; error: string };
+
+async function callAdminConsultRpc(fn: string, args: Record<string, unknown>): Promise<AdminRpcResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: '서버가 설정되지 않아 반영할 수 없습니다.' };
+  try {
+    const { data, error } = await supabase.rpc(fn, args);
+    if (error) {
+      const msg = /admin only|42501/i.test(error.message) ? '관리자(2단계 인증 완료) 권한이 필요합니다.' : error.message;
+      return { ok: false, error: msg };
+    }
+    return { ok: true, status: String(data ?? '') };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : '서버 요청에 실패했습니다.' };
+  }
+}
+
+/** 관리자: 상태 변경 (상태 컬럼만, 서버 감사 기록) */
+export function adminSetConsultStatus(id: string, status: ConsultRequest['status']) {
+  return callAdminConsultRpc('admin_set_consult_status', { p_id: id, p_status: status });
+}
+
+/** 관리자: 스팸 숨김/해제 (원문 보존, 이전 상태 복원) */
+export function adminSetConsultHidden(id: string, hidden: boolean, reason?: string) {
+  return callAdminConsultRpc('admin_set_consult_hidden', { p_id: id, p_hidden: hidden, p_reason: reason || null });
+}
+
+/** 관리자: 장기 미응답 요청을 오픈 매칭으로 재공개 */
+export function adminReopenStaleConsult(id: string, reason?: string) {
+  return callAdminConsultRpc('admin_reopen_stale_consult', { p_id: id, p_reason: reason || null });
 }
 
 export async function saveConsultRequest(request: ConsultRequest): Promise<void> {
