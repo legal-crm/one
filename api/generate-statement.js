@@ -4,8 +4,11 @@
 import { handleCorsPreflight } from './_lib/cors-helper.js';
 import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
-import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { withMultiTierRateLimit, checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 import { handleIndexNow } from './_lib/indexnow.js';
+import * as mk from './_lib/marketing-engine.js';
+import { textModels } from './_lib/marketing-engine.js';
+import { fixCompliance, scanCompliance } from './_lib/marketing-compliance.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -60,24 +63,124 @@ async function handleMarketing(req, res) {
   const theme = clipText(req.body?.theme, 60);
   if (!topic) return res.status(400).json({ ok: false, error: '주제를 입력해 주세요.' });
 
+  // gemini-2.5 계열은 2026-10 종료 예정 → 모델 목록(MARKETING_TEXT_MODELS)을 순서대로 시도
+  const deadline = Date.now() + 52000;
+  let lastError = 'AI 생성에 실패했습니다.';
+  for (const model of textModels()) {
+    const remaining = deadline - Date.now();
+    if (remaining < 6000) break;
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: buildMarketingPrompt(topic, theme) }] }],
+          generationConfig: { temperature: 0.4, response_mime_type: 'application/json' },
+        }),
+        signal: AbortSignal.timeout(Math.min(45000, remaining - 1000)),
+      });
+      if (!r.ok) { lastError = `AI 응답 오류 (${r.status})`; continue; }
+      const data = await r.json();
+      const rawText = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+      const clean = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(clean);
+      // 규칙 기반 검사 결과를 함께 돌려준다 (자동 치환 가능한 표현은 치환)
+      if (typeof parsed.fullBody === 'string') parsed.fullBody = fixCompliance(parsed.fullBody).text;
+      const compliance = scanCompliance(`${parsed.title || ''}\n${parsed.fullBody || ''}`, { skipDisclaimerCheck: true });
+      return res.status(200).json({ ok: true, content: parsed, model, compliance });
+    } catch (e) {
+      lastError = 'AI 생성에 실패했습니다.';
+    }
+  }
+  return res.status(200).json({ ok: false, error: lastError });
+}
+
+// ─────────────────────────────────────────────────────────────
+// 데일리 오토파일럿 (mode: 'mk-*') — 관리자(2단계 인증) 전용
+//   엔진: api/_lib/marketing-engine.js
+// ─────────────────────────────────────────────────────────────
+const MK_MODES = new Set(['mk-status', 'mk-news', 'mk-context', 'mk-generate', 'mk-save', 'mk-list', 'mk-get', 'mk-update', 'mk-publish', 'mk-image', 'mk-tts', 'mk-stats']);
+
+async function handleAutopilot(req, res) {
+  let user = null;
+  try { user = await verifyAuth(req); } catch (_) { user = null; }
+  if (!user || !isAdminWithMfa(req, user)) {
+    return res.status(403).json({ ok: false, error: '관리자(2단계 인증 완료)만 사용할 수 있습니다.' });
+  }
+  const b = req.body || {};
+  const deadline = Date.now() + 54000;
   try {
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildMarketingPrompt(topic, theme) }] }],
-        generationConfig: { temperature: 0.4, response_mime_type: 'application/json' },
-      }),
-      signal: AbortSignal.timeout(45000),
-    });
-    if (!r.ok) return res.status(200).json({ ok: false, error: `AI 응답 오류 (${r.status})` });
-    const data = await r.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-    const parsed = JSON.parse(clean);
-    return res.status(200).json({ ok: true, content: parsed });
+    switch (b.mode) {
+      case 'mk-status':
+        return res.status(200).json({ ok: true, status: mk.aiKeyStatus(), today: mk.kstToday(), themes: mk.ROTATION_THEMES, schedule: mk.GOLDEN_SCHEDULE });
+      case 'mk-news': {
+        const today = mk.kstToday();
+        const theme = mk.themeByCode(b.themeCode) || mk.themeForDay(today.dayOfWeek);
+        const candidates = await mk.collectNews(theme);
+        return res.status(200).json({ ok: true, theme, candidates });
+      }
+      case 'mk-context': {
+        // 뉴스 선정 + 팩트 추출 + 3단 문장. manualTopic 이 있으면 뉴스 대신 사용
+        if (typeof b.manualTopic === 'string' && b.manualTopic.trim()) {
+          return res.status(200).json({ ok: true, ctx: mk.manualContext({ topic: clipText(b.manualTopic, 200), facts: b.manualFacts, themeCode: b.themeCode }) });
+        }
+        const candidates = Array.isArray(b.candidates) ? b.candidates.slice(0, 10).map(c => mk.sanitizeContext({ news: c }).news).filter(c => c.title) : undefined;
+        const { ctx, candidates: used, editorModel } = await mk.buildDailyContext({
+          themeCode: b.themeCode, candidates, deadline,
+          selectedIndex: Number.isInteger(b.selectedIndex) ? b.selectedIndex : undefined,
+        });
+        return res.status(200).json({ ok: true, ctx, candidates: used, model: editorModel });
+      }
+      case 'mk-generate': {
+        if (!mk.GROUP_NAMES.includes(b.group)) return res.status(400).json({ ok: false, error: '채널 그룹이 올바르지 않습니다.' });
+        const ctx = mk.sanitizeContext(b.ctx);
+        if (!ctx.news.title) return res.status(400).json({ ok: false, error: '오늘의 뉴스(주제)가 없습니다.' });
+        const out = await mk.generateGroup(b.group, ctx, deadline);
+        return res.status(200).json({ ok: true, ...out });
+      }
+      case 'mk-save': {
+        const ctx = mk.sanitizeContext(b.ctx);
+        if (!b.channels || typeof b.channels !== 'object') return res.status(400).json({ ok: false, error: '저장할 콘텐츠가 없습니다.' });
+        if (JSON.stringify(b.channels).length > 400000) return res.status(413).json({ ok: false, error: '콘텐츠가 너무 큽니다.' });
+        const saved = await mk.saveCampaign({ ctx, channels: b.channels, candidates: b.candidates, models: b.models, source: 'manual', userId: user.id });
+        return res.status(200).json({ ok: true, ...saved });
+      }
+      case 'mk-list':
+        return res.status(200).json({ ok: true, campaigns: await mk.listCampaigns(clipText(b.month, 7)) });
+      case 'mk-get':
+        return res.status(200).json({ ok: true, campaign: await mk.getCampaign({ id: clipText(b.id, 40), date: clipText(b.date, 10) }) });
+      case 'mk-update':
+        return res.status(200).json({ ok: true, campaign: await mk.updateCampaign({ id: clipText(b.id, 40), status: b.status, channels: b.channels, userId: user.id }) });
+      case 'mk-publish':
+        return res.status(200).json({ ok: true, post: await mk.publishChannel({ campaignId: clipText(b.id, 40), channel: clipText(b.channel, 20), manualUrl: typeof b.manualUrl === 'string' ? clipText(b.manualUrl, 600) : undefined, userId: user.id }) });
+      case 'mk-image':
+        return res.status(200).json({ ok: true, ...(await mk.generateImage(clipText(b.prompt, 900), b.aspectRatio, deadline)) });
+      case 'mk-tts':
+        return res.status(200).json({ ok: true, ...(await mk.generateSpeech(typeof b.text === 'string' ? b.text : '', b.voice, deadline)) });
+      case 'mk-stats':
+        return res.status(200).json({ ok: true, ...(await mk.marketingStats(90)) });
+      default:
+        return res.status(400).json({ ok: false, error: '알 수 없는 요청입니다.' });
+    }
   } catch (e) {
-    return res.status(200).json({ ok: false, error: 'AI 생성에 실패했습니다.' });
+    const status = Number.isInteger(e?.status) && e.status >= 400 && e.status < 600 ? e.status : 500;
+    console.warn(`[marketing] ${b.mode} failed:`, e?.message);
+    return res.status(status).json({ ok: false, error: e?.message || '처리에 실패했습니다.' });
+  }
+}
+
+/** Vercel Cron (GET, Authorization: Bearer CRON_SECRET) — 매일 아침 캠페인 초안 생성. 게시는 관리자 승인 후 */
+async function handleMarketingCron(req, res) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  try {
+    const result = await mk.runDailyAutopilot({ deadline: Date.now() + 55000 });
+    return res.status(200).json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[marketing-cron] failed:', e?.message);
+    return res.status(500).json({ ok: false, error: e?.message || 'cron failed' });
   }
 }
 
@@ -157,12 +260,19 @@ async function handleCallSummary(req, res) {
 async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;
 
+  if (req.method === 'GET' && req.query?.cron === 'marketing-daily') {
+    return handleMarketingCron(req, res);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
   if (req.body?.mode === 'marketing' || req.body?.mode === 'marketing-ping') {
     return handleMarketing(req, res);
+  }
+  if (MK_MODES.has(req.body?.mode)) {
+    return handleAutopilot(req, res);
   }
   if (req.body?.mode === 'call-summary') {
     return handleCallSummary(req, res);
@@ -392,4 +502,21 @@ ${hasInterviewAnswers ? `
 
 // [SECURITY] STANDARD 다단계 Rate Limiter 래핑
 // Gemini 2.5 Flash 진술서 생성 — 건당 ~3원, 반복 생성 방지
-export default withMultiTierRateLimit(handler, RATE_LIMIT_TIERS.STANDARD);
+// 마케팅 오토파일럿(mk-*)은 한 번 생성에 여러 요청(뉴스·3개 채널 그룹·이미지·음성)이 필요해
+// 진술서 API와 별도 버킷(RELAXED)을 쓴다. 관리자(2단계 인증) 확인은 handleAutopilot 에서 한다.
+const standardHandler = withMultiTierRateLimit(handler, RATE_LIMIT_TIERS.STANDARD);
+
+export default async function rateLimitedHandler(req, res) {
+  if (req.method === 'POST' && MK_MODES.has(req.body?.mode)) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+    const limit = checkMultiTierRateLimit(`${ip}:marketing-autopilot`, RATE_LIMIT_TIERS.RELAXED);
+    if (limit.isLimited) {
+      if (limit.retryAfter > 0) res.setHeader('Retry-After', limit.retryAfter);
+      return res.status(429).json({ ok: false, error: `요청이 너무 많습니다. ${Math.ceil(limit.retryAfter / 60)}분 후 다시 시도하세요.` });
+    }
+    if (handleCorsPreflight(req, res)) return;
+    return handleAutopilot(req, res);
+  }
+  return standardHandler(req, res);
+}

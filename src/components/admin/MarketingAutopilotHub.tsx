@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, testMarketingAiConnection, BlogContentData, BlogImageItem, injectPollinationsUrls, ImageSourceType, generatePollinationsUrl } from '../../services/marketingAiService';
+import DailyAutopilotPanel from './marketing/DailyAutopilotPanel';
+import { AutopilotCalendar, AutopilotAnalytics, AutopilotKeyStatus } from './marketing/AutopilotInsights';
 
 // --- 6대 채널별 전문 콘텐츠 데이터 ---
 const CHANNEL_FULL_CONTENTS: Record<string, {
@@ -54,10 +56,10 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 (사설 DB 수집 vs 마이김변 스텔스 가명 비교 도표)
 
 ■ 2. 마이김변의 혁신 1: 010 번호 비공개 '스텔스 가명' 시스템
-마이김변(my김변)은 국내 최초로 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다.
+마이김변(my김변)은 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다.
 - 번호 비공개 상담: 내가 원할 때만, 안전한 인앱 안심 채팅으로 소통
-- 변호사 직접 탐색: 법조 경력, 승소 후기, 전문 분야를 투명하게 직접 확인 후 복수 지정
-- 역경매가 아닌 '고객 주도형 다중 안심 상담': 변호사법 제34조를 완벽히 준수하며 가격 덤핑 없이 정당한 실력으로 승부
+- 변호사 직접 탐색: 법조 경력, 이용 후기, 주요 업무 분야를 투명하게 직접 확인 후 복수 지정
+- 고객 주도형 선택: 플랫폼이 변호사를 배정하지 않고, 의뢰인이 정보를 확인한 뒤 직접 고릅니다
 
 [📷 이미지 3: 본문 삽입 UI 목업 #2]
 (스마트폰으로 30분 만에 끝내는 AI 음성 진술서 & 서류 원스톱 패키징)
@@ -119,7 +121,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
         insertPosition: "본문 최하단 (결론 및 면책 공지 직전)",
         prompt: "A high-conversion horizontal banner with glowing emerald CTA button '안심 가명 상담 신청', sleek dark background with golden shield badge, professional fintech look",
         previewGradient: "from-emerald-950 via-slate-900 to-indigo-950",
-        previewTitle: "내게 맞는 도산 전문 변호사 찾기",
+        previewTitle: "내게 맞는 도산 사건 경험 변호사 찾기",
         previewSub: "010 번호 노출 없이 변호사 프로필 확인 후 안심 상담받으세요",
         tag: "전환 CTA 배너"
       }
@@ -136,40 +138,40 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
     title: "이자 갚다 지쳤다면 딱 3초만 집중 (심리스 무한 루프 35초)",
     badge: "유튜브 쇼츠 / 9:16 세로 숏폼 (E-A-Q-R 후킹)",
     format: "세로 1080x1920 MP4 비디오 (키네틱 자막 + 심리스 무한 루프 연출)",
-    summary: "인사말('안녕하세요')을 배제하고 첫 3초 E-A-Q-R 훅으로 이탈을 막은 뒤, 영상의 마지막 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop)로 시청지속시간 100%+를 유도합니다.",
+    summary: "인사말('안녕하세요')을 배제하고 첫 3초 E-A-Q-R 훅으로 이탈을 막은 뒤, 영상의 마지막 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop)로 반복 시청을 유도합니다.",
     fullBody: `[00~03초: E-A-Q-R 3초 훅 (인사말 없이 즉시 시작)]
-(화면 연출: 화면 가득 부재중 전화 30통 알림이 쏟아지는 긴박한 줌인 효과, 인사말 배제)
+(화면 연출: 화면 가득 부재중 전화 알림이 쏟아지는 긴박한 줌인 효과, 인사말 배제)
 성우 나레이션: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요."
 
 [04~15초: 공감 & 딜레마 폭로]
 (화면 연출: 포털 검색창에 번호 적으려다 멈칫하는 실루엣 + 쏟아지는 스팸 알림)
-성우 나레이션: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 100통 쏟아질까 봐 겁나시죠?"
+성우 나레이션: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화가 쏟아질까 봐 겁나시죠?"
 
 [16~27초: 솔루션 (마이김변 스텔스 가명)]
 (화면 연출: 마이김변 앱에서 '스텔스 가명' 켜지며 실시간 변호사 프로필 3명 터치)
-성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다."
+성우 나레이션: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 여러 변호사에게 동시에 안심 견적을 받아볼 수 있습니다."
 
 [28~35초: 심리스 루프(Seamless Loop) & 고정 댓글 CTA]
 (화면 연출: 고정 댓글 화살표 펄스 애니메이션 후, 첫 장면의 질문으로 자연스럽게 이어지는 문장 아웃트로)
-성우 나레이션: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 완전히 벗어나는 비결은 바로,"
+성우 나레이션: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 벗어나는 첫걸음은 바로,"
 ➔ (영상 첫 문장 "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요."로 끊김 없이 무한 루프 연결)`,
     cueSheet: [
-      { time: "00~03초", action: "부재중 전화 30통 폭탄 모션 + 줌인 (인사말 없음)", script: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요." },
-      { time: "04~15초", action: "포털 번호 입력 망설이는 인물 + 스팸 경고음", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화 100통 쏟아질까 봐 겁나시죠?" },
-      { time: "16~27초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 3명 터치", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 전문 변호사 3명에게 동시에 안심 견적을 받아볼 수 있습니다." },
-      { time: "28~35초", action: "고정 댓글 강조 + 루프 브릿지 문장으로 첫 장면 연결", script: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 완전히 벗어나는 비결은 바로," }
+      { time: "00~03초", action: "부재중 전화 알림 모션 + 줌인 (인사말 없음)", script: "매달 이자 내고 통장 잔고 0원 찍히나요? 딱 30초만 집중하세요." },
+      { time: "04~15초", action: "포털 번호 입력 망설이는 인물 + 스팸 경고음", script: "회생 상담 한번 받아보려 해도, 번호 남겼다가 사방에서 영업 전화가 쏟아질까 봐 겁나시죠?" },
+      { time: "16~27초", action: "마이김변 스텔스 가명 쉴드 UI + 변호사 3명 터치", script: "이제 010 번호 숨기고 시작하세요! 마이김변에서는 내 번호 비공개로 여러 변호사에게 동시에 안심 견적을 받아볼 수 있습니다." },
+      { time: "28~35초", action: "고정 댓글 강조 + 루프 브릿지 문장으로 첫 장면 연결", script: "고정 댓글에서 010 번호 없이 가명으로 견적 받는 법을 확인하세요. 매달 돌아오는 이자 독촉에서 벗어나는 첫걸음은 바로," }
     ],
     visualPrompt: "Cinematic vertical 9:16 shot, modern dark neon Korean legal office, stressed person looking at smartphone with glowing shield UI, 8k resolution, dramatic lighting",
     hashtags: ["#개인회생", "#빚독촉", "#스텔스보증", "#유튜브쇼츠", "#마이김변", "#채무탕감"],
     specs: [
       { label: "영상 길이", value: "35초 (완독률 최적화)" },
       { label: "후킹 구조", value: "HF-3 / E-A-Q-R 첫 3초 예측 붕괴 (인사말 절대 금지)" },
-      { label: "알고리즘 공략", value: "심리스 루프 (Seamless Loop) 설계로 시청지속시간 100%+ 달성" },
+      { label: "알고리즘 공략", value: "심리스 루프 (Seamless Loop) 설계로 반복 시청 유도" },
       { label: "전환 장치", value: "영상 내 고정 댓글(Pinned Comment) 링크 유도" }
     ]
   },
   cardnews: {
-    title: "빚 5천만원 넘어가면 무조건 확인해야 하는 3가지 (10장 황금 캐러셀)",
+    title: "빚 5천만원 넘어가면 꼭 확인해 볼 3가지 (10장 황금 캐러셀)",
     badge: "인스타그램 카드뉴스 (10장 캐러셀)",
     format: "1080x1080 정방형 PNG 캐러셀 (1슬라이드 1메시지 + 저장/공유 유도)",
     summary: "인스타그램 최신 알고리즘 가중치(저장/공유)를 정조준한 10장 황금 캐러셀입니다. 열린 고리(Open Loop) 기법으로 스와이프 완독률을 극대화합니다.",
@@ -190,12 +192,12 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 
 #마이김변 #개인회생 #개인파산 #신용회복 #빚탈출 #스텔스보증 #비대면법률`,
     slides: [
-      { page: 1, headline: "빚 5,000만원 넘어가면 무조건 확인해야 하는 3가지", subtext: "원금은 그대로고 이자만 나가고 있다면 필독 (옆으로 넘겨보기 ➔)", visualDesc: "어두운 밤 계산기와 영수증을 바라보는 고대비 타이포그래피 표지" },
+      { page: 1, headline: "빚 5,000만원 넘어가면 꼭 확인해 볼 3가지", subtext: "원금은 그대로고 이자만 나가고 있다면 필독 (옆으로 넘겨보기 ➔)", visualDesc: "어두운 밤 계산기와 영수증을 바라보는 고대비 타이포그래피 표지" },
       { page: 2, headline: "혹시 매달 '이자만' 갚고 계신가요?", subtext: "월급 받아서 대출 이자 내면 남는 돈 0원... 더 이상 버티기 어렵다면", visualDesc: "스마트폰 계좌 잔액 0원과 늘어나는 이자 그래프" },
       { page: 3, headline: "법적 구제 제도가 있지만 망설여지는 이유", subtext: "'인터넷에 상담 글 올렸더니 하루 종일 대출 스팸 전화가 와요'", visualDesc: "화면 위로 쏟아지는 붉은색 스팸 알림 아이콘들" },
       { page: 4, headline: "사설 브로커의 번호 장사 vs 안전한 해결책", subtext: "내 소중한 010 개인정보가 불법 유통되는 구조를 피해야 합니다", visualDesc: "사설 DB 유출 경로와 경고 그래픽" },
       { page: 5, headline: "첫 번째: 010 번호 비공개 '스텔스 가명'", subtext: "내 진짜 번호는 가리고, 안심 가명으로만 안전하게 상담 진행", visualDesc: "마이김변 보안 쉴드(Shield)와 가명 생성 인터페이스" },
-      { page: 6, headline: "두 번째: 변호사 직접 탐색 & 복수 안심 견적", subtext: "경력과 승소 사례를 투명하게 확인하고 마음에 드는 변호사를 직접 선택", visualDesc: "도산 전문 변호사 프로필 카드 3개 비교 화면" },
+      { page: 6, headline: "두 번째: 변호사 직접 탐색 & 복수 안심 견적", subtext: "경력과 이용 후기를 직접 확인하고 마음에 드는 변호사를 직접 선택", visualDesc: "도산 사건 경험 변호사 프로필 카드 3개 비교 화면" },
       { page: 7, headline: "세 번째: 40종 서류, 말로 쓰는 AI 음성 진술서", subtext: "동사무소 서류 지옥 탈출! 스마트폰으로 말만 하면 30분 패키징 완성", visualDesc: "음성 파형이 법원 표준 진술서로 자동 변환되는 UI" },
       { page: 8, headline: "핵심 요약: 번호 없이 시작하는 안심 회생", subtext: "혼자 앓지 말고 합법적 제도의 보호를 안전하게 받으세요", visualDesc: "3단계 체크리스트 정리 그래픽" },
       { page: 9, headline: "💡 주변에 이런 고민을 하는 동료가 있다면?", subtext: "주변 소문 걱정 없이 조용히 도움받을 수 있도록 이 글을 공유해 주세요", visualDesc: "공유(Share) 아이콘과 온기 있는 일러스트" },
@@ -225,7 +227,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 [2/4]
 근데 진짜 조심해야 하는 게 뭔지 알아?
 
-사설 상담소나 포털에 '무료 상담'이라고 번호 한 번 남기잖아?
+사설 상담소나 포털에 '상담 신청'이라고 번호 한 번 남기잖아?
 그 DB가 브로커들한테 넘어가서 하루 종일 대출 광고 전화에 시달리게 됨.
 
 정작 내가 신뢰할 수 있는 변호사는 얼굴도 못 보고,
@@ -235,8 +237,8 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 그래서 마이김변이 '010 번호 비공개' 스텔스 가명 시스템을 만든 거래.
 
 내 진짜 번호는 단 1글자도 넘기지 않고,
-검증된 도산 전문 변호사들 프로필이랑 승소 후기 직접 확인한 다음
-마음에 드는 변호사 3명한테 동시에 안심 견적을 받아볼 수 있음.
+변호사들 프로필이랑 이용 후기 직접 확인한 다음
+마음에 드는 변호사 여러 명한테 동시에 안심 견적을 받아볼 수 있음.
 
 진짜 010 번호 없이 가명으로만 소통하니까 번호를 먼저 알리지 않아도 돼.
 
@@ -272,7 +274,7 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
 
 🔒 마이김변 3대 안심 약속:
 1. 010 번호 비공개 — '스텔스 가명'으로 신분 철저 보호 (번호 비공개 상담)
-2. 검증된 도산 전문 변호사 직접 탐색 & 투명한 다중 견적
+2. 검증된 도산 사건 경험 변호사 직접 탐색 & 투명한 다중 견적
 3. 복잡한 40종 서류, 스마트폰으로 말만 하면 30분 만에 원스톱 패키징
 
 더 이상 혼자 속앓이하며 버티지 마시고, 합법적인 제도의 보호를 받으십시오.
@@ -290,19 +292,19 @@ const CHANNEL_FULL_CONTENTS: Record<string, {
     ]
   },
   tiktok: {
-    title: "빚독촉 피하는 합법적 꿀팁 방출! (첫 0.3초 텍스트 오버레이 22초)",
+    title: "빚독촉 전화, 합법적으로 대응하는 법 (첫 0.3초 텍스트 오버레이 22초)",
     badge: "틱톡 15~22초 초스피드 스낵 비디오",
     format: "세로 1080x1920 초단기 숏폼 대본 (0.3초 텍스트 오버레이 + 1.2배속)",
     summary: "틱톡 무음 시청자 60%를 겨냥한 첫 0.3초 중앙 텍스트 오버레이와 22초 초고속 스낵 템포, 캡션 첫 줄 키워드 SEO를 적용했습니다.",
     fullBody: `[00~03초: 첫 0.3초 텍스트 오버레이 후킹]
-(화면 연출: 영상 시작 0.3초 만에 화면 중앙 상단에 볼드 텍스트 팝업! 모르는 02, 070 부재중 전화 30통 알림)
+(화면 연출: 영상 시작 0.3초 만에 화면 중앙 상단에 볼드 텍스트 팝업! 모르는 02, 070 부재중 전화 알림)
 [화면 중앙 볼드 자막]: "아직도 빚 상담에 010 번호 남기나요? 절대 금지 ❌"
 나레이션(1.2배속): "빚 독촉 전화 받기 무서워서 모르는 번호 다 씹는 사람 손? 🙋‍♂️"
 
 [04~11초: 팩트 폭격 & 문제점]
 (화면 연출: 빠른 컷 전환과 경고 효과음)
-[자막]: "무료 상담에 번호 적었다가 광고 전화 100통 쏟아짐"
-나레이션(1.2배속): "인터넷에 무료 상담이라고 번호 남기면 사방에서 광고 전화 100통 오는 거 다들 아시죠?"
+[자막]: "상담 신청에 번호 적었다가 광고 전화가 쏟아짐"
+나레이션(1.2배속): "인터넷에 상담 신청한다고 번호 남기면 사방에서 광고 전화 오는 거 다들 아시죠?"
 
 [12~18초: 마이김변 꿀팁]
 (화면 연출: 마이김변 앱에서 '스텔스 가명' 토글 켜지며 변호사 견적 도착 화면)
@@ -328,26 +330,15 @@ export default function MarketingAutopilotHub() {
   const [activeTab, setActiveTab] = useState('오늘의 오토파일럿');
   const [studioChannel, setStudioChannel] = useState('blog');
   const [activeBlogContent, setActiveBlogContent] = useState<BlogContentData>(DDOK_BLOG_PRESETS_DATA[0]);
-
-  const handleSwitchToStudio = (channelId: string) => {
-    const map: Record<string, string> = {
-      blog: 'blog',
-      shorts: 'shorts',
-      cardnews: 'card',
-      threads: 'threads',
-      facebook: 'fb',
-      tiktok: 'tiktok'
-    };
-    setStudioChannel(map[channelId] || 'blog');
-    setActiveTab('콘텐츠 스튜디오');
-  };
+  // 캘린더에서 고른 날짜의 캠페인을 오토파일럿 탭에서 연다 (null = 오늘)
+  const [openDate, setOpenDate] = useState<string | null>(null);
 
   const tabs = [
     { id: '오늘의 오토파일럿', icon: RefreshCcw },
-    { id: 'Gemini 키 관리', icon: Key },
-    { id: '콘텐츠 스튜디오', icon: Edit3 },
+    { id: 'AI 키·연동 상태', icon: Key },
+    { id: '프리셋 스튜디오', icon: Edit3 },
     { id: '365일 캘린더', icon: CalendarIcon },
-    { id: '성과 분석', icon: BarChart3 }
+    { id: '운영 현황', icon: BarChart3 }
   ];
 
   return (
@@ -356,7 +347,7 @@ export default function MarketingAutopilotHub() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">마케팅 오토파일럿 허브</h1>
-          <p className="text-slate-400 text-sm">법률 플랫폼 통합 마케팅 자동화 및 채널 관리 (100% 익명 보장, 스텔스 가명 기술 적용)</p>
+          <p className="text-slate-400 text-sm">매일 뉴스 → 요일 테마 → 6채널 초안 생성 → 광고 규정 검사 → 관리자 승인 → 게시. 승인 전에는 어떤 채널에도 게시하지 않습니다.</p>
         </div>
       </div>
 
@@ -365,7 +356,7 @@ export default function MarketingAutopilotHub() {
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); if (tab.id === '오늘의 오토파일럿') setOpenDate(null); }}
             className={`flex items-center space-x-2 px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap min-h-[44px] press-scale ${
               activeTab === tab.id
                 ? 'bg-white/10 text-white font-bold border-b-2 border-indigo-500'
@@ -380,900 +371,24 @@ export default function MarketingAutopilotHub() {
 
       {/* Content Area */}
       <div className="animate-fadeIn">
-        {activeTab === '오늘의 오토파일럿' && (
-          <TabTodayAutopilot 
-            onSwitchToStudio={handleSwitchToStudio} 
-            activeBlogContent={activeBlogContent} 
-          />
+        {activeTab === '오늘의 오토파일럿' && <DailyAutopilotPanel loadDate={openDate} />}
+        {activeTab === 'AI 키·연동 상태' && (
+          <div className="space-y-6">
+            <AutopilotKeyStatus />
+            <TabKeyManagement />
+          </div>
         )}
-        {activeTab === 'Gemini 키 관리' && <TabKeyManagement />}
-        {activeTab === '콘텐츠 스튜디오' && (
+        {activeTab === '프리셋 스튜디오' && (
           <TabContentStudio 
             initialTab={studioChannel} 
             activeBlogContent={activeBlogContent} 
             setActiveBlogContent={setActiveBlogContent} 
           />
         )}
-        {activeTab === '365일 캘린더' && <TabCalendar />}
-        {activeTab === '성과 분석' && <TabAnalytics />}
-      </div>
-    </div>
-  );
-}
-
-// --- TAB 1: 오늘의 오토파일럿 ---
-function TabTodayAutopilot({ 
-  onSwitchToStudio, 
-  activeBlogContent 
-}: { 
-  onSwitchToStudio: (channelId: string) => void;
-  activeBlogContent: BlogContentData;
-}) {
-  const [autoMode, setAutoMode] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string; time: string; status: string; icon: any; color: string } | null>(null);
-
-  const channels = [
-    { id: 'blog', name: '네이버 블로그', time: '10:00', status: 'pending', icon: FileText, color: 'text-emerald-400' },
-    { id: 'shorts', name: '유튜브 쇼츠', time: '12:30', status: 'pending', icon: Video, color: 'text-red-400' },
-    { id: 'cardnews', name: '인스타 카드뉴스', time: '14:00', status: 'pending', icon: ImageIcon, color: 'text-pink-400' },
-    { id: 'threads', name: '스레드 단상', time: '17:30', status: 'pending', icon: MessageCircle, color: 'text-white' },
-    { id: 'facebook', name: '페이스북 페이지', time: '18:40', status: 'pending', icon: Facebook, color: 'text-blue-400' },
-    { id: 'tiktok', name: '틱톡 스낵', time: '20:30', status: 'pending', icon: Smartphone, color: 'text-cyan-400' },
-  ];
-
-  const handleApproveAll = () => {
-    toast.info('채널 자동 게시 연동이 없습니다. 생성된 글·이미지를 내려받아 각 채널에 직접 게시하세요.');
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-6 flex flex-col lg:flex-row gap-6 shadow-md">
-        <div className="flex-1 space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm font-medium border border-indigo-500/30">
-              오늘의 테마
-            </span>
-            <span className="text-white font-bold text-lg">수요일 = 전문가보증 (스텔스 보증)</span>
-          </div>
-          <h2 className="text-xl font-bold text-white">오늘의 자동 선정 뉴스: "{activeBlogContent.topic}"</h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            [연결 앵글] 금리 동결에도 실질적인 채무 부담을 느끼는 소상공인/직장인들을 타겟으로, 
-            플랫폼의 '스텔스 가명' 기술을 통해 완전 비대면으로 안전하게 변호사 상담과 견적을 받아볼 수 있음을 강조.
-          </p>
-        </div>
-        
-        <div className="lg:w-64 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-[#1E293B]/60 pt-6 lg:pt-0 lg:pl-6">
-          {/* 이전: 고정 '컴플라이언스 점수 98/100'과 동작하지 않는 '완전자동 무검수 모드' 토글 */}
-          <p role="note" className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 leading-relaxed">
-            자동 광고 규정 검수와 채널 자동 게시 기능은 없습니다. 게시 전 결과 보장·근거 없는 수치 표현이 없는지 직접 확인하세요.
-          </p>
-          
-          <button 
-            onClick={handleApproveAll}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition-all press-scale flex items-center justify-center gap-2 shadow-sm min-h-[44px] cursor-pointer"
-          >
-            <CheckCircle size={18} />
-            6채널 일괄 승인
-          </button>
-        </div>
-      </div>
-
-      {/* Golden Time Timeline */}
-      <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-6 shadow-sm overflow-x-auto">
-        <h3 className="text-lg font-bold text-white mb-6">골든타임 배포 스케줄</h3>
-        <div className="flex items-center min-w-[700px] pb-4">
-          {channels.map((ch, idx) => (
-            <React.Fragment key={ch.id}>
-              <div className="flex flex-col items-center relative z-10 w-24">
-                <div className="text-xs text-slate-400 mb-2">{ch.time}</div>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 bg-[#0B0F19] shadow-sm
-                  ${ch.status === 'completed' ? 'border-emerald-500 text-emerald-500' : 
-                    ch.status === 'publishing' ? 'border-indigo-500 text-indigo-500 animate-pulse' : 
-                    'border-slate-700 text-slate-500'}`}
-                >
-                  {ch.status === 'completed' ? <Check size={20} /> : <ch.icon size={20} />}
-                </div>
-                <div className="text-xs text-slate-300 mt-2 font-medium">{ch.name}</div>
-              </div>
-              {idx < channels.length - 1 && (
-                <div className="flex-1 h-[2px] bg-slate-800 -mx-4 z-0 mt-[-10px]">
-                  <div className={`h-full ${ch.status === 'completed' ? 'bg-emerald-500' : 'bg-transparent'}`}></div>
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-
-      {/* Channel Preview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {channels.map((ch) => (
-          <div key={ch.id} className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 shadow-sm hover:shadow-md transition-shadow group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center ${ch.color}`}>
-                  <ch.icon size={20} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-200">{ch.name}</h4>
-                  <p className="text-xs text-slate-400">권장 게시 시각: {ch.time}</p>
-                </div>
-              </div>
-              <span className={`text-xs px-2 py-1 rounded-lg border ${
-                ch.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                ch.status === 'publishing' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                'bg-slate-800 text-slate-400 border-slate-700'
-              }`}>
-                {ch.status === 'completed' ? '완료' : ch.status === 'publishing' ? '진행중' : '수동 게시'}
-              </span>
-            </div>
-            
-            <div className="bg-[#0B0F19] rounded-xl p-4 text-sm text-slate-300 h-32 overflow-hidden relative">
-              <div className="line-clamp-4">
-                {ch.id === 'blog' && `${activeBlogContent.title}. ${activeBlogContent.summary}`}
-                {ch.id === 'shorts' && "(후킹) 아직도 빚 때문에 전화기 꺼두시나요? (본론) 내 이름 숨기고 회생 가능성 알아보는 법. 지금 바로 확인하세요. #개인회생 #스텔스보증"}
-                {ch.id === 'cardnews' && "[카드 1] 이자 갚다 지친 당신을 위한 솔루션\n[카드 2] 마이김변 100% 안심 가명 상담\n[카드 3] 변호사 직접 검토, 철저한 비밀 보장"}
-                {ch.id === 'threads' && "오늘도 이자 낼 생각에 한숨 쉬셨나요? 법적 구제제도가 있어도 낙인찍힐까봐 망설이는 분들을 위해, 완벽한 익명성을 보장하는 플랫폼이 나왔습니다. 고민만 하지 말고 안심 상담을 받아보세요."}
-                {ch.id === 'facebook' && "🚨 금리 동결 소식에도 웃지 못하는 소상공인 여러분! 🚨 더 이상 혼자 앓지 마세요. 스텔스 가명 기술로 내 신분을 철저히 숨기고, 안전하게 전문 변호사 견적과 상담을 받아보실 수 있습니다."}
-                {ch.id === 'tiktok' && "빚독촉 피하는 꿀팁 방출! 내 이름 안 밝히고 변호사한테 회생 파산 안심 견적 받는 법. 마이김변 스텔스 모드 키면 끝. 링크에서 바로 확인해봐요!"}
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0B0F19] to-transparent"></div>
-            </div>
-            
-            <button 
-              onClick={() => setSelectedChannel(ch)}
-              className="w-full mt-4 text-sm text-indigo-400 hover:text-indigo-300 font-medium py-2 rounded-xl hover:bg-white/5 transition-colors flex items-center justify-center gap-1 min-h-[44px] cursor-pointer"
-            >
-              콘텐츠 전문 보기 <ChevronRight size={16} />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Content Detail Modal */}
-      {selectedChannel && (
-        <ContentDetailModal 
-          channel={selectedChannel} 
-          onClose={() => setSelectedChannel(null)}
-          onEditInStudio={() => {
-            const chId = selectedChannel.id;
-            setSelectedChannel(null);
-            onSwitchToStudio(chId);
-          }}
-          blogContent={activeBlogContent}
-        />
-      )}
-    </div>
-  );
-}
-
-// --- MODAL: 콘텐츠 전문 보기 팝업 ---
-function ContentDetailModal({ 
-  channel, 
-  onClose,
-  onEditInStudio,
-  blogContent
-}: { 
-  channel: { id: string; name: string; time: string; status: string; icon: any; color: string };
-  onClose: () => void;
-  onEditInStudio: () => void;
-  blogContent?: BlogContentData;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
-  const [exportingId, setExportingId] = useState<string | null>(null);
-  const [isExportingAll, setIsExportingAll] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'text' | 'visual' | 'cue' | 'images' | 'preview'>(channel.id === 'blog' ? 'preview' : 'text');
-  const rawContent = CHANNEL_FULL_CONTENTS[channel.id] || CHANNEL_FULL_CONTENTS.blog;
-  const content = (channel.id === 'blog' && blogContent) ? {
-    ...rawContent,
-    title: blogContent.title,
-    summary: blogContent.summary,
-    fullBody: blogContent.fullBody,
-    blogImages: blogContent.blogImages,
-    hashtags: blogContent.hashtags,
-    specs: blogContent.specs
-  } : rawContent;
-  const Icon = channel.icon;
-
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(`${content.title}\n\n${content.fullBody}\n\n${content.hashtags.join(' ')}`);
-    setCopied(true);
-    toast.success('콘텐츠 전문 및 태그가 클립보드에 복사되었습니다.');
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyPrompt = (id: string, prompt: string) => {
-    navigator.clipboard.writeText(prompt);
-    setCopiedPromptId(id);
-    toast.success('Imagen 3 생성 프롬프트가 복사되었습니다.');
-    setTimeout(() => setCopiedPromptId(null), 2000);
-  };
-
-  // 단일 요소 고해상도 PNG 다운로드 (3x scale - 한글 깨짐 0%)
-  const downloadElementAsPng = async (elementId: string, filename: string) => {
-    const el = document.getElementById(elementId);
-    if (!el) {
-      toast.error('다운로드할 이미지 요소를 찾을 수 없습니다.');
-      return;
-    }
-    setExportingId(elementId);
-    try {
-      const canvas = await html2canvas(el, {
-        scale: 3, // 3배율 고해상도로 한글 폰트 1픽셀도 깨짐 없이 선명하게 렌더링
-        useCORS: true,
-        logging: false,
-        backgroundColor: null,
-        allowTaint: true,
-      });
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
-      if (!blob) throw new Error('Blob 생성 실패');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = filename;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success(`${filename} 이미지가 다운로드되었습니다.`);
-    } catch (err) {
-      console.error('Failed to export image:', err);
-      toast.error('이미지 생성 및 다운로드 중 오류가 발생했습니다.');
-    } finally {
-      setExportingId(null);
-    }
-  };
-
-  // 네이버 블로그 이미지 4컷 일괄 압축팩(ZIP) 다운로드
-  const downloadAllBlogImagesAsZip = async () => {
-    if (!content.blogImages) return;
-    setIsExportingAll(true);
-    const toastId = toast.loading('블로그 이미지 4컷을 고해상도로 렌더링 및 압축 중입니다...');
-    try {
-      const zip = new JSZip();
-      for (const bImg of content.blogImages) {
-        const el = document.getElementById(`blog-visual-${bImg.id}`);
-        if (el) {
-          const canvas = await html2canvas(el, {
-            scale: 3,
-            useCORS: true,
-            logging: false,
-            backgroundColor: null,
-            allowTaint: true,
-          });
-          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
-          if (blob) {
-            zip.file(`[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`, blob);
-          }
-        }
-      }
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.download = `[마이김변]_네이버블로그_이미지_4컷팩.zip`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('블로그 이미지 4컷 압축팩이 성공적으로 다운로드되었습니다.', { id: toastId });
-    } catch (err) {
-      console.error('Failed to export zip:', err);
-      toast.error('일괄 다운로드 중 오류가 발생했습니다.', { id: toastId });
-    } finally {
-      setIsExportingAll(false);
-    }
-  };
-
-  // 인스타그램 카드뉴스 10장 일괄 압축팩(ZIP) 다운로드
-  const downloadAllCardNewsAsZip = async () => {
-    if (!content.slides) return;
-    setIsExportingAll(true);
-    const toastId = toast.loading('인스타그램 카드뉴스 10장을 고해상도로 렌더링 및 압축 중입니다...');
-    try {
-      const zip = new JSZip();
-      for (const slide of content.slides) {
-        const el = document.getElementById(`cardnews-slide-${slide.page}`);
-        if (el) {
-          const canvas = await html2canvas(el, {
-            scale: 3,
-            useCORS: true,
-            logging: false,
-            backgroundColor: null,
-            allowTaint: true,
-          });
-          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
-          if (blob) {
-            zip.file(`[마이김변]_카드뉴스_${slide.page.toString().padStart(2, '0')}장.png`, blob);
-          }
-        }
-      }
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.download = `[마이김변]_인스타그램_카드뉴스_10장_완전팩.zip`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('카드뉴스 10장 완전팩이 성공적으로 다운로드되었습니다.', { id: toastId });
-    } catch (err) {
-      console.error('Failed to export zip:', err);
-      toast.error('일괄 다운로드 중 오류가 발생했습니다.', { id: toastId });
-    } finally {
-      setIsExportingAll(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 animate-fadeIn">
-      <div className="bg-[#111622] rounded-3xl border border-[#1E293B] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-[#1E293B]/80 flex items-center justify-between bg-[#151B28]">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center ${channel.color}`}>
-              <Icon size={22} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white">{channel.name} 콘텐츠 전문</h3>
-                <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 font-medium">
-                  {content.badge}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">발행 예정 시각: {channel.time} · {content.format}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopy}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              {copied ? <CheckCheck size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              {copied ? '복사됨' : '전체 복사'}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Sub Navigation (특화 탭) */}
-        <div className="px-6 pt-3 pb-2 border-b border-[#1E293B]/60 flex flex-wrap gap-2 bg-[#0E131F]">
-          {channel.id === 'blog' && (
-            <button
-              onClick={() => setActiveSubTab('preview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeSubTab === 'preview' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Eye size={14} />
-              독자 시점 미리보기 (똑생 스타일)
-            </button>
-          )}
-          <button
-            onClick={() => setActiveSubTab('text')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              activeSubTab === 'text' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            본문 전문 (텍스트)
-          </button>
-          {content.blogImages && (
-            <button
-              onClick={() => setActiveSubTab('images')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeSubTab === 'images' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <ImageIcon size={14} />
-              본문 삽입 이미지 ({content.blogImages.length}컷)
-            </button>
-          )}
-          {content.cueSheet && (
-            <button
-              onClick={() => setActiveSubTab('cue')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                activeSubTab === 'cue' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              영상 연출 큐시트 (Timecode)
-            </button>
-          )}
-          {content.slides && (
-            <button
-              onClick={() => setActiveSubTab('visual')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                activeSubTab === 'visual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              카드뉴스 슬라이드 구성 (6장)
-            </button>
-          )}
-        </div>
-
-        {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200">
-          
-          {/* Main Title Banner (미리보기 모드가 아닐 때 노출) */}
-          {activeSubTab !== 'preview' && (
-            <div className="bg-[#0B0F19] rounded-2xl p-4 border border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Title / Headline</span>
-              <h4 className="text-base sm:text-lg font-bold text-white leading-snug">{content.title}</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">{content.summary}</p>
-            </div>
-          )}
-
-          {/* Tab: Reader View Preview (똑생 스타일 독자 시점 미리보기) */}
-          {activeSubTab === 'preview' && channel.id === 'blog' && (
-            <div className="bg-[#0F1420] border border-slate-800 rounded-2xl p-4 sm:p-8 space-y-8 max-w-3xl mx-auto shadow-inner text-slate-200">
-              
-              {/* Blog Header (똑생 스타일) */}
-              <div className="space-y-4 border-b border-slate-800/80 pb-6">
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold">
-                    회생 꿀팁
-                  </span>
-                  <span className="text-xs text-slate-400">2026년 9월 19일 · 7분 읽기</span>
-                </div>
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight">
-                  {content.title}
-                </h2>
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center font-bold text-white text-xs shadow-md">
-                    마이
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-200">마이김변 도산법률연구팀</div>
-                    <div className="text-[11px] text-slate-400">법원 회생실무준칙 자문위원 검수 완료</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hero Thumbnail Image (이미지 #1) */}
-              {content.blogImages && content.blogImages[0] && (
-                <div className="space-y-2">
-                  <div className={`w-full h-56 sm:h-72 rounded-2xl bg-gradient-to-br ${content.blogImages[0].previewGradient} p-6 flex flex-col justify-end border border-slate-700/60 shadow-lg relative overflow-hidden`}>
-                    <div className="z-10 space-y-1.5">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-indigo-300 text-xs font-bold backdrop-blur-sm border border-white/10">
-                        {content.blogImages[0].tag}
-                      </span>
-                      <h4 className="text-lg sm:text-xl font-black text-white drop-shadow-md">{content.blogImages[0].previewTitle}</h4>
-                      <p className="text-xs text-slate-300 drop-shadow-sm">{content.blogImages[0].previewSub}</p>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 1] 대표 썸네일: 기준금리 동결과 채무자의 현실</p>
-                </div>
-              )}
-
-              {/* Section 1: Intro (공감과 문제 제기) */}
-              <div className="space-y-4 text-sm sm:text-base leading-relaxed text-slate-300">
-                <p className="text-base sm:text-lg font-medium text-slate-100 leading-snug">
-                  "안녕하세요. 마이김변 도산법률센터입니다. 오늘은 많은 분들이 문의주시는 010 번호 유출 없는 안전한 개인회생 상담법에 대해 솔직하게 말씀드리고자 합니다."
-                </p>
-                <p>
-                  최근 한국은행의 기준금리 동결 발표가 있었지만, 실제 채무자분들이 체감하는 금융 환경은 여전히 가혹합니다. 연체이자 부담과 금융권의 추심 압박 속에서 '개인회생이나 파산을 알아보고 싶어도', 포털에 전화번호를 남겼다가 하루 수십 통의 대출 영업 전화에 시달릴까 두려워 망설이시는 분들이 너무나 많습니다.
-                </p>
-
-                {/* Callout Box 1 (똑생 스타일 인용구) */}
-                <div className="bg-[#141A28] border-l-4 border-amber-500 rounded-r-xl p-4 my-4 space-y-1">
-                  <span className="text-xs font-bold text-amber-400">⚠️ 사설 DB 수집의 현실</span>
-                  <p className="text-xs sm:text-sm text-slate-300">
-                    "상담 번호를 남기자마자 대부업체와 정체불명의 대행사로부터 하루 20통이 넘는 전화가 걸려왔습니다." — 예시 문구 (실제 사례 아님)
-                  </p>
-                </div>
-              </div>
-
-              {/* Section 2: Infographic Image #2 (사설 DB vs 마이김변 비교) */}
-              {content.blogImages && content.blogImages[1] && (
-                <div className="space-y-3 pt-4">
-                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <span className="w-2 h-5 rounded-full bg-indigo-500 inline-block"></span>
-                    1. 010 번호 비공개, '스텔스 가명'이 필요한 이유
-                  </h3>
-                  <div className={`w-full h-48 sm:h-60 rounded-2xl bg-gradient-to-br ${content.blogImages[1].previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-lg relative overflow-hidden`}>
-                    <div className="z-10 flex justify-between items-start">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-emerald-300 text-xs font-bold border border-white/10">
-                        {content.blogImages[1].tag}
-                      </span>
-                    </div>
-                    <div className="z-10 space-y-1">
-                      <h4 className="text-base sm:text-lg font-bold text-white drop-shadow-md">{content.blogImages[1].previewTitle}</h4>
-                      <p className="text-xs text-slate-300">{content.blogImages[1].previewSub}</p>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 2] 사설 DB 수집 방식과 마이김변 안심 보안 모델 비교 인포그래픽</p>
-                  
-                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed pt-2">
-                    마이김변(my김변)은 국내 최초로 의뢰인의 실제 전화번호(010)를 변호사 사무실에조차 노출하지 않고 견적과 상담을 받아볼 수 있는 '스텔스 가명' 보호 기술을 적용했습니다. 변호사법 제34조를 엄격히 준수하며, 가격 덤핑 유인 대신 검증된 전문성과 승소 이력을 바탕으로 고객이 주도적으로 선택할 수 있습니다.
-                  </p>
-                </div>
-              )}
-
-              {/* Section 3: UI Mockup Image #3 (AI 음성 진술서) */}
-              {content.blogImages && content.blogImages[2] && (
-                <div className="space-y-3 pt-4">
-                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <span className="w-2 h-5 rounded-full bg-indigo-500 inline-block"></span>
-                    2. 40종 서류 지옥 탈출: 말로 쓰는 AI 음성 진술서
-                  </h3>
-                  <div className={`w-full h-48 sm:h-60 rounded-2xl bg-gradient-to-br ${content.blogImages[2].previewGradient} p-5 flex flex-col justify-between border border-slate-700/60 shadow-lg relative overflow-hidden`}>
-                    <div className="z-10">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/60 text-purple-300 text-xs font-bold border border-white/10">
-                        {content.blogImages[2].tag}
-                      </span>
-                    </div>
-                    <div className="z-10 space-y-1">
-                      <h4 className="text-base sm:text-lg font-bold text-white drop-shadow-md">{content.blogImages[2].previewTitle}</h4>
-                      <p className="text-xs text-slate-300">{content.blogImages[2].previewSub}</p>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 3] 스마트폰 30분 원스톱 서류 패키징 화면</p>
-
-                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed pt-2">
-                    개인회생 사건은 100% 서면 절차입니다. 동사무소와 은행을 뛰어다니며 복잡한 서류를 떼고 진술서를 쓰다 지칠 필요가 없습니다. 스마트폰에 대고 말만 하면 법원 표준 양식에 맞춘 진술서 초안이 완성되며, 수입지출목록과 재산목록까지 30분 만에 패키징됩니다.
-                  </p>
-                </div>
-              )}
-
-              {/* Section 4: Floating CTA Banner (이미지 #4) - 똑생 스타일 */}
-              {content.blogImages && content.blogImages[3] && (
-                <div className="space-y-3 pt-6 border-t border-slate-800">
-                  <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 rounded-2xl border border-indigo-500/30 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-                    <div className="space-y-1 text-center sm:text-left">
-                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">100% 익명 보장 · 010 번호 비공개</span>
-                      <h4 className="text-lg font-bold text-white">010 번호 노출 없는 안심 변호사 상담</h4>
-                      <p className="text-xs text-slate-300">스텔스 가명으로 내 정보 완벽 보호 · 복수 변호사 직접 비교</p>
-                    </div>
-                    <button
-                      onClick={() => toast.info('안심 상담 신청 페이지로 이동합니다.')}
-                      className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-sm transition-all press-scale shadow-lg shrink-0 cursor-pointer"
-                    >
-                      안심 가명 상담 신청하기 →
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-500 text-center">▲ [이미지 4] 블로그 하단 전환용 공식 CTA 배너</p>
-                </div>
-              )}
-
-              {/* Blog Footer Tags */}
-              <div className="pt-4 border-t border-slate-800/80 flex flex-wrap gap-2">
-                {content.hashtags.map((tag, i) => (
-                  <span key={i} className="text-xs text-slate-400 bg-slate-800/60 px-3 py-1 rounded-full">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-            </div>
-          )}
-
-          {/* Tab 1: Text Body */}
-          {activeSubTab === 'text' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                  <FileText size={14} className="text-indigo-400" />
-                  원문 텍스트 (줄바꿈 및 마크다운 서식 포함)
-                </span>
-                <span className="text-xs text-emerald-400 font-medium">검수 통과 (변호사법 준수 100%)</span>
-              </div>
-              {content.blogImages && (
-                <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-xl px-4 py-2.5 text-xs text-indigo-300 flex items-center gap-2">
-                  <ImageIcon size={16} className="text-indigo-400 shrink-0" />
-                  <span>본문 내 <strong>[📷 이미지 N 삽입 위치]</strong> 표기에 맞춰 이미지를 함께 첨부하면 검색 노출(C-Rank) 효과가 극대화됩니다.</span>
-                </div>
-              )}
-              <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 text-sm font-normal text-slate-300 leading-relaxed whitespace-pre-wrap font-sans select-text">
-                {content.fullBody}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 4: Blog Images (본문 삽입 이미지) */}
-          {activeSubTab === 'images' && content.blogImages && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                  <ImageIcon size={14} className="text-indigo-400" />
-                  네이버 블로그 본문 삽입용 이미지 세트 (D.I.A.+ 최적화 & 고해상도 PNG)
-                </span>
-                <button
-                  onClick={downloadAllBlogImagesAsZip}
-                  disabled={isExportingAll}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[36px]"
-                >
-                  {isExportingAll ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  {isExportingAll ? '4컷 압축팩 생성 중...' : '4컷 전체 일괄 다운로드 (ZIP)'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {content.blogImages.map((bImg) => (
-                  <div key={bImg.id} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
-                    
-                    {/* Visual Preview Box (Captured by html2canvas — AI 배경 지원) */}
-                    <div 
-                      id={`blog-visual-${bImg.id}`}
-                      className={`w-full h-48 rounded-xl p-5 flex flex-col justify-between border border-slate-700/60 shadow-inner relative overflow-hidden group ${
-                        bImg.backgroundImageUrl ? 'bg-slate-900' : `bg-gradient-to-br ${bImg.previewGradient}`
-                      }`}
-                    >
-                      {/* AI 배경 이미지 (있을 경우) */}
-                      {bImg.backgroundImageUrl && (
-                        <img
-                          src={bImg.backgroundImageUrl}
-                          alt=""
-                          crossOrigin="anonymous"
-                          className="absolute inset-0 w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      )}
-                      {/* 다크 오버레이 */}
-                      <div className={`absolute inset-0 ${
-                        bImg.backgroundImageUrl
-                          ? 'bg-gradient-to-t from-black/80 via-black/50 to-black/30'
-                          : 'bg-gradient-to-t from-black/60 via-transparent to-transparent'
-                      }`}></div>
-                      <div className="flex justify-between items-start z-10">
-                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-indigo-300 text-[11px] font-bold border border-white/10">
-                          {bImg.tag}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-medium border border-emerald-500/30">
-                          {bImg.insertPosition}
-                        </span>
-                      </div>
-                      <div className="z-10 space-y-1.5 my-auto">
-                        <h6 className="text-base font-extrabold text-white leading-tight drop-shadow-lg">{bImg.previewTitle}</h6>
-                        <p className="text-xs text-slate-100 line-clamp-2 drop-shadow-md font-medium">{bImg.previewSub}</p>
-                      </div>
-                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-200">
-                        <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변 안심 리걸테크</span>
-                        <span className="drop-shadow-sm">010 번호 비공개</span>
-                      </div>
-                    </div>
-
-                    {/* Image Meta Info */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-white">이미지 #{bImg.order}. {bImg.title}</span>
-                      </div>
-                      <p className="text-xs text-slate-400">{bImg.role}</p>
-                    </div>
-
-                    {/* Prompt Box */}
-                    <div className="bg-[#111622] rounded-xl p-3 border border-slate-800 space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-pink-400 flex items-center gap-1">
-                          <Sparkles size={12} /> Imagen 3 프롬프트
-                        </span>
-                        <button
-                          onClick={() => handleCopyPrompt(bImg.id, bImg.prompt)}
-                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
-                        >
-                          {copiedPromptId === bImg.id ? <CheckCheck size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                          {copiedPromptId === bImg.id ? '복사됨' : '프롬프트 복사'}
-                        </button>
-                      </div>
-                      <p className="text-[11px] font-mono text-slate-400 line-clamp-2 select-text">{bImg.prompt}</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => downloadElementAsPng(`blog-visual-${bImg.id}`, `[마이김변]_블로그_이미지_${bImg.order}_${bImg.tag.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.png`)}
-                        disabled={exportingId === `blog-visual-${bImg.id}`}
-                        className="flex-1 py-2 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[38px]"
-                      >
-                        {exportingId === `blog-visual-${bImg.id}` ? (
-                          <Loader2 size={13} className="animate-spin text-indigo-400" />
-                        ) : (
-                          <Download size={13} />
-                        )}
-                        {exportingId === `blog-visual-${bImg.id}` ? 'PNG 렌더링 중...' : '고해상도 PNG 다운로드'}
-                      </button>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Cue Sheet for Video */}
-          {activeSubTab === 'cue' && content.cueSheet && (
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                <Video size={14} className="text-indigo-400" />
-                타임스탬프별 연출 지시 & 자막 큐시트
-              </span>
-              <div className="space-y-2.5">
-                {content.cueSheet.map((cue, idx) => (
-                  <div key={idx} className="bg-[#0B0F19] rounded-xl p-3.5 border border-slate-800 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <span className="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold shrink-0">
-                      {cue.time}
-                    </span>
-                    <div className="flex-1 text-xs text-slate-400">
-                      <span className="text-slate-200 font-semibold block mb-0.5">🎬 {cue.action}</span>
-                      <span className="text-amber-300/90 font-medium">🗣️ "{cue.script}"</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {content.visualPrompt && (
-                <div className="bg-[#0B0F19] rounded-xl p-3.5 border border-slate-800 mt-4">
-                  <span className="text-[11px] font-bold text-pink-400 block mb-1">🎨 Imagen 3 시네마틱 프롬프트</span>
-                  <code className="text-xs font-mono text-slate-300 block">{content.visualPrompt}</code>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 3: Slides for Card News */}
-          {activeSubTab === 'visual' && content.slides && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                  <ImageIcon size={14} className="text-indigo-400" />
-                  인스타그램 10장 황금 캐러셀 (1:1 정방형 1080x1080 · 한글 0% 깨짐 고해상도)
-                </span>
-                <button
-                  onClick={downloadAllCardNewsAsZip}
-                  disabled={isExportingAll}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer min-h-[36px]"
-                >
-                  {isExportingAll ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  {isExportingAll ? '10장 압축팩 생성 중...' : '10장 전체 일괄 다운로드 (ZIP)'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {content.slides.map((slide) => (
-                  <div key={slide.page} className="bg-[#0B0F19] rounded-2xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
-                    
-                    {/* 1:1 Square Card News Slide (Captured by html2canvas) */}
-                    <div 
-                      id={`cardnews-slide-${slide.page}`}
-                      className="w-full aspect-square rounded-2xl p-6 bg-gradient-to-br from-[#0B1120] via-[#1E1B4B] to-[#0B0F19] border border-indigo-500/30 flex flex-col justify-between relative overflow-hidden shadow-xl"
-                    >
-                      {/* Top Header */}
-                      <div className="flex justify-between items-center z-10">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
-                          <span className="text-[11px] font-bold text-indigo-300 tracking-wider">마이김변 공식 리걸테크</span>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-white text-xs font-bold backdrop-blur-sm border border-white/10">
-                          {slide.page} / 10
-                        </span>
-                      </div>
-
-                      {/* Body Content */}
-                      <div className="z-10 my-auto space-y-3 text-center sm:text-left">
-                        <span className="inline-block px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30">
-                          {slide.page === 1 ? '🔥 핵심 쟁점' : slide.page === 2 ? '⚠️ 현실 통증' : slide.page === 10 ? '🛡️ 안심 신청' : '💡 솔루션'}
-                        </span>
-                        <h4 className="text-lg sm:text-xl font-extrabold text-white leading-snug drop-shadow-md whitespace-pre-line">
-                          {slide.headline}
-                        </h4>
-                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium drop-shadow-sm">
-                          {slide.subtext}
-                        </p>
-                      </div>
-
-                      {/* Footer Bar */}
-                      <div className="z-10 pt-3 border-t border-white/10 flex justify-between items-center text-[11px]">
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <ShieldCheck size={13} /> 010 번호 비공개
-                        </span>
-                        <span className="text-indigo-300 font-medium">
-                          {slide.page === 10 ? '📌 프로필 링크에서 확인' : '옆으로 넘기기 ➔'}
-                        </span>
-                      </div>
-
-                      {/* Ambient Glows */}
-                      <div className="absolute -right-12 -bottom-12 w-36 h-36 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-                      <div className="absolute -left-12 -top-12 w-36 h-36 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
-                    </div>
-
-                    {/* Visual Prompt Info */}
-                    <div className="text-[11px] text-indigo-300/80 bg-[#111622] p-2.5 rounded-xl border border-slate-800/80">
-                      🖼️ {slide.visualDesc}
-                    </div>
-
-                    {/* Action: Single Slide Download */}
-                    <button
-                      onClick={() => downloadElementAsPng(`cardnews-slide-${slide.page}`, `[마이김변]_카드뉴스_${slide.page.toString().padStart(2, '0')}장.png`)}
-                      disabled={exportingId === `cardnews-slide-${slide.page}`}
-                      className="w-full py-2 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[38px]"
-                    >
-                      {exportingId === `cardnews-slide-${slide.page}` ? (
-                        <Loader2 size={13} className="animate-spin text-indigo-400" />
-                      ) : (
-                        <Download size={13} />
-                      )}
-                      {exportingId === `cardnews-slide-${slide.page}` ? 'PNG 렌더링 중...' : `${slide.page}장 고해상도 PNG 다운로드`}
-                    </button>
-
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Specs & Hashtags */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-[#0B0F19] rounded-xl p-3.5 border border-slate-800">
-              <span className="text-[11px] font-bold text-slate-400 block mb-2">제작 규격 & 메타데이터</span>
-              <div className="space-y-1 text-xs">
-                {content.specs.map((sp, i) => (
-                  <div key={i} className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">{sp.label}</span>
-                    <span className="font-medium text-slate-200">{sp.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-[#0B0F19] rounded-xl p-3.5 border border-slate-800">
-              <span className="text-[11px] font-bold text-slate-400 block mb-2">최적화 해시태그</span>
-              <div className="flex flex-wrap gap-1.5">
-                {content.hashtags.map((tag, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 text-xs font-medium">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Legal Compliance Notice */}
-          <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3.5 flex items-start gap-3">
-            <ShieldCheck size={18} className="text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-300 leading-relaxed">
-              <span className="font-bold text-emerald-400 block mb-0.5">변호사법 및 플랫폼 가이드라인 검증 완료</span>
-              본 콘텐츠는 특정 법률사무소의 유인·알선 문구를 일절 배제하고, 마이김변의 '스텔스 가명', '30분 서류 패키징' 등 순수 기술적 편의성만 객관적으로 안내하도록 자동 검수되었습니다.
-            </div>
-          </div>
-
-        </div>
-
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-[#1E293B]/80 bg-[#151B28] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Sparkles size={14} className="text-amber-400" />
-            <span>Gemini Pro 클러스터 자동 생성 완료 자산</span>
-          </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={onEditInStudio}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
-            >
-              <Edit3 size={14} />
-              콘텐츠 스튜디오에서 편집
-            </button>
-            <button
-              onClick={handleCopy}
-              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors press-scale cursor-pointer min-h-[44px] shadow-sm"
-            >
-              <Copy size={14} />
-              클립보드 전체 복사
-            </button>
-          </div>
-        </div>
-
+        {activeTab === '365일 캘린더' && (
+          <AutopilotCalendar onOpenDate={(d) => { setOpenDate(d); setActiveTab('오늘의 오토파일럿'); }} />
+        )}
+        {activeTab === '운영 현황' && <AutopilotAnalytics />}
       </div>
     </div>
   );
@@ -1360,7 +475,7 @@ const CHANNEL_OPTIMIZATION_GUIDES: Record<string, {
     name: '유튜브 쇼츠',
     badge: 'E-A-Q-R 3초 훅 & 심리스 루프',
     tone: '긴박하고 직관적인 어조 ("안녕하세요" 인사말 절대 금지)',
-    algorithmTrick: '끝 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop) 대본으로 시청지속시간 100%+ 달성',
+    algorithmTrick: '끝 문장이 첫 문장으로 이어지는 심리스 루프(Seamless Loop) 대본으로 반복 시청 유도',
     ctaDevice: '영상 내 고정 댓글(Pinned Comment)로 안심 가명 상담 링크 안내',
     tags: ['0초 즉시 후킹 (인사말 금지)', '35초 완독률', '화면 중앙 키네틱 자막', '심리스 무한 루프']
   },
@@ -1430,7 +545,8 @@ function TabContentStudio({
   useEffect(() => {
     setTopic(activeBlogContent.topic);
     setTheme(activeBlogContent.theme);
-  }, [activeBlogContent]);
+    // 이전: [activeBlogContent] 의존 → 이미지 URL 주입 등 내부 갱신 때마다 입력 중인 주제가 초기화됨
+  }, [activeBlogContent.topic, activeBlogContent.theme]);
 
   // Pollinations AI 배경 모드일 때 자동으로 URL 주입
   useEffect(() => {
@@ -1487,7 +603,7 @@ function TabContentStudio({
 
   const handleGenerateAllChannels = async () => {
     setIsGenerating(true);
-    const toastId = toast.loading(`'${topic.slice(0, 18)}...' 6채널 콘텐츠 및 4컷 이미지를 생성 중입니다...`);
+    const toastId = toast.loading(`'${topic.slice(0, 18)}...' 블로그 칼럼과 이미지 4컷을 생성 중입니다...`);
     try {
       const generated = await generateBlogContentWithGemini(topic, theme);
       // Pollinations 모드면 생성된 콘텐츠에도 AI 배경 URL 주입
@@ -1500,7 +616,12 @@ function TabContentStudio({
       } else {
         setActiveBlogContent(generated);
       }
-      toast.success(`'${topic.slice(0, 15)}...' 6채널 최적화 콘텐츠 및 4컷 이미지가 성공적으로 생성되었습니다!`, { id: toastId });
+      // 서비스는 실패 시 예외 대신 프리셋을 돌려주므로 실제 생성 여부를 구분해 알린다
+      if (generated.presetKey === 'custom-gemini') {
+        toast.success(`'${topic.slice(0, 15)}...' 블로그 칼럼 초안을 만들었습니다. 게시 전 광고 규정을 확인하세요.`, { id: toastId });
+      } else {
+        toast.warning('AI 생성에 실패해 주제와 가장 가까운 저장 프리셋을 보여줍니다. 서버 키·2단계 인증을 확인하세요.', { id: toastId });
+      }
     } catch (err) {
       console.error(err);
       toast.error('생성 중 오류가 발생했습니다. 프리셋 모드로 복구합니다.', { id: toastId });
@@ -1724,7 +845,7 @@ function TabContentStudio({
               className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition-all press-scale flex items-center justify-center gap-2 shadow-sm min-h-[44px] cursor-pointer"
             >
               {isGenerating ? <Loader2 size={18} className="animate-spin text-white" /> : <UploadCloud size={18} />}
-              {isGenerating ? 'AI 6채널 & 4컷 이미지 생성 중...' : '원클릭 6채널 콘텐츠 생성'}
+              {isGenerating ? '블로그 칼럼 생성 중...' : '블로그 칼럼 AI 생성'}
             </button>
           </div>
         </div>
@@ -2424,7 +1545,7 @@ function TabContentStudio({
                   <input 
                     type="text"
                     readOnly
-                    value="👉 010 번호 노출 없는 안심 가명 변호사 상담 신청: https://mykim.kr (가족/직장 비밀 철저 보장)"
+                    value="👉 010 번호 노출 없는 안심 가명 변호사 상담 신청: https://mykim.kr (가족/직장 비공개 진행)"
                     className="w-full bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
                   />
                 </div>
@@ -2624,20 +1745,9 @@ function TabContentStudio({
               <Copy size={14} /> 최적화 원문 복사
             </button>
 
-            <div className="flex gap-2">
-              <button 
-                onClick={() => toast.success('임시 저장이 완료되었습니다.')}
-                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs hover:bg-slate-700 min-h-[44px] transition-colors cursor-pointer"
-              >
-                임시저장
-              </button>
-              <button 
-                onClick={() => toast.success(`${currentGuide.name} 최적화 콘텐츠 배포가 예약되었습니다.`)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs hover:bg-indigo-700 min-h-[44px] shadow-sm flex items-center gap-1.5 font-medium transition-colors cursor-pointer press-scale"
-              >
-                <Share2 size={14} /> 즉시 배포하기
-              </button>
-            </div>
+            {/* 이전: 아무 동작 없이 '임시 저장 완료'·'배포 예약됨' 토스트만 띄우던 버튼 → 제거.
+                저장·승인·게시 기록은 '오늘의 오토파일럿' 탭에서 한다. */}
+            <p className="text-xs text-slate-400">프리셋 샘플은 저장·게시되지 않습니다. 저장·승인·게시는 "오늘의 오토파일럿" 탭에서 하세요.</p>
           </div>
 
         </div>
@@ -2646,164 +1756,3 @@ function TabContentStudio({
   );
 }
 
-// --- TAB 4: 365일 캘린더 ---
-function TabCalendar() {
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  const dates = Array.from({ length: 35 }, (_, i) => i - 2); // Simple mock for calendar grid
-  
-  return (
-    <div className="space-y-6">
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 shadow-sm">
-          <div className="text-slate-400 text-xs mb-1">이번 달 총 발행</div>
-          <div className="text-2xl font-bold text-white">124<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
-        </div>
-        <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 shadow-sm">
-          <div className="text-slate-400 text-xs mb-1">성공률</div>
-          <div className="text-2xl font-bold text-emerald-400">99.2<span className="text-sm font-normal text-slate-500 ml-1">%</span></div>
-        </div>
-        <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 shadow-sm">
-          <div className="text-slate-400 text-xs mb-1">예약된 콘텐츠</div>
-          <div className="text-2xl font-bold text-indigo-400">42<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
-        </div>
-        <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 shadow-sm">
-          <div className="text-slate-400 text-xs mb-1">에러 알림</div>
-          <div className="text-2xl font-bold text-slate-300">0<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
-        </div>
-      </div>
-
-      <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-6 shadow-sm">
-        {/* Month Nav */}
-        <div className="flex items-center justify-between mb-6">
-          <button className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors">
-            <ChevronRight size={20} className="rotate-180" />
-          </button>
-          <h3 className="text-xl font-bold text-white">2026년 9월</h3>
-          <button className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors">
-            <ChevronRight size={20} />
-          </button>
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-7 gap-px bg-slate-800 rounded-xl overflow-hidden border border-slate-800">
-          {days.map(d => (
-            <div key={d} className="bg-[#111622] py-3 text-center text-xs font-medium text-slate-400">
-              {d}
-            </div>
-          ))}
-          {dates.map((d, i) => {
-            const isCurrentMonth = d > 0 && d <= 30;
-            const isToday = d === 19;
-            return (
-              <div 
-                key={i} 
-                className={`bg-[#0B0F19] min-h-[100px] p-2 hover:bg-[#111622] transition-colors cursor-pointer group ${!isCurrentMonth ? 'opacity-30' : ''}`}
-              >
-                <div className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-2 
-                  ${isToday ? 'bg-indigo-600 text-white' : 'text-slate-400 group-hover:text-white'}`}
-                >
-                  {d > 0 ? (d > 30 ? d - 30 : d) : 31 + d}
-                </div>
-                
-                {isCurrentMonth && (d % 3 !== 0) && (
-                  <div className="flex flex-wrap gap-1 px-1">
-                    {/* Mock status dots */}
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : d === 19 ? 'bg-indigo-500' : 'bg-slate-600'}`} title="블로그"></div>
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : d === 19 ? 'bg-amber-500' : 'bg-slate-600'}`} title="쇼츠"></div>
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : d === 19 ? 'bg-slate-600' : 'bg-slate-600'}`} title="카드뉴스"></div>
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : 'bg-slate-600'}`} title="스레드"></div>
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : 'bg-slate-600'}`} title="페이스북"></div>
-                    <div className={`w-2 h-2 rounded-full ${d < 19 ? 'bg-emerald-500' : 'bg-slate-600'}`} title="틱톡"></div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="mt-4 flex gap-4 text-xs text-slate-400 justify-end">
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> 발행 완료</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div> 예약됨</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> 진행중</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-600"></div> 미정</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- TAB 5: 성과 분석 ---
-function TabAnalytics() {
-  const channelStats = [
-    { name: '네이버 블로그', total: 342, growth: '+12%', icon: FileText, color: 'text-emerald-400' },
-    { name: '유튜브 쇼츠', total: 128, growth: '+24%', icon: Video, color: 'text-red-400' },
-    { name: '인스타 카드뉴스', total: 256, growth: '+8%', icon: ImageIcon, color: 'text-pink-400' },
-    { name: '스레드', total: 184, growth: '+45%', icon: MessageCircle, color: 'text-white' },
-    { name: '페이스북', total: 420, growth: '+2%', icon: Facebook, color: 'text-blue-400' },
-    { name: '틱톡', total: 95, growth: '+88%', icon: Smartphone, color: 'text-cyan-400' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {channelStats.map((stat, i) => (
-          <div key={i} className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 shadow-sm flex flex-col justify-between h-32 hover:border-slate-600 transition-colors">
-            <div className="flex justify-between items-start">
-              <stat.icon size={20} className={stat.color} />
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-md">{stat.growth}</span>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white mb-0.5">{stat.total}</div>
-              <div className="text-xs text-slate-400">{stat.name} 누적 발행</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Area */}
-        <div className="lg:col-span-2 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-6 shadow-sm min-h-[300px] flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-white">월간 발행 및 트래픽 유입 추이</h3>
-            <select className="bg-[#0B0F19] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 outline-none">
-              <option>최근 6개월</option>
-              <option>최근 1년</option>
-            </select>
-          </div>
-          <div className="flex-1 flex items-center justify-center border border-dashed border-slate-700/50 rounded-xl bg-[#0B0F19]/50">
-            <div className="text-center text-slate-500">
-              <TrendingUp size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">차트 렌더링 영역 (Recharts 등 활용)</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Content */}
-        <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-6 shadow-sm">
-          <h3 className="font-bold text-white mb-4">이번 주 Top 성과 콘텐츠</h3>
-          <div className="space-y-4">
-            {[
-              { title: '"이자 갚다 지쳤다면 필수 시청"', type: '유튜브 쇼츠', views: '12.4k', conversions: 42 },
-              { title: '2030 영끌족 파산 안심 상담 가이드', type: '네이버 블로그', views: '8.2k', conversions: 28 },
-              { title: '스텔스 가명으로 알아보는 내 빚', type: '틱톡', views: '24k', conversions: 19 },
-              { title: '법원 서류, 비대면으로 끝내는 법', type: '인스타 카드뉴스', views: '5.1k', conversions: 15 },
-            ].map((item, i) => (
-              <div key={i} className="flex flex-col gap-2 p-3 bg-[#0B0F19] rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">{item.type}</span>
-                  <span className="text-xs font-bold text-emerald-400">{item.conversions}건 전환</span>
-                </div>
-                <div className="text-sm font-medium text-slate-200 line-clamp-1">{item.title}</div>
-                <div className="text-xs text-slate-500 flex items-center gap-3">
-                  <span className="flex items-center gap-1"><Eye size={12} /> {item.views}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
