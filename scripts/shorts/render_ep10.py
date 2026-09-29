@@ -239,7 +239,6 @@ def scene2(t, dur):
     ov.putalpha(ImageChops.multiply(ov.getchannel("A"), fade_mask()))
     frame.alpha_composite(ov)
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -322,7 +321,6 @@ def scene3(t, dur):
         d.text((CAP_X + 112, y + 55), "매달 납부일 챙기기", font=font("EB", 44), fill=(255, 255, 255, a), anchor="lm")
     frame.alpha_composite(ov)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -382,7 +380,7 @@ def screen_companion(t):
     pill = lerp_color(card, WHITE, 0.2)
     s.rr(52, y + 22, 52 + s.tlen(lab, 21, "EB") + 36, y + 64, 21, fill=pill)
     s.text(70, y + 43, lab, 21, WHITE, "EB", "lm")
-    s.text(56, y + 96, "월 변제금 (예시)", 21, lerp_color(card, WHITE, 0.75), "B", "lm")
+    s.text(56, y + 96, "월 변제금", 21, lerp_color(card, WHITE, 0.75), "B", "lm")
     s.text(56, y + 140, "450,000원", 42, WHITE, "EB", "lm")
     ring = NOTIFY_AT <= t < NOTIFY_AT + 1.0
     s.circ(SW - 96, y + 118, 40, fill=pill)
@@ -392,7 +390,7 @@ def screen_companion(t):
     y = 496 + shift
     s.rr(28, y, SW - 28, y + 380, 30, fill=WHITE, outline=SLATE200, width=2)
     s.text(56, y + 36, "납부 캘린더", 26, SLATE900, "EB", "lm")
-    s.text(SW - 56, y + 36, "이번 달 (예시)", 20, SLATE500, "B", "rm")
+    s.text(SW - 56, y + 36, "이번 달", 20, SLATE500, "B", "rm")
     colw = (SW - 56) / 7
     for c, wd in enumerate("일월화수목금토"):
         s.text(28 + colw * (c + 0.5), y + 86, wd, 20, RED if c == 0 else SLATE400, "B", "mm")
@@ -444,7 +442,6 @@ def scene4(t, dur):
     put_phone(frame, screen_companion(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW - 112, 340, t - TAP_AT)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

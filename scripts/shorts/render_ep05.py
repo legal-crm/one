@@ -91,7 +91,6 @@ def scene1(t, dur):
         comp(frame, ov)
     frame = zoom(frame.convert("RGB"), 1.0 + 0.08 * ease_in_out(t / dur), W / 2, H).convert("RGBA")
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -213,7 +212,6 @@ def scene2(t, dur):
         comp(frame, ov)
     top_shade(frame, 560, 120)
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 상황", CAP_X, 520)
     return frame
 
 
@@ -458,7 +456,6 @@ def scene5(t, dur):
     put_phone(frame, screen_quick(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW / 2, 748, t - S5_PRESS)
     draw_caption(frame, SCENES[4]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     if t >= fade0:
         end = ep01_endcard(t - fade0, dur - fade0)
         frame = Image.blend(frame, end, ease_in_out((t - fade0) / 0.3))

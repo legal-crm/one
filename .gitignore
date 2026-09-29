@@ -19,3 +19,8 @@ _tmp_*
 
 .vercel
 .env*
+
+assets/shorts/
+__pycache__/
+*.pyc
+_work/

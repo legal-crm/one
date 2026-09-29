@@ -45,6 +45,7 @@ import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
 import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
+import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
 
 // [SECURITY] 관리자 포털 경로는 utils/adminPortal.ts (VITE_ADMIN_SECRET_PATH, 운영 미설정 시 비활성).
 // 뻔한 ?role=admin은 허니팟으로 유인. 실제 인가는 서버(JWT role=admin + MFA aal2)가 판정.
@@ -74,6 +75,8 @@ const SEED_MEMBER_IDS = new Set([
   'client-withdrawn-1', 'client-withdrawn-2', 'client-dormant-1',
 ]);
 const SEED_LOG_IDS = new Set(Array.from({ length: 16 }, (_, i) => `log-${i + 1}`));
+// 시연용 샘플 변호사 ID — DB에 없는 샘플 프로필은 lawyers 테이블로 올리지 않는다
+const SEED_LAWYER_IDS: ReadonlySet<string> = new Set(mockLawyers.map(l => l.id));
 const stripProdSeedMembers = (list: Member[]): Member[] =>
   import.meta.env.PROD ? list.filter(m => m && !SEED_MEMBER_IDS.has(m.id)) : list;
 const stripProdSeedLogs = (list: ActivityLog[]): ActivityLog[] =>
@@ -671,6 +674,9 @@ export default function App() {
       secureSetItem('legal_crm_lawyers', JSON.stringify(lawyers));
     }
   }, [lawyers]);
+
+  // 변호사 프로필 DB 동기화 (localStorage는 오프라인 캐시로만 사용)
+  useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds: SEED_LAWYER_IDS });
 
   useEffect(() => {
     if (members.length > 0) {

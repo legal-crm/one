@@ -147,7 +147,6 @@ def scene1(t, dur):
     frame = zoom(frame.convert("RGB"), 1.0 + 0.07 * ease_in_out(t / dur), W / 2, 960).convert("RGBA")
     frame.alpha_composite(shade_layer(600, 130))
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -163,7 +162,7 @@ def street():
     # 가게 외벽·간판
     d.rectangle([40, 700, 980, 1500], fill=(71, 85, 105, 255))
     d.rectangle([40, 700, 980, 812], fill=(30, 41, 59, 255))
-    d.text((510, 756), "예시 가게", font=font("EB", 56), fill=(253, 230, 138, 255), anchor="mm")
+    d.text((510, 756), "우리 가게", font=font("EB", 56), fill=(253, 230, 138, 255), anchor="mm")
     for i in range(10):  # 차양
         x0 = 40 + i * 94
         d.polygon([(x0, 812), (x0 + 94, 812), (x0 + 104, 900), (x0 + 10, 900)], fill=(TEAL if i % 2 == 0 else (240, 253, 250)) + (255,))
@@ -262,7 +261,6 @@ def scene2(t, dur):
     frame = world.crop((x, 0, x + W, H))
     frame.alpha_composite(shade_layer(600, 130))
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     halfday_card(frame, t)
     return frame
 
@@ -283,7 +281,7 @@ def screen_chat(t):
     s.rr(0, 60, SW, 176, 0, fill=WHITE)
     s.line([(44, 104), (30, 118), (44, 132)], SLATE900, 5)
     avatar(s, 100, 118, 30, TEAL_L, (45, 212, 191))
-    s.text(146, 100, "예시 변호사 B", 28, SLATE900, "EB")
+    s.text(146, 100, "변호사 B", 28, SLATE900, "EB")
     s.text(146, 138, "내가 선택한 변호사 · 상담방", 20, SLATE500, "B")
     # 가명 배너
     s.rr(24, 196, SW - 24, 290, 24, fill=WHITE, outline=SLATE200, width=2)
@@ -322,7 +320,6 @@ def scene3(t, dur):
     frame = background().copy().convert("RGBA")
     put_phone(frame, screen_chat(t), 0, math.sin(t * 1.3) * 5)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 
@@ -356,11 +353,11 @@ def screen_sign(t):
     s = Scr(SLATE50)
     s.status()
     s.text(36, 104, "위임계약서 서명", 34, SLATE900, "EB", "lm")
-    s.text(36, 146, "예시 법률사무소 · 모바일 전자서명", 20, SLATE500, "B", "lm")
+    s.text(36, 146, "○○ 법률사무소 · 모바일 전자서명", 20, SLATE500, "B", "lm")
     # 계약서 미리보기
     s.rr(28, 178, SW - 28, 392, 24, fill=WHITE, outline=SLATE200, width=2)
-    s.text(56, 214, "위임계약서 (예시)", 26, SLATE900, "EB", "lm")
-    s.text(56, 254, "위임인  ○○○   수임인  예시 변호사 B", 19, SLATE500, "B", "lm")
+    s.text(56, 214, "위임계약서", 26, SLATE900, "EB", "lm")
+    s.text(56, 254, "위임인  ○○○   수임인  변호사 B", 19, SLATE500, "B", "lm")
     for j, ww in enumerate([420, 400, 430, 300]):
         s.rr(56, 284 + j * 26, 56 + ww, 296 + j * 26, 6, fill=SLATE200)
     # 단계
@@ -401,7 +398,7 @@ def screen_done(t):
     s.circ(SW / 2, 196, 64 * (0.6 + 0.4 * p), fill=TEAL)
     check_icon(s, SW / 2, 198, 58, WHITE, 10)
     s.text(SW / 2, 304, "전자계약 체결 완료", 36, SLATE900, "EB", "mm")
-    s.text(SW / 2, 350, "예시 법률사무소 · 위임계약서", 21, SLATE500, "B", "mm")
+    s.text(SW / 2, 350, "○○ 법률사무소 · 위임계약서", 21, SLATE500, "B", "mm")
     # 전자지문 박스
     hp = ease_out((t - HASH_AT) / 0.4)
     if hp > 0:
@@ -448,7 +445,6 @@ def scene4(t, dur):
     tap(frame, SW / 2, 955, t - SUBMIT_AT)
     tap(frame, SW / 2, 708, t - VERIFY_AT)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

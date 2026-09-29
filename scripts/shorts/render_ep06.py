@@ -162,7 +162,6 @@ def scene1(t, dur):
     frame = zoom(frame.convert("RGB"), 1.0 + 0.16 * ease_in_out(t / dur), 540, 1080).convert("RGBA")
     top_shade(frame)
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -268,7 +267,6 @@ def scene2(t, dur):
     put(frame, bubble_tile(1), 110, 606, ease_out((t - BUBBLE1_AT) / 0.35))
     put(frame, bubble_tile(2), 330, 770, ease_out((t - BUBBLE2_AT) / 0.35))
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -507,7 +505,6 @@ def phone_part(t):
     put_phone(frame, screen_check(t), 0, 0)
     tap(frame, SW / 2, 928, t - TAP_AT)
     draw_caption(frame, SCENES[4]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

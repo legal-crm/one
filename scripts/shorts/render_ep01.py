@@ -406,7 +406,6 @@ def scene1(t, dur):
     # 하단 기준 zoom-in → 폰이 자막 영역을 덮지 않음
     frame = zoom(frame.convert("RGB"), 1.0 + 0.10 * ease_in_out(t / dur), W / 2, H).convert("RGBA")
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -460,7 +459,6 @@ def scene2(t, dur):
     put_phone(frame, screen_calllog(t), 0, 0)
     frame = zoom(frame.convert("RGB"), 1.06 - 0.06 * ease_out(t / dur), W / 2, 1100).convert("RGBA")
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -541,17 +539,16 @@ def scene3(t, dur):
     put_phone(frame, screen_alias(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW / 2, 868, t - 6.6)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 
 # ── 장면 4: 변호사 프로필 카드 스크롤 ───────────────────────────
 LAWYERS = [
-    ("예시 변호사 A", "개인회생·파산 사건 경험", ["서울", "상담방 답변"], (219, 234, 254), (96, 165, 250)),
-    ("예시 변호사 B", "개인회생 사건 경험", ["경기", "야간 상담"], (204, 251, 241), (45, 212, 191)),
-    ("예시 변호사 C", "채무조정·파산 사건 경험", ["부산", "상담방 답변"], (237, 233, 254), (167, 139, 250)),
-    ("예시 변호사 D", "개인회생 사건 경험", ["인천", "주말 상담"], (254, 243, 199), (251, 191, 36)),
-    ("예시 변호사 E", "개인파산 사건 경험", ["대전", "상담방 답변"], (252, 231, 243), (244, 114, 182)),
+    ("변호사 A", "개인회생·파산 사건 경험", ["서울", "상담방 답변"], (219, 234, 254), (96, 165, 250)),
+    ("변호사 B", "개인회생 사건 경험", ["경기", "야간 상담"], (204, 251, 241), (45, 212, 191)),
+    ("변호사 C", "채무조정·파산 사건 경험", ["부산", "상담방 답변"], (237, 233, 254), (167, 139, 250)),
+    ("변호사 D", "개인회생 사건 경험", ["인천", "주말 상담"], (254, 243, 199), (251, 191, 36)),
+    ("변호사 E", "개인파산 사건 경험", ["대전", "상담방 답변"], (252, 231, 243), (244, 114, 182)),
 ]
 
 
@@ -605,7 +602,6 @@ def scene4(t, dur):
     put_phone(frame, scr, 0, math.sin(t * 1.3) * 5)
     tap(frame, tap_pos[0], tap_pos[1], t - 4.4)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

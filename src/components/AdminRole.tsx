@@ -17,7 +17,7 @@ import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessRevi
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
-import { setLawyerDbApproval } from '../services/lawyerAccountService';
+import { setLawyerDbApproval, getLawyerAccountByLawyerId, adminLinkLawyerAccount } from '../services/lawyerAccountService';
 import { 
   issueTaxInvoice, 
   issueModifyTaxInvoice, 
@@ -934,6 +934,34 @@ export default function AdminRole({
 
   const selectedLawyer = lawyers.find(l => l.id === selectedLawyerId);
 
+  // 선택한 변호사의 서버 권한 상태(lawyer_accounts). 변호사 포털 로그인 판정은 이 값만 사용하므로
+  // 화면용 lawyers[].approved와 어긋나면 관리자에게 경고한다.
+  type ServerLawyerAccountState =
+    | { status: 'idle' | 'loading' | 'unlinked' }
+    | { status: 'error'; message?: string }
+    | { status: 'linked'; approved: boolean; authEmail: string | null };
+  const [serverAccount, setServerAccount] = useState<ServerLawyerAccountState>({ status: 'idle' });
+  const serverAccountReqRef = useRef(0);
+
+  const refreshServerAccount = useCallback(async (lawyerId: string) => {
+    const reqId = ++serverAccountReqRef.current;
+    if (!lawyerId) { setServerAccount({ status: 'idle' }); return; }
+    setServerAccount({ status: 'loading' });
+    const res = await getLawyerAccountByLawyerId(lawyerId);
+    if (reqId !== serverAccountReqRef.current) return; // 다른 변호사를 이미 선택함
+    if (res.ok === true) {
+      setServerAccount(res.account
+        ? { status: 'linked', approved: res.account.approved, authEmail: res.account.authEmail }
+        : { status: 'unlinked' });
+    } else {
+      setServerAccount(res.reason === 'not_configured' ? { status: 'idle' } : { status: 'error', message: res.message });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshServerAccount(selectedLawyerId);
+  }, [selectedLawyerId, refreshServerAccount]);
+
   // Pagination constants & calculation
   const ITEMS_PER_PAGE = 10;
   const BILLING_ITEMS_PER_PAGE = 5;
@@ -991,17 +1019,45 @@ export default function AdminRole({
 
   const handleApproveLawyer = async (lawyerId: string) => {
     const targetLawyer = lawyers.find(l => l.id === lawyerId);
+    // 화면에는 이미 승인됐지만 서버 권한만 빠진 경우(과거 승인 시 계정 미연결) → 서버 동기화만 수행
+    const resyncOnly = !!targetLawyer && targetLawyer.approved !== false;
     // 자격 서류가 전혀 없으면 승인하지 않음 (이전: 클릭만으로 '검증 완료' 부여)
-    if (targetLawyer && targetLawyer.licenseStatus !== 'suspended' && !targetLawyer.licenseNumber && !targetLawyer.licenseImageData) {
+    if (!resyncOnly && targetLawyer && targetLawyer.licenseStatus !== 'suspended' && !targetLawyer.licenseNumber && !targetLawyer.licenseImageData) {
       toast.error('등록번호나 등록증이 제출되지 않아 승인할 수 없습니다. 먼저 제출을 요청하세요.');
       return;
     }
     const confirmed = await dialog.confirm({
-      title: targetLawyer?.licenseStatus === 'suspended' ? '정지 해제' : '변호사 자격 승인',
-      message: `[${targetLawyer?.name || '해당 변호사'}]를 승인할까요?\n대한변협 검색 결과와 등록번호를 직접 대조했는지 확인하세요.\n서버 권한은 해당 변호사가 소셜 로그인으로 계정을 연결한 경우에만 적용됩니다.`,
+      title: resyncOnly ? '서버 권한 재승인' : targetLawyer?.licenseStatus === 'suspended' ? '정지 해제' : '변호사 자격 승인',
+      message: resyncOnly
+        ? `[${targetLawyer?.name || '해당 변호사'}]는 화면에만 승인되어 있고 서버 권한이 없습니다.\n서버 권한을 승인 상태로 반영할까요?`
+        : `[${targetLawyer?.name || '해당 변호사'}]를 승인할까요?\n대한변협 검색 결과와 등록번호를 직접 대조했는지 확인하세요.`,
       confirmText: '승인 처리'
     });
     if (!confirmed) return;
+
+    // 서버 권한(lawyer_accounts.approved)을 먼저 반영하고, 성공한 경우에만 화면 상태를 승인으로 바꾼다.
+    // (이전: 화면을 먼저 승인 처리 → 서버 매핑이 없으면 관리자 화면은 '승인 완료', 변호사 포털은 '심사 대기'로 어긋남)
+    let linked = await setLawyerDbApproval(lawyerId, true).catch(() => false);
+    if (!linked) {
+      // 이 프로필 ID에 연결된 로그인 계정이 없음 → 변호사 로그인 이메일로 연결 후 승인
+      const email = await dialog.prompt({
+        title: '로그인 계정 연결',
+        message: `이 프로필(${lawyerId})에 연결된 로그인 계정이 없습니다.\n변호사가 소셜 로그인에 사용한 이메일을 입력하면 해당 계정을 이 프로필에 연결하고 승인합니다.\n(변호사가 한 번 이상 로그인한 적이 있어야 합니다)`,
+        placeholder: 'lawyer@example.com',
+        defaultValue: targetLawyer?.email || '',
+        confirmText: '연결 후 승인',
+      });
+      if (email && email.trim()) {
+        const res = await adminLinkLawyerAccount(email, lawyerId, true);
+        if (res.ok === true) linked = true;
+        else toast.error(res.message);
+      }
+    }
+    refreshServerAccount(lawyerId);
+    if (!linked) {
+      toast.error('서버 권한이 반영되지 않아 승인 처리하지 않았습니다. 변호사가 소셜 로그인을 한 번 완료한 뒤 다시 승인하세요.');
+      return;
+    }
 
     setLawyers(prev => {
       const next = prev.map(l => {
@@ -1021,14 +1077,8 @@ export default function AdminRole({
       return next;
     });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
-    // DB 권한(lawyer_accounts.approved) 동기화 — 매핑이 없으면 변호사 첫 OAuth 로그인 후 다시 승인 필요
-    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인: ${lawyerId}`);
-    const linked = await setLawyerDbApproval(lawyerId, true).catch(() => false);
-    if (linked) {
-      toast.success('승인했습니다. 서버 권한도 반영되었습니다.');
-    } else {
-      toast.warning('화면에는 승인으로 표시했지만 서버 권한은 반영되지 않았습니다. 변호사가 소셜 로그인으로 계정을 연결한 뒤 다시 승인하세요.');
-    }
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `${resyncOnly ? '변호사 서버 권한 재승인' : '변호사 자격 승인'}: ${lawyerId}`);
+    toast.success('승인했습니다. 서버 권한도 반영되어 변호사가 다시 로그인하면 바로 이용할 수 있습니다.');
   };
 
   const handleSuspendLawyer = async (lawyerId: string) => {
@@ -1061,6 +1111,7 @@ export default function AdminRole({
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 승인 정지: ${lawyerId}`);
     // 이전: 서버 실패를 무시하고 '정지 완료'로 안내
     const linked = await setLawyerDbApproval(lawyerId, false).catch(() => false);
+    refreshServerAccount(lawyerId);
     if (linked) toast.success('정지했습니다. 서버 권한도 해제되었습니다.');
     else toast.warning('화면에는 정지로 표시했지만 서버 권한은 바뀌지 않았습니다(계정 미연결 또는 권한 오류). 세션 관제에서 계정 차단도 검토하세요.');
   };
@@ -2238,6 +2289,38 @@ export default function AdminRole({
                               <ShieldCheck className="w-3.5 h-3.5" />
                               <span>정식 활동 자격 승인 완료됨</span>
                             </span>
+
+                            {/* 서버 권한 불일치 경고: 변호사 포털은 lawyer_accounts.approved만 보고 '심사 대기'를 띄운다 */}
+                            {(serverAccount.status === 'unlinked' || (serverAccount.status === 'linked' && !serverAccount.approved)) && (
+                              <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 space-y-2">
+                                <p className="text-sm font-bold text-red-300 flex items-center gap-1.5">
+                                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                                  <span>서버 권한 미반영 — 변호사 포털에는 '승인 심사 대기'로 표시됩니다</span>
+                                </p>
+                                <p className="text-xs text-red-200/80 leading-relaxed">
+                                  {serverAccount.status === 'linked'
+                                    ? `연결된 계정(${serverAccount.authEmail || '이메일 없음'})의 서버 승인이 꺼져 있습니다.`
+                                    : '이 프로필 ID에 연결된 로그인 계정이 없습니다. 변호사가 다른 ID로 로그인 중이거나 아직 로그인한 적이 없습니다. 로그인 이메일로 연결하면 해결됩니다.'}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveLawyer(selectedLawyer.id)}
+                                  className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-sm font-extrabold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                  <span>{serverAccount.status === 'unlinked' ? '로그인 계정 연결 후 서버 승인' : '서버 권한 다시 승인'}</span>
+                                </button>
+                              </div>
+                            )}
+                            {serverAccount.status === 'linked' && serverAccount.approved && (
+                              <p className="text-xs text-emerald-300/80">서버 권한 승인됨 · 로그인 계정: {serverAccount.authEmail || '이메일 없음'}</p>
+                            )}
+                            {serverAccount.status === 'loading' && (
+                              <p className="text-xs text-slate-500">서버 권한 확인 중…</p>
+                            )}
+                            {serverAccount.status === 'error' && (
+                              <p className="text-xs text-amber-300">서버 권한을 확인하지 못했습니다{serverAccount.message ? ` (${serverAccount.message})` : ''}.</p>
+                            )}
                             <p className="text-sm leading-relaxed text-slate-500">
                               위 회원은 현재 변호사 자격 및 로펌 심사가 승인된 활성화 파트너 상태입니다. 운영 원칙 및 광고 규정 위반이 감지될 경우 수임 권한을 임시 정지(블록)할 수 있습니다.
                             </p>

@@ -3,25 +3,9 @@ import type { User } from '../types';
 
 // ============================================================
 // Lawyer Supabase Service Layer
-// Supabase 미설정 시 localStorage 폴백으로 동작하는 하이브리드 동기화
+// 공개 프로필: lawyers (anon 조회 가능) / 비공개 필드: lawyer_private_profiles (본인·관리자)
+// 동기화 흐름은 hooks/useLawyerProfileSync.ts (localStorage는 App.tsx가 오프라인 캐시로 관리)
 // ============================================================
-
-const STORAGE_KEY = 'legal_crm_lawyers';
-
-// ── 로컬 스토리지 헬퍼 ──
-
-function getLocalData<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function setLocalData<T>(key: string, data: T): void {
-  localStorage.setItem(key, JSON.stringify(data));
-}
 
 function logSupabaseError(operation: string, error: any) {
   const errorDetail = typeof error === 'object' ? (error?.message || error?.code || JSON.stringify(error)) : String(error);
@@ -137,7 +121,8 @@ export function lawyerToRow(lawyer: any) {
     ad_tier: adTier ?? lawyer.ad_tier ?? null,
     ai_case_analysis_enabled: aiCaseAnalysisEnabled ?? lawyer.ai_case_analysis_enabled ?? false,
     data: extraData,
-    created_at: createdAt ?? lawyer.created_at ?? new Date().toISOString(),
+    // created_at은 값이 있을 때만 보냄 (없으면 DB 기본값 — 이전: 저장할 때마다 현재 시각으로 덮어씀)
+    ...((createdAt ?? lawyer.created_at) ? { created_at: createdAt ?? lawyer.created_at } : {}),
     updated_at: new Date().toISOString(),
   };
 }
@@ -214,112 +199,176 @@ export function rowToLawyer(row: any): User {
   };
 }
 
-// ── CRUD 비동기 함수 ──
+// ── 공개/비공개 분리 ──
 
 /**
- * 변호사 목록 로드 (Supabase 우선, 실패 시 localStorage 폴백)
+ * 공개 lawyers 테이블(anon 조회 가능)에 두면 안 되는 필드.
+ * lawyer_private_profiles(본인·관리자만 접근)에 저장한다. 028 마이그레이션의 키 목록과 동일하게 유지할 것.
+ * (licenseNumber는 승인 변호사 공개 프로필에 표시되므로 공개 필드)
  */
-export async function loadLawyers(): Promise<User[]> {
-  if (isSupabaseConfigured) {
+export const PRIVATE_LAWYER_KEYS = [
+  'email',
+  'licenseImageData',
+  'businessNumber',
+  'ntsStatus',
+  'sealInfo',
+  'aiCaseAnalysisNote',
+] as const;
+
+type PrivateLawyerKey = typeof PRIVATE_LAWYER_KEYS[number];
+
+/** 변호사 객체를 공개 행(lawyers)과 비공개 데이터(lawyer_private_profiles)로 분리 */
+export function splitLawyer(lawyer: User): { row: ReturnType<typeof lawyerToRow>; privateData: Record<string, unknown> } {
+  const publicPart: Record<string, unknown> = { ...lawyer };
+  const privateData: Record<string, unknown> = {};
+  for (const key of PRIVATE_LAWYER_KEYS) {
+    if (publicPart[key] !== undefined && publicPart[key] !== null && publicPart[key] !== '') {
+      privateData[key] = publicPart[key];
+    }
+    delete publicPart[key];
+  }
+  const row = lawyerToRow(publicPart);
+  for (const key of PRIVATE_LAWYER_KEYS) delete (row.data as Record<string, unknown>)[key];
+  return { row, privateData };
+}
+
+/** 비공개 필드만 추출 */
+export function pickPrivateLawyerFields(lawyer: Partial<User> | undefined): Partial<Pick<User, PrivateLawyerKey>> {
+  const out: Record<string, unknown> = {};
+  if (!lawyer) return out;
+  for (const key of PRIVATE_LAWYER_KEYS) {
+    const v = (lawyer as Record<string, unknown>)[key];
+    if (v !== undefined && v !== null && v !== '') out[key] = v;
+  }
+  return out as Partial<Pick<User, PrivateLawyerKey>>;
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
+}
+
+/** DB에 저장되는 내용 기준의 비교용 지문 (타임스탬프 제외) — 변경 감지에 사용 */
+export function lawyerFingerprint(lawyer: User): string {
+  const { row, privateData } = splitLawyer(lawyer);
+  const { updated_at: _u, created_at: _c, ...rest } = row as Record<string, unknown>;
+  return stableStringify({ row: rest, privateData });
+}
+
+// ── DB 입출력 ──
+
+export type FetchLawyersResult =
+  | { ok: true; lawyers: User[]; privateIds: Set<string>; privateLoaded: boolean }
+  | { ok: false; message: string };
+
+/**
+ * lawyers 전체(공개) + 권한이 있는 비공개 프로필을 불러온다.
+ * 비공개 프로필은 RLS상 본인·관리자 행만 반환되며, 비로그인이면 조회하지 않는다.
+ * @returns privateIds: 비공개 데이터가 실제로 내려온 변호사 ID
+ */
+export async function fetchLawyersFromDb(): Promise<FetchLawyersResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: 'not_configured' };
+  try {
+    const { data, error } = await supabase
+      .from('lawyers')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      logSupabaseError('fetchLawyersFromDb', error);
+      return { ok: false, message: error.message };
+    }
+
+    const privateById = new Map<string, Record<string, unknown>>();
+    let privateLoaded = false;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: priv, error: privError } = await supabase
+        .from('lawyer_private_profiles')
+        .select('lawyer_id, data');
+      if (privError) {
+        // 테이블 미배포(028 전) 또는 권한 없음 → 공개 데이터만 사용
+        console.warn('[LawyerService] 비공개 프로필 조회 생략:', privError.message);
+      } else {
+        privateLoaded = true;
+        for (const p of priv || []) {
+          if (p?.lawyer_id && p.data && typeof p.data === 'object') privateById.set(String(p.lawyer_id), p.data);
+        }
+      }
+    }
+
+    const lawyers = (data || []).map(row => {
+      const base = rowToLawyer(row);
+      const priv = privateById.get(base.id);
+      return priv ? ({ ...base, ...pickPrivateLawyerFields(priv as Partial<User>) } as User) : base;
+    });
+    return { ok: true, lawyers, privateIds: new Set(privateById.keys()), privateLoaded };
+  } catch (e: any) {
+    logSupabaseError('fetchLawyersFromDb (exception)', e);
+    return { ok: false, message: e?.message || 'exception' };
+  }
+}
+
+export interface PushLawyersResult {
+  /** 저장 완료 */
+  saved: string[];
+  /** 신규로 넣으려 했으나 이미 DB에 있음 → 호출 측에서 다시 불러와야 함 */
+  conflicted: string[];
+  failed: { id: string; message: string }[];
+}
+
+/**
+ * 변경된 변호사 프로필을 DB에 저장한다 (행 단위 — RLS로 한 행이 거부돼도 나머지는 저장).
+ * - existingIds에 있는 행: upsert
+ * - 없는 행: INSERT ... ON CONFLICT DO NOTHING (다른 기기의 기존 프로필을 빈 프로필로 덮어쓰지 않도록)
+ * 승인 상태·유료 기능 등 관리자 전용 필드는 서버 트리거(028)가 비관리자 쓰기에서 보존한다.
+ */
+export async function pushLawyerProfiles(
+  lawyers: User[],
+  existingIds: Set<string>,
+  options: { includePrivate: boolean },
+): Promise<PushLawyersResult> {
+  const result: PushLawyersResult = { saved: [], conflicted: [], failed: [] };
+  if (!isSupabaseConfigured) return result;
+
+  for (const lawyer of lawyers) {
+    if (!lawyer?.id) continue;
     try {
+      const { row, privateData } = splitLawyer(lawyer);
+      const isNew = !existingIds.has(lawyer.id);
       const { data, error } = await supabase
         .from('lawyers')
-        .select('*')
-        .order('created_at', { ascending: true });
-
+        .upsert(row, { onConflict: 'id', ignoreDuplicates: isNew })
+        .select('id');
       if (error) {
-        logSupabaseError('loadLawyers', error);
-      } else if (data && data.length > 0) {
-        const lawyers = data.map(rowToLawyer);
-        setLocalData(STORAGE_KEY, lawyers);
-        return lawyers;
+        logSupabaseError(`pushLawyerProfiles(${lawyer.id})`, error);
+        result.failed.push({ id: lawyer.id, message: error.message });
+        continue;
       }
-    } catch (e) {
-      logSupabaseError('loadLawyers (exception)', e);
+      if (isNew && (!data || data.length === 0)) {
+        result.conflicted.push(lawyer.id);
+        continue;
+      }
+
+      // 비공개 행은 data 전체를 교체하므로, 서버 비공개 값을 정상 조회한 뒤에만 쓴다 (조회 실패 시 덮어쓰기 방지)
+      if (options.includePrivate && Object.keys(privateData).length > 0) {
+        const { error: privError } = await supabase
+          .from('lawyer_private_profiles')
+          .upsert({ lawyer_id: lawyer.id, data: privateData }, { onConflict: 'lawyer_id' });
+        if (privError) {
+          logSupabaseError(`pushLawyerProfiles.private(${lawyer.id})`, privError);
+          result.failed.push({ id: lawyer.id, message: `비공개 정보 저장 실패: ${privError.message}` });
+          continue;
+        }
+      }
+      result.saved.push(lawyer.id);
+    } catch (e: any) {
+      logSupabaseError(`pushLawyerProfiles(${lawyer.id}) (exception)`, e);
+      result.failed.push({ id: lawyer.id, message: e?.message || 'exception' });
     }
   }
-
-  // LocalStorage Fallback
-  return getLocalData<User[]>(STORAGE_KEY, []);
-}
-
-/**
- * 단일 변호사 저장 (localStorage 우선 저장 후 Supabase upsert)
- */
-export async function saveLawyer(lawyer: User): Promise<void> {
-  // 1. LocalStorage 즉시 저장
-  const lawyers = getLocalData<User[]>(STORAGE_KEY, []);
-  const idx = lawyers.findIndex(l => l.id === lawyer.id);
-  if (idx >= 0) {
-    lawyers[idx] = lawyer;
-  } else {
-    lawyers.push(lawyer);
-  }
-  setLocalData(STORAGE_KEY, lawyers);
-
-  // 2. Supabase 비동기 동기화
-  if (isSupabaseConfigured) {
-    try {
-      const row = lawyerToRow(lawyer);
-      const { error } = await supabase
-        .from('lawyers')
-        .upsert(row, { onConflict: 'id' });
-
-      if (error) {
-        logSupabaseError('saveLawyer', error);
-      }
-    } catch (e) {
-      logSupabaseError('saveLawyer (exception)', e);
-    }
-  }
-}
-
-/**
- * 변호사 목록 일괄 저장 (localStorage 우선 저장 후 Supabase upsert)
- */
-export async function saveAllLawyers(lawyers: User[]): Promise<void> {
-  // 1. LocalStorage 즉시 저장
-  setLocalData(STORAGE_KEY, lawyers);
-
-  // 2. Supabase 비동기 동기화
-  if (isSupabaseConfigured && lawyers.length > 0) {
-    try {
-      const rows = lawyers.map(lawyerToRow);
-      const { error } = await supabase
-        .from('lawyers')
-        .upsert(rows, { onConflict: 'id' });
-
-      if (error) {
-        logSupabaseError('saveAllLawyers', error);
-      }
-    } catch (e) {
-      logSupabaseError('saveAllLawyers (exception)', e);
-    }
-  }
-}
-
-/**
- * 단일 변호사 삭제 (localStorage 우선 삭제 후 Supabase delete)
- */
-export async function deleteLawyer(lawyerId: string): Promise<void> {
-  // 1. LocalStorage 즉시 삭제
-  const lawyers = getLocalData<User[]>(STORAGE_KEY, []);
-  const filtered = lawyers.filter(l => l.id !== lawyerId);
-  setLocalData(STORAGE_KEY, filtered);
-
-  // 2. Supabase 비동기 삭제
-  if (isSupabaseConfigured) {
-    try {
-      const { error } = await supabase
-        .from('lawyers')
-        .delete()
-        .eq('id', lawyerId);
-
-      if (error) {
-        logSupabaseError('deleteLawyer', error);
-      }
-    } catch (e) {
-      logSupabaseError('deleteLawyer (exception)', e);
-    }
-  }
+  return result;
 }

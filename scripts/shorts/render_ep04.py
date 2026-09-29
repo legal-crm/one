@@ -47,10 +47,10 @@ SCENES = [
 
 # 더미 변호사 (실존 인물 아님, 실루엣 아바타)
 LAWYERS = [
-    ("예시 변호사 A", "개인회생·파산 사건 경험", ["서울", "상담방 답변"], (219, 234, 254), (96, 165, 250)),
-    ("예시 변호사 B", "개인회생 사건 경험", ["경기", "야간 상담"], (204, 251, 241), (45, 212, 191)),
-    ("예시 변호사 C", "채무조정·파산 사건 경험", ["부산", "상담방 답변"], (237, 233, 254), (167, 139, 250)),
-    ("예시 변호사 D", "개인파산 사건 경험", ["인천", "주말 상담"], (254, 243, 199), (251, 191, 36)),
+    ("변호사 A", "개인회생·파산 사건 경험", ["서울", "상담방 답변"], (219, 234, 254), (96, 165, 250)),
+    ("변호사 B", "개인회생 사건 경험", ["경기", "야간 상담"], (204, 251, 241), (45, 212, 191)),
+    ("변호사 C", "채무조정·파산 사건 경험", ["부산", "상담방 답변"], (237, 233, 254), (167, 139, 250)),
+    ("변호사 D", "개인파산 사건 경험", ["인천", "주말 상담"], (254, 243, 199), (251, 191, 36)),
 ]
 
 
@@ -115,7 +115,6 @@ def scene1(t, dur):
     put_phone(frame, screen_spread(t), 0, 0)
     frame = zoom(frame.convert("RGB"), 1.0 + 0.06 * ease_in_out(t / dur), W / 2, H).convert("RGBA")
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 
@@ -151,7 +150,7 @@ def desk_scene():
     md.rounded_rectangle([30 * S, 30 * S, (mw + 30) * S, (mh + 30) * S], 16 * S, fill=(250, 250, 247, 255))
     md.text((64 * S, 70 * S), "상담 메모", font=font("EB", 36 * S), fill=SLATE900 + (255,))
     md.ellipse([64 * S, 150 * S, 84 * S, 170 * S], fill=TEAL + (255,))
-    md.text((98 * S, 142 * S), "예시 사무소 A 의견", font=font("B", 28 * S), fill=SLATE700 + (255,))
+    md.text((98 * S, 142 * S), "사무소 A 의견", font=font("B", 28 * S), fill=SLATE700 + (255,))
     for j, ww in enumerate([330, 300, 340, 250]):
         yy = 206 + j * 44
         md.rounded_rectangle([64 * S, yy * S, (64 + ww) * S, (yy + 14) * S], 7 * S, fill=SLATE200 + (255,))
@@ -250,7 +249,6 @@ def scene2(t, dur):
     hd = hand_img(lifts)
     frame.alpha_composite(hd, (540, 1060))
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -327,7 +325,6 @@ def scene3(t, dur):
         tap(frame, SW - 82, card_y(ci) + 70, t - at + 0.1)
     tap(frame, SW / 2, (BTN3[1] + BTN3[3]) / 2, t - TAP3)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 
@@ -396,7 +393,6 @@ def scene4(t, dur):
     frame = background().copy().convert("RGBA")
     put_phone(frame, screen_compare(t), 0, math.sin(t * 1.3) * 5)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

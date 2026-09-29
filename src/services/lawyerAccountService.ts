@@ -105,6 +105,74 @@ export async function registerLawyerAccount(lawyerId: string): Promise<boolean |
 }
 
 /**
+ * 관리자: 변호사 프로필 ID에 연결된 서버 계정 매핑(승인 여부) 조회.
+ * lawyer_accounts SELECT 정책상 관리자(is_platform_admin)만 타인 행을 볼 수 있다.
+ * @returns ok=true & account=null 이면 이 프로필 ID에 연결된 로그인 계정이 없음
+ */
+export async function getLawyerAccountByLawyerId(lawyerId: string): Promise<
+  { ok: true; account: LawyerAccount | null } | { ok: false; reason: 'not_configured' | 'error'; message?: string }
+> {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' };
+  if (!lawyerId) return { ok: true, account: null };
+  try {
+    const { data, error } = await supabase
+      .from('lawyer_accounts')
+      .select('lawyer_id, approved, auth_email')
+      .eq('lawyer_id', lawyerId)
+      .maybeSingle();
+    if (error) {
+      console.warn('[lawyerAccount] 관리자 매핑 조회 실패:', error.message);
+      return { ok: false, reason: 'error', message: error.message };
+    }
+    if (!data) return { ok: true, account: null };
+    return {
+      ok: true,
+      account: {
+        lawyerId: String(data.lawyer_id),
+        approved: data.approved === true,
+        authEmail: data.auth_email ?? null,
+      },
+    };
+  } catch (e: any) {
+    console.warn('[lawyerAccount] 관리자 매핑 조회 예외:', e);
+    return { ok: false, reason: 'error', message: e?.message };
+  }
+}
+
+/**
+ * 관리자: 한 번 이상 소셜 로그인한 계정(이메일)을 기존 변호사 프로필 ID에 연결 (018 admin_link_lawyer_account).
+ * 해당 계정이 다른 ID(예: 'lawyer-<uid>')로 매핑되어 있었다면 이 프로필 ID로 옮겨진다.
+ */
+export async function adminLinkLawyerAccount(
+  email: string,
+  lawyerId: string,
+  approved: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: 'Supabase가 설정되지 않았습니다.' };
+  const trimmed = (email || '').trim();
+  if (!trimmed || !lawyerId) return { ok: false, message: '이메일과 프로필 ID가 필요합니다.' };
+  try {
+    const { data, error } = await supabase.rpc('admin_link_lawyer_account', {
+      p_email: trimmed,
+      p_lawyer_id: lawyerId,
+      p_approved: approved,
+    });
+    if (error) {
+      console.warn('[lawyerAccount] 계정 연결 실패:', error.message);
+      const msg = error.message || '';
+      if (msg.includes('no auth user')) return { ok: false, message: '이 이메일로 로그인한 기록이 없습니다. 변호사가 소셜 로그인을 한 번 완료한 뒤 다시 시도하세요.' };
+      if (msg.includes('already linked')) return { ok: false, message: '이 프로필 ID는 이미 다른 로그인 계정에 연결되어 있습니다.' };
+      if (msg.includes('admin only')) return { ok: false, message: '관리자 권한(MFA 인증 포함)이 확인되지 않았습니다.' };
+      return { ok: false, message: msg || '계정 연결에 실패했습니다.' };
+    }
+    return data === false ? { ok: false, message: '계정 연결에 실패했습니다.' } : { ok: true };
+  } catch (e: any) {
+    console.warn('[lawyerAccount] 계정 연결 예외:', e);
+    return { ok: false, message: e?.message || '계정 연결에 실패했습니다.' };
+  }
+}
+
+/**
  * 관리자: 변호사 DB 접근 승인/정지. 앱 화면의 승인 상태와 함께 호출한다.
  * @returns 매핑된 계정이 있어 반영되었으면 true
  */

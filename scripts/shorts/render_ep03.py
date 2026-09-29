@@ -228,7 +228,6 @@ def scene2(t, dur):
     frame.alpha_composite(blanket())
     top_shade(frame, 600, 120)
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     # 시간 경과 칩: 1개월째 → 2개월째 → 3개월째
     months = 1 + min(2, int(max(0, t - 1.4) / 1.4))
     ov, d = overlay()
@@ -277,7 +276,7 @@ def screen_chat(t):
     s.rr(0, 60, SW, 176, 0, fill=WHITE)
     s.line([(44, 104), (30, 118), (44, 132)], SLATE900, 5)
     avatar(s, 100, 118, 30, TEAL_L, (45, 212, 191))
-    s.text(146, 100, "예시 변호사 B", 28, SLATE900, "EB")
+    s.text(146, 100, "변호사 B", 28, SLATE900, "EB")
     s.text(146, 138, "상담방", 20, SLATE500, "B")
     # 비공개 배너
     bp = ease_out((t - 3.35) / 0.4)  # 내레이션 '실명과 연락처는…' 시작(실측)
@@ -317,7 +316,6 @@ def scene3(t, dur):
     frame = background().copy().convert("RGBA")
     put_phone(frame, screen_chat(t), 0, math.sin(t * 1.3) * 5)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

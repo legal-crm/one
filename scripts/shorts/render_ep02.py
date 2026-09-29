@@ -335,7 +335,6 @@ def scene4(t, dur):
     put_phone(frame, screen_check(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW / 2, 1008, t - PRESS_AT)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면 · 예시 값", CAP_X, 520)
     return frame
 
 

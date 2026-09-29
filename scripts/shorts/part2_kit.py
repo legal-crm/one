@@ -390,7 +390,58 @@ def card_img(w, h, title, sub="", icon_kind=None, accent=TEAL, fill=CARD, outlin
 
 
 @lru_cache(maxsize=None)
-def paper_img(w, h, title, rows, accent=NAVY, note="예시 서류"):
+def vcard_img(w, h, title, sub="", icon_kind=None, accent=TEAL, fill=CARD, outline=None, tsize=40, ssize=27,
+              sub2="", owidth=3):
+    """세로형 카드: 위 아이콘 원 · 아래 제목/설명(최대 2줄)"""
+    S = 2
+    im = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    oc = outline if outline is not None else accent
+    d.rounded_rectangle([0, 0, w * S - 1, h * S - 1], 32 * S, fill=fill + (255,),
+                        outline=(oc + (255,)) if oc else None, width=owidth * S)
+    y = 34
+    if icon_kind:
+        r = 50
+        d.ellipse([(w / 2 - r) * S, y * S, (w / 2 + r) * S, (y + 2 * r) * S], fill=accent + (255,))
+        ic = icon(icon_kind, int(r * 1.1 * S), WHITE)
+        im.alpha_composite(ic, (int(w / 2 * S - ic.width / 2), int((y + r) * S - ic.height / 2)))
+        y += 2 * r + 30
+    d.text((w / 2 * S, (y + tsize / 2) * S), title, font=font("EB", tsize * S), fill=WHITE, anchor="mm")
+    y += tsize + 18
+    for ln in (sub, sub2):
+        if ln:
+            d.text((w / 2 * S, (y + ssize / 2) * S), ln, font=font("B", ssize * S), fill=SLATE300, anchor="mm")
+            y += ssize + 12
+    return im.resize((w, h), Image.LANCZOS)
+
+
+def draw_line_progress(frame, pts, p, color, width=8):
+    """폴리라인을 p(0~1) 만큼 그려 나감"""
+    if p <= 0:
+        return
+    segs = [math.dist(a, b) for a, b in zip(pts, pts[1:])]
+    total = sum(segs)
+    left = total * clamp(p)
+    out = [pts[0]]
+    for (a, b), ln in zip(zip(pts, pts[1:]), segs):
+        if left >= ln:
+            out.append(b)
+            left -= ln
+        else:
+            f = left / ln if ln else 0
+            out.append((lerp(a[0], b[0], f), lerp(a[1], b[1], f)))
+            break
+    S = 2
+    ov = Image.new("RGBA", (W // S * S, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    d.line(out, fill=color + (255,), width=width, joint="curve")
+    for x, y in (out[0], out[-1]):
+        d.ellipse([x - width / 2, y - width / 2, x + width / 2, y + width / 2], fill=color + (255,))
+    frame.alpha_composite(ov)
+
+
+@lru_cache(maxsize=None)
+def paper_img(w, h, title, rows, accent=NAVY, note=None):
     """흰 종이 서류. rows: ((라벨, 값), ...) · 값이 None 이면 회색 자리표시 줄"""
     S, m = 2, 40
     im = Image.new("RGBA", ((w + m * 2) * S, (h + m * 2) * S), (0, 0, 0, 0))
@@ -437,7 +488,11 @@ def stamp_img(text, color=RED, w=300, h=120, rot=-10, size=56, circle=False):
     else:
         d.rounded_rectangle([6 * S, 6 * S, (w - 6) * S, (h - 6) * S], 16 * S, outline=c, width=9 * S)
         d.rounded_rectangle([20 * S, 20 * S, (w - 20) * S, (h - 20) * S], 10 * S, outline=c, width=3 * S)
-    d.text((w * S / 2, h * S / 2), text, font=font("EB", size * S), fill=c, anchor="mm")
+    f = font("EB", size * S)
+    while d.textlength(text, font=f) > (w - 64) * S and size > 20:
+        size -= 2
+        f = font("EB", size * S)
+    d.text((w * S / 2, h * S / 2), text, font=f, fill=c, anchor="mm")
     # 잉크 번짐 느낌의 미세 결
     rng = np.random.default_rng(7)
     a = np.array(im.getchannel("A"), dtype=np.float32)
@@ -566,7 +621,7 @@ PATHS4 = (
 )
 
 
-def screen_paths(t, hl=0, hl_at=2.0, hl_tag="내 상황에 맞을 수도", sub="익명 체크 결과 (예시)", rows=PATHS4,
+def screen_paths(t, hl=0, hl_at=2.0, hl_tag="내 상황에 맞을 수도", sub="익명 체크 결과", rows=PATHS4,
                  pop0=0.25, note=None, note_at=None):
     s = Scr(SLATE50)
     s_header(s, "해결 경로 비교")
@@ -663,3 +718,97 @@ def run(ep, scenes, renderers, meta=None, keep_work=False):
         write_upload(ep, meta)
     if not keep_work:
         shutil.rmtree(base.TMP, ignore_errors=True)
+
+
+# ── 변호사 프로필 목록 (필터 칩 → 걸러짐 → 선택) ─────────────────
+def screen_profiles(t, cards, hl_tag, filt_at, sel_i, sel_at, title="변호사 선택",
+                    sub="프로필을 보고 직접 고르세요", filt_label=None):
+    """cards: ((이름, 경험, (태그...), 아바타bg, 아바타fg), ...). hl_tag 가 있는 카드만 남는다.
+    반환: (화면, 선택 버튼 좌표)"""
+    s = Scr(SLATE50)
+    s_header(s, title)
+    s.text(36, 196, sub, 24, SLATE500, "B", "lm")
+    fp = pop(t, filt_at, 0.5)
+    chip_x = 36
+    for lab, active in (("전체", fp < 0.5), (filt_label or hl_tag, fp >= 0.5)):
+        tw = s.tlen(lab, 21, "EB") + 36
+        s.rr(chip_x, 232, chip_x + tw, 280, 24, fill=SLATE900 if active else WHITE,
+             outline=None if active else SLATE300, width=2)
+        s.text(chip_x + tw / 2, 256, lab, 21, WHITE if active else SLATE700, "EB", "mm")
+        chip_x += tw + 12
+    top, ch, gap = 312, 176, 18
+    match_idx = [i for i, c in enumerate(cards) if hl_tag in c[2]]
+    tap_pos = (SW / 2, 700)
+    order = [i for i in range(len(cards)) if i not in match_idx] + match_idx
+    for i in order:
+        name, exp, tags, bg, fg = cards[i]
+        match = i in match_idx
+        y0 = top + i * (ch + gap)
+        if match:
+            y1 = top + match_idx.index(i) * (ch + gap)
+            y = lerp(y0, y1, ease_in_out(fp))
+            q = 1.0
+            dx = 0
+        else:
+            y = y0
+            q = 1 - fp
+            dx = 60 * fp
+            if q <= 0.02:
+                continue
+        if y > SH:
+            continue
+        selected = match and i == sel_i and t >= sel_at
+        fill = lerp_color(SLATE50, WHITE, q)
+        s.rr(28 + dx, y, SW - 28 + dx, y + ch, 28, fill=fill,
+             outline=TEAL if selected else lerp_color(SLATE50, SLATE200, q), width=4 if selected else 2)
+        if q > 0.5:
+            avatar(s, 96 + dx, y + 66, 40, bg, fg)
+        s.text(158 + dx, y + 44, name, 28, lerp_color(SLATE50, SLATE900, q), "EB", "lm")
+        s.text(158 + dx, y + 84, exp, 20, lerp_color(SLATE50, SLATE500, q), "B", "lm")
+        tx = 56 + dx
+        for tg in tags:
+            on = tg == hl_tag and fp > 0.3
+            tw = s.tlen(tg, 18, "EB")
+            s.rr(tx, y + 120, tx + tw + 26, y + 156, 14,
+                 fill=TEAL_L if on else lerp_color(SLATE50, SLATE100, q))
+            s.text(tx + 13, y + 138, tg, 18, TEAL_D if on else lerp_color(SLATE50, SLATE700, q), "EB", "lm")
+            tx += tw + 36
+        bx0, bx1 = SW - 160, SW - 52
+        by = y + 30
+        if selected:
+            s.rr(bx0 + dx, by, bx1 + dx, by + 46, 16, fill=TEAL)
+            s.text((bx0 + bx1) / 2 + dx, by + 23, "선택됨", 20, WHITE, "EB", "mm")
+        else:
+            s.rr(bx0 + dx, by, bx1 + dx, by + 46, 16, outline=lerp_color(SLATE50, BLUE, q), width=3)
+            s.text((bx0 + bx1) / 2 + dx, by + 23, "선택", 20, lerp_color(SLATE50, BLUE, q), "EB", "mm")
+        if match and i == sel_i:
+            tap_pos = ((bx0 + bx1) / 2, by + 23)
+    return s.final(), tap_pos
+
+
+LAWYERS = (
+    ("변호사 A", "개인회생 사건 경험", ("서울", "상담방 답변"), (219, 234, 254), (96, 165, 250)),
+    ("변호사 B", "개인회생·파산 사건 경험", ("경기", "야간 상담"), (204, 251, 241), (45, 212, 191)),
+    ("변호사 C", "채무조정 사건 경험", ("부산", "상담방 답변"), (237, 233, 254), (167, 139, 250)),
+    ("변호사 D", "개인회생 사건 경험", ("인천", "주말 상담"), (254, 243, 199), (251, 191, 36)),
+)
+
+
+def lawyers_with(tag, idx):
+    """예시 변호사 목록 중 idx 에 해당하는 카드에 tag 추가"""
+    out = []
+    for i, (n, e, tags, bg, fg) in enumerate(LAWYERS):
+        out.append((n, e, (tags[0], tag) if i in idx else tags, bg, fg))
+    return tuple(out)
+
+
+# ── 손 일러스트 (실존 인물 아님) ─────────────────────────────
+SKIN = (226, 190, 158)
+SKIN_D = (196, 156, 124)
+
+
+def thumb(d, x, y, w=70, h=120, rot_left=True):
+    """물건 가장자리를 쥔 엄지 + 뒤쪽 손가락 그림자 (frame 좌표 직접 그림)"""
+    d.rounded_rectangle([x - w * 0.9, y + h * 0.35, x + w * 0.9, y + h * 1.6], int(w * 0.6), fill=SKIN_D + (255,))
+    d.rounded_rectangle([x - w / 2, y, x + w / 2, y + h], int(w / 2), fill=SKIN + (255,))
+    d.rounded_rectangle([x - w * 0.32, y + 10, x + w * 0.32, y + h * 0.36], int(w * 0.3), fill=(236, 206, 180, 255))

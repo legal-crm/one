@@ -111,7 +111,6 @@ def scene1(t, dur):
         d.rectangle([x, 900, x + 5, 952], fill=BLUE)
     frame = zoom(frame.convert("RGB"), 1.0 + 0.08 * ease_in_out(t / dur), W / 2, 1150).convert("RGBA")
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -145,7 +144,7 @@ def paper_tile(i):
     d.rounded_rectangle([m * S, m * S, (m + w) * S, (m + h) * S], 16 * S, fill=(252, 252, 250, 255), outline=(203, 213, 225, 255), width=2 * S)
     d.rectangle([m * S, (m + 18) * S, (m + w) * S, (m + 26) * S], fill=TEAL + (255,))
     d.text(((m + w / 2) * S, (m + 76) * S), label, font=font("EB", 30 * S), fill=SLATE900 + (255,), anchor="mm")
-    d.text(((m + w / 2) * S, (m + 116) * S), "(예시)", font=font("B", 20 * S), fill=SLATE400 + (255,), anchor="mm")
+    d.text(((m + w / 2) * S, (m + 116) * S), "", font=font("B", 20 * S), fill=SLATE400 + (255,), anchor="mm")
     for j in range(6):
         ww = [250, 230, 250, 190, 240, 150][j]
         y = m + 160 + j * 38
@@ -182,7 +181,6 @@ def scene2(t, dur):
     frame = zoom(frame.convert("RGB"), 1.28 - 0.28 * ease_out(t / (dur * 0.9)), W / 2, 760).convert("RGBA")  # 상단 기준 → 자막 영역 침범 방지
     frame.alpha_composite(top_shade_layer(640, 170))
     draw_caption(frame, SCENES[1]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -303,7 +301,6 @@ def scene3(t, dur):
     tap(frame, MIC_C[0], MIC_C[1], t - MIC_TAP)
     tap(frame, SW / 2, BTN_Y, t - GEN_TAP)
     draw_caption(frame, SCENES[2]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 
@@ -331,7 +328,7 @@ def screen_hub(t):
     frac = (done + (1 if t >= REVIEW_AT else 0) * 0.5) / (len(HUB_DOCS) + 1)
     s.rr(36, 222, SW - 36, 238, 8, fill=SLATE200)
     s.rr(36, 222, 36 + max(16, (SW - 72) * frac), 238, 8, fill=TEAL)
-    s.text(36, 262, "서류 목록 (예시)", 21, SLATE500, "B")
+    s.text(36, 262, "서류 목록", 21, SLATE500, "B")
     rows = HUB_DOCS + [("진술서 초안", None)]
     for i, (name, at) in enumerate(rows):
         y = 300 + i * 84
@@ -384,7 +381,6 @@ def scene4(t, dur):
     put_phone(frame, screen_hub(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW / 2, SEND_Y, t - SEND_TAP)
     draw_caption(frame, SCENES[3]["caption"], t)
-    chip(frame, "데모 화면", CAP_X, 520)
     return frame
 
 

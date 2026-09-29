@@ -173,7 +173,6 @@ def scene1(t, dur):
     frame = room.crop((x, 0, x + W, H))
     top_shade(frame)
     draw_caption(frame, SCENES[0]["caption"], t)
-    chip(frame, "예시 화면", CAP_X, 520)
     return frame
 
 
@@ -545,7 +544,6 @@ def phone_part(t):
     put_phone(frame, screen_check7(t), 0, math.sin(t * 1.3) * 5)
     tap(frame, SW / 2, 838, t - CHK_PRESS)
     draw_caption(frame, SCENES[4]["caption"], t)
-    chip(frame, "데모 화면 · 예시 값", CAP_X, 520)
     return frame
 
 
