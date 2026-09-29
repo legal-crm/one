@@ -2,10 +2,10 @@
 // POST /api/scourt-proxy
 // 공식 개발가이드: https://developer.codef.io/products/public/each/ck/scourt-events
 
-import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
-import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { handleCorsPreflight } from '../cors-helper.js';
+import { verifyAuth } from '../auth-middleware.js';
+import { verifyTurnstileToken } from '../turnstile-validator.js';
+import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 
 let cachedToken = {
   accessToken: null,

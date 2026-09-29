@@ -1,10 +1,10 @@
 // Vercel Serverless Function: 주민등록등본 / 가족관계증명서 실시간 AI Vision OCR 파서
 // POST /api/ocr-family
 
-import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
-import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { handleCorsPreflight } from '../cors-helper.js';
+import { verifyAuth } from '../auth-middleware.js';
+import { verifyTurnstileToken } from '../turnstile-validator.js';
+import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 
 async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;

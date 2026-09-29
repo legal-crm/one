@@ -2,9 +2,9 @@
 // POST /api/send-email
 // [SECURITY] 서버 전용 SMTP 자격증명 강제, 클라이언트 비밀번호 전송 완전 차단
 
-import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
-import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { handleCorsPreflight } from '../cors-helper.js';
+import { verifyAuth, isAdminWithMfa, supabase } from '../auth-middleware.js';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 
 export default async function handler(req, res) {
   if (handleCorsPreflight(req, res)) return;

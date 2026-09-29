@@ -6,8 +6,8 @@
 //          가짜 전담 선임 목록(홍길* → 이소민 …)·가짜 취소 사유 통계·가짜 인사이트,
 //          스팸 차단 건까지 '전환'으로 세던 전환율(closed/total), UTC 기준 '오늘'
 //  - 추가: 계약 체결·진단 완료(서버 기록)·광고 입금액·변호사별 실적(응답률·응답 속도·체결)
-// 데이터 한계(화면에 표기): 방문자 수는 분석 도구 미연동, 만족도는 수집 기능 없음,
-//   구독료는 결제 연동이 없어 매칭 건수 구간으로 만든 추정치
+// 데이터 한계(화면에 표기): 방문자 수는 분석 도구 미연동, 만족도는 수집 기능 없음
+// 플랫폼 수익은 정액 광고비뿐이다. 매칭 건수 구간으로 만든 '예상 구독료' 카드는 삭제했다 (docs/feature_expansion_plan.md 0장)
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -99,11 +99,9 @@ interface Props {
   logs: PlatformActivityLog[];
   logsSource: 'server' | 'local';
   adOrders: AdOrder[];
-  /** 매칭 건수 구간 기반 추정 구독료 (실결제 아님) */
-  estimateMRR: number;
 }
 
-export default function PlatformDashboard({ requests, lawyers, members, logs, logsSource, adOrders, estimateMRR }: Props) {
+export default function PlatformDashboard({ requests, lawyers, members, logs, logsSource, adOrders }: Props) {
   const health = useSupabaseHealth();
   const [signupView, setSignupView] = useState<'weekly' | 'monthly'>('weekly');
   const [diagCounts, setDiagCounts] = useState<{ total: number; thisMonth: number } | null | 'loading'>('loading');
@@ -149,6 +147,17 @@ export default function PlatformDashboard({ requests, lawyers, members, logs, lo
   const lawyerCount = lawyers.length;
   const pendingLawyers = lawyers.filter(l => l.approved === false).length;
   const todaySignups = members.filter(m => localDateOf(m.createdAt) === todayStr).length;
+
+  // ── 노출 중 광고 (정액 광고 주문 기준) ──
+  const adStatus = useMemo(() => {
+    const nowMs = Date.now();
+    const active = adOrders.filter(o => o.status === 'active');
+    const expiringSoon = active.filter(o => {
+      const t = o.expiresAt ? new Date(o.expiresAt).getTime() : NaN;
+      return !Number.isNaN(t) && t >= nowMs && t - nowMs <= 30 * 86_400_000;
+    }).length;
+    return { active: active.length, expiringSoon };
+  }, [adOrders]);
 
   // ── 변호사별 실적 (실제 요청·제안서 기준) ──
   const ranking = useMemo(() => {
@@ -335,11 +344,12 @@ export default function PlatformDashboard({ requests, lawyers, members, logs, lo
           <UserPlus className="w-5 h-5 text-indigo-400 shrink-0" aria-hidden="true" />
         </div>
 
+        {/* 이전: '예상 구독료 (추정)' — 매칭 건수 구간 추정치. 구독료를 받지 않으므로 노출 중 광고 현황으로 교체 */}
         <div className={card}>
           <div className="space-y-1">
-            <span className={label}>예상 구독료 (추정)</span>
-            <span className="text-2xl font-black text-slate-100">{estimateMRR.toLocaleString()}원</span>
-            <span className="text-xs text-slate-400 block">매칭 건수 구간 추정 · 실결제 아님</span>
+            <span className={label}>노출 중 광고</span>
+            <span className="text-2xl font-black text-slate-100">{adStatus.active}건</span>
+            <span className="text-xs text-slate-400 block">30일 내 만료 {adStatus.expiringSoon}건</span>
           </div>
           <CreditCard className="w-5 h-5 text-slate-300 shrink-0" aria-hidden="true" />
         </div>
@@ -532,7 +542,7 @@ export default function PlatformDashboard({ requests, lawyers, members, logs, lo
           </h3>
           <ul className="text-sm text-slate-300 space-y-2 leading-relaxed list-disc pl-4">
             <li>사건 성사·수임 건별 소개 수수료는 받지 않습니다.</li>
-            <li>수익은 정액 광고료·구독료입니다.</li>
+            <li>수익은 변호사가 내는 정액 광고료뿐입니다. 수임료는 의뢰인이 사무소에 직접 납부합니다.</li>
             <li>의뢰인이 변호사를 직접 선택합니다.</li>
           </ul>
           <p className="text-xs text-slate-400">운영 정책 안내이며 자동 점검 결과가 아닙니다. 법적 판단은 전문가 검토가 필요합니다.</p>

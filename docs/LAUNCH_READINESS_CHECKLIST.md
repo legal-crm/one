@@ -421,7 +421,7 @@
 >
 > 🗄️ **`017_doc_share_packages.sql` (미적용)** · ⚙️ 운영 환경변수 `TURNSTILE_SECRET_KEY` 필요(없으면 비회원 문의 등록 차단)
 >
-> ⚠️ **Vercel 함수 개수**: `api/inquiry.js` 추가로 12개 — Hobby 플랜 한도(12)에 도달했습니다. 이후 API는 기존 함수에 액션으로 합치거나 플랜 업그레이드가 필요합니다.
+> ⚠️ **Vercel 함수 개수**: `api/inquiry.js` 추가로 12개 — Hobby 플랜 한도(12)에 도달했습니다. → ✅ 2026-09-29 함수 통합으로 **8개**(여유 4개). 기존 URL은 rewrites로 유지 (4-2 참고, `docs/feature_expansion_plan.md` 6-2)
 
 - [x] **인앱 알림 벨** — ⛔→✅ 가짜 시드 알림(상담 접수·변호사 메시지·서류 요청) 제거 → 환영 안내 1건(읽음)만, 기존 기기의 가짜 시드도 자동 정리. 로그아웃 시 이 기기 알림 삭제. 벨 44px·`aria-label`(미읽음 수)·`aria-expanded`, 다크모드 *(수정)*
   - ⚠️ 알림은 여전히 기기(localStorage) 단위이며 서버 알림 연동은 없음
@@ -2289,7 +2289,17 @@
 
 ---
 
-### 4-2. 서버리스 API 엔드포인트 (12개)
+### 4-2. 서버리스 API 엔드포인트 (12개 → 함수 8개로 통합)
+
+> 🔀 **함수 통합 (2026-09-29, `docs/feature_expansion_plan.md` 6-2)**: Hobby 한도(배포당 12개) 여유를 만들려고 의존성이 같은 API를 합쳤습니다. 아래 표의 URL은 `vercel.json` rewrites로 **그대로 유지**되고, 각 핸들러 코드는 `api/_lib/routes/`로 옮겨 내용 변경 없이 씁니다(import 경로만 수정).
+> - `api/popbill.js` ← alimtok(`service=kakao`) + invoice(`service=invoice`)
+> - `api/ocr.js` ← ocr-case(`kind=case`) + ocr-family(`kind=family`)
+> - `api/notify.js` ← telegram(`channel=telegram`) + send-email(`channel=email`)
+> - `api/codef.js` ← scourt-proxy(`product=scourt`) + debt-discovery(`product=debt`)
+> - 라우터 `api/_lib/route-dispatch.js`는 핸들러에 통합 전 경로를 넘겨서, rate limit 키와 경로 기반 액션 판별이 API별로 그대로 유지됩니다.
+> - 검증: 라우팅 스모크 테스트 16건 통과(8개 경로 모두 실제 핸들러까지 도달해 각자의 인증 오류로 응답). ❔ 배포 환경의 rewrites 동작은 배포 후 기존 12개 URL을 각각 호출해 확인해야 합니다.
+> - ⚠️ `send-email`은 `nodemailer`를 동적으로 import하지만 `package.json`에 없습니다(통합 전부터). 설치하지 않으면 이메일 발송은 런타임에 실패합니다.
+
 | # | 엔드포인트 | 인증 | 이번 점검 결과 |
 |:-:|:---|:---|:---|
 | 1 | `api/alimtok.js` | 로그인 + 승인 변호사/관리자(aal2) | 조회·발송 Rate Limit 버킷 분리 *(수정)*. ⚠️ 템플릿 불일치 시 SMS/LMS로 임의 문구가 나갈 수 있음 |

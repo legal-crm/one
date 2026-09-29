@@ -7,8 +7,8 @@
 //   - GET  /api/invoice/pdf         (세금계산서 뷰어 URL 조회)
 //   - POST /api/invoice/resend      (세금계산서 이메일 재발송)
 
-import { taxinvoiceService, closedownService, SUPPLIER_INFO, getTodayStr, setCorsHeaders, isTaxinvoiceConfigured, isValidCorpNum } from './_lib/popbill-service.js';
-import { withAuth, isAdminWithMfa } from './_lib/auth-middleware.js';
+import { taxinvoiceService, closedownService, SUPPLIER_INFO, getTodayStr, setCorsHeaders, isTaxinvoiceConfigured, isValidCorpNum } from '../popbill-service.js';
+import { withAuth, isAdminWithMfa } from '../auth-middleware.js';
 
 // 팝빌 미설정 시 응답 (이전: ok:true + MOCK 국세청승인번호 → 발행된 것처럼 저장·표시됨)
 const notConfigured = (res, what) => res.status(200).json({

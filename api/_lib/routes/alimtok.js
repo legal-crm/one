@@ -2,9 +2,9 @@
 // GET  /api/alimtok?action=status -> 팝빌 상태 및 잔여 포인트 조회
 // POST /api/alimtok               -> 알림톡 발송 (실패 시 LMS/SMS 자동 대체 발송)
 
-import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './_lib/popbill-service.js';
-import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
-import { verifyAuth, isAdminWithMfa, supabase as authSupabase } from './_lib/auth-middleware.js';
+import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from '../popbill-service.js';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
+import { verifyAuth, isAdminWithMfa, supabase as authSupabase } from '../auth-middleware.js';
 
 // [SECURITY] 발신번호는 서버에 등록된 번호만 사용 (이전: 요청 본문의 sender를 그대로 사용 → 임의 발신번호 지정 가능)
 // 버튼 링크는 https만 허용 (피싱 링크 삽입 방지)

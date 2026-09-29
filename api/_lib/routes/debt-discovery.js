@@ -2,9 +2,9 @@
 // POST /api/debt-discovery
 // 연동 대상: 한국신용정보원(크레딧포유), 금융결제원(어카운트인포), 국세청/공공마이데이터(조세·공과금), 대법원 나의사건검색
 
-import { handleCorsPreflight } from './_lib/cors-helper.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+import { handleCorsPreflight } from '../cors-helper.js';
+import { verifyAuth } from '../auth-middleware.js';
+import { verifyTurnstileToken } from '../turnstile-validator.js';
 
 let cachedToken = {
   accessToken: null,

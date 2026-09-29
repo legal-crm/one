@@ -1,10 +1,11 @@
 // Vercel Serverless Function: Telegram Bot & Multi-Channel Notification API
 // POST /api/telegram
 
-import { setCorsHeaders } from './_lib/popbill-service.js';
-import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
-import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
-import { verifyAuth } from './_lib/auth-middleware.js';
+// CORS 헬퍼는 cors-helper에서 직접 가져온다 (이전: popbill-service 경유 → 알림 함수 번들에 팝빌 SDK까지 포함)
+import { setCorsHeaders } from '../cors-helper.js';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
+import { verifyTurnstileToken } from '../turnstile-validator.js';
+import { verifyAuth } from '../auth-middleware.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(req, res);

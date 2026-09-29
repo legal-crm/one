@@ -10,7 +10,7 @@ import {
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
 } from '../types';
-import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
+import { adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
@@ -88,7 +88,7 @@ const MOBILE_MORE_TABS: Array<{ id: string; label: string; perm?: string }> = [
   { id: 'fee-settlement', label: '수임료 정산', perm: 'fee-settlement' },
   { id: 'case-copilot', label: 'AI 사건 분석', perm: 'case-copilot' },
   { id: 'qna-answer', label: '고민상담 Q&A' },
-  { id: 'billing', label: '요금제 / 빌링', perm: 'billing' },
+  { id: 'billing', label: '광고 / 빌링', perm: 'billing' },
   { id: 'staff-management', label: '직원 관리', perm: 'staff-management' },
   { id: 'inquiry-to-admin', label: '마이김변 문의' },
   { id: 'settings', label: '알림 및 설정', perm: 'settings' },
@@ -2768,10 +2768,10 @@ export default function LawyerRole({
                       ? 'bg-brand text-white font-bold shadow-md shadow-brand/20' 
                       : 'text-slate-300 hover:bg-white/5 hover:text-white font-medium'
                   }`}
-                  title={sidebarCollapsed ? '요금제 / 빌링' : undefined}
+                  title={sidebarCollapsed ? '광고 / 빌링' : undefined}
                 >
                   <CreditCard className="w-5 h-5 shrink-0" />
-                  {!sidebarCollapsed && <span className="truncate">요금제 / 빌링</span>}
+                  {!sidebarCollapsed && <span className="truncate">광고 / 빌링</span>}
                 </button>
               )}
 
@@ -3401,16 +3401,20 @@ export default function LawyerRole({
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-slate-700" />
-                    <span>광고 & 요금 현황</span>
+                    <span>광고 현황</span>
                   </h3>
                   <span className="text-xs text-slate-400 font-bold group-hover:text-[#1E3A5F] transition-colors flex items-center gap-1">상세 보기 <ArrowRight className="w-3 h-3" /></span>
                 </div>
                 {(() => {
                   const activeAds = adOrders.filter(o => o.status === 'active');
                   const monthlyAdTotal = activeAds.reduce((s, o) => s + o.monthlyPrice, 0);
-                  // 구독 계약 정보는 아직 계정에 저장되지 않음 → 임의 요금제를 '이용 중'으로 표시하지 않음
-                  const currentPlanName: string | undefined = (activeLawyer as any).subscriptionPlanName;
-                  const currentPlan = currentPlanName ? platformPlans.find(pl => pl.name === currentPlanName) : undefined;
+                  const pendingAds = adOrders.filter(o => o.status === 'pending').length;
+                  // 30일 안에 노출이 끝나는 광고 (갱신 안내용). 이전: 이 자리에 '구독 요금제·월 구독료' 표시 — CRM 구독료는 받지 않으므로 삭제
+                  const nowMs = Date.now();
+                  const expiringSoon = activeAds.filter(o => {
+                    const t = o.expiresAt ? new Date(o.expiresAt).getTime() : NaN;
+                    return !Number.isNaN(t) && t >= nowMs && t - nowMs <= 30 * 86_400_000;
+                  }).length;
                   return (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
@@ -3422,12 +3426,12 @@ export default function LawyerRole({
                         <div className="text-xl font-black text-slate-900 tabular-nums">{(monthlyAdTotal / 10000).toFixed(0)}만원</div>
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
-                        <div className="text-[11px] text-slate-500 font-bold mb-1">구독 요금제</div>
-                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : '미등록'}</div>
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">입금 대기</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{pendingAds}건</div>
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
-                        <div className="text-[11px] text-slate-500 font-bold mb-1">월 구독료</div>
-                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? currentPlan.price : '—'}</div>
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">30일 내 만료</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{expiringSoon}건</div>
                       </div>
                     </div>
                   );
@@ -4717,7 +4721,7 @@ export default function LawyerRole({
             {/* 서브탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
-                { key: 'status' as const, label: '구독 현황' },
+                { key: 'status' as const, label: '광고 현황' },
                 { key: 'products' as const, label: '광고 상품' },
                 { key: 'orders' as const, label: '내 광고 주문' },
                 { key: 'business' as const, label: '사업자 · 세금계산서' },
@@ -4734,12 +4738,9 @@ export default function LawyerRole({
               <div className="relative z-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-white/10 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-white/20">Active</span>
-                      <span className="text-emerald-400 text-sm font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400"></span>정상 운영 중</span>
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white">이용 요금제 · 빌링 관리</h2>
-                    <p className="text-sm text-slate-400">다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)</p>
+                    <h2 className="text-2xl sm:text-3xl font-black text-white">광고 · 빌링 현황</h2>
+                    {/* 이전: 가짜 '다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)'과 'Active · 정상 운영 중' 배지 */}
+                    <p className="text-sm text-slate-400">마이김변 이용료는 정액 광고비뿐입니다. 수임료는 의뢰인이 사무소에 직접 납부합니다.</p>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
@@ -4751,8 +4752,8 @@ export default function LawyerRole({
                       <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">{(adOrders.filter(o => o.status === 'active').reduce((s, o) => s + o.monthlyPrice, 0) / 10000).toFixed(0)}만</strong>
                     </div>
                     <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
-                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">SaaS 구독</span>
-                      <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">80만</strong>
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">입금 대기</span>
+                      <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">{adOrders.filter(o => o.status === 'pending').length}건</strong>
                     </div>
                   </div>
                 </div>
@@ -4913,46 +4914,7 @@ export default function LawyerRole({
 
             </>)}
 
-            {(billingSub === 'status') && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5">
-                <Zap className="w-6 h-6 text-slate-700" />
-                <h3 className="font-extrabold text-xl text-slate-900">SaaS CRM 요금제</h3>
-                <span className="bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold px-3 py-1 rounded-full">월 정액 구독</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {platformPlans.map((plan, idx) => (
-                  <div key={idx} className={`bg-white rounded-2xl p-6 flex flex-col justify-between gap-5 relative transition-all hover:shadow-md shadow-xs ${plan.popular ? 'border-2 border-[#1E3A5F]' : 'border border-slate-200/80'}`}>
-                    {plan.popular && (<span className="absolute -top-3 left-4 bg-[#1E3A5F] text-white text-xs font-bold px-3.5 py-1 rounded-full shadow-xs">가장 많은 로펌 선택</span>)}
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="text-xl font-extrabold text-slate-900">{plan.name}</h3>
-                        <p className="text-slate-500 text-xs mt-0.5">월 정액 구독 · 수임료 과세 중계 불가 원칙 준수</p>
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{plan.price}</div>
-                      <ul className="text-sm space-y-2.5 text-slate-700">
-                        {plan.features.map((feat, i) => (<li key={i} className="flex gap-2 items-start"><Check className="w-4 h-4 text-[#1E3A5F] shrink-0 mt-0.5" /><span className="leading-tight">{feat}</span></li>))}
-                      </ul>
-                    </div>
-                    {(() => {
-                      const isCurrent = (activeLawyer as any).subscriptionPlanName === plan.name;
-                      return (
-                        <button
-                          type="button"
-                          disabled={isCurrent}
-                          onClick={() => setActiveTab('inquiry-to-admin')}
-                          className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all ${isCurrent ? 'bg-[#1E3A5F] text-white cursor-default' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 cursor-pointer active:scale-[0.98]'}`}
-                        >
-                          {isCurrent ? '✅ 현재 이용 중' : '요금제 도입 문의'}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            )}
+            {/* (이전: 월 30/80/150만 원 'SaaS CRM 요금제' 카드 — 플랫폼은 정액 광고비만 받으므로 삭제. docs/feature_expansion_plan.md 0장) */}
 
             {(billingSub === 'business') && (<>
             {/* Section 6: Legal & Payment */}

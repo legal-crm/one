@@ -11,7 +11,7 @@
 //  - TOP 5가 정렬 전에 앞 5명을 자르던 버그
 //  - CSV '회계 원장'에 모든 변호사의 구독료 결제 행('법인카드 자동결제', '영수발행')을 만들어 넣던 문제
 // 현재: 실제 기록이 있는 광고 주문(입금 확인일 기준)만 매출로 집계한다.
-//   구독료는 결제 연동이 없어 매칭 건수 구간 추정치로만 따로 표시한다.
+//   플랫폼 수익은 정액 광고비뿐이다. 매칭 건수 구간으로 만든 '추정 구독료' 카드는 삭제했다 (docs/feature_expansion_plan.md 0장).
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
@@ -27,10 +27,6 @@ interface Props {
   adOrders: AdOrder[];
   onNavigateSubTab: (subTab: string) => void;
   onOpenInvoiceModal?: (order: AdOrder) => void;
-  /** 매칭 건수 구간 추정 구독료 (실결제 아님) */
-  activeMRR: number;
-  /** 정지·탈퇴 변호사의 추정 구독료 */
-  lostMRR: number;
 }
 
 type PeriodMode = 'month' | 'quarter' | 'year' | 'all';
@@ -59,10 +55,13 @@ export default function BillingOverviewDashboard({
   adOrders,
   onNavigateSubTab,
   onOpenInvoiceModal,
-  activeMRR,
-  lostMRR,
 }: Props) {
   const [period, setPeriod] = useState<PeriodMode>('month');
+
+  // 노출 중인 광고의 월 환산액 (정액 광고 계약 금액 ÷ 계약 개월)
+  const activeAds = adOrders.filter(o => o.status === 'active');
+  const activeAdCount = activeAds.length;
+  const activeAdMonthly = Math.round(activeAds.reduce((s, o) => s + monthlyOf(o), 0));
 
   const now = new Date();
   const periodStart = useMemo(() => {
@@ -214,7 +213,7 @@ export default function BillingOverviewDashboard({
         <div>
           <h3 className="text-base font-black text-white">매출·정산 현황</h3>
           <p className="text-sm text-slate-400 mt-1">
-            광고 주문의 입금 확인 기록만 매출로 집계합니다. 구독료는 결제 연동 전이라 추정치로 따로 표시합니다.
+            광고 주문의 입금 확인 기록만 매출로 집계합니다. 마이김변 수익은 정액 광고비뿐입니다.
           </p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -287,17 +286,18 @@ export default function BillingOverviewDashboard({
           </p>
         </button>
 
+        {/* 이전: '구독료 (추정)' 카드 — 매칭 건수 구간 추정치. 구독료를 받지 않으므로 활성 광고 월 환산액으로 교체 */}
         <button
           type="button"
-          onClick={() => onNavigateSubTab('active')}
+          onClick={() => onNavigateSubTab('adorders')}
           className={`${cardBase} border-purple-500/30 text-left hover:border-purple-500/60 transition-colors cursor-pointer`}
         >
           <div className="flex items-center justify-between text-sm font-bold text-slate-300">
-            <span className="flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-purple-400" aria-hidden="true" />구독료 (추정)</span>
+            <span className="flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-purple-400" aria-hidden="true" />활성 광고 월 환산</span>
             <ArrowRight className="w-4 h-4 text-purple-300" aria-hidden="true" />
           </div>
-          <div className="text-2xl font-black text-purple-300 font-mono">{activeMRR.toLocaleString()}원/월</div>
-          <p className="text-xs text-slate-400">매칭 건수 구간 추정 · 실결제 아님 · 정지·탈퇴분 {lostMRR.toLocaleString()}원</p>
+          <div className="text-2xl font-black text-purple-300 font-mono">{activeAdMonthly.toLocaleString()}원/월</div>
+          <p className="text-xs text-slate-400">노출 중인 광고 {activeAdCount}건 · 계약 금액 ÷ 계약 개월</p>
         </button>
       </div>
 

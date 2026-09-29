@@ -10,7 +10,14 @@
     { "path": "/api/generate-statement?cron=marketing-daily", "schedule": "30 22 * * *" }
   ],
   "rewrites": [
-    { "source": "/api/invoice/:action*", "destination": "/api/invoice?action=:action*" },
+    { "source": "/api/invoice/:action*", "destination": "/api/popbill?service=invoice&action=:action*" },
+    { "source": "/api/alimtok", "destination": "/api/popbill?service=kakao" },
+    { "source": "/api/ocr-case", "destination": "/api/ocr?kind=case" },
+    { "source": "/api/ocr-family", "destination": "/api/ocr?kind=family" },
+    { "source": "/api/telegram", "destination": "/api/notify?channel=telegram" },
+    { "source": "/api/send-email", "destination": "/api/notify?channel=email" },
+    { "source": "/api/scourt-proxy", "destination": "/api/codef?product=scourt" },
+    { "source": "/api/debt-discovery", "destination": "/api/codef?product=debt" },
     { "source": "/api/contract/:action*", "destination": "/api/contract?action=:action*" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/about", "destination": "/about.html" },

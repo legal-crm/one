@@ -14,7 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
-import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
+import { mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import { setLawyerDbApproval, getLawyerAccountByLawyerId, adminLinkLawyerAccount } from '../services/lawyerAccountService';
@@ -114,7 +114,7 @@ export default function AdminRole({
   const dialog = useDialog();
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing' | 'seo_geo'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
@@ -693,7 +693,6 @@ export default function AdminRole({
   // Pagination states
   const [clientPage, setClientPage] = useState<number>(1);
   const [lawyerPage, setLawyerPage] = useState<number>(1);
-  const [billingPage, setBillingPage] = useState<number>(1);
   const [memberPage, setMemberPage] = useState<number>(1);
 
   // Client memos (admin internal notes)
@@ -726,11 +725,6 @@ export default function AdminRole({
     setLawyerPage(1);
   };
   const sortIcon = (active: boolean, dir: 'asc' | 'desc') => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
-
-  // Reset billing page when subtab changes
-  useEffect(() => {
-    setBillingPage(1);
-  }, [billingSubTab]);
 
   // Reset pagination to page 1 on search or filter changes
   useEffect(() => {
@@ -794,36 +788,8 @@ export default function AdminRole({
     ? Math.round((completedConsultsCount / totalRequestsCount) * 100) 
     : 0;
 
-  // Active partners list for billing (exclude suspended, withdrawn, dormant)
-  const billingActiveLawyers = lawyers.filter(l => {
-    const member = members.find(m => m.id === l.id);
-    return !member || (member.status !== 'suspended' && member.status !== 'withdrawn' && member.status !== 'dormant');
-  });
-
-  // Exited or suspended partners list for billing
-  const billingExitedLawyers = members.filter(m => 
-    (m.role === 'LAWYER' || m.role === 'STAFF') && 
-    (m.status === 'suspended' || m.status === 'withdrawn' || m.status === 'dormant')
-  );
-
-  // Estimate Monthly Recurring Revenue (MRR) based on active subscribers
-  // Basic: 300,000 KRW, Pro: 800,000 KRW, Team/Enterprise: 1,500,000 KRW
-  const activeMRR = billingActiveLawyers.reduce((acc, l) => {
-    if (l.matchedCount > 120) return acc + 1500000;
-    if (l.matchedCount > 80) return acc + 800000;
-    return acc + 300000;
-  }, 0);
-
-  const estimateMRR = activeMRR;
-
-  // Excluded or lost revenue calculation
-  const lostMRR = billingExitedLawyers.reduce((acc, m) => {
-    const l = lawyers.find(law => law.id === m.id);
-    const matched = l ? l.matchedCount : 0;
-    if (matched > 120) return acc + 1500000;
-    if (matched > 80) return acc + 800000;
-    return acc + 300000;
-  }, 0);
+  // (이전: 매칭 건수 구간으로 추정한 구독료(activeMRR·lostMRR·estimateMRR)와 이탈 변호사 50% 환불 추정액.
+  //  플랫폼 수익은 정액 광고비뿐이므로 삭제 — docs/feature_expansion_plan.md 0장)
 
   // 2. Client monitoring list filtering (respecting compliance)
   // [PART 3-3] 관리자 목록에는 실명 대신 가명/마스킹 이름을 쓰고, 검색도 가명·요청 ID로만 한다
@@ -965,7 +931,6 @@ export default function AdminRole({
 
   // Pagination constants & calculation
   const ITEMS_PER_PAGE = 10;
-  const BILLING_ITEMS_PER_PAGE = 5;
 
   // Paginated Clients
   const totalClientPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE) || 1;
@@ -978,12 +943,6 @@ export default function AdminRole({
   const currentLawyerPage = Math.min(lawyerPage, totalLawyerPages);
   const startIndexLawyer = (currentLawyerPage - 1) * ITEMS_PER_PAGE;
   const paginatedLawyers = filteredLawyers.slice(startIndexLawyer, startIndexLawyer + ITEMS_PER_PAGE);
-
-  // Paginated Active Billing
-  const totalBillingPages = Math.ceil(billingActiveLawyers.length / BILLING_ITEMS_PER_PAGE) || 1;
-  const currentBillingPage = Math.min(billingPage, totalBillingPages);
-  const startIndexBilling = (currentBillingPage - 1) * BILLING_ITEMS_PER_PAGE;
-  const paginatedActiveBilling = billingActiveLawyers.slice(startIndexBilling, startIndexBilling + BILLING_ITEMS_PER_PAGE);
 
   // Handlers
   /**
@@ -1471,7 +1430,6 @@ export default function AdminRole({
               logs={platformLogs}
               logsSource={platformLogsSource}
               adOrders={adminAdOrders}
-              estimateMRR={estimateMRR}
             />
           )}
 
@@ -2376,12 +2334,6 @@ export default function AdminRole({
                           </div>
                         )}
 
-                        {/* 요금제: 결제 연동 전이라 변경 기능 없음 (이전: 버튼이 matchedCount 매칭 실적을 덮어써 요금·실적을 조작) */}
-                        <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-1.5">
-                          <span className="text-sm font-bold text-indigo-300 block">요금제</span>
-                          <p className="text-sm text-slate-300">결제 연동 전이라 요금제를 바꿀 수 없습니다. 매출 화면의 구독료는 매칭 건수({selectedLawyer.matchedCount}건) 구간으로 만든 추정치입니다.</p>
-                        </div>
-
                         {/* AI 유료 기능 관리 */}
                         <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-3">
                           <span className="text-[13px] font-bold text-violet-400 block flex items-center gap-1.5">
@@ -2508,22 +2460,7 @@ export default function AdminRole({
                 >
                   📊 통합 매출/정산 분석 (Sales Overview)
                 </button>
-                <button
-                  onClick={() => setBillingSubTab('active')}
-                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
-                    billingSubTab === 'active' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
-                  }`}
-                >
-                  💳 구독료 수납 현황 (Active Receipts)
-                </button>
-                <button
-                  onClick={() => setBillingSubTab('exited')}
-                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
-                    billingSubTab === 'exited' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
-                  }`}
-                >
-                  ⚠️ 정지/이탈 대리인 정산 (Exited Partners)
-                </button>
+                {/* (이전: '구독료 수납 현황'·'정지/이탈 대리인 정산' 탭 — 매칭 건수로 추정한 구독료·환불액. 구독료를 받지 않으므로 삭제) */}
                 <button
                   onClick={() => setBillingSubTab('adorders')}
                   className={`pb-2 border-b-2 transition-all cursor-pointer ${
@@ -2568,223 +2505,7 @@ export default function AdminRole({
                     setInvoiceConfirmOrder(order);
                     setInvoiceResult(null);
                   }}
-                  activeMRR={activeMRR}
-                  lostMRR={lostMRR}
                 />
-              )}
-
-              {/* ACTIVE SUBSCRIBERS BILLING SUBTAB */}
-              {billingSubTab === 'active' && (
-                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-extrabold text-sm text-slate-200">구독료 추정 명세 (활성 변호사)</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">요금제는 매칭 건수 구간으로 추정한 값입니다. 결제 연동 전이라 실제 청구·수납 기록은 없습니다.</p>
-                    </div>
-                    <span className="text-sm text-slate-400 font-mono">활성 {billingActiveLawyers.length}명</span>
-                  </div>
-                  
-                  <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3">정산 대상 변호사</th>
-                          <th className="p-3">구독료 멤버십</th>
-                          <th className="p-3">추정 월 구독료</th>
-                          <th className="p-3">수납 상태</th>
-                          <th className="p-3 text-right">플랫폼 매칭 참여 실적</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#1E293B]/30">
-                        {paginatedActiveBilling.map(l => {
-                          let planName = 'Basic';
-                          let planPrice = '300,000 원';
-                          if (l.matchedCount > 120) {
-                            planName = 'Team / Enterprise';
-                            planPrice = '1,500,000 원';
-                          } else if (l.matchedCount > 80) {
-                            planName = 'Pro';
-                            planPrice = '800,000 원';
-                          }
-                          const firmType = l.firmType || 'INDIVIDUAL';
-                          return (
-                            <tr key={l.id} className="hover:bg-[#0B0F19]/20 transition-colors">
-                              <td className="p-3 font-bold text-white flex items-center gap-2">
-                                <img src={l.avatar} alt={l.name} className="w-7 h-7 rounded-full object-cover border border-[#1E293B]/60" />
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span>{l.name}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
-                                      firmType === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
-                                      firmType === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
-                                      'bg-sky-500/15 text-sky-300 border-sky-500/30'
-                                    }`}>
-                                      {firmType === 'LAW_FIRM' ? '🏢 법무법인' : firmType === 'ASSOCIATE' ? '👥 소속' : '👤 개인'}
-                                    </span>
-                                  </div>
-                                  <span className="text-[11px] text-slate-400 font-normal block">
-                                    {l.firmName || `${l.name} 법률사무소`}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="p-3">{planName}</td>
-                              <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
-                              <td className="p-3">
-                                {/* 결제 연동 전 — 수납 여부를 알 수 없음 (이전: 모든 변호사에 '정상수납' 고정 표시) */}
-                                <span className="bg-slate-500/10 text-slate-300 border border-slate-500/30 text-xs px-2 py-0.5 rounded w-max inline-block">
-                                  결제 기록 없음
-                                </span>
-                              </td>
-                              <td className="p-3 text-right text-slate-300">{l.matchedCount}회 매칭참여</td>
-                            </tr>
-                          );
-                        })}
-
-                        {billingActiveLawyers.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="p-8 text-center text-slate-600 bg-[#111622]/50 font-semibold">
-                              현재 활성화된 과금 대상 대리인이 없습니다.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Billing List Pagination Controls */}
-                  {totalBillingPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-sm">
-                      <span className="text-slate-500 font-mono">
-                        Page {currentBillingPage} of {totalBillingPages}
-                      </span>
-                      <div className="flex gap-1">
-                        <button
-                          disabled={currentBillingPage === 1}
-                          onClick={() => setBillingPage(prev => Math.max(1, prev - 1))}
-                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                        >
-                          이전
-                        </button>
-                        {Array.from({ length: totalBillingPages }).map((_, i) => {
-                          const p = i + 1;
-                          return (
-                            <button
-                              key={p}
-                              onClick={() => setBillingPage(p)}
-                              className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
-                                currentBillingPage === p
-                                  ? 'bg-indigo-600 text-white shadow-sm'
-                                  : 'bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          );
-                        })}
-                        <button
-                          disabled={currentBillingPage === totalBillingPages}
-                          onClick={() => setBillingPage(prev => Math.min(totalBillingPages, prev + 1))}
-                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-                        >
-                          다음
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              )}
-
-              {/* EXITED/SUSPENDED BILLING SUBTAB */}
-              {billingSubTab === 'exited' && (
-                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <div className="space-y-1 text-left">
-                    <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">이탈 및 정지 대리인 정산조정 명세</h3>
-                    <p className="text-sm text-slate-500 leading-normal">
-                      정지, 탈퇴, 휴면 처리되어 정상적인 구독이 중단된 대리인 명단입니다. 일할 정산(환불/조정) 금액이 자동 계산됩니다.
-                    </p>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3">대리인 성명</th>
-                          <th className="p-3">상태</th>
-                          <th className="p-3">중단 일자 (마지막 활동)</th>
-                          <th className="p-3">구독 정보</th>
-                          <th className="p-3 text-right">환불 정산 조정액</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#1E293B]/30">
-                        {billingExitedLawyers.map(m => {
-                          const matchingLawyer = lawyers.find(l => l.id === m.id);
-                          const matchedCount = matchingLawyer ? matchingLawyer.matchedCount : 0;
-                          
-                          let planName = 'Basic (300,000원)';
-                          let lostAmount = 300000;
-                          if (matchedCount > 120) {
-                            planName = 'Team (1,500,000원)';
-                            lostAmount = 1500000;
-                          } else if (matchedCount > 80) {
-                            planName = 'Pro (800,000원)';
-                            lostAmount = 800000;
-                          }
-
-                          // Prorated refund estimation:
-                          // If lastActiveAt is set, we estimate how many days were used in the exit month.
-                          // Say 15 days used on average -> 50% refund.
-                          const exitDateStr = m.lastActiveAt ? new Date(m.lastActiveAt).toLocaleDateString() : 'N/A';
-                          const refundAmount = Math.round(lostAmount * 0.5); // 50% pro-rated refund
-
-                          const firmType = m.firmType || (matchingLawyer && matchingLawyer.firmType) || 'INDIVIDUAL';
-
-                          return (
-                            <tr key={m.id} className="hover:bg-[#0B0F19]/20 transition-colors">
-                              <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                                <div className="w-5 h-5 rounded-full bg-slate-800 text-sm flex items-center justify-center font-extrabold text-slate-350">
-                                  {m.alias.charAt(0)}
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span>{m.alias}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
-                                    firmType === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
-                                    firmType === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
-                                    'bg-sky-500/15 text-sky-300 border-sky-500/30'
-                                  }`}>
-                                    {firmType === 'LAW_FIRM' ? '🏢 법무법인' : firmType === 'ASSOCIATE' ? '👥 소속' : '👤 개인'}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
-                                  m.status === 'suspended' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                  m.status === 'withdrawn' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                  'bg-slate-800 text-slate-500 border-slate-750'
-                                }`}>
-                                  {m.status === 'suspended' ? '자격 정지' : m.status === 'withdrawn' ? '영구 탈퇴' : '휴면 전환'}
-                                </span>
-                              </td>
-                              <td className="p-3 font-mono text-slate-500">{exitDateStr}</td>
-                              <td className="p-3 text-slate-350">{planName}</td>
-                              <td className="p-3 text-right font-bold text-red-400">
-                                -{refundAmount.toLocaleString()} 원
-                              </td>
-                            </tr>
-                          );
-                        })}
-
-                        {billingExitedLawyers.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="p-8 text-center text-slate-600 bg-[#111622]/50 font-semibold">
-                              최근 3개월 이내에 정지되거나 이탈한 대리인이 없습니다.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               )}
 
               {billingSubTab === 'adorders' && (
