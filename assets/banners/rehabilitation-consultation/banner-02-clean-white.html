@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>배너 2 — 모바일 최적화 (화이트)</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .banner {
+    width: 1200px;
+    height: 600px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  /* 좌측 브랜드 바 */
+  .brand-bar {
+    position: absolute;
+    top: 0; left: 0;
+    width: 6px; height: 100%;
+    background: linear-gradient(180deg, #1E3A5F, #0D9488);
+  }
+
+  /* 배경 장식 */
+  .bg-blob {
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
+  }
+  .bg-blob-2 {
+    position: absolute;
+    bottom: -100px; left: 40%;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13, 148, 136, 0.05) 0%, transparent 70%);
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    padding: 0 80px;
+    width: 100%;
+  }
+
+  .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .badge {
+    font-size: 18px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 100px;
+    letter-spacing: -0.02em;
+  }
+  .badge-navy { background: #1E3A5F; color: #fff; }
+  .badge-teal { background: #F0FDFA; color: #0D9488; border: 1.5px solid rgba(13,148,136,0.25); }
+
+  .headline {
+    font-size: 68px;
+    font-weight: 900;
+    line-height: 1.2;
+    color: #0f172a;
+    letter-spacing: -0.04em;
+    margin-bottom: 20px;
+  }
+  .accent {
+    color: #1E3A5F;
+    position: relative;
+  }
+  .accent::after {
+    content: '';
+    position: absolute;
+    bottom: 4px; left: -4px; right: -4px;
+    height: 16px;
+    background: rgba(59, 130, 246, 0.15);
+    border-radius: 4px;
+    z-index: -1;
+  }
+
+  .subtext {
+    font-size: 24px;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 40px;
+    letter-spacing: -0.02em;
+  }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #1E3A5F;
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 800;
+    padding: 22px 52px;
+    border-radius: 16px;
+    border: none;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(30, 58, 95, 0.2);
+  }
+
+  /* 우측 시각 아이콘 */
+  .visual {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .icon-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #EEF4FA, #F0FDFA);
+    border: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+  }
+  .icon-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1E3A5F;
+    letter-spacing: -0.02em;
+  }
+  .icon-tags {
+    display: flex;
+    gap: 8px;
+  }
+  .icon-tag {
+    font-size: 15px;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 6px 14px;
+    border-radius: 100px;
+  }
+</style>
+</head>
+<body style="background:#e5e7eb;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <div class="banner">
+    <div class="brand-bar"></div>
+    <div class="bg-blob"></div>
+    <div class="bg-blob-2"></div>
+
+    <div class="content">
+      <div class="badge-row">
+        <span class="badge badge-navy">개인회생</span>
+        <span class="badge badge-teal">✦ 무료 상담</span>
+      </div>
+      <h1 class="headline">
+        빚 부담, 줄일 수 있는<br>
+        <span class="accent">방법</span>이 있습니다
+      </h1>
+      <p class="subtext">전문 변호사 무료 진단 · 비밀 보장</p>
+      <button class="cta-btn">무료 상담 받기 →</button>
+    </div>
+
+    <div class="visual">
+      <div class="icon-circle">⚖️</div>
+      <span class="icon-label">법원 인가 제도</span>
+      <div class="icon-tags">
+        <span class="icon-tag">🔒 비밀 보장</span>
+        <span class="icon-tag">📞 비대면</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
