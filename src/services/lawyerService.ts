@@ -262,7 +262,7 @@ export function lawyerFingerprint(lawyer: User): string {
 // ── DB 입출력 ──
 
 export type FetchLawyersResult =
-  | { ok: true; lawyers: User[]; privateIds: Set<string>; privateLoaded: boolean }
+  | { ok: true; lawyers: User[]; privateIds: Set<string>; privateLoaded: boolean; deletedIds: Set<string> }
   | { ok: false; message: string };
 
 /**
@@ -282,6 +282,12 @@ export async function fetchLawyersFromDb(): Promise<FetchLawyersResult> {
       return { ok: false, message: error.message };
     }
 
+    // 관리자가 삭제한 프로필 ID (029) — 각 기기의 로컬 사본 제거용. 테이블 미배포 시 빈 목록
+    const deletedIds = new Set<string>();
+    const { data: tombs, error: tombError } = await supabase.from('lawyer_profile_tombstones').select('lawyer_id');
+    if (tombError) console.warn('[LawyerService] 삭제 기록 조회 생략:', tombError.message);
+    for (const t of tombs || []) if (t?.lawyer_id) deletedIds.add(String(t.lawyer_id));
+
     const privateById = new Map<string, Record<string, unknown>>();
     let privateLoaded = false;
     const { data: { session } } = await supabase.auth.getSession();
@@ -300,12 +306,12 @@ export async function fetchLawyersFromDb(): Promise<FetchLawyersResult> {
       }
     }
 
-    const lawyers = (data || []).map(row => {
+    const lawyers = (data || []).filter(row => !deletedIds.has(String(row.id))).map(row => {
       const base = rowToLawyer(row);
       const priv = privateById.get(base.id);
       return priv ? ({ ...base, ...pickPrivateLawyerFields(priv as Partial<User>) } as User) : base;
     });
-    return { ok: true, lawyers, privateIds: new Set(privateById.keys()), privateLoaded };
+    return { ok: true, lawyers, privateIds: new Set(privateById.keys()), privateLoaded, deletedIds };
   } catch (e: any) {
     logSupabaseError('fetchLawyersFromDb (exception)', e);
     return { ok: false, message: e?.message || 'exception' };
@@ -348,7 +354,8 @@ export async function pushLawyerProfiles(
         result.failed.push({ id: lawyer.id, message: error.message });
         continue;
       }
-      if (isNew && (!data || data.length === 0)) {
+      // 0행: 신규 INSERT가 기존 행과 충돌했거나, 삭제된 프로필(029 tombstone)이라 서버가 건너뜀
+      if (!data || data.length === 0) {
         result.conflicted.push(lawyer.id);
         continue;
       }
@@ -371,4 +378,28 @@ export async function pushLawyerProfiles(
     }
   }
   return result;
+}
+
+/**
+ * 관리자: 로그인 계정이 연결되지 않은 변호사 프로필 삭제 (029 admin_delete_lawyer_profile).
+ * 삭제 기록이 남아 다른 기기의 로컬 사본도 다음 동기화 때 제거되고 다시 올라오지 않는다.
+ */
+export async function adminDeleteLawyerProfile(lawyerId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: 'Supabase가 설정되지 않았습니다.' };
+  if (!lawyerId) return { ok: false, message: '프로필 ID가 없습니다.' };
+  try {
+    const { error } = await supabase.rpc('admin_delete_lawyer_profile', { p_lawyer_id: lawyerId });
+    if (error) {
+      logSupabaseError(`adminDeleteLawyerProfile(${lawyerId})`, error);
+      const msg = error.message || '';
+      if (msg.includes('linked to a login account')) return { ok: false, message: '로그인 계정이 연결된 프로필은 삭제할 수 없습니다. 정지 기능을 사용하세요.' };
+      if (msg.includes('admin only')) return { ok: false, message: '관리자 권한(MFA 인증 포함)이 확인되지 않았습니다.' };
+      if (msg.includes('Could not find the function')) return { ok: false, message: '서버에 삭제 기능(029 마이그레이션)이 아직 적용되지 않았습니다.' };
+      return { ok: false, message: msg || '삭제에 실패했습니다.' };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    logSupabaseError(`adminDeleteLawyerProfile(${lawyerId}) (exception)`, e);
+    return { ok: false, message: e?.message || '삭제에 실패했습니다.' };
+  }
 }

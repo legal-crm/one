@@ -60,6 +60,8 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
   const remoteIdsRef = useRef(new Set<string>());
   /** 비공개 프로필 조회 성공 여부 (실패 시 비공개 행 덮어쓰기 금지) */
   const privateLoadedRef = useRef(false);
+  /** 관리자가 삭제한 프로필 ID — 다시 올리지 않음 */
+  const deletedIdsRef = useRef(new Set<string>());
   /** 저장 실패한 지문 — 같은 내용으로 무한 재시도하지 않음 (다시 불러오면 초기화) */
   const failedRef = useRef(new Map<string, string>());
   const readyRef = useRef(false);
@@ -79,6 +81,8 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
 
     const prevSynced = new Map(syncedRef.current);
     const remoteById = new Map(res.lawyers.map(l => [l.id, l]));
+    deletedIdsRef.current = res.deletedIds;
+    for (const id of res.deletedIds) syncedRef.current.delete(id);
     remoteIdsRef.current = new Set(remoteById.keys());
     privateLoadedRef.current = res.privateLoaded;
     failedRef.current.clear();
@@ -93,7 +97,8 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
         syncedRef.current.set(r.id, lawyerFingerprint(serverView));
       }
 
-      const next = prev.map(local => {
+      // 관리자가 삭제한 프로필은 이 기기 목록에서도 제거
+      const next = prev.filter(local => !res.deletedIds.has(local.id)).map(local => {
         const remote = remoteById.get(local.id);
         if (!remote) return local; // 아직 DB에 없는 프로필 (권한 있는 사용자가 올림)
         const lastSynced = prevSynced.get(local.id);
@@ -120,7 +125,7 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
       if (!actor) return;
 
       const candidates = lawyersRef.current.filter(l => {
-        if (!l?.id) return false;
+        if (!l?.id || deletedIdsRef.current.has(l.id)) return false;
         if (actor.kind === 'lawyer' && l.id !== actor.id) return false;
         if (actor.kind === 'admin' && seedIds.has(l.id) && !remoteIdsRef.current.has(l.id)) return false;
         const fp = lawyerFingerprint(l);

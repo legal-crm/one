@@ -18,6 +18,7 @@ import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdB
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import { setLawyerDbApproval, getLawyerAccountByLawyerId, adminLinkLawyerAccount } from '../services/lawyerAccountService';
+import { adminDeleteLawyerProfile } from '../services/lawyerService';
 import { 
   issueTaxInvoice, 
   issueModifyTaxInvoice, 
@@ -1079,6 +1080,28 @@ export default function AdminRole({
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `${resyncOnly ? '변호사 서버 권한 재승인' : '변호사 자격 승인'}: ${lawyerId}`);
     toast.success('승인했습니다. 서버 권한도 반영되어 변호사가 다시 로그인하면 바로 이용할 수 있습니다.');
+  };
+
+  const handleDeleteLawyerProfile = async (lawyerId: string) => {
+    const target = lawyers.find(l => l.id === lawyerId);
+    const confirmed = await dialog.confirm({
+      title: '변호사 프로필 삭제',
+      message: `[${target?.name || lawyerId}] 프로필(${lawyerId})을 삭제할까요?\n공개 프로필과 비공개 정보가 DB에서 지워지고, 다른 기기의 사본도 다음 동기화 때 사라집니다.\n로그인 계정이 연결된 프로필은 서버가 삭제를 거부합니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    const res = await adminDeleteLawyerProfile(lawyerId);
+    if (res.ok === false) {
+      toast.error(res.message);
+      refreshServerAccount(lawyerId);
+      return;
+    }
+    setLawyers(prev => prev.filter(l => l.id !== lawyerId));
+    if (selectedLawyerId === lawyerId) setSelectedLawyerId('');
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 프로필 삭제: ${lawyerId}`);
+    toast.success('프로필을 삭제했습니다.');
   };
 
   const handleSuspendLawyer = async (lawyerId: string) => {
@@ -2330,6 +2353,25 @@ export default function AdminRole({
                             >
                               <EyeOff className="w-4 h-4" />
                               <span>변호사 정식 자격 임시 정지</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 프로필 삭제: 로그인 계정이 연결되지 않은 프로필만 (중복·방치 프로필 정리용) */}
+                        {serverAccount.status === 'unlinked' && (
+                          <div className="p-4 bg-[#0B0F19] rounded-xl border border-red-500/20 space-y-2">
+                            <span className="text-sm font-bold text-red-300 block">프로필 삭제</span>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                              이 프로필에는 연결된 로그인 계정이 없습니다. 중복되거나 방치된 프로필이면 삭제할 수 있습니다.
+                              삭제 기록이 남아 다른 기기에서도 사라지고 다시 올라오지 않습니다.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLawyerProfile(selectedLawyer.id)}
+                              className="w-full bg-slate-900 hover:bg-red-600 hover:text-white text-red-300 py-2.5 rounded-xl text-sm font-extrabold border border-red-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>프로필 삭제</span>
                             </button>
                           </div>
                         )}
