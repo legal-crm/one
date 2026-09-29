@@ -1,1045 +1,967 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Globe,
-  Search,
-  Bot,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Copy,
-  Check,
-  FileText,
-  RefreshCw,
-  Sparkles,
-  Key,
-  AlertTriangle,
-  Send,
-  Download,
-  Eye,
-  ShieldCheck,
-  Cpu,
-  TrendingUp,
-  Sliders,
-  ChevronRight,
-  Info,
-  Layers,
-  Code
+  Globe, Search, Bot, CheckCircle2, Clock, ExternalLink, Copy, Check, FileText, RefreshCw, Sparkles, Key,
+  AlertTriangle, Send, Download, Eye, ShieldCheck, TrendingUp, Info, Code, XCircle, Loader2, Activity, Rss, ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  SITE_ORIGIN, INDEXNOW_KEY, runSiteDiagnostics, crawlUrls, urlKey, displayWidth,
+  type SiteDiagnostics, type CheckStatus, type SeoCheck, type CrawlResult, type ManifestPage,
+} from './seo/seoDiagnostics';
+import { submitIndexNow, type IndexNowEngineResult } from '../../services/indexNowService';
 
-// --- 인터페이스 정의 ---
-interface PortalConfig {
-  id: 'google' | 'naver' | 'bing';
+// ============================================================
+// [SEO/GEO] 통합 관제센터
+// ------------------------------------------------------------
+// 이전 버전의 문제 (점검 결과)
+//  - '제출 완료 (200 OK)', 'GEO 상태 A+', 'AI 봇 수집 허용', 'LegalService 적용 완료' 등이 모두 하드코딩 → 실제와 무관
+//  - 'Google Ping 전송'·'IndexNow 즉시 푸시' 버튼은 아무 요청도 보내지 않음 (Google sitemap ping은 2023년 종료)
+//  - 화면의 llms.txt는 실제 파일과 다른 복사본, rss.xml은 존재하지 않는 파일을 안내
+//  - index.html의 구글/빙 인증 태그는 'pending' 가짜 값
+// 현재
+//  - 실시간 진단: 배포된 사이트 파일을 직접 읽어 판정 (seo/seoDiagnostics.ts)
+//  - IndexNow: 서버(/api/generate-statement mode=indexnow)가 Bing·Naver에 실제 전송, 결과 기록
+//  - sitemap.xml·rss.xml·seo-manifest.json 은 빌드 시 scripts/seo-build.mjs 가 자동 생성
+//  - 검색엔진 콘솔 내부 상태(제출·색인 수)는 외부에서 알 수 없으므로 관리자 체크리스트로 기록 (이 브라우저에만 저장)
+// ============================================================
+
+type TabId = 'health' | 'portals' | 'geo' | 'onpage' | 'indexing';
+type PortalId = 'google' | 'naver' | 'bing';
+
+interface PortalStep { id: string; title: string; desc: string; checkId?: string }
+interface PortalDef {
+  id: PortalId;
   name: string;
-  portalLogoText: string;
-  badgeBg: string;
-  badgeTextColor: string;
-  borderColor: string;
-  account: string;
+  badge: string;
+  badgeClass: string;
+  borderClass: string;
+  defaultAccount: string;
   loginMethod: string;
-  verificationTag: string;
-  sitemapSubmitted: boolean;
-  rssSubmitted: boolean;
-  syndicationActive: boolean;
   consoleUrl: string;
-  steps: {
-    id: string;
-    title: string;
-    desc: string;
-    completed: boolean;
-  }[];
-  customTag?: string;
-  memo?: string;
+  verifyMeta?: string;
+  verifyEnv?: string;
+  steps: PortalStep[];
 }
+interface PortalState { account: string; memo: string; done: Record<string, boolean>; verifyCode: string }
 
-interface IndexHistoryItem {
-  id: string;
-  url: string;
-  target: string;
-  timestamp: string;
-  status: 'success' | 'pending' | 'memo';
-}
-
-const DEFAULT_PORTALS: PortalConfig[] = [
+const PORTALS: PortalDef[] = [
   {
     id: 'google',
-    name: '구글 서치 콘솔 (Google Search Console)',
-    portalLogoText: 'Google',
-    badgeBg: 'bg-blue-500/10',
-    badgeTextColor: 'text-blue-400',
-    borderColor: 'border-blue-500/30',
-    account: '회사 관리 계정',
+    name: '구글 서치 콘솔',
+    badge: 'GOOGLE',
+    badgeClass: 'bg-blue-500/10 text-blue-400',
+    borderClass: 'border-blue-500/30',
+    defaultAccount: '회사 관리 Google 계정',
     loginMethod: '구글 계정 직접 로그인',
-    verificationTag: '<meta name="google-site-verification" content="GSC_VERIFICATION_CODE" />',
-    sitemapSubmitted: true,
-    rssSubmitted: false,
-    syndicationActive: true,
     consoleUrl: 'https://search.google.com/search-console',
+    verifyMeta: 'google-site-verification',
+    verifyEnv: 'GOOGLE_SITE_VERIFICATION',
     steps: [
-      { id: 'g1', title: '구글 계정 (회사 관리 계정) 서치콘솔 로그인', desc: 'search.google.com 접속 후 속성(mykim.kr) 추가', completed: true },
-      { id: 'g2', title: '소유권 확인 메타태그 등록', desc: 'HTML 태그 방식을 선택하여 발급된 고유 코드를 head에 등록', completed: false },
-      { id: 'g3', title: 'sitemap.xml 제출', desc: '좌측 메뉴 [Sitemaps]에서 https://mykim.kr/sitemap.xml 제출', completed: true },
-      { id: 'g4', title: '주요 페이지 URL 색인 요청 (Inspection)', desc: '핵심 랜딩 및 기사 페이지를 URL 검사 후 색인 요청', completed: false }
+      { id: 'g1', title: '속성 추가 (도메인 속성 권장)', desc: 'mykim.kr 도메인 속성 추가 — www·http 변형까지 한 번에 관리' },
+      { id: 'g2', title: '소유권 확인', desc: 'DNS TXT 레코드 또는 HTML 태그(아래 입력기) 방식', checkId: 'verify-google' },
+      { id: 'g3', title: 'sitemap.xml 제출', desc: '[Sitemaps] 메뉴에 https://mykim.kr/sitemap.xml 제출', checkId: 'sitemap' },
+      { id: 'g4', title: '핵심 URL 색인 요청', desc: '[URL 검사]로 새 가이드·칼럼 색인 요청 (색인 탭의 바로가기 사용)' },
+      { id: 'g5', title: '페이지 색인 보고서 월간 점검', desc: '[페이지] 보고서의 "색인이 생성되지 않음" 사유 확인' },
     ],
-    memo: '구글 코어 업데이트 대비 E-E-A-T 구조화 데이터(LegalService) 적용 완료'
   },
   {
     id: 'naver',
-    name: '네이버 서치어드바이저 (Naver Search Advisor)',
-    portalLogoText: 'NAVER',
-    badgeBg: 'bg-emerald-500/10',
-    badgeTextColor: 'text-emerald-400',
-    borderColor: 'border-emerald-500/30',
-    account: '2882a@naver.com',
+    name: '네이버 서치어드바이저',
+    badge: 'NAVER',
+    badgeClass: 'bg-emerald-500/10 text-emerald-400',
+    borderClass: 'border-emerald-500/30',
+    defaultAccount: '2882a@naver.com',
     loginMethod: '네이버 계정 직접 로그인',
-    verificationTag: '<meta name="naver-site-verification" content="acb96fe427f008c66bd62ae0b77dec8fca657ce7" />',
-    sitemapSubmitted: true,
-    rssSubmitted: true,
-    syndicationActive: true,
     consoleUrl: 'https://searchadvisor.naver.com/console/board',
+    verifyMeta: 'naver-site-verification',
     steps: [
-      { id: 'n1', title: '네이버 계정 (2882a@naver.com) 서치어드바이저 로그인', desc: '웹마스터 도구에 사이트 https://mykim.kr 등록', completed: true },
-      { id: 'n2', title: '사이트 소유 확인 완료 (acb96fe4...)', desc: '현재 index.html에 메타태그 삽입되어 검증 활성화됨', completed: true },
-      { id: 'n3', title: '사이트맵 및 RSS 제출', desc: '요청 > 사이트맵 제출 (sitemap.xml), RSS 제출 (rss.xml)', completed: true },
-      { id: 'n4', title: '웹 페이지 수집 요청 (새 글/새 가이드)', desc: '요청 > 웹 페이지 수집에서 최근 업데이트된 URL 수집 요청', completed: false }
+      { id: 'n1', title: '사이트 등록', desc: '웹마스터 도구에 https://mykim.kr 등록' },
+      { id: 'n2', title: '사이트 소유 확인', desc: 'index.html의 naver-site-verification 메타태그', checkId: 'verify-naver' },
+      { id: 'n3', title: 'sitemap.xml 제출', desc: '요청 > 사이트맵 제출', checkId: 'sitemap' },
+      { id: 'n4', title: 'RSS 제출', desc: '요청 > RSS 제출 (https://mykim.kr/rss.xml)', checkId: 'rss' },
+      { id: 'n5', title: '웹 페이지 수집 요청 / IndexNow', desc: '새 글은 색인 탭의 IndexNow로 자동 전달, 필요 시 수동 수집 요청' },
     ],
-    memo: '네이버 뷰 탭 및 스마트블록 검색 대응을 위한 웹마스터 정기 진단 대상'
   },
   {
     id: 'bing',
-    name: '빙 웹마스터 도구 (Bing Webmaster Tools)',
-    portalLogoText: 'Bing',
-    badgeBg: 'bg-cyan-500/10',
-    badgeTextColor: 'text-cyan-400',
-    borderColor: 'border-cyan-500/30',
-    account: '회사 관리 계정',
-    loginMethod: '구글 서치콘솔 계정 연동 로그인 (GSC Import 지원)',
-    verificationTag: '<meta name="msvalidate.01" content="BING_VERIFICATION_CODE" />',
-    sitemapSubmitted: true,
-    rssSubmitted: false,
-    syndicationActive: true,
+    name: '빙 웹마스터 도구',
+    badge: 'BING',
+    badgeClass: 'bg-cyan-500/10 text-cyan-400',
+    borderClass: 'border-cyan-500/30',
+    defaultAccount: '회사 관리 Google 계정 (연동 로그인)',
+    loginMethod: 'Google 계정 연동 · GSC 가져오기 지원',
     consoleUrl: 'https://www.bing.com/webmasters',
+    verifyMeta: 'msvalidate.01',
+    verifyEnv: 'BING_SITE_VERIFICATION',
     steps: [
-      { id: 'b1', title: '회사 구글 계정으로 Bing 웹마스터 로그인', desc: 'Google Search Console 연동 가져오기로 사이트를 불러올 수 있음', completed: false },
-      { id: 'b2', title: '소유권 확인 및 사이트맵 자동 가져오기', desc: 'GSC 데이터 임포트 시 사이트맵 및 인증 자동 연동', completed: true },
-      { id: 'b3', title: 'IndexNow 프로토콜 활성화', desc: '새 페이지 생성 시 즉시 빙/네이버에 푸시되는 IndexNow API 키 구성', completed: false },
-      { id: 'b4', title: 'Copilot / Bing Chat 인용 모니터링', desc: 'MS Copilot AI 검색엔진에서 my김변 서비스 인용 상태 점검', completed: false }
+      { id: 'b1', title: 'GSC에서 사이트 가져오기', desc: '구글 서치 콘솔 연동 시 소유권·사이트맵이 함께 넘어옴', checkId: 'verify-bing' },
+      { id: 'b2', title: 'sitemap.xml 확인', desc: '[Sitemaps]에 https://mykim.kr/sitemap.xml 등록 여부 확인', checkId: 'sitemap' },
+      { id: 'b3', title: 'IndexNow 키 확인', desc: `[IndexNow] 메뉴에서 키 ${INDEXNOW_KEY.slice(0, 8)}… 수신 여부 확인`, checkId: 'indexnow-key' },
+      { id: 'b4', title: 'Copilot·ChatGPT 검색 인용 점검', desc: 'Bing 색인은 ChatGPT·Copilot 웹 검색의 주요 출처 — GEO 탭의 질의로 확인' },
     ],
-    memo: 'Bing 색인은 ChatGPT 웹 검색 모델의 기본 기반 소스로 직접 활용됨'
+  },
+];
+
+const STORAGE_PORTALS = 'mykim_seo_portals_v3';
+const STORAGE_PORTALS_V2 = 'mykim_seo_portals_v2';
+const STORAGE_HISTORY = 'mykim_seo_indexnow_history_v1';
+const STORAGE_GSC_PROPERTY = 'mykim_seo_gsc_property';
+
+interface IndexHistoryItem { id: string; at: string; urls: string[]; ok: boolean; results: IndexNowEngineResult[]; error?: string }
+
+function loadPortalState(): Record<PortalId, PortalState> {
+  const base = Object.fromEntries(PORTALS.map(p => [p.id, { account: p.defaultAccount, memo: '', done: {}, verifyCode: '' }])) as Record<PortalId, PortalState>;
+  try {
+    const saved = localStorage.getItem(STORAGE_PORTALS);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<Record<PortalId, Partial<PortalState>>>;
+      for (const p of PORTALS) base[p.id] = { ...base[p.id], ...(parsed[p.id] || {}), done: { ...(parsed[p.id]?.done || {}) } };
+      return base;
+    }
+    // v2(이전 버전) 기록에서 메모·체크만 이어받음
+    const v2 = localStorage.getItem(STORAGE_PORTALS_V2);
+    if (v2) {
+      const arr = JSON.parse(v2) as { id: PortalId; memo?: string; steps?: { id: string; completed: boolean }[] }[];
+      for (const old of arr) {
+        if (!base[old.id]) continue;
+        base[old.id].memo = old.memo || '';
+        for (const s of old.steps || []) if (s.completed) base[old.id].done[s.id] = true;
+      }
+    }
+  } catch { /* 손상된 기록은 무시 */ }
+  return base;
+}
+
+function loadHistory(): IndexHistoryItem[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_HISTORY);
+    return saved ? (JSON.parse(saved) as IndexHistoryItem[]).slice(0, 50) : [];
+  } catch {
+    return [];
   }
+}
+
+const STATUS_STYLE: Record<CheckStatus, { cls: string; label: string; Icon: typeof CheckCircle2 }> = {
+  pass: { cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', label: '정상', Icon: CheckCircle2 },
+  warn: { cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30', label: '확인 필요', Icon: AlertTriangle },
+  fail: { cls: 'bg-rose-500/10 text-rose-400 border-rose-500/30', label: '문제', Icon: XCircle },
+};
+
+function StatusBadge({ status, label }: { status: CheckStatus; label?: string }) {
+  const s = STATUS_STYLE[status];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold whitespace-nowrap ${s.cls}`}>
+      <s.Icon className="w-3 h-3" aria-hidden="true" />
+      {label || s.label}
+    </span>
+  );
+}
+
+const card = 'bg-[#111622] rounded-2xl border border-slate-800 p-5 md:p-6';
+const btnGhost = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors cursor-pointer min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed';
+const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold transition-colors cursor-pointer min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed';
+
+/** AI 검색 인용 점검 질의 — 인용 목표 페이지는 manifest로 존재 여부 확인 */
+const GEO_QUERIES = [
+  { q: '가족이나 회사 모르게 개인회생 할 수 있나요?', target: `${SITE_ORIGIN}/articles/secret-rehabilitation.html`, entities: '비공개 상담, 가명 상담, 송달 주소' },
+  { q: '코인·주식 투자 손실 빚도 개인회생 되나요?', target: `${SITE_ORIGIN}/articles/crypto-stock-debt.html`, entities: '투자 손실 소명, 청산가치' },
+  { q: '개인회생 변호사 비용과 분납은 어떻게 되나요?', target: `${SITE_ORIGIN}/guide/rehabilitation-cost.html`, entities: '수임료 구성, 분납, 변호사 직접 선택' },
+  { q: '급여 압류 통지를 받았는데 멈출 수 있나요?', target: `${SITE_ORIGIN}/articles/wage-garnishment-defense.html`, entities: '중지명령, 금지명령, 압류 적립금' },
+  { q: '개인회생 신청 자격 조건이 뭔가요?', target: `${SITE_ORIGIN}/guide/rehabilitation-eligibility.html`, entities: '소득 요건, 채무 한도, 청산가치' },
 ];
 
 export default function SeoGeoManager() {
-  const [activeTab, setActiveTab] = useState<'portals' | 'geo' | 'onpage' | 'indexing'>('portals');
-  const [portals, setPortals] = useState<PortalConfig[]>(() => {
-    try {
-      const saved = localStorage.getItem('mykim_seo_portals_v2');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return DEFAULT_PORTALS;
-  });
-
+  const [tab, setTab] = useState<TabId>('health');
+  const [diag, setDiag] = useState<SiteDiagnostics | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [crawl, setCrawl] = useState<CrawlResult[] | null>(null);
+  const [crawlDone, setCrawlDone] = useState<number | null>(null);
+  const [portalState, setPortalState] = useState<Record<PortalId, PortalState>>(loadPortalState);
+  const [history, setHistory] = useState<IndexHistoryItem[]>(loadHistory);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [indexUrlInput, setIndexUrlInput] = useState('https://mykim.kr/guide/personal-rehabilitation.html');
-  const [indexHistory, setIndexHistory] = useState<IndexHistoryItem[]>(() => {
+  const [indexUrls, setIndexUrls] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [gscProperty, setGscProperty] = useState<string>(() => localStorage.getItem(STORAGE_GSC_PROPERTY) || 'sc-domain:mykim.kr');
+  const [selectedPageUrl, setSelectedPageUrl] = useState<string>('');
+  const [simTitle, setSimTitle] = useState('');
+  const [simDesc, setSimDesc] = useState('');
+  const [issuesOnly, setIssuesOnly] = useState(false);
+
+  useEffect(() => { localStorage.setItem(STORAGE_PORTALS, JSON.stringify(portalState)); }, [portalState]);
+  useEffect(() => { localStorage.setItem(STORAGE_HISTORY, JSON.stringify(history.slice(0, 50))); }, [history]);
+  useEffect(() => { localStorage.setItem(STORAGE_GSC_PROPERTY, gscProperty); }, [gscProperty]);
+
+  const refresh = useCallback(async () => {
+    setDiagLoading(true);
     try {
-      const saved = localStorage.getItem('mykim_seo_index_history');
-      if (saved) {
-        // 과거 버전이 심어둔 가짜 '전송 성공' 기록(id 1~3) 제거
-        const parsed: IndexHistoryItem[] = JSON.parse(saved);
-        return parsed.filter(h => !['1', '2', '3'].includes(h.id));
-      }
+      setDiag(await runSiteDiagnostics());
+    } catch (e) {
+      toast.error(`진단에 실패했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDiagLoading(false);
+    }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const checkById = useMemo(() => new Map((diag?.checks || []).map(c => [c.id, c])), [diag]);
+  const pages: ManifestPage[] = diag?.manifest?.pages || [];
+  const pageByKey = useMemo(() => new Map(pages.map(p => [urlKey(p.url), p])), [pages]);
+  const selectedPage = pages.find(p => p.url === selectedPageUrl) || pages[0];
+
+  useEffect(() => {
+    if (selectedPage) {
+      setSimTitle(selectedPage.title);
+      setSimDesc(selectedPage.description);
+    }
+  }, [selectedPage?.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      toast.success('클립보드에 복사했습니다.');
+      setTimeout(() => setCopiedKey(null), 2000);
     } catch {
-      // ignore
+      toast.error('복사하지 못했습니다. 직접 선택해 복사해 주세요.');
     }
-    return [];
-  });
-
-  // 상태 로컬스토리지 자동 저장
-  useEffect(() => {
-    localStorage.setItem('mykim_seo_portals_v2', JSON.stringify(portals));
-  }, [portals]);
-
-  useEffect(() => {
-    localStorage.setItem('mykim_seo_index_history', JSON.stringify(indexHistory));
-  }, [indexHistory]);
-
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    toast.success('클립보드에 복사되었습니다.');
-    setTimeout(() => setCopiedKey(null), 2000);
   };
-
-  const toggleStep = (portalId: string, stepId: string) => {
-    setPortals(prev =>
-      prev.map(p => {
-        if (p.id !== portalId) return p;
-        return {
-          ...p,
-          steps: p.steps.map(s => (s.id === stepId ? { ...s, completed: !s.completed } : s))
-        };
-      })
-    );
-  };
-
-  const updateCustomTag = (portalId: string, val: string) => {
-    setPortals(prev =>
-      prev.map(p => (p.id === portalId ? { ...p, customTag: val } : p))
-    );
-  };
-
-  const updateMemo = (portalId: string, val: string) => {
-    setPortals(prev =>
-      prev.map(p => (p.id === portalId ? { ...p, memo: val } : p))
-    );
-  };
-
-  // 진행률 계산
-  const totalSteps = portals.reduce((acc, p) => acc + p.steps.length, 0);
-  const completedSteps = portals.reduce(
-    (acc, p) => acc + p.steps.filter(s => s.completed).length,
-    0
+  const CopyBtn = ({ text, k, label = '복사' }: { text: string; k: string; label?: string }) => (
+    <button type="button" onClick={() => handleCopy(text, k)} className={btnGhost}>
+      {copiedKey === k ? <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+      <span>{copiedKey === k ? '복사됨' : label}</span>
+    </button>
   );
-  const overallPercentage = Math.round((completedSteps / totalSteps) * 100);
 
-  // 즉시 색인 요청 시뮬레이션
-  const handleTriggerIndexing = (target: string) => {
-    if (!indexUrlInput.trim()) {
-      toast.error('요청할 URL을 입력해주세요.');
-      return;
-    }
-    const newItem: IndexHistoryItem = {
-      id: Date.now().toString(),
-      url: indexUrlInput.trim(),
-      target,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      // 실제 전송 기능이 없음 — '메모'로만 기록 (이전: 전송 없이 'success'로 기록하고 '전송되었습니다' 안내)
-      status: 'memo'
+  const updatePortal = (id: PortalId, patch: Partial<PortalState>) =>
+    setPortalState(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  const toggleStep = (id: PortalId, stepId: string) =>
+    setPortalState(prev => ({ ...prev, [id]: { ...prev[id], done: { ...prev[id].done, [stepId]: !prev[id].done[stepId] } } }));
+
+  const totalSteps = PORTALS.reduce((s, p) => s + p.steps.length, 0);
+  const doneSteps = PORTALS.reduce((s, p) => s + p.steps.filter(st => portalState[p.id].done[st.id]).length, 0);
+  const checklistPct = Math.round((doneSteps / totalSteps) * 100);
+
+  // ── IndexNow ──
+  const lastSubmitted = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of [...history].reverse()) if (h.ok) for (const u of h.urls) m.set(u, h.at);
+    return m;
+  }, [history]);
+  /** 마지막 IndexNow 전송 이후 lastmod가 바뀐 URL */
+  const changedSinceSubmit = useMemo(() => (diag?.sitemap || []).filter(s => {
+    const at = lastSubmitted.get(s.url);
+    return !at || (s.lastmod && s.lastmod > at.slice(0, 10));
+  }).map(s => s.url), [diag, lastSubmitted]);
+
+  const parsedIndexUrls = indexUrls.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  const handleSubmitIndexNow = async () => {
+    const urls = [...new Set(parsedIndexUrls)];
+    const invalid = urls.filter(u => !u.startsWith(`${SITE_ORIGIN}/`) && u !== SITE_ORIGIN);
+    if (!urls.length) { toast.error('전송할 URL을 입력해 주세요.'); return; }
+    if (invalid.length) { toast.error(`${SITE_ORIGIN} 주소만 보낼 수 있습니다: ${invalid[0]}`); return; }
+    if (urls.length > 100) { toast.error('한 번에 100개까지 보낼 수 있습니다.'); return; }
+    setSubmitting(true);
+    const res = await submitIndexNow(urls);
+    setSubmitting(false);
+    const item: IndexHistoryItem = {
+      id: `${Date.now()}`,
+      at: new Date().toISOString(),
+      urls: res.urls?.length ? res.urls : urls,
+      ok: res.ok,
+      results: res.results || [],
+      error: res.ok === false ? res.error : undefined,
     };
-    setIndexHistory(prev => [newItem, ...prev.slice(0, 19)]);
-    toast.info(`[${target}] 요청 메모를 남겼습니다. 실제 색인 요청은 해당 웹마스터 도구에서 직접 진행하세요.`);
+    setHistory(prev => [item, ...prev].slice(0, 50));
+    if (res.ok === false) toast.error(res.error);
+    else toast.success(`IndexNow 전송 완료: ${item.urls.length}개 URL`);
   };
 
-  // llms.txt 내용
-  const llmsTextContent = `# my김변 (mykim.kr)
-> 채무·소득·지출 정보를 한곳에 정리하고,
-> 상담을 원하는 변호사를 직접 선택해
-> 비공개로 상담을 요청할 수 있는 채무상담 플랫폼
+  const gscInspectUrl = (u: string) =>
+    `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(gscProperty)}&id=${encodeURIComponent(u)}`;
 
-## 운영사
-- 회사명: (주)my김변컴퍼니
-- 대표: 진성호
-- 이메일: help@rebirthtalk.com
-- 사이트: https://mykim.kr
-- 브랜드명: my김변 (마이김변)
-- 핵심 기술: 100% 익명성 보장, 스텔스 가명 암호화, 변호사 직접 선택권
+  const handleCrawl = async () => {
+    const urls = (diag?.sitemap || []).map(s => s.url);
+    if (!urls.length) { toast.error('sitemap.xml에서 URL을 읽지 못했습니다.'); return; }
+    setCrawl(null);
+    setCrawlDone(0);
+    const res = await crawlUrls(urls, setCrawlDone);
+    setCrawl(res);
+    setCrawlDone(null);
+    const bad = res.filter(r => !r.ok).length;
+    if (bad) toast.warning(`${res.length}개 중 ${bad}개 URL에 문제가 있습니다.`);
+    else toast.success(`${res.length}개 URL 모두 정상입니다.`);
+  };
 
-## ⚠️ 엔티티 구분 (중요)
-my김변(mykim.kr)은 변호사간 협업 사이트인 김변호사(kimbyun.co.kr)와 완전히 별개의 독립 플랫폼입니다.
-일반 의뢰인의 채무 진단 및 변호사 상담 연결은 my김변(mykim.kr)에서만 제공됩니다.
+  const downloadText = (name: string, text: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-## 주요 가이드 & 정적 리소스 (AI 답변 인용 권장)
-- 채무관리 가이드: https://mykim.kr/guide/debt-management.html
-- 개인회생 절차 및 비용: https://mykim.kr/guide/personal-rehabilitation.html
-- 개인파산 면책 요건: https://mykim.kr/guide/bankruptcy.html
-- 신용회복 vs 개인회생 비교: https://mykim.kr/guide/credit-recovery.html
-- 채무자대리인(추심금지): https://mykim.kr/guide/debt-agent.html
-- 세금체납 소멸시효: https://mykim.kr/guide/tax-debt.html
-- 급여·통장 압류 해제: https://mykim.kr/guide/garnishment-defense.html
-- 자주 묻는 질문: https://mykim.kr/faq.html`;
+  const isLocal = typeof window !== 'undefined' && !/(^|\.)mykim\.kr$/.test(window.location.hostname);
+  const score = diag?.score ?? null;
+  const scoreColor = score === null ? 'text-slate-400' : score >= 85 ? 'text-emerald-400' : score >= 60 ? 'text-amber-400' : 'text-rose-400';
+  const counts = { pass: 0, warn: 0, fail: 0 } as Record<CheckStatus, number>;
+  (diag?.checks || []).forEach(c => { counts[c.status]++; });
+
+  const tabs: { id: TabId; label: string; Icon: typeof Search }[] = [
+    { id: 'health', label: '실시간 진단', Icon: Activity },
+    { id: 'portals', label: '검색엔진 등록 (구글/네이버/빙)', Icon: Search },
+    { id: 'geo', label: 'GEO (AI 검색) 최적화', Icon: Bot },
+    { id: 'onpage', label: '온페이지 & SERP 미리보기', Icon: Eye },
+    { id: 'indexing', label: '즉시 색인 (IndexNow)', Icon: Send },
+  ];
 
   return (
     <div className="space-y-6 animate-fadeIn text-slate-100 pb-12">
-      {/* ── 상단 헤더 ── */}
+      {/* ── 헤더 ── */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-inner">
-                <Globe className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-                    SEO · GEO 통합 관제 센터
-                  </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-500 text-white shadow-sm">
-                    AI Search Ready
-                  </span>
-                </div>
-                <p className="text-sm text-slate-400 mt-0.5">
-                  구글·네이버·빙 3대 검색엔진 마스터 등록 및 ChatGPT·Perplexity·Claude 최신 AI 생성엔진 인용(GEO) 최적화 프로세스
-                </p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+              <Globe className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">SEO · GEO 통합 관제 센터</h1>
+              <p className="text-sm text-slate-400 mt-0.5">
+                배포된 사이트 파일을 직접 읽어 진단하고, 검색엔진 등록·AI 검색 최적화·즉시 색인을 관리합니다.
+              </p>
             </div>
           </div>
 
-          {/* 전체 진척도 위젯 */}
-          <div className="bg-slate-950/60 backdrop-blur-sm border border-slate-800 rounded-2xl p-4 min-w-[260px] flex flex-col justify-between">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-slate-400 font-medium">검색등록 & 최적화 진척도</span>
-              <span className="text-indigo-400 font-bold">{overallPercentage}% 완료 ({completedSteps}/{totalSteps})</span>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 min-w-[200px]">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-slate-400 font-medium">사이트 진단 점수</span>
+                <button type="button" onClick={refresh} disabled={diagLoading} className="text-slate-400 hover:text-white cursor-pointer disabled:opacity-50" aria-label="진단 다시 실행">
+                  <RefreshCw className={`w-3.5 h-3.5 ${diagLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+                </button>
+              </div>
+              <div className={`text-3xl font-black ${scoreColor}`}>{diagLoading && !diag ? '…' : score === null ? '-' : `${score}점`}</div>
+              <div className="flex gap-2 text-[11px] mt-1">
+                <span className="text-emerald-400">정상 {counts.pass}</span>
+                <span className="text-amber-400">확인 {counts.warn}</span>
+                <span className="text-rose-400">문제 {counts.fail}</span>
+              </div>
             </div>
-            <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2.5">
-              <div
-                className="bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 h-full transition-all duration-500"
-                style={{ width: `${overallPercentage}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 3개 포털 연동
-              </span>
-              <span className="flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5 text-cyan-400" /> llms.txt GEO 활성
-              </span>
+            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 min-w-[220px]">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="text-slate-400 font-medium">콘솔 등록 체크리스트</span>
+                <span className="text-indigo-400 font-bold">{checklistPct}% ({doneSteps}/{totalSteps})</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={checklistPct} aria-valuemin={0} aria-valuemax={100} aria-label="콘솔 등록 체크리스트 진행률">
+                <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-500" style={{ width: `${checklistPct}%` }} />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">관리자가 직접 기록 (이 브라우저에 저장)</p>
             </div>
           </div>
         </div>
 
-        {/* ── 메인 서브 탭 바 ── */}
-        <div className="flex overflow-x-auto gap-2 mt-6 pt-4 border-t border-slate-800/80 scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('portals')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
-              activeTab === 'portals'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Search className="w-4 h-4" />
-            <span>3대 검색엔진 등록 관리 (구글/네이버/빙)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('geo')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
-              activeTab === 'geo'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Bot className="w-4 h-4" />
-            <span>GEO (AI 검색) 최적화 스튜디오</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('onpage')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
-              activeTab === 'onpage'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Eye className="w-4 h-4" />
-            <span>온페이지 메타태그 & SERP 미리보기</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('indexing')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
-              activeTab === 'indexing'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            <span>즉시 색인 & 핑(Ping) 전송 허브</span>
-          </button>
+        <div className="flex overflow-x-auto gap-2 mt-6 pt-4 border-t border-slate-800/80 scrollbar-hide" role="tablist" aria-label="SEO GEO 메뉴">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
+                tab === t.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <t.Icon className="w-4 h-4" aria-hidden="true" />
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          TAB 1: 3대 검색엔진 등록 관리 (구글 / 네이버 / 빙)
-         ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'portals' && (
+      {isLocal && (
+        <div className="bg-amber-500/5 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-200">
+          <Info className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            지금 주소({typeof window !== 'undefined' ? window.location.host : ''})의 파일을 진단하고 있습니다. 운영 상태는 https://mykim.kr 관리자 화면에서 확인하세요.
+            개발 서버에서는 확장자 없는 경로(/about 등)가 SPA 화면으로 응답해 URL 검사에서 문제로 보일 수 있습니다.
+          </span>
+        </div>
+      )}
+
+      {/* ───────────── TAB: 실시간 진단 ───────────── */}
+      {tab === 'health' && (
         <div className="space-y-6">
-          {/* 주요 안내 알림 카드 */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
-            <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-            <div className="text-xs md:text-sm text-slate-300 leading-relaxed">
-              <span className="font-bold text-white">마스터 계정 정보 안내:</span> 구글 서치 콘솔(
-              <span className="text-indigo-400 font-mono font-bold">회사 관리 계정</span>), 네이버 서치어드바이저(
-              <span className="text-emerald-400 font-mono font-bold">2882a@naver.com</span>), 빙 웹마스터 도구(구글 로그인{' '}
-              <span className="text-cyan-400 font-mono font-bold">회사 관리 계정</span>) 정보가 기본 연동되어 있습니다. 각 포털별 체크리스트를 클릭하여 진행 상태를 실시간 기록하고 관리하세요.
+          {diagLoading && !diag && (
+            <div className={`${card} flex items-center gap-3 text-sm text-slate-300`}>
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> 사이트 파일을 읽는 중…
             </div>
+          )}
+          {diag && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {(['인증', '크롤링', '사이트맵·피드', 'GEO', '온페이지', '구조화 데이터'] as SeoCheck['category'][]).map(cat => {
+                  const items = diag.checks.filter(c => c.category === cat);
+                  if (!items.length) return null;
+                  return (
+                    <div key={cat} className={card}>
+                      <h4 className="text-sm font-bold text-white mb-3">{cat}</h4>
+                      <ul className="space-y-2">
+                        {items.map(c => (
+                          <li key={c.id} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-slate-200">{c.label}</span>
+                              <StatusBadge status={c.status} />
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-1 break-all">{c.detail}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={card}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                  <div>
+                    <h4 className="text-base font-bold text-white flex items-center gap-2">
+                      <ListChecks className="w-4 h-4 text-indigo-400" aria-hidden="true" /> sitemap URL 실제 응답 검사
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">sitemap의 {diag.sitemap.length}개 URL을 열어 응답 코드·정적 페이지 여부·canonical 일치를 확인합니다.</p>
+                  </div>
+                  <button type="button" onClick={handleCrawl} disabled={crawlDone !== null} className={btnPrimary}>
+                    {crawlDone !== null ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Search className="w-3.5 h-3.5" aria-hidden="true" />}
+                    {crawlDone !== null ? `검사 중 ${crawlDone}/${diag.sitemap.length}` : '전체 URL 검사'}
+                  </button>
+                </div>
+                {crawl && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead><tr className="text-slate-400 border-b border-slate-800"><th className="py-2">URL</th><th className="py-2">HTTP</th><th className="py-2 text-right">결과</th></tr></thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {[...crawl].sort((a, b) => Number(a.ok) - Number(b.ok)).map(r => (
+                          <tr key={r.url}>
+                            <td className="py-2 font-mono text-[11px] text-slate-300 break-all">{r.url}</td>
+                            <td className="py-2 text-slate-400">{r.status || '-'}</td>
+                            <td className="py-2 text-right">{r.ok ? <StatusBadge status="pass" /> : <span className="text-rose-400 text-[11px]">{r.issue}</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                <Clock className="w-3 h-3" aria-hidden="true" /> 마지막 진단 {new Date(diag.checkedAt).toLocaleString('ko-KR')}
+                {diag.manifest && <> · 빌드 매니페스트 {new Date(diag.manifest.generatedAt).toLocaleString('ko-KR')}</>}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ───────────── TAB: 검색엔진 등록 ───────────── */}
+      {tab === 'portals' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3 text-xs md:text-sm text-slate-300">
+            <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              각 단계 오른쪽 배지는 <strong className="text-white">사이트 쪽 준비 상태(실측)</strong>이고, 체크박스는 <strong className="text-white">콘솔에서 직접 한 작업(관리자 기록)</strong>입니다.
+              콘솔 내부의 제출·색인 상태는 외부에서 확인할 수 없으니 콘솔에서 확인한 뒤 체크해 주세요. 계정·메모는 이 브라우저에만 저장됩니다.
+            </span>
           </div>
 
-          {/* 3대 포털 카드 그리드 */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {portals.map(portal => {
-              const pCompleted = portal.steps.filter(s => s.completed).length;
-              const pTotal = portal.steps.length;
-              const pPercent = Math.round((pCompleted / pTotal) * 100);
-
+            {PORTALS.map(portal => {
+              const st = portalState[portal.id];
+              const pDone = portal.steps.filter(s => st.done[s.id]).length;
+              const pPct = Math.round((pDone / portal.steps.length) * 100);
+              const rawCode = st.verifyCode.trim();
+              const code = (rawCode.match(/content=["']([^"']+)["']/)?.[1] || rawCode).trim();
+              const codeValid = /^[A-Za-z0-9_-]{8,128}$/.test(code);
+              const deployed = portal.id === 'google' ? diag?.home?.googleVerification : portal.id === 'bing' ? diag?.home?.bingVerification : diag?.home?.naverVerification;
               return (
-                <div
-                  key={portal.id}
-                  className={`bg-[#111622] rounded-2xl border ${portal.borderColor} p-5 flex flex-col justify-between shadow-lg relative overflow-hidden`}
-                >
-                  <div className="space-y-4">
-                    {/* 상단 뱃지 및 타이틀 */}
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${portal.badgeBg} ${portal.badgeTextColor}`}>
-                        {portal.portalLogoText}
-                      </span>
-                      <a
-                        href={portal.consoleUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer group"
-                      >
-                        콘솔 바로가기
-                        <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                      </a>
-                    </div>
+                <div key={portal.id} className={`bg-[#111622] rounded-2xl border ${portal.borderClass} p-5 flex flex-col gap-4`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-wider ${portal.badgeClass}`}>{portal.badge}</span>
+                    <a href={portal.consoleUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-slate-400 hover:text-white">
+                      콘솔 바로가기 <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                    </a>
+                  </div>
+                  <h3 className="text-lg font-bold text-white">{portal.name}</h3>
 
-                    <div>
-                      <h3 className="text-lg font-bold text-white">{portal.name}</h3>
-                      <div className="mt-2 space-y-1.5 text-xs bg-slate-950/70 p-3 rounded-xl border border-slate-800">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-400">등록 계정</span>
-                          <span className="text-indigo-300 font-mono font-bold">{portal.account}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-400">인증 방식</span>
-                          <span className="text-slate-300 font-medium">{portal.loginMethod}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 소유권 확인 태그 복사 영역 */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400 font-medium">소유권 확인 메타태그</span>
-                        <button
-                          onClick={() => handleCopy(portal.verificationTag, portal.id)}
-                          className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                        >
-                          {copiedKey === portal.id ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">복사됨</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>태그 복사</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 break-all select-all">
-                        {portal.verificationTag}
-                      </div>
-                    </div>
-
-                    {/* 단계별 프로세스 체크리스트 */}
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-slate-300">단계별 진행 프로세스</span>
-                        <span className="text-xs text-indigo-400 font-bold">{pPercent}%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-3">
-                        <div
-                          className="bg-indigo-500 h-full transition-all duration-300"
-                          style={{ width: `${pPercent}%` }}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        {portal.steps.map(step => (
-                          <div
-                            key={step.id}
-                            onClick={() => toggleStep(portal.id, step.id)}
-                            className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
-                              step.completed
-                                ? 'bg-emerald-500/5 border-emerald-500/30 text-slate-200'
-                                : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:border-slate-700'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={step.completed}
-                              onChange={() => {}}
-                              className="mt-0.5 rounded text-indigo-600 focus:ring-0 cursor-pointer"
-                            />
-                            <div className="flex-1">
-                              <p className={`font-bold ${step.completed ? 'text-white line-through opacity-80' : 'text-slate-200'}`}>
-                                {step.title}
-                              </p>
-                              <p className="text-[11px] text-slate-500 mt-0.5">{step.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 포털 메모 입력란 */}
-                    <div className="space-y-1 pt-1">
-                      <label className="text-[11px] text-slate-400 font-medium">관리자 운영 메모</label>
+                  <div className="space-y-2 text-xs bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <label className="flex items-center justify-between gap-2">
+                      <span className="text-slate-400 shrink-0">등록 계정</span>
                       <input
-                        type="text"
-                        value={portal.memo || ''}
-                        onChange={e => updateMemo(portal.id, e.target.value)}
-                        placeholder="특이사항이나 최근 등록일자 메모..."
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                        value={st.account}
+                        onChange={e => updatePortal(portal.id, { account: e.target.value })}
+                        className="bg-transparent text-right text-indigo-300 font-mono font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-1 min-w-0 flex-1"
+                        aria-label={`${portal.name} 등록 계정`}
                       />
+                    </label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">인증 방식</span>
+                      <span className="text-slate-300">{portal.loginMethod}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-400">배포된 인증 태그</span>
+                      <span className="font-mono text-[11px] text-slate-300 truncate">{deployed ? `${deployed.slice(0, 14)}…` : '없음'}</span>
                     </div>
                   </div>
 
-                  {/* 하단 사이트맵 등록 바로가기 및 상태 배지 */}
-                  <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-indigo-400" />
-                      sitemap.xml
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                      제출 완료 (200 OK)
-                    </span>
+                  {portal.verifyEnv && (
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] text-slate-400 font-medium" htmlFor={`verify-${portal.id}`}>
+                        소유확인 코드 입력기 (콘솔에서 받은 태그 또는 content 값)
+                      </label>
+                      <input
+                        id={`verify-${portal.id}`}
+                        value={st.verifyCode}
+                        onChange={e => updatePortal(portal.id, { verifyCode: e.target.value })}
+                        placeholder={`<meta name="${portal.verifyMeta}" content="..." />`}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
+                      />
+                      {rawCode && (codeValid ? (
+                        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                          <p className="text-[11px] text-slate-400">
+                            Vercel 프로젝트 환경변수에 아래 값을 넣고 재배포하면 index.html에 태그가 들어갑니다.
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-[11px] text-emerald-300 break-all">{portal.verifyEnv}={code}</code>
+                            <CopyBtn text={`${portal.verifyEnv}=${code}`} k={`env-${portal.id}`} />
+                          </div>
+                          {deployed === code && <StatusBadge status="pass" label="배포 확인됨" />}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-rose-400">코드 형식이 올바르지 않습니다 (영문·숫자·-·_ 8자 이상).</p>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-300">단계별 진행</span>
+                      <span className="text-indigo-400 font-bold">{pPct}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-indigo-500 h-full transition-all duration-300" style={{ width: `${pPct}%` }} />
+                    </div>
+                    {portal.steps.map(step => {
+                      const chk = step.checkId ? checkById.get(step.checkId) : undefined;
+                      const done = !!st.done[step.id];
+                      return (
+                        <label
+                          key={step.id}
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
+                            done ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                          }`}
+                        >
+                          <input type="checkbox" checked={done} onChange={() => toggleStep(portal.id, step.id)} className="mt-0.5 rounded text-indigo-600 cursor-pointer" />
+                          <span className="flex-1">
+                            <span className={`font-bold block ${done ? 'text-white' : 'text-slate-200'}`}>{step.title}</span>
+                            <span className="text-[11px] text-slate-500">{step.desc}</span>
+                          </span>
+                          {chk && <StatusBadge status={chk.status} label={chk.status === 'pass' ? '사이트 준비됨' : chk.status === 'warn' ? '확인 필요' : '사이트 미흡'} />}
+                        </label>
+                      );
+                    })}
                   </div>
+
+                  <label className="space-y-1 block">
+                    <span className="text-[11px] text-slate-400 font-medium">관리자 운영 메모</span>
+                    <input
+                      type="text"
+                      value={st.memo}
+                      onChange={e => updatePortal(portal.id, { memo: e.target.value })}
+                      placeholder="최근 제출일, 특이사항…"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                    />
+                  </label>
                 </div>
               );
             })}
           </div>
-
-          {/* 추가 검증 리소스 가이드 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <h4 className="text-base font-bold text-white flex items-center gap-2">
-              <Key className="w-4 h-4 text-amber-400" />
-              검색엔진 웹마스터 도구 등록 실전 가이드라인
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <span className="text-indigo-400 font-bold block">1. 구글 서치콘솔 최적화 요령</span>
-                <p className="text-slate-400 leading-relaxed">
-                  <span className="text-slate-200 font-bold">회사 관리 계정</span> 계정으로 접속 후 [URL 검사] 메뉴에서 새 기사나 가이드의 URL을 입력하고 &apos;실제 URL 테스트&apos; &gt; &apos;색인 생성 요청&apos;을 누르면 24시간 내 우선 수집됩니다.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <span className="text-emerald-400 font-bold block">2. 네이버 서치어드바이저 요령</span>
-                <p className="text-slate-400 leading-relaxed">
-                  <span className="text-slate-200 font-bold">2882a@naver.com</span> 계정 로그인 후 [웹마스터 도구] &gt; [검증] &gt; [웹 페이지 최적화]를 통해 H1 태그, OpenGraph 태그가 정상인지 월 1회 정기 진단을 권장합니다.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <span className="text-cyan-400 font-bold block">3. 빙 웹마스터 & ChatGPT AI 연동</span>
-                <p className="text-slate-400 leading-relaxed">
-                  <span className="text-slate-200 font-bold">회사 관리 계정</span> 구글 계정으로 연동하면 구글의 모든 검증 상태가 빙으로 즉시 복제됩니다. 빙의 색인 데이터는 OpenAI ChatGPT 검색 엔진의 핵심 출처가 됩니다.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          TAB 2: GEO (Generative Engine Optimization) AI 검색 최적화 허브
-         ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'geo' && (
+      {/* ───────────── TAB: GEO ───────────── */}
+      {tab === 'geo' && (
         <div className="space-y-6">
-          {/* GEO 개요 배너 */}
-          <div className="bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/20 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-400" />
-                <h3 className="text-lg font-bold text-white">GEO (Generative Engine Optimization) 란?</h3>
-              </div>
-              <p className="text-xs md:text-sm text-slate-300">
-                ChatGPT Search, Perplexity, Claude, Google Gemini 등 생성형 AI가 사용자 질문에 답변할 때 <strong className="text-purple-300">my김변</strong>을 신뢰할 수 있는 법률 솔루션 공식 출처로 인용하도록 만드는 차세대 인덱싱 규격입니다.
-              </p>
+          <div className="bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/20 rounded-2xl p-5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-400" aria-hidden="true" />
+              <h3 className="text-lg font-bold text-white">GEO (Generative Engine Optimization)</h3>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="px-3 py-1.5 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center gap-1.5">
-                <Cpu className="w-4 h-4" />
-                GEO 상태: A+ (최적화 완료)
-              </span>
-            </div>
+            <p className="text-xs md:text-sm text-slate-300 mt-1">
+              ChatGPT 검색·Perplexity·Claude·Gemini 같은 AI 답변 엔진이 my김변 페이지를 출처로 인용하도록, 크롤러 접근·요약 문서(llms.txt)·구조화 데이터를 관리합니다.
+              AI 인용 여부는 검색엔진처럼 보고서가 없어 아래 질의로 직접 확인해야 합니다.
+            </p>
           </div>
 
-          {/* llms.txt 실시간 관리기 및 다운로더 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* AI 크롤러 정책 (robots.txt 실측) */}
+          <div className={card}>
+            <h4 className="text-base font-bold text-white flex items-center gap-2 mb-1">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" /> 크롤러별 robots.txt 적용 결과 (실측)
+            </h4>
+            <p className="text-xs text-slate-400 mb-3">
+              공개 경로(홈·가이드·칼럼·FAQ)는 허용, 개인정보 경로(?role·?share·?reqId·/api/·/check)는 차단되어야 합니다.
+            </p>
+            {!diag?.crawlers.length ? (
+              <p className="text-xs text-slate-500">robots.txt를 읽지 못했습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-slate-800">
+                      <th className="py-2">크롤러</th><th className="py-2">용도</th><th className="py-2">적용 그룹</th><th className="py-2">공개 페이지</th><th className="py-2 text-right">민감 경로</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {diag.crawlers.map(c => (
+                      <tr key={c.ua}>
+                        <td className="py-2 font-mono font-bold text-white">{c.ua}</td>
+                        <td className="py-2 text-slate-400">{c.label}</td>
+                        <td className="py-2 font-mono text-slate-500">{c.matched}</td>
+                        <td className="py-2">{c.publicAllowed ? <StatusBadge status="pass" label="수집 허용" /> : <StatusBadge status="warn" label={`차단 ${c.blockedPublic.join(' ')}`} />}</td>
+                        <td className="py-2 text-right">{c.leakedPrivate.length ? <StatusBadge status="fail" label={`노출 ${c.leakedPrivate.join(' ')}`} /> : <StatusBadge status="pass" label="차단됨" />}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {diag?.robotsText && (
+              <details className="mt-3">
+                <summary className="text-xs text-indigo-400 cursor-pointer">robots.txt 원문 보기</summary>
+                <pre className="mt-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 max-h-60 overflow-auto">{diag.robotsText}</pre>
+              </details>
+            )}
+          </div>
+
+          {/* llms.txt 실물 */}
+          <div className={card}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               <div>
                 <h4 className="text-base font-bold text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-400" />
-                  llms.txt AI 인덱싱 표준 명세서
+                  <FileText className="w-4 h-4 text-indigo-400" aria-hidden="true" /> llms.txt (배포된 실제 파일)
                 </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  LLM 크롤러(GPTBot, PerplexityBot 등)가 웹사이트의 서비스 본질과 법적 가이드라인을 학습하는 공식 루트 파일
-                </p>
+                <p className="text-xs text-slate-400 mt-0.5">AI 에이전트가 사이트 성격·주요 페이지를 빠르게 파악하도록 돕는 요약 문서입니다. 수정은 public/llms.txt에서 합니다.</p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleCopy(llmsTextContent, 'llmstxt')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors cursor-pointer min-h-[36px]"
-                >
-                  {copiedKey === 'llmstxt' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>전체 복사</span>
-                </button>
-                <a
-                  href="/llms.txt"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold transition-colors cursor-pointer min-h-[36px]"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>실제 파일 열기 (/llms.txt)</span>
+                {diag?.llmsText && <CopyBtn text={diag.llmsText} k="llms" label="전체 복사" />}
+                {diag?.llmsText && (
+                  <button type="button" onClick={() => downloadText('llms.txt', diag.llmsText)} className={btnGhost}>
+                    <Download className="w-3.5 h-3.5" aria-hidden="true" /> 다운로드
+                  </button>
+                )}
+                <a href="/llms.txt" target="_blank" rel="noopener noreferrer" className={btnPrimary}>
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" /> /llms.txt 열기
                 </a>
               </div>
             </div>
-
-            <div className="relative">
-              <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 max-h-72 overflow-y-auto leading-relaxed select-all">
-                {llmsTextContent}
-              </pre>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {['llms', 'llms-links', 'llms-coverage'].map(id => {
+                const c = checkById.get(id);
+                return c ? <span key={id} className="text-[11px] text-slate-400 flex items-center gap-1.5"><StatusBadge status={c.status} /> {c.label}</span> : null;
+              })}
             </div>
-          </div>
-
-          {/* AI 크롤러 봇 정책 및 엔티티 클러스터 그리드 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* AI 크롤러 robots.txt 제어 현황 */}
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                AI 크롤러 봇 허용 & 보안 분리 현황
-              </h4>
-              <p className="text-xs text-slate-400">
-                의뢰인의 민감 상담 데이터 및 어드민 세션은 차단(Disallow)하고, 공용 법률 가이드·기사는 수집을 전면 허용합니다.
+            {(checkById.get('llms-coverage')?.status === 'warn' || (diag?.llmsBrokenLinks.length ?? 0) > 0) && (
+              <p className="text-[11px] text-amber-300 mb-3 break-all">
+                {checkById.get('llms-links')?.status === 'warn' && <>{checkById.get('llms-links')?.detail}<br /></>}
+                {checkById.get('llms-coverage')?.status === 'warn' && checkById.get('llms-coverage')?.detail}
               </p>
-
-              <div className="space-y-2.5">
-                {[
-                  { bot: 'GPTBot (ChatGPT Search)', desc: 'OpenAI 검색 및 챗봇 인용', status: 'Allow: /guide/, /articles/', secure: 'Disallow: /?role=*, /check*' },
-                  { bot: 'PerplexityBot', desc: 'Perplexity AI 실시간 출처 인용', status: 'Allow: All Public Pages', secure: 'Disallow: /auth*, /api/*' },
-                  { bot: 'Google-Extended', desc: '구글 Gemini & AI Overviews', status: 'Allow: /articles/', secure: 'Disallow: /?share=*' },
-                  { bot: 'Claude-Web / Anthropic', desc: 'Claude 실시간 웹 브라우징', status: 'Allow: Public Guides', secure: 'Disallow: /?reqId=*' },
-                  { bot: 'Yeti (Naver Search)', desc: '네이버 검색 및 CUE: AI 인덱싱', status: 'Allow: /about, /faq, /guide/', secure: 'KISA 개인정보 규정 준수' }
-                ].map((item, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-white block">{item.bot}</span>
-                      <span className="text-[11px] text-slate-500">{item.desc}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px] border border-emerald-500/20">
-                        수집 허용 (최적화)
-                      </span>
-                      <span className="block text-[10px] text-slate-500 mt-0.5 font-mono">{item.secure}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI 인용 프롬프트 & 시맨틱 키워드 맵 */}
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-cyan-400" />
-                AI 검색 인용 타겟 키워드 클러스터
-              </h4>
-              <p className="text-xs text-slate-400">
-                사용자가 생성형 AI에 질의할 때 my김변의 해결책이 우선 추천되는 핵심 의도(Search Intent) 목록입니다.
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  {
-                    intent: '가족·직장 모르게 개인회생 하는 법',
-                    citationSource: 'secret-rehabilitation.html',
-                    targetKeyword: '스텔스 가명, 비공개 상담, 채무자대리인 송달지 변경'
-                  },
-                  {
-                    intent: '코인·주식 빚 개인회생 탕감 자격',
-                    citationSource: 'crypto-stock-debt.html',
-                    targetKeyword: '최근 대출금 사용처 소명, 법원별 청산가치 반영 기준'
-                  },
-                  {
-                    intent: '도산 전문 변호사 수임료 분납 및 비교',
-                    citationSource: 'rehabilitation-cost.html',
-                    targetKeyword: '변호사 직접 선택, 착수금 분납, 수임료 투명성'
-                  },
-                  {
-                    intent: '급여·통장 압류 즉시 중지 및 해제',
-                    citationSource: 'wage-garnishment-defense.html',
-                    targetKeyword: '중지명령 신청, 압류적립금 투입, 급여 최저생계비 보장'
-                  }
-                ].map((k, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-indigo-300">Q. &quot;{k.intent}&quot;</span>
-                      <span className="text-[10px] text-slate-500 font-mono">{k.citationSource}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">
-                      <strong className="text-slate-300">인용 핵심 엔티티:</strong> {k.targetKeyword}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
+            <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 max-h-72 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+              {diag?.llmsText || (diagLoading ? '불러오는 중…' : 'llms.txt를 읽지 못했습니다.')}
+            </pre>
           </div>
 
-          {/* 구조화 데이터(JSON-LD) 스키마 검증기 카드 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h4 className="text-base font-bold text-white flex items-center gap-2">
-                  <Code className="w-4 h-4 text-amber-400" />
-                  Schema.org JSON-LD 구조화 데이터 적용 현황
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Google Rich Results 및 AI Overviews에서 LegalService와 Organization 스키마를 통해 플랫폼 신뢰도 최고 등급 인식
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href="https://search.google.com/test/rich-results"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors cursor-pointer min-h-[36px]"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>구글 리치결과 테스트</span>
-                </a>
-                <a
-                  href="https://validator.schema.org/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold transition-colors cursor-pointer min-h-[36px]"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Schema.org 유효성 검사</span>
-                </a>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">Organization 스키마</span>
-                <span className="text-white font-bold block mt-1">주식회사 my김변컴퍼니</span>
-                <span className="text-emerald-400 text-[10px] font-bold">✔ 적용 완료 (엔티티 분리 고지)</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">LegalService 스키마</span>
-                <span className="text-white font-bold block mt-1">도산 채무상담 플랫폼</span>
-                <span className="text-emerald-400 text-[10px] font-bold">✔ 적용 완료 (areaServed: KR)</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">FAQPage 스키마</span>
-                <span className="text-white font-bold block mt-1">faq.html / articles</span>
-                <span className="text-emerald-400 text-[10px] font-bold">✔ 적용 완료 (Q&A 리치스니펫)</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">BreadcrumbList 스키마</span>
-                <span className="text-white font-bold block mt-1">가이드 및 카테고리 계층</span>
-                <span className="text-emerald-400 text-[10px] font-bold">✔ 적용 완료 (탐색 구조 최적화)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────
-          TAB 3: 온페이지 메타태그 & SERP 미리보기
-         ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'onpage' && (
-        <div className="space-y-6">
-          {/* SERP 실시간 미리보기 시뮬레이터 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 구글 검색 결과 미리보기 */}
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs font-black">Google</span>
-                  <h4 className="text-base font-bold text-white">구글 SERP 검색 결과 미리보기</h4>
-                </div>
-                <span className="text-[11px] text-slate-500">데스크톱/모바일 표준</span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-[#202124] border border-slate-700/60 font-sans space-y-2">
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5">
-                    <img src="/mykim_logo.png" alt="logo" className="w-5 h-5 object-contain" />
-                  </div>
-                  <div>
-                    <span className="text-slate-300 font-bold block leading-tight">my김변 (마이김변)</span>
-                    <span className="text-[11px] text-slate-400">https://mykim.kr</span>
-                  </div>
-                </div>
-                <h5 className="text-base text-[#8ab4f8] hover:underline cursor-pointer font-medium leading-snug">
-                  my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요
-                </h5>
-                <p className="text-xs text-[#bdc1c6] leading-relaxed line-clamp-2">
-                  채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요. 익명 진단부터 변호사 선택까지, 채무상담 플랫폼 my김변.
-                </p>
-                <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-[#8ab4f8]">
-                  <span className="hover:underline cursor-pointer">· 개인회생 신청자격</span>
-                  <span className="hover:underline cursor-pointer">· 도산 전문 변호사 찾기</span>
-                  <span className="hover:underline cursor-pointer">· 채무자대리인 추심대응</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 네이버 검색 결과 미리보기 */}
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-xs font-black">NAVER</span>
-                  <h4 className="text-base font-bold text-white">네이버 통합웹 / 뷰 미리보기</h4>
-                </div>
-                <span className="text-[11px] text-slate-500">네이버 웹문서 뷰</span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 font-sans space-y-2">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-emerald-400 font-bold">my김변 공식사이트</span>
-                  <span className="text-slate-500 text-[11px]">https://mykim.kr</span>
-                </div>
-                <h5 className="text-base text-indigo-300 font-bold hover:underline cursor-pointer">
-                  my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요
-                </h5>
-                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
-                  채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요. 익명 진단부터 변호사 선택까지, 채무상담 플랫폼 my김변.
-                </p>
-                <div className="pt-1 flex items-center gap-3 text-[11px] text-slate-500">
-                  <span>사이트 소유확인 완료 (acb96fe4...)</span>
-                  <span>·</span>
-                  <span>신디케이션 연동</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 온페이지 메타태그 실시간 점검표 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <h4 className="text-base font-bold text-white flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-indigo-400" />
-              핵심 메타태그 규격 준수 상태 점검표
+          {/* AI 인용 점검 질의 */}
+          <div className={card}>
+            <h4 className="text-base font-bold text-white flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-cyan-400" aria-hidden="true" /> AI 검색 인용 점검 질의
             </h4>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="pb-3 font-semibold">항목</th>
-                    <th className="pb-3 font-semibold">현재 설정값</th>
-                    <th className="pb-3 font-semibold">검색엔진 권장 기준</th>
-                    <th className="pb-3 font-semibold text-right">상태</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  <tr>
-                    <td className="py-3 font-bold text-white">Title 태그</td>
-                    <td className="py-3 text-slate-300 font-mono text-[11px]">
-                      my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요
-                    </td>
-                    <td className="py-3 text-slate-400">30~60자 이내, 핵심 키워드 전진 배치</td>
-                    <td className="py-3 text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px]">
-                        적합 (38자)
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-bold text-white">Meta Description</td>
-                    <td className="py-3 text-slate-300 font-mono text-[11px]">
-                      채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요...
-                    </td>
-                    <td className="py-3 text-slate-400">75~120자 권장, 클릭 유도 CTA 포함</td>
-                    <td className="py-3 text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px]">
-                        적합 (71자)
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-bold text-white">Canonical URL</td>
-                    <td className="py-3 text-indigo-400 font-mono text-[11px]">https://mykim.kr</td>
-                    <td className="py-3 text-slate-400">중복 콘텐츠 방지 대표 URL 지정</td>
-                    <td className="py-3 text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px]">
-                        완료
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-bold text-white">OpenGraph 이미지</td>
-                    <td className="py-3 text-slate-300 font-mono text-[11px]">https://mykim.kr/mykim_logo.png</td>
-                    <td className="py-3 text-slate-400">카카오톡/SNS 공유 시 대표 썸네일</td>
-                    <td className="py-3 text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px]">
-                        정상 (512x512)
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-bold text-white">sitemap.xml / robots.txt</td>
-                    <td className="py-3 text-slate-300 font-mono text-[11px]">/sitemap.xml, /robots.txt, /llms.txt</td>
-                    <td className="py-3 text-slate-400">검색 크롤러 접근 경로 제공</td>
-                    <td className="py-3 text-right">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[11px]">
-                        구비 완료
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────
-          TAB 4: 즉시 색인 & 핑(Ping) 전송 허브
-         ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'indexing' && (
-        <div className="space-y-6">
-          {/* 즉시 색인 요청 발송 카드 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div>
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                <Send className="w-4 h-4 text-indigo-400" />
-                원클릭 즉시 색인 & 핑(Ping) 전송
-              </h4>
-              <p className="text-xs text-slate-400 mt-1">
-                신규 칼럼이나 공지사항, 가이드 문서를 발행했을 때 검색엔진 크롤러를 즉시 호출하여 수집 속도를 극대화합니다.
-              </p>
-            </div>
-
+            <p className="text-xs text-slate-400 mb-3">
+              질의를 AI 검색에 직접 넣어 답변 출처에 목표 페이지(mykim.kr)가 인용되는지 확인하세요. 목표 페이지가 사이트에 실제로 있는지도 함께 표시합니다.
+            </p>
             <div className="space-y-2">
-              <label className="text-xs text-slate-300 font-bold">수집 요청 대상 URL</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={indexUrlInput}
-                  onChange={e => setIndexUrlInput(e.target.value)}
-                  placeholder="https://mykim.kr/..."
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                />
-                <button
-                  onClick={() => handleTriggerIndexing('Google Ping')}
-                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px]"
-                >
-                  Google Ping 전송
-                </button>
-                <button
-                  onClick={() => handleTriggerIndexing('IndexNow (Bing/Naver)')}
-                  className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all cursor-pointer whitespace-nowrap min-h-[44px]"
-                >
-                  IndexNow 즉시 푸시
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-wrap gap-2 text-xs">
-              <span className="text-slate-500 self-center">빠른 선택:</span>
-              {[
-                { name: '사이트맵 전체 (/sitemap.xml)', url: 'https://mykim.kr/sitemap.xml' },
-                { name: '개인회생 가이드', url: 'https://mykim.kr/guide/personal-rehabilitation.html' },
-                { name: '코인·주식 빚 칼럼', url: 'https://mykim.kr/articles/crypto-stock-debt.html' },
-                { name: '비밀 개인회생 칼럼', url: 'https://mykim.kr/articles/secret-rehabilitation.html' }
-              ].map((btn, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setIndexUrlInput(btn.url)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition-colors cursor-pointer"
-                >
-                  {btn.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 사이트맵 직접 다운로드 및 URL 제공 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-sm">공식 사이트맵 주소</span>
-                <button
-                  onClick={() => handleCopy('https://mykim.kr/sitemap.xml', 'sitemap_url')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
-                >
-                  {copiedKey === 'sitemap_url' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>URL 복사</span>
-                </button>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 select-all">
-                https://mykim.kr/sitemap.xml
-              </div>
-              <p className="text-[11px] text-slate-500">
-                정적 가이드 13개, 전문가 기사 8개, 주요 허브 페이지 10개 등 총 31개 주요 URL 등록 완료.
-              </p>
-            </div>
-
-            <div className="bg-[#111622] rounded-2xl border border-slate-800 p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-sm">RSS 피드 주소</span>
-                <button
-                  onClick={() => handleCopy('https://mykim.kr/rss.xml', 'rss_url')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
-                >
-                  {copiedKey === 'rss_url' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>URL 복사</span>
-                </button>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 select-all">
-                https://mykim.kr/rss.xml
-              </div>
-              <p className="text-[11px] text-slate-500">
-                네이버 서치어드바이저 RSS 피드 제출용 엔드포인트입니다.
-              </p>
-            </div>
-          </div>
-
-          {/* 최근 색인 요청 히스토리 로깅 */}
-          <div className="bg-[#111622] rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-indigo-400" />
-                최근 색인 핑 전송 기록
-              </h4>
-              <button
-                onClick={() => {
-                  setIndexHistory([]);
-                  toast.info('기록이 초기화되었습니다.');
-                }}
-                className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer"
-              >
-                기록 비우기
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {indexHistory.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">
-                  최근 전송된 색인 핑 기록이 없습니다.
-                </div>
-              ) : (
-                indexHistory.map(item => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <span className="font-mono text-slate-200">{item.url}</span>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                        <span className="text-indigo-400 font-bold">[{item.target}]</span>
-                        <span>{item.timestamp}</span>
+              {GEO_QUERIES.map(g => {
+                const exists = pageByKey.has(urlKey(g.target));
+                const enc = encodeURIComponent(g.q);
+                return (
+                  <div key={g.q} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs space-y-2">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <span className="font-bold text-indigo-300">Q. "{g.q}"</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <a className={btnGhost} href={`https://chatgpt.com/?q=${enc}&hints=search`} target="_blank" rel="noopener noreferrer">ChatGPT</a>
+                        <a className={btnGhost} href={`https://www.perplexity.ai/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Perplexity</a>
+                        <a className={btnGhost} href={`https://www.bing.com/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Bing</a>
+                        <a className={btnGhost} href={`https://search.naver.com/search.naver?query=${enc}`} target="_blank" rel="noopener noreferrer">네이버</a>
+                        <a className={btnGhost} href={`https://www.google.com/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Google</a>
                       </div>
                     </div>
-                    <span className="self-start sm:self-center px-2 py-0.5 rounded bg-slate-500/10 text-slate-300 font-bold text-xs border border-slate-500/30">
-                      메모 (자동 전송 없음)
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="text-slate-500">인용 목표</span>
+                      <a href={g.target} target="_blank" rel="noopener noreferrer" className="font-mono text-slate-300 hover:underline break-all">{g.target.replace(SITE_ORIGIN, '')}</a>
+                      {pages.length > 0 && (exists ? <StatusBadge status="pass" label="페이지 있음" /> : <StatusBadge status="fail" label="페이지 없음" />)}
+                      <span className="text-slate-500">· 핵심 엔티티: {g.entities}</span>
+                    </div>
                   </div>
-                ))
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 구조화 데이터 */}
+          <div className={card}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <h4 className="text-base font-bold text-white flex items-center gap-2">
+                <Code className="w-4 h-4 text-amber-400" aria-hidden="true" /> Schema.org JSON-LD 적용 현황 (실측)
+              </h4>
+              <div className="flex gap-2">
+                <a href={`https://search.google.com/test/rich-results?url=${encodeURIComponent(selectedPage?.url || SITE_ORIGIN)}`} target="_blank" rel="noopener noreferrer" className={btnGhost}>
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" /> 리치결과 테스트
+                </a>
+                <a href={`https://validator.schema.org/#url=${encodeURIComponent(selectedPage?.url || SITE_ORIGIN)}`} target="_blank" rel="noopener noreferrer" className={btnPrimary}>
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" /> Schema 검사
+                </a>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+              {['Organization', 'WebSite', 'LegalService', 'FAQPage', 'Article', 'BreadcrumbList'].map(t => {
+                const n = pages.filter(p => p.jsonLdTypes.includes(t)).length;
+                return (
+                  <div key={t} className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-slate-400 block text-[11px]">{t}</span>
+                    <span className={`font-black text-lg ${n ? 'text-white' : 'text-rose-400'}`}>{n}</span>
+                    <span className="text-slate-500 text-[11px]"> / {pages.length} 페이지</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────── TAB: 온페이지 ───────────── */}
+      {tab === 'onpage' && (
+        <div className="space-y-6">
+          {!pages.length ? (
+            <div className={`${card} text-xs text-slate-400`}>seo-manifest.json이 없어 페이지 목록을 표시할 수 없습니다. npm run build(prebuild) 후 배포하면 생성됩니다.</div>
+          ) : (
+            <>
+              <div className={card}>
+                <div className="flex flex-col md:flex-row md:items-end gap-3 mb-4">
+                  <label className="flex-1 space-y-1">
+                    <span className="text-xs text-slate-400 font-medium">미리볼 페이지</span>
+                    <select
+                      value={selectedPage?.url || ''}
+                      onChange={e => setSelectedPageUrl(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      {pages.map(p => <option key={p.url} value={p.url}>{p.url.replace(SITE_ORIGIN, '') || '/'} — {p.title}</option>)}
+                    </select>
+                  </label>
+                  <button type="button" className={btnGhost} onClick={() => { if (selectedPage) { setSimTitle(selectedPage.title); setSimDesc(selectedPage.description); } }}>
+                    <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> 원래 값으로
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                  <label className="space-y-1">
+                    <span className="text-[11px] text-slate-400">제목 시뮬레이션 · {simTitle.length}자 · 표시폭 {displayWidth(simTitle)}/60 {displayWidth(simTitle) > 60 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
+                    <input value={simTitle} onChange={e => setSimTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[11px] text-slate-400">설명 시뮬레이션 · {simDesc.length}자 (권장 50~160) {simDesc.length > 160 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
+                    <input value={simDesc} onChange={e => setSimDesc(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 mb-3">시뮬레이션은 미리보기만 바꿉니다. 실제 수정은 해당 HTML 파일에서 하세요 ({selectedPage?.file}).</p>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="p-5 rounded-2xl bg-[#202124] border border-slate-700/60 font-sans space-y-1.5">
+                    <span className="text-[10px] font-black text-blue-400">GOOGLE</span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5"><img src="/mykim_logo.png" alt="" className="w-5 h-5 object-contain" /></div>
+                      <div>
+                        <span className="text-slate-300 font-bold block leading-tight">my김변</span>
+                        <span className="text-[11px] text-slate-400">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '').replace(/\//g, ' › ')}</span>
+                      </div>
+                    </div>
+                    <h5 className="text-base text-[#8ab4f8] font-medium leading-snug line-clamp-1">{simTitle || '(제목 없음)'}</h5>
+                    <p className="text-xs text-[#bdc1c6] leading-relaxed line-clamp-2">{simDesc || '(설명 없음 — 검색엔진이 본문 일부를 임의로 표시)'}</p>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-white border border-slate-200 font-sans space-y-1.5">
+                    <span className="text-[10px] font-black text-emerald-600">NAVER</span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-slate-700 font-bold">my김변</span>
+                      <span className="text-slate-400 text-[11px]">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '')}</span>
+                    </div>
+                    <h5 className="text-base text-[#0033cc] font-bold line-clamp-1">{simTitle || '(제목 없음)'}</h5>
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{simDesc || '(설명 없음)'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={card}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-base font-bold text-white">페이지별 메타 점검 ({pages.length}개)</h4>
+                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                    <input type="checkbox" checked={issuesOnly} onChange={e => setIssuesOnly(e.target.checked)} className="rounded" /> 개선 필요만
+                  </label>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-800">
+                        <th className="py-2">페이지</th><th className="py-2">title</th><th className="py-2">description</th><th className="py-2">스키마</th><th className="py-2">lastmod</th><th className="py-2 text-right">점검</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {pages.filter(p => !issuesOnly || p.issues.length).map(p => (
+                        <tr key={p.url} className="align-top">
+                          <td className="py-2 pr-2">
+                            <button type="button" onClick={() => setSelectedPageUrl(p.url)} className="font-mono text-[11px] text-indigo-300 hover:underline text-left cursor-pointer">{p.url.replace(SITE_ORIGIN, '') || '/'}</button>
+                          </td>
+                          <td className={`py-2 ${p.titleLength > 60 || p.titleLength < 15 ? 'text-amber-400' : 'text-slate-300'}`}>{p.titleLength}자</td>
+                          <td className={`py-2 ${p.descriptionLength > 160 || p.descriptionLength < 50 ? 'text-amber-400' : 'text-slate-300'}`}>{p.descriptionLength}자</td>
+                          <td className="py-2 text-slate-400 text-[11px]">{p.jsonLdTypes.filter(t => ['Article', 'FAQPage', 'LegalService', 'Organization', 'BreadcrumbList', 'Service'].includes(t)).join(', ') || '-'}</td>
+                          <td className="py-2 text-slate-400">{p.lastmod}</td>
+                          <td className="py-2 text-right">
+                            {p.issues.length ? <span className="text-amber-300 text-[11px]">{p.issues.join(' · ')}</span> : <StatusBadge status="pass" />}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ───────────── TAB: 즉시 색인 ───────────── */}
+      {tab === 'indexing' && (
+        <div className="space-y-6">
+          <div className={card}>
+            <h4 className="text-base font-bold text-white flex items-center gap-2">
+              <Send className="w-4 h-4 text-indigo-400" aria-hidden="true" /> IndexNow 즉시 색인 요청 (Bing · Naver 등)
+            </h4>
+            <p className="text-xs text-slate-400 mt-1">
+              서버가 IndexNow 공용 엔드포인트와 네이버에 실제로 전송하고 결과를 기록합니다. 관리자 2단계 인증 세션에서만 동작합니다.
+              구글은 IndexNow를 받지 않고 sitemap ping도 2023년에 종료되어, 구글은 아래 URL 검사 바로가기를 쓰세요.
+            </p>
+
+            <div className="flex flex-wrap gap-2 mt-4 text-xs">
+              <span className="text-slate-500 self-center">자동 선택:</span>
+              <button type="button" className={btnGhost} onClick={() => setIndexUrls(changedSinceSubmit.join('\n'))} disabled={!changedSinceSubmit.length}>
+                마지막 전송 이후 변경분 ({changedSinceSubmit.length})
+              </button>
+              <button type="button" className={btnGhost} onClick={() => setIndexUrls((diag?.sitemap || []).map(s => s.url).join('\n'))}>
+                sitemap 전체 ({diag?.sitemap.length || 0})
+              </button>
+              <button type="button" className={btnGhost} onClick={() => setIndexUrls(pages.filter(p => p.section === 'guide').map(p => p.url).join('\n'))}>가이드</button>
+              <button type="button" className={btnGhost} onClick={() => setIndexUrls(pages.filter(p => p.section === 'article').map(p => p.url).join('\n'))}>칼럼</button>
+            </div>
+
+            <label className="block mt-3 space-y-1">
+              <span className="text-xs text-slate-300 font-bold">전송할 URL (한 줄에 하나, 최대 100개) · {parsedIndexUrls.length}개</span>
+              <textarea
+                value={indexUrls}
+                onChange={e => setIndexUrls(e.target.value)}
+                rows={6}
+                placeholder={`${SITE_ORIGIN}/guide/personal-rehabilitation.html`}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <button type="button" onClick={handleSubmitIndexNow} disabled={submitting || !parsedIndexUrls.length} className={`${btnPrimary} min-h-[44px] px-4`}>
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" aria-hidden="true" />}
+                IndexNow 전송
+              </button>
+              {checkById.get('indexnow-key') && <StatusBadge status={checkById.get('indexnow-key')!.status} label={diag?.indexNowKeyOk ? '키 파일 정상' : '키 파일 문제'} />}
+            </div>
+          </div>
+
+          <div className={card}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+              <h4 className="text-base font-bold text-white flex items-center gap-2">
+                <Key className="w-4 h-4 text-blue-400" aria-hidden="true" /> 구글 URL 검사 바로가기
+              </h4>
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                서치 콘솔 속성
+                <select value={gscProperty} onChange={e => setGscProperty(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200">
+                  <option value="sc-domain:mykim.kr">도메인 속성 (sc-domain:mykim.kr)</option>
+                  <option value="https://mykim.kr/">URL 접두어 (https://mykim.kr/)</option>
+                </select>
+              </label>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">URL 검사 화면이 열리면 [색인 생성 요청]을 누르세요. 구글은 하루 요청 수가 제한되어 있어 새 글·크게 바뀐 글 위주로 쓰는 것이 좋습니다.</p>
+            <div className="flex flex-wrap gap-2">
+              {(parsedIndexUrls.length ? parsedIndexUrls.slice(0, 10) : changedSinceSubmit.slice(0, 10)).map(u => (
+                <a key={u} href={gscInspectUrl(u)} target="_blank" rel="noopener noreferrer" className={`${btnGhost} font-mono`}>
+                  <ExternalLink className="w-3 h-3" aria-hidden="true" /> {u.replace(SITE_ORIGIN, '') || '/'}
+                </a>
+              ))}
+              {!parsedIndexUrls.length && !changedSinceSubmit.length && <span className="text-xs text-slate-500">위 입력칸에 URL을 넣으면 바로가기가 만들어집니다.</span>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              { k: 'sitemap', label: '사이트맵', url: `${SITE_ORIGIN}/sitemap.xml`, Icon: FileText, note: diag?.sitemap.length ? `URL ${diag.sitemap.length}개 (빌드 시 자동 생성, canonical 기준)` : '읽지 못함' },
+              { k: 'rss', label: 'RSS 피드 (네이버 제출용)', url: `${SITE_ORIGIN}/rss.xml`, Icon: Rss, note: (diag?.rssItems ?? -1) > 0 ? `가이드·칼럼 ${diag?.rssItems}개 (빌드 시 자동 생성)` : '읽지 못함' },
+            ].map(x => (
+              <div key={x.k} className={`${card} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white text-sm flex items-center gap-2"><x.Icon className="w-4 h-4 text-indigo-400" aria-hidden="true" /> {x.label}</span>
+                  <CopyBtn text={x.url} k={`${x.k}-url`} label="URL 복사" />
+                </div>
+                <a href={x.url.replace(SITE_ORIGIN, '')} target="_blank" rel="noopener noreferrer" className="block p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white">{x.url}</a>
+                <p className="text-[11px] text-slate-500">{x.note}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className={card}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-base font-bold text-white flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-400" aria-hidden="true" /> IndexNow 전송 기록 (이 브라우저)
+              </h4>
+              {history.length > 0 && (
+                <button type="button" onClick={() => { setHistory([]); toast.info('기록을 비웠습니다.'); }} className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer">기록 비우기</button>
               )}
             </div>
+            {history.length === 0 ? (
+              <p className="p-6 text-center text-slate-500 text-xs">아직 전송 기록이 없습니다.</p>
+            ) : (
+              <ul className="space-y-2">
+                {history.map(h => (
+                  <li key={h.id} className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-xs space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-slate-300">{new Date(h.at).toLocaleString('ko-KR')} · URL {h.urls.length}개</span>
+                      <StatusBadge status={h.ok ? 'pass' : 'fail'} label={h.ok ? '접수됨' : '실패'} />
+                    </div>
+                    {h.results.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {h.results.map(r => (
+                          <span key={r.engine} className={`text-[11px] ${r.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{r.engine}: {r.message}{r.status ? ` (${r.status})` : ''}</span>
+                        ))}
+                      </div>
+                    )}
+                    {h.error && <p className="text-[11px] text-rose-400">{h.error}</p>}
+                    <details>
+                      <summary className="text-[11px] text-slate-500 cursor-pointer">URL 목록</summary>
+                      <p className="font-mono text-[11px] text-slate-400 break-all mt-1">{h.urls.join('\n')}</p>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}

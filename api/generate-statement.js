@@ -5,6 +5,7 @@ import { handleCorsPreflight } from './_lib/cors-helper.js';
 import { verifyAuth, isAdminWithMfa, supabase } from './_lib/auth-middleware.js';
 import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { handleIndexNow } from './_lib/indexnow.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -165,6 +166,10 @@ async function handler(req, res) {
   }
   if (req.body?.mode === 'call-summary') {
     return handleCallSummary(req, res);
+  }
+  // [SEO] 관리자 IndexNow 즉시 색인 요청 (함수 개수 한도로 이 함수에 둠)
+  if (req.body?.mode === 'indexnow') {
+    return handleIndexNow(req, res);
   }
 
   // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)

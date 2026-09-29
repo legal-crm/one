@@ -1,70 +1,36 @@
-# my김변 검색엔진 크롤러 접근 제어 규칙 (KISA 개인정보 안전성 기준 준수)
+# my김변 검색엔진·AI 크롤러 접근 제어 규칙 (KISA 개인정보 안전성 기준 준수)
+# - 공개 페이지(가이드·칼럼·소개·FAQ)는 검색엔진과 AI 검색(GEO) 크롤러 모두 수집 허용
+# - 개인정보·관리자·변호사 비공개 경로는 모든 크롤러 차단 (제주항공 검색엔진 노출 사태 방지)
+# - 크롤러는 자기 이름과 일치하는 그룹 하나만 따르므로, 아래 한 그룹에 모두 묶어 규칙을 동일하게 유지한다
+#   (이전: Google-Extended 그룹에 /api/·reqId 차단이 빠져 있었고, GPTBot·ClaudeBot 등은 규칙이 없었음)
+# - AI 서비스 소개 문서: https://mykim.kr/llms.txt
+
+# 검색엔진
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Yeti
+User-agent: Daumoa
+# AI 검색·답변 엔진 (GEO)
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: GPTBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: Google-Extended
+User-agent: Applebot
+User-agent: Applebot-Extended
+# 그 밖의 모든 크롤러
 User-agent: *
 Allow: /
-Allow: /about
-Allow: /reviews
-Allow: /faq
-Allow: /guide/
-Allow: /articles/
-
-# 개인정보 및 관리자/변호사 비공개 엔드포인트 차단 (제주항공 검색엔진 노출 사태 방지)
-Disallow: /?role=*
-Disallow: /*?*role=*
-Disallow: /*?*share=*
-Disallow: /*?*reqId=*
+Disallow: /?role=
+Disallow: /*?*role=
+Disallow: /*?*share=
+Disallow: /*?*reqId=
 Disallow: /api/
-Disallow: /check*
-Disallow: /auth*
+Disallow: /check
+Disallow: /auth
 
-# Googlebot
-User-agent: Googlebot
-Allow: /
-Allow: /about
-Allow: /reviews
-Allow: /faq
-Allow: /guide/
-Allow: /articles/
-Disallow: /?role=*
-Disallow: /*?*role=*
-Disallow: /*?*share=*
-Disallow: /*?*reqId=*
-Disallow: /api/
-
-# Naver Yeti
-User-agent: Yeti
-Allow: /
-Allow: /about
-Allow: /reviews
-Allow: /faq
-Allow: /guide/
-Allow: /articles/
-Disallow: /?role=*
-Disallow: /*?*role=*
-Disallow: /*?*share=*
-Disallow: /*?*reqId=*
-Disallow: /api/
-
-# Bingbot
-User-agent: Bingbot
-Allow: /
-Allow: /about
-Allow: /reviews
-Allow: /faq
-Allow: /guide/
-Allow: /articles/
-Disallow: /?role=*
-Disallow: /*?*role=*
-Disallow: /*?*share=*
-Disallow: /*?*reqId=*
-Disallow: /api/
-
-# AI Crawlers
-User-agent: Google-Extended
-Allow: /
-Allow: /articles/
-Disallow: /?role=*
-Disallow: /*?*share=*
-
-# Sitemap
 Sitemap: https://mykim.kr/sitemap.xml
-

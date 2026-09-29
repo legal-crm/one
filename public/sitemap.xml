@@ -1,194 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- scripts/seo-build.mjs 가 빌드 시 자동 생성합니다. 직접 수정하지 마세요. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Main Home -->
   <url>
-    <loc>https://mykim.kr/</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <loc>https://mykim.kr</loc>
+    <lastmod>2026-09-29</lastmod>
   </url>
-
-  <!-- Core Service Pages (Clean URLs) -->
-  <url>
-    <loc>https://mykim.kr/lawyers</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/reviews</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/qna</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/news</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- Service Info Pages -->
   <url>
     <loc>https://mykim.kr/about</loc>
     <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/faq</loc>
     <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mykim.kr/security</loc>
+    <loc>https://mykim.kr/lawyers</loc>
     <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Guide Pages -->
-  <url>
-    <loc>https://mykim.kr/guide/debt-management</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/personal-rehabilitation</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/bankruptcy</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/credit-recovery</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/debt-agent</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/rehabilitation-cost</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/rehabilitation-eligibility</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/tax-debt</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/garnishment-defense</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/debt-types</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/guide/occupation-guide</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Article Pages -->
-  <url>
-    <loc>https://mykim.kr/articles/crypto-stock-debt</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/debt-collection-defense</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/professional-license-preservation</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/rehabilitation-vs-bankruptcy</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/secret-rehabilitation</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/self-employed-rehabilitation</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/tax-debt-statute</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/articles/wage-garnishment-defense</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Legal & Policy Pages -->
-  <url>
-    <loc>https://mykim.kr/tos</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://mykim.kr/privacy</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
   </url>
   <url>
     <loc>https://mykim.kr/legal</loc>
     <lastmod>2026-09-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/news</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/privacy</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/qna</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/reviews</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/security.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/tos</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/bankruptcy.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/credit-recovery.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/debt-agent.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/debt-management.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/debt-types.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/garnishment-defense.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/occupation-guide.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/personal-rehabilitation.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/rehabilitation-cost.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/rehabilitation-eligibility.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/tax-debt.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/crypto-stock-debt.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/debt-collection-defense.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/professional-license-preservation.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/rehabilitation-vs-bankruptcy.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/secret-rehabilitation.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/self-employed-rehabilitation.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/tax-debt-statute.html</loc>
+    <lastmod>2026-09-02</lastmod>
+  </url>
+  <url>
+    <loc>https://mykim.kr/articles/wage-garnishment-defense.html</loc>
+    <lastmod>2026-09-02</lastmod>
   </url>
 </urlset>
