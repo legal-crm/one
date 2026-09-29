@@ -8,7 +8,6 @@ import {
 // my김변 이용안내 — 4단계 인터랙티브 스테퍼
 // 기존 4개 좌/우 지그재그 섹션(AGENTS.md Rule 3.2 위반)을
 // "스텝 탭 + 단일 Split 패널" 구조로 통합했다.
-// 우측 목업은 모두 UI 예시이며, 화면에 "화면 예시" 라벨을 노출한다.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ServiceGuideSectionProps {
@@ -29,12 +28,6 @@ interface GuideStep {
   chips: { icon: React.ElementType; text: string }[];
   cta: { label: string; action: 'check' | 'lawyers' };
 }
-
-const MOCK_BADGE = (
-  <span className="absolute -top-3 left-4 z-10 bg-slate-700 text-white text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-sm">
-    화면 예시
-  </span>
-);
 
 export default function ServiceGuideSection({
   onStartCheck,
@@ -229,7 +222,6 @@ export default function ServiceGuideSection({
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative">
-      {MOCK_BADGE}
       <div className="w-[300px] sm:w-[340px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-xl overflow-hidden">
         {children}
       </div>
@@ -285,7 +277,6 @@ function MockLawyerSelect({ max }: { max: number }) {
   const selectedCount = checked.filter(Boolean).length;
   return (
     <div className="relative w-full max-w-[380px]">
-      {MOCK_BADGE}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
         <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
           <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4 h-4 text-white" /></div>
@@ -331,7 +322,6 @@ const MOCK_ANSWERS = [
 function MockAnswers() {
   return (
     <div className="relative w-full max-w-[390px]">
-      {MOCK_BADGE}
       <div className="space-y-3">
         <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
           <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 변호사 답변 <span className="text-[#0F766E]">{MOCK_ANSWERS.length}건</span></p>
