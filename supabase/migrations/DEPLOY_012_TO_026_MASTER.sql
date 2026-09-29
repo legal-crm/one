@@ -1,13 +1,746 @@
 -- ====================================================================
--- MYKIMLAW (마이김변) MASTER MIGRATION BUNDLE: 012 TO 026
--- Generated: 2026-09-29T04:03:59.741Z
--- Execute this in Supabase Dashboard -> SQL Editor -> New Query
+-- MYKIMLAW (마이김변) COMPLETE MASTER MIGRATION BUNDLE
+-- Prepares all foundational tables and applies migrations
+-- Generated: 2026-09-29T04:13:29.043Z
+-- ====================================================================
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ====================================================================
+-- FOUNDATIONAL BASE TABLES (Prerequisites)
 -- ====================================================================
 
 
+-- 1. invite_tokens 테이블 생성
+CREATE TABLE IF NOT EXISTS public.invite_tokens (
+  id          BIGSERIAL PRIMARY KEY,
+  token       TEXT UNIQUE NOT NULL,
+  role        TEXT NOT NULL DEFAULT 'CONSULTANT',
+  email       TEXT,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_by  TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  used_by     TEXT,
+  used_at     TIMESTAMPTZ,
+  is_used     BOOLEAN DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_token ON public.invite_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_created ON public.invite_tokens (created_by, created_at DESC);
+ALTER TABLE public.invite_tokens ENABLE ROW LEVEL SECURITY;
+
+-- 2. staff_members 테이블 생성
+CREATE TABLE IF NOT EXISTS public.staff_members (
+  id                    TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  name                  TEXT NOT NULL DEFAULT '',
+  role                  TEXT NOT NULL DEFAULT 'STAFF',
+  email                 TEXT DEFAULT '',
+  phone                 TEXT DEFAULT '',
+  avatar                TEXT DEFAULT '',
+  is_active             BOOLEAN DEFAULT true,
+  assigned_count        INTEGER DEFAULT 0,
+  permissions           JSONB DEFAULT '{}'::jsonb,
+  status                TEXT DEFAULT 'pending',
+  supervising_lawyer_id TEXT,
+  invited_by            TEXT,
+  approved_at           TIMESTAMPTZ,
+  removed_at            TIMESTAMPTZ,
+  removal_reason        TEXT,
+  last_active_at        TIMESTAMPTZ,
+  auth_email            TEXT,
+  auth_provider         TEXT DEFAULT 'email',
+  supabase_user_id      UUID,
+  linked_user_id        TEXT,
+  invite_token          TEXT,
+  password_last_changed TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_staff_invited_by ON public.staff_members (invited_by);
+CREATE INDEX IF NOT EXISTS idx_staff_linked_user ON public.staff_members (linked_user_id);
+CREATE INDEX IF NOT EXISTS idx_staff_auth_email ON public.staff_members (auth_email);
+CREATE INDEX IF NOT EXISTS idx_staff_supabase_uid ON public.staff_members (supabase_user_id);
+ALTER TABLE public.staff_members ENABLE ROW LEVEL SECURITY;
+
 
 -- ====================================================================
--- START OF MIGRATION: 012_consult_requests_strict_rls.sql
+-- FILE: phase1_critical_tables.sql
+-- ====================================================================
+
+-- ============================================================
+-- Phase 1: Critical 비즈니스 데이터 Supabase 테이블 생성
+-- Supabase Dashboard → SQL Editor 에서 실행
+-- ============================================================
+
+-- 1. 전자 계약서
+CREATE TABLE IF NOT EXISTS electronic_contracts (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL DEFAULT 'client-temp',
+  client_name TEXT NOT NULL DEFAULT '',
+  client_phone TEXT DEFAULT '',
+  client_address TEXT DEFAULT '',
+  lawyer_name TEXT DEFAULT '',
+  law_firm_name TEXT DEFAULT '',
+  assigned_lawyer_id TEXT,
+  total_fee NUMERIC DEFAULT 0,
+  court_costs NUMERIC DEFAULT 0,
+  fee_schedule JSONB DEFAULT '[]'::jsonb,
+  status TEXT DEFAULT 'draft',
+  contract_date TEXT,
+  documents JSONB DEFAULT '[]'::jsonb,
+  audit_trail JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. 캘린더 일정
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL DEFAULT 'default',
+  title TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  time TEXT DEFAULT '',
+  category TEXT DEFAULT 'general',
+  client_id TEXT,
+  client_name TEXT DEFAULT '',
+  court_name TEXT DEFAULT '',
+  case_number TEXT DEFAULT '',
+  memo TEXT DEFAULT '',
+  assigned_staff_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. 사건 관리
+CREATE TABLE IF NOT EXISTS cases (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL DEFAULT 'client-temp',
+  client_name TEXT NOT NULL DEFAULT '',
+  phone TEXT DEFAULT '',
+  status TEXT DEFAULT 'document',
+  assigned_lawyer_id TEXT,
+  assigned_lawyer_name TEXT DEFAULT '',
+  debt_total NUMERIC DEFAULT 0,
+  income NUMERIC DEFAULT 0,
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. 변호사 프로필
+CREATE TABLE IF NOT EXISTS lawyers (
+  id TEXT PRIMARY KEY,
+  law_firm_id TEXT DEFAULT '',
+  team_id TEXT DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  firm_name TEXT DEFAULT '',
+  role TEXT DEFAULT 'lawyer',
+  fields JSONB DEFAULT '[]'::jsonb,
+  region TEXT DEFAULT '',
+  avatar TEXT DEFAULT '',
+  avatar_data TEXT DEFAULT '',
+  bio TEXT DEFAULT '',
+  career TEXT DEFAULT '',
+  education TEXT DEFAULT '',
+  specialties JSONB DEFAULT '[]'::jsonb,
+  success_rate NUMERIC DEFAULT 0,
+  total_cases INTEGER DEFAULT 0,
+  matched_count INTEGER DEFAULT 0,
+  avg_repayment_rate NUMERIC DEFAULT 0,
+  court_jurisdiction TEXT DEFAULT '',
+  ad_tier TEXT DEFAULT 'free',
+  ai_case_analysis_enabled BOOLEAN DEFAULT false,
+  data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. 회원 계정
+CREATE TABLE IF NOT EXISTS members (
+  id TEXT PRIMARY KEY,
+  email TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  alias TEXT DEFAULT '',
+  role TEXT DEFAULT 'CLIENT',
+  login_channel TEXT DEFAULT 'email',
+  status TEXT DEFAULT 'active',
+  last_active_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. 활동 로그
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  member_id TEXT DEFAULT '',
+  member_name TEXT DEFAULT '',
+  role TEXT DEFAULT '',
+  action TEXT NOT NULL DEFAULT '',
+  details TEXT DEFAULT '',
+  ip TEXT DEFAULT '',
+  timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. 직원 활동 이력
+CREATE TABLE IF NOT EXISTS staff_activities (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT DEFAULT 'default',
+  staff_id TEXT NOT NULL DEFAULT '',
+  staff_name TEXT DEFAULT '',
+  action TEXT NOT NULL DEFAULT '',
+  description TEXT DEFAULT '',
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. 커스텀 직원 역할
+CREATE TABLE IF NOT EXISTS custom_roles (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT DEFAULT 'default',
+  role_name TEXT NOT NULL DEFAULT '',
+  permissions JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. AI 코파일럿 사건 검토
+CREATE TABLE IF NOT EXISTS copilot_cases (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT DEFAULT 'default',
+  request_id TEXT DEFAULT '',
+  client_name TEXT DEFAULT '',
+  status TEXT DEFAULT 'pending',
+  data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. AI 코파일럿 룰셋
+CREATE TABLE IF NOT EXISTS copilot_rulesets (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT DEFAULT 'default',
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT DEFAULT '',
+  rules JSONB DEFAULT '[]'::jsonb,
+  version INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 11. 알림톡 발송 이력
+CREATE TABLE IF NOT EXISTS alimtok_logs (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT DEFAULT 'default',
+  client_id TEXT NOT NULL DEFAULT '',
+  client_name TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  milestone TEXT DEFAULT '',
+  status TEXT DEFAULT 'sent',
+  error_message TEXT DEFAULT '',
+  sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. 수임료 알림 설정
+CREATE TABLE IF NOT EXISTS fee_notification_settings (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT NOT NULL DEFAULT 'default',
+  settings JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- RLS (Row Level Security) 정책 — 인증된 사용자만 접근
+-- ============================================================
+ALTER TABLE electronic_contracts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lawyers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copilot_cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copilot_rulesets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alimtok_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fee_notification_settings ENABLE ROW LEVEL SECURITY;
+
+-- anon 키로 접근 허용 (개발 단계 — 프로덕션에서는 auth.uid() 기반으로 교체 권장)
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOR tbl IN SELECT unnest(ARRAY[
+    'electronic_contracts','calendar_events','cases','lawyers','members',
+    'activity_logs','staff_activities','custom_roles','copilot_cases',
+    'copilot_rulesets','alimtok_logs','fee_notification_settings'
+  ]) LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "allow_anon_all_%s" ON %I', tbl, tbl);
+    EXECUTE format('CREATE POLICY "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
+  END LOOP;
+END $$;
+
+
+-- ====================================================================
+-- FILE: phase2_cms_tables.sql
+-- ====================================================================
+
+-- ============================================================
+-- Phase 2: CMS 콘텐츠 Supabase 테이블 생성
+-- Supabase Dashboard → SQL Editor 에서 실행
+-- ============================================================
+
+-- CMS 콘텐츠는 JSONB data 컬럼으로 저장 (스키마 유연성)
+
+CREATE TABLE IF NOT EXISTS news_articles (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS client_qas (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS success_reviews (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS main_banners (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notices (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS client_inquiries (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lawyer_inquiries (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 설정 테이블 (단일 레코드 패턴 id='main')
+CREATE TABLE IF NOT EXISTS platform_config (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS popup_config (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS matching_config (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS rehab_policy_settings (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS client_memos (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notification_channel_settings (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS 활성화
+ALTER TABLE news_articles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_qas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE success_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_banners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_inquiries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lawyer_inquiries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE popup_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matching_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rehab_policy_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_memos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_channel_settings ENABLE ROW LEVEL SECURITY;
+
+-- anon 키 접근 허용 (개발 단계)
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOR tbl IN SELECT unnest(ARRAY[
+    'news_articles','client_qas','success_reviews','main_banners','notices',
+    'client_inquiries','lawyer_inquiries','platform_config','popup_config',
+    'matching_config','rehab_policy_settings','client_memos','notification_channel_settings'
+  ]) LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "allow_anon_all_%s" ON %I', tbl, tbl);
+    EXECUTE format('CREATE POLICY "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
+  END LOOP;
+END $$;
+
+
+-- ====================================================================
+-- FILE: 001_security_phase2.sql
+-- ====================================================================
+
+-- ============================================================
+-- [SECURITY Phase 2] Supabase 보안 마이그레이션 스크립트 (Complete)
+-- 테이블 생성 + RLS + 감사로그 + 만료 정책
+-- ============================================================
+
+-- ============================================================
+-- Step 1: 테이블 생성 (없는 경우에만)
+-- ============================================================
+
+-- 진단 결과 테이블
+CREATE TABLE IF NOT EXISTS diagnosis_results (
+  id                      BIGSERIAL PRIMARY KEY,
+  session_id              TEXT NOT NULL,
+  q1_status               TEXT,
+  q2_debt_scale           TEXT,
+  q3_income               TEXT,
+  q4_urgent_need          TEXT,
+  q5_goal                 TEXT,
+  primary_strategy        TEXT,
+  secondary_strategy      TEXT,
+  urgency_level           TEXT,
+  estimated_debt_total    NUMERIC,
+  estimated_savings_amount NUMERIC,
+  estimated_savings_rate  NUMERIC,
+  estimated_monthly_payment NUMERIC,
+  rehab_engine_used       BOOLEAN DEFAULT false,
+  full_result             JSONB DEFAULT '{}',
+  converted_to_detailed   BOOLEAN DEFAULT false,
+  converted_to_lawyer     BOOLEAN DEFAULT false,
+  converted_at            TIMESTAMPTZ,
+  expires_at              TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '90 days'),
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnosis_session ON diagnosis_results (session_id, created_at DESC);
+
+-- 진단 설정 테이블
+CREATE TABLE IF NOT EXISTS diagnosis_config (
+  id          BIGSERIAL PRIMARY KEY,
+  questions   JSONB NOT NULL DEFAULT '[]',
+  is_active   BOOLEAN DEFAULT true,
+  updated_by  TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  version     SERIAL
+);
+
+-- 진단 통계 테이블
+CREATE TABLE IF NOT EXISTS diagnosis_stats (
+  id                  BIGSERIAL PRIMARY KEY,
+  day                 DATE NOT NULL,
+  total_count         INTEGER DEFAULT 0,
+  strategy_breakdown  JSONB DEFAULT '{}',
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 감사 로그 테이블
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id            BIGSERIAL PRIMARY KEY,
+  actor_id      TEXT NOT NULL,
+  actor_role    TEXT NOT NULL DEFAULT 'anonymous',
+  action        TEXT NOT NULL,
+  target_type   TEXT,
+  target_id     TEXT,
+  detail        JSONB DEFAULT '{}',
+  ip_address    TEXT,
+  user_agent    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs (action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs (target_type, target_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at DESC);
+
+-- ============================================================
+-- Step 2: Row Level Security (RLS) 활성화
+-- ============================================================
+
+-- diagnosis_results RLS
+ALTER TABLE diagnosis_results ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_insert_diagnosis" ON diagnosis_results;
+CREATE POLICY "anon_insert_diagnosis"
+  ON diagnosis_results FOR INSERT TO anon
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "authenticated_select_diagnosis" ON diagnosis_results;
+CREATE POLICY "authenticated_select_diagnosis"
+  ON diagnosis_results FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "anon_select_own_diagnosis" ON diagnosis_results;
+CREATE POLICY "anon_select_own_diagnosis"
+  ON diagnosis_results FOR SELECT TO anon
+  USING (false);
+
+DROP POLICY IF EXISTS "authenticated_update_diagnosis" ON diagnosis_results;
+CREATE POLICY "authenticated_update_diagnosis"
+  ON diagnosis_results FOR UPDATE TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "anon_update_own_diagnosis" ON diagnosis_results;
+CREATE POLICY "anon_update_own_diagnosis"
+  ON diagnosis_results FOR UPDATE TO anon
+  USING (false);
+
+-- diagnosis_config RLS
+ALTER TABLE diagnosis_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public_read_config" ON diagnosis_config;
+CREATE POLICY "public_read_config"
+  ON diagnosis_config FOR SELECT TO anon, authenticated
+  USING (is_active = true);
+
+DROP POLICY IF EXISTS "authenticated_modify_config" ON diagnosis_config;
+CREATE POLICY "authenticated_modify_config"
+  ON diagnosis_config FOR ALL TO authenticated
+  USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "anon_modify_config" ON diagnosis_config;
+CREATE POLICY "anon_modify_config"
+  ON diagnosis_config FOR ALL TO anon
+  USING (true) WITH CHECK (true);
+
+-- diagnosis_stats RLS
+ALTER TABLE diagnosis_stats ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public_read_stats" ON diagnosis_stats;
+CREATE POLICY "public_read_stats"
+  ON diagnosis_stats FOR SELECT TO anon, authenticated
+  USING (true);
+
+-- audit_logs RLS
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anyone_insert_audit" ON audit_logs;
+CREATE POLICY "anyone_insert_audit"
+  ON audit_logs FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "authenticated_read_audit" ON audit_logs;
+CREATE POLICY "authenticated_read_audit"
+  ON audit_logs FOR SELECT TO authenticated
+  USING (true);
+
+-- ============================================================
+-- Step 3: 만료 데이터 자동 삭제 함수
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION cleanup_expired_diagnosis()
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM diagnosis_results
+  WHERE expires_at IS NOT NULL AND expires_at < NOW();
+  
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  
+  INSERT INTO audit_logs (actor_id, actor_role, action, target_type, detail)
+  VALUES (
+    'system', 'system', 'auto_cleanup', 'diagnosis',
+    jsonb_build_object('deleted_count', deleted_count, 'cleanup_at', NOW())
+  );
+  
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- 완료! 아래 쿼리로 확인하세요:
+-- SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
+-- ============================================================
+
+
+-- ====================================================================
+-- FILE: 003_consult_requests.sql
+-- ====================================================================
+
+-- ============================================================
+-- [Consultation] 상담 요청 및 메시지 테이블 마이그레이션
+-- ============================================================
+
+-- ============================================================
+-- Step 1: 테이블 생성
+-- ============================================================
+
+-- 상담 요청 테이블
+CREATE TABLE IF NOT EXISTS consult_requests (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL,
+  client_name TEXT NOT NULL DEFAULT '익명 의뢰인',
+  phone TEXT DEFAULT '',
+  request_type TEXT NOT NULL DEFAULT 'open',
+  max_participants INTEGER DEFAULT 3,
+  status TEXT NOT NULL DEFAULT 'requested',
+  selected_lawyer_id TEXT,
+  selected_lawyer_ids JSONB DEFAULT '[]',
+  proposals JSONB DEFAULT '[]',
+  title TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  financial_profile JSONB NOT NULL DEFAULT '{}',
+  phone_consultation_requested BOOLEAN DEFAULT false,
+  safe_number TEXT,
+  safe_number_assigned_at TIMESTAMPTZ,
+  safe_number_expires_at TIMESTAMPTZ,
+  entry_category JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 상담 메시지 테이블
+CREATE TABLE IF NOT EXISTS consult_messages (
+  id TEXT PRIMARY KEY,
+  consult_request_id TEXT NOT NULL REFERENCES consult_requests(id) ON DELETE CASCADE,
+  sender_type TEXT NOT NULL,
+  sender_id TEXT NOT NULL,
+  sender_name TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX IF NOT EXISTS idx_consult_requests_client ON consult_requests(client_id);
+CREATE INDEX IF NOT EXISTS idx_consult_requests_created ON consult_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_consult_messages_request ON consult_messages(consult_request_id);
+CREATE INDEX IF NOT EXISTS idx_consult_messages_created ON consult_messages(created_at DESC);
+
+-- ============================================================
+-- Step 2: RLS 활성화 및 정책 설정
+-- ============================================================
+
+ALTER TABLE consult_requests ENABLE ROW LEVEL SECURITY;
+
+-- 누구나 조회/생성/수정 가능 (기존 패턴 유지)
+DROP POLICY IF EXISTS "anon_insert_consult_request" ON consult_requests;
+CREATE POLICY "anon_insert_consult_request"
+  ON consult_requests FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_select_consult_request" ON consult_requests;
+CREATE POLICY "public_select_consult_request"
+  ON consult_requests FOR SELECT TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "public_update_consult_request" ON consult_requests;
+CREATE POLICY "public_update_consult_request"
+  ON consult_requests FOR UPDATE TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "public_delete_consult_request" ON consult_requests;
+CREATE POLICY "public_delete_consult_request"
+  ON consult_requests FOR DELETE TO anon, authenticated
+  USING (true);
+
+
+ALTER TABLE consult_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_insert_consult_message" ON consult_messages;
+CREATE POLICY "anon_insert_consult_message"
+  ON consult_messages FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_select_consult_message" ON consult_messages;
+CREATE POLICY "public_select_consult_message"
+  ON consult_messages FOR SELECT TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "public_update_consult_message" ON consult_messages;
+CREATE POLICY "public_update_consult_message"
+  ON consult_messages FOR UPDATE TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "public_delete_consult_message" ON consult_messages;
+CREATE POLICY "public_delete_consult_message"
+  ON consult_messages FOR DELETE TO anon, authenticated
+  USING (true);
+
+
+-- ====================================================================
+-- FILE: 007_user_sessions.sql
+-- ====================================================================
+
+-- 007_user_sessions.sql
+-- [SECURITY] 로그인 기기 및 세션 관리 테이블 (Supabase 연동)
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  user_email TEXT,
+  user_role TEXT NOT NULL CHECK (user_role IN ('ADMIN', 'LAWYER', 'STAFF', 'CLIENT')),
+  firm_name TEXT,
+  device_type TEXT NOT NULL CHECK (device_type IN ('desktop', 'mobile', 'tablet', 'unknown')),
+  os TEXT NOT NULL,
+  browser TEXT NOT NULL,
+  user_agent TEXT,
+  ip_address TEXT NOT NULL,
+  location TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked', 'expired')),
+  is_suspicious BOOLEAN DEFAULT false,
+  suspicious_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  revoked_by TEXT,
+  revoke_reason TEXT
+);
+
+-- 성능 최적화 인덱스
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_status ON user_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_last_active ON user_sessions(last_active_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_ip ON user_sessions(ip_address);
+
+-- RLS (Row Level Security) 활성화
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- 정책: 인증된 사용자는 모든 세션 읽기 및 본인/관리자 수정 가능
+DROP POLICY IF EXISTS "authenticated_select_user_sessions" ON user_sessions;
+CREATE POLICY "authenticated_select_user_sessions" ON user_sessions 
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "authenticated_insert_user_sessions" ON user_sessions;
+CREATE POLICY "authenticated_insert_user_sessions" ON user_sessions 
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "authenticated_update_user_sessions" ON user_sessions;
+CREATE POLICY "authenticated_update_user_sessions" ON user_sessions 
+  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+-- 공개 데모 및 비인가 접근 방지: anon은 접근 불가 (필요 시 특정 함수로만 제어)
+DROP POLICY IF EXISTS "anon_no_access_user_sessions" ON user_sessions;
+
+
+-- ====================================================================
+-- FILE: 012_consult_requests_strict_rls.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -472,11 +1205,8 @@ COMMIT;
 -- ============================================================================
 
 
--- END OF MIGRATION: 012_consult_requests_strict_rls.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 013_shared_reports_pin_attempt_limit.sql
+-- FILE: 013_shared_reports_pin_attempt_limit.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -599,11 +1329,8 @@ GRANT EXECUTE ON FUNCTION public.open_shared_report(text, text) TO anon, authent
 COMMIT;
 
 
--- END OF MIGRATION: 013_shared_reports_pin_attempt_limit.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 014_client_alias_uniqueness.sql
+-- FILE: 014_client_alias_uniqueness.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -681,11 +1408,8 @@ GRANT EXECUTE ON FUNCTION public.claim_client_alias(text) TO authenticated;
 COMMIT;
 
 
--- END OF MIGRATION: 014_client_alias_uniqueness.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 015_contract_proposal_linkage.sql
+-- FILE: 015_contract_proposal_linkage.sql
 -- ====================================================================
 
 -- ============================================================
@@ -713,11 +1437,8 @@ CREATE INDEX IF NOT EXISTS idx_contracts_consult_request
   WHERE consult_request_id IS NOT NULL;
 
 
--- END OF MIGRATION: 015_contract_proposal_linkage.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 016_crm_clients_extension_data.sql
+-- FILE: 016_crm_clients_extension_data.sql
 -- ====================================================================
 
 -- ============================================================
@@ -734,11 +1455,8 @@ CREATE INDEX IF NOT EXISTS idx_contracts_consult_request
 ALTER TABLE crm_clients ADD COLUMN IF NOT EXISTS extension_data JSONB;
 
 
--- END OF MIGRATION: 016_crm_clients_extension_data.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 017_doc_share_packages.sql
+-- FILE: 017_doc_share_packages.sql
 -- ====================================================================
 
 -- ============================================================
@@ -832,11 +1550,8 @@ GRANT EXECUTE ON FUNCTION peek_doc_share(TEXT) TO anon, authenticated;
 COMMIT;
 
 
--- END OF MIGRATION: 017_doc_share_packages.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 018_lawyer_auth_hardening.sql
+-- FILE: 018_lawyer_auth_hardening.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -1103,11 +1818,8 @@ COMMIT;
 -- ============================================================================
 
 
--- END OF MIGRATION: 018_lawyer_auth_hardening.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 019_user_sessions_owner_rls.sql
+-- FILE: 019_user_sessions_owner_rls.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -1161,11 +1873,8 @@ COMMIT;
 -- 롤백: 위 정책 3개 DROP 후 007의 authenticated_* 정책 재생성
 
 
--- END OF MIGRATION: 019_user_sessions_owner_rls.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 020_team_calendar_messenger_rls.sql
+-- FILE: 020_team_calendar_messenger_rls.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -1606,11 +2315,8 @@ COMMIT;
 -- ============================================================================
 
 
--- END OF MIGRATION: 020_team_calendar_messenger_rls.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 021_platform_admin_zero_trust.sql
+-- FILE: 021_platform_admin_zero_trust.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -1926,11 +2632,8 @@ COMMIT;
 -- ============================================================================
 
 
--- END OF MIGRATION: 021_platform_admin_zero_trust.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 022_activity_logs_lockdown.sql
+-- FILE: 022_activity_logs_lockdown.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -1967,11 +2670,8 @@ COMMIT;
 -- 롤백: 006의 authenticated_select/insert_activity_logs 정책 재생성
 
 
--- END OF MIGRATION: 022_activity_logs_lockdown.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 023_admin_consult_controls_members_rls.sql
+-- FILE: 023_admin_consult_controls_members_rls.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -2273,11 +2973,8 @@ COMMIT;
 -- 롤백: 트리거·RPC DROP, 012 뷰 재생성, 006 members 정책 재생성
 
 
--- END OF MIGRATION: 023_admin_consult_controls_members_rls.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 024_ad_orders.sql
+-- FILE: 024_ad_orders.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -2390,11 +3087,8 @@ COMMIT;
 --   관리자(aal2): SELECT * FROM ad_orders → 전체
 
 
--- END OF MIGRATION: 024_ad_orders.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 025_cms_config_admin_write_rls.sql
+-- FILE: 025_cms_config_admin_write_rls.sql
 -- ====================================================================
 
 -- ============================================================================
@@ -2517,11 +3211,8 @@ COMMIT;
 -- 주의: lawyer_inquiries.data 구조(lawyerId 키)는 저장소 기준 추정 — 적용 전 실제 컬럼 확인
 
 
--- END OF MIGRATION: 025_cms_config_admin_write_rls.sql
-
-
 -- ====================================================================
--- START OF MIGRATION: 026_infra_rls_cleanup.sql
+-- FILE: 026_infra_rls_cleanup.sql
 -- ====================================================================
 
 -- =============================================================================
@@ -2615,6 +3306,3 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS "authenticated_modify_config" ON public.diagnosis_config';
   END IF;
 END $$;
-
-
--- END OF MIGRATION: 026_infra_rls_cleanup.sql
