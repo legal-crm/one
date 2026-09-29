@@ -299,11 +299,16 @@ export default function AdminRole({
     setHoneypotLoading(false);
   }, []);
 
+  // resolveAdminAuth 동시 실행 방지 (MFA 검증 직후 handleMfaSubmit과 MFA_CHALLENGE_VERIFIED 이벤트가
+  // 동시에 호출 → 늦게 끝난 쪽이 '시작 안 함 + 마커 없음'으로 판정해 방금 성공한 세션을 로그아웃시키던 문제)
+  const resolveInFlightRef = useRef<Promise<void> | null>(null);
+  const resolveQueuedRef = useRef(false);
+
   /** 서버 상태를 다시 읽어 화면 단계를 정한다 (로그인 복귀·MFA 완료·새로고침 공용) */
-  const resolveAdminAuth = useCallback(async () => {
-    const marker = readAdminMarker();
-    if (import.meta.env.DEV && marker?.dev) {
-      setAuthState({ stage: 'ready', email: marker.email });
+  const resolveAdminAuthOnce = useCallback(async () => {
+    const devMarker = readAdminMarker();
+    if (import.meta.env.DEV && devMarker?.dev) {
+      setAuthState({ stage: 'ready', email: devMarker.email });
       return;
     }
 
@@ -315,6 +320,8 @@ export default function AdminRole({
       setAuthState({ stage: 'signed_out' });
       return;
     }
+    // 서버 확인이 끝난 시점의 값으로 판정 (await 전에 읽으면 다른 호출이 갱신한 상태를 놓침)
+    const marker = readAdminMarker();
     const initiated = sessionStorage.getItem(OAUTH_PENDING_KEY) === 'true';
 
     if (next.stage === 'denied') {
@@ -365,6 +372,26 @@ export default function AdminRole({
     clearAdminMarker();
     setAuthState(next);
   }, []);
+
+  /** 한 번에 하나만 실행. 실행 중 추가 요청이 오면 끝난 뒤 1회 더 실행 */
+  const resolveAdminAuth = useCallback(async (): Promise<void> => {
+    if (resolveInFlightRef.current) {
+      resolveQueuedRef.current = true;
+      return resolveInFlightRef.current;
+    }
+    const run = (async () => {
+      try {
+        do {
+          resolveQueuedRef.current = false;
+          await resolveAdminAuthOnce();
+        } while (resolveQueuedRef.current);
+      } finally {
+        resolveInFlightRef.current = null;
+      }
+    })();
+    resolveInFlightRef.current = run;
+    return run;
+  }, [resolveAdminAuthOnce]);
 
   /** 강제 로그아웃 (미활동·권한 변경·원격 차단) */
   const forceAdminLogout = useCallback(async (message?: string) => {
