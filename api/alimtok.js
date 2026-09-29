@@ -36,6 +36,18 @@ const MILESTONE_TEMPLATE_CODES = {
   general_announcement: 'MYKIM_ATS_18',
 };
 
+// [PART 5 G5] 팝빌이 발급한 템플릿 코드는 숫자다(예: 026090000408). 'MYKIM_ATS_*'는 내부 자리표시자라
+//   카카오 검수 승인 전에는 발송되지 않는다. 승인된 코드는 환경변수로 덮어쓴다:
+//   ALIMTOK_TEMPLATE_CODES='{"contract_signed":"0260900012345", ...}'
+let TEMPLATE_OVERRIDES = {};
+try { TEMPLATE_OVERRIDES = JSON.parse(process.env.ALIMTOK_TEMPLATE_CODES || '{}') || {}; } catch { TEMPLATE_OVERRIDES = {}; }
+const resolveMilestoneTemplate = (milestone) => (milestone && (TEMPLATE_OVERRIDES[milestone] || MILESTONE_TEMPLATE_CODES[milestone])) || null;
+const isIssuedTemplateCode = (code) => /^\d{6,20}$/.test(String(code || ''));
+
+// 템플릿이 없거나 알림톡 접수가 실패했을 때 회사 발신번호로 일반 문자(SMS/LMS)를 보낼지.
+//   기본 꺼짐: 켜 두면 승인된 변호사 계정이 검수되지 않은 임의 문구를 회사 번호로 보낼 수 있다.
+//   이전: 미등록 템플릿이면 항상 문자로 대체 발송.
+const ALLOW_SMS_FALLBACK = process.env.ALIMTOK_ALLOW_SMS_FALLBACK === 'true';
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
 
@@ -264,7 +276,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: '버튼 링크는 https 주소만 허용됩니다.' });
   }
 
-  const finalTemplateCode = reqTemplateCode || (milestone ? MILESTONE_TEMPLATE_CODES[milestone] : null) || 'MYKIM_ATS_01';
+  const finalTemplateCode = reqTemplateCode || resolveMilestoneTemplate(milestone) || '';
   const finalReceiverName = receiverName || '의뢰인';
   const finalAltSubject = altSubject || '[my김변 법률센터] 안내';
   const finalAltContent = altContent || content;
@@ -282,8 +294,23 @@ export default async function handler(req, res) {
     });
   }
 
+  // 1-b. 승인된(팝빌 발급) 템플릿 코드가 없으면 알림톡을 시도하지 않는다
+  const hasIssuedTemplate = isIssuedTemplateCode(finalTemplateCode);
+  if (!hasIssuedTemplate && !ALLOW_SMS_FALLBACK) {
+    return res.status(200).json({
+      ok: false,
+      channel: 'not_sent',
+      templateCode: finalTemplateCode || null,
+      error: '카카오 검수 승인된 알림톡 템플릿이 등록되지 않아 발송하지 않았습니다. (관리자: ALIMTOK_TEMPLATE_CODES 설정 필요)',
+    });
+  }
+
   // 2. 팝빌 실제 알림톡(ATS) 발송 (카카오톡 우선 + 미수신시 LMS 자동 대체 전송)
   try {
+    if (!hasIssuedTemplate) {
+      // 문자 대체 허용 상태: 알림톡 접수 없이 바로 문자로 보낸다
+      throw Object.assign(new Error('승인된 알림톡 템플릿 없음'), { code: 'NO_TEMPLATE' });
+    }
     const popbillButtons = Array.isArray(buttons) ? buttons.map(b => ({
       n: b.name || b.n,
       t: b.type || b.t || 'WL',
@@ -323,7 +350,14 @@ export default async function handler(req, res) {
     });
   } catch (atsError) {
     console.warn('[Alimtok ATS Failed -> Fallback to LMS Check]:', atsError);
-
+    if (!ALLOW_SMS_FALLBACK) {
+      return res.status(200).json({
+        ok: false,
+        channel: 'not_sent',
+        templateCode: finalTemplateCode,
+        error: '알림톡 접수에 실패해 발송하지 않았습니다. 템플릿 승인 상태와 팝빌 전송내역을 확인해 주세요.',
+      });
+    }
     // 3. 카카오 템플릿 미승인/불일치 시 팝빌 LMS/SMS로 무중단 자동 대체 발송
     try {
       const isShort = byteLengthKR(content) <= 90; // 90바이트(한글 2바이트) 이하만 SMS, 나머지 LMS
@@ -374,8 +408,8 @@ export default async function handler(req, res) {
       console.error('[Alimtok & Message Fallback Both Failed]:', msgError);
       return res.status(200).json({
         ok: false,
-        error: msgError.message || atsError.message || '알림톡 및 대체문자 발송에 실패했습니다.',
-        code: msgError.code || atsError.code || -1,
+        // 팝빌 오류 원문은 서버 로그에만 남긴다
+        error: '알림톡 및 대체문자 발송에 실패했습니다.',
       });
     }
   }

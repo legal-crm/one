@@ -63,7 +63,7 @@
             },
             {
               "@type": "Question", "name": "텔레그램처럼 상담 대화 내용을 즉시 완전 삭제(자폭)할 수 있나요?",
-              "acceptedAnswer": { "@type": "Answer", "text": "네, 가능합니다. my김변은 '원클릭 기록 자폭' 기능을 지원하여, 의뢰인이 원할 때 언제든지 상담방의 모든 대화 내용과 진단 상세 데이터를 서버 및 기기에서 즉시 영구 삭제(Shredding)할 수 있습니다. 또한 미진행 상담은 30일 경과 시 자동 파기됩니다." }
+              "acceptedAnswer": { "@type": "Answer", "text": "네, 가능합니다. my김변은 '원클릭 기록 자폭' 기능을 지원하여, 의뢰인이 원할 때 언제든지 상담방의 모든 대화 내용과 진단 상세 데이터를 서버 및 기기에서 즉시 영구 삭제(Shredding)할 수 있습니다." }
             },
             {
               "@type": "Question", "name": "1:1 대화 내용과 채무 정보는 어떻게 암호화되나요?",
@@ -100,14 +100,14 @@
     <div class="shield-box"><strong>원칙 3. 전송 암호화와 접근 제한:</strong> 모든 통신은 TLS로 암호화되고, 재정 정보와 1:1 상담 메시지는 본인과 선택한 변호사만 조회할 수 있도록 데이터베이스 접근 규칙(RLS)으로 제한됩니다.</div>
     <div class="shield-box"><strong>원칙 4. 운영자 원문 열람 배제:</strong> 플랫폼 운영진은 상담방의 원문 내용을 기본적으로 열람할 수 없으며, 법적 의무 외의 임의 열람은 원천 차단됩니다.</div>
     <div class="shield-box"><strong>원칙 5. 광고 트래커 제로(Zero-Tracker):</strong> 진단 및 상담 페이지에는 페이스북 픽셀 등 외부 광고 추적 스크립트가 전혀 없어, 채무 상담 사실이 SNS 맞춤 광고로 노출되지 않습니다.</div>
-    <div class="shield-box"><strong>원칙 6. 원클릭 데이터 자폭권(Auto-Destruct):</strong> 이용자는 언제든지 클릭 한 번으로 서버의 모든 상담 내역과 진단 데이터를 즉시 영구 파기할 수 있으며, 미진행 상담은 30일 후 자동 소멸됩니다.</div>
+    <div class="shield-box"><strong>원칙 6. 원클릭 데이터 자폭권(Auto-Destruct):</strong> 이용자는 언제든지 상담 내역과 진단 데이터 삭제를 직접 실행할 수 있습니다. 이미 내려받은 파일이나 법령상 보관 의무가 있는 기록(계약·결제 등)은 별도로 관리됩니다.</div>
 
     <h2>데이터 보호 기술</h2>
     <table>
         <tr><th>구분</th><th>보호 조치</th><th>상세 내용</th></tr>
         <tr><td><strong>암호화 보호</strong></td><td>전송 암호화</td><td>모든 통신은 최신 SSL/TLS(HTTPS)로 암호화됩니다</td></tr>
         <tr><td></td><td>저장 보호</td><td>클라우드 데이터베이스 디스크 암호화 + 접근 규칙(RLS)으로 당사자만 조회 (종단간 암호화 아님)</td></tr>
-        <tr><td><strong>프라이버시 통제</strong></td><td>데이터 자폭권</td><td>원클릭 즉시 기록 파기(Shredding) 및 30일 방치 데이터 자동 소각(TTL) 지원</td></tr>
+        <tr><td><strong>프라이버시 통제</strong></td><td>데이터 자폭권</td><td>이용자가 직접 실행하는 상담 기록 삭제 지원</td></tr>
         <tr><td></td><td>트래커 제로</td><td>진단·상담 영역 내 외부 광고 추적 스크립트(Meta Pixel, Google Ads) 원천 배제</td></tr>
         <tr><td><strong>접근 통제</strong></td><td>RLS 보안</td><td>Supabase RLS(Row Level Security)를 통해 사용자별 데이터 접근을 엄격히 분리</td></tr>
         <tr><td></td><td>Anti-BOLA 가드</td><td>타인 상담 조회 및 무단 접근 시도를 애플리케이션 레벨에서 원천 차단</td></tr>
@@ -138,7 +138,7 @@
 
     <div class="faq-item">
         <div class="faq-q">Q. 텔레그램처럼 상담 대화 내용을 즉시 완전 삭제(자폭)할 수 있나요?</div>
-        <div class="faq-a">A. 네, 가능합니다. 상담방 내 [기록 자폭(완전삭제)] 버튼 또는 마이페이지의 [기록 완전 자폭]을 누르시면, 서버의 데이터베이스와 이용자의 기기에 저장된 모든 대화 내용 및 채무 진단 상세 데이터가 즉시 영구 파기(Shredding)되어 복구 불가능한 상태로 소멸합니다. 미진행 상담 역시 30일 경과 시 자동 파기됩니다.</div>
+        <div class="faq-a">A. 네, 가능합니다. 상담방 내 [기록 자폭(완전삭제)] 버튼 또는 마이페이지의 [기록 완전 자폭]을 누르시면, 서버의 데이터베이스와 이용자의 기기에 저장된 모든 대화 내용 및 채무 진단 상세 데이터가 즉시 영구 파기(Shredding)되어 복구 불가능한 상태로 소멸합니다.</div>
     </div>
 
     <div class="faq-item">

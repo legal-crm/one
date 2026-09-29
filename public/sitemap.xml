@@ -10,12 +10,6 @@
 
   <!-- Core Service Pages (Clean URLs) -->
   <url>
-    <loc>https://mykim.kr/check</loc>
-    <lastmod>2026-09-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
     <loc>https://mykim.kr/lawyers</loc>
     <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>

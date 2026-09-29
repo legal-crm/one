@@ -5,7 +5,8 @@ import popbill from 'popbill';
 
 // 팝빌 설정 초기화
 popbill.config({
-  LinkID: process.env.POPBILL_LINK_ID || 'MONSTERLAB',
+  // [PART 5 G4] 계정 정보는 환경변수만 사용 (이전: LinkID·사업자번호·담당자 이메일/휴대폰을 코드 기본값으로 내장)
+  LinkID: process.env.POPBILL_LINK_ID || '',
   SecretKey: process.env.POPBILL_SECRET_KEY || '',
   // 팝빌 운영(Production) 환경 승인 완료 -> 기본값 false (운영 모드)
   IsTest: process.env.POPBILL_IS_TEST === 'true',
@@ -19,24 +20,25 @@ popbill.config({
 
 // 공급자 (플랫폼 운영사) 정보 — 몬스터랩
 export const SUPPLIER_INFO = {
-  corpNum: process.env.POPBILL_CORP_NUM || '5213901355',        // 사업자등록번호 (하이픈 제거)
+  corpNum: process.env.POPBILL_CORP_NUM || '',        // 사업자등록번호 (하이픈 제거)
   corpName: '몬스터랩',
   ceoName: '진성호',
   bizType: '서비스업',
   bizClass: '소프트웨어 개발 및 공급',
   addr: '',                     // 필요 시 추가
   contactName: '진성호',
-  contactEmail: process.env.POPBILL_CONTACT_EMAIL || '2882@daum.net',
-  contactTEL: process.env.POPBILL_CONTACT_TEL || process.env.POPBILL_SENDER_PHONE || '01026060357',
+  contactEmail: process.env.POPBILL_CONTACT_EMAIL || '',
+  contactTEL: process.env.POPBILL_CONTACT_TEL || process.env.POPBILL_SENDER_PHONE || '',
 };
 
 // 팝빌 카카오/문자 연동 통합 설정
 export const POPBILL_CONFIG = {
   corpNum: process.env.POPBILL_CORP_NUM || SUPPLIER_INFO.corpNum,
-  userId: process.env.POPBILL_USER_ID || 'mykim99',
-  plusFriendId: process.env.POPBILL_PLUS_FRIEND_ID || '@마이김변',
-  senderPhone: process.env.POPBILL_SENDER_PHONE || process.env.POPBILL_CONTACT_TEL || SUPPLIER_INFO.contactTEL || '01026060357',
-  isConfigured: Boolean((process.env.POPBILL_LINK_ID || 'MONSTERLAB') && (process.env.POPBILL_SECRET_KEY || '')),
+  userId: process.env.POPBILL_USER_ID || '',
+  plusFriendId: process.env.POPBILL_PLUS_FRIEND_ID || '',
+  senderPhone: process.env.POPBILL_SENDER_PHONE || process.env.POPBILL_CONTACT_TEL || '',
+  // 발송·발행에 필요한 값이 모두 있을 때만 설정 완료로 본다
+  isConfigured: Boolean(process.env.POPBILL_LINK_ID && process.env.POPBILL_SECRET_KEY && process.env.POPBILL_CORP_NUM && process.env.POPBILL_USER_ID),
   isTest: process.env.POPBILL_IS_TEST === 'true',
 };
 

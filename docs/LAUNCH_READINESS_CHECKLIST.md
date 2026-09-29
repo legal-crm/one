@@ -2390,25 +2390,43 @@
 
 # PART 5. 🚦 프로덕션 최종 런칭 게이트 (Launch Gate Check)
 
-| 단계 | 점검 영역 | 핵심 검증 항목 | 담당 | 판정 |
-|:---:|:---|:---|:---:|:---:|
-| **G1** | 데이터베이스 보안 | Supabase RLS 활성화 — 타인 데이터 접근 격리 | 백엔드 | [ ] |
-| **G2** | 환경변수 분리 | 공개값 `VITE_SUPABASE_*`, `VITE_PORTONE_STORE_ID/CHANNEL_KEY`, `VITE_ADMIN_SECRET_PATH` / 서버 전용 `PORTONE_API_SECRET`, `NTS_SERVICE_KEY`, `GEMINI_API_KEY` (비밀에 `VITE_` 금지) | 데브옵스 | [ ] |
-| **G3** | 포트원 실운영 | 테스트 → 라이브 상점 키 전환 | 백엔드 | [ ] |
-| **G4** | 팝빌 실운영 | 테스트 → 실운영 LinkID/SecretKey 전환 | 재무/백엔드 | [ ] |
-| **G5** | 카카오 비즈메시지 | 발신번호 가입증명원 제출 + 18종 템플릿 검수 승인 | 마케팅 | [ ] |
-| **G6** | 텔레그램/이메일 | `api/telegram.js`, `api/send-email.js` 발송 테스트 완료 | 운영 | [ ] |
-| **G7** | 빌드 무결성 | `npm run build` TypeScript 컴파일 에러 0건 | 프론트엔드 | [ ] |
-| **G8** | SEO 등록 | 네이버 서치어드바이저 + 구글 서치콘솔 `sitemap.xml` 제출 | 마케팅 | [ ] |
-| **G9** | Gemini API 키 | 서버 전용 `GEMINI_API_KEY` 프로덕션 키 + 할당량 확인 (`VITE_GEMINI_API_KEY`는 삭제 — 번들 노출) | 백엔드 | [ ] |
-| **G10** | CODEF API | 대법원 스크래핑/채무조회 실운영 인증 키 전환 | 백엔드 | [ ] |
-| **G11** | Polygon RPC | 메인넷 RPC URL + 프라이빗 키 환경변수 주입 | 백엔드 | [ ] |
-| **G12** | CORS 화이트리스트 | `cors-helper.js`에 프로덕션 도메인(`mykim.kr`) 등록 | 보안 | [ ] |
-| **G13** | Rate Limiter | 프로덕션 서킷 브레이커 초기 `unfrozen` 확인 | 보안 | [ ] |
-| **G14** | 공공데이터포털 | 국세청 사업자 진위확인 + 행안부 공공서비스 인증 키 | 백엔드 | [ ] |
-| **G15** | 정적 페이지 | `about.html`, `check.html`, `faq.html`, `robots.txt`, `sitemap.xml`, `tos.html`, `privacy.html`, `legal.html` | QA | [ ] |
-| **G16** | 법률 칼럼 | `articles/` 하위 8개 SEO 칼럼 렌더링 확인 | QA | [ ] |
-| **G17** | 캐시/성능 | 서버리스 API 1시간 캐싱(`benefits.js`), 대법원 캐싱(`scourtService`) 정상 동작 | 백엔드 | [ ] |
+> **점검 결과 (2026-09-29)** — 17개 게이트 중 코드로 통과시킬 수 있는 항목은 수정했고, 나머지는 운영 설정·외부 승인이 필요합니다.
+> - 판정: ✅ 통과 / ⚙️ 운영 설정 필요(코드 준비됨) / ❌ 차단(코드 또는 외부 승인 필요) / ❔ 확인 불가(이 환경에서 검증 못 함)
+> - 운영 환경변수는 `.vercel/.env.production.local`(vercel pull 사본) 기준입니다. Vercel에서 'Sensitive'로 지정한 값은 pull되지 않으므로, **대시보드에서 다시 확인**해야 합니다.
+
+| 단계 | 점검 영역 | 핵심 검증 항목 | 판정 | 근거 / 남은 일 |
+|:---:|:---|:---|:---:|:---|
+| **G1** | 데이터베이스 보안 | Supabase RLS — 타인 데이터 접근 격리 | ❌ | 마이그레이션 001~026을 **순서대로** 실행해야 합니다(`phase1_*`·`phase2_*`는 006보다 먼저, 이후 재실행 금지). 021~026은 실행해 보지 못했습니다. 남은 전체 허용 정책: 004 코파일럿 검토 테이블 12개, `diagnosis_results` UPDATE, `staff_activities`, `alimtok_logs` INSERT (4-7). 026 실행 전 LeadMaster 앱 로그인 전환 필요 |
+| **G2** | 환경변수 분리 | 공개값만 `VITE_`, 비밀은 서버 전용 | ⚙️ | 코드는 준비됨(PART 4, 번들 스캔 0건). 운영에서 할 일: `NTS_SERVICE_KEY` 추가, 상담 데이터 이관 스크립트 실행 후 `VITE_SESSION_SECRET` 삭제, `VITE_NTS_SERVICE_KEY` 이름 변경 |
+| **G3** | 포트원 실운영 | 테스트 → 라이브 상점 키 전환 | ❌ | 운영 pull에 **`PORTONE_API_SECRET`이 없습니다** → 본인인증 서버 검증이 503, 전자계약 서명이 막힙니다. 채널이 테스트/실연동인지는 키 모양으로 구분되지 않아 포트원 콘솔에서 확인 필요 |
+| **G4** | 팝빌 실운영 | 실운영 LinkID/SecretKey | ⚙️ | `POPBILL_*`가 운영 pull에 없음(로컬 `.env.local`에만 존재). 코드 기본값으로 내장돼 있던 LinkID·사업자번호·담당자 이메일/휴대폰 제거, 필수값(LinkID·SecretKey·사업자번호·사용자ID)이 모두 있어야 '설정됨' *(수정)*. `POPBILL_IS_TEST` 미설정 시 운영 모드 |
+| **G5** | 카카오 비즈메시지 | 발신번호 + 템플릿 검수 승인 | ❌ | 팝빌 발급 코드는 1개(`026090000408`)뿐이고 나머지 17개는 내부 자리표시자(`MYKIM_ATS_*`). 이전에는 미등록 템플릿이면 **회사 번호로 임의 문구 SMS/LMS를 대체 발송**했습니다 → 승인 코드가 없으면 발송하지 않도록 변경, 문자 대체는 `ALIMTOK_ALLOW_SMS_FALLBACK=true`일 때만 *(수정)*. 승인 코드는 `ALIMTOK_TEMPLATE_CODES`(JSON)로 지정. 화면 템플릿 목록(19개)과 서버 매핑(20개 키)도 서로 다름 |
+| **G6** | 텔레그램/이메일 | 발송 테스트 | ⚙️ | 텔레그램(`TELEGRAM_ADMIN_BOT_TOKEN/CHAT_ID`)은 운영에 있음. **`GMAIL_SMTP_USER`·`GMAIL_SMTP_APP_PASSWORD` 없음** → 이메일 발송 불가. Slack은 선택. 실제 발송 테스트는 하지 못함 ❔ |
+| **G7** | 빌드 무결성 | TypeScript 컴파일 에러 0건 | ❌ | `npm run build`(=`vite build`)는 통과하지만 **타입 검사를 하지 않습니다.** `npx tsc --noEmit` 결과 **233건**(상위: `leadService.ts` 39, `scripts/test_actual_filing_kim.ts` 33, `Stage1ConsultationView.tsx` 15, 법원 서식 엔진 등). 0건 달성은 별도 작업 필요 |
+| **G8** | SEO 등록 | 서치어드바이저·서치콘솔 sitemap 제출 | ⚙️ | `robots.txt`·`sitemap.xml`(30개 URL) 존재. `robots.txt`가 막는 `/check`가 sitemap에 들어 있던 충돌 제거 *(수정)*. 제출은 운영 작업 |
+| **G9** | Gemini API 키 | 서버 전용 `GEMINI_API_KEY` + 할당량 | ⚙️ | 운영에 `GEMINI_API_KEY` 있음. 브라우저 직접 호출 0건(PART 4). 할당량·결제 한도는 Google 콘솔에서 확인 ❔ |
+| **G10** | CODEF API | 실운영 인증 키 전환 | ❌ | `CODEF_*`가 운영에 없음 → 사건 조회는 '연동 안 됨' 안내. `CODEF_ENV=production`이 아니면 **샌드박스 호스트**로 호출됨. `api/debt-discovery.js`는 키가 있어도 **항상 시뮬레이션 데이터**를 반환(실연동 미구현) |
+| **G11** | Polygon RPC | 메인넷 RPC + 릴레이어 키 | ⚙️ | `POLYGON_*`가 운영에 없음 → 기본값 **Amoy 테스트넷**, 릴레이어 키 없음 → 해시 기록은 서버 다이제스트만 보관(온체인 아님, 화면에 그대로 표시). 메인넷 전환 시 `POLYGON_NETWORK=mainnet`, RPC, 릴레이어 키, 가스 잔액 필요 |
+| **G12** | CORS 화이트리스트 | 운영 도메인 등록 | ✅ | `mykim.kr`, `www.mykim.kr`, `legal-crm-xi.vercel.app`. 운영에서는 `*.vercel.app` 패턴·localhost 불허, 추가는 `CORS_ALLOWED_ORIGINS` (PART 4) |
+| **G13** | Rate Limiter | 서킷 브레이커 초기 unfrozen | ✅ | 인스턴스 시작 시 항상 해제 상태. 익명 요청으로 동결되던 문제 수정(PART 4). ⚠️ 한도는 인스턴스별 메모리라 전역 한도가 아님 |
+| **G14** | 공공데이터포털 | 국세청 진위확인 + 행안부 키 | ⚙️ | 국세청은 서버 중계로 동작(운영 키는 옛 이름 `VITE_NTS_SERVICE_KEY`로 존재). **`DATA_GO_KR_API_KEY` 없음** → 복지 혜택은 정적 목록 |
+| **G15** | 정적 페이지 | about·check·faq·robots·sitemap·tos·privacy·legal | ✅ | 8개 모두 존재(+ security·lawyers·reviews·qna·news). 보안센터의 사실과 다른 문구('AES-256 필드 암호화로 해독 불가', '가족·회사에 알려지는 것은 절대 불가능', **'미진행 상담 30일 후 자동 파기'**) 정정 *(수정)* — 30일 자동 파기는 서버에 구현돼 있지 않았습니다. ⚠️ 약관은 정적 `tos.html`과 `TermsModal`(설정값) 두 곳이라 내용이 달라질 수 있음 |
+| **G16** | 법률 칼럼 | `articles/` 8개 렌더링 | ❔ | 파일 8개와 sitemap 등록은 확인. 브라우저 렌더링은 확인하지 못함 |
+| **G17** | 캐시/성능 | `benefits.js` 1시간 캐시, 대법원 캐시 | ✅ | `vercel.json`의 `/api/*` no-store 규칙이 `benefits`의 `s-maxage=3600`을 덮어쓸 수 있어 규칙에서 `benefits`를 제외 *(수정)*. 배포 후 `curl -sI https://mykim.kr/api/benefits`로 `x-vercel-cache` 확인 필요 ❔. 대법원 캐시: 브라우저 6시간~30일(사건 단계별), 서버 메모리 24시간~7일(인스턴스별) — 종결 사건 TTL이 서로 다름(30일/7일) |
+
+### 출시 전 반드시 해결 (차단 항목)
+1. **G3** `PORTONE_API_SECRET` 운영 등록 — 없으면 전자계약 본인인증이 전부 실패합니다.
+2. **G1** 마이그레이션 021~026 실행과 결과 확인, 남은 전체 허용 정책 정리.
+3. **G5** 알림톡 템플릿 검수 승인 후 `ALIMTOK_TEMPLATE_CODES` 설정 (그 전에는 알림톡이 나가지 않음).
+4. **G7** 타입 오류 233건 — 빌드는 되지만 타입 안전성 게이트는 미통과. 출시 판단에 포함할지 결정 필요.
+5. **G10** CODEF 계약·키(또는 해당 기능을 '준비 중'으로 두고 출시 범위에서 제외). 채무 전수조회는 실연동이 없습니다.
+6. 상담 데이터 이관 스크립트 실행 → `VITE_SESSION_SECRET` 삭제 (PART 4-3).
+7. **Turnstile 키** — 운영 pull에 `TURNSTILE_SECRET_KEY`·`VITE_TURNSTILE_SITE_KEY`가 없습니다. 사이트 키가 없으면 화면은 Cloudflare 테스트 키로 통과한 것처럼 보이지만, 서버는 비밀키가 없어 거부합니다(fail-closed). 비로그인 1:1 문의 등록, 비로그인 진술서·OCR, 비로그인 알림이 운영에서 모두 실패합니다.
+
+### 운영 설정 체크 (코드 준비됨)
+- Vercel 환경변수: `PORTONE_API_SECRET`, `POPBILL_LINK_ID/SECRET_KEY/CORP_NUM/USER_ID/SENDER_PHONE/PLUS_FRIEND_ID`, `GMAIL_SMTP_USER/APP_PASSWORD`, `NTS_SERVICE_KEY`, `DATA_GO_KR_API_KEY`, `CODEF_CLIENT_ID/SECRET` + `CODEF_ENV=production`, `POLYGON_*`, `TURNSTILE_SECRET_KEY`, `ALIMTOK_TEMPLATE_CODES`.
+- `NODE_ENV=development`가 운영에 없는지 확인 (일부 API가 인증을 건너뜀).
+- 배포 후 스모크 테스트: 로그인 → 상담 요청 → 변호사 제안 → 본인인증·전자서명 → 알림(텔레그램) → 관리자 2단계 인증.
 
 ---
 
