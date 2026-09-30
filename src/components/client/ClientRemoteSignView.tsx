@@ -76,6 +76,11 @@ const TERM_COPY: Record<TermKey, { title: string; desc: string; record: string }
 
 const EMPTY_AGREE: Record<TermKey, boolean> = { legalEffect: false, privacy: false, thirdParty: false, procedure: false };
 
+/** 서버가 '취소된 계약'이라 서명·본인인증을 거부했는지 (api/contract.js CONTRACT_CLOSED_ERROR 문구) */
+function isContractClosedError(msg: string | undefined | null): boolean {
+  return !!msg && /취소된 계약서/.test(msg);
+}
+
 /** 브라우저 네트워크 오류 문구(영문)를 알기 쉬운 문장으로 */
 function friendlyError(msg: string | undefined | null, fallback: string): string {
   if (!msg) return fallback;
@@ -306,6 +311,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           : (contract.isBusiness ? (contract.businessInfo?.representativeName || contract.clientName) : contract.clientName);
         const idv = await requestIdentityVerification(expected, IDV_PROVIDER, { contractId: contract.id, remoteSignToken: token });
         if (!idv.success) {
+          // 진행 중에 변호사가 계약을 취소한 경우(서버가 거부) → 취소 안내 화면
+          if (isContractClosedError(idv.error)) { setErrorKind('cancelled'); return; }
           setIdentityError(friendlyError(idv.error, '본인인증을 마치지 못했어요. 다시 시도해 주세요.'));
           return;
         }
@@ -318,6 +325,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           providerName: IDV_PROVIDER_NAME,
         });
         if (saved.ok === false) {
+          if (saved.code === 'contract_closed' || isContractClosedError(saved.error)) { setErrorKind('cancelled'); return; }
           setIdentityError(friendlyError(saved.error, '인증 결과를 저장하지 못했어요. 다시 시도해 주세요.'));
           return;
         }
@@ -427,6 +435,11 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         });
         if (saved.ok === false) {
           setConfirmOpen(false);
+          // 서명 중에 계약이 취소된 경우(서버가 거부) → 취소 안내 화면
+          if (saved.code === 'contract_closed' || isContractClosedError(saved.error)) {
+            setErrorKind('cancelled');
+            return;
+          }
           if (/이미 서명/.test(saved.error)) {
             toast.info('이미 서명이 제출된 계약이에요. 최신 상태로 다시 불러왔어요.');
             await load('refresh');

@@ -6,6 +6,7 @@ import {
 import { addClientNotification } from './clientNotificationService';
 import { supabase, isSupabaseConfigured, getAuthHeaders } from '../supabaseClient';
 import { localYmd, parseLocalYmd } from '../utils/localDate';
+import { feeAmountWon, feeTotalWon } from '../utils/feeUnits';
 
 /** /api/alimtok 호출용 헤더 (서버가 로그인 세션을 요구함) */
 const apiHeaders = async (json = false): Promise<Record<string, string>> => ({
@@ -370,22 +371,10 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
 };
 
 /**
- * 분납 회차 금액을 원 단위로 반환.
- * - amountUnit이 있으면 그대로 따름 (신규 저장분은 'won')
- * - 없으면 과거 데이터 호환: 10,000 미만이면 만원 단위로 저장된 것으로 간주
+ * 분납 회차 금액·총 수임료의 원 단위 변환 (원/만원 자동 감지)
+ * 규칙은 utils/feeUnits.ts 한 곳에서 관리한다(계약서 PDF·원격 서명 화면과 같은 규칙). 기존 import 경로 호환용 재수출.
  */
-export const feeAmountWon = (inst: Pick<FeeInstallment, 'amount'> & { amountUnit?: 'won' | 'manwon' }): number => {
-  const a = Number(inst.amount) || 0;
-  if (inst.amountUnit === 'won') return a;
-  if (inst.amountUnit === 'manwon') return a * 10000;
-  return a >= 10000 ? a : a * 10000;
-};
-
-/** 총 수임료를 원 단위로 반환 (과거 계약 동기화분은 만원 단위(예: 300)로 저장됨) */
-export const feeTotalWon = (total: number | undefined | null): number => {
-  const t = Number(total) || 0;
-  return t > 0 && t < 10000 ? t * 10000 : t;
-};
+export { feeAmountWon, feeTotalWon };
 
 // ── 6. CRM 단계 변경 시 기존 자동 알림 ──
 

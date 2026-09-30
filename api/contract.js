@@ -54,6 +54,60 @@ function rpcHostOnly(url) {
   try { return new URL(url).host; } catch { return ''; }
 }
 
+// ── 계약서 무결성·공개 검증 공용 도우미 ──
+const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+
+// src/services/integrityService.ts canonicalStringify와 동일 규칙 (키 정렬, null/undefined 키 제외)
+function canonicalStringify(v) {
+  if (v === null || v === undefined) return 'null';
+  if (Array.isArray(v)) return `[${v.map(canonicalStringify).join(',')}]`;
+  if (typeof v === 'object') {
+    const keys = Object.keys(v).filter(k => v[k] !== null && v[k] !== undefined).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalStringify(v[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
+/** 취소된 계약: 서명·본인인증을 받지 않는다 (ContractStatus 'cancelled') */
+const isClosedContract = (row) => String(row?.status || '').toLowerCase() === 'cancelled';
+const CONTRACT_CLOSED_ERROR = '취소된 계약서라 서명할 수 없습니다. 담당 변호사에게 문의해 주세요.';
+
+/** 공개 화면용 이름 가림 — 홍길동 → 홍*동, 김철 → 김*, 남궁민수 → 남**수 (ContractPublicVerifierModal과 같은 규칙) */
+function maskPersonName(name) {
+  const chars = Array.from(String(name || '').trim());
+  if (chars.length === 0) return '-';
+  if (chars.length === 1) return '*';
+  if (chars.length === 2) return `${chars[0]}*`;
+  return `${chars[0]}${'*'.repeat(chars.length - 2)}${chars[chars.length - 1]}`;
+}
+
+/**
+ * 체결본 전자지문 재계산 검증 (src/services/integrityService.ts verifyContractIntegrity와 같은 산식)
+ * 본문·서명·연락처는 서버 안에서만 쓰고 결과 상태만 돌려준다.
+ */
+function computeContractIntegrity(row) {
+  const stored = row.document_hashes;
+  if (!stored || !stored.finalHash) return 'unsigned';
+  if (!stored.signedAt) return 'unsupported';
+  const docs = Array.isArray(row.documents) ? row.documents : [];
+  const clientSig = docs.filter(d => d && d.included).find(d => d.clientSignature)?.clientSignature;
+  const lawyerSig = docs.find(d => d && d.lawyerSignature)?.lawyerSignature;
+  if (!clientSig || !lawyerSig) return 'mismatch';
+  const originalHash = sha256(canonicalStringify({
+    id: row.id,
+    clientName: row.client_name,
+    clientPhone: row.client_phone,
+    businessInfo: row.business_info,
+    lawyerName: row.lawyer_name,
+    totalFee: row.total_fee,
+    feeSchedule: row.fee_schedule || [],
+    contractDate: row.contract_date,
+    documents: docs.map(d => ({ id: d?.id, title: d?.title, content: d?.content })),
+  }));
+  const finalHash = sha256(`${originalHash}::CLIENT_SIG_SHA256:${sha256(clientSig)}::LAWYER_SIG_SHA256:${sha256(lawyerSig)}::AT:${stored.signedAt}`);
+  return originalHash === stored.originalHash && finalHash === stored.finalHash ? 'match' : 'mismatch';
+}
+
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -144,6 +198,7 @@ export default async function handler(req, res) {
     }
 
     let isAuthorized = false;
+    let tokenContractClosed = false;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       try { if (await verifyAuth(req)) isAuthorized = true; } catch (_) {}
     }
@@ -151,18 +206,23 @@ export default async function handler(req, res) {
       try {
         const { data: row } = await supabase
           .from('electronic_contracts')
-          .select('id, remote_sign_token')
+          .select('id, remote_sign_token, status')
           .eq('id', contractId)
           .maybeSingle();
         if (row && typeof row.remote_sign_token === 'string' && row.remote_sign_token.length > 0) {
           const a = Buffer.from(row.remote_sign_token);
           const b = Buffer.from(String(remoteSignToken));
           isAuthorized = a.length === b.length && crypto.timingSafeEqual(a, b);
+          tokenContractClosed = isAuthorized && isClosedContract(row);
         }
       } catch (_) {}
     }
     if (!isAuthorized) {
       return res.status(401).json({ ok: false, error: '인증 정보가 없거나 서명 링크가 유효하지 않습니다.' });
+    }
+    // [SECURITY] 서명 링크로 들어온 경우, 취소된 계약이면 본인인증 결과를 돌려주지 않는다
+    if (tokenContractClosed) {
+      return res.status(410).json({ ok: false, code: 'contract_closed', error: CONTRACT_CLOSED_ERROR });
     }
 
     const secret = process.env.PORTONE_API_SECRET;
@@ -234,6 +294,11 @@ export default async function handler(req, res) {
     if (tA.length !== tB.length || !crypto.timingSafeEqual(tA, tB)) {
       return res.status(401).json({ ok: false, error: '유효하지 않은 서명 링크입니다.' });
     }
+    // [SECURITY] 취소된 계약은 본인인증·서명을 저장하지 않는다
+    // (이전: 화면에서만 막아, 링크의 계약 ID·토큰으로 이 API를 직접 부르면 취소된 계약에도 서명이 저장·봉인될 수 있었음)
+    if (isClosedContract(row)) {
+      return res.status(410).json({ ok: false, code: 'contract_closed', error: CONTRACT_CLOSED_ERROR });
+    }
 
     const docs = Array.isArray(row.documents) ? row.documents : [];
     const alreadySigned = row.status === 'completed' || docs.some(d => d && d.included && d.clientSignature);
@@ -244,7 +309,6 @@ export default async function handler(req, res) {
     const now = new Date().toISOString();
     const ua = String(req.headers['user-agent'] || '').slice(0, 200);
     const audit = Array.isArray(row.audit_trail) ? row.audit_trail : [];
-    const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 
     if (stage === 'identity') {
       const secret = process.env.PORTONE_API_SECRET;
@@ -353,18 +417,8 @@ export default async function handler(req, res) {
       audit_trail: [...audit, { action: `위임인(${row.client_name}) 본인인증 후 약관 ${agreedTerms.length}개 동의·중요조항 확인·전자서명 제출`, timestamp: now, actor: 'client', ip, userAgent: ua }],
     };
 
-    // 변호사 서명이 이미 있으면 서버에서 해시 봉인 (integrityService와 동일 산식)
+    // 변호사 서명이 이미 있으면 서버에서 해시 봉인 (integrityService와 동일 산식, canonicalStringify는 파일 위쪽 공용)
     const lawyerSig = docs.find(d => d && d.lawyerSignature)?.lawyerSignature;
-    // src/services/integrityService.ts canonicalStringify와 동일 규칙 (키 정렬, null/undefined 키 제외)
-    const canonicalStringify = (v) => {
-      if (v === null || v === undefined) return 'null';
-      if (Array.isArray(v)) return `[${v.map(canonicalStringify).join(',')}]`;
-      if (typeof v === 'object') {
-        const keys = Object.keys(v).filter(k => v[k] !== null && v[k] !== undefined).sort();
-        return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalStringify(v[k])}`).join(',')}}`;
-      }
-      return JSON.stringify(v);
-    };
     if (lawyerSig) {
       const originalHash = sha256(canonicalStringify({
         id: row.id,
@@ -387,6 +441,66 @@ export default async function handler(req, res) {
       .from('electronic_contracts').update(patch).eq('id', contractId).select('*').maybeSingle();
     if (upErr || !updated) return res.status(500).json({ ok: false, error: '서명을 저장하지 못했습니다.' });
     return res.status(200).json({ ok: true, contract: updated });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 0-3. [PUBLIC-VERIFY] 계약서 공개 진위 확인 (계약서 PDF의 QR · ?verify=계약번호)
+  //   GET /api/contract?action=public-verify&id=EC-...
+  //   - 로그인 없이 누구나 여는 화면이므로 개인정보를 돌려주지 않는다.
+  //     위임인 이름은 가운데를 가리고, 연락처·주소·수임료·계좌·서명 이미지·계약서 본문·서명 토큰은 응답에서 뺀다.
+  //   - 전자지문 재계산은 서버 안에서 하고 결과(match/mismatch/unsigned/unsupported)만 준다.
+  //   - 이전: 브라우저가 계약서 전체 행을 ID로 조회(select *) → RLS가 막으면 확인이 안 되고,
+  //     정책이 느슨해지면 실명·연락처·서명 토큰까지 노출될 수 있는 구조였음
+  // ─────────────────────────────────────────────────────────────
+  if (action === 'public-verify') {
+    if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    const id = String(req.query?.id || '').trim();
+    if (!id || id.length > 80 || !/^[A-Za-z0-9._:-]+$/.test(id)) {
+      return res.status(400).json({ ok: false, error: '계약 번호가 올바르지 않습니다.' });
+    }
+    if (!supabase || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ ok: false, error: '검증 서버가 설정되지 않았습니다.' });
+    }
+    const { data: row, error: rowErr } = await supabase
+      .from('electronic_contracts')
+      .select('id, status, client_name, client_phone, is_business, business_info, lawyer_name, law_firm_name, total_fee, fee_schedule, contract_date, documents, document_hashes, blockchain_anchor')
+      .eq('id', id)
+      .maybeSingle();
+    if (rowErr) {
+      console.error('[public-verify] lookup failed', rowErr.message);
+      return res.status(500).json({ ok: false, error: '계약서를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
+    }
+    if (!row) return res.status(404).json({ ok: false, error: '계약서를 찾을 수 없습니다.' });
+
+    let integrity = 'unsupported';
+    try { integrity = computeContractIntegrity(row); } catch (e) { console.warn('[public-verify] integrity failed', e?.message); integrity = 'error'; }
+    const anchor = row.blockchain_anchor && typeof row.blockchain_anchor === 'object' ? row.blockchain_anchor : null;
+    const personName = row.is_business ? (row.business_info?.representativeName || row.client_name) : row.client_name;
+    return res.status(200).json({
+      ok: true,
+      contract: {
+        id: row.id,
+        status: row.status || null,
+        cancelled: isClosedContract(row),
+        clientNameMasked: maskPersonName(personName),
+        lawFirmName: String(row.law_firm_name || ''),
+        lawyerName: String(row.lawyer_name || ''),
+        contractDate: row.contract_date || null,
+        signedAt: row.document_hashes?.signedAt || null,
+        finalHash: row.document_hashes?.finalHash || null,
+        integrity,
+        blockchainAnchor: anchor ? {
+          isRealOnChain: !!anchor.isRealOnChain,
+          txHash: anchor.txHash || null,
+          network: anchor.network || null,
+          blockNumber: anchor.blockNumber ?? null,
+          // 링크로 쓰이므로 https 주소만 전달
+          explorerUrl: typeof anchor.explorerUrl === 'string' && /^https:\/\//i.test(anchor.explorerUrl) ? anchor.explorerUrl : null,
+        } : null,
+      },
+    });
   }
 
   // ─────────────────────────────────────────────────────────────

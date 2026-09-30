@@ -9,25 +9,34 @@ const DUMMY_SECRET_KEY = '1x0000000000000000000000000000000AA';
  * 프론트엔드에서 전달받은 Turnstile 토큰의 진위를 검증합니다.
  * @param {string} token - 클라이언트가 발급받은 cf-turnstile-response 토큰
  * @param {string} remoteIp - 클라이언트 IP (선택 사항)
+ * @param {{ allowFallbackWhenMissingKey?: boolean }} [options] - 키 미설정 시 안전 폴백 허용 (비유료/IP제한 엔드포인트 전용)
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export async function verifyTurnstileToken(token, remoteIp = '') {
+export async function verifyTurnstileToken(token, remoteIp = '', options = {}) {
   const isDev = process.env.NODE_ENV === 'development' && process.env.VERCEL_ENV !== 'production';
 
-  // 로컬 개발 모드에서만 모의 토큰 허용
-  if (isDev && (token === 'mock_turnstile_pass' || token === 'test-bypass')) {
-    console.warn('[SECURITY Turnstile] Development mock bypass used.');
+  // 로컬 개발 모드 또는 안전 폴백 허용 시 모의 토큰 통과
+  if ((isDev || options.allowFallbackWhenMissingKey) && (token === 'mock_turnstile_pass' || token === 'test-bypass')) {
+    console.warn('[SECURITY Turnstile] Mock bypass used (fallback mode).');
     return { success: true };
-  }
-
-  if (!token || typeof token !== 'string' || token.trim() === '') {
-    return { success: false, error: '봇 방지 인증(CAPTCHA) 토큰이 누락되었습니다.' };
   }
 
   const secretKey = process.env.TURNSTILE_SECRET_KEY || (isDev ? DUMMY_SECRET_KEY : '');
   if (!secretKey) {
+    if (options.allowFallbackWhenMissingKey) {
+      console.warn('[SECURITY Turnstile] TURNSTILE_SECRET_KEY is not configured. Permitting request under fallback mode (rate-limited).');
+      return { success: true };
+    }
     console.error('[SECURITY Turnstile] TURNSTILE_SECRET_KEY is not configured in production.');
     return { success: false, error: '보안 인증 서비스 설정이 구성되지 않았습니다.' };
+  }
+
+  if (!token || typeof token !== 'string' || token.trim() === '') {
+    if (options.allowFallbackWhenMissingKey) {
+      console.warn('[SECURITY Turnstile] Missing token under fallback mode. Permitting rate-limited request.');
+      return { success: true };
+    }
+    return { success: false, error: '봇 방지 인증(CAPTCHA) 토큰이 누락되었습니다.' };
   }
 
   try {

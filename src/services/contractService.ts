@@ -338,7 +338,7 @@ export async function submitRemoteSignStage(params: {
   clientSignature?: string;
   confirmations?: Record<string, string>;
   agreedTerms?: string[];
-}): Promise<{ ok: true; contract: ElectronicContract } | { ok: false; error: string }> {
+}): Promise<{ ok: true; contract: ElectronicContract } | { ok: false; error: string; code?: string }> {
   try {
     const res = await fetch('/api/contract?action=remote-sign', {
       method: 'POST',
@@ -347,7 +347,8 @@ export async function submitRemoteSignStage(params: {
     });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.ok || !json.contract) {
-      return { ok: false, error: json?.error || `서버 저장에 실패했습니다. (${res.status})` };
+      // code: 'contract_closed' = 취소된 계약(서버가 서명·본인인증 저장을 거부)
+      return { ok: false, error: json?.error || `서버 저장에 실패했습니다. (${res.status})`, code: typeof json?.code === 'string' ? json.code : undefined };
     }
     const contract = rowToContract(json.contract);
     // 기기 사본도 서버 결과로 갱신

@@ -152,7 +152,7 @@ async function handler(req, res) {
   if (action === 'create') {
     const user = await getUser(req);
     if (!user) {
-      const check = await verifyTurnstileToken(body.turnstileToken, ip);
+      const check = await verifyTurnstileToken(body.turnstileToken, ip, { allowFallbackWhenMissingKey: true });
       if (!check.success) return res.status(403).json({ ok: false, error: check.error || '봇 방지 인증에 실패했습니다.' });
     }
     const title = clip(body.title, 120);

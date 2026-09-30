@@ -41,8 +41,7 @@ import SharedReportViewer from './components/client/SharedReportViewer';
 const ClientRemoteSignView = React.lazy(() => import('./components/client/ClientRemoteSignView'));
 import UnregisteredLawyerDocViewer from './components/client/UnregisteredLawyerDocViewer';
 import ContractPublicVerifierModal from './components/common/ContractPublicVerifierModal';
-import { getContract } from './services/contractService';
-import type { ElectronicContract } from './types';
+import { fetchPublicContractVerification, type PublicContractVerification } from './services/contractPublicVerifyService';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
 import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
@@ -78,6 +77,23 @@ const SEED_MEMBER_IDS = new Set([
 const SEED_LOG_IDS = new Set(Array.from({ length: 16 }, (_, i) => `log-${i + 1}`));
 // 시연용 샘플 변호사 ID — DB에 없는 샘플 프로필은 lawyers 테이블로 올리지 않는다
 const SEED_LAWYER_IDS: ReadonlySet<string> = new Set(mockLawyers.map(l => l.id));
+// [운영 보호] data.ts의 가상 변호사(126명)는 DEV 전용 시드. 운영은 DB(lawyers)에서 받은 실제 프로필만 쓴다.
+// (이전: 운영 첫 화면·캐시가 없을 때 가상 변호사로 채워지고, DB 동기화가 DB에 없는 행을 지우지 않아 변호사 찾기에 계속 보임)
+const SEED_LAWYERS: LawyerType[] = import.meta.env.DEV ? mockLawyers : [];
+/** 운영: 이 기기 캐시에 예전에 저장된 가상 변호사를 걸러낸다 */
+const stripProdSeedLawyers = (list: LawyerType[]): LawyerType[] =>
+  import.meta.env.PROD ? list.filter(l => l && !SEED_LAWYER_IDS.has(l.id)) : list;
+/** 저장된 변호사 목록 복원: 운영은 가상 변호사를 뺀 캐시, 개발은 기존 규칙(시드보다 적으면 시드로 다시 채움) */
+const restoreLawyers = (saved: string | null): LawyerType[] => {
+  if (saved) {
+    const parsed: LawyerType[] = JSON.parse(saved);
+    if (Array.isArray(parsed)) {
+      if (import.meta.env.PROD) return stripLawyerSecrets(stripProdSeedLawyers(parsed));
+      if (parsed.length >= SEED_LAWYERS.length) return stripLawyerSecrets(parsed);
+    }
+  }
+  return stripLawyerSecrets(SEED_LAWYERS);
+};
 const stripProdSeedMembers = (list: Member[]): Member[] =>
   import.meta.env.PROD ? list.filter(m => m && !SEED_MEMBER_IDS.has(m.id)) : list;
 const stripProdSeedLogs = (list: ActivityLog[]): ActivityLog[] =>
@@ -151,7 +167,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('verifyContractId') || params.get('verify') || null;
   });
-  const [verifiedContract, setVerifiedContract] = useState<ElectronicContract | null>(null);
+  const [publicVerification, setPublicVerification] = useState<PublicContractVerification | null>(null);
   const [showPublicVerifyModal, setShowPublicVerifyModal] = useState(false);
 
   // 고객용 화면(고객 셸·원격 서명·공유 리포트)은 라이트 고정 + 고객 타이포 스케일 적용 (index.css CLIENT SURFACE SCOPE)
@@ -165,18 +181,18 @@ export default function App() {
 
   useEffect(() => {
     if (verifyContractId) {
-      // 찾지 못하면 이전에는 아무 안내 없이 첫 화면만 보였다
-      const notFound = () => toast.error('검증할 계약서를 찾지 못했어요. QR 코드나 링크 주소를 다시 확인해 주세요.');
-      getContract(verifyContractId)
-        .then(c => {
-          if (c) {
-            setVerifiedContract(c);
-            setShowPublicVerifyModal(true);
-          } else {
-            notFound();
-          }
-        })
-        .catch(notFound);
+      // 서버 공개 검증 API: 개인정보를 뺀 결과(가린 이름·상태·전자지문 검증 결과)만 받는다
+      // (이전: 계약서 전체 행을 ID로 조회 — 찾지 못하면 아무 안내 없이 첫 화면만 보였음)
+      fetchPublicContractVerification(verifyContractId).then(r => {
+        if (r.kind === 'found') {
+          setPublicVerification(r.data);
+          setShowPublicVerifyModal(true);
+        } else if (r.kind === 'not_found') {
+          toast.error('검증할 계약서를 찾지 못했어요. QR 코드나 링크 주소를 다시 확인해 주세요.');
+        } else {
+          toast.error(`계약서를 확인하지 못했어요. 잠시 후 다시 시도해 주세요. (${r.message})`);
+        }
+      });
     }
   }, [verifyContractId]);
 
@@ -486,15 +502,10 @@ export default function App() {
   });
   const [lawyers, setLawyers] = useState<LawyerType[]>(() => {
     try {
-      const saved = secureGetItem('legal_crm_lawyers');
-      if (saved) {
-        const parsed: LawyerType[] = JSON.parse(saved);
-        if (parsed.length >= mockLawyers.length) {
-          return stripLawyerSecrets(parsed);
-        }
-      }
-    } catch {}
-    return stripLawyerSecrets(mockLawyers);
+      return restoreLawyers(secureGetItem('legal_crm_lawyers'));
+    } catch {
+      return stripLawyerSecrets(SEED_LAWYERS);
+    }
   });
   const [members, setMembers] = useState<Member[]>(() => {
     try {
@@ -655,11 +666,10 @@ export default function App() {
       setCases(initialCases);
     }
 
-    if (savedLawyers && JSON.parse(savedLawyers).length >= mockLawyers.length) {
-      const parsed: LawyerType[] = JSON.parse(savedLawyers);
-      setLawyers(stripLawyerSecrets(parsed));
-    } else {
-      setLawyers(stripLawyerSecrets(mockLawyers));
+    try {
+      setLawyers(restoreLawyers(savedLawyers));
+    } catch {
+      setLawyers(stripLawyerSecrets(SEED_LAWYERS));
     }
 
     if (savedMembers) {
@@ -1072,7 +1082,8 @@ export default function App() {
         <ContractPublicVerifierModal
           isOpen={showPublicVerifyModal}
           onClose={() => setShowPublicVerifyModal(false)}
-          contract={verifiedContract}
+          contract={null}
+          publicView={publicVerification}
         />
       </div>
     </DialogProvider>

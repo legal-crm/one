@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import type { ElectronicContract } from '../types';
 import { localYmd } from '../utils/localDate';
+import { feeAmountWon, feeTotalWon } from '../utils/feeUnits';
 import { generateQrCodeDataUrl } from './blockchainAnchorService';
 
 export async function generateCourtSubmissionPdf(contract: ElectronicContract): Promise<void> {
@@ -108,7 +109,8 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
   const hashes = contract.documentHashes;
   const ts = contract.timestampToken;
   const anchor = contract.blockchainAnchor;
-  const formattedFee = (contract.totalFee * 10000).toLocaleString();
+  // 원/만원 자동 감지 (이전: 무조건 ×10,000 → 원 단위로 저장된 3,300,000이 33,000,000,000원으로 찍힘)
+  const formattedFee = feeTotalWon(contract.totalFee).toLocaleString('ko-KR');
   const dateFormatted = contract.contractDate || localYmd();
 
   // 대표 서명
@@ -278,7 +280,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                   <td style="padding: 6px; font-weight: bold;">${f.label || (f.round === 0 ? '착수금' : `${f.round}회차`)}</td>
                   <td style="padding: 6px; font-family: monospace;">${f.dueDate}</td>
-                  <td style="padding: 6px; font-weight: bold; color: #1e3a8a;">${f.amount.toLocaleString()}원</td>
+                  <td style="padding: 6px; font-weight: bold; color: #1e3a8a;">${feeAmountWon(f).toLocaleString('ko-KR')}원</td>
                   <td style="padding: 6px; color: #64748b;">${f.memo || f.label || '수임료 납부'}</td>
                 </tr>
               `).join('')}

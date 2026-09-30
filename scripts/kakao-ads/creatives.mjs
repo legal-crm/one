@@ -28,7 +28,7 @@ export const SOURCES = {
   seoulYouth: '서울시 조사 2025년 신청 29세 이하 1,025명 평균 채무 6,926만 원 생활비 67.9% 10명 중 약 7명',
   seoulCourt2030: '서울회생법원 2025 개인회생 통계조사보고서 20·30대 개시결정 2022년 6,913건 2023년 9,171건 32.7%',
   law: '채무자회생법 제579조 무담보 10억 원 담보 15억 원 제611조 3년 5년 2018년 제619조 제600조 국가공무원법 제33조 변호사법 제26조 민사소송법 제184조',
-  living: '2026년 생계비 1인 153만 8,542원 4인 389만 6,842원 389만 원',
+  living: '2026년 생계비 1인 153만 8,542원 4인 389만 6,842원 389만 원 기준 중위소득 60%',
 };
 
 const C = (o) => o;
@@ -175,13 +175,13 @@ add(
     title: '워크아웃 중인데 개인회생 가능?', promo: '워크아웃 등 채무조정을 이용 중이어도 법원 개인회생을 신청할 수 있습니다', biz: ['워크아웃 중에도 신청 가능', '원금 부담이 크다면'], risk: 'low' },
   { id: 40, code: 'D10', slug: 'myth-five-years', layout: 'ox', theme: 'mint', ox: 'X',
     headline: '개인회생은\n**무조건 5년 갚는다?**', sub: '변제기간은 원칙 3년입니다', note: '채무자회생법 제611조',
-    title: '개인회생 5년? 원칙은 3년입니다', promo: '개인회생 변제기간은 원칙 3년, 특별한 사정이 있을 때 최장 5년입니다', biz: ['무조건 5년? 원칙은 3년', '개인회생 변제기간'], risk: 'low', src: 'law' },
+    title: '개인회생 5년? 원칙은 3년입니다', promo: '개인회생 변제기간은 원칙 3년, 특별한 사정이 있을 때 최장 5년입니다', biz: ['무조건 5년? 원칙은 3년', '개인회생 변제기간'], risk: 'low', src: 'law', allow: ['무조건'] },
 );
 
 // ── E. 셀프 체크 ─────────────────────────────
 add(
   { id: 41, code: 'E01', slug: 'check-two-of-three', layout: 'check', theme: 'charcoal', checks: ['매달 들어오는 소득이 있다', '빚이 1년 소득보다 많다', '이자 갚기도 버겁다'],
-    headline: '3개 중 **2개 이상**이라면', sub: '개인회생을 검토해 볼 때입니다', note: '신청 가능 여부는 상담으로 확인하세요',
+    headline: '3개 중\n**2개 이상**이라면', sub: '개인회생을 검토해 볼 때입니다', note: '신청 가능 여부는 상담으로 확인하세요',
     title: '개인회생, 나도 해당될까?', promo: '소득이 있고 빚 부담이 크다면 개인회생을 검토해 볼 수 있습니다. 1분 상담', biz: ['3개 중 2개 이상이라면', '개인회생 검토해 보세요'], risk: 'low' },
   { id: 42, code: 'E02', slug: 'debt-over-salary', layout: 'hero', theme: 'white', icons: ['chart_increasing'],
     headline: '빚이 **연봉보다**\n많아졌나요?', sub: '갚는 속도보다 이자가 빠르다면 신호입니다',
@@ -253,7 +253,7 @@ add(
     title: '개인회생, 한 줄로 정리하면', promo: '개인회생은 소득으로 원칙 3년간 갚고 남은 빚을 면책받는 법원 제도입니다', biz: ['3년 갚고 남은 빚은 면책', '개인회생 한 줄 요약'], risk: 'mid' },
   { id: 62, code: 'G02', slug: 'process-steps', layout: 'steps', theme: 'ivory',
     steps: [['writing_hand', '상담'], ['clipboard', '서류 준비'], ['envelope_with_arrow', '신청'], ['balance_scale', '개시결정'], ['spiral_calendar', '인가·변제']],
-    headline: '개인회생,\n**이렇게 진행됩니다**', note: '신청 때 금지명령을 함께 신청할 수 있습니다',
+    headline: '개인회생,\n**이렇게 진행됩니다**', note: '신청 때 금지명령을 함께 신청할 수 있습니다', noteOpt: true,
     title: '개인회생 진행 순서 한눈에', promo: '상담부터 신청, 개시결정, 인가까지 개인회생 진행 순서를 안내해 드립니다', biz: ['개인회생 진행 순서', '상담부터 인가까지'], risk: 'low' },
   { id: 63, code: 'G03', slug: 'keep-property', layout: 'hero', theme: 'teal', icons: ['house', 'shield'],
     headline: '**재산을 지키며**\n갚는 절차', sub: '개인회생은 재산을 처분하지 않습니다', note: '재산 가치 이상은 변제계획에 반영됩니다',
@@ -319,7 +319,7 @@ add(
 add(
   { id: 81, code: 'I01', slug: 'stat-h1-record', layout: 'stat', theme: 'mint', stat: { label: '2026년 상반기 개인회생 신청', value: '81,723', unit: '건' },
     headline: '역대 상반기 가운데\n**가장 많았습니다**', note: '출처: 법원행정처(2026년 7월 발표)',
-    title: '올해 상반기 개인회생 8만 건 넘어', promo: '2026년 상반기 개인회생 신청 8만 1,723건, 역대 최다입니다. 혼자 고민하지 마세요', biz: ['상반기 개인회생 8만 건', '지난해보다 13.2% 늘어'], risk: 'low', src: 'court2026h1' },
+    title: '올해 상반기 개인회생 8만 건 넘어', promo: '올해 상반기 개인회생 신청 8만 1,723건, 역대 최다입니다. 상담 신청하세요', biz: ['상반기 개인회생 8만 건', '지난해보다 13.2% 늘어'], risk: 'low', src: 'court2026h1' },
   { id: 82, code: 'I02', slug: 'stat-per-day', layout: 'stat', theme: 'white', stat: { label: '하루 평균 개인회생 신청', value: '약 450', unit: '건' },
     headline: '**당신만의 고민이**\n아닙니다', note: '2026년 상반기 81,723건 기준 계산 (법원행정처)',
     title: '하루 450건, 당신만이 아닙니다', promo: '올해 상반기 하루 평균 약 450건의 개인회생이 신청됐습니다. 상담 신청하세요', biz: ['하루 평균 약 450건', '당신만의 고민이 아닙니다'], risk: 'low', src: 'court2026h1' },
@@ -328,19 +328,19 @@ add(
     title: '작년 개인회생 신청 14만 9천여 건', promo: '2025년 한 해 개인회생 신청이 14만 9천여 건이었습니다. 방법부터 확인하세요', biz: ['작년 개인회생 14만 9천여 건', '많은 사람이 선택합니다'], risk: 'low', src: 'yearbook2025' },
   { id: 84, code: 'I04', slug: 'stat-10yr', layout: 'stat', theme: 'blue', stat: { label: '10년 새 상반기 개인회생 신청', value: '1.7', unit: '배' },
     headline: '빚 문제를 **법으로**\n푸는 사람이 늘었습니다', note: '2016년 4만 7,229건 → 2026년 8만 1,723건 (상반기, 법원행정처)',
-    title: '개인회생, 10년 새 1.7배 늘었습니다', promo: '상반기 개인회생 신청은 10년 새 1.7배가 됐습니다. 법적 해결 방법을 확인하세요', biz: ['10년 새 1.7배 늘었어요', '개인회생 신청 건수'], risk: 'low', src: 'court2026h1' },
+    title: '개인회생, 10년 새 1.7배 늘었습니다', promo: '개인회생 신청은 10년 새 1.7배가 됐습니다. 법적 해결 방법을 확인하세요', biz: ['10년 새 1.7배 늘었어요', '개인회생 신청 건수'], risk: 'low', src: 'court2026h1' },
   { id: 85, code: 'I05', slug: 'stat-youth-debt', layout: 'stat', theme: 'peach', stat: { label: '29세 이하 신청자 평균 채무', value: '6,926', unit: '만 원' },
     headline: '10명 중 약 7명은\n**생활비**로 시작됐습니다', note: '출처: 서울시 조사(2025년 신청자 1,025명)',
     title: '20대 개인회생, 시작은 생활비', promo: '29세 이하 신청자 10명 중 약 7명은 생활비로 빚이 시작됐습니다(서울시 조사)', biz: ['시작은 생활비였습니다', '청년 개인회생'], risk: 'low', src: 'seoulYouth' },
   { id: 86, code: 'I06', slug: 'stat-yoy', layout: 'stat', theme: 'charcoal', stat: { label: '1년 새 늘어난 개인회생 신청', value: '13.2', unit: '%' },
     headline: '빚 부담을 느끼는\n**사람이 늘고 있습니다**', note: '2025년 상반기 72,192건 → 2026년 81,723건 (법원행정처)',
-    title: '개인회생 신청 1년 새 13.2% 늘어', promo: '올해 상반기 개인회생 신청이 1년 전보다 13.2% 늘었습니다. 내 상황도 점검하세요', biz: ['1년 새 13.2% 늘어난 신청', '개인회생, 나도 해당될까'], risk: 'low', src: 'court2026h1' },
+    title: '개인회생 신청 1년 새 13.2% 늘어', promo: '개인회생 신청이 1년 새 13.2% 늘었습니다. 내 상황도 점검해 보세요', biz: ['1년 새 13.2% 늘어난 신청', '개인회생, 나도 해당될까'], risk: 'low', src: 'court2026h1' },
   { id: 87, code: 'I07', slug: 'high-debt-ok', layout: 'hero', theme: 'navy', icons: ['bank', 'money_bag'],
     headline: '빚이 **수억 원**이어도\n신청할 수 있습니다', sub: '무담보 10억 원, 담보 15억 원 이하', note: '채무자회생법 제579조',
-    title: '고액 채무도 개인회생 가능합니다', promo: '무담보 10억 원, 담보 15억 원 이하라면 고액 채무도 개인회생을 신청할 수 있습니다', biz: ['빚이 수억 원이어도', '개인회생 신청 가능'], risk: 'low', src: 'law' },
+    title: '고액 채무도 개인회생 가능합니다', promo: '무담보 10억 원, 담보 15억 원 이하라면 고액 채무도 개인회생이 가능합니다', biz: ['빚이 수억 원이어도', '개인회생 신청 가능'], risk: 'low', src: 'law' },
   { id: 88, code: 'I08', slug: 'stat-2030', layout: 'stat', theme: 'teal', stat: { label: '서울회생법원 20·30대 개시결정 증가', value: '32.7', unit: '%' },
     headline: '젊은 층도 **법적 절차**로\n빚을 정리합니다', note: '2022년 6,913건 → 2023년 9,171건 (2025 개인회생 통계조사보고서)',
-    title: '2030 개인회생 늘고 있습니다', promo: '서울회생법원의 20~30대 개시결정은 1년 새 32.7% 늘었습니다. 늦기 전에 확인하세요', biz: ['2030 개인회생 늘고 있어요', '젊은 층도 법으로 정리'], risk: 'low', src: 'seoulCourt2030' },
+    title: '2030 개인회생 늘고 있습니다', promo: '서울회생법원 20~30대 개시결정이 1년 새 32.7% 늘었습니다. 상담 신청', biz: ['2030 개인회생 늘고 있어요', '젊은 층도 법으로 정리'], risk: 'low', src: 'seoulCourt2030' },
   { id: 89, code: 'I09', slug: 'law-change-2018', layout: 'type', theme: 'ivory', icons: ['scroll'],
     headline: '변제기간 최장 5년에서\n원칙 **3년**으로', sub: '2018년 법 개정으로 짧아졌습니다', note: '채무자회생법 제611조',
     title: '개인회생 변제기간, 3년으로 줄었습니다', promo: '2018년 법 개정으로 개인회생 변제기간은 원칙 3년이 됐습니다. 상담 신청하세요', biz: ['변제기간 원칙 3년', '2018년 법 개정'], risk: 'low', src: 'law' },
@@ -348,3 +348,40 @@ add(
     headline: '소득이 없다면\n**파산·면책**도 방법입니다', note: '출처: 2026 사법연감',
     title: '소득이 없다면 개인파산도 방법', promo: '갚을 소득이 없다면 개인파산과 면책을 검토할 수 있습니다. 상담 신청하세요', biz: ['소득이 없다면 개인파산', '파산 면책 절차 상담'], risk: 'low', src: 'yearbook2025' },
 );
+
+// ── J. 위트·밈 ─────────────────────────────
+add(
+  { id: 91, code: 'J01', slug: 'salary-passes-by', layout: 'hero', theme: 'peach', icons: ['money_with_wings', 'man_office_worker'],
+    headline: '월급은 통장을\n**스쳐 갈 뿐**', sub: '생계비는 남기고 갚는 방법이 있습니다',
+    title: '월급이 통장을 스쳐 가기만 한다면', promo: '월급이 들어오자마자 사라진다면, 생계비를 남기고 갚는 개인회생을 확인하세요', biz: ['월급은 통장을 스쳐 갈 뿐', '생계비 남기고 갚는 방법'], risk: 'low' },
+  { id: 92, code: 'J02', slug: 'juggling-master', layout: 'hero', theme: 'blue', icons: ['credit_card', 'credit_card'],
+    headline: '카드값 돌려막기\n**마스터**하셨나요?', sub: '이제 그 실력, 안 쓰셔도 됩니다',
+    title: '돌려막기 마스터라면 보세요', promo: '카드값 돌려막기에 지쳤다면, 개인회생으로 빚 구조를 바꿀 방법을 확인하세요', biz: ['돌려막기 마스터라면', '이제 그만 쓰셔도 돼요'], risk: 'low' },
+  { id: 93, code: 'J03', slug: 'empty-account-plan', layout: 'hero', theme: 'mint', icons: ['coin', 'spiral_calendar'],
+    headline: '텅 빈 통장 탈출\n**3년 플랜**', sub: '소득에 맞춘 개인회생 변제계획',
+    title: '텅 빈 통장 탈출 3년 플랜', promo: '매달 텅 비는 통장이라면, 소득에 맞춘 3년 개인회생 변제계획을 세워 보세요', biz: ['텅 빈 통장 탈출 3년 플랜', '개인회생 변제계획'], risk: 'low' },
+  { id: 94, code: 'J04', slug: 'infinite-loop', layout: 'hero', theme: 'charcoal', icons: ['broken_chain'],
+    headline: '빚이 빚을 낳는\n**무한 루프** 끊기', sub: '대출로 대출을 막고 있다면',
+    title: '빚의 무한 루프, 끊는 법', promo: '대출로 대출을 막는 악순환, 개인회생으로 끊을 수 있는지 확인하세요', biz: ['빚의 무한 루프 끊기', '대출로 대출을 막는다면'], risk: 'low' },
+  { id: 95, code: 'J05', slug: 'worry-off-life-on', layout: 'type', theme: 'navy',
+    headline: '빚 걱정은 **OFF**\n일상은 **ON**', sub: '개인회생으로 생활을 다시 계획하세요',
+    title: '빚 걱정 OFF, 일상 ON', promo: '빚 걱정에 멈춘 일상, 개인회생 변제계획으로 다시 계획해 보세요', biz: ['빚 걱정은 OFF 일상은 ON', '개인회생으로 다시 계획'], risk: 'low' },
+  { id: 96, code: 'J06', slug: 'hardworking-interest', layout: 'hero', theme: 'sand', icons: ['alarm_clock', 'coin'],
+    headline: '**이자**가\n나보다 부지런할 때', sub: '이자 부담을 줄일 방법, 확인하세요',
+    title: '이자가 나보다 부지런하다면', promo: '잠든 사이에도 불어나는 이자, 개인회생으로 부담을 줄일 방법을 확인하세요', biz: ['이자가 나보다 부지런할 때', '부담 줄일 방법 확인'], risk: 'low' },
+  { id: 97, code: 'J07', slug: 'more-texts-than-balance', layout: 'hero', theme: 'white', icons: ['incoming_envelope', 'coin'],
+    headline: '통장 잔고보다\n**독촉 문자**가 많다면', sub: '개인회생 금지명령을 확인해 보세요',
+    title: '잔고보다 독촉 문자가 많다면', promo: '독촉 문자만 쌓여 가고 있다면 개인회생 금지명령부터 상담해 보세요', biz: ['잔고보다 독촉 문자가 많다면', '금지명령 확인하기'], risk: 'low' },
+  { id: 98, code: 'J08', slug: 'future-me', layout: 'hero', theme: 'peach', icons: ['tear-off_calendar'],
+    headline: '**다음 달의 나**에게\n빚을 넘기지 마세요', sub: '3년 계획으로 정리하는 개인회생',
+    title: '다음 달로 빚을 미루고 있다면', promo: '매달 미루기만 하는 빚, 개인회생 3년 변제계획으로 정리해 보세요', biz: ['다음 달로 빚을 미루지 마요', '3년 계획으로 정리'], risk: 'low' },
+  { id: 99, code: 'J09', slug: 'plan-not-calculator', layout: 'hero', theme: 'ivory', icons: ['abacus', 'memo'],
+    headline: '빚 계산기 말고\n**변제 계획표**', sub: '소득에 맞춘 36개월 계획을 세웁니다',
+    title: '빚 계산 그만, 변제계획 세우세요', promo: '매일 빚만 계산하고 있다면, 소득에 맞춘 36개월 변제계획을 세워 보세요', biz: ['빚 계산기 말고 계획표', '36개월 변제계획'], risk: 'low' },
+  { id: 100, code: 'J10', slug: 'installments-end', layout: 'hero', theme: 'blue', icons: ['credit_card', 'receipt'],
+    headline: '할부는 끝나도\n**빚은 안 끝날 때**', sub: '할부, 카드론, 대출을 한 번에 정리하세요',
+    title: '할부는 끝나도 빚이 남았다면', promo: '카드 할부, 카드론, 대출이 겹쳤다면 개인회생으로 한 번에 정리를 검토하세요', biz: ['할부는 끝나도 빚은 남을 때', '한 번에 정리하세요'], risk: 'low' },
+);
+
+// 파일럿(컨셉별 1개) — 확인 후 전체 제작
+export const PILOT_IDS = [1, 12, 21, 33, 41, 52, 62, 71, 81, 91];

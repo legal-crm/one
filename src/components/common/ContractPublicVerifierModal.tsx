@@ -15,26 +15,24 @@ import type { ElectronicContract } from '../../types';
 import { verifyTxOnChain } from '../../services/blockchainAnchorService';
 import { verifyContractIntegrity, type IntegrityCheckStatus } from '../../services/integrityService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+import { maskPersonName, type PublicContractVerification } from '../../services/contractPublicVerifyService';
 import ModalPortal from './ModalPortal';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** 계약서 전체(변호사·관리자·서명 당사자 화면). 공개 검증 화면은 null을 주고 publicView를 쓴다 */
   contract: ElectronicContract | null;
+  /**
+   * 공개 검증(QR·?verify=) 결과 — 서버가 전자지문을 검증하고 개인정보를 뺀 값.
+   * 있으면 브라우저에서 다시 계산하지 않고, 계약서 PDF 내려받기도 보이지 않는다.
+   */
+  publicView?: PublicContractVerification | null;
   /**
    * 로그인한 변호사·관리자 화면처럼 실명을 봐도 되는 곳에서만 true.
    * 기본값(false)은 링크만 있으면 열리는 공개 검증 화면 — 위임인 이름 일부를 가린다.
    */
   revealFullName?: boolean;
-}
-
-/** 공개 화면용 이름 가림 — 홍길동 → 홍*동, 김철 → 김*, 남궁민수 → 남**수 */
-function maskPersonName(name?: string): string {
-  const chars = Array.from((name || '').trim());
-  if (chars.length === 0) return '-';
-  if (chars.length === 1) return '*';
-  if (chars.length === 2) return `${chars[0]}*`;
-  return `${chars[0]}${'*'.repeat(chars.length - 2)}${chars[chars.length - 1]}`;
 }
 
 /** 검증 결과 상태 + 이 화면에서 검증을 끝내지 못한 경우('error') */
@@ -69,7 +67,7 @@ const STATUS_COPY: Record<VerifierStatus, { title: string; desc: string; tone: '
   },
 };
 
-export default function ContractPublicVerifierModal({ isOpen, onClose, contract, revealFullName = false }: Props) {
+export default function ContractPublicVerifierModal({ isOpen, onClose, contract, publicView = null, revealFullName = false }: Props) {
   const [copiedHash, setCopiedHash] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [verifyingNode, setVerifyingNode] = useState(false);
@@ -77,7 +75,14 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
   const [liveResult, setLiveResult] = useState<{ verifiedOnChain: boolean; hashMatched?: boolean; statusText: string } | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !contract) return;
+    if (!isOpen) return;
+    // 공개 검증: 서버가 계산한 결과를 그대로 쓴다 (본문·서명은 브라우저로 오지 않는다)
+    if (publicView) {
+      setIntegrity({ status: publicView.integrity });
+      setLiveResult(null);
+      return;
+    }
+    if (!contract) return;
     let cancelled = false;
     setIntegrity(null);
     setLiveResult(null);
@@ -85,7 +90,7 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
       .then(r => { if (!cancelled) setIntegrity(r); })
       .catch(() => { if (!cancelled) setIntegrity({ status: 'error' }); });
     return () => { cancelled = true; };
-  }, [isOpen, contract]);
+  }, [isOpen, contract, publicView]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,14 +99,36 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !contract) return null;
+  if (!isOpen || (!contract && !publicView)) return null;
 
-  const finalHash = contract.documentHashes?.finalHash || '';
-  const anchor = contract.blockchainAnchor;
+  // 화면에 보일 값: 공개 검증은 서버 결과(가린 이름), 그 밖은 계약서 원본에서
+  const view = publicView
+    ? {
+        id: publicView.id,
+        signedAt: publicView.signedAt,
+        finalHash: publicView.finalHash || '',
+        anchor: publicView.blockchainAnchor,
+        clientDisplayName: publicView.clientNameMasked || '-',
+        lawFirmName: publicView.lawFirmName,
+        lawyerName: publicView.lawyerName,
+        cancelled: publicView.cancelled,
+      }
+    : {
+        id: contract!.id,
+        signedAt: contract!.documentHashes?.signedAt || null,
+        finalHash: contract!.documentHashes?.finalHash || '',
+        anchor: contract!.blockchainAnchor || null,
+        // 공개 검증 화면에서는 위임인 실명을 그대로 노출하지 않는다
+        clientDisplayName: revealFullName ? (contract!.clientName || '-') : maskPersonName(contract!.clientName),
+        lawFirmName: contract!.lawFirmName,
+        lawyerName: contract!.lawyerName,
+        cancelled: contract!.status === 'cancelled',
+      };
+  const finalHash = view.finalHash;
+  const anchor = view.anchor;
   const onChain = !!anchor?.isRealOnChain && !!anchor?.txHash;
   const copy = integrity ? STATUS_COPY[integrity.status] : null;
-  // 공개 검증 화면에서는 위임인 실명을 그대로 노출하지 않는다
-  const clientDisplayName = revealFullName ? (contract.clientName || '-') : maskPersonName(contract.clientName);
+  const clientDisplayName = view.clientDisplayName;
 
   const handleCopyHash = async () => {
     if (!finalHash) return;
@@ -116,7 +143,7 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
   };
 
   const handleDownloadPdf = async () => {
-    if (!contract.documents || contract.documents.length === 0) {
+    if (!contract || !contract.documents || contract.documents.length === 0) {
       toast.info('이 화면에서는 계약서 원문 PDF를 내려받을 수 없습니다. (사건 당사자와 담당 변호사만 가능)');
       return;
     }
@@ -201,6 +228,16 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
               </div>
             </div>
 
+            {/* 취소된 계약 안내 */}
+            {view.cancelled && (
+              <div role="note" className="p-3.5 rounded-2xl border border-amber-300 bg-amber-50 text-amber-950 flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="text-xs leading-relaxed">
+                  <strong className="font-bold">취소된 계약서입니다.</strong> 담당 사무소에서 이 계약을 취소해 서명을 받지 않습니다. 자세한 내용은 담당 변호사에게 확인해 주세요.
+                </p>
+              </div>
+            )}
+
             {/* 계약 기본 정보 */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
               <h5 className="font-bold text-slate-800 mb-2.5 flex items-center gap-1.5 text-xs">
@@ -210,13 +247,13 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                 <div className="flex justify-between border-b border-slate-200/70 pb-1">
                   <dt className="text-slate-600">계약 번호</dt>
-                  <dd className="font-mono font-bold text-slate-800">{contract.id}</dd>
+                  <dd className="font-mono font-bold text-slate-800">{view.id}</dd>
                 </div>
                 <div className="flex justify-between border-b border-slate-200/70 pb-1">
                   <dt className="text-slate-600">체결(서명) 시각</dt>
                   <dd className="font-bold text-slate-800">
-                    {contract.documentHashes?.signedAt
-                      ? new Date(contract.documentHashes.signedAt).toLocaleString('ko-KR')
+                    {view.signedAt
+                      ? new Date(view.signedAt).toLocaleString('ko-KR')
                       : '서명 전'}
                   </dd>
                 </div>
@@ -226,7 +263,7 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
                 </div>
                 <div className="flex justify-between border-b border-slate-200/70 pb-1">
                   <dt className="text-slate-600">수임 변호사</dt>
-                  <dd className="font-bold text-slate-900">{contract.lawFirmName} {contract.lawyerName}</dd>
+                  <dd className="font-bold text-slate-900">{view.lawFirmName} {view.lawyerName}</dd>
                 </div>
               </dl>
               {!revealFullName && (
@@ -327,15 +364,22 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
             >
               닫기
             </button>
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={downloadingPdf}
-              className="flex items-center gap-1.5 px-4 min-h-[44px] bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer disabled:opacity-50 whitespace-nowrap"
-            >
-              <Download className="w-4 h-4" aria-hidden="true" />
-              <span>{downloadingPdf ? 'PDF 생성 중...' : '계약서 PDF 다운로드'}</span>
-            </button>
+            {publicView ? (
+              // 공개 검증 화면은 계약서 원문을 받지 않으므로 PDF 버튼 대신 안내만
+              <p className="text-[11px] text-slate-600 text-right leading-relaxed">
+                계약서 원문 PDF는 사건 당사자와 담당 변호사만 받을 수 있습니다.
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="flex items-center gap-1.5 px-4 min-h-[44px] bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" aria-hidden="true" />
+                <span>{downloadingPdf ? 'PDF 생성 중...' : '계약서 PDF 다운로드'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -316,14 +316,14 @@
 - 데이터·보안
   - `consult_messages`에 `target_lawyer_id`가 없어 변호사별 대화 구분을 화면 로직에 의존합니다(마이그레이션 필요).
   - `DEPLOY_012_TO_026_MASTER.sql`이 anon `USING(true)` 정책을 다시 만듭니다. 운영 DB 적용 여부를 확인해 주세요.
-  - 공개 검증(`?verify=`)이 계약서 전체 행을 ID로 조회합니다. 해시·상태만 돌려주는 공개 RPC가 필요합니다.
-  - 서버 `remote-sign`이 취소된 계약의 서명을 막지 않고(화면에서만 차단), `remoteSignExpiresAt`을 설정하는 곳이 없습니다.
-  - `contractPdfService`가 `totalFee`를 항상 ×10000 합니다(원 단위 저장 시 금액 오류).
-  - 로컬·내려받은 운영 env 파일에 Turnstile 키(`VITE_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`)가 없습니다. Vercel 설정에도 없으면 비회원 문의가 서버에서 거절됩니다.
+  - (조치함 → 9-1 #4) 공개 검증(`?verify=`)이 계약서 전체 행을 ID로 조회합니다. 해시·상태만 돌려주는 공개 RPC가 필요합니다.
+  - (일부 조치 → 9-1 #4) 서버 `remote-sign`이 취소된 계약의 서명을 막지 않고(화면에서만 차단), `remoteSignExpiresAt`을 설정하는 곳이 없습니다.
+  - (조치함 → 9-1 #2) `contractPdfService`가 `totalFee`를 항상 ×10000 합니다(원 단위 저장 시 금액 오류).
+  - (보류 → 9-1 #1) 로컬·내려받은 운영 env 파일에 Turnstile 키(`VITE_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`)가 없습니다. Vercel 설정에도 없으면 비회원 문의가 서버에서 거절됩니다.
 - 콘텐츠·표기
-  - 운영 초기 상태가 `data.ts`의 가상 변호사 126명으로 채워지고, `isPubliclyListable`이 승인 표시 없는 기록도 공개합니다.
+  - (일부 조치 → 9-1 #3) 운영 초기 상태가 `data.ts`의 가상 변호사 126명으로 채워지고, `isPubliclyListable`이 승인 표시 없는 기록도 공개합니다.
   - 공개 글·시드 뉴스의 가상 변호사 저자, 시드 뉴스의 '탕감 혜택/폭탄/폭증' 표현
-  - 약관·개인정보 처리방침의 '변호사 매칭 중개' 표현(법무 검토)
+  - (조치함 → 9-1 #5) 약관·개인정보 처리방침의 '변호사 매칭 중개' 표현(법무 검토)
   - SEO 정적 페이지·OG 이미지의 보라 로고
   - 채권자집회 안내의 '판사님이 호명'(개인회생 채권자집회는 보통 회생위원이 진행) 사실 확인
   - 근거 확인이 필요한 수치: '연 2~4%, 최대 700만 원', '약 3~5분', '체크카드 월 30만 원'
@@ -337,6 +337,20 @@
 **삭제한 파일** (git에서 되돌릴 수 있음: `git restore <경로>`)
 
 `src/components/client/LandingPage.tsx`, `src/components/CustomerIntake.tsx`, `src/components/client/DiagnosisFlow.tsx`, `src/components/client/DiagnosisResult.tsx`, `src/components/client/MobileApplicationDocHubModal.tsx`, `src/components/client/TermsModal.tsx`, `src/rehab-chatbot-package/components/rehab/AIRehabChatbot.tsx`, `src/rehab-chatbot-package/components/rehab/RehabChatButton.tsx`
+
+### 9-1. 확인 사항 후속 조치 (2026-09-30)
+
+위 목록 중 5건을 처리했습니다. 이 수정분은 커밋·배포하지 않았습니다.
+
+| # | 항목 | 조치 | 남은 것 |
+|---|---|---|---|
+| 1 | Turnstile 키가 없을 때 테스트 키로 폴백 | 보류(결정 필요). 테스트 비밀키는 공개된 더미 토큰(`XXXX.DUMMY.TOKEN.XXXX`)을 항상 통과시킵니다. 운영에 넣으면 같은 검증을 쓰는 7곳(비회원 1:1 문의, AI 진술서 생성, 서류 OCR 2종, 숨은 채무 조회(CODEF), 법원 사건조회 프록시, 텔레그램 알림)의 봇 차단이 꺼집니다. | Vercel에 실제 키 등록(권장) 또는 폴백 범위 결정 |
+| 2 | 계약서 PDF 수임료 ×10,000 | `src/utils/feeUnits.ts`: 1만 미만이면 만원 단위로 보고 ×10,000, 그 밖은 원 단위. PDF 총액·분납표, 알림톡, 원격 서명 화면이 같은 규칙을 씁니다. | 변호사 화면(`ContractWizard`, `ContractManagementTab`, `ClientSignShareModal`, `ContractReminderModal`)과 `contractTemplateService`의 ×10000. 근본 원인은 `ContractWizard`가 CRM의 원 단위 금액을 `totalFee`(만원)에 그대로 넣는 부분(240행) |
+| 3 | 가상 변호사 126명 운영 노출 | 가상 변호사 시드는 개발 서버에서만 씁니다. 운영은 기기 캐시에 남은 가상 변호사도 뺍니다(`App.tsx` `restoreLawyers`). | `isPubliclyListable`의 승인 표시 조건. 데이터 자체는 운영 번들에 남습니다(`LawyerRole`의 DEV 데모 로그인이 참조). |
+| 4 | 공개 검증 개인정보·취소 계약 서명 | `GET /api/contract?action=public-verify`: 서버가 전자지문을 다시 계산하고, 가린 이름·상태·검증 결과만 돌려줍니다(연락처·수임료·본문·서명·서명 토큰 제외, `no-store`). 공개 화면에는 PDF 버튼이 없습니다. 취소된 계약은 `remote-sign`과 서명 링크의 `identity-verify`가 410(`contract_closed`)으로 거절하고, 서명 화면은 취소 안내로 바뀝니다. | 서명 링크 만료(`remoteSignExpiresAt`) 컬럼·설정 없음. 운영 API는 호출해 보지 못함(`SUPABASE_SERVICE_ROLE_KEY` 필요) |
+| 5 | 약관 '변호사 매칭 중개' | `data.ts` 약관·개인정보 요약, `public/tos.html`, `privacy.html`, `legal.html`을 '변호사 광고·정보 제공 및 직접 선택'으로 바꾸고 "특정 변호사를 추천·알선하지 않음"을 적었습니다. | 법무 검토: `legal.html` 제2조·핵심 고지의 '사건 수임을 중개', '통신판매중개자', '가명 상담 중개', 개인정보 제3자 제공 표의 '제휴 변호사(매칭된 변호사)', 배너 banner-3 '변호사 매칭', 공지 notice-3, `about.html` '중개 시스템' |
+
+**검증**: `tsc` 229건(새 오류 0), `vite build`, `npm run lint:copy` 156개 파일 문제 0, `node --check api/contract.js`. 서버 재계산과 브라우저 `verifyContractIntegrity` 결과 일치(일치·본문 변경·수임료 변경·봉인 전·구형 봉인), 수임료 단위·이름 가림 점검 22건 통과. 개발 서버 `?verify=`(모바일 390px): 원본 일치·이름 가림·연락처 미표시·PDF 버튼 없음·취소 안내·없는 번호 안내 10건 통과.
 
 ---
 
