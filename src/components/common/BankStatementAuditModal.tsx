@@ -28,19 +28,29 @@ interface BankStatementAuditModalProps {
   isClientMode?: boolean; // 의뢰인 마이페이지용 모드 여부
 }
 
-export default function BankStatementAuditModal({
+// 닫혀 있을 때는 내부 컴포넌트를 아예 만들지 않는다.
+// (이전: 훅보다 앞에서 `if (!isOpen) return null` → 부모가 항상 렌더링한 채 열면 훅 개수가 달라져 React 오류로 화면이 멈춤)
+export default function BankStatementAuditModal(props: BankStatementAuditModalProps) {
+  if (!props.isOpen) return null;
+  return <BankStatementAuditModalInner {...props} />;
+}
+
+function BankStatementAuditModalInner({
   isOpen,
   onClose,
   clientName = '신청인',
   caseNumber = '사건 접수 준비중',
-  courtName = '서울회생법원',
+  courtName = '', // 관할 법원을 모르면 임의 법원명을 넣지 않는다
   onSyncToCrmCorrection,
   isClientMode = false
 }: BankStatementAuditModalProps) {
-  if (!isOpen) return null;
-
-  // 거래내역 목록 상태 (초기값으로 현실적인 실무 1년치 샘플 데이터 로드)
-  const [items, setItems] = useState<AuditTransactionItem[]>(() => generateSampleBankTransactions());
+  // 거래내역 목록 상태
+  // - 의뢰인 모드: 빈 목록으로 시작 (예시 거래를 의뢰인 본인 내역처럼 보여주지 않는다)
+  // - 변호사 모드: 기존처럼 예시 데이터로 시작하되 화면 곳곳에 '예시'로 표시
+  const [items, setItems] = useState<AuditTransactionItem[]>(() => (isClientMode ? [] : generateSampleBankTransactions()));
+  // 현재 목록이 예시(샘플) 데이터인지 — 파일 불러오기·붙여넣기로 실제 내역이 들어오면 false
+  const [isSampleData, setIsSampleData] = useState<boolean>(!isClientMode);
+  const courtLabel = String(courtName || '').trim() || '관할 법원 확인 필요';
 
   // 필터 상태
   const [thresholdAmount, setThresholdAmount] = useState<number>(500000); // 기본 50만원 이상
@@ -66,6 +76,9 @@ export default function BankStatementAuditModal({
 
   // 통계 계산
   const stats = useMemo(() => calculateAuditStats(items, thresholdAmount), [items, thresholdAmount]);
+  // 소명 대상이 0건이면 완료율을 100%로 보이지 않게 '-'로 표시 (빈 목록을 '완료'로 오인하지 않도록)
+  const hasAuditTargets = stats.thresholdCount > 0;
+  const resolvedRateLabel = hasAuditTargets ? `${stats.resolvedRate}%` : '-';
 
   // 필터링 및 정렬된 목록
   const filteredItems = useMemo(() => {
@@ -170,6 +183,7 @@ export default function BankStatementAuditModal({
 
       if (parsed.length > 0) {
         setItems(parsed);
+        setIsSampleData(false);
         // 사전 리스크 탐지 자동 실행
         const report = analyzePreFilingRisks(parsed, 'upload', clientName);
         setRiskReport(report);
@@ -196,6 +210,9 @@ export default function BankStatementAuditModal({
     const parsed = parseRawBankStatementText(pasteText);
     if (parsed.length > 0) {
       setItems(parsed);
+      setIsSampleData(false);
+      // 이전(예시 등) 목록으로 만든 리스크 분석이 새 내역의 결과처럼 남지 않도록 비운다
+      setRiskReport(null);
       setShowPasteArea(false);
       setPasteText('');
       toast.success(`총 ${parsed.length}건의 거래내역이 입력되었습니다.`);
@@ -204,29 +221,62 @@ export default function BankStatementAuditModal({
     }
   };
 
-  // 샘플 데이터 다시 로드
+  // 예시(샘플) 데이터 다시 로드 — 실제 거래내역이 아님을 분명히 표시한다
   const handleReloadSample = () => {
     const sample = generateSampleBankTransactions();
     setItems(sample);
+    setIsSampleData(true);
     // 샘플 데이터에도 리스크 분석 실행
     const report = analyzePreFilingRisks(sample, 'sample', clientName);
     setRiskReport(report);
-    toast.success('KB국민은행 및 신한카드 1년치 샘플 데이터(25건)를 불러왔습니다.');
+    toast.success(`예시 데이터 ${sample.length}건을 불러왔습니다. 실제 거래내역이 아닙니다.`);
   };
 
-  // 엑셀 다운로드
+  // 엑셀 다운로드 — 파일 생성이 끝난 경우에만 성공 안내
   const handleExportExcel = () => {
-    exportAuditStatementToExcel(items, clientName, caseNumber, thresholdAmount);
-    toast.success(`${clientName}_${thresholdAmount / 10000}만원이상_소명서.xlsx 파일이 다운로드되었습니다.`);
+    if (items.length === 0) {
+      toast.info('불러온 거래내역이 없습니다. 파일을 불러오거나 붙여넣은 뒤 내려받아 주세요.');
+      return;
+    }
+    try {
+      // 예시 데이터는 신청인 이름·사건번호 칸에 '예시'를 표시해 실제 소명서와 구분한다
+      exportAuditStatementToExcel(
+        items,
+        isSampleData ? `예시_${clientName}` : clientName,
+        isSampleData ? '예시 데이터(실제 거래내역 아님)' : caseNumber,
+        thresholdAmount
+      );
+      toast.success(
+        isSampleData
+          ? '예시 데이터로 만든 엑셀 파일을 내려받기 시작했습니다. 법원 제출용이 아닙니다.'
+          : '소명서 엑셀 파일을 내려받기 시작했습니다.'
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error('엑셀 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   };
 
   // CRM 보정센터 동기화
   const handleSyncToCrm = () => {
-    if (onSyncToCrmCorrection) {
-      const resolved = items.filter(i => i.isResolved && i.amount >= thresholdAmount);
+    if (!onSyncToCrmCorrection) return;
+    // 예시 거래를 의뢰인 사건의 실제 소명 내역으로 반영하지 않는다
+    if (isSampleData) {
+      toast.error('예시 데이터는 보정센터에 반영할 수 없습니다. 실제 거래내역을 불러온 뒤 다시 시도해 주세요.');
+      return;
+    }
+    const resolved = items.filter(i => i.isResolved && i.explanation.trim() && i.amount >= thresholdAmount);
+    if (resolved.length === 0) {
+      toast.info('소명을 작성한 거래가 없어 반영할 내용이 없습니다.');
+      return;
+    }
+    try {
+      // 실제 반영 결과(추가·중복 제외 건수)는 호출한 쪽(보정센터)이 안내한다
       onSyncToCrmCorrection(resolved);
-      toast.success(`소명 완료된 ${resolved.length}건이 보정센터 7대 소명표에 자동 반영되었습니다!`);
       onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error('보정센터에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 
@@ -267,7 +317,7 @@ export default function BankStatementAuditModal({
                   1차 보정명령 필수 서식
                 </span>
                 <span className="text-xs text-slate-300 font-bold">
-                  {courtName} • {caseNumber}
+                  {courtLabel} • {caseNumber}
                 </span>
                 <span className="text-xs text-indigo-300 font-semibold">
                   신청인: {clientName}
@@ -308,6 +358,19 @@ export default function BankStatementAuditModal({
           </div>
         </div>
 
+        {/* 예시 데이터 안내 — 샘플 거래를 실제 내역으로 오인하지 않도록 */}
+        {isSampleData && items.length > 0 && (
+          <div
+            role="note"
+            className="px-4 py-2.5 bg-amber-100 dark:bg-amber-950/60 border-b border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-start gap-2 shrink-0 print:hidden"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              지금 보이는 거래내역은 사용 방법을 보여 주는 예시 데이터입니다. {clientName}님의 실제 거래내역이 아니며, 엑셀/CSV 파일을 불러오거나 붙여넣으면 실제 내역으로 바뀝니다.
+            </span>
+          </div>
+        )}
+
         {/* ═══ 2. 스마트 통계 스코어보드 바 ═══ */}
         <div className="p-4 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 grid grid-cols-2 md:grid-cols-5 gap-3 shrink-0 text-xs print:hidden">
           
@@ -336,12 +399,12 @@ export default function BankStatementAuditModal({
           <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900">
             <div className="flex items-center justify-between">
               <span className="text-emerald-700 dark:text-emerald-300 block text-[11px] font-bold">소명 완료율</span>
-              <span className="font-black text-emerald-600 dark:text-emerald-400">{stats.resolvedRate}%</span>
+              <span className="font-black text-emerald-600 dark:text-emerald-400">{resolvedRateLabel}</span>
             </div>
             <div className="w-full bg-emerald-200/60 dark:bg-emerald-900/60 rounded-full h-2 mt-1.5 overflow-hidden">
               <div 
                 className="bg-emerald-600 h-full rounded-full transition-all duration-300"
-                style={{ width: `${stats.resolvedRate}%` }}
+                style={{ width: `${hasAuditTargets ? stats.resolvedRate : 0}%` }}
               />
             </div>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-1 font-medium">
@@ -398,7 +461,7 @@ export default function BankStatementAuditModal({
                 </div>
                 <div className="text-left">
                   <span className="text-xs font-black text-slate-900 dark:text-white">
-                    보정 예방 리스크 분석
+                    보정 예방 리스크 분석{isSampleData ? ' (예시 데이터 기준)' : ''}
                   </span>
                   <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     riskReport.summary.highRiskCount > 0
@@ -576,15 +639,18 @@ export default function BankStatementAuditModal({
                 <span>붙여넣기</span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleReloadSample}
-                className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                title="1년치 KB국민은행 및 신한카드 25건 샘플을 로드합니다"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>샘플 데이터 로드</span>
-              </button>
+              {/* 예시 데이터는 변호사 화면에서만 제공 (의뢰인 화면에는 예시 거래를 띄우지 않는다) */}
+              {!isClientMode && (
+                <button
+                  type="button"
+                  onClick={handleReloadSample}
+                  className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  title="사용 방법을 확인할 수 있는 예시 거래 데이터를 불러옵니다 (실제 거래내역 아님)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>예시 데이터 로드</span>
+                </button>
+              )}
             </div>
 
           </div>
@@ -706,6 +772,12 @@ export default function BankStatementAuditModal({
               </div>
 
               <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 font-serif leading-relaxed text-xs print:shadow-none print:border-none print:p-0">
+                {/* 예시 데이터로 만든 서식은 인쇄물에도 '예시'가 남도록 서식 안에 표시 */}
+                {isSampleData && items.length > 0 && (
+                  <div className="mb-4 p-2 border-2 border-red-500 text-red-600 font-sans font-black text-center text-xs">
+                    예시 데이터 — 실제 거래내역이 아니며 법원에 제출할 수 없습니다
+                  </div>
+                )}
                 <h2 className="text-xl font-black text-center mb-6 tracking-wide underline underline-offset-8">
                   [별지] 통장 및 신용카드 거래내역 소명서 ({thresholdAmount / 10000}만 원 이상)
                 </h2>
@@ -713,7 +785,7 @@ export default function BankStatementAuditModal({
                 <div className="flex justify-between border-b pb-2 mb-4 text-[11px] font-sans">
                   <div><strong>사건번호:</strong> {caseNumber}</div>
                   <div><strong>신청인(채무자):</strong> {clientName}</div>
-                  <div><strong>관할:</strong> {courtName}</div>
+                  <div><strong>관할:</strong> {courtLabel}</div>
                 </div>
 
                 <table className="w-full border-collapse border border-slate-400 text-center text-[10px] font-sans">
@@ -758,7 +830,7 @@ export default function BankStatementAuditModal({
                 <div className="mt-8 text-right font-sans text-xs">
                   <p>{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   <p className="mt-2">위 신청인(채무자): {clientName} (인)</p>
-                  <p className="mt-1 font-bold">{courtName} 귀중</p>
+                  <p className="mt-1 font-bold">{String(courtName || '').trim() || '관할 법원'} 귀중</p>
                 </div>
               </div>
             </div>
@@ -776,14 +848,46 @@ export default function BankStatementAuditModal({
                 </span>
               </div>
 
-              {filteredItems.length === 0 ? (
+              {items.length === 0 ? (
+                /* 아직 불러온 거래내역이 없을 때 (의뢰인 모드 시작 화면) — 추가 방법 안내 */
+                <div className="p-8 sm:p-12 text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-3xl space-y-3">
+                  <FileSpreadsheet className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    아직 불러온 거래내역이 없습니다.
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
+                    은행·카드사 앱이나 인터넷뱅킹에서 거래내역을 엑셀(xlsx·xls) 또는 CSV 파일로 내려받아 불러와 주세요.
+                    표를 복사했다면 &quot;붙여넣기&quot;에 그대로 붙여넣어도 됩니다.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>엑셀/CSV 파일 열기</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasteArea(true)}
+                      className="min-h-[44px] px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                      <span>붙여넣기</span>
+                    </button>
+                  </div>
+                </div>
+              ) : filteredItems.length === 0 ? (
                 <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl space-y-3 text-slate-400">
                   <AlertOctagon className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
                   <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
                     선택한 조건({thresholdAmount / 10000}만 원 이상)에 해당하는 거래가 없습니다.
                   </p>
                   <p className="text-xs text-slate-400">
-                    상단 필터에서 금액 기준을 낮추거나 &quot;샘플 데이터 로드&quot;를 눌러보세요.
+                    {isClientMode
+                      ? '상단 필터에서 금액 기준을 낮추거나 다른 조건을 선택해 보세요.'
+                      : <>상단 필터에서 금액 기준을 낮추거나 &quot;예시 데이터 로드&quot;를 눌러보세요.</>}
                   </p>
                 </div>
               ) : (
@@ -803,6 +907,11 @@ export default function BankStatementAuditModal({
                       {/* 카드 상단: 일자, 금융사, 상대방명, 금액, 위험도 뱃지 */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {isSampleData && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-black text-[10px]">
+                              예시
+                            </span>
+                          )}
                           <span className="font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                             {item.date}
                           </span>
@@ -905,8 +1014,16 @@ export default function BankStatementAuditModal({
 
         {/* ═══ 5. 하단 푸터 액션 바 ═══ */}
         <div className="p-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 text-xs">
-          <div className="text-slate-500 dark:text-slate-400">
-            {stats.resolvedCount}건 소명 완료 (진척도: {stats.resolvedRate}%) • 미소명 {stats.unresolvedCount}건
+          <div className="text-slate-500 dark:text-slate-400 space-y-1">
+            <div>
+              {stats.resolvedCount}건 소명 완료 (진척도: {resolvedRateLabel}) • 미소명 {stats.unresolvedCount}건
+            </div>
+            {/* 의뢰인 모드에는 저장·전달 기능이 없다 — 작성 내용이 보관·전달된다고 오해하지 않도록 안내 */}
+            {isClientMode && (
+              <div className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
+                이 화면에서 작성한 내용은 자동 저장되거나 변호사에게 전달되지 않습니다. 엑셀로 내려받아 보관해 주세요.
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Activity, FileText, AlertTriangle } from 'lucide-react';
 import { DEFAULT_POLICY_CONFIG_2026, getRecognizedLivingCost } from '../../rehab-chatbot-package/config/PolicyConfig';
+import { formatKoreanWon } from './ui';
 
 interface CalculatorViewProps {
   onNavigateToRequest: (data: {
@@ -21,10 +22,10 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
-      <div className="dark bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl border border-slate-800 p-6 sm:p-8 md:p-10 space-y-8 shadow-glow relative overflow-hidden transition-all duration-300">
+      <div className="dark bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white rounded-3xl shadow-2xl border border-slate-800 p-6 sm:p-8 md:p-10 space-y-8 shadow-glow relative overflow-hidden transition-all duration-300">
         {/* Background glow effects */}
         <div className="absolute left-1/3 top-1/4 w-[350px] h-[350px] bg-brand/5 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute right-1/4 bottom-1/4 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[90px] pointer-events-none"></div>
+        <div className="absolute right-1/4 bottom-1/4 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[90px] pointer-events-none"></div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6 relative z-10">
           <div className="space-y-1.5">
@@ -32,7 +33,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
               <Activity className="w-4.5 h-4.5 text-teal-400" />
               채무관리 사전 체크 계산기
             </span>
-            <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">나의 예상 변제 부담 시뮬레이션</h3>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">나의 예상 변제 부담 시뮬레이션</h1>
           </div>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-sm font-medium">
             소득과 채무, 부양가족 수에 따른 2026 인정 생계비(기준 중위소득 60%)를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
@@ -44,9 +45,9 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
           <div className="lg:col-span-7 space-y-8 flex flex-col justify-between">
             {/* Income Slider */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-base">
-                <span className="text-slate-200 font-bold">월 평균 세후 실수령 소득</span>
-                <span className="font-extrabold text-teal-300 text-lg bg-teal-400/10 px-3.5 py-1 rounded-xl border border-teal-400/20 shadow-sm">{calcIncome}만 원</span>
+              <div className="flex items-center justify-between gap-3 text-base">
+                <span className="text-slate-200 font-bold min-w-0 break-keep">월 평균 세후 실수령 소득</span>
+                <span className="shrink-0 whitespace-nowrap font-extrabold text-teal-300 text-lg bg-teal-400/10 px-3.5 py-1 rounded-xl border border-teal-400/20 shadow-sm">{calcIncome.toLocaleString()}만 원</span>
               </div>
               <input 
                 type="range" 
@@ -64,10 +65,11 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
             {/* Debt Slider */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-base">
-                <span className="text-slate-200 font-bold">총 채무액 (대출, 카드론, 투자손실 등)</span>
-                <span className="font-extrabold text-amber-300 text-lg bg-amber-400/10 px-3.5 py-1 rounded-xl border border-amber-400/20 shadow-sm">
-                  {calcDebt >= 10000 ? `${(calcDebt / 10000).toFixed(2)}억 원` : ''} ({calcDebt.toLocaleString()}만 원)
+              <div className="flex items-center justify-between gap-3 text-base">
+                <span className="text-slate-200 font-bold min-w-0 break-keep">총 채무액 (대출, 카드론, 투자손실 등)</span>
+                {/* 한 줄 고정 (이전: '1.50억 원 (15,000만 원)'이 좁은 화면에서 두 줄로 깨짐) */}
+                <span className="shrink-0 whitespace-nowrap font-extrabold text-amber-300 text-lg bg-amber-400/10 px-3.5 py-1 rounded-xl border border-amber-400/20 shadow-sm">
+                  {formatKoreanWon(calcDebt * 10000)}
                 </span>
               </div>
               <input 
@@ -95,7 +97,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                     onClick={() => setCalcDependents(num)} 
                     className={`py-3.5 rounded-2xl border text-sm sm:text-base font-bold transition-all duration-200 cursor-pointer ${
                       calcDependents === num 
-                        ? 'bg-brand border-brand text-white shadow-[0_4px_15px_rgba(114,100,255,0.3)] scale-[1.03]' 
+                        ? 'bg-brand border-brand text-white shadow-[0_4px_15px_rgba(30,58,95,0.35)] scale-[1.03]' 
                         : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
                     }`}
                   >
@@ -153,7 +155,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                   </div>
 
                   {!isBankruptcyApplicable && (
-                    <div className="bg-gradient-to-r from-brand/10 to-indigo-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
+                    <div className="bg-gradient-to-r from-brand/10 to-blue-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
                       <span className="text-xs text-slate-300 uppercase tracking-widest font-bold">입력값 기준 예상 감면 비율</span>
                       <div className="text-3xl sm:text-4xl font-extrabold text-teal-300 tracking-tight">
                         약 {reductionRate}% 조정 가능성
@@ -174,7 +176,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                         content: `채무 시뮬레이션 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n위 입력값 기준 시뮬레이션 결과를 바탕으로 변호사의 검토 의견을 받아보고 싶습니다.`,
                         step: 3
                       })}
-                      className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-4 rounded-2xl text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]"
+                      className="w-full bg-gradient-to-r from-brand to-blue-600 hover:from-brand-hover hover:to-blue-700 text-white font-bold py-4 rounded-2xl text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]"
                     >
                       <FileText className="w-5 h-5" />
                       <span>이 결과로 변호사 검토 요청하기</span>
@@ -215,7 +217,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
             })}
             className="text-base bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer transform hover:-translate-y-0.5 active:scale-[0.98]"
           >
-            내 조건으로 전문 변호사 매칭받기 &rarr;
+            내 조건으로 변호사 상담 요청하기 &rarr;
           </button>
         </div>
       </div>

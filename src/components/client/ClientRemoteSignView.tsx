@@ -1,264 +1,422 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ShieldCheck, Smartphone, CheckCircle2, AlertTriangle, 
-  FileText, Check, Loader2, Lock, ArrowRight, Building2, User,
-  ExternalLink, ChevronDown, ChevronUp, ShieldAlert, Highlighter,
-  Download, Database, MessageSquare, Mail 
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  BadgeCheck, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Circle, Copy, FileText, Lock, PenLine, Smartphone, User,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ElectronicContract } from '../../types';
-import { CONTRACT_DOC_TYPES } from '../../types';
-import { getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity, isRemoteSignServerEnabled, submitRemoteSignStage } from '../../services/contractService';
+import type { BankAccountInfo, ElectronicContract } from '../../types';
+import {
+  getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity, isRemoteSignServerEnabled, submitRemoteSignStage,
+} from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
-import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
+import { requestIdentityVerification, verifyRepresentativeMatch } from '../../services/portoneService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
-import SignatureCanvas from '../lawyer/SignatureCanvas';
-import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
-import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
+import { LEGAL_TERMS_DATA, type TermKey } from '../common/LegalContractTermsModal';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
+import { Badge, Button, Callout, Card, Modal, inputClass } from './ui';
+import { SignFooter, SignHeader, SignPage, SignStepHeading } from './sign/SignLayout';
+import SignDocReader, { type SignReaderDoc } from './sign/SignDocReader';
+import SignaturePadModal from './sign/SignaturePadModal';
+import { SignCompletedScreen, SignErrorScreen, SignLoadingScreen, type SignErrorKind } from './sign/SignStatusScreens';
+import { contractFeeWon, formatDateKo, formatWon, installmentWon } from './sign/signFormat';
+import { cn } from '../../utils/cn';
+
+/**
+ * 원격 전자서명 (?view=sign&cid=...&token=...) — 모바일 위저드 (docs/mykim_client_ui_upgrade_plan.md 3-7)
+ * 한 화면에 한 단계: 계약서 확인 → 필수 동의 → 본인인증 → (중요 조항 확인 문구) → 서명
+ * - 저장 흐름(서버 remote-sign 단계 저장, 로컬 저장, 가명→실명 전환, 체결 봉인)은 이전과 같다
+ * - 이전 화면: 긴 한 페이지, 단계 번호 불일치, 계약서 256px 상자·12px 글씨, 본인인증 실패 사유가 토스트로만 잠깐 보임
+ */
 
 interface Props {
   cid: string;
   token: string;
 }
 
+/**
+ * 본인인증 호출에 넘기는 수단 값.
+ * 포트원 호출에는 수단이 전달되지 않아 어떤 것을 골라도 같은 인증 창이 열린다(실제 수단은 인증 창에서 고른다).
+ * 그래서 화면의 수단 선택(카카오·PASS·토스·문자)을 없애고, 기록되는 표시명도 실제와 맞게 하나로 통일한다.
+ */
+const IDV_PROVIDER = 'pass' as const;
+const IDV_PROVIDER_NAME = '휴대폰 본인인증(포트원)';
+
+type StepKey = 'review' | 'terms' | 'identity' | 'confirm' | 'sign';
+const STEP_LABEL: Record<StepKey, string> = {
+  review: '계약서',
+  terms: '약관 동의',
+  identity: '본인인증',
+  confirm: '확인 문구',
+  sign: '서명',
+};
+
+const TERM_ORDER: TermKey[] = ['legalEffect', 'privacy', 'thirdParty', 'procedure'];
+/** record: 계약서에 저장되는 동의 항목 이름(서버·PDF가 이 값을 쓴다 — 바꾸지 말 것) */
+const TERM_COPY: Record<TermKey, { title: string; desc: string; record: string }> = {
+  legalEffect: {
+    title: '전자서명으로 계약하는 데 동의',
+    desc: '이 계약을 전자서명으로 맺는 데 동의해요. 전자서명의 효력은 전자서명법 제3조에 따라요.',
+    record: '전자서명 효력 합의',
+  },
+  privacy: {
+    title: '개인정보 수집·이용 동의',
+    desc: '사건 대리와 법원 서류 작성을 위해 개인정보를 수집·이용하는 데 동의해요.',
+    record: '개인정보 수집·이용',
+  },
+  thirdParty: {
+    title: '개인정보 제3자 제공 동의',
+    desc: '사건 접수와 심사를 위해 법원·채권 금융기관 등에 정보를 제공하는 데 동의해요.',
+    record: '개인정보 제3자 제공',
+  },
+  procedure: {
+    title: '사건 진행 절차와 유의사항 확인',
+    desc: '법원 판단 결과는 보장되지 않는다는 점, 예상 기간, 면책 불허가 사유 등을 확인했어요.',
+    record: '사건 진행 절차 및 유의사항',
+  },
+};
+
+const EMPTY_AGREE: Record<TermKey, boolean> = { legalEffect: false, privacy: false, thirdParty: false, procedure: false };
+
+/** 브라우저 네트워크 오류 문구(영문)를 알기 쉬운 문장으로 */
+function friendlyError(msg: string | undefined | null, fallback: string): string {
+  if (!msg) return fallback;
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+    return '인터넷 연결이 불안정해 요청을 보내지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  return msg;
+}
+
+const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+
 export default function ClientRemoteSignView({ cid, token }: Props) {
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [contract, setContract] = useState<ElectronicContract | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<SignErrorKind | null>(null);
+  const [expiredAt, setExpiredAt] = useState<string | undefined>();
 
-  // 4대 법적 효력 약관 동의 상태
-  const [agreePrivacy, setAgreePrivacy] = useState(false);
-  const [agreeThirdParty, setAgreeThirdParty] = useState(false);
-  const [agreeProcedure, setAgreeProcedure] = useState(false);
-  const [agreeLegalEffect, setAgreeLegalEffect] = useState(false);
-  const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
-  const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
+  const [stepIdx, setStepIdx] = useState(0);
+  const [agree, setAgree] = useState<Record<TermKey, boolean>>(EMPTY_AGREE);
+  const [termsAttempted, setTermsAttempted] = useState(false);
+  const [readDocIds, setReadDocIds] = useState<string[]>([]);
+  const [reader, setReader] = useState<{ kind: 'doc'; id: string } | { kind: 'term'; key: TermKey } | null>(null);
 
-  // 본인인증 및 수단 선택 (카카오페이 / PASS 앱 / 토스 / 문자 SMS - 포트원 공식 연동)
-  const [authProvider, setAuthProvider] = useState<'kakao' | 'pass' | 'toss' | 'sms'>('kakao');
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [repMatchMessage, setRepMatchMessage] = useState<string | null>(null);
+  const [identityNote, setIdentityNote] = useState<string | null>(null);
+  const [identityError, setIdentityError] = useState<string | null>(null);
 
-  // 블록체인 검증 모달 및 PDF 다운로드 상태
+  const [userConfirmations, setUserConfirmations] = useState<Record<string, string>>({});
+  const [confirmAttempted, setConfirmAttempted] = useState(false);
+
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signAttempted, setSignAttempted] = useState(false);
+  const [padOpen, setPadOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [completed, setCompleted] = useState(false);
+  const [justSubmitted, setJustSubmitted] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  // 고객 직접 확약 타이핑 입력 상태 (문서 ID -> 입력한 텍스트)
-  const [userConfirmations, setUserConfirmations] = useState<Record<string, string>>({});
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const doneHeadingRef = useRef<HTMLHeadingElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
+  const signButtonRef = useRef<HTMLButtonElement>(null);
+  const stepMountedRef = useRef(false);
 
-  // 서명 상태
-  const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false); // 리걸플로 벤치마킹: 최종 체결 확정 컨펌 팝업
-
-  // 문서 상세 펼침
-  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchContract() {
-      setLoading(true);
-      try {
-        const found = await getContractForRemoteSign(cid, token);
-        if (!found) {
-          setError('해당 전자계약서를 찾을 수 없거나 유효하지 않은 서명 링크입니다. 링크를 다시 확인해주세요.');
-          setLoading(false);
-          return;
-        }
-
-        // 토큰 검증
-        if (found.remoteSignToken && found.remoteSignToken !== token) {
-          setError('유효하지 않은 서명 링크입니다. 담당 변호사에게 재발송을 요청해 주세요.');
-          setLoading(false);
-          return;
-        }
-
-        // 만료 링크 차단 (서명 전 계약만 — 서명 완료본은 확인 화면 열람 허용)
-        const alreadySigned = found.status === 'completed' || found.documents.some(d => d.included && d.clientSignature);
-        if (!alreadySigned && found.remoteSignExpiresAt && new Date(found.remoteSignExpiresAt).getTime() < Date.now()) {
-          setError('서명 기한이 지난 링크입니다. 담당 변호사에게 새 서명 링크를 요청해 주세요.');
-          setLoading(false);
-          return;
-        }
-
-        // 이미 완료된 계약인지 확인
-        const alreadyClientSigned = found.documents.some(d => d.included && d.clientSignature);
-        if (found.status === 'completed' || alreadyClientSigned) {
-          setCompleted(true);
-        }
-
-        if (found.identityVerification) {
-          setVerified(true);
-        }
-
-        setContract(found);
-      } catch (e: any) {
-        setError(e?.message || '계약서 정보를 불러오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
+  // ── 계약서 불러오기 (오류 유형별 화면) ──
+  const load = useCallback(async (mode: 'initial' | 'retry' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setLoading(true);
+    if (mode === 'retry') setRetrying(true);
+    try {
+      if (!cid || !token) {
+        setErrorKind('invalid_link');
+        return;
       }
+      const found = await getContractForRemoteSign(cid, token);
+      if (!found) {
+        setErrorKind(isOffline() ? 'offline' : 'not_found');
+        return;
+      }
+      // 토큰 검증
+      if (found.remoteSignToken && found.remoteSignToken !== token) {
+        setErrorKind('not_found');
+        return;
+      }
+      // 변호사가 취소한 계약은 서명·열람 대신 취소 안내
+      if (found.status === 'cancelled') {
+        setErrorKind('cancelled');
+        return;
+      }
+      const included = (found.documents || []).filter(d => d.included);
+      const alreadySigned = found.status === 'completed' || included.some(d => d.clientSignature);
+      // 만료 링크 차단 (서명 전 계약만 — 서명 완료본은 확인 화면 열람 허용)
+      if (!alreadySigned && found.remoteSignExpiresAt && new Date(found.remoteSignExpiresAt).getTime() < Date.now()) {
+        setExpiredAt(found.remoteSignExpiresAt);
+        setErrorKind('expired');
+        return;
+      }
+      if (!alreadySigned && included.length === 0) {
+        setErrorKind('no_documents');
+        return;
+      }
+      setErrorKind(null);
+      setContract(found);
+      setCompleted(alreadySigned);
+      if (found.identityVerification) setVerified(true);
+    } catch (e) {
+      console.warn('[remote-sign] 계약서 불러오기 실패', e);
+      setErrorKind(isOffline() ? 'offline' : 'load_failed');
+    } finally {
+      setLoading(false);
+      setRetrying(false);
     }
-
-    fetchContract();
   }, [cid, token]);
 
+  useEffect(() => {
+    void load('initial');
+  }, [load]);
+
+  useEffect(() => {
+    const prev = document.title;
+    document.title = '전자계약 서명 | my김변';
+    return () => {
+      document.title = prev;
+    };
+  }, []);
+
+  // 고정 머리(브랜드+진행 단계)·하단 액션 바에 포커스 대상이 가려지지 않게 (WCAG 2.4.11)
+  useEffect(() => {
+    const html = document.documentElement;
+    const prevTop = html.style.scrollPaddingTop;
+    const prevBottom = html.style.scrollPaddingBottom;
+    html.style.scrollPaddingTop = '7.5rem';
+    html.style.scrollPaddingBottom = 'calc(6.5rem + env(safe-area-inset-bottom))';
+    return () => {
+      html.style.scrollPaddingTop = prevTop;
+      html.style.scrollPaddingBottom = prevBottom;
+    };
+  }, []);
+
+  // 단계가 바뀌면 맨 위로 + 단계 제목에 포커스
+  useEffect(() => {
+    if (!stepMountedRef.current) {
+      stepMountedRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0 });
+    const t = window.setTimeout(() => headingRef.current?.focus({ preventScroll: true }), 30);
+    return () => window.clearTimeout(t);
+  }, [stepIdx]);
+
+  // 방금 제출해 완료 화면으로 바뀌면 완료 제목에 포커스
+  useEffect(() => {
+    if (!completed || !justSubmitted) return;
+    window.scrollTo({ top: 0 });
+    const t = window.setTimeout(() => doneHeadingRef.current?.focus({ preventScroll: true }), 30);
+    return () => window.clearTimeout(t);
+  }, [completed, justSubmitted]);
+
+  // 인증·제출 오류가 생기면 오류 안내가 보이게
+  useEffect(() => {
+    if (!identityError && !submitError) return;
+    const t = window.setTimeout(() => alertRef.current?.scrollIntoView({ block: 'nearest' }), 30);
+    return () => window.clearTimeout(t);
+  }, [identityError, submitError]);
+
+  // ── 파생 값 ──
+  const includedDocs = useMemo(() => (contract?.documents || []).filter(d => d.included), [contract]);
+  const confirmationDocs = useMemo(() => includedDocs.filter(d => (d.requiredConfirmationText || '').trim()), [includedDocs]);
+  const steps: StepKey[] = confirmationDocs.length > 0
+    ? ['review', 'terms', 'identity', 'confirm', 'sign']
+    : ['review', 'terms', 'identity', 'sign'];
+  const safeIdx = Math.min(stepIdx, steps.length - 1);
+  const stepKey = steps[safeIdx];
+
+  const agreedCount = TERM_ORDER.filter(k => agree[k]).length;
+  const allAgreed = agreedCount === TERM_ORDER.length;
+  const isConfirmationOk = (d: { id: string; requiredConfirmationText?: string }) =>
+    (userConfirmations[d.id] || '').trim() === (d.requiredConfirmationText || '').trim();
+  const allConfirmationsMatch = confirmationDocs.every(isConfirmationOk);
+  const unreadCount = includedDocs.filter(d => !readDocIds.includes(d.id)).length;
+  const lawyerAlreadySigned = !!contract?.documents.some(d => d.lawyerSignature);
+  const isRealNameConversion = !!contract?.realNameConversionPending && !contract?.isBusiness;
+  const signerName = contract?.clientName || '의뢰인';
+
+  const readerDoc: SignReaderDoc | null = useMemo(() => {
+    if (!reader || !contract) return null;
+    if (reader.kind === 'doc') {
+      const d = includedDocs.find(x => x.id === reader.id);
+      if (!d) return null;
+      return {
+        kind: 'contract',
+        title: d.title,
+        content: d.content,
+        confirmationText: (d.requiredConfirmationText || '').trim() || undefined,
+      };
+    }
+    return {
+      kind: 'terms',
+      title: TERM_COPY[reader.key].title,
+      content: LEGAL_TERMS_DATA[reader.key].getContent({
+        firmName: contract.lawFirmName,
+        clientName: contract.clientName,
+        lawyerName: contract.lawyerName,
+      }),
+    };
+  }, [reader, contract, includedDocs]);
+
+  const openDoc = (id: string) => {
+    setReader({ kind: 'doc', id });
+    setReadDocIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  // ── 단계 이동 ──
+  const goBack = () => setStepIdx(i => Math.max(0, Math.min(i, steps.length - 1) - 1));
+  const goNext = () => {
+    if (stepKey === 'terms' && !allAgreed) {
+      setTermsAttempted(true);
+      const first = TERM_ORDER.find(k => !agree[k]);
+      if (first) document.getElementById(`sign-term-${first}`)?.focus();
+      return;
+    }
+    if (stepKey === 'identity' && !verified) return;
+    if (stepKey === 'confirm' && !allConfirmationsMatch) {
+      setConfirmAttempted(true);
+      const first = confirmationDocs.find(d => !isConfirmationOk(d));
+      if (first) document.getElementById(`sign-confirm-${first.id}`)?.focus();
+      return;
+    }
+    setStepIdx(Math.min(steps.length - 1, safeIdx + 1));
+  };
+
+  // ── 본인인증 (포트원) ──
   const handleIdentityVerification = async () => {
-    if (!contract) return;
+    if (!contract || verifying) return;
     setVerifying(true);
-
-    // ── 서버 저장 경로 (운영): 포트원 인증 → 서버가 단건 조회로 실명 확인 후 실명 전환/이름 대조·저장 ──
-    if (isRemoteSignServerEnabled) {
-      const expected = contract.realNameConversionPending && !contract.isBusiness
-        ? undefined
-        : (contract.isBusiness ? (contract.businessInfo?.representativeName || contract.clientName) : contract.clientName);
-      const idv = await requestIdentityVerification(expected, authProvider, { contractId: contract.id, remoteSignToken: token });
-      if (!idv.success) {
-        setVerifying(false);
-        toast.error(idv.error || '본인인증에 실패했습니다.');
+    setIdentityError(null);
+    setIdentityNote(null);
+    try {
+      // ── 서버 저장 경로 (운영): 포트원 인증 → 서버가 단건 조회로 실명 확인 후 실명 전환/이름 대조·저장 ──
+      if (isRemoteSignServerEnabled) {
+        const expected = isRealNameConversion
+          ? undefined
+          : (contract.isBusiness ? (contract.businessInfo?.representativeName || contract.clientName) : contract.clientName);
+        const idv = await requestIdentityVerification(expected, IDV_PROVIDER, { contractId: contract.id, remoteSignToken: token });
+        if (!idv.success) {
+          setIdentityError(friendlyError(idv.error, '본인인증을 마치지 못했어요. 다시 시도해 주세요.'));
+          return;
+        }
+        const saved = await submitRemoteSignStage({
+          stage: 'identity',
+          contractId: contract.id,
+          remoteSignToken: token,
+          identityVerificationId: idv.txId,
+          provider: IDV_PROVIDER,
+          providerName: IDV_PROVIDER_NAME,
+        });
+        if (saved.ok === false) {
+          setIdentityError(friendlyError(saved.error, '인증 결과를 저장하지 못했어요. 다시 시도해 주세요.'));
+          return;
+        }
+        setContract(saved.contract);
+        if (isRealNameConversion) setIdentityNote(`${saved.contract.clientName}님 명의로 계약서가 작성되었어요.`);
+        setVerified(true);
+        toast.success('본인인증을 마쳤어요.');
         return;
       }
-      const saved = await submitRemoteSignStage({
-        stage: 'identity',
-        contractId: contract.id,
-        remoteSignToken: token,
-        identityVerificationId: idv.txId,
-        provider: authProvider,
-        providerName: idv.providerName,
-      });
-      setVerifying(false);
-      if (saved.ok === false) {
-        setRepMatchMessage(saved.error);
-        toast.error(saved.error);
+
+      // ── 스텔스 가명 → 실명 전환 계약 (고객이 제안서에서 직접 시작한 계약) ──
+      // 계약서의 이름은 가명이므로 이름 대조 대신, 본인인증으로 확인된 실명·연락처를 계약 당사자로 확정한다.
+      if (isRealNameConversion) {
+        const result = await requestIdentityVerification(undefined, IDV_PROVIDER, { contractId: contract.id, remoteSignToken: token });
+        if (!result.success) {
+          setIdentityError(friendlyError(result.error, '본인인증을 마치지 못했어요. 다시 시도해 주세요.'));
+          return;
+        }
+        const realName = (result.name || '').trim();
+        if (!realName || realName === '인증회원') {
+          setIdentityError('본인인증 결과에서 실명을 확인하지 못했어요. 다시 시도해 주세요.');
+          return;
+        }
+        const providerName = result.isDemo ? `${IDV_PROVIDER_NAME} — 개발 환경` : IDV_PROVIDER_NAME;
+        const aliasName = contract.clientName;
+        const realPhone = result.phoneNumber || contract.clientPhone || '';
+        const replaceAlias = (text: string) =>
+          aliasName && aliasName !== realName ? text.split(aliasName).join(realName) : text;
+
+        let converted: ElectronicContract = {
+          ...contract,
+          clientName: realName,
+          clientPhone: realPhone,
+          documents: contract.documents.map(d => ({ ...d, content: replaceAlias(d.content) })),
+          identityVerification: { ...result, providerName },
+          authorityStatus: 'REPRESENTATIVE_VERIFIED',
+          realNameConversionPending: false,
+        };
+        converted = addAuditLog(converted, `본인인증(${providerName}) 완료 — 가명 계약 당사자를 인증된 실명으로 전환`, 'client');
+        const savedOk = await saveContract(converted).catch(() => false);
+        if (!savedOk) {
+          setIdentityError('인증 정보를 저장하지 못했어요. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.');
+          return;
+        }
+        setContract(converted);
+        setIdentityNote(`${realName}님 명의로 계약서가 작성되었어요.`);
+        setVerified(true);
+        toast.success('본인인증을 마쳤어요.');
         return;
       }
-      setContract(saved.contract);
-      setRepMatchMessage(`${saved.contract.clientName}님 본인인증을 확인했습니다.`);
-      setVerified(true);
-      toast.success('본인인증이 완료되었습니다.');
-      return;
-    }
 
-    // ── 스텔스 가명 → 실명 전환 계약 (고객이 제안서에서 직접 시작한 계약) ──
-    // 계약서의 이름은 가명이므로 이름 대조 대신, 본인인증으로 확인된 실명·연락처를 계약 당사자로 확정한다.
-    if (contract.realNameConversionPending && !contract.isBusiness) {
-      const result = await requestIdentityVerification(undefined, authProvider, { contractId: contract.id, remoteSignToken: token });
-      setVerifying(false);
+      const expectedName = contract.isBusiness
+        ? (contract.businessInfo?.representativeName || contract.clientName)
+        : contract.clientName;
+      // 포트원(PortOne V2) 본인인증
+      const result = await requestIdentityVerification(expectedName, IDV_PROVIDER, { contractId: contract.id, remoteSignToken: token });
       if (!result.success) {
-        toast.error(result.error || '본인인증에 실패했습니다.');
+        setIdentityError(friendlyError(result.error, '본인인증을 마치지 못했어요. 다시 시도해 주세요.'));
         return;
       }
-      const realName = (result.name || '').trim();
-      if (!realName || realName === '인증회원') {
-        toast.error('본인인증 결과에서 실명을 확인하지 못했습니다. 다른 인증 수단으로 다시 시도해 주세요.');
-        return;
-      }
-      const aliasName = contract.clientName;
-      const realPhone = result.phoneNumber || contract.clientPhone || '';
-      const replaceAlias = (text: string) =>
-        aliasName && aliasName !== realName ? text.split(aliasName).join(realName) : text;
-
-      let converted: ElectronicContract = {
-        ...contract,
-        clientName: realName,
-        clientPhone: realPhone,
-        documents: contract.documents.map(d => ({ ...d, content: replaceAlias(d.content) })),
-        identityVerification: result,
-        authorityStatus: 'REPRESENTATIVE_VERIFIED',
-        realNameConversionPending: false,
-      };
-      converted = addAuditLog(
-        converted,
-        `본인인증(${result.providerName || result.method}) 완료 — 가명 계약 당사자를 인증된 실명으로 전환`,
-        'client'
-      );
-      const savedOk = await saveContract(converted).catch(() => false);
-      if (!savedOk) {
-        toast.error('인증 정보를 저장하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.');
-        return;
-      }
-      setContract(converted);
-      setRepMatchMessage(`${realName}님 명의로 계약서가 작성되었습니다.`);
-      setVerified(true);
-      toast.success('본인인증이 완료되었습니다. 계약서가 실명으로 작성되었습니다.');
-      return;
-    }
-
-    const expectedName = contract.isBusiness 
-      ? (contract.businessInfo?.representativeName || contract.clientName) 
-      : contract.clientName;
-
-    // 포트원(PortOne V2) 공식 스마트폰 본인인증 & 전자서명
-    const result = await requestIdentityVerification(expectedName, authProvider, { contractId: contract.id, remoteSignToken: token });
-    setVerifying(false);
-
-    if (result.success) {
       // 2단계 대표자 일치 교차 검증
-      const match = verifyRepresentativeMatch(
-        expectedName,
-        result.name,
-        contract.clientPhone,
-        result.phoneNumber || result.phoneMasked
-      );
-      setRepMatchMessage(match.message);
-
+      const match = verifyRepresentativeMatch(expectedName, result.name, contract.clientPhone, result.phoneNumber || result.phoneMasked);
       if (!match.matched) {
-        toast.error(match.message);
+        setIdentityError(match.message);
         return;
       }
-
-      const updatedContract = {
-        ...contract,
-        identityVerification: result,
-        authorityStatus: match.status,
-      };
-      setContract(updatedContract);
+      const providerName = result.isDemo ? `${IDV_PROVIDER_NAME} — 개발 환경` : IDV_PROVIDER_NAME;
+      setContract({ ...contract, identityVerification: { ...result, providerName }, authorityStatus: match.status });
       setVerified(true);
-      toast.success('본인인증이 완료되었습니다.');
-    } else {
-      toast.error(result.error || '본인인증에 실패했습니다.');
+      toast.success('본인인증을 마쳤어요.');
+    } catch (e: any) {
+      setIdentityError(friendlyError(e?.message, '본인인증 중 문제가 생겼어요. 다시 시도해 주세요.'));
+    } finally {
+      setVerifying(false);
     }
   };
 
+  // ── 서명 제출 ──
   const handleSubmitSignature = async () => {
-    if (!contract || !signatureData) {
-      toast.error('서명을 먼저 진행해 주세요.');
+    if (!contract || submitting) return;
+    if (!signatureData) {
+      setConfirmOpen(false);
+      setSignAttempted(true);
       return;
     }
-    if (!agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect) {
-      toast.error('4대 법적 필수 동의 항목에 모두 체크해 주세요.');
-      return;
-    }
-    if (!verified) {
-      toast.error('스마트폰 본인인증을 먼저 완료해 주세요.');
+    if (!allAgreed || !verified || !allConfirmationsMatch) {
+      setConfirmOpen(false);
+      setSubmitError('앞 단계에서 끝나지 않은 항목이 있어요. [이전]으로 돌아가 확인해 주세요.');
       return;
     }
 
-    // 직접 확약 타이핑 문구 검증 (약관규제법 제3조 설명의무 부인방지)
-    const docsWithRequiredConfirmation = contract.documents.filter(d => d.included && d.requiredConfirmationText);
-    for (const doc of docsWithRequiredConfirmation) {
-      const userText = (userConfirmations[doc.id] || '').trim();
-      const targetText = (doc.requiredConfirmationText || '').trim();
-      if (userText !== targetText) {
-        toast.error(`[${doc.title}] 중요 조항 직접 확인 문구를 정확히 입력해 주세요.`);
-        return;
-      }
-    }
-
-    const agreedTerms = [
-      agreeLegalEffect && '전자서명 효력 합의',
-      agreePrivacy && '개인정보 수집·이용',
-      agreeThirdParty && '개인정보 제3자 제공',
-      agreeProcedure && '사건 진행 절차 및 유의사항',
-    ].filter(Boolean) as string[];
-
-    // ── 서버 저장 경로 (운영): 서버가 토큰·본인인증 여부·확약 문구를 재검증하고 서명을 1회만 저장 ──
-    if (isRemoteSignServerEnabled) {
-      setSubmitting(true);
-      try {
+    const agreedTerms = TERM_ORDER.filter(k => agree[k]).map(k => TERM_COPY[k].record);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      // ── 서버 저장 경로 (운영): 서버가 토큰·본인인증 여부·확약 문구를 재검증하고 서명을 1회만 저장 ──
+      if (isRemoteSignServerEnabled) {
         const confirmations: Record<string, string> = {};
-        for (const d of docsWithRequiredConfirmation) confirmations[d.id] = (userConfirmations[d.id] || '').trim();
+        for (const d of confirmationDocs) confirmations[d.id] = (userConfirmations[d.id] || '').trim();
         const saved = await submitRemoteSignStage({
           stage: 'signature',
           contractId: contract.id,
@@ -268,7 +426,13 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           agreedTerms,
         });
         if (saved.ok === false) {
-          toast.error(saved.error);
+          setConfirmOpen(false);
+          if (/이미 서명/.test(saved.error)) {
+            toast.info('이미 서명이 제출된 계약이에요. 최신 상태로 다시 불러왔어요.');
+            await load('refresh');
+            return;
+          }
+          setSubmitError(friendlyError(saved.error, '서명을 제출하지 못했어요. 잠시 후 다시 시도해 주세요.'));
           return;
         }
         try {
@@ -277,16 +441,12 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           console.warn('CRM sync warning on client sign:', crmErr);
         }
         setContract(saved.contract);
+        setConfirmOpen(false);
+        setJustSubmitted(true);
         setCompleted(true);
-        toast.success(saved.contract.status === 'completed' ? '전자서명을 제출했고 계약이 체결되었습니다.' : '전자서명을 제출했습니다. 담당 변호사 서명 후 체결이 완료됩니다.');
-      } finally {
-        setSubmitting(false);
+        return;
       }
-      return;
-    }
 
-    setSubmitting(true);
-    try {
       const now = new Date().toISOString();
       const updatedDocs = contract.documents.map(d => {
         if (!d.included) return d;
@@ -307,25 +467,24 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         intentVerification: { scrollCompleted: false, agreedTerms },
       };
 
-      const confirmationLogs = docsWithRequiredConfirmation.map(d => `[${d.title}: '${userConfirmations[d.id]}']`).join(', ');
-      const auditMsg = confirmationLogs 
+      const confirmationLogs = confirmationDocs.map(d => `[${d.title}: '${userConfirmations[d.id]}']`).join(', ');
+      const auditMsg = confirmationLogs
         ? `위임인(${contract.clientName}) 모바일 본인인증, 중요조항 직접자필확약(${confirmationLogs}) 및 전자서명 제출`
         : `위임인(${contract.clientName}) 모바일 스마트폰 본인인증 및 전자서명 제출`;
-
       updatedContract = addAuditLog(updatedContract, auditMsg, 'client');
 
-      // 변호사 서명이 이미 있는 경우 즉시 최종 3중 타임스탬프 체결 봉인
+      // 변호사 서명이 이미 있는 경우 즉시 최종 체결 봉인
       const lawyerSig = contract.documents.find(d => d.lawyerSignature)?.lawyerSignature;
       if (lawyerSig) {
         updatedContract = await finalizeContractWithIntegrity(updatedContract, signatureData, lawyerSig);
       } else {
         const savedOk = await saveContract(updatedContract);
         if (!savedOk) {
-          throw new Error('서명을 서버에 저장하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 제출해 주세요.');
+          throw new Error('서명을 서버에 저장하지 못했어요. 네트워크 상태를 확인한 뒤 다시 제출해 주세요.');
         }
       }
 
-      // CRM 상태 실시간 연동 (수임 계약 체결 반영)
+      // CRM 상태 연동 (수임 계약 체결 반영)
       try {
         await syncContractToCrm(updatedContract.clientId, updatedContract, {
           id: 'client',
@@ -337,896 +496,779 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       }
 
       setContract(updatedContract);
+      setConfirmOpen(false);
+      setJustSubmitted(true);
       setCompleted(true);
-      toast.success(updatedContract.status === 'completed' ? '전자서명을 제출했고 계약이 체결되었습니다.' : '전자서명을 제출했습니다. 담당 변호사 서명 후 체결이 완료됩니다.');
     } catch (e: any) {
-      toast.error(e?.message || '서명 제출 중 오류가 발생했습니다.');
+      setConfirmOpen(false);
+      setSubmitError(friendlyError(e?.message, '서명을 제출하지 못했어요. 잠시 후 다시 시도해 주세요.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#1E3A5F] mb-3" />
-        <p className="text-sm font-bold text-slate-600">안전한 전자계약서를 불러오는 중입니다...</p>
-      </div>
-    );
-  }
+  const handleDownloadPdf = async () => {
+    if (!contract || downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      await generateCourtSubmissionPdf(contract);
+    } catch (e) {
+      console.warn('[remote-sign] PDF 생성 실패', e);
+      toast.error('PDF를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
-  if (error || !contract) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white p-6 rounded-2xl border border-rose-200 shadow-sm max-w-md w-full text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">계약서 열람 불가</h2>
-          <p className="text-sm text-slate-600">{error || '계약서를 찾을 수 없습니다.'}</p>
-          <a
-            href="/"
-            className="inline-block px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
-          >
-            홈으로 이동
-          </a>
-        </div>
-      </div>
-    );
+  // ── 화면 분기 ──
+  if (loading) return <SignLoadingScreen />;
+  if (errorKind) {
+    return <SignErrorScreen kind={errorKind} expiresAt={expiredAt} onRetry={() => void load('retry')} retrying={retrying} />;
   }
+  if (!contract) return <SignErrorScreen kind="load_failed" onRetry={() => void load('retry')} retrying={retrying} />;
 
   if (completed) {
-    // 양 당사자 서명 여부: 의뢰인 서명만 있으면 '체결 완료'가 아니라 '서명 제출 완료(변호사 서명 대기)'
-    const isFullySigned = contract.status === 'completed';
-    const finalHash = contract.documentHashes?.finalHash;
-    const anchor = contract.blockchainAnchor;
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white p-7 md:p-8 rounded-3xl border border-emerald-200 shadow-xl max-w-md w-full text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-scaleUp">
-            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
-          </div>
-          <div>
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" aria-hidden="true" /> {isFullySigned ? '전자계약 체결 완료' : '의뢰인 서명 제출 완료'}
-            </span>
-            <h2 className="text-xl font-black text-slate-900 mt-2">
-              {isFullySigned ? '사건위임계약 체결 완료' : '서명이 제출되었습니다'}
-            </h2>
-            <p className="text-xs text-slate-600 mt-1">
-              {isFullySigned
-                ? `${contract.clientName} 의뢰인님과 담당 변호사의 서명이 모두 완료되었습니다.`
-                : `${contract.clientName} 의뢰인님의 서명이 저장되었습니다. 담당 변호사가 서명하면 계약이 체결되고 안내해 드립니다.`}
-            </p>
-          </div>
-
-          {/* 전자지문(SHA-256) — 실제 값이 있을 때만 표시. 블록체인 기록은 실제 온체인 전송된 경우에만 표기 */}
-          {finalHash && (
-            <div className="bg-slate-900 text-slate-100 p-3.5 rounded-2xl border border-slate-700 text-left text-[11px] space-y-1.5 font-sans">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-white flex items-center gap-1.5 text-xs">
-                  <Database className="w-4 h-4 text-blue-300" aria-hidden="true" />
-                  <span>체결본 전자지문 (SHA-256)</span>
-                </span>
-                {anchor?.isRealOnChain && (
-                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50 whitespace-nowrap">
-                    블록체인 기록됨
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                체결 시점의 계약서 내용과 서명으로 만든 고유 값입니다. 나중에 계약서 내용이 바뀌면 이 값이 달라져 변경 여부를 확인할 수 있습니다.
-              </p>
-              <div className="font-mono text-[10px] text-blue-200 pt-1 border-t border-slate-700 break-all">
-                {finalHash}
-              </div>
-              {anchor?.isRealOnChain && anchor.txHash && (
-                <div className="font-mono text-[10px] text-slate-300 truncate">Tx: {anchor.txHash}</div>
-              )}
-            </div>
-          )}
-
-          <div className="bg-slate-50 p-4 rounded-xl text-left text-xs space-y-2 border border-slate-200">
-            <div className="flex justify-between">
-              <span className="text-slate-500">계약 번호</span>
-              <span className="font-mono font-bold text-slate-800">{contract.id}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">수임 법무법인</span>
-              <span className="font-bold text-slate-800">{contract.lawFirmName} ({contract.lawyerName} 변호사)</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">본인인증 방식</span>
-              <span className="font-bold text-indigo-700">{contract.identityVerification?.providerName || contract.identityVerification?.carrier || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">체결 상태</span>
-              <span className="font-bold text-slate-800">{isFullySigned ? '양 당사자 서명 완료' : '변호사 서명 대기'}</span>
-            </div>
-          </div>
-
-          {/* 법원 제출용 통합 PDF 다운로드 및 검증 액션 */}
-          <div className="space-y-2 pt-1">
-            <button
-              type="button"
-              onClick={async () => {
-                setDownloadingPdf(true);
-                try {
-                  await generateCourtSubmissionPdf(contract);
-                } finally {
-                  setDownloadingPdf(false);
-                }
-              }}
-              disabled={downloadingPdf}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer disabled:opacity-50 min-h-[44px]"
-            >
-              <Download className="w-4 h-4" />
-              <span>{downloadingPdf ? '법원제출용 PDF 패키지 생성 중...' : '📄 법원 제출용 통합 PDF 다운로드'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowVerifyModal(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer min-h-[42px]"
-            >
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>전자지문(원본) 검증 열기</span>
-            </button>
-          </div>
-
-          <a
-            href="/"
-            className="flex items-center justify-center w-full min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-          >
-            플랫폼 홈으로 이동
-          </a>
-        </div>
-
-        {/* 블록체인 공공 검증 모달 */}
-        <ContractPublicVerifierModal
-          isOpen={showVerifyModal}
-          onClose={() => setShowVerifyModal(false)}
+      <>
+        <SignCompletedScreen
           contract={contract}
+          justSubmitted={justSubmitted}
+          downloadingPdf={downloadingPdf}
+          onDownloadPdf={handleDownloadPdf}
+          onOpenVerify={() => setShowVerifyModal(true)}
+          headingRef={doneHeadingRef}
         />
-      </div>
+        <ContractPublicVerifierModal isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)} contract={contract} />
+      </>
     );
   }
 
-  const includedDocs = contract.documents.filter(d => d.included);
-  const baseFee = (contract.totalFee || 0) * 10000;
+  // ── 비용 요약 ──
+  const baseFee = contractFeeWon(contract.totalFee);
   const vatAmount = contract.vatIncluded ? Math.round(baseFee * 0.1) : 0;
   const totalFeeWithVat = baseFee + vatAmount;
-
-  const credCount = contract.courtCosts?.creditorCount || 0;
-  const deliveryFee = contract.courtCosts?.deliveryFee || 0;
-  const stampFee = contract.courtCosts?.stampFee || 0;
-  const debtCertFee = contract.courtCosts?.debtCertFee || 0;
-  const miscFee = contract.courtCosts?.miscFee || 0;
-  const provisionalDeposit = contract.courtCosts?.provisionalDeposit || 0;
-  const totalCourtCosts = deliveryFee + stampFee + debtCertFee + miscFee + provisionalDeposit;
+  const cc = contract.courtCosts;
+  const creditorCount = cc?.creditorCount || 0;
+  const courtRows = [
+    { label: `송달료${creditorCount ? ` (채권자 ${creditorCount}곳 기준)` : ''}`, amount: cc?.deliveryFee || 0 },
+    { label: '인지대', amount: cc?.stampFee || 0 },
+    { label: `부채증명서 발급 대행비${creditorCount ? ` (${creditorCount}곳)` : ''}`, amount: cc?.debtCertFee || 0 },
+    { label: '변제예납금(법원 보관금)', amount: cc?.provisionalDeposit || 0 },
+    { label: '기타 공과금·실비', amount: cc?.miscFee || 0 },
+  ].filter(r => r.amount > 0);
+  const totalCourtCosts = courtRows.reduce((s, r) => s + r.amount, 0);
   const grandTotal = totalFeeWithVat + totalCourtCosts;
+  const feeSchedule = (contract.feeSchedule || []).filter(Boolean);
 
-  // 4단계 서명 진행 상태 계산 (리걸플로 벤치마킹)
-  const isStep1Done = true; // 계약내용 확인
-  const isStep2Done = agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect; // 약관동의
-  const isStep3Done = verified; // 스마트폰 본인인증
-  const isStep4Done = Boolean(signatureData); // 전자서명
-  // 중요 조항 직접 입력이 모두 일치해야 서명 패드·제출 버튼 활성화
-  const typedConfirmationsOk = includedDocs
-    .filter(d => d.requiredConfirmationText)
-    .every(d => (userConfirmations[d.id] || '').trim() === (d.requiredConfirmationText || '').trim());
+  const sf = contract.successFee;
+  const successFeeText = sf?.enabled
+    ? sf.type === 'fixed' && sf.amount
+      ? formatWon(sf.amount)
+      : sf.type === 'reduction_rate' && sf.ratePercent
+        ? `${sf.targetType === 'principal' ? '원금 감면액' : sf.targetType === 'total_debt' ? '총 채무 감면액' : '감면액'}의 ${sf.ratePercent}%`
+        : sf.description || '계약서 본문 참고'
+    : null;
+  const successFeeSub = sf?.enabled
+    ? [sf.dueDateCondition ? `지급 시점: ${sf.dueDateCondition}` : '', sf.type !== 'custom' && sf.description ? sf.description : '']
+        .filter(Boolean)
+        .join(' · ')
+    : '';
 
-  return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
-      <div className="max-w-xl mx-auto space-y-5">
-        
-        {/* 헤더 */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
-          <div className="flex items-center gap-2 text-brand mb-2">
-            <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" />
-            <span className="text-xs font-black tracking-wider uppercase text-[#1E3A5F]">안전 모바일 전자위임계약</span>
-          </div>
-          <h1 className="text-xl font-black text-slate-900">
-            {contract.lawFirmName} 위임계약서 서명
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            담당 변호사가 작성한 계약서를 확인하신 후, 스마트폰 본인인증 및 자필 서명을 진행해 주세요.
-          </p>
-        </div>
+  const idv = contract.identityVerification;
+  const identityMismatch = !!identityError && /일치하지|다릅니다|불일치/.test(identityError);
 
-        {/* 4단계 스텝 인디케이터 (리걸플로 벤치마킹 그림 4-4) */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-          <div className="grid grid-cols-4 gap-1 text-center">
-            {[
-              { step: 1, label: '계약내용', done: isStep1Done },
-              { step: 2, label: '약관동의', done: isStep2Done },
-              { step: 3, label: '본인인증', done: isStep3Done },
-              { step: 4, label: '전자서명', done: isStep4Done },
-            ].map((s) => (
-              <div key={s.step} className="flex flex-col items-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  s.done 
-                    ? 'bg-emerald-600 text-white shadow-2xs' 
-                    : 'bg-slate-100 text-slate-400'
-                }`}>
-                  {s.done ? <Check className="w-4 h-4" /> : s.step}
-                </div>
-                <span className={`text-[11px] font-bold mt-1 ${s.done ? 'text-slate-800' : 'text-slate-400'}`}>
-                  {s.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 계약 기본 정보 및 상세 실비 요약 카드 */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-          <h3 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
-            <span>계약 요약 정보</span>
-            <span className="text-xs font-normal text-slate-500">{contract.id}</span>
-          </h3>
-
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="bg-slate-50 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">위임인 (의뢰인)</span>
-              <span className="font-bold text-slate-800 flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-slate-500" />
-                {contract.clientName}
-                {contract.isBusiness && <span className="text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded">사업자</span>}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">수임인 (담당 변호사)</span>
-              <span className="font-bold text-slate-800 flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                {contract.lawyerName} 변호사
-              </span>
-            </div>
-
-            <div className="col-span-2 bg-slate-50 p-3.5 rounded-xl space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div>
-                  <span className="text-slate-400 block text-[11px]">변호사 보수 (수임료)</span>
-                  <span className="font-black text-slate-900 text-base">{totalFeeWithVat.toLocaleString()}원</span>
-                  {contract.vatIncluded && <span className="text-[10px] text-indigo-700 ml-1 font-bold">(VAT 포함)</span>}
-                </div>
-                <div className="text-right">
-                  <span className="text-slate-400 block text-[11px]">분할 납부</span>
-                  {contract.feeSchedule.length > 0 ? (
-                    <span className="font-bold text-slate-700">{contract.feeSchedule.length}회차 분납</span>
-                  ) : (
-                    <span className="font-bold text-slate-700 block">약정서 기본 조건</span>
-                  )}
-                  {contract.feeSchedule.length === 0 && (
-                    <span className="text-[10px] text-slate-500 block">회차별 일정은 변호사 확정 후 안내</span>
-                  )}
-                </div>
-              </div>
-
-              {/* 법원비용 및 실비 상세 (리걸플로 벤치마킹) */}
-              <div className="text-[11px] text-slate-600 space-y-1 pt-1">
-                <div className="flex justify-between">
-                  <span>송달료 (법원 실비, 채권자 {credCount}곳):</span>
-                  <span className="font-bold">{deliveryFee.toLocaleString()}원</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>인지대 (정부수입인지):</span>
-                  <span className="font-bold">{stampFee.toLocaleString()}원</span>
-                </div>
-                {debtCertFee > 0 && (
-                  <div className="flex justify-between text-indigo-900 font-bold">
-                    <span>부채증명서 발급 대행비 ({credCount}곳):</span>
-                    <span>{debtCertFee.toLocaleString()}원</span>
-                  </div>
-                )}
-                {provisionalDeposit > 0 && (
-                  <div className="flex justify-between">
-                    <span>변제예납금 (법원 보관금):</span>
-                    <span className="font-bold">{provisionalDeposit.toLocaleString()}원</span>
-                  </div>
-                )}
-                {miscFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>기타 공과금 및 실비:</span>
-                    <span className="font-bold">{miscFee.toLocaleString()}원</span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-1 border-t border-slate-200 text-xs font-black text-[#1E3A5F]">
-                  <span>총 공급대가 (수임료 + 실비 합계):</span>
-                  <span>{grandTotal.toLocaleString()}원</span>
-                </div>
-              </div>
-
-              {/* 입금 계좌 안내 */}
-              {contract.feeAccount && (
-                <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500">
-                  <span>수임료 입금계좌: </span>
-                  <strong className="text-slate-700">{contract.feeAccount.bankName} {contract.feeAccount.accountNumber} ({contract.feeAccount.accountHolder})</strong>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 계약 문서 열람 (아코디언) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-          <h3 className="text-sm font-black text-slate-800 flex items-center justify-between">
-            <span>계약 문서 확인 ({includedDocs.length}종)</span>
-            <span className="text-xs text-slate-400">터치하여 내용 열람</span>
-          </h3>
-
-          <div className="space-y-2">
-            {includedDocs.map(doc => (
-              <div key={doc.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
-                  className="w-full p-3.5 text-left bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-500" />
-                    {doc.title}
-                  </span>
-                  <span className="text-xs text-slate-400 font-bold">
-                    {expandedDoc === doc.id ? '접기 ▲' : '내용 보기 ▼'}
-                  </span>
-                </button>
-
-                {expandedDoc === doc.id && (
-                  <div className="p-4 bg-white border-t border-slate-100 max-h-64 overflow-y-auto">
-                    <HighlightedDocumentViewer
-                      content={doc.content}
-                      requiredConfirmationText={doc.requiredConfirmationText}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 4대 법적 효력 약관 동의 (상세 전문 확인) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-          <div>
-            <h3 className="text-sm font-black text-slate-800">법적 효력 필수 동의 (4대 조항)</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              법적 효력 충족을 위해 각 조항의 상세 전문을 확인하고 동의해 주십시오.
+  // ── 단계별 본문 ──
+  const renderReview = () => (
+    <>
+      <SignStepHeading
+        ref={headingRef}
+        title="계약 내용을 확인해 주세요"
+        description={`${contract.lawFirmName || '담당 사무소'}에서 보낸 위임계약서예요. 금액과 문서를 확인한 뒤 다음 단계로 넘어가 주세요.`}
+      />
+      <div className="space-y-4">
+        <Card as="section" padded={false} className="p-5">
+          <h2 className="text-base font-bold text-slate-900">계약 당사자</h2>
+          <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <PartyItem
+              icon={<User className="h-4 w-4" />}
+              label="위임인(의뢰인)"
+              value={
+                <>
+                  {contract.clientName}
+                  {contract.isBusiness && <Badge tone="brand" className="ml-1.5 align-middle">사업자</Badge>}
+                </>
+              }
+              sub={contract.isBusiness ? contract.businessInfo?.companyName : undefined}
+            />
+            <PartyItem
+              icon={<Building2 className="h-4 w-4" />}
+              label="수임인(담당 변호사)"
+              value={contract.lawyerName ? `${contract.lawyerName} 변호사` : '담당 변호사'}
+              sub={contract.lawFirmName}
+            />
+          </dl>
+          {isRealNameConversion && (
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 break-keep">
+              지금은 스텔스 가명으로 표시돼요. 본인인증을 마치면 인증한 실명으로 계약서가 작성돼요.
             </p>
-          </div>
+          )}
+        </Card>
 
-          {/* 전체 동의 바 */}
-          {(() => {
-            const allChecked = agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect;
-            const toggleAll = (checked: boolean) => {
-              setAgreePrivacy(checked);
-              setAgreeThirdParty(checked);
-              setAgreeProcedure(checked);
-              setAgreeLegalEffect(checked);
-            };
+        <Card as="section" padded={false} className="p-5">
+          <h2 className="text-base font-bold text-slate-900">비용</h2>
+          <dl className="mt-2 divide-y divide-slate-100 text-sm">
+            <MoneyRow
+              label="변호사 보수(수임료)"
+              value={formatWon(totalFeeWithVat)}
+              sub={contract.vatIncluded ? `부가세 ${formatWon(vatAmount)} 포함` : undefined}
+              strong
+            />
+            {successFeeText && <MoneyRow label="성공보수" value={successFeeText} sub={successFeeSub || undefined} />}
+            {courtRows.map(r => (
+              <MoneyRow key={r.label} label={r.label} value={formatWon(r.amount)} />
+            ))}
+            {totalCourtCosts > 0 ? (
+              <MoneyRow label="합계(수임료 + 법원 비용·실비)" value={formatWon(grandTotal)} strong highlight />
+            ) : (
+              <MoneyRow label="법원 비용·실비" value="계약서 본문 참고" />
+            )}
+          </dl>
 
-            const clientTerms: Array<{
-              key: TermKey;
-              checked: boolean;
-              set: (v: boolean) => void;
-              title: string;
-              desc: string;
-              badge: string;
-            }> = [
-              {
-                key: 'legalEffect',
-                checked: agreeLegalEffect,
-                set: setAgreeLegalEffect,
-                title: '전자서명법 제3조 법적 효력 합의 (필수)',
-                desc: '본 전자서명은 종이 서면의 자필 서명과 동일한 법적 효력을 가짐에 합의합니다.',
-                badge: '전자서명법 제3조',
-              },
-              {
-                key: 'privacy',
-                checked: agreePrivacy,
-                set: setAgreePrivacy,
-                title: '개인정보 수집 및 위임 사무 처리 동의 (필수)',
-                desc: '법무법인의 사건 대리 및 법원 서류 작성을 위한 개인정보 수집·이용에 동의합니다.',
-                badge: '개인정보보호법 제15조·제22조',
-              },
-              {
-                key: 'thirdParty',
-                checked: agreeThirdParty,
-                set: setAgreeThirdParty,
-                title: '제3자 정보제공 동의 (필수)',
-                desc: '법원, 채권 금융기관, 신용정보원 등에 사건 접수 및 심사를 위한 정보 제공에 동의합니다.',
-                badge: '개인정보보호법 제17조',
-              },
-              {
-                key: 'procedure',
-                checked: agreeProcedure,
-                set: setAgreeProcedure,
-                title: '사건 진행 절차 및 유의사항 확인 (필수)',
-                desc: '사법 심사 결과 보장 불가 고지, 소요 기간, 면책 불허가 사유 등을 충분히 확인하였습니다.',
-                badge: '변호사법 광고규정 준수',
-              },
-            ];
-
-            return (
-              <div className="space-y-2.5">
-                <label className={`flex items-center justify-between p-3.5 rounded-xl border-2 cursor-pointer transition-colors ${
-                  allChecked ? 'border-brand bg-brand/5' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100/70'
-                }`}>
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      onChange={e => toggleAll(e.target.checked)}
-                      className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer shrink-0"
-                    />
-                    <span className="text-xs font-black text-slate-900">
-                      모든 필수 약관에 전체 동의합니다
+          {feeSchedule.length > 0 ? (
+            <details className="group mt-3 rounded-xl border border-slate-200">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-4 text-sm font-bold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand [&::-webkit-details-marker]:hidden">
+                <span>납부 일정 {feeSchedule.length}회</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol className="divide-y divide-slate-100 border-t border-slate-100 text-sm">
+                {feeSchedule.map((inst, i) => (
+                  <li key={inst.id || i} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                    <span className="min-w-0 break-keep">
+                      <span className="font-bold text-slate-800">{inst.itemTitle || `${inst.round || i + 1}회차`}</span>
+                      {inst.dueDate && <span className="ml-2 text-slate-600">{formatDateKo(inst.dueDate)}</span>}
                     </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {allChecked ? '완료' : '1클릭 동의'}
-                  </span>
-                </label>
+                    <span className="shrink-0 font-bold text-slate-900">{formatWon(installmentWon(inst))}</span>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          ) : (
+            <p className="mt-3 text-sm text-slate-600 break-keep">납부 일정은 계약서 본문을 확인해 주세요.</p>
+          )}
 
-                {clientTerms.map(item => {
-                  const isExpanded = expandedTerms[item.key] ?? false;
-                  const termDef = LEGAL_TERMS_DATA[item.key];
-                  const content = termDef.getContent({
-                    firmName: contract.lawFirmName,
-                    clientName: contract.clientName,
-                    lawyerName: contract.lawyerName,
-                  });
+          {contract.feeAccount?.accountNumber && (
+            <AccountRow
+              label={contract.sameAsFeeAccount ? '수임료·실비 입금 계좌' : '수임료 입금 계좌'}
+              account={contract.feeAccount}
+            />
+          )}
+          {!contract.sameAsFeeAccount && contract.courtCostAccount?.accountNumber && (
+            <AccountRow label="법원 비용·실비 입금 계좌" account={contract.courtCostAccount} />
+          )}
+        </Card>
 
-                  return (
-                    <div
-                      key={item.key}
-                      className={`rounded-xl border transition-colors overflow-hidden ${
-                        item.checked ? 'border-brand/30 bg-white' : 'border-slate-200 bg-white'
-                      }`}
-                    >
-                      <div className="p-3 flex flex-col gap-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                            <input
-                              type="checkbox"
-                              checked={item.checked}
-                              onChange={e => item.set(e.target.checked)}
-                              className="w-4 h-4 rounded accent-[#1E3A5F] mt-0.5 cursor-pointer shrink-0"
-                            />
-                            <div>
-                              <p className="text-xs font-bold text-slate-800">{item.title}</p>
-                              <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">{item.desc}</p>
-                            </div>
-                          </label>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTermKey(item.key)}
-                              className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] cursor-pointer whitespace-nowrap"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>전문 팝업</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedTerms(p => ({ ...p, [item.key]: !p[item.key] }))}
-                              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
-                              title="상세보기 토글"
-                            >
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 아코디언 인라인 전문 */}
-                        {isExpanded && (
-                          <div className="mt-2 p-3 bg-slate-50 border-t border-slate-100 rounded-lg text-[11px] text-slate-700 space-y-2">
-                            <div className="p-2.5 bg-white border border-slate-200 rounded max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                              {content}
-                            </div>
-                            {!item.checked && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  item.set(true);
-                                  toast.success('동의가 완료되었습니다.');
-                                }}
-                                className="w-full py-1.5 bg-[#1E3A5F] text-white font-bold rounded-lg text-xs cursor-pointer"
-                              >
-                                내용 확인 및 동의하기
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* 1단계: 스마트폰 본인인증 (카카오페이 / PASS / 토스 / SMS 안전망) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-[#1E3A5F]" />
-              <span>1단계: 전자서명 본인확인 (공인 인증 수단 선택)</span>
-            </h3>
-            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-              전자서명 (전자서명법 제3조)
+        <Card as="section" padded={false} className="p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-slate-900">계약 문서 {includedDocs.length}종</h2>
+            <span className="text-sm font-bold text-slate-600">
+              {includedDocs.length - unreadCount}/{includedDocs.length} 읽음
             </span>
           </div>
+          <p className="mt-1 text-sm text-slate-600 break-keep">문서를 누르면 전체 내용을 크게 볼 수 있어요.</p>
+          <ul className="mt-3 space-y-2">
+            {includedDocs.map(d => {
+              const read = readDocIds.includes(d.id);
+              return (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    onClick={() => openDoc(d.id)}
+                    className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-brand/40 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <FileText className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-slate-900 break-keep">{d.title}</span>
+                      {(d.requiredConfirmationText || '').trim() && (
+                        <span className="mt-0.5 block text-xs text-slate-600">직접 입력할 확인 문구가 있어요</span>
+                      )}
+                    </span>
+                    {read ? (
+                      <Badge tone="success" icon={<Check className="h-3 w-3" aria-hidden="true" />}>읽음</Badge>
+                    ) : (
+                      <span className="shrink-0 text-sm font-bold text-brand">읽기</span>
+                    )}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      </div>
+    </>
+  );
 
-          {verified ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5 text-emerald-800 text-xs font-bold bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div className="flex-1 flex items-center justify-between flex-wrap gap-1">
-                  <span>인증 완료: <strong>{contract.identityVerification?.name}</strong></span>
-                  <span className="text-[11px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
-                    {contract.identityVerification?.providerName || contract.identityVerification?.carrier || '공인 본인인증'}
+  const renderTerms = () => (
+    <>
+      <SignStepHeading
+        ref={headingRef}
+        title="필수 항목에 동의해 주세요"
+        description="계약을 맺으려면 아래 4개 항목에 모두 동의해야 해요. [전문]을 누르면 항목마다 전체 내용을 볼 수 있어요."
+      />
+      <div className="space-y-3">
+        <label
+          className={cn(
+            'flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-colors',
+            allAgreed ? 'border-brand bg-brand-light' : 'border-slate-200 bg-white hover:bg-slate-50',
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={allAgreed}
+            onChange={e => {
+              const v = e.target.checked;
+              setAgree({ legalEffect: v, privacy: v, thirdParty: v, procedure: v });
+            }}
+            className="h-5 w-5 shrink-0 cursor-pointer accent-brand"
+          />
+          <span className="flex-1 text-base font-bold text-slate-900">모두 동의해요</span>
+          <span className="text-sm font-bold text-slate-600" aria-hidden="true">
+            {agreedCount}/{TERM_ORDER.length}
+          </span>
+        </label>
+
+        <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+          {TERM_ORDER.map(key => {
+            const t = TERM_COPY[key];
+            const invalid = termsAttempted && !agree[key];
+            return (
+              <li key={key} className="flex items-start gap-1 py-2 pl-4 pr-2">
+                <label htmlFor={`sign-term-${key}`} className="flex min-h-11 flex-1 cursor-pointer items-start gap-3 py-1.5">
+                  <input
+                    id={`sign-term-${key}`}
+                    type="checkbox"
+                    checked={agree[key]}
+                    onChange={e => setAgree(a => ({ ...a, [key]: e.target.checked }))}
+                    aria-invalid={invalid || undefined}
+                    aria-describedby={`sign-term-${key}-desc`}
+                    className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-brand"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-slate-900 break-keep">
+                      {t.title} <span className="text-red-700">(필수)</span>
+                    </span>
+                    <span id={`sign-term-${key}-desc`} className="mt-0.5 block text-sm leading-relaxed text-slate-600 break-keep">
+                      {t.desc}
+                    </span>
                   </span>
-                </div>
+                </label>
+                <Button
+                  variant="ghost"
+                  className="shrink-0 px-3 text-brand"
+                  onClick={() => setReader({ kind: 'term', key })}
+                  aria-label={`${t.title} 전문 보기`}
+                >
+                  전문
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+        {termsAttempted && !allAgreed && (
+          <p role="alert" className="text-sm font-bold text-red-700">
+            동의하지 않은 항목이 {TERM_ORDER.length - agreedCount}개 있어요.
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  const renderIdentity = () => (
+    <>
+      <SignStepHeading
+        ref={headingRef}
+        title="본인인증"
+        description="계약하는 분이 본인인지 확인해요. 본인 명의 휴대폰으로 인증해 주세요."
+      />
+      <div className="space-y-4">
+        {verified ? (
+          <Card as="section" padded={false} className="p-5">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700" aria-hidden="true">
+                <BadgeCheck className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-slate-900">본인인증을 마쳤어요</p>
+                <p className="mt-0.5 text-sm text-slate-700 break-keep">
+                  {idv?.name ? `${idv.name}님` : '인증 완료'}
+                  {idv?.providerName ? ` · ${idv.providerName}` : ''}
+                </p>
+                {identityNote && <p className="mt-2 text-sm text-slate-600 break-keep">{identityNote}</p>}
               </div>
-              {repMatchMessage && (
-                <p className="text-[11px] text-slate-600 font-medium pl-1">{repMatchMessage}</p>
-              )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-slate-600">
-                원하시는 인증 수단을 선택하여 본인확인을 완료해 주십시오. <strong>앱이 없으신 경우 [문자(SMS) 인증]</strong>을 선택하시면 됩니다.
-              </p>
-
-              {/* 4대 공인 본인인증 수단 선택 (포트원 V2 공식 연동) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'kakao' as const, label: '카카오페이', badge: '간편인증', icon: '💬', desc: '카카오 간편인증' },
-                  { id: 'pass' as const, label: 'PASS 앱', badge: '통신 3사', icon: '📱', desc: 'PASS 스마트폰 앱' },
-                  { id: 'toss' as const, label: '토스', badge: '간편인증', icon: '🔷', desc: '토스 간편인증' },
-                  { id: 'sms' as const, label: '문자 (SMS)', badge: '안전망', icon: '✉️', desc: '앱 불필요 6자리' },
-                ].map(p => {
-                  const isSelected = authProvider === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setAuthProvider(p.id)}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        isSelected 
-                          ? 'border-[#1E3A5F] bg-[#1E3A5F]/5 shadow-xs' 
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-base">{p.icon}</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                          isSelected ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {p.badge}
-                        </span>
-                      </div>
-                      <div>
-                        <div className={`text-xs font-bold ${isSelected ? 'text-[#1E3A5F]' : 'text-slate-800'}`}>
-                          {p.label}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          {p.desc}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* SMS 선택 시 안심 안내 */}
-              {authProvider === 'sms' && (
-                <div className="p-2.5 bg-blue-50/80 rounded-xl border border-blue-200 text-blue-900 text-[11px] leading-relaxed flex items-center gap-2">
-                  <span className="text-base">💡</span>
-                  <span>
-                    <strong>간편인증 앱이 없어도 안심하세요:</strong> 본인 명의 휴대폰으로 받은 문자 인증번호를 입력해 본인확인을 할 수 있습니다.
-                  </span>
-                </div>
+          </Card>
+        ) : (
+          <Card as="section" padded={false} className="p-5">
+            <h2 className="text-base font-bold text-slate-900">이렇게 진행돼요</h2>
+            <ol className="mt-3 space-y-2.5 text-sm text-slate-700">
+              <StepListItem n={1}>아래 [본인인증 하기]를 누르면 인증 창이 열려요.</StepListItem>
+              <StepListItem n={2}>인증 창의 안내에 따라 본인 명의 휴대폰으로 인증해 주세요.</StepListItem>
+              <StepListItem n={3}>인증을 마치면 다음 단계로 넘어갈 수 있어요.</StepListItem>
+            </ol>
+            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 break-keep">
+              {isRealNameConversion
+                ? '지금 계약서에는 스텔스 가명이 적혀 있어요. 인증을 마치면 인증한 실명으로 계약서가 작성돼요.'
+                : '인증한 이름과 휴대폰 번호가 계약서의 위임인 정보와 같아야 서명할 수 있어요.'}
+            </p>
+          </Card>
+        )}
+        {identityError && (
+          <div ref={alertRef} role="alert">
+            <Callout tone="danger" title="본인인증을 마치지 못했어요">
+              <p className="break-keep">{identityError}</p>
+              {identityMismatch && (
+                <p className="mt-1 break-keep">이름이나 휴대폰 번호가 바뀌었다면 담당 변호사 사무실에 계약서 정보 수정을 요청해 주세요.</p>
               )}
+            </Callout>
+          </div>
+        )}
+      </div>
+    </>
+  );
 
+  const renderConfirm = () => (
+    <>
+      <SignStepHeading
+        ref={headingRef}
+        title="중요 조항을 확인해 주세요"
+        description="중요한 조항을 확인했다는 뜻으로, 문서마다 정해진 문구를 그대로 입력해 주세요. 띄어쓰기까지 같아야 해요."
+      />
+      <div className="space-y-4">
+        {confirmationDocs.map(doc => {
+          const target = (doc.requiredConfirmationText || '').trim();
+          const val = userConfirmations[doc.id] || '';
+          const typedLen = val.trim().length;
+          const ok = isConfirmationOk(doc);
+          const invalid = confirmAttempted && !ok;
+          const inputId = `sign-confirm-${doc.id}`;
+          return (
+            <Card key={doc.id} as="section" padded={false} className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-base font-bold text-slate-900 break-keep">{doc.title}</h2>
+                {ok ? (
+                  <Badge tone="success" icon={<Check className="h-3 w-3" aria-hidden="true" />}>일치</Badge>
+                ) : (
+                  <Badge tone={invalid ? 'danger' : 'neutral'}>{typedLen === 0 ? '입력 전' : '확인 필요'}</Badge>
+                )}
+              </div>
+              <p className="mt-3 text-xs font-bold text-slate-600">입력할 문구</p>
+              <p
+                id={`${inputId}-target`}
+                className="mt-1 select-none rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-base font-bold leading-relaxed text-amber-950 break-keep"
+              >
+                {target}
+              </p>
+              <label htmlFor={inputId} className="mt-4 block text-sm font-bold text-slate-800">
+                위 문구를 그대로 입력해 주세요
+              </label>
+              <input
+                id={inputId}
+                type="text"
+                value={val}
+                onChange={e => setUserConfirmations(prev => ({ ...prev, [doc.id]: e.target.value }))}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-invalid={invalid || undefined}
+                aria-describedby={`${inputId}-target ${inputId}-status`}
+                className={cn(inputClass, 'mt-1.5', ok && 'border-emerald-500 focus:border-emerald-600 focus:ring-emerald-500/20')}
+              />
+              <p
+                id={`${inputId}-status`}
+                className={cn('mt-1.5 text-sm', ok ? 'font-bold text-emerald-700' : invalid ? 'font-bold text-red-700' : 'text-slate-600')}
+              >
+                {ok
+                  ? '문구가 일치해요.'
+                  : typedLen === 0
+                    ? `${target.length}자를 입력해 주세요.`
+                    : `아직 문구가 달라요. (${typedLen}/${target.length}자)`}
+              </p>
+              <span className="sr-only" aria-live="polite">
+                {ok ? `${doc.title} 문구가 일치해요.` : ''}
+              </span>
               <button
                 type="button"
-                onClick={handleIdentityVerification}
-                disabled={verifying}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm cursor-pointer shadow-xs transition-colors disabled:opacity-50 min-h-[44px]"
+                onClick={() => openDoc(doc.id)}
+                className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-bold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                {verifying ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{authProvider === 'sms' ? '문자(SMS) 인증번호 발송 중...' : '공인 본인인증 진행 중...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="w-4 h-4" />
-                    <span>
-                      {authProvider === 'kakao' ? '카카오페이로 본인인증 및 전자서명 시작' :
-                       authProvider === 'pass' ? '통신 3사 PASS로 본인인증 시작' :
-                       authProvider === 'toss' ? '토스 앱으로 본인인증 시작' :
-                       '휴대폰 문자(SMS)로 6자리 인증번호 받기'}
-                    </span>
-                  </>
-                )}
+                문서에서 보기
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
-            </div>
-          )}
-        </div>
-
-        {/* 2단계 (조건부): 중요 조항 직접 자필확약 문구 입력 (금융·보험사 벤치마킹) */}
-        {(() => {
-          const confirmationDocs = includedDocs.filter(d => d.requiredConfirmationText);
-          if (confirmationDocs.length === 0) return null;
-
-          const allConfirmationsMatch = confirmationDocs.every(
-            d => (userConfirmations[d.id] || '').trim() === (d.requiredConfirmationText || '').trim()
+            </Card>
           );
+        })}
+      </div>
+    </>
+  );
 
-          return (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-amber-600" />
-                  <span>2단계: 중요 조항 직접 자필확약 입력</span>
-                </h3>
-                <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-                  중요 조항 설명
-                </span>
-              </div>
-
-              <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                <p className="font-bold mb-1">
-                  💡 금융기관·보험사 전자청약과 동일한 법적 부인방지 확인 절차입니다.
-                </p>
-                <p className="text-[11px] text-amber-800/90">
-                  의뢰인 보호 및 설명의무 이행을 위해, 아래 각 문서별 지정 문구를 <strong>토씨 하나까지 정확히 직접 타이핑</strong>해 주셔야 서명 제출이 승인됩니다.
-                </p>
-              </div>
-
-              <div className="space-y-3.5">
-                {confirmationDocs.map(doc => {
-                  const targetText = (doc.requiredConfirmationText || '').trim();
-                  const currentVal = userConfirmations[doc.id] || '';
-                  const isMatch = currentVal.trim() === targetText;
-
-                  return (
-                    <div key={doc.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                          <span>{CONTRACT_DOC_TYPES[doc.type]?.emoji || '📄'}</span>
-                          <span>{doc.title}</span>
-                        </span>
-                        {isMatch ? (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>일치 완료</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                            직접 입력 대기
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-slate-700">
-                        <span className="text-[11px] text-slate-400 block mb-1">입력 요구 문구:</span>
-                        <div className="p-2.5 bg-yellow-100/80 border border-yellow-300 rounded-lg font-black text-amber-950 select-none">
-                          "{targetText}"
-                        </div>
-                      </div>
-
-                      <div>
-                        <input
-                          type="text"
-                          value={currentVal}
-                          onChange={e => setUserConfirmations(prev => ({ ...prev, [doc.id]: e.target.value }))}
-                          placeholder={`위 문구("${targetText}")를 그대로 직접 입력하세요`}
-                          className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-bold transition-all ${
-                            isMatch
-                              ? 'border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950'
-                              : currentVal.length > 0
-                              ? 'border-amber-400 text-slate-900'
-                              : 'border-slate-200 text-slate-900'
-                          } focus:outline-none`}
-                        />
-                        <div className="mt-1 flex items-center justify-between text-[11px]">
-                          {isMatch ? (
-                            <span className="text-emerald-600 font-bold flex items-center gap-1">
-                              <Check className="w-3.5 h-3.5" /> 정확히 일치합니다.
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">
-                              {currentVal.length === 0 ? '공백과 띄어쓰기를 포함하여 입력하세요.' : '문구가 아직 일치하지 않습니다.'}
-                            </span>
-                          )}
-                          <span className="text-slate-400">{currentVal.length} / {targetText.length}자</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {allConfirmationsMatch ? (
-                <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>모든 중요 조항에 대한 직접 자필확약 입력이 정상 확인되었습니다.</span>
-                </div>
-              ) : (
-                <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>모든 문구를 정확히 입력해야 아래 서명 단계가 최종 완료됩니다.</span>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* 2단계 또는 3단계: 자필 전자 서명 */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-slate-800">
-              {includedDocs.some(d => d.requiredConfirmationText) ? '3단계: 위임인 자필 서명 날인' : '2단계: 위임인 자필 서명 날인'}
-            </h3>
-            {!verified && (
-              <span className="text-[11px] text-amber-600 font-bold">
-                ⚠️ 본인인증 완료 후 서명 가능
-              </span>
-            )}
-          </div>
-
+  const renderSign = () => (
+    <>
+      <SignStepHeading
+        ref={headingRef}
+        title="서명해 주세요"
+        description={
+          lawyerAlreadySigned
+            ? '담당 변호사는 이미 서명했어요. 서명을 제출하면 계약이 바로 체결돼요.'
+            : '서명을 제출한 뒤 담당 변호사가 서명하면 계약이 체결돼요.'
+        }
+      />
+      <div className="space-y-4">
+        <Card as="section" padded={false} className="p-5">
+          <h2 className="text-base font-bold text-slate-900">{signerName}님 서명</h2>
           {signatureData ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
-                <Check className="w-4 h-4" /> 서명 등록 완료
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-3">
+                <img src={signatureData} alt={`${signerName}님 서명`} className="h-24 max-w-full object-contain" />
               </div>
-              <div className="border border-slate-200 rounded-xl p-2 bg-slate-50 flex items-center justify-between">
-                <img src={signatureData} alt="자필 서명" className="h-16 object-contain" />
-                <button
-                  type="button"
-                  onClick={() => setSignatureData(null)}
-                  className="text-xs text-slate-600 hover:text-slate-800 font-bold px-3 min-h-[44px] rounded-lg border border-slate-200 bg-white cursor-pointer whitespace-nowrap"
-                >
-                  다시 서명
-                </button>
-              </div>
+              <Button
+                ref={signButtonRef}
+                variant="secondary"
+                fullWidth
+                onClick={() => setPadOpen(true)}
+                leftIcon={<PenLine className="h-4 w-4" aria-hidden="true" />}
+              >
+                다시 서명하기
+              </Button>
             </div>
-          ) : verified && !typedConfirmationsOk ? (
-            <div className="p-6 bg-amber-50 border border-dashed border-amber-300 rounded-xl text-center text-xs text-amber-800 font-bold">
-              위의 중요 조항 확인 문구를 모두 정확히 입력하시면 서명 패드가 활성화됩니다.
-            </div>
-          ) : verified ? (
-            <SignatureCanvas
-              label={`${contract.clientName} 의뢰인 자필 서명`}
-              onComplete={sig => {
-                setSignatureData(sig);
-                toast.success('서명이 입력되었습니다.');
-              }}
-            />
           ) : (
-            <div className="p-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400">
-              상단의 [스마트폰 본인인증]을 먼저 완료하시면 서명 패드가 활성화됩니다.
-            </div>
+            <>
+              <button
+                ref={signButtonRef}
+                type="button"
+                onClick={() => setPadOpen(true)}
+                aria-describedby={signAttempted ? 'sign-pad-required' : undefined}
+                className={cn(
+                  'mt-3 flex min-h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-slate-50 px-4 text-slate-700 transition-colors hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                  signAttempted ? 'border-red-400' : 'border-slate-300',
+                )}
+              >
+                <PenLine className="h-7 w-7" aria-hidden="true" />
+                <span className="text-base font-bold">눌러서 서명하기</span>
+                <span className="text-sm text-slate-600">넓은 화면에서 서명할 수 있어요</span>
+              </button>
+              {signAttempted && (
+                <p id="sign-pad-required" role="alert" className="mt-2 text-sm font-bold text-red-700">
+                  먼저 서명을 넣어 주세요.
+                </p>
+              )}
+            </>
           )}
-        </div>
+        </Card>
 
-        {/* 최종 제출 버튼 (리걸플로 벤치마킹: 컨펌 팝업 트리거) */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (!verified) {
-                toast.error('스마트폰 본인인증을 먼저 완료해 주세요.');
-                return;
-              }
-              if (!agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect) {
-                toast.error('4대 법적 필수 약관에 모두 동의해 주세요.');
-                return;
-              }
-              if (!typedConfirmationsOk) {
-                toast.error('중요 조항 확인 문구를 정확히 입력해 주세요.');
-                return;
-              }
-              if (!signatureData) {
-                toast.error('자필 서명을 먼저 입력해 주세요.');
-                return;
-              }
-              setShowConfirmModal(true);
-            }}
-            disabled={submitting || !verified || !typedConfirmationsOk || !signatureData || !agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect}
-            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-h-[48px]"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>안전 암호화 서명 제출 중...</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4" />
-                <span>위임계약서 서명 최종 제출</span>
-              </>
+        <Card as="section" padded={false} className="p-5">
+          <h2 className="text-base font-bold text-slate-900">제출 전 확인</h2>
+          <ul className="mt-3 space-y-2.5 text-sm">
+            <CheckRow
+              done
+              label={`계약 문서 ${includedDocs.length}종`}
+              detail={unreadCount > 0 ? `${unreadCount}개는 아직 열어 보지 않았어요` : '모두 열어 봤어요'}
+            />
+            <CheckRow done={allAgreed} label={`필수 동의 ${TERM_ORDER.length}개`} />
+            <CheckRow done={verified} label="본인인증" detail={idv?.name ? `${idv.name}님` : undefined} />
+            {confirmationDocs.length > 0 && (
+              <CheckRow done={allConfirmationsMatch} label={`확인 문구 ${confirmationDocs.length}개`} />
             )}
-          </button>
-          <p className="text-[11px] text-center text-slate-400 mt-2">
-            제출 시 전자서명법 및 관련 법령에 따라 법적 구속력을 가지는 계약이 체결됩니다.
-          </p>
-        </div>
+            <CheckRow done={!!signatureData} label="서명" />
+          </ul>
+        </Card>
 
-        {/* 리걸플로 벤치마킹: 계약 최종 확정 확인 팝업 모달 */}
-        {showConfirmModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-            <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4 animate-scaleUp">
-              <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto">
-                <Lock className="w-6 h-6 text-[#1E3A5F]" />
-              </div>
-              
-              <div className="text-center space-y-1.5">
-                <h3 className="text-lg font-black text-slate-900">계약을 최종 확정하시겠습니까?</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  위임인 <strong className="text-slate-800">{contract.clientName}</strong>님의 본인인증 및 자필 서명으로 사건위임계약이 최종 체결됩니다.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                <p className="font-bold text-slate-800 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>법적 효력 및 사후 위·변조 방지 안내</span>
-                </p>
-                <p className="text-slate-500 leading-normal">
-                  제출 후에는 이 링크로 서명을 다시 제출할 수 없습니다. 양 당사자 서명이 끝나면 계약서 내용으로 SHA-256 전자지문을 만들어 사후 변경 여부를 확인할 수 있게 합니다.
-                </p>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmModal(false)}
-                  disabled={submitting}
-                  className="flex-1 py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer transition-colors"
-                >
-                  취소 (다시 확인)
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setShowConfirmModal(false);
-                    await handleSubmitSignature();
-                  }}
-                  disabled={submitting}
-                  className="flex-1 py-3 text-xs font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer shadow-md transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>계약 확정 체결</span>
-                </button>
-              </div>
-            </div>
+        {submitError && (
+          <div ref={alertRef} role="alert">
+            <Callout tone="danger" title="서명을 제출하지 못했어요">
+              <p className="break-keep">{submitError}</p>
+            </Callout>
           </div>
         )}
 
-        {/* 정식 법률 조항 전문 팝업 모달 */}
-        <LegalContractTermsModal
-          isOpen={!!selectedTermKey}
-          termKey={selectedTermKey}
-          onClose={() => setSelectedTermKey(null)}
-          onAgree={(key) => {
-            if (key === 'privacy') setAgreePrivacy(true);
-            if (key === 'thirdParty') setAgreeThirdParty(true);
-            if (key === 'procedure') setAgreeProcedure(true);
-            if (key === 'legalEffect') setAgreeLegalEffect(true);
-            toast.success('약관 내용을 확인하고 동의하였습니다.');
-          }}
-          firmName={contract.lawFirmName}
-          clientName={contract.clientName}
-          lawyerName={contract.lawyerName}
-        />
+        <p className="text-sm leading-relaxed text-slate-600 break-keep">
+          제출한 뒤에는 이 링크로 서명을 다시 제출할 수 없어요. 양쪽 서명이 끝나면 계약서 내용과 서명으로 전자지문(SHA-256)을 만들어, 나중에 내용이 바뀌었는지 확인할 수 있게 해요.
+        </p>
       </div>
+    </>
+  );
+
+  // ── 하단 액션 바 ──
+  const nextButton = (
+    <Button size="lg" className="flex-1" onClick={goNext} rightIcon={<ChevronRight className="h-4 w-4" aria-hidden="true" />}>
+      다음
+    </Button>
+  );
+  let primary: React.ReactNode = nextButton;
+  if (stepKey === 'identity' && !verified) {
+    primary = (
+      <Button
+        size="lg"
+        className="flex-1"
+        onClick={handleIdentityVerification}
+        loading={verifying}
+        leftIcon={<Smartphone className="h-4 w-4" aria-hidden="true" />}
+      >
+        {verifying ? '인증 진행 중' : '본인인증 하기'}
+      </Button>
+    );
+  } else if (stepKey === 'sign') {
+    primary = (
+      <Button
+        size="lg"
+        className="flex-1"
+        onClick={() => {
+          setSubmitError(null);
+          if (!signatureData) {
+            setSignAttempted(true);
+            signButtonRef.current?.focus();
+            return;
+          }
+          setConfirmOpen(true);
+        }}
+        leftIcon={<Lock className="h-4 w-4" aria-hidden="true" />}
+      >
+        서명 제출하기
+      </Button>
+    );
+  }
+  const footerNote =
+    stepKey === 'review' && unreadCount > 0 ? (
+      <p className="text-xs text-slate-600 break-keep">아직 열어 보지 않은 문서가 {unreadCount}개 있어요. 서명 전에 한 번씩 읽어 보시길 권해요.</p>
+    ) : null;
+
+  const footer = (
+    <SignFooter note={footerNote}>
+      {safeIdx > 0 && (
+        <Button
+          variant="secondary"
+          size="lg"
+          className="shrink-0 px-4"
+          onClick={goBack}
+          disabled={verifying || submitting}
+          leftIcon={<ChevronLeft className="h-4 w-4" aria-hidden="true" />}
+        >
+          이전
+        </Button>
+      )}
+      {primary}
+    </SignFooter>
+  );
+
+  // ── 리더 하단 버튼 ──
+  let readerFooter: React.ReactNode = null;
+  if (reader?.kind === 'doc') {
+    readerFooter = (
+      <Button className="w-full sm:w-auto" onClick={() => setReader(null)}>
+        확인했어요
+      </Button>
+    );
+  } else if (reader?.kind === 'term') {
+    const key = reader.key;
+    readerFooter = agree[key] ? (
+      <Button className="w-full sm:w-auto" onClick={() => setReader(null)}>
+        닫기
+      </Button>
+    ) : (
+      <>
+        <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setReader(null)}>
+          닫기
+        </Button>
+        <Button
+          className="flex-1 sm:flex-none"
+          leftIcon={<Check className="h-4 w-4" aria-hidden="true" />}
+          onClick={() => {
+            setAgree(a => ({ ...a, [key]: true }));
+            setReader(null);
+          }}
+        >
+          동의하기
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SignPage
+        header={<SignHeader firmName={contract.lawFirmName} steps={steps.map(k => STEP_LABEL[k])} current={safeIdx} />}
+        footer={footer}
+      >
+        {stepKey === 'review' && renderReview()}
+        {stepKey === 'terms' && renderTerms()}
+        {stepKey === 'identity' && renderIdentity()}
+        {stepKey === 'confirm' && renderConfirm()}
+        {stepKey === 'sign' && renderSign()}
+      </SignPage>
+
+      <SignDocReader doc={readerDoc} onClose={() => setReader(null)} footer={readerFooter} />
+
+      <SignaturePadModal
+        open={padOpen}
+        onClose={() => setPadOpen(false)}
+        signerName={signerName}
+        onComplete={sig => {
+          setSignatureData(sig);
+          setSignAttempted(false);
+          setSubmitError(null);
+          setPadOpen(false);
+        }}
+      />
+
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="서명을 제출할까요?"
+        description={
+          lawyerAlreadySigned
+            ? '담당 변호사가 이미 서명해, 제출하면 계약이 바로 체결돼요.'
+            : '제출하면 담당 변호사가 서명한 뒤 계약이 체결돼요.'
+        }
+        size="sm"
+        mobile="center"
+        dismissible={!submitting}
+        hideCloseButton={submitting}
+        footer={
+          <>
+            <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setConfirmOpen(false)} disabled={submitting}>
+              다시 확인
+            </Button>
+            <Button
+              className="flex-1 sm:flex-none"
+              onClick={handleSubmitSignature}
+              loading={submitting}
+              leftIcon={<Check className="h-4 w-4" aria-hidden="true" />}
+            >
+              {submitting ? '제출하는 중' : '제출하기'}
+            </Button>
+          </>
+        }
+      >
+        <dl className="space-y-2 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">위임인</dt>
+            <dd className="font-bold text-slate-900">{contract.clientName}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">수임인</dt>
+            <dd className="text-right font-bold text-slate-900 break-keep">
+              {[contract.lawFirmName, contract.lawyerName ? `${contract.lawyerName} 변호사` : ''].filter(Boolean).join(' · ')}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">서명할 문서</dt>
+            <dd className="font-bold text-slate-900">{includedDocs.length}종</dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600 break-keep">
+          문서마다 같은 서명이 들어가요. 제출한 뒤에는 이 링크로 서명을 다시 제출할 수 없어요.
+        </p>
+      </Modal>
+    </>
+  );
+}
+
+/* ── 작은 표시 부품 ── */
+
+function PartyItem({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-4 py-3">
+      <dt className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+        <span aria-hidden="true">{icon}</span>
+        {label}
+      </dt>
+      <dd className="mt-1 text-base font-bold text-slate-900 break-keep">{value}</dd>
+      {sub && <dd className="mt-0.5 text-sm text-slate-600 break-keep">{sub}</dd>}
     </div>
+  );
+}
+
+function MoneyRow({
+  label,
+  value,
+  sub,
+  strong,
+  highlight,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  strong?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5">
+      <dt className={cn('min-w-0 break-keep', highlight ? 'font-bold text-slate-900' : 'text-slate-600')}>
+        {label}
+        {sub && <span className="mt-0.5 block text-xs text-slate-600">{sub}</span>}
+      </dt>
+      <dd className={cn('shrink-0 text-right', strong ? 'text-base font-extrabold' : 'font-bold', highlight ? 'text-brand' : 'text-slate-900')}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function AccountRow({ label, account }: { label: string; account: BankAccountInfo }) {
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${account.bankName} ${account.accountNumber}`);
+      toast.success('계좌번호를 복사했어요.');
+    } catch {
+      toast.error('복사하지 못했어요. 계좌번호를 길게 눌러 직접 복사해 주세요.');
+    }
+  };
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-slate-600">{label}</p>
+        <p className="mt-0.5 text-sm font-bold text-slate-900 break-all">
+          {account.bankName} {account.accountNumber}
+        </p>
+        {account.accountHolder && <p className="text-xs text-slate-600">예금주 {account.accountHolder}</p>}
+      </div>
+      <Button
+        variant="secondary"
+        className="shrink-0 px-3.5"
+        onClick={handleCopy}
+        leftIcon={<Copy className="h-4 w-4" aria-hidden="true" />}
+        aria-label={`${label} 복사`}
+      >
+        복사
+      </Button>
+    </div>
+  );
+}
+
+function StepListItem({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-bold text-brand" aria-hidden="true">
+        {n}
+      </span>
+      <span className="break-keep leading-relaxed">{children}</span>
+    </li>
+  );
+}
+
+function CheckRow({ done, label, detail }: { done: boolean; label: string; detail?: string }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      {done ? (
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+      ) : (
+        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+      )}
+      <span className="min-w-0 break-keep">
+        <span className="sr-only">{done ? '완료: ' : '남음: '}</span>
+        <span className={cn('font-bold', done ? 'text-slate-900' : 'text-slate-600')}>{label}</span>
+        {detail && <span className="ml-1.5 text-slate-600">{detail}</span>}
+      </span>
+    </li>
   );
 }

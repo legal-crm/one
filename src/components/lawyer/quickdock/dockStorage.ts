@@ -4,7 +4,10 @@
 //   localStorage(영구, 같은 브라우저 모든 사용자 공유)에 두지 않는다.
 // - 텍스트: sessionStorage(탭을 닫으면 삭제), 이미지: 메모리만(새로고침 시 삭제)
 // - 로그아웃 시 clearDockSensitiveData()로 즉시 삭제
+// - 계산기 공유값(소득·채무·재산 금액, dockShared)도 로그아웃 시 함께 초기화
 // ============================================================
+
+import { resetDockShared } from './dockShared';
 
 export const QUICK_MEMO_KEY = 'legal_dock_scratchpad_memo';
 export const PIN_MEMO_KEY = 'legal_dock_pin_memo_slots_v1';
@@ -25,6 +28,7 @@ export const pinImageCache = new Map<string, string>();
 export function clearDockSensitiveData(): void {
   purgeLegacyDockMemos();
   pinImageCache.clear();
+  resetDockShared();
   try {
     sessionStorage.removeItem(QUICK_MEMO_KEY);
     sessionStorage.removeItem(PIN_MEMO_KEY);

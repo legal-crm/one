@@ -9,6 +9,16 @@ import {
   LawyerDocSharePackage,
 } from '../../services/lawyerDocShareService';
 
+/** 수지표 세부 소득 형태(DetailedIncomeType) 표시명 */
+const INCOME_TYPE_LABEL: Record<string, string> = {
+  EMPLOYEE: '급여소득자',
+  BUSINESS: '개인사업자',
+  FREELANCER: '프리랜서',
+  DAY_LABORER: '일용직',
+  PART_TIME: '아르바이트',
+  MIXED: '복합 소득',
+};
+
 interface UnregisteredLawyerDocViewerProps {
   token: string;
   /** @deprecated 역할 전환은 실제 로그인으로만 — 호환용으로 남겨 두지만 호출하지 않음 */
@@ -96,7 +106,14 @@ export default function UnregisteredLawyerDocViewer({
     setPkg(r.pkg);
   };
 
-  const won = (n: number | undefined) => (n || 0).toLocaleString();
+  // 값이 없을 때 그럴듯한 기본값(0원·서울·임차(월세)·예시 사연 등)을 보여주지 않고 '미입력'으로 표시한다
+  // (어두운 배경이라 slate-500은 대비가 부족해 slate-400 사용)
+  const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+  const missing = <span className="font-medium text-slate-400">미입력</span>;
+  const needsCheck = <span className="font-medium text-slate-400">확인 필요</span>;
+  /** 금액 표시. zeroAsMissing: 0을 '모름' 대신 보내는 요약 수치(채무 요약)는 0도 미입력으로 본다 */
+  const wonOrMissing = (n: number | null | undefined, zeroAsMissing = false) =>
+    isNum(n) && !(zeroAsMissing && n <= 0) ? `${n.toLocaleString()}원` : missing;
 
   // ══ GATE: 수신 휴대폰 번호 확인 ══
   if (!pkg) {
@@ -142,6 +159,19 @@ export default function UnregisteredLawyerDocViewer({
   const inc = pkg.docs.incomeExpenseData;
   const prop = pkg.docs.propertySummary;
   const debt = pkg.docs.debtSummary;
+  const courtName = stmt?.courtName || debt?.courtName;
+  // 빈 경력 행(기본 템플릿의 빈 줄)은 제외
+  const jobs = ((stmt?.jobHistories || (stmt as any)?.careers || []) as any[])
+    .filter((c: any) => `${c?.companyName || ''}${c?.period || ''}`.trim().length > 0);
+  const residence = stmt?.residence;
+  /** 보증금·월세: 임차는 0이 '입력 안 함'일 수 있어 확인 필요, 자가·무상거주는 해당 없음 */
+  const residenceAmount = (n: number | undefined) => {
+    if (isNum(n) && n > 0) return `${n.toLocaleString()}원`;
+    if (!residence) return missing;
+    return residence.residenceType === 'RENT_LEASE' ? needsCheck : '해당 없음';
+  };
+  // 공유된 원장에 있는 달만 표시하고, 제목의 개월 수도 실제 행 수와 맞춘다 (이전: '12개월' 표기에 6행만 표시)
+  const ledgerMonths = (inc?.monthlyLedger?.months || []) as any[];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-20">
@@ -153,7 +183,7 @@ export default function UnregisteredLawyerDocViewer({
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-black text-white truncate">의뢰인 공유 서류 열람</h1>
             <p className="text-xs text-slate-300 truncate">
-              받는 분: {pkg.recipientFirmName ? `[${pkg.recipientFirmName}] ` : ''}{pkg.recipientName} {pkg.recipientType === 'LAWYER' ? '변호사님' : '사무장님'} · {new Date(pkg.expiresAt).toLocaleDateString('ko-KR')}까지 열람 가능
+              받는 분: {pkg.recipientFirmName ? `[${pkg.recipientFirmName}] ` : ''}{pkg.recipientName} {pkg.recipientType === 'LAWYER' ? '변호사님' : '사무소 직원분'} · {new Date(pkg.expiresAt).toLocaleDateString('ko-KR')}까지 열람 가능
             </p>
           </div>
         </div>
@@ -170,7 +200,7 @@ export default function UnregisteredLawyerDocViewer({
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 text-left">
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
           <div>
-            <span className="text-xs text-slate-300">관할: {debt?.courtName || stmt?.courtName || '미기재'}</span>
+            <span className="text-xs text-slate-300">관할: {debt?.courtName || stmt?.courtName || missing}</span>
             <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
               의뢰인 <span className="text-emerald-300">{pkg.clientName}</span> 님이 작성한 서류 초안
             </h2>
@@ -178,10 +208,10 @@ export default function UnregisteredLawyerDocViewer({
           </div>
           {debt && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-800 text-xs">
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">총 채무액</span><span className="font-bold text-white">{won(debt.totalDebt)}원</span></div>
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">월 소득</span><span className="font-bold text-white">{won(debt.monthlyIncome)}원</span></div>
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 월 변제금</span><span className="font-bold text-white">{won(debt.monthlyPayment)}원</span></div>
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 탕감률(참고)</span><span className="font-bold text-white">{debt.expectedReductionRate ? `${debt.expectedReductionRate}%` : '-'}</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">총 채무액</span><span className="font-bold text-white">{wonOrMissing(debt.totalDebt, true)}</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">월 소득</span><span className="font-bold text-white">{wonOrMissing(debt.monthlyIncome, true)}</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 월 변제금</span><span className="font-bold text-white">{wonOrMissing(debt.monthlyPayment, true)}</span></div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"><span className="text-slate-400 block">예상 감면율(참고)</span><span className="font-bold text-white">{isNum(debt.expectedReductionRate) && debt.expectedReductionRate > 0 ? `${debt.expectedReductionRate}%` : missing}</span></div>
             </div>
           )}
           <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
@@ -250,7 +280,7 @@ export default function UnregisteredLawyerDocViewer({
                     진술서 (의뢰인 작성 초안)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    사건본인: {stmt?.applicantName || pkg.clientName} | 관할: {stmt?.courtName || '서울회생법원'}
+                    사건본인: {stmt?.applicantName || pkg.clientName} | 관할: {courtName || missing}
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
@@ -263,6 +293,9 @@ export default function UnregisteredLawyerDocViewer({
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   1. 최종학력 및 최근 직업·경력 이력
                 </h4>
+                <p className="text-xs text-slate-300">
+                  최종 학력: {stmt?.finalEducation || missing}
+                </p>
                 <div className="overflow-x-auto rounded-2xl border border-slate-800">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-800 text-slate-300 font-bold">
@@ -274,8 +307,12 @@ export default function UnregisteredLawyerDocViewer({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {(stmt?.jobHistories || (stmt as any)?.careers || []).map((c: any, i: number) => (
-                        <tr key={i} className="hover:bg-slate-850">
+                      {jobs.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-3 text-center">{missing}</td>
+                        </tr>
+                      ) : jobs.map((c: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-900">
                           <td className="p-3 font-mono">{c.period}</td>
                           <td className="p-3 font-bold text-white">{c.companyName}</td>
                           <td className="p-3">{c.position}</td>
@@ -295,19 +332,19 @@ export default function UnregisteredLawyerDocViewer({
                 <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div>
                     <span className="text-slate-500 block text-[10px]">주거 유형</span>
-                    <span className="font-bold text-white">{stmt?.residence?.residenceTypeLabel || '임차(월세)'}</span>
+                    <span className="font-bold text-white">{residence?.residenceTypeLabel || missing}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10px]">보증금</span>
-                    <span className="font-bold text-white">{won(stmt?.residence?.deposit)}원</span>
+                    <span className="font-bold text-white">{residenceAmount(residence?.deposit)}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10px]">월세</span>
-                    <span className="font-bold text-white">{won(stmt?.residence?.monthlyRent)}원</span>
+                    <span className="font-bold text-white">{residenceAmount(residence?.monthlyRent)}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[10px]">거주지</span>
-                    <span className="font-bold text-white">{stmt?.residence?.addressSummary || '서울'}</span>
+                    <span className="font-bold text-white">{residence?.addressSummary || missing}</span>
                   </div>
                 </div>
               </div>
@@ -315,8 +352,11 @@ export default function UnregisteredLawyerDocViewer({
               {/* 3. 채무 발생 및 증대 4단 사연 */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                  <span>3. 채무 발생 원인 및 지급불능 경위 (법원 표준 4단 구성)</span>
-                  <span className="text-[10px] text-emerald-400 font-normal">AI 음성 인터뷰 정돈 완료</span>
+                  <span>3. 채무 발생 원인 및 지급불능 경위 (4단 구성)</span>
+                  {/* 초안 자동 정리 기능을 실제로 쓴 경우에만 표시 (이전: 항상 'AI 음성 인터뷰 정돈 완료') */}
+                  {stmt?.story?.aiPolishedAt && (
+                    <span className="text-[10px] text-slate-400 font-normal">초안 자동 정리 기능 사용</span>
+                  )}
                 </h4>
 
                 <div className="space-y-3 text-xs leading-relaxed">
@@ -325,7 +365,7 @@ export default function UnregisteredLawyerDocViewer({
                       ① 첫 채무 발생 원인 및 계기
                     </span>
                     <p className="text-slate-200 pl-1">
-                      {stmt?.story?.initialCauseDetail || '생활비 및 운영자금 부족으로 인한 채무 개시'}
+                      {stmt?.story?.initialCauseDetail || missing}
                     </p>
                   </div>
 
@@ -334,7 +374,7 @@ export default function UnregisteredLawyerDocViewer({
                       ② 채무가 급격히 증대한 과정 (돌려막기 등)
                     </span>
                     <p className="text-slate-200 pl-1">
-                      {stmt?.story?.growthProcessDetail || '고금리 대출 및 카드 돌려막기 누적'}
+                      {stmt?.story?.growthProcessDetail || missing}
                     </p>
                   </div>
 
@@ -343,7 +383,7 @@ export default function UnregisteredLawyerDocViewer({
                       ③ 스스로 더 이상 감당할 수 없게 된 지급불능 시점
                     </span>
                     <p className="text-slate-200 pl-1">
-                      {stmt?.story?.insolvencyTriggerDetail || '월 원리금 상환액이 월 소득을 초과'}
+                      {stmt?.story?.insolvencyTriggerDetail || missing}
                     </p>
                   </div>
 
@@ -352,7 +392,7 @@ export default function UnregisteredLawyerDocViewer({
                       ④ 현재 생활 상황 및 성실 변제 다짐
                     </span>
                     <p className="text-slate-200 pl-1">
-                      {stmt?.story?.resolutionAndApology || '성실한 변제계획 수행을 통한 경제적 재기 다짐'}
+                      {stmt?.story?.resolutionAndApology || missing}
                     </p>
                   </div>
                 </div>
@@ -360,7 +400,7 @@ export default function UnregisteredLawyerDocViewer({
             </div>
           )}
 
-          {/* TAB 2: 12개월 수지표 */}
+          {/* TAB 2: 월별 수지표 */}
           {activeTab === 'incomeExpense' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
@@ -369,11 +409,15 @@ export default function UnregisteredLawyerDocViewer({
                     수입 및 지출 목록 (의뢰인 작성 초안)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    소득 구분: {inc?.detailedIncomeType || '개인사업자/프리랜서'}
+                    소득 구분: {inc?.detailedIncomeType ? (INCOME_TYPE_LABEL[inc.detailedIncomeType] || inc.detailedIncomeType) : missing}
                   </p>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  12개월 원장 산출 완료
+                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                  ledgerMonths.length > 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                }`}>
+                  {ledgerMonths.length > 0 ? `월별 원장 ${ledgerMonths.length}개월` : '월별 원장 없음'}
                 </span>
               </div>
 
@@ -381,15 +425,15 @@ export default function UnregisteredLawyerDocViewer({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-500 block text-[10px]">월평균 총매출/수입</span>
-                  <span className="text-sm font-black text-white">{won(inc?.monthlyLedger?.monthlyAverages?.avgGrossRevenue)}원</span>
+                  <span className="text-sm font-black text-white">{wonOrMissing(inc?.monthlyLedger?.monthlyAverages?.avgGrossRevenue)}</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
-                  <span className="text-slate-500 block text-[10px]">월평균 인정 필요경비</span>
-                  <span className="text-sm font-black text-rose-400">{won(inc?.monthlyLedger?.monthlyAverages?.avgOperatingExpense)}원</span>
+                  <span className="text-slate-500 block text-[10px]">월평균 필요경비</span>
+                  <span className="text-sm font-black text-rose-400">{wonOrMissing(inc?.monthlyLedger?.monthlyAverages?.avgOperatingExpense)}</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-500 block text-[10px]">월평균 순소득</span>
-                  <span className="text-sm font-black text-emerald-400">{won(inc?.monthlyLedger?.monthlyAverages?.avgNetIncome)}원</span>
+                  <span className="text-sm font-black text-emerald-400">{wonOrMissing(inc?.monthlyLedger?.monthlyAverages?.avgNetIncome)}</span>
                 </div>
                 <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <span className="text-slate-400 block text-[11px]">가구원 수</span>
@@ -397,10 +441,10 @@ export default function UnregisteredLawyerDocViewer({
                 </div>
               </div>
 
-              {/* 12개월 장부 테이블 */}
+              {/* 월별 장부 테이블 — 공유된 달 수만큼 표시 */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  최근 12개월 월별 수입 및 경비 원장 (법원 제출 규격)
+                  {ledgerMonths.length > 0 ? `최근 ${ledgerMonths.length}개월 월별 수입 및 경비 원장` : '월별 수입 및 경비 원장'}
                 </h4>
                 <div className="overflow-x-auto rounded-2xl border border-slate-800">
                   <table className="w-full text-xs text-left">
@@ -415,14 +459,19 @@ export default function UnregisteredLawyerDocViewer({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {(inc?.monthlyLedger?.months || []).slice(0, 6).map((m: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-850">
-                          <td className="p-3 font-mono text-slate-400">{m.monthLabel}</td>
-                          <td className="p-3 font-mono">{won(m.incomeCard)}원</td>
-                          <td className="p-3 font-mono">{won(m.incomeCash)}원</td>
-                          <td className="p-3 font-mono">{won(m.expenseRent)}원</td>
-                          <td className="p-3 font-mono text-rose-300">{won(m.expenseOperating)}원</td>
-                          <td className="p-3 font-mono font-bold text-emerald-400 text-right">{won(m.netIncome)}원</td>
+                      {ledgerMonths.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-3 text-center">{missing}</td>
+                        </tr>
+                      ) : ledgerMonths.map((m: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-900">
+                          {/* 원장 월 필드는 month (MonthlyLedgerItem) — 이전에는 없는 monthLabel을 읽어 빈칸이었음 */}
+                          <td className="p-3 font-mono text-slate-400">{m.month || m.monthLabel || missing}</td>
+                          <td className="p-3 font-mono">{wonOrMissing(m.incomeCard)}</td>
+                          <td className="p-3 font-mono">{wonOrMissing(m.incomeCash)}</td>
+                          <td className="p-3 font-mono">{wonOrMissing(m.expenseRent)}</td>
+                          <td className="p-3 font-mono text-rose-300">{wonOrMissing(m.expenseOperating)}</td>
+                          <td className="p-3 font-mono font-bold text-emerald-400 text-right">{wonOrMissing(m.netIncome)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -436,28 +485,29 @@ export default function UnregisteredLawyerDocViewer({
           {activeTab === 'property' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="border-b border-slate-800 pb-4">
+                {/* 이전: '청산가치 보장의 원칙 검토'·'공제 후'·'서울 면제 규정 검토'·'중고차 시세 기준' — 실제로 수행하지 않은 검토를 표시 */}
                 <h3 className="text-lg font-black text-white">
-                  재산상황표 및 청산가치 보장의 원칙 검토
+                  재산 요약 (의뢰인 입력 기준)
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  총 채무 {won(debt?.totalDebt)}원 대비 청산가치 {won(prop?.totalAssetValue)}원
+                  총 채무 {wonOrMissing(debt?.totalDebt, true)} · 청산가치 {wonOrMissing(prop?.totalAssetValue)}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
-                  <span className="text-slate-500 block text-[10px]">임차보증금 (공제 후)</span>
-                  <span className="text-base font-black text-white">{won(prop?.depositAmount)}원</span>
-                  <p className="text-[10px] text-slate-500">서울 소액임차보증금 면제 규정 검토</p>
+                  <span className="text-slate-500 block text-[10px]">임차보증금</span>
+                  <span className="text-base font-black text-white">{wonOrMissing(prop?.depositAmount)}</span>
+                  <p className="text-[10px] text-slate-500">소액임차보증금 면제 여부는 관할 법원 기준 확인 필요</p>
                 </div>
                 <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
                   <span className="text-slate-500 block text-[10px]">차량 및 환가재산</span>
-                  <span className="text-base font-black text-white">{won(prop?.vehicleValue)}원</span>
-                  <p className="text-[10px] text-slate-500">중고차 시세 기준 청산가치</p>
+                  <span className="text-base font-black text-white">{wonOrMissing(prop?.vehicleValue)}</span>
+                  <p className="text-[10px] text-slate-500">시세 반영 여부 확인 필요</p>
                 </div>
                 <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
                   <span className="text-slate-500 block text-[10px]">청산가치 총액</span>
-                  <span className="text-base font-black text-indigo-400">{won(prop?.totalAssetValue)}원</span>
+                  <span className="text-base font-black text-indigo-400">{wonOrMissing(prop?.totalAssetValue)}</span>
                 </div>
               </div>
             </div>

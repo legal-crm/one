@@ -161,6 +161,25 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // 고객 사이트(body.client-light)는 라이트 고정 → 밝은 확인 창. 변호사·관리자 화면은 기존 어두운 창 유지
+  const isClientSurface = typeof document !== 'undefined' && document.body.classList.contains('client-light');
+
+  const getClientVariantStyles = (variant: DialogVariant) => {
+    switch (variant) {
+      case 'danger':
+        return { icon: <Trash2 className="w-5 h-5" aria-hidden="true" />, iconBg: 'bg-red-50 text-red-600', confirmBtn: 'bg-red-600 hover:bg-red-700 text-white' };
+      case 'warning':
+        return { icon: <AlertTriangle className="w-5 h-5" aria-hidden="true" />, iconBg: 'bg-amber-50 text-amber-700', confirmBtn: 'bg-amber-700 hover:bg-amber-800 text-white' };
+      case 'success':
+        return { icon: <CheckCircle2 className="w-5 h-5" aria-hidden="true" />, iconBg: 'bg-emerald-50 text-emerald-700', confirmBtn: 'bg-emerald-700 hover:bg-emerald-800 text-white' };
+      case 'info':
+        return { icon: <Info className="w-5 h-5" aria-hidden="true" />, iconBg: 'bg-blue-50 text-blue-700', confirmBtn: 'bg-brand hover:bg-brand-hover text-white' };
+      case 'primary':
+      default:
+        return { icon: <HelpCircle className="w-5 h-5" aria-hidden="true" />, iconBg: 'bg-brand-light text-brand', confirmBtn: 'bg-brand hover:bg-brand-hover text-white' };
+    }
+  };
+
   const getVariantStyles = (variant: DialogVariant) => {
     switch (variant) {
       case 'danger':
@@ -211,10 +230,90 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <DialogContext.Provider value={{ confirm, prompt, alert: alertModal }}>
       {children}
 
-      {dialogState?.isOpen && (
+      {dialogState?.isOpen && isClientSurface && (
+        <div
+          data-app-dialog=""
+          className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-4 bg-slate-900/50 backdrop-blur-[2px] animate-fadeIn"
+          onClick={handleCancel}
+        >
+          <div
+            role={dialogState.type === 'alert' ? 'alertdialog' : 'dialog'}
+            aria-modal="true"
+            aria-labelledby={dialogState.title ? 'app-dialog-title' : undefined}
+            aria-label={dialogState.title ? undefined : '확인'}
+            aria-describedby="app-dialog-message"
+            className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden p-5 sm:p-6 text-slate-900 animate-fadeInScale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${getClientVariantStyles(dialogState.variant).iconBg}`}
+                aria-hidden="true"
+              >
+                {getClientVariantStyles(dialogState.variant).icon}
+              </div>
+              <div className="flex-1 min-w-0 pt-1">
+                {dialogState.title && (
+                  <h2 id="app-dialog-title" className="text-lg font-bold text-slate-900 leading-snug break-keep">
+                    {dialogState.title}
+                  </h2>
+                )}
+                <div id="app-dialog-message" className="mt-1.5 text-sm text-slate-600 whitespace-pre-line leading-relaxed break-keep">
+                  {dialogState.message}
+                </div>
+              </div>
+            </div>
+
+            {dialogState.type === 'prompt' && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleConfirm();
+                }}
+                className="mt-4"
+              >
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  placeholder={dialogState.placeholder}
+                  aria-label={dialogState.title || dialogState.message}
+                  className="w-full min-h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-base text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand"
+                />
+              </form>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+              {dialogState.type !== 'alert' && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="min-h-11 px-5 rounded-xl text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                >
+                  {dialogState.cancelText}
+                </button>
+              )}
+              <button
+                type="button"
+                autoFocus
+                onClick={handleConfirm}
+                className={`min-h-11 px-5 rounded-xl text-sm font-bold shadow-sm transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+                  getClientVariantStyles(dialogState.variant).confirmBtn
+                }`}
+              >
+                {dialogState.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dialogState?.isOpen && !isClientSurface && (
         <div
           role="dialog"
           aria-modal="true"
+          data-app-dialog=""
           className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn"
           onClick={handleCancel}
         >

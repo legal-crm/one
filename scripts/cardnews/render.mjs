@@ -103,16 +103,40 @@ async function main() {
     'utf8'
   );
 
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--allow-file-access-from-files'] });
-  const page = await browser.newPage();
-  await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
-  await page.goto(pathToFileURL(shellPath).href, { waitUntil: 'load' });
-  await page.evaluate(async () => { await document.fonts.load('900 40px Pretendard'); await document.fonts.ready; });
-
   const targets = only.length ? posts.filter((p) => only.includes(p.id)) : posts;
   const overflow = [];
   let count = 0;
+  let browser;
+  let page;
+  // 브라우저가 중간에 죽는 경우(Target closed)를 대비해 포스트 단위로 재시작·재시도한다
+  const openBrowser = async () => {
+    if (browser) await browser.close().catch(() => {});
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--allow-file-access-from-files'] });
+    page = await browser.newPage();
+    await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+    await page.goto(pathToFileURL(shellPath).href, { waitUntil: 'load' });
+    await page.evaluate(async () => { await document.fonts.load('900 40px Pretendard'); await document.fonts.ready; });
+  };
+  await openBrowser();
   for (const p of targets) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        count += await renderOne(p);
+        break;
+      } catch (e) {
+        if (attempt === 3) throw e;
+        console.log(`\n#${pad3(p.id)} 재시도 (${e.message})`);
+        await openBrowser();
+      }
+    }
+    process.stdout.write(`\r렌더 ${p.id}/${posts.length}  (슬라이드 ${count})   `);
+  }
+  await browser.close();
+  console.log(`\n완료: 포스트 ${targets.length}개, 슬라이드 ${count}장 → ${OUT}`);
+  if (overflow.length) console.log(`축소·넘침 확인 필요:\n  ${overflow.join('\n  ')}`);
+
+  async function renderOne(p) {
+    let n = 0;
     const dir = path.join(OUT, dirName(p));
     fs.mkdirSync(dir, { recursive: true });
     for (const f of fs.readdirSync(dir)) if (f.endsWith('.png')) fs.unlinkSync(path.join(dir, f));
@@ -137,14 +161,11 @@ async function main() {
       if (fit.over || fit.s < 0.8) overflow.push(`${dirName(p)} #${i + 1} scale=${fit.s}${fit.over ? ' (넘침)' : ''}`);
       const el = await page.$('#root > .slide');
       await el.screenshot({ path: path.join(dir, `${pad3(p.id)}_${String(i + 1).padStart(2, '0')}.png`), type: 'png' });
-      count++;
+      n++;
     }
     fs.writeFileSync(path.join(dir, 'caption.txt'), captionText(p), 'utf8');
-    process.stdout.write(`\r렌더 ${p.id}/${targets.length}  (슬라이드 ${count})   `);
+    return n;
   }
-  await browser.close();
-  console.log(`\n완료: 포스트 ${targets.length}개, 슬라이드 ${count}장 → ${OUT}`);
-  if (overflow.length) console.log(`축소·넘침 확인 필요:\n  ${overflow.join('\n  ')}`);
 
   // ── 3) 목록·인덱스 (전체 렌더 때만) ──
   if (!only.length && !fileArg) {

@@ -549,6 +549,7 @@ ${esc(d.content)}
         isOpen={isVerifyModalOpen}
         onClose={() => setIsVerifyModalOpen(false)}
         contract={contract}
+        revealFullName
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, Printer, Download, FileSpreadsheet, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { AuditTransactionItem } from '../../types/bankAuditTypes';
 import { exportToCourtStandardExcel } from '../../services/bankAuditService';
@@ -19,15 +19,45 @@ export default function PrintableHighValueAuditModal({
   isOpen,
   onClose,
   clientName = '신청인',
-  caseNumber = '2026개회 108492호',
-  courtName = '서울회생법원',
+  // 모르는 값은 비워 둔다(이전: 가짜 사건번호 '2026개회 108492호'·'서울회생법원'이 인쇄본에 찍힘)
+  caseNumber = '',
+  courtName = '',
   items,
   thresholdAmount = 1000000,
   isClientView = false
 }: PrintableHighValueAuditModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // ESC로 닫기 + 열릴 때 닫기 버튼에 초점, 닫히면 원래 위치로
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus({ preventScroll: true });
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (prevFocus && document.contains(prevFocus)) prevFocus.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // 소명 기준 금액 표기(이전: 기준을 30만·50만 원으로 바꿔도 제목은 항상 100만 원)
+  const thresholdLabel = `${(thresholdAmount / 10000).toLocaleString('ko-KR')}만 원`;
+  const blankLine = (w = 'w-40') => (
+    <span className={`inline-block ${w} border-b border-slate-500 align-bottom`}>
+      <span className="sr-only">미입력</span>&nbsp;
+    </span>
+  );
 
   const targetItems = items.filter(i => i.amount >= thresholdAmount);
   const totalAmount = targetItems.reduce((acc, curr) => acc + curr.amount, 0);
@@ -55,10 +85,10 @@ export default function PrintableHighValueAuditModal({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
+      <div data-app-dialog="" className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
         
         {/* 모달 윈도우 */}
-        <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] print:max-h-none print:border-none print:shadow-none print:w-full">
+        <div role="dialog" aria-modal="true" aria-label={`${thresholdLabel} 이상 출금 사용처 소명서 미리보기`} className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] print:max-h-none print:border-none print:shadow-none print:w-full">
           
           {/* 상단 툴바 (화면 전용, 인쇄 시 숨김) */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 rounded-t-2xl shrink-0 print:hidden">
@@ -68,7 +98,7 @@ export default function PrintableHighValueAuditModal({
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>법원 공식 [별지: 금융거래 100만 원 이상 사용처 소명서]</span>
+                  <span>[별지] 금융거래 {thresholdLabel} 이상 출금 사용처 소명서</span>
                   <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
                     {targetItems.length}건 소명 대상
                   </span>
@@ -102,12 +132,13 @@ export default function PrintableHighValueAuditModal({
               </button>
 
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-2 cursor-pointer"
-                title="닫기"
+                aria-label="미리보기 닫기"
+                className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-1 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -134,6 +165,7 @@ export default function PrintableHighValueAuditModal({
             <div 
               ref={printRef}
               id="court-audit-print-area"
+              data-print-area=""
               className="max-w-[1000px] mx-auto bg-white text-slate-900 p-8 sm:p-12 rounded-xl shadow-lg border border-slate-300 print:shadow-none print:border-none print:p-0 print:max-w-none print:m-0"
               style={{ fontFamily: "'Batang', 'Malgun Gothic', serif" }}
             >
@@ -142,7 +174,7 @@ export default function PrintableHighValueAuditModal({
               <div className="text-center mb-6">
                 <div className="text-xs text-slate-500 tracking-wider mb-1 font-sans">[별지]</div>
                 <h1 className="text-2xl font-bold text-slate-950 tracking-tight pb-2 border-b-2 border-slate-900 inline-block">
-                  금융거래내역 중 100만 원 이상 출금 사용처 소명서
+                  금융거래내역 중 {thresholdLabel} 이상 출금 사용처 소명서
                 </h1>
               </div>
 
@@ -150,11 +182,11 @@ export default function PrintableHighValueAuditModal({
               <div className="mb-4 text-[13px] leading-relaxed border-y border-slate-300 py-2.5 px-2 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2 font-sans">
                 <div>
                   <span className="font-bold text-slate-800">사건번호 : </span>
-                  <span className="text-slate-900 font-semibold">{caseNumber}</span>
+                  <span className="text-slate-900 font-semibold">{caseNumber || blankLine('w-32')}</span>
                 </div>
                 <div>
                   <span className="font-bold text-slate-800">관할법원 : </span>
-                  <span className="text-slate-900">{courtName}</span>
+                  <span className="text-slate-900">{courtName || blankLine('w-32')}</span>
                 </div>
                 <div>
                   <span className="font-bold text-slate-800">신청인(채무자) : </span>
@@ -191,7 +223,7 @@ export default function PrintableHighValueAuditModal({
                     {targetItems.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-8 text-center text-slate-500 font-medium">
-                          100만 원 이상 출금 거래 내역이 없습니다.
+                          {thresholdLabel} 이상 출금 거래 내역이 없습니다.
                         </td>
                       </tr>
                     ) : (
@@ -294,7 +326,7 @@ export default function PrintableHighValueAuditModal({
                 </div>
 
                 <div className="pt-6 text-base font-extrabold text-slate-900 tracking-wider">
-                  {courtName} 귀중
+                  {courtName || blankLine('w-48')} 귀중
                 </div>
               </div>
 
@@ -306,7 +338,7 @@ export default function PrintableHighValueAuditModal({
           <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 rounded-b-2xl flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0 print:hidden">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>개인회생·파산 실무 지침 준수 • 전자소송 제출 규격 호환</span>
+              <span>{isClientView ? '법원에 내기 전에 담당 변호사가 내용을 확인합니다.' : '개인회생·파산 실무 지침 준수 • 전자소송 제출 규격 호환'}</span>
             </div>
             <button
               type="button"

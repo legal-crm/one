@@ -3,11 +3,13 @@ import {
   ShieldCheck, Zap, Users, Send, ClipboardCheck, Star, Heart, Lock,
   MessageSquare, ArrowRight, Check, CheckCircle,
 } from 'lucide-react';
+import { BrandMark } from '../BrandLogo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // my김변 이용안내 — 4단계 인터랙티브 스테퍼
 // 기존 4개 좌/우 지그재그 섹션(AGENTS.md Rule 3.2 위반)을
 // "스텝 탭 + 단일 Split 패널" 구조로 통합했다.
+// 오른쪽 화면은 이해를 돕기 위한 예시다(가려진 이름, 시간 표시 없음).
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ServiceGuideSectionProps {
@@ -40,11 +42,11 @@ export default function ServiceGuideSection({
   const steps: GuideStep[] = [
     {
       label: '익명 채무 체크',
-      title: '이름 없이 1분이면 충분합니다',
-      desc: '실명·주민번호 없이 채무 규모와 소득 정보만 입력하면 내 상황이 정리되고, 채무 전문 변호사에게 상담을 요청할 수 있습니다.',
+      title: '이름 없이 약 3분이면 정리됩니다',
+      desc: '실명·주민등록번호 없이 채무 규모와 소득 정보만 입력하면 내 상황이 정리되고, 원하는 변호사에게 상담을 요청할 수 있습니다.',
       chips: [
         { icon: ShieldCheck, text: '실명 불필요' },
-        { icon: Zap, text: '약 1분 소요' },
+        { icon: Zap, text: '약 3분 소요' },
       ],
       cta: { label: '지금 바로 체크하기', action: 'check' },
     },
@@ -72,11 +74,11 @@ export default function ServiceGuideSection({
     {
       label: '1:1 가명 상담',
       title: '가명으로 안전하게 1:1 상담을 진행하세요',
-      desc: '선택한 변호사와 스텔스 가명으로 보호되는 프라이빗 상담방에서 대화합니다. 계약 전까지 실명과 연락처는 공개되지 않습니다.',
+      desc: '선택한 변호사와 스텔스 가명으로 보호되는 1:1 상담방에서 대화합니다. 계약 전까지 실명과 연락처는 공개되지 않습니다.',
       chips: [
         { icon: Lock, text: '스텔스 가명 보호' },
         { icon: ShieldCheck, text: 'SSL/TLS 암호화' },
-        { icon: MessageSquare, text: '실시간 · 비실시간' },
+        { icon: MessageSquare, text: '메시지 상담' },
       ],
       cta: { label: '지금 시작하기', action: 'check' },
     },
@@ -100,24 +102,18 @@ export default function ServiceGuideSection({
   const runCta = () => (step.cta.action === 'check' ? onStartCheck() : onBrowseLawyers());
 
   return (
-    <section className="w-full py-16 md:py-24 bg-white border-b border-slate-200" aria-labelledby="service-guide-title">
+    <section className="w-full py-12 md:py-16 bg-white border-b border-slate-200" aria-labelledby="service-guide-title">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center space-y-3 mb-10 md:mb-12">
-          <h2 id="service-guide-title" className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight">
+        <div className="text-center space-y-3 mb-8 md:mb-10">
+          <h2 id="service-guide-title" className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight break-keep">
             채무 정리부터 변호사 상담까지, 4단계
           </h2>
-          <p className="text-base md:text-lg text-slate-600 font-medium">
-            단계를 선택하면 실제 화면 흐름을 미리 볼 수 있습니다
-          </p>
+          <p className="text-base md:text-lg text-slate-600 break-keep">단계를 눌러 이용 흐름을 확인해 보세요</p>
         </div>
 
         {/* Step tabs */}
-        <div
-          role="tablist"
-          aria-label="이용 단계"
-          className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 mb-6 md:mb-8"
-        >
+        <div role="tablist" aria-label="이용 단계" className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 mb-6 md:mb-8">
           {steps.map((s, idx) => {
             const isActive = idx === active;
             const isDone = idx < active;
@@ -133,15 +129,15 @@ export default function ServiceGuideSection({
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setActive(idx as StepId)}
                 onKeyDown={(e) => handleTabKeyDown(e, idx)}
-                className={`relative min-h-[44px] flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-all cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A5F] focus-visible:ring-offset-2 ${
+                className={`relative min-h-[44px] flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
                   isActive
-                    ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white shadow-md'
-                    : 'bg-[#F8FAFC] border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-white'
+                    ? 'bg-brand border-brand text-white shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-white'
                 }`}
               >
                 <span
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 ${
-                    isActive ? 'bg-white text-[#1E3A5F]' : isDone ? 'bg-[#0D9488] text-white' : 'bg-white border border-slate-300 text-slate-600'
+                    isActive ? 'bg-white text-brand' : isDone ? 'bg-secondary text-white' : 'bg-white border border-slate-300 text-slate-600'
                   }`}
                   aria-hidden="true"
                 >
@@ -154,28 +150,16 @@ export default function ServiceGuideSection({
         </div>
 
         {/* Panel */}
-        <div
-          role="tabpanel"
-          id="guide-panel"
-          aria-labelledby={`guide-tab-${active}`}
-          className="rounded-3xl bg-[#F8FAFC] border border-slate-200 p-6 sm:p-8 lg:p-12"
-        >
+        <div role="tabpanel" id="guide-panel" aria-labelledby={`guide-tab-${active}`} className="rounded-3xl bg-slate-50 border border-slate-200 p-5 sm:p-8 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Text */}
             <div key={`text-${active}`} className="space-y-5 text-left animate-fadeIn">
-              <p className="text-sm font-bold text-[#0D9488]">STEP 0{active + 1}</p>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug break-keep">
-                {step.title}
-              </h3>
-              <p className="text-base md:text-lg text-slate-600 leading-relaxed font-medium break-keep">
-                {step.desc}
-              </p>
+              <p className="text-sm font-bold text-secondary-hover">STEP 0{active + 1}</p>
+              <h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug break-keep">{step.title}</h3>
+              <p className="text-base md:text-lg text-slate-600 leading-relaxed break-keep">{step.desc}</p>
               <ul className="flex flex-wrap gap-2">
                 {step.chips.map(({ icon: Icon, text }) => (
-                  <li
-                    key={text}
-                    className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-[#1E3A5F] text-sm font-bold px-3 py-1.5 rounded-lg"
-                  >
+                  <li key={text} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-brand text-sm font-bold px-3 py-1.5 rounded-lg">
                     <Icon className="w-4 h-4" aria-hidden="true" />
                     {text}
                   </li>
@@ -185,7 +169,7 @@ export default function ServiceGuideSection({
                 <button
                   type="button"
                   onClick={runCta}
-                  className="inline-flex items-center gap-2 min-h-[44px] px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                  className="inline-flex items-center gap-2 min-h-12 px-7 bg-brand hover:bg-brand-hover text-white font-bold rounded-xl text-base transition-colors whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-sm"
                 >
                   {step.cta.label}
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -194,7 +178,7 @@ export default function ServiceGuideSection({
                   <button
                     type="button"
                     onClick={() => setActive((active + 1) as StepId)}
-                    className="inline-flex items-center gap-1.5 min-h-[44px] px-4 text-sm font-bold text-slate-600 hover:text-[#1E3A5F] rounded-xl whitespace-nowrap cursor-pointer"
+                    className="inline-flex items-center gap-1.5 min-h-11 px-4 text-sm font-bold text-slate-600 hover:text-brand rounded-xl whitespace-nowrap cursor-pointer"
                   >
                     다음 단계 보기
                     <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -203,13 +187,16 @@ export default function ServiceGuideSection({
               </div>
             </div>
 
-            {/* Mockup — 고정 최소 높이로 탭 전환 시 레이아웃 점프 방지 */}
-            <div key={`mock-${active}`} className="flex justify-center items-center lg:min-h-[460px] animate-fadeIn" aria-hidden="true">
-              {active === 0 && <MockAnonCheck />}
-              {active === 1 && <MockLawyerSelect max={maxLawyerSelections} />}
-              {active === 2 && <MockAnswers />}
-              {active === 3 && <MockPrivateChat />}
-            </div>
+            {/* Mockup — 고정 최소 높이로 탭 전환 시 레이아웃 점프 방지. 모바일은 화면 한 장을 넘어가므로 생략 */}
+            <figure className="m-0 hidden sm:block">
+              <div key={`mock-${active}`} className="flex justify-center items-center lg:min-h-[440px] animate-fadeIn" aria-hidden="true">
+                {active === 0 && <MockAnonCheck />}
+                {active === 1 && <MockLawyerSelect max={maxLawyerSelections} />}
+                {active === 2 && <MockAnswers />}
+                {active === 3 && <MockPrivateChat />}
+              </div>
+              <figcaption className="mt-4 text-center text-xs text-slate-500">화면 이해를 돕기 위한 예시입니다</figcaption>
+            </figure>
           </div>
         </div>
       </div>
@@ -232,25 +219,27 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
 function MockAnonCheck() {
   return (
     <PhoneFrame>
-      <div className="bg-[#F8FAFC] p-3.5 space-y-3">
+      <div className="bg-slate-50 p-3.5 space-y-3">
         <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 bg-[#1E3A5F] rounded-lg flex items-center justify-center text-white text-xs font-bold">김</div>
-            <span className="text-xs sm:text-sm font-bold text-slate-700">my김변 채무 정리</span>
+            <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center text-white">
+              <BrandMark className="w-5 h-5" />
+            </div>
+            <span className="text-xs sm:text-sm font-bold text-slate-700">정리도우미</span>
           </div>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">채무 현황을 함께 정리해 볼게요. 현재 총 채무 금액은 어느 정도인가요?</p>
         </div>
         <div className="flex justify-end">
-          <div className="bg-[#1E3A5F] rounded-xl px-3.5 py-2.5 max-w-[75%]">
-            <p className="text-xs sm:text-sm text-white font-medium">5,000만원 정도입니다</p>
+          <div className="bg-brand rounded-xl px-3.5 py-2.5 max-w-[75%]">
+            <p className="text-xs sm:text-sm text-white font-medium">5,000만 원 정도입니다</p>
           </div>
         </div>
         <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">월 소득은 얼마인가요? (세후 기준)</p>
         </div>
         <div className="flex justify-end">
-          <div className="bg-[#1E3A5F] rounded-xl px-3.5 py-2.5 max-w-[75%]">
-            <p className="text-xs sm:text-sm text-white font-medium">230만원입니다</p>
+          <div className="bg-brand rounded-xl px-3.5 py-2.5 max-w-[75%]">
+            <p className="text-xs sm:text-sm text-white font-medium">230만 원입니다</p>
           </div>
         </div>
         <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
@@ -258,18 +247,19 @@ function MockAnonCheck() {
         </div>
         <div className="mt-2 flex gap-2">
           <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-500">입력해 주세요...</div>
-          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
+          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
         </div>
       </div>
     </PhoneFrame>
   );
 }
 
+// 가려진 이름(○○)으로만 표시 — 실제 변호사처럼 보이지 않게 한다
 const MOCK_LAWYERS = [
-  { name: '김도현', specialty: '개인회생', region: '서울', color: 'bg-[#1E3A5F]' },
-  { name: '박서연', specialty: '파산·면책', region: '경기', color: 'bg-[#0D9488]' },
-  { name: '이정훈', specialty: '채무조정', region: '부산', color: 'bg-[#3B82F6]' },
-  { name: '최민지', specialty: '개인회생', region: '대전', color: 'bg-[#7C3AED]' },
+  { name: '김○○', specialty: '개인회생', region: '서울', color: 'bg-brand' },
+  { name: '박○○', specialty: '파산·면책', region: '경기', color: 'bg-secondary' },
+  { name: '이○○', specialty: '채무조정', region: '부산', color: 'bg-accent' },
+  { name: '최○○', specialty: '개인회생', region: '대전', color: 'bg-slate-600' },
 ];
 
 function MockLawyerSelect({ max }: { max: number }) {
@@ -278,7 +268,7 @@ function MockLawyerSelect({ max }: { max: number }) {
   return (
     <div className="relative w-full max-w-[380px]">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
-        <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
+        <div className="bg-brand px-5 py-4 flex items-center gap-3">
           <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4 h-4 text-white" /></div>
           <div>
             <p className="text-white font-bold text-base">변호사 선택하기</p>
@@ -287,8 +277,8 @@ function MockLawyerSelect({ max }: { max: number }) {
         </div>
         <div className="p-4 space-y-2.5">
           {MOCK_LAWYERS.map((l, idx) => (
-            <div key={l.name} className={`flex items-center gap-3 p-3 rounded-xl border ${checked[idx] ? 'border-[#1E3A5F]/30 bg-[#EEF4FA]' : 'border-slate-200 bg-white'}`}>
-              <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 ${checked[idx] ? 'border-[#1E3A5F] bg-[#1E3A5F]' : 'border-slate-300'}`}>
+            <div key={l.name} className={`flex items-center gap-3 p-3 rounded-xl border ${checked[idx] ? 'border-brand/30 bg-brand-light' : 'border-slate-200 bg-white'}`}>
+              <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 ${checked[idx] ? 'border-brand bg-brand' : 'border-slate-300'}`}>
                 {checked[idx] && <Check className="w-3 h-3 text-white" />}
               </div>
               <div className={`w-9 h-9 ${l.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{l.name.charAt(0)}</div>
@@ -300,10 +290,10 @@ function MockLawyerSelect({ max }: { max: number }) {
           ))}
           <div className="pt-2">
             <div className="flex items-center justify-between px-1 pb-2">
-              <span className="text-sm font-bold text-[#1E3A5F]"><CheckCircle className="w-4 h-4 inline mr-1" />{selectedCount}명 선택됨</span>
+              <span className="text-sm font-bold text-brand"><CheckCircle className="w-4 h-4 inline mr-1" />{selectedCount}명 선택됨</span>
               <span className="text-xs text-slate-500">최대 {max}명까지 선택 가능</span>
             </div>
-            <div className="bg-[#1E3A5F] text-white text-center py-3.5 rounded-xl text-base font-bold flex items-center justify-center gap-2">
+            <div className="bg-brand text-white text-center py-3.5 rounded-xl text-base font-bold flex items-center justify-center gap-2">
               <Send className="w-4 h-4" />선택한 변호사에게 한 번에 요청
             </div>
           </div>
@@ -314,17 +304,17 @@ function MockLawyerSelect({ max }: { max: number }) {
 }
 
 const MOCK_ANSWERS = [
-  { name: '김도현', specialty: '개인회생', time: '15분 전', color: 'bg-[#1E3A5F]', answer: '입력하신 소득과 부양가족 기준으로 개인회생 절차를 검토해 볼 수 있습니다. 예상 변제금은 서류 확인 후 안내드리겠습니다.' },
-  { name: '박서연', specialty: '파산·면책', time: '32분 전', color: 'bg-[#0D9488]', answer: '소득 상황에 따라 파산·면책 절차도 함께 비교해 보시길 권합니다. 상담에서 절차와 준비 서류를 안내드리겠습니다.' },
-  { name: '최민지', specialty: '개인회생', time: '1시간 전', color: 'bg-[#7C3AED]', answer: '회생 신청과 함께 금지명령을 신청하면 강제집행 중지를 요청할 수 있습니다. 요건은 상담에서 확인해 드리겠습니다.' },
+  { name: '김○○', specialty: '개인회생', color: 'bg-brand', answer: '입력하신 소득과 부양가족 기준으로 개인회생 절차를 검토해 볼 수 있습니다. 예상 변제금은 서류 확인 후 안내드리겠습니다.' },
+  { name: '박○○', specialty: '파산·면책', color: 'bg-secondary', answer: '소득 상황에 따라 파산·면책 절차도 함께 비교해 보시길 권합니다. 상담에서 절차와 준비 서류를 안내드리겠습니다.' },
+  { name: '최○○', specialty: '개인회생', color: 'bg-slate-600', answer: '회생 신청과 함께 금지명령을 신청하면 강제집행 중지를 요청할 수 있습니다. 요건은 상담에서 확인해 드리겠습니다.' },
 ];
 
 function MockAnswers() {
   return (
     <div className="relative w-full max-w-[390px]">
       <div className="space-y-3">
-        <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
-          <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 변호사 답변 <span className="text-[#0F766E]">{MOCK_ANSWERS.length}건</span></p>
+        <div className="bg-brand-light rounded-xl px-4 py-3 text-center">
+          <p className="text-sm font-bold text-brand">내 사건에 도착한 변호사 답변 <span className="text-secondary-hover">{MOCK_ANSWERS.length}건</span></p>
         </div>
         {MOCK_ANSWERS.map((l) => (
           <div key={l.name} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-sm">
@@ -332,7 +322,7 @@ function MockAnswers() {
               <div className={`w-10 h-10 ${l.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{l.name.charAt(0)}</div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-base text-slate-900">{l.name} 변호사</p>
-                <p className="text-xs text-slate-500 font-medium">{l.specialty} · {l.time}</p>
+                <p className="text-xs text-slate-500 font-medium">{l.specialty}</p>
               </div>
             </div>
             <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3.5">{l.answer}</p>
@@ -347,31 +337,31 @@ function MockPrivateChat() {
   return (
     <PhoneFrame>
       <div className="bg-white flex flex-col">
-        <div className="bg-[#1E3A5F] px-4 py-3.5 flex items-center gap-3">
+        <div className="bg-brand px-4 py-3.5 flex items-center gap-3">
           <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
           <div>
-            <p className="text-white text-sm font-bold">김도현 변호사</p>
-            <p className="text-white/80 text-xs">프라이빗 상담방</p>
+            <p className="text-white text-sm font-bold">김○○ 변호사</p>
+            <p className="text-white/80 text-xs">1:1 상담방</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <Lock className="w-3.5 h-3.5 text-emerald-300" />
             <span className="text-xs text-emerald-300 font-bold">스텔스 가명</span>
           </div>
         </div>
-        <div className="p-4 space-y-3.5 bg-[#F1F5F9]">
+        <div className="p-4 space-y-3.5 bg-slate-100">
           <div className="flex gap-2.5">
-            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">김</div>
+            <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">김</div>
             <div className="bg-white rounded-2xl px-4 py-3 max-w-[80%] shadow-sm">
               <p className="text-sm text-slate-800 leading-relaxed">채무 현황 확인했습니다. 입력하신 소득 기준으로 개인회생 절차를 검토해 볼 수 있을 것 같습니다.</p>
             </div>
           </div>
           <div className="flex justify-end">
-            <div className="bg-[#1E3A5F] rounded-2xl px-4 py-3 max-w-[75%] shadow-sm">
+            <div className="bg-brand rounded-2xl px-4 py-3 max-w-[75%] shadow-sm">
               <p className="text-sm text-white leading-relaxed">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
             </div>
           </div>
           <div className="flex gap-2.5">
-            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">김</div>
+            <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">김</div>
             <div className="bg-white rounded-2xl px-4 py-3 max-w-[80%] shadow-sm">
               <p className="text-sm text-slate-800 leading-relaxed">서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 편하게 질문해 주세요.</p>
             </div>
@@ -379,7 +369,7 @@ function MockPrivateChat() {
         </div>
         <div className="px-3 py-2.5 bg-white border-t border-slate-200 flex gap-2">
           <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-500">메시지 입력...</div>
-          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
+          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
         </div>
       </div>
     </PhoneFrame>
@@ -396,9 +386,9 @@ export function TrustFactsBar({ maxLawyerSelections = 3 }: { maxLawyerSelections
     { value: '실명 불필요', label: '계약 전까지 스텔스 가명' },
   ];
   return (
-    <section className="w-full bg-[#0F2440] border-b border-[#1E3A5F]/30" aria-label="서비스 이용 조건">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        <ul className="grid grid-cols-3 gap-4 text-center divide-x divide-slate-700/50">
+    <section className="w-full bg-brand-deep" aria-label="서비스 이용 조건">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <ul className="grid grid-cols-3 gap-4 text-center divide-x divide-white/15">
           {facts.map((f) => (
             <li key={f.label} className="space-y-1 px-1">
               <p className="text-lg sm:text-2xl font-extrabold text-white tracking-tight whitespace-nowrap">{f.value}</p>

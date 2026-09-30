@@ -94,6 +94,23 @@ export default function DebtDiscoveryModal({
     return () => clearInterval(timer);
   }, [step, authCountdown]);
 
+  // 선택된 항목 집계 — 훅은 조기 return보다 앞에 두어야 한다(열고 닫을 때 훅 개수가 달라지면 React 오류로 화면이 멈춤)
+  const selectedCreditDebts = useMemo(() => {
+    if (!discoveryData) return [];
+    return discoveryData.creditDebts.filter(d => selectedDebtIds.has(d.id));
+  }, [discoveryData, selectedDebtIds]);
+
+  const selectedTaxArrears = useMemo(() => {
+    if (!discoveryData) return [];
+    return discoveryData.taxArrears.filter(t => selectedTaxIds.has(t.id));
+  }, [discoveryData, selectedTaxIds]);
+
+  const selectedTotalPrincipal = useMemo(() => {
+    const debtSum = selectedCreditDebts.reduce((sum, d) => sum + (d.currentBalance || d.originalAmount), 0);
+    const taxSum = selectedTaxArrears.reduce((sum, t) => sum + t.arrearAmount, 0);
+    return debtSum + taxSum;
+  }, [selectedCreditDebts, selectedTaxArrears]);
+
   if (!isOpen) return null;
 
   // 1. 간편인증 요청
@@ -162,23 +179,6 @@ export default function DebtDiscoveryModal({
     else next.add(id);
     setSelectedTaxIds(next);
   };
-
-  // 선택된 항목 집계
-  const selectedCreditDebts = useMemo(() => {
-    if (!discoveryData) return [];
-    return discoveryData.creditDebts.filter(d => selectedDebtIds.has(d.id));
-  }, [discoveryData, selectedDebtIds]);
-
-  const selectedTaxArrears = useMemo(() => {
-    if (!discoveryData) return [];
-    return discoveryData.taxArrears.filter(t => selectedTaxIds.has(t.id));
-  }, [discoveryData, selectedTaxIds]);
-
-  const selectedTotalPrincipal = useMemo(() => {
-    const debtSum = selectedCreditDebts.reduce((sum, d) => sum + (d.currentBalance || d.originalAmount), 0);
-    const taxSum = selectedTaxArrears.reduce((sum, t) => sum + t.arrearAmount, 0);
-    return debtSum + taxSum;
-  }, [selectedCreditDebts, selectedTaxArrears]);
 
   // 부채증명서 발급 대행으로 반영
   const handleApplyToDebtCertificates = () => {

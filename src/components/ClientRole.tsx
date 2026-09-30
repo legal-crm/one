@@ -8,19 +8,20 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
-import { CustomerIntake } from './CustomerIntake';
-import { migrateAnonymousRequests } from '../services/consultService';
+import { Client, FinancialProfile, ConsultRequest, ConsultStatus, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
+import { migrateAnonymousRequests, saveConsultRequest } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
 import { generateAlias } from '../utils/generateAlias';
 import { ensureUniqueAlias, claimAlias } from '../services/aliasService';
 const AIRehabChatbotV2 = React.lazy(() => import('../rehab-chatbot-package/components/rehab/AIRehabChatbotV2'));
+import type { RehabChatProgressSnapshot } from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
+const ChatbotSidePanel = React.lazy(() => import('./client/ChatbotSidePanel'));
 import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { fetchSettings } from '../services/settingsService';
 import { formatKoreanCurrency, formatNumber } from '../utils';
-import { mockLawyers, initialConsultRequests, initialConsultMessages, adBanners } from '../data';
+import { mockLawyers } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 import { supabase } from '../supabaseClient';
 import PopupContainer from './popup/PopupContainer';
@@ -52,181 +53,27 @@ const InquiryView = React.lazy(() => import('./client/InquiryView'));
 const InquiryPopupModal = React.lazy(() => import('./client/InquiryPopupModal'));
 
 import ClientFooter from './client/ClientFooter';
-const TermsModal = React.lazy(() => import('./client/TermsModal'));
+import ClientHeader from './client/ClientHeader';
 import MobileGNB from './client/MobileGNB';
+import LandingView from './client/landing/LandingView';
+import { remedyData, renderRemedyIcon, SOLUTION_LABELS } from './client/remedyData';
+import { CLIENT_TAB_LABELS, isClientTab, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyPageSection } from './client/clientTabs';
+import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
+import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, OPEN_REQUEST_CLIENT_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
+import { getDisplayName as getLawyerDisplayName } from './client/lawyerDirectory';
+import { commitPendingLoginConsent, recordThirdPartyConsent } from '../services/clientConsentService';
+import ThirdPartyConsentModal from './client/ThirdPartyConsentModal';
 const RemedyModal = React.lazy(() => import('./client/RemedyModal'));
 const NewsDetailModal = React.lazy(() => import('./client/NewsDetailModal'));
 const LawyerProfileModal = React.lazy(() => import('./client/LawyerProfileModal'));
 
 import type { SolutionType } from './client/SolutionDetailModal';
 const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
-const RehabCompanionView = React.lazy(() => import('./client/companion/RehabCompanionView'));
+const CompanionIntroView = React.lazy(() => import('./client/companion/CompanionIntroView'));
 import TabErrorBoundary from './common/TabErrorBoundary';
-import ServiceGuideSection, { TrustFactsBar } from './client/landing/ServiceGuideSection';
 
-// 의뢰인이 한 번에 상담 요청할 수 있는 변호사 수 (LawyersView 선택 한도 + 랜딩 안내 문구 공용)
-const LAWYER_MAX_SELECTIONS = 3;
-
-// SolutionDetailModal의 SolutionType 키와 1:1 매칭되는 진입 카테고리 라벨
-const SOLUTION_LABELS: Record<SolutionType, string> = {
-  rehab: '개인회생',
-  bankruptcy: '개인파산',
-  credit: '신용회복',
-  representation: '채무자대리',
-  tax: '세금체납',
-};
-
-interface RemedyPreset {
-  jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
-  debtCause: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'OTHER';
-  harassmentLevel: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE';
-  creditorCount: number;
-  debtBanks: number;
-  debtCards: number;
-  debtPersonals: number;
-  recentLoans: number;
-  coinCrypto: number;
-  debtTotal: number;
-  income: number;
-  assetsTotal?: number;
-  title: string;
-  content: string;
-}
-
-interface RemedyInfo {
-  id: string;
-  title: string;
-  subtitle: string;
-  remedyTitle: string;
-  remedyDesc: string;
-  guideTitle: string;
-  guideDesc: string;
-  iconName: string;
-  badgeText: string;
-  themeColor: string;
-  preset: RemedyPreset;
-}
-
-const remedyData: Record<string, RemedyInfo> = {
-  card_loan: {
-    id: 'card_loan',
-    title: '카드론·리볼빙 연체',
-    subtitle: '확인할 내용: 연체 현황 · 이자 부담 · 이용 가능한 일반 제도',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '카드론·리볼빙 채무와 관련하여 일반적으로 확인되는 제도에는 신용회복위원회의 채무조정 제도(신속채무조정, 개인워크아웃)와 법원의 개인회생·파산 절차 등이 있습니다. 각 제도의 이용 가능 여부와 법률적 효과는 소득, 재산, 부양가족, 채무 발생 경위 및 최근 금융거래 등에 따라 달라질 수 있습니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '카드론 리볼빙 이용내역과 현재 잔액, 연체 시작일과 채권자 연락내역, 최근 대출 및 카드 이용내역, 월 소득과 고정지출, 보유재산과 전체 채무 현황을 정리해 주세요. 구체적인 행동 판단이 필요한 경우 신용회복위원회(1600-5500) 등 공적 상담기관에 확인하시기 바랍니다.',
-    iconName: 'Landmark',
-    badgeText: '채무조정 제도 일반정보',
-    themeColor: 'red',
-    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'CALL', creditorCount: 4, debtBanks: 1500, debtCards: 3500, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 5000, income: 230, title: '카드론 리볼빙 연체 관련 상담 문의', content: '카드론 리볼빙 연체 상황에서 이용 가능한 채무조정 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  bank_loan: {
-    id: 'bank_loan',
-    title: '은행·저축은행 연체',
-    subtitle: '확인할 내용: 연체 단계 · 채권추심 상태 · 채무조정 제도',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '은행 저축은행 채무 연체와 관련하여 신용회복위원회의 채무조정, 법원의 개인회생 파산 절차 등을 확인할 수 있습니다. 연체 시 기한이익상실, 가압류 등이 발생할 수 있으며, 대응 방법은 개인 상황에 따라 다릅니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '연체 중인 대출 목록과 잔액, 기한이익상실 통보 여부, 채권추심 연락 내역, 월 소득과 고정지출, 보유 재산 현황을 정리해 주세요. 구체적인 금융거래 변경 여부는 공적 상담기관 또는 전문가에게 확인하시기 바랍니다.',
-    iconName: 'TrendingDown',
-    badgeText: '연체 대응 일반정보',
-    themeColor: 'indigo',
-    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'LETTER', creditorCount: 3, debtBanks: 5000, debtCards: 0, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 5000, income: 250, title: '은행 저축은행 연체 관련 상담 문의', content: '은행 저축은행 대출 연체 상황에서 이용 가능한 채무조정 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  high_interest: {
-    id: 'high_interest',
-    title: '대부업·사채 독촉',
-    subtitle: '확인할 내용: 추심 연락 기록 · 불법추심 신고 방법 · 상담기관',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '대부업 사채 관련 채무에서 과도한 추심을 받는 경우, 채무자대리인 제도, 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 불법추심(야간추심, 폭언, 제3자 통보 등)이 있는 경우 금융감독원이나 경찰에 신고할 수 있습니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '대부업체/사채업자 연락 기록(문자, 녹취), 대출 계약서와 이자율 확인, 현재 채무 잔액과 상환 내역, 불법추심 증거자료, 월 소득과 고정지출을 정리해 주세요. 불법추심 신고: 금융감독원(1332) 또는 경찰(112)',
-    iconName: 'DollarSign',
-    badgeText: '불법추심 대응 일반정보',
-    themeColor: 'amber',
-    preset: { jobType: 'DAILY', debtCause: 'LIVING', harassmentLevel: 'LETTER', creditorCount: 5, debtBanks: 0, debtCards: 1000, debtPersonals: 3000, recentLoans: 0, coinCrypto: 0, debtTotal: 4000, income: 200, title: '대부업 사채 독촉 관련 상담 문의', content: '대부업 사채 채무 독촉 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  guarantee: {
-    id: 'guarantee',
-    title: '연대보증 채무 위기',
-    subtitle: '확인할 내용: 보증 범위 · 주채무 변제 여부 · 관련 서류',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '연대보증인에게 청구가 온 경우, 보증 범위 확인, 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 보증인의 법적 책임 범위와 대응 방법은 보증 계약 내용, 주채무 상태 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '보증 계약서 및 보증 범위, 주채무자의 현재 상태(파산 회생 여부), 채권자로부터 받은 청구서 독촉장, 본인의 채무 및 재산 현황, 월 소득과 고정지출을 정리해 주세요.',
-    iconName: 'Users',
-    badgeText: '연대보증 관련 일반정보',
-    themeColor: 'purple',
-    preset: { jobType: 'SALARIED', debtCause: 'GUARANTEE', harassmentLevel: 'LAWSUIT', creditorCount: 3, debtBanks: 6000, debtCards: 0, debtPersonals: 2000, recentLoans: 0, coinCrypto: 0, debtTotal: 8000, income: 350, title: '연대보증 채무 관련 상담 문의', content: '연대보증 채무로 인해 채권자로부터 청구를 받고 있어 관련 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  investment: {
-    id: 'investment',
-    title: '주식·코인 손실',
-    subtitle: '확인할 내용: 채무 발생 경위 · 보유재산 · 거래자료 준비',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '투자(주식 코인 등)로 인한 채무의 경우에도 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 투자 손실로 발생한 채무의 처리 방법은 채무 발생 경위, 최근 대출 비율, 보유재산 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '주식 코인 거래 내역서, 대출 후 자금 사용처 증빙, 현재 보유 잔고 및 재산 현황, 전체 채무 목록과 잔액, 월 소득과 고정지출을 정리해 주세요.',
-    iconName: 'AlertTriangle',
-    badgeText: '투자채무 관련 일반정보',
-    themeColor: 'orange',
-    preset: { jobType: 'SALARIED', debtCause: 'INVESTMENT', harassmentLevel: 'CALL', creditorCount: 6, debtBanks: 3500, debtCards: 0, debtPersonals: 0, recentLoans: 1500, coinCrypto: 4500, debtTotal: 9500, income: 280, title: '주식 코인 투자 손실 채무 관련 상담 문의', content: '투자 손실로 발생한 채무 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  freelancer: {
-    id: 'freelancer',
-    title: '일용직·프리랜서 채무',
-    subtitle: '확인할 내용: 소득 증빙 방법 · 세금 신고 여부 · 채무 현황',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '일용직 프리랜서 등 부정기 소득자도 채무조정 제도, 개인회생 파산 절차 등을 이용할 수 있습니다. 소득 증빙 방법과 절차 이용 가능 여부는 소득의 규칙성, 세금 신고 이력, 채무 규모 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '최근 6~12개월 통장 입출금 내역, 플랫폼 정산 내역서, 종합소득세 신고 내역(있는 경우), 근로계약서 또는 용역계약서, 전체 채무 목록과 잔액, 월 고정지출 내역을 정리해 주세요.',
-    iconName: 'Smartphone',
-    badgeText: '부정기 소득자 일반정보',
-    themeColor: 'emerald',
-    preset: { jobType: 'FREELANCER', debtCause: 'LIVING', harassmentLevel: 'CALL', creditorCount: 4, debtBanks: 2000, debtCards: 1500, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 3500, income: 180, title: '일용직 프리랜서 채무 관련 상담 문의', content: '부정기 소득자로서 채무 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  seizure: {
-    id: 'seizure',
-    title: '급여·통장 압류',
-    subtitle: '확인할 내용: 압류 대상 · 결정문 확인 · 법률검토가 필요한 사항',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '급여 예금이 압류된 경우, 개인회생 파산 절차, 압류 금지 범위 확인, 채무조정 제도 등을 확인할 수 있습니다. 압류에 대한 대응 방법은 압류 종류, 채권의 성격, 진행 상태 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '압류 결정문 또는 지급명령 결정문, 압류된 계좌 급여 정보, 채권자 목록과 채무 잔액, 월 소득과 고정지출, 부양가족 현황을 정리해 주세요. 긴급 상담: 대한법률구조공단(132) 또는 신용회복위원회(1600-5500)',
-    iconName: 'ShieldCheck',
-    badgeText: '압류 대응 일반정보',
-    themeColor: 'rose',
-    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'SEIZURE', creditorCount: 5, debtBanks: 4000, debtCards: 2000, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 6000, income: 240, title: '급여 통장 압류 관련 상담 문의', content: '급여 또는 예금 압류 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
-  },
-  tax_delinquency: {
-    id: 'tax_delinquency',
-    title: '세금 체납',
-    subtitle: '확인할 내용: 체납 세목 · 고지·독촉 내역 · 압류 진행 상태',
-    remedyTitle: '관련 제도 알아보기',
-    remedyDesc: '세금 체납의 경우 납부유예, 분할납부, 징수권 소멸시효 등을 확인할 수 있습니다. 세금 채무는 일반 채무와 처리 방식이 다르며, 대응 방법은 체납 세목, 금액, 압류 여부 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
-    guideTitle: '상담 전 준비사항',
-    guideDesc: '체납 세목과 금액(국세 지방세 구분), 고지서 독촉장 수령 내역, 압류 통지서(있는 경우), 사업자등록 이력과 폐업 시기, 기타 채무 현황을 정리해 주세요. 상담: 국세청(126), 대한법률구조공단(132)',
-    iconName: 'Scale',
-    badgeText: '세금 체납 일반정보',
-    themeColor: 'slate',
-    preset: { jobType: 'FREELANCER', debtCause: 'BUSINESS', harassmentLevel: 'LETTER', creditorCount: 1, debtBanks: 0, debtCards: 0, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 3000, income: 180, assetsTotal: 50, title: '세금 체납 관련 상담 문의', content: '세금 체납 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
-  }
-};
-
-const renderRemedyIcon = (iconName: string, className = "w-6 h-6") => {
-  switch (iconName) {
-    case 'Landmark': return <Landmark className={className} />;
-    case 'TrendingDown': return <TrendingDown className={className} />;
-    case 'DollarSign': return <DollarSign className={className} />;
-    case 'Users': return <Users className={className} />;
-    case 'AlertTriangle': return <AlertTriangle className={className} />;
-    case 'Smartphone': return <Smartphone className={className} />;
-    case 'ShieldCheck': return <ShieldCheck className={className} />;
-    case 'Scale': return <Scale className={className} />;
-    default: return <Scale className={className} />;
-  }
-};
+// 의뢰인이 한 번에 상담 요청할 수 있는 변호사 수 (LawyersView 선택 한도 + 랜딩 안내 문구 + 요청 병합 공용)
+const LAWYER_MAX_SELECTIONS = LAWYER_REQUEST_LIMIT;
 
 const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
   const incomeSources: IncomeSource[] = [{
@@ -436,7 +283,10 @@ interface ClientRoleProps {
   messages: ConsultMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: LawyerType[];
-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer' | 'system', senderId: string, name: string, targetLawyerId?: string) => void;
+  /** 서버 저장까지 끝나면 true를 돌려준다 (void를 돌려주는 구현은 성공으로 본다) */
+  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer' | 'system', senderId: string, name: string, targetLawyerId?: string) => void | Promise<boolean>;
+  /** 전송 실패한 의뢰인 메시지를 같은 id로 다시 보낸다 */
+  onRetryMessage?: (messageId: string) => Promise<boolean>;
   newsArticles: NewsArticle[];
   setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
   qas: ClientQA[];
@@ -466,6 +316,7 @@ export default function ClientRole({
   setMessages,
   lawyers,
   onAddMessage,
+  onRetryMessage,
   newsArticles,
   setNewsArticles,
   qas,
@@ -489,30 +340,13 @@ export default function ClientRole({
 }: ClientRoleProps) {
   const dialog = useDialog();
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide' | 'companion' | 'company'>(() => {
-    if (typeof window === 'undefined') return 'landing';
-    // [SEO] 클린 URL 경로를 탭으로 매핑
-    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news', '/companion': 'companion', '/company': 'company' };
-    const mapped = pathTabMap[window.location.pathname];
-    if (mapped) return mapped as any;
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'];
-    if (tabParam && validTabs.includes(tabParam)) {
-      return tabParam as any;
-    }
-    return 'landing';
-  });
+  // 탭 ID·경로 매핑은 client/clientTabs.ts 한 곳에서 관리한다
+  const [activeTab, setActiveTab] = useState<ClientTab>(readInitialClientTab);
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
-  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [clientNotifications, setClientNotifications] = useState<ClientNotification[]>(() => { seedInitialNotifications(); return loadClientNotifications(); });
   const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
-  const notifRef = useRef<HTMLDivElement>(null);
-  const [activeReviewIdx, setActiveReviewIdx] = useState(0);
-  const [faqOpenId, setFaqOpenId] = useState<number | null>(null);
-  const [faqExpanded, setFaqExpanded] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const [mypageSubTab, setMypageSubTab] = useState<'companion' | 'diagnosis' | 'settings'>('companion');
+  // 마이페이지 안에서 처음 보여 줄 탭. 비워 두면 마이페이지가 사건 상태로 정한다(계약 전 → 내 사건, 계약 후 → 회생동행)
+  const [mypageSubTab, setMypageSubTab] = useState<MyPageSection | undefined>(undefined);
 
   // [SEO] 탭 전환 시 document.title + meta description 동적 갱신
   const currentMeta = TAB_META[activeTab] || TAB_META.landing;
@@ -538,18 +372,9 @@ export default function ClientRole({
 
     const handlePopState = (event: PopStateEvent) => {
       isPopStateRef.current = true;
-      if (event.state && event.state.tab && ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'].includes(event.state.tab)) {
-        setActiveTab(event.state.tab);
-      } else {
-        const params = new URLSearchParams(window.location.search);
-        const tabParam = params.get('tab');
-        const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'];
-        if (tabParam && validTabs.includes(tabParam)) {
-          setActiveTab(tabParam as any);
-        } else {
-          setActiveTab('landing');
-        }
-      }
+      const stateTab = event.state?.tab;
+      const tabParam = new URLSearchParams(window.location.search).get('tab');
+      setActiveTab(isClientTab(stateTab) ? stateTab : isClientTab(tabParam) ? tabParam : 'landing');
       setTimeout(() => {
         isPopStateRef.current = false;
       }, 50);
@@ -557,15 +382,6 @@ export default function ClientRole({
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  // 알림 드롭다운 외부 클릭 닫기
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifDropdown(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   useEffect(() => {
@@ -587,23 +403,35 @@ export default function ClientRole({
       params.set('tab', activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.pushState({ tab: activeTab }, '', newUrl);
+      // 새 화면은 맨 위에서 시작한다(뒤로 가기는 브라우저 스크롤 복원에 맡김)
+      window.scrollTo({ top: 0 });
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // ── 모바일 GNB 숨김 로직 ──
   const [isGnbHidden, setIsGnbHidden] = useState(false);
   // 챗봇(request) 탭에서는 항상 GNB 숨김
   const isChatbotActive = activeTab === 'request';
 
+  // 모바일 전체 화면 챗봇이 열려 있는 동안 뒤 페이지가 스크롤되지 않게 한다
+  useEffect(() => {
+    if (!isChatbotActive || typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767.98px)');
+    const apply = () => {
+      document.documentElement.style.overflow = mq.matches ? 'hidden' : '';
+    };
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => {
+      mq.removeEventListener?.('change', apply);
+      document.documentElement.style.overflow = '';
+    };
+  }, [isChatbotActive]);
+
   // ── 공개 변호사 디렉토리: 관리자 승인 상태가 반영되는 앱 공용 목록 사용 (정적 mock 고정 사용 금지) ──
+  // 실데이터가 없을 때 가상(mock) 변호사로 채우는 것은 개발 환경에서만 허용한다
   const directoryLawyers = useMemo<LawyerType[]>(
-    () => (lawyers && lawyers.length > 0 ? lawyers : mockLawyers).filter(l =>
+    () => (lawyers && lawyers.length > 0 ? lawyers : (import.meta.env.DEV ? mockLawyers : [])).filter(l =>
       // 변호사 자격자만 공개 (직원·실장 계정 노출 시 비변호사 법률사무 오인 소지)
       l.role === 'LAWYER' &&
       // 테스트 계정은 프로덕션 디렉토리에서 제외
@@ -660,8 +488,10 @@ export default function ClientRole({
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return;
     const handleResize = () => {
-      const vh = window.visualViewport!.height;
-      document.documentElement.style.setProperty('--chatbot-vh', `${vh}px`);
+      const vv = window.visualViewport!;
+      // 모바일 전체 화면 챗봇: 키보드가 올라오면 보이는 영역 높이·위치에 맞춘다
+      document.documentElement.style.setProperty('--chatbot-vh', `${vv.height}px`);
+      document.documentElement.style.setProperty('--chatbot-vv-top', `${vv.offsetTop}px`);
     };
     window.visualViewport.addEventListener('resize', handleResize);
     window.visualViewport.addEventListener('scroll', handleResize);
@@ -673,6 +503,8 @@ export default function ClientRole({
   }, []);
 
   const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
+  // 내 상황 체크 진행 상황 (데스크톱 옆 패널 표시용)
+  const [chatbotSnapshot, setChatbotSnapshot] = useState<RehabChatProgressSnapshot | null>(null);
 
   const handleUpdateFinancialProfile = (updatedProfile: FinancialProfile) => {
     if (!activeRequest) return;
@@ -767,9 +599,9 @@ export default function ClientRole({
 • 현재 법적 조치: ${legalActionsStr}
 
 ----------------------------------
-💡 변호사 실무 검토 요지:
-- 가용 소득 상환 능력 검토 완료.
-- 자산 청산가치 충족 여부 사전 확인.
+💡 참고:
+- 가용 소득·청산가치는 의뢰인 입력값 기준 자동 계산입니다.
+- 소득·재산 자료로 사실관계를 확인해 주세요.
 ==================================`;
 
     setRequests(prev => prev.map(req => {
@@ -790,9 +622,6 @@ export default function ClientRole({
     const clientId = secureGetItem('legal_crm_client_id') || 'client-temp';
   };
 
-  // Terms and Privacy popup states
-  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
-  const [termsModalType, setTermsModalType] = useState<'tos' | 'privacy'>('tos');
 
   // 관리자 환경설정 로드 (localStorage → AppSettings)
   const [effectiveSettings, setEffectiveSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -804,9 +633,13 @@ export default function ClientRole({
   const [inquiryTitle, setInquiryTitle] = useState<string>('');
   const [inquiryContent, setInquiryContent] = useState<string>('');
 
-  // 변호사 선택 모드 (챗봇 완료 후 LawyersView를 선택 모드로 전환)
+  // 변호사 찾기 '여러 명 골라 요청하기' 모드. 모바일 하단 메뉴 대신 선택 바를 보여 주므로 여기서 상태를 가진다
   const [lawyerSelectionMode, setLawyerSelectionMode] = useState(false);
+  // 내 관리방에서 '변호사 더 찾기'로 들어오면 그 상담방의 요청에 변호사를 더한다
+  const [lawyerSelectionTargetId, setLawyerSelectionTargetId] = useState<string | null>(null);
   const [pendingNewRequest, setPendingNewRequest] = useState<any>(null);
+  // 특정 변호사 프로필·글에서 '상담 요청'으로 시작한 진단: 결과 화면의 상담 요청 버튼에서 그 변호사에게 동의 후 요청
+  const [directIntent, setDirectIntent] = useState<{ requestId: string; lawyerId: string } | null>(null);
 
   const checkCooldown = (): boolean => {
     if (matchingCooldownHours === 0) return true;
@@ -824,128 +657,180 @@ export default function ClientRole({
 
     if (diffMs < cooldownMs) {
       const remainingHours = Math.ceil((cooldownMs - diffMs) / (60 * 60 * 1000));
-      alert(`${remainingHours}시간 후 상담 요청 가능합니다.`);
+      toast.info(`${remainingHours}시간 후에 새 상담 요청을 보낼 수 있습니다.`);
       return false;
     }
 
     return true;
   };
 
-  // 의뢰인이 변호사 선택 완료 시 호출
-  const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
-    const finalClientId = secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp';
-    const targetReqId = pendingNewRequest?.id || activeChatReqId;
+  /**
+   * 상담 요청에 변호사를 더하고 안내문을 남긴다.
+   * 변호사 찾기 선택 모드와 내 관리방 '좋아요 변호사' 목록이 같은 규칙을 쓴다:
+   * 기존 요청 대상은 유지하고, 한도(3명)를 넘는 변호사는 제외하며, 새로 더해진 변호사에게만 알린다.
+   * @returns 새로 요청 대상이 된 변호사 수
+   */
+  const requestLawyersForConsult = (request: ConsultRequest, lawyerIds: string[], options: { isNew?: boolean } = {}): number => {
+    const merge = mergeLawyerRequest(request.selectedLawyerIds, lawyerIds);
+    const reopen = request.status === 'cancelled' || request.status === 'closed';
+    const nextRequest: ConsultRequest = {
+      ...request,
+      selectedLawyerIds: merge.selectedLawyerIds,
+      requestType: 'direct_multi',
+      maxParticipants: Math.max(1, merge.selectedLawyerIds.length),
+      status: reopen ? 'requested' : request.status,
+    };
 
-    // 기존 활성 상담 요청이 있는지 확인 (사용자 본인의 요청만 정확히 매칭)
-    const existingRequest = requests.find(r => 
-      r.id === targetReqId || (!r.id.startsWith('req-mock-') && r.clientId === finalClientId && (r.status === 'requested' || r.status === 'responding'))
-    );
-
-    if (existingRequest) {
-      // 기존 요청에 변호사 병합 및 direct_multi 설정
-      const existingIds = existingRequest.selectedLawyerIds || [];
-      const mergedIds = [...new Set([...existingIds, ...lawyerIds])].slice(0, 3); // 최대 3명
-      const newlyAdded = lawyerIds.filter(id => !existingIds.includes(id));
-
-      setRequests(prev => prev.map(r => 
-        r.id === existingRequest.id
-          ? { ...r, selectedLawyerIds: mergedIds, requestType: 'direct_multi' as const, maxParticipants: mergedIds.length }
-          : r
-      ));
-      setActiveChatReqId(existingRequest.id);
-      setLawyerSelectionMode(false);
-      setPendingNewRequest(null);
-
-      if (newlyAdded.length > 0) {
-        const newNames = newlyAdded.map(id => directoryLawyers.find(x => x.id === id)?.name).filter(Boolean);
-        // 의뢰인 화면 전용 안내문 (targetLawyerId: 'client-only'로 타 변호사 노출 차단)
-        onAddMessage(
-          existingRequest.id,
-          `${newNames.join(', ')} 변호사님에게 상담 요청이 전달되었습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
-          'system', 'system', '시스템 안내', 'client-only'
-        );
-        // 추가된 각 변호사에게 개별 상담 요청 전달 (타 변호사 이름 미노출)
-        newlyAdded.forEach(lawyerId => {
-          onAddMessage(
-            existingRequest.id,
-            '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.',
-            'system', 'system', '시스템 안내', lawyerId
-          );
-        });
-      }
-
-      setActiveTab('chat');
-      return;
+    if (options.isNew) {
+      setRequests(prev => [nextRequest, ...prev.filter(r => r.id !== nextRequest.id)]);
+    } else {
+      setRequests(prev => prev.map(r => (r.id === request.id
+        ? { ...r, selectedLawyerIds: merge.selectedLawyerIds, requestType: 'direct_multi' as const, maxParticipants: nextRequest.maxParticipants, status: reopen ? 'requested' as const : r.status }
+        : r)));
     }
 
-    // 새 요청 생성
-    if (!pendingNewRequest) return;
-    const finalRequest = {
-      ...pendingNewRequest,
-      requestType: 'direct_multi' as const,
-      selectedLawyerIds: lawyerIds.slice(0, 3),
-      proposals: [],
-      maxParticipants: Math.min(lawyerIds.length, 3),
-    };
-    setRequests(prev => {
-      const filtered = prev.filter(r => r.id !== finalRequest.id);
-      return [finalRequest, ...filtered];
-    });
-    setActiveChatReqId(finalRequest.id);
-    setLawyerSelectionMode(false);
-    setPendingNewRequest(null);
+    if (merge.overflowLawyerIds.length > 0) {
+      toast.info(`한 상담에는 변호사 ${LAWYER_REQUEST_LIMIT}명까지 요청할 수 있어 ${merge.overflowLawyerIds.length}명은 요청하지 않았습니다.`);
+    }
 
-    setTimeout(() => {
-      // 의뢰인 전용 안내문
-      onAddMessage(
-        finalRequest.id,
-        `상담 요청이 선택하신 ${lawyerIds.length}명의 변호사에게 전달되었습니다. 변호사가 고객님의 채무 현황을 검토한 뒤 솔루션 및 비용 제안서를 보내드립니다. 제안서를 확인하신 후 1:1 상담을 시작하실 수 있습니다.`,
-        'system',
-        'system',
-        '시스템 안내',
-        'client-only'
-      );
-      // 각 선택된 변호사에게 개별 상담 요청 전달
-      lawyerIds.forEach(id => {
-        onAddMessage(
-          finalRequest.id,
-          '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.',
-          'system',
-          'system',
-          '시스템 안내',
-          id
-        );
+    if (merge.addedLawyerIds.length > 0) {
+      const addedIds = merge.addedLawyerIds;
+      // 안내문이 '○○ 변호사님'으로 끝나므로 이름에 붙은 '변호사'는 뗀다
+      const names = addedIds
+        .map(id => directoryLawyers.find(x => x.id === id))
+        .filter((l): l is LawyerType => !!l)
+        .map(getLawyerDisplayName);
+      // 상담 요청 행이 서버에 먼저 있어야 안내문이 저장된다(외래키). 임의 지연 대신 요청 저장이 끝난 뒤 보낸다.
+      void saveConsultRequest(nextRequest).catch(() => {}).finally(() => {
+        // 의뢰인 화면 전용 안내문 ('client-only' → 변호사 화면에는 보이지 않음)
+        onAddMessage(request.id, buildClientRequestNotice(names, addedIds.length), 'system', 'system', '시스템 안내', 'client-only');
+        // 새로 요청받은 변호사에게만 개별 안내 (다른 변호사 이름은 알리지 않음)
+        addedIds.forEach(lawyerId => {
+          onAddMessage(request.id, LAWYER_REQUEST_RECEIVED_NOTICE, 'system', 'system', '시스템 안내', lawyerId);
+        });
       });
-    }, 1000);
+    }
+    return merge.addedLawyerIds.length;
+  };
 
+  /** 공개 요청: 등록·승인된 변호사가 요청을 확인하고 제안서를 보낼 수 있게 연다 (DB 규칙: status=requested AND request_type=open) */
+  const openRequestForMatching = (request: ConsultRequest) => {
+    setRequests(prev => prev.map(r => (r.id === request.id
+      ? { ...r, requestType: 'open' as const, maxParticipants: LAWYER_REQUEST_LIMIT, status: 'requested' as const }
+      : r)));
+    const nextRequest: ConsultRequest = { ...request, requestType: 'open', maxParticipants: LAWYER_REQUEST_LIMIT, status: 'requested' };
+    void saveConsultRequest(nextRequest).catch(() => {}).finally(() => {
+      onAddMessage(request.id, OPEN_REQUEST_CLIENT_NOTICE, 'system', 'system', '시스템 안내', 'client-only');
+    });
+  };
+
+  // ── 변호사에게 상담 정보 제공(개인정보 제3자 제공) 동의 ──
+  // 로그인 때 받지 않고, 상담 정보를 실제로 보내는 순간마다 받는 변호사를 보여 주고 동의를 받는다.
+  interface PendingThirdPartyConsent {
+    request: ConsultRequest;
+    scope: 'selected' | 'open';
+    /** selected: 요청하려는 변호사 (이미 요청한 변호사는 병합 시 제외) */
+    lawyerIds: string[];
+    isNew?: boolean;
+  }
+  const [pendingConsent, setPendingConsent] = useState<PendingThirdPartyConsent | null>(null);
+
+  /** 고른 변호사에게 상담을 요청하기 전에 동의 창을 연다 */
+  const requestLawyersWithConsent = (request: ConsultRequest, lawyerIds: string[], options: { isNew?: boolean } = {}) => {
+    const preview = mergeLawyerRequest(request.selectedLawyerIds, lawyerIds);
+    if (preview.addedLawyerIds.length === 0) {
+      toast.info(preview.overflowLawyerIds.length > 0
+        ? `한 상담에는 변호사 ${LAWYER_REQUEST_LIMIT}명까지 요청할 수 있습니다. 기존 요청을 취소하면 다시 고를 수 있어요.`
+        : '이미 상담을 요청한 변호사입니다.');
+      return;
+    }
+    setPendingConsent({ request, scope: 'selected', lawyerIds, isNew: options.isNew });
+  };
+
+  /** 공개 요청 전에 동의 창을 연다 */
+  const requestOpenMatchingWithConsent = (request: ConsultRequest) => {
+    setPendingConsent({ request, scope: 'open', lawyerIds: [] });
+  };
+
+  const consentRecipients = useMemo(() => {
+    if (!pendingConsent || pendingConsent.scope !== 'selected') return [];
+    const { addedLawyerIds } = mergeLawyerRequest(pendingConsent.request.selectedLawyerIds, pendingConsent.lawyerIds);
+    return addedLawyerIds.map(id => {
+      const lawyer = directoryLawyers.find(l => l.id === id);
+      // 동의 창이 '○○ 변호사'로 표시하므로 이름에 붙은 '변호사'는 뗀다
+      return { id, name: lawyer ? getLawyerDisplayName(lawyer) : '선택한', firmName: lawyer?.firmName || lawyer?.firm || '' };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingConsent]);
+
+  const handleThirdPartyConsentAgreed = async () => {
+    const pending = pendingConsent;
+    if (!pending) return;
+    // 동의 창을 연 뒤 서버 동기화로 바뀐 내용이 있으면 최신 상담 요청을 기준으로 반영한다
+    const latest = pending.isNew ? pending.request : (requests.find(r => r.id === pending.request.id) || pending.request);
+
+    if (pending.scope === 'selected') {
+      const { addedLawyerIds } = mergeLawyerRequest(latest.selectedLawyerIds, pending.lawyerIds);
+      await recordThirdPartyConsent({ requestId: latest.id, scope: 'selected', lawyerIds: addedLawyerIds });
+      const added = requestLawyersForConsult(latest, pending.lawyerIds, { isNew: pending.isNew });
+      if (added > 0) toast.success(`변호사 ${added}명에게 상담 요청을 보냈습니다.`);
+      setLawyerSelectionMode(false);
+      setLawyerSelectionTargetId(null);
+      setPendingNewRequest(null);
+    } else {
+      await recordThirdPartyConsent({ requestId: latest.id, scope: 'open', lawyerIds: [] });
+      openRequestForMatching(latest);
+      toast.success('공개 요청을 올렸습니다. 제안서가 도착하면 알려 드릴게요.');
+    }
+    setActiveChatReqId(latest.id);
     setActiveTab('chat');
+    setPendingConsent(null);
+  };
+
+  /**
+   * 변호사 찾기에서 고른 변호사에게 요청 (받는 변호사 확인·동의 창을 연다).
+   * 상담 요청과 내 관리방은 로그인 후 쓸 수 있으므로(결과 리포트와 같은 규칙) 로그인 전이면 고른 변호사를 보관하고 로그인 창을 연다.
+   */
+  const requestFromDirectory = (target: ConsultRequest, lawyerIds: string[]) => {
+    if (!isLoggedIn) {
+      stashPendingLawyerRequest(target.id, lawyerIds);
+      toast.info('상담 요청은 로그인 후 보낼 수 있어요. 로그인하면 고른 변호사를 확인하는 화면이 이어서 열립니다.');
+      setShowAuthModal(true);
+      return;
+    }
+    requestLawyersWithConsent(target, lawyerIds);
+  };
+
+  // 변호사 찾기 선택 모드에서 선택 완료 시 호출 (동의 후 요청). 대상 요청은 lawyerRequestTarget 참고
+  const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
+    const target = lawyerRequestTarget;
+    if (!target) {
+      toast.info('내 상황 체크를 먼저 마치면 변호사에게 상담을 요청할 수 있습니다.');
+      return;
+    }
+    requestFromDirectory(target, lawyerIds);
+  };
+
+  /**
+   * 변호사 카드·프로필의 '상담 요청'.
+   * 체크를 마친 진행 중 요청이 있으면 받는 변호사를 확인하는 동의 창을 바로 열고,
+   * 없으면 그 변호사를 정해 둔 채 내 상황 체크부터 시작한다(결과 화면의 상담 요청에서 그 변호사에게 동의 후 전달).
+   */
+  const handleConsultLawyer = (lawyerId: string) => {
+    const target = lawyerRequestTarget;
+    if (target) {
+      requestFromDirectory(target, [lawyerId]);
+      return;
+    }
+    const l = directoryLawyers.find(x => x.id === lawyerId);
+    if (l) setTitle(`${getLawyerDisplayName(l)} 변호사 상담 요청`);
+    setSelectedLawyerId(lawyerId);
+    setRequestType('direct');
+    setRequestStep(1);
+    setActiveTab('request');
   };
   
-  // Home Landing States
-  const [calcIncome, setCalcIncome] = useState<number>(250);
-  const [calcDebt, setCalcDebt] = useState<number>(7000);
-  const [calcDependents, setCalcDependents] = useState<number>(0);
-  const [bannerIndex, setBannerIndex] = useState<number>(0);
-  const [openedQaId, setOpenedQaId] = useState<string | null>(null);
-  const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
-
-  // 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 상품)
-  const [showcasePage, setShowcasePage] = useState(0);
-  const [showcaseHovered, setShowcaseHovered] = useState(false);
-  // [PART 3-4] data.ts 시드 광고(가상 변호사·'인가율 98%·누적 842건' 등 근거 없는 수치)는 DEV 전용.
-  // 실제 광고 소재 저장·승인 경로가 없어 운영에서는 섹션을 숨긴다(빈 배열이면 렌더링하지 않음).
-  const [shuffledShowcaseAds] = useState(() => (import.meta.env.DEV ? [...adBanners] : []).filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
-
-  useEffect(() => {
-    if (showcaseHovered || shuffledShowcaseAds.length === 0) return;
-    const cardsPerPage = 3;
-    const totalPages = Math.ceil(shuffledShowcaseAds.length / cardsPerPage);
-    if (totalPages <= 1) return;
-    const timer = setInterval(() => {
-      setShowcasePage(prev => (prev + 1) % totalPages);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [showcaseHovered, shuffledShowcaseAds.length]);
+  // 홈(랜딩) 섹션 상태와 DEV 전용 광고 쇼케이스는 client/landing/* 컴포넌트가 직접 관리한다
 
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
@@ -967,10 +852,8 @@ export default function ClientRole({
   const [senderNameOverride, setSenderNameOverride] = useState<string>('my김변');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showInquiryPopup, setShowInquiryPopup] = useState<boolean>(false);
-  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
   const [showResetDiagnosisModal, setShowResetDiagnosisModal] = useState<boolean>(false);
-  const [chatModalTrigger, setChatModalTrigger] = useState<'fav' | 'no_fav' | null>(null);
   const [pendingDiagnosisAfterLogin, setPendingDiagnosisAfterLogin] = useState<boolean>(false);
 
   // 채무 상황 체크 시작 클릭 처리 (로그인 불필요 → 기존 데이터가 있을 경우 커스텀 팝업)
@@ -1082,18 +965,6 @@ export default function ClientRole({
     }
   }, [isLoggedIn, userAlias, members, dialog]);
 
-  // Debounced effect to log calculator parameter adjustments
-  useEffect(() => {
-    if (activeTab !== 'calculator') return;
-    const timer = setTimeout(() => {
-      const minLivingCost = calcDependents === 0 ? 133 : calcDependents === 1 ? 221 : calcDependents === 2 ? 282 : 343;
-      const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
-      const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
-      const totalReduction = Math.max(0, calcDebt - totalRepayment);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [calcIncome, calcDebt, calcDependents, activeTab]);
-
   // OTP and Verification Simulation States
 
 
@@ -1132,6 +1003,8 @@ export default function ClientRole({
         }
         setIsLoggedIn(true);
         touchClientActivity();
+        // 로그인 직전에 받은 필수 동의(약관·개인정보)를 계정에 기록 (보관된 동의가 없으면 아무것도 하지 않음)
+        void commitPendingLoginConsent();
         const existingAlias = session.user.user_metadata?.alias as string | undefined;
         const metaAlias = existingAlias || generateAlias();
         setUserAlias(metaAlias);
@@ -1162,13 +1035,13 @@ export default function ClientRole({
       // 2) 지연 재시도 (Supabase _initialize 완료 대기)
       retry1 = setTimeout(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!isCancelled && session?.user) handleSession(session, '1초 재시도');
+          if (!isCancelled && session?.user) handleSession(session, 'retry-1s');
         });
       }, 1000);
 
       retry2 = setTimeout(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!isCancelled && session?.user) handleSession(session, '3초 재시도');
+          if (!isCancelled && session?.user) handleSession(session, 'retry-3s');
           else if (isPendingOAuth) {
             secureRemoveItem('pending_oauth_login');
             localStorage.removeItem('pending_oauth_login');
@@ -1272,8 +1145,6 @@ export default function ClientRole({
   // Currently opened Chat consultation request ID
   const [activeChatReqId, setActiveChatReqId] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
-  const [phoneConsultNum, setPhoneConsultNum] = useState<string>('');
-  const [useSafeNumber050, setUseSafeNumber050] = useState<boolean>(true);
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
   const [initialQnACategory, setInitialQnACategory] = useState<string | null>(null);
@@ -1316,7 +1187,50 @@ export default function ClientRole({
     }
   }, [clientRequests]);
 
-  const activeRequest = clientRequests.find(r => r.clientId === 'client-temp') || clientRequests[0];
+  // 내 관리방에서 보고 있는 상담의 체크 결과를 우선한다 (상담이 여러 개일 때 '내 채무'가 다른 상담 것을 보여 주지 않도록)
+  const activeRequest = clientRequests.find(r => r.id === activeChatReqId && !!r.financialProfile)
+    || clientRequests.find(r => r.clientId === 'client-temp')
+    || clientRequests[0];
+
+  /**
+   * 변호사 찾기에서 변호사를 더 요청할 상담 요청 (내 상황 체크를 마친 본인 요청만).
+   * 우선순위: 내 관리방에서 '변호사 더 찾기'로 고른 상담 → 방금 마친 체크 → 보고 있던 상담방 → 가장 최근 진행 중 요청.
+   * 변호사를 정해 상담을 이어가는 단계(counseling 이후)에는 더하지 않는다.
+   */
+  const lawyerRequestTarget = React.useMemo<ConsultRequest | null>(() => {
+    const ADDABLE: ReadonlyArray<ConsultStatus> = ['requested', 'responding', 'comparing', 'cancelled'];
+    const addable = (r: ConsultRequest | undefined): r is ConsultRequest =>
+      !!r && !r.id.startsWith('req-mock-') && !!r.financialProfile && ADDABLE.includes(r.status);
+    const preferred = [lawyerSelectionTargetId, pendingNewRequest?.id, activeChatReqId].filter((id): id is string => !!id);
+    for (const id of preferred) {
+      const r = clientRequests.find(x => x.id === id);
+      if (addable(r)) return r;
+    }
+    return clientRequests.find(r => addable(r) && r.status !== 'cancelled') || null;
+  }, [clientRequests, lawyerSelectionTargetId, pendingNewRequest?.id, activeChatReqId]);
+  const lawyerTargetRequestedIds = React.useMemo(
+    () => Array.from(new Set(lawyerRequestTarget?.selectedLawyerIds || [])),
+    [lawyerRequestTarget]
+  );
+
+  // 로그인 전에 고른 변호사가 있으면 로그인 직후(소셜 로그인 복귀 포함) 받는 변호사 확인·동의 창을 이어서 연다
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const pending = readPendingLawyerRequest();
+    if (!pending) return;
+    clearPendingLawyerRequest();
+    const req = clientRequests.find(r => r.id === pending.requestId);
+    if (req) requestLawyersWithConsent(req, pending.lawyerIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, clientRequests]);
+
+  // 변호사 찾기를 떠나면 선택 모드를 끝낸다 (다음 방문 때 선택 바가 남아 있지 않도록)
+  useEffect(() => {
+    if (activeTab !== 'lawyers') {
+      setLawyerSelectionMode(false);
+      setLawyerSelectionTargetId(null);
+    }
+  }, [activeTab]);
 
 
   const activeResult = React.useMemo(() => {
@@ -1360,14 +1274,7 @@ export default function ClientRole({
 
 
 
-  // Banner rotation logic
-  useEffect(() => {
-    if (!banners || banners.length === 0) return;
-    const timer = setInterval(() => {
-      setBannerIndex(prev => (prev + 1) % banners.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [banners]);
+
 
 
 
@@ -1514,48 +1421,6 @@ export default function ClientRole({
     }
   }, [clientRequests, activeChatReqId]);
 
-  // Load random preset MyData profile
-  const handleMyDataLoad = () => {
-    // Simulated MyData pull
-    const presets = [
-      { 
-        inc: 245, debt: 8200, asset: 1500, bank: 4000, card: 2500, p: 1700, rec: 1500, coin: 3500, dep: 1, m: 'MARRIED' as const,
-        job: 'SALARIED' as const, comp: '(주)가나상사', empDate: '2022-04-10', region: '서울', spAsset: 1200, spIncome: 180, recentJob: false, rentDep: 5000, cause: 'INVESTMENT' as const, haras: 'LETTER' as const, creds: 5
-      },
-      { 
-        inc: 180, debt: 4500, asset: 300, bank: 2000, card: 1500, p: 1000, rec: 500, coin: 0, dep: 0, m: 'SINGLE' as const,
-        job: 'DAILY' as const, comp: '현대건설인력', empDate: '2024-01-15', region: '경기', spAsset: 0, spIncome: 0, recentJob: true, rentDep: 1500, cause: 'LIVING' as const, haras: 'CALL' as const, creds: 3
-      },
-      { 
-        inc: 350, debt: 15000, asset: 4200, bank: 9000, card: 3000, p: 3000, rec: 4000, coin: 6000, dep: 2, m: 'DIVORCED' as const,
-        job: 'BUSINESS' as const, comp: '우진네치킨', empDate: '2020-08-01', region: '부산', spAsset: 0, spIncome: 0, recentJob: false, rentDep: 3000, cause: 'BUSINESS' as const, haras: 'SEIZURE' as const, creds: 8
-      }
-    ];
-    const rand = presets[Math.floor(Math.random() * presets.length)];
-    setIncome(rand.inc);
-    setDebtTotal(rand.debt);
-    setAssetsTotal(rand.asset);
-    setDebtBanks(rand.bank);
-    setDebtCards(rand.card);
-    setDebtPersonals(rand.p);
-    setRecentLoans(rand.rec);
-    setCoinCrypto(rand.coin);
-    setDependents(rand.dep);
-    setMaritalStatus(rand.m);
-    
-    // Set new fields
-    setJobType(rand.job);
-    setCompanyName(rand.comp);
-    setEmploymentDate(rand.empDate);
-    setResidenceRegion(rand.region);
-    setSpouseAsset(rand.spAsset);
-    setSpouseIncome(rand.spIncome);
-    setHasRecentJobChange(rand.recentJob);
-    setRentalDeposit(rand.rentDep);
-    setDebtCause(rand.cause);
-    setHarassmentLevel(rand.haras);
-    setCreditorCount(rand.creds);
-  };
 
 
   const mapChatbotDataToIntakeData = (
@@ -1883,21 +1748,24 @@ export default function ClientRole({
       }
     }
 
-    // Construct the new ConsultRequest (pending - not yet saved)
-    // 변호사 지명 상태(requestType, selectedLawyerId)를 기존 state에서 반영
-    const effectiveRequestType = requestType || 'open';
-    const effectiveMaxParticipants = effectiveRequestType === 'direct' ? 1 : 3;
+    // Construct the new ConsultRequest
+    // 진단 결과는 본인만 보는 상담 요청으로 만든다. 변호사에게는 의뢰인이 받는 변호사를 확인하고
+    // 동의(제3자 제공)한 뒤에만 공개된다. (이전: 기본값 'open'이라 진단을 마치는 즉시 모든 변호사에게 노출,
+    // 특정 변호사 프로필에서 시작하면 그 변호사가 바로 '전담'으로 지정됨)
+    // 특정 변호사에게 상담하려고 시작했다면 그 변호사는 결과 화면의 상담 요청 단계에서 동의 창에 먼저 보여 준다.
+    const directIntentLawyerId = requestType === 'direct' && selectedLawyerId ? selectedLawyerId : null;
     const newRequest = {
       id: `req-${Date.now()}`,
       clientId: isLoggedIn ? (secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
       clientName: isLoggedIn ? userAlias : '익명 의뢰인',
-      phone: intakeData.phoneNumber || '010-4567-8901',
-      requestType: effectiveRequestType as 'open' | 'direct' | 'direct_multi',
-      maxParticipants: effectiveMaxParticipants,
-      ...(effectiveRequestType === 'direct' && selectedLawyerId ? { selectedLawyerId } : {}),
+      // 연락처는 실제 입력값만 사용(가짜 기본 번호 금지)
+      phone: intakeData.phoneNumber || '',
+      requestType: 'direct_multi' as const,
+      maxParticipants: LAWYER_REQUEST_LIMIT,
+      selectedLawyerIds: [] as string[],
       status: 'requested' as const,
       createdAt: new Date().toISOString(),
-      title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
+      title: `${intakeData.clientName}님의 개인회생 상담 요청`,
       content: `==================================
 📋 의뢰인 종합 사전 자가진단 리포트
 ==================================
@@ -1937,9 +1805,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 • ${intakeData.notes}` : '')}
 
 ----------------------------------
-💡 변호사 실무 검토 요지:
-- 가용 소득 상환 능력 검토 완료.
-- 자산 청산가치 충족 여부 사전 확인.
+💡 참고:
+- 가용 소득·청산가치는 의뢰인 입력값 기준 자동 계산입니다.
+- 소득·재산 자료로 사실관계를 확인해 주세요.
 ==================================`,
       financialProfile: {
         clientId: isLoggedIn ? (secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
@@ -2000,44 +1868,52 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
     
-    // 진단 완료 즉시 requests에 저장
+    // 진단 완료 즉시 requests에 저장 (본인 전용 — 변호사 공개 전)
     setRequests(prev => [newRequest, ...prev]);
     setPendingNewRequest(newRequest);
+    setDirectIntent(directIntentLawyerId ? { requestId: newRequest.id, lawyerId: directIntentLawyerId } : null);
+    // 다음 진단에 이전 지명 상태가 남지 않도록 초기화
+    setRequestType('open');
+    setSelectedLawyerId('');
 
     // 보고서 팝업의 "내 전담 변호사 선택하기" 버튼이 즐겨찾기 확인 → 팝업 방식으로 동작하도록
     // 자동 변호사 탭 이동 및 선택 모드 활성화를 하지 않음
   };
 
-  const handleSendChat = (targetLawyerId?: string) => {
-    if (!chatInput.trim()) return;
-    onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)', targetLawyerId);
-    
+  /**
+   * 1:1 상담 메시지 전송. 입력창은 바로 비우고, 말풍선에 '보내는 중 → 실패 시 다시 보내기'를 표시한다.
+   * @param targetLawyerId 대화 상대 변호사 (비교 상담 중에는 반드시 지정 — ChatView가 없으면 전송을 막는다)
+   * @returns 서버 저장까지 끝났으면 true
+   */
+  const handleSendChat = async (targetLawyerId?: string): Promise<boolean> => {
+    const text = chatInput.trim();
+    if (!text || !activeChatReqId) return false;
     setChatInput('');
+    const delivery = onAddMessage(activeChatReqId, text, 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)', targetLawyerId);
 
-    // Mock 시뮬레이션: Supabase 미연동 시에만 실제 매칭된 변호사 정보로 자동 응답
+    // 개발 환경 전용 시뮬레이션: 서버 미연동 개발 빌드에서만 대화 상대 변호사 이름으로 자동 응답한다
+    // (운영 빌드에서는 환경 변수가 빠져도 가짜 변호사 답변을 만들지 않는다)
     const isSupabaseConfigured = !!(import.meta as any).env?.VITE_SUPABASE_URL;
-    if (!isSupabaseConfigured) {
-      const activeRequest = requests.find(r => r.id === activeChatReqId);
-      if (activeRequest) {
-        // 실제 매칭된 변호사 정보 사용 (selectedLawyerId → acceptedLawyerIds → proposals 순 탐색)
-        const matchedLawyerId = activeRequest.selectedLawyerId 
-          || (activeRequest.acceptedLawyerIds && activeRequest.acceptedLawyerIds[0])
-          || (activeRequest.proposals && activeRequest.proposals[0]?.lawyerId)
-          || 'lawyer-1';
-        const matchedLawyer = lawyers.find(l => l.id === matchedLawyerId);
-        const matchedName = matchedLawyer?.name || '담당 변호사';
-
+    if (import.meta.env.DEV && !isSupabaseConfigured) {
+      const devRequest = requests.find(r => r.id === activeChatReqId);
+      const replyLawyerId = targetLawyerId
+        || devRequest?.selectedLawyerId
+        || devRequest?.acceptedLawyerIds?.[0]
+        || devRequest?.proposals?.[0]?.lawyerId;
+      if (replyLawyerId) {
+        const replyName = lawyers.find(l => l.id === replyLawyerId)?.name || '담당 변호사';
+        const reqId = activeChatReqId;
         setTimeout(() => {
-          onAddMessage(
-            activeChatReqId,
-            '상세 채무 계산 내역을 검토 중입니다. 월 평균 납부 가능한 가용 변제액을 약 40만 원 수준으로 맞춰 법관 보정 대비가 가능한 구조입니다. 법인 통장 거래 내역 및 신분증 사본 준비가 가능하신가요?',
-            'lawyer',
-            matchedLawyerId,
-            matchedName
-          );
+          onAddMessage(reqId, '[개발용 자동 응답] 메시지를 확인했습니다. 실제 서비스에서는 변호사가 직접 답변합니다.', 'lawyer', replyLawyerId, replyName);
         }, 2500);
       }
     }
+
+    const delivered = (await delivery) !== false;
+    if (!delivered) {
+      toast.error('메시지를 보내지 못했습니다. 말풍선 아래 \'다시 보내기\'를 눌러 주세요.');
+    }
+    return delivered;
   };
 
   // Real Supabase and Fallback Auth Handlers
@@ -2086,1078 +1962,237 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
 
+  // ── 화면 이동 공통: 알림 링크·안내 페이지 CTA·구버전 값도 여기서 정규화한다 ──
+  const navigateTo = (raw: string) => {
+    const target = resolveClientNavTarget(raw);
+    if (target.kind === 'start-check') {
+      handleStartDiagnosisClick();
+      return;
+    }
+    // 마이페이지로 갈 때만 영역을 정한다 (영역 없이 가면 사건 상태에 맞는 탭)
+    if (target.tab === 'mypage') setMypageSubTab(target.mypageSection);
+    if (target.tab === 'notices') setSelectedNoticeId(null);
+    setActiveTab(target.tab);
+  };
+
+  // ── 로그아웃 (헤더·전체 메뉴·마이페이지 공용) ──
+  const handleLogout = async () => {
+    await purgeClientSession();
+    // 공용 기기 대비: 진행 중이던 채무 정리 대화도 이 기기에서 지운다
+    try { localStorage.removeItem('roi_rehab_chatbot_session'); } catch { /* ignore */ }
+    setIsLoggedIn(false);
+    setUserAlias('');
+    // 이 기기의 화면 상태만 비운다(계정에 저장된 기록은 다시 로그인하면 복원)
+    setRequests([]);
+    setMessages([]);
+    setInquiries([]);
+    setShowLogoutSuccessModal(true);
+    setActiveTab('landing');
+  };
+
+  // ── 알림 ──
+  const refreshNotifications = () => {
+    setClientNotifications(loadClientNotifications());
+    setUnreadCount(getUnreadCount());
+  };
+  useEffect(() => {
+    refreshNotifications();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'client_notifications') refreshNotifications();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isLoggedIn]);
+
+  const handleNotificationClick = (n: ClientNotification) => {
+    if (!n.isRead) markAsRead(n.id);
+    refreshNotifications();
+    if (n.type === 'document_request') {
+      setMypageSubTab('diagnosis');
+      setActiveTab('mypage');
+      return;
+    }
+    if (n.linkTab) navigateTo(n.linkTab);
+  };
+  const handleMarkAllNotificationsRead = () => {
+    markAllAsRead();
+    refreshNotifications();
+  };
+  // 상담 관련(메시지·진행 상태) 읽지 않은 알림이 있을 때만 '내 관리방'에 점 표시
+  const hasUnreadConsultUpdate = isLoggedIn && clientNotifications.some(n => !n.isRead && (n.type === 'new_message' || n.type === 'status_change'));
+
+  // 변호사 선택 모드에서는 하단 선택 확정 바가 GNB 자리를 쓴다
+  // (LawyersView와 같은 조건: 요청할 상담이 있고 더 고를 자리가 있을 때만 선택 바가 뜬다)
+  const isLawyerSelectionActive = activeTab === 'lawyers' && lawyerSelectionMode
+    && !!lawyerRequestTarget && lawyerTargetRequestedIds.length < LAWYER_MAX_SELECTIONS;
+
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
-      <div className="w-full min-h-screen mx-auto flex flex-col relative bg-white dark:bg-slate-900">
-      
-        {/* Dynamic Client Header */}
-        <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
-          <div className="max-w-[1240px] w-full mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between">
-            <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0 min-w-0" onClick={() => setActiveTab('landing')}>
-              <img src="./mykim_logo.png" alt="my김변 로고" className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform shrink-0" />
-              <div className="flex flex-col items-start leading-tight shrink-0 whitespace-nowrap">
-                <span className="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
-                  my김변
-                </span>
-                <span className={`text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap ${isLoggedIn ? 'hidden xl:block' : 'hidden sm:block'}`}>
-                  나의 채무관리 변호사
-                </span>
-              </div>
-            </div>
+    <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans">
+      <div className="w-full min-h-screen mx-auto flex flex-col relative bg-white">
+      <a
+        href="#client-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[70] focus:px-4 focus:py-3 focus:rounded-xl focus:bg-brand focus:text-white focus:font-bold"
+      >
+        본문으로 바로가기
+      </a>
 
-          <nav className="flex items-center gap-1.5 lg:gap-2 shrink-0">
-            <div className="hidden md:flex items-center gap-1 lg:gap-1.5">
-              <button 
-                onClick={() => setActiveTab('landing')}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'landing' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                홈
-              </button>
-              <button 
-                onClick={handleStartDiagnosisClick}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'request' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                내 상황 체크하기
-              </button>
-              <button 
-                onClick={() => setActiveTab('chat')}
-                className={`relative whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'chat' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                내 관리방
-                <span className="absolute 0 -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1E3A5F] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#1E3A5F]"></span>
-                </span>
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('lawyers')}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'lawyers' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                변호사 찾기
-              </button>
-              <button 
-                onClick={() => {
-                  setActiveTab('qna');
-                }}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'qna' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                고민상담 Q&A
-              </button>
-            </div>
- 
-            {/* Auth / MyPage section */}
-            {isLoggedIn ? (
-              <div className="flex items-center gap-2 lg:gap-2.5 ml-1 pl-2.5 border-l border-slate-200 dark:border-slate-800 shrink-0">
-                <button 
-                  onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`flex flex-col items-end hidden sm:flex whitespace-nowrap shrink-0 cursor-pointer p-1.5 px-3 rounded-xl border transition-all ${
-                    activeTab === 'mypage'
-                      ? 'bg-brand/10 border-brand/30 text-brand shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                  title="마이페이지 (회생동행)으로 이동"
-                >
-                  <span className="text-xs lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">
-                    <span>👤</span>
-                    <span className="text-brand font-black">{userAlias || '회원'}</span>님
-                  </span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-none mt-0.5">
-                    🌱 회생동행 관리중
-                  </span>
-                </button>
-
-                {/* 🔔 알림 벨 */}
-                <div className="relative" ref={notifRef}>
-                  <button
-                    onClick={() => {
-                      setShowNotifDropdown(!showNotifDropdown);
-                      if (!showNotifDropdown) {
-                        setClientNotifications(loadClientNotifications());
-                      }
-                    }}
-                    className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    aria-label={unreadCount > 0 ? `알림 (읽지 않은 알림 ${unreadCount}건)` : '알림'}
-                    aria-expanded={showNotifDropdown}
-                    aria-haspopup="true"
-                  >
-                    <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" aria-hidden="true" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                  {showNotifDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-[999] overflow-hidden animate-fadeIn">
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                        <span className="text-sm font-black text-slate-800">🔔 알림</span>
-                        {unreadCount > 0 && (
-                          <button
-                            onClick={() => { markAllAsRead(); setClientNotifications(loadClientNotifications()); setUnreadCount(0); }}
-                            className="text-xs text-brand font-bold hover:underline cursor-pointer min-h-[44px] px-2"
-                          >
-                            모두 읽음 처리
-                          </button>
-                        )}
-                      </div>
-                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
-                        {clientNotifications.length === 0 ? (
-                          <div className="py-8 text-center">
-                            <Bell className="w-6 h-6 text-slate-300 mx-auto" />
-                            <p className="text-xs text-slate-400 mt-2">새로운 알림이 없습니다</p>
-                          </div>
-                        ) : clientNotifications.slice(0, 10).map(n => (
-                          <button
-                            key={n.id}
-                            onClick={() => {
-                              if (!n.isRead) {
-                                markAsRead(n.id);
-                                setUnreadCount(prev => Math.max(0, prev - 1));
-                              }
-                              if (n.linkTab) {
-                                const targetTab = (n.linkTab === 'fees' || n.linkTab === 'settings') ? 'mypage' : n.linkTab;
-                                const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion'];
-                                if (validTabs.includes(targetTab)) {
-                                  setActiveTab(targetTab as any);
-                                } else {
-                                  setActiveTab('mypage');
-                                }
-                              }
-                              if (n.type === 'document_request' || n.linkTab === 'fees') {
-                                setMypageSubTab('diagnosis');
-                              } else if (n.linkTab === 'settings') {
-                                setMypageSubTab('settings');
-                              }
-                              setShowNotifDropdown(false);
-                              setClientNotifications(loadClientNotifications());
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className={`w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-brand/5' : ''}`}
-                          >
-                            <span className="text-lg shrink-0 mt-0.5">{n.emoji || '🔔'}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className={`text-xs font-bold truncate ${!n.isRead ? 'text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
-                                {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand shrink-0" />}
-                              </div>
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{n.body}</p>
-                              <p className="text-[10px] text-slate-300 mt-1">
-                                {(() => {
-                                  const diff = Date.now() - new Date(n.createdAt).getTime();
-                                  if (diff < 60000) return '방금 전';
-                                  if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
-                                  if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
-                                  return `${Math.floor(diff / 86400000)}일 전`;
-                                })()}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="border-t border-slate-100 px-4 py-2.5">
-                        <button
-                          onClick={() => { setActiveTab('mypage'); setShowNotifDropdown(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                          className="text-xs text-brand font-bold hover:underline cursor-pointer w-full text-center"
-                        >
-                          마이페이지에서 전체 알림 보기 →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <button 
-                  onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`whitespace-nowrap flex items-center gap-1.5 px-3.5 lg:px-4 py-2 lg:py-2.5 rounded-xl text-sm lg:text-base font-bold transition-all shrink-0 cursor-pointer border ${
-                    activeTab === 'mypage'
-                      ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/30 text-[#1E3A5F] font-bold shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-transparent'
-                  }`}
-                  title="마이페이지"
-                >
-                  <User className="w-4 h-4 lg:w-4.5 lg:h-4.5" />
-                  <span className="hidden sm:inline">마이페이지</span>
-                </button>
-                <button 
-                  onClick={async () => {
-                    await purgeClientSession();
-                    setIsLoggedIn(false);
-                    setUserAlias('');
-                    
-                    // 로컬 상태만 초기화
-                    setRequests([]);
-                    setMessages([]);
-                    setInquiries([]);
-                    
-                    setShowLogoutSuccessModal(true);
-                  }}
-                  className="whitespace-nowrap flex items-center gap-1.5 px-3.5 lg:px-4 py-2 lg:py-2.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm lg:text-base font-bold transition-all shrink-0 cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 lg:w-4.5 lg:h-4.5" />
-                  <span className="hidden sm:inline">로그아웃</span>
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setShowAuthModal(true)}
-                className="ml-2 flex items-center gap-2 px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl text-base font-bold transition-all shadow-sm hover:shadow-md active:scale-[0.98] whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                <Lock className="w-4 h-4" />
-                <span>로그인 및 회원가입</span>
-              </button>
-            )}
-          </nav>
-        </div>
-      </header>
-
-      {/* Privacy Assurance Strip Banner */}
-      <div className="w-full bg-[#1A3C4D] text-white text-center py-3 px-4 relative z-30">
-        <div className="flex items-center justify-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-white/90 shrink-0" />
-          <p className="text-sm sm:text-base font-bold tracking-tight">
-            상담정보는 가명 처리되니, 안심하고 의뢰하세요.
-          </p>
-        </div>
-        <p className="hidden md:block text-xs sm:text-sm text-white/60 mt-0.5 font-medium">
-          상담정보는 변호사님이 사건 내용을 파악하고 답변을 하기 위한 목적으로 사용됩니다.
-        </p>
-      </div>
+      <ClientHeader
+        activeTab={activeTab}
+        isLoggedIn={isLoggedIn}
+        userAlias={userAlias}
+        showLegalNews={!!platformConfig.showLegalNews}
+        notifications={clientNotifications}
+        unreadCount={unreadCount}
+        hasUnreadConsultUpdate={hasUnreadConsultUpdate}
+        onNavigate={(tab) => navigateTo(tab)}
+        onStartCheck={handleStartDiagnosisClick}
+        onOpenSettings={() => navigateTo('settings')}
+        onLogin={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        onOpenNotifications={refreshNotifications}
+        onNotificationClick={handleNotificationClick}
+        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+      />
 
       {/* Main Content Area */}
-      <main className={`flex-1 w-full ${isChatbotActive ? '' : 'pb-[70px] md:pb-0'}`}>
+      <main id="client-main" tabIndex={-1} className="flex-1 w-full outline-none">
 
-        {/* TAB 1: LANDING & INTRO */}
+        {/* 홈(랜딩) */}
         {activeTab === 'landing' && (
-          <div className="animate-fadeIn text-left">
-
-            {/* ── Sector 1: Hero ─────────────────────────────── */}
-            <section className="w-full py-12 md:py-20 bg-[#F8FAFC] border-b border-slate-200 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            {/* 1. Hero Section (Platform Pitch & Identity) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              {/* Left Column: Core Value Proposition */}
-              <div className="lg:col-span-7 space-y-6 text-left">
-                <div className="text-sm text-slate-500 font-medium">
-                  ✓ 1분 간편 확인 · ✓ 100% 익명 · ✓ SSL 암호화
-                </div>
-
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-[#0f172a]">
-                  내 채무를 먼저 정리하고,<br />
-                  상담할 변호사는 직접 선택하세요
-                </h1>
-                
-                <p className="hidden md:block text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
-                  이름 없이 1분 만에 내 채무 상황을 간편하게 정리하고,<br />
-                  신뢰할 수 있는 변호사 정보를 직접 비교해 보세요.
-                </p>
-
-                {/* Unified CTA Button */}
-                <div className="pt-3">
-                  <button
-                    onClick={() => {
-                      setRequestType('open');
-                      setRequestStep(1);
-                      setActiveTab('request');
-                    }}
-                    className="w-full sm:w-auto min-h-[44px] whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-xl transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base active:scale-[0.98]"
-                  >
-                    <span>내 채무 상황 체크하기</span>
-                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Right Column: 핵심 약속 & 프로세스 안내 */}
-              <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-sm p-6 sm:p-7 space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" /> my김변 안심 서비스 약속
-                  </h4>
-                  <span className="text-xs font-bold text-[#10B981] bg-[#ECFDF5] px-2.5 py-1 rounded-md border border-[#10B981]/20">
-                    스텔스 보증
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {[
-                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '부담 없는 초기 상담 절차', desc: '채무 현황 AI 정리 및 변호사 매칭까지의 과정에서 플랫폼 이용료가 발생하지 않습니다.' },
-                    { icon: <Lock className="w-5 h-5 text-[#10B981]" />, title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
-                    { icon: <Users className="w-5 h-5 text-[#1E3A5F]" />, title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
-                    { icon: <ShieldCheck className="w-5 h-5 text-slate-500" />, title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3.5 p-3.5 rounded-xl border border-slate-100 bg-[#F8FAFC] hover:bg-white hover:border-slate-200 transition-all">
-                      <span className="shrink-0 mt-0.5">{item.icon}</span>
-                      <div>
-                        <span className="text-sm font-bold text-slate-900 block">{item.title}</span>
-                        <span className="text-xs text-slate-500 leading-relaxed font-medium block mt-0.5">{item.desc}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            </div>
-            </section>
-
-            {/* -- Sector 2: service guide (4-step interactive stepper) -- */}
-            <ServiceGuideSection
-              maxLawyerSelections={LAWYER_MAX_SELECTIONS}
-              onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
-              onBrowseLawyers={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            />
-
-            {/* -- Trust Facts Bar (verifiable service facts only) -- */}
-            <TrustFactsBar maxLawyerSelections={LAWYER_MAX_SELECTIONS} />
-
-
-
-            {/* ── Sector 4: 상황별 채무관리 (로앤굿 스타일 아이콘 메뉴) ────────── */}
-            <section className="w-full py-12 md:py-20 bg-white">
-              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* 섹션 헤더 */}
-                <div className="text-center space-y-2.5 md:space-y-3 mb-10 md:mb-14">
-                  <div className="inline-flex items-center gap-2 bg-[#EEF4FA] border border-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-4 py-1.5 rounded-full">
-                    <HeartHandshake className="w-4 h-4" />
-                    <span>상황별 채무 정보</span>
-                  </div>
-                  <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight">
-                    관심 있는 채무 상황을 선택해 주세요
-                  </h3>
-                  <p className="text-base sm:text-lg text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
-                    각 상황에서 일반적으로 확인할 사항과 관련 제도의 <strong className="text-slate-700">기본 정보</strong>를 살펴볼 수 있습니다
-                  </p>
-                </div>
-
-                {/* 아이콘 메뉴 그리드 */}
-                <div className="grid grid-cols-4 gap-x-4 gap-y-8 md:gap-x-8 md:gap-y-10">
-                  {Object.values(remedyData).map((item) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() => handleCategoryClick(item.id)}
-                      className="flex flex-col items-center gap-2.5 md:gap-3 cursor-pointer group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A5F] focus-visible:ring-offset-2"
-                    >
-                      <div className="w-14 h-14 md:w-[76px] md:h-[76px] rounded-full bg-[#F1F5F9] group-hover:bg-[#E2E8F0] flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
-                        {renderRemedyIcon(item.iconName, 'w-6 h-6 md:w-8 md:h-8 text-[#475569] stroke-[1.5]')}
-                      </div>
-                      <span className="text-sm md:text-base font-bold text-[#334155] group-hover:text-[#0f172a] text-center leading-tight transition-colors">
-                        {item.title}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* 하단 안내 */}
-                <div className="text-center pt-8 md:pt-10">
-                  <p className="text-base text-slate-600 font-medium">
-                    ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-[#3B82F6] font-bold">3분</span>이면 완료됩니다
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* ── Sector 5.5: 프리미엄 변호사 쇼케이스 광고 ── */}
-            {shuffledShowcaseAds.length > 0 && (() => {
-              const totalPages = shuffledShowcaseAds.length;
-              const banner = shuffledShowcaseAds[showcasePage % totalPages];
-
-              return (
-                <section
-                  className="w-full py-4 md:py-8 bg-[#F8FAFC] border-y border-slate-200"
-                  onMouseEnter={() => setShowcaseHovered(true)}
-                  onMouseLeave={() => setShowcaseHovered(false)}
-                >
-                  <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[150px] md:h-[230px]">
-                      
-                      {/* Left: Text Info & CTA */}
-                      <div className="flex-1 p-4 md:p-7 lg:p-8 flex flex-col justify-center relative z-20 min-w-0">
-                        <div className="mb-1 md:mb-2">
-                          <span className="inline-block bg-white/10 text-white/90 text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1 md:mb-2">
-                            프리미엄 광고
-                          </span>
-                          <h3 className="text-base md:text-2xl font-bold text-white mb-0.5 md:mb-1 leading-tight truncate">
-                            {banner.title}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm md:text-xl font-black text-white">{banner.lawyerName}</span>
-                            <span className="text-xs md:text-base text-slate-300 font-medium truncate">{banner.subtitle}</span>
-                          </div>
-                        </div>
-                        
-                        <p className="hidden md:block text-base text-slate-300/90 font-light italic mb-4 border-l-3 border-amber-500 pl-3 break-keep">
-                          "{banner.tagline}"
-                        </p>
-                        
-                        <div>
-                          <button
-                            onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] whitespace-nowrap bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-base transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-[0.98]"
-                          >
-                            <span>프로필 보기 →</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Right: Avatar */}
-                      <div className="relative w-[130px] md:w-[210px] lg:w-[250px] overflow-hidden shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-l from-[#2B3E50]/20 via-[#2B3E50]/50 to-transparent z-10" />
-                        <img
-                          src={banner.lawyerAvatar}
-                          alt={banner.lawyerName}
-                          className="w-full h-full object-cover object-top"
-                        />
-                      </div>
-                      
-                      {/* Navigation Overlays */}
-                      <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex items-center gap-2 md:gap-3 z-20">
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => setShowcasePage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
-                            aria-label="이전 광고"
-                            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
-                          >
-                            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
-                          </button>
-                          <button
-                            onClick={() => setShowcasePage((prev) => (prev + 1) % totalPages)}
-                            aria-label="다음 광고"
-                            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
-                          >
-                            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-                          </button>
-                        </div>
-                        <div className="bg-black/40 px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium text-white/90 backdrop-blur-sm border border-white/10">
-                          {showcasePage + 1} / {totalPages}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-5 flex items-center justify-center gap-2">
-                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold">AD</span>
-                      <p className="text-xs text-slate-500">
-                        본 영역은 변호사가 직접 등록한 유료 광고이며, 랜덤 셔플 정렬로 운영됩니다.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              );
-            })()}
-
-            {/* ── Sector 6: 채무조정 방법 ─────────────────── */}
-            <section className="w-full py-8 md:py-14 bg-white border-b border-slate-200">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-6 text-center">
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
-                채무조정 방법 알아보기
-              </h3>
-
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
-                {([
-                  { type: 'rehab' as SolutionType, icon: '⚖️', title: '개인회생' },
-                  { type: 'bankruptcy' as SolutionType, icon: '🔓', title: '개인파산' },
-                  { type: 'credit' as SolutionType, icon: '🏦', title: '신용회복' },
-                  { type: 'representation' as SolutionType, icon: '🛡️', title: '채무자대리' },
-                  { type: 'tax' as SolutionType, icon: '📊', title: '세금체납' },
-                ]).map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveSolutionType(item.type)}
-                    className="flex flex-col items-center gap-2.5 py-4 md:py-5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 transition-all cursor-pointer active:scale-[0.97] group"
-                  >
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white flex items-center justify-center text-2xl md:text-3xl shadow-sm group-hover:scale-110 transition-transform duration-200">
-                      {item.icon}
-                    </div>
-                    <span className="text-sm md:text-base font-bold text-slate-700">{item.title}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            </div>
-            </section>
-
-            {/* ── Sector 7: 성공 후기 ─────────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-[#F8FAFC] border-b border-slate-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-4 text-left">
-              <div className="flex items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-xl text-[#0f172a] flex items-center gap-2">
-                  <HeartHandshake className="w-5 h-5 text-[#1E3A5F]" />
-                  <span>{reviews.length > 0 && reviews.every(r => r.isExample) ? '상담은 이렇게 진행돼요 (예시)' : '이용 후기 · 상담 예시'}</span>
-                </h3>
-                <button
-                  onClick={() => { setActiveTab('reviews'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="min-h-[44px] text-sm sm:text-base text-[#3B82F6] font-bold hover:underline shrink-0"
-                >
-                  더 보기 →
-                </button>
-              </div>
-
-              {(() => {
-                const reviewItems = reviews.slice(0, Math.min(reviews.length, 8));
-                if (reviewItems.length === 0) return null;
-
-                return (
-                  <div className="relative max-w-6xl mx-auto">
-                    <style dangerouslySetInnerHTML={{ __html: `
-                      @keyframes reviewFlow {
-                        0% { transform: translate3d(0, 0, 0); }
-                        100% { transform: translate3d(-50%, 0, 0); }
-                      }
-                    `}} />
-                    <div
-                      className="overflow-hidden py-4"
-                      style={{
-                        maskImage: 'linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)',
-                        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '1.25rem',
-                          width: 'max-content',
-                          animation: 'reviewFlow 30s linear infinite',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.animationPlayState = 'paused'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.animationPlayState = 'running'; }}
-                      >
-                        {/* 2벌 복제로 seamless loop */}
-                        {[0, 1].map((setIdx) =>
-                          reviewItems.map((rev) => (
-                            <div key={`${setIdx}-${rev.id}`} className="w-[330px] sm:w-[370px] shrink-0">
-                              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
-                                <div className="space-y-3 text-left">
-                                  {rev.isExample ? (
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                      {/* 가상 예시에는 별점·이용 인증을 붙이지 않는다 */}
-                                      <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md">예시(가상)</span>
-                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md">{rev.category}</span>
-                                    </div>
-                                  ) : typeof rev.rating === 'number' ? (
-                                    <div className="flex items-center gap-1.5 mb-2" aria-label={`별점 ${rev.rating}점 (5점 만점)`}>
-                                      {/* 실제 후기 별점만 표시 (미입력 시 별점 생략) */}
-                                      {[1, 2, 3, 4, 5].map(i => (
-                                        <Star
-                                          key={i}
-                                          aria-hidden="true"
-                                          className={`w-4 h-4 ${i <= (rev.rating ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
-                                        />
-                                      ))}
-                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                      <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md">{rev.tags?.[0] || rev.category || '개인회생'}</span>
-                                    </div>
-                                  )}
-                                  <h4 className="font-bold text-base text-slate-900 leading-snug line-clamp-1">
-                                    {rev.title}
-                                  </h4>
-                                  <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                    {rev.isExample ? rev.content : `"${rev.content}"`}
-                                  </p>
-                                </div>
-                                {rev.isExample ? (
-                                  <div className="pt-3 border-t border-slate-100">
-                                    <p className="text-xs text-slate-500 leading-relaxed">실제 이용자 후기가 아닌 상담 절차 설명용 가상 예시입니다. 결과는 개별 사정과 법원 판단에 따라 달라집니다.</p>
-                                  </div>
-                                ) : (
-                                  <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-slate-500 font-semibold">{rev.author}</span>
-                                      <div className="flex items-center gap-1.5">
-                                        {rev.lawyerAvatar && <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />}
-                                        <span className="font-semibold text-slate-700">{rev.lawyerName}</span>
-                                      </div>
-                                    </div>
-                                    <span className="text-xs text-slate-500">후기는 이용자의 주관적 의견이며, 사건 결과는 개별 사정에 따라 다릅니다.</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-            </div>
-            </section>
-
-            {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white border-b border-slate-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-4 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-xl text-[#0f172a] flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
-                  <span>실시간 고민 해결 상담사례</span>
-                </h3>
-                <span className="text-sm sm:text-base text-slate-500">변호사가 답변한 최근 상담 사례입니다</span>
-              </div>
-
-              <div className="space-y-3.5">
-                {qas
-                  .filter(qa => {
-                    if (!homeSearchQuery) return true;
-                    const query = homeSearchQuery.toLowerCase();
-                    return qa.question.toLowerCase().includes(query) || qa.category.toLowerCase().includes(query) || qa.answer.toLowerCase().includes(query);
-                  })
-                  .slice(0, 3)
-                  .map(qa => {
-                    const isOpen = openedQaId === qa.id;
-                    return (
-                      <div
-                        key={qa.id}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
-                      >
-                        {/* Header */}
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={isOpen}
-                          onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setOpenedQaId(isOpen ? null : qa.id);
-                            }
-                          }}
-                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E3A5F]"
-                        >
-                          <div className="space-y-2 text-left">
-                            <div className="flex items-center gap-2.5">
-                              <span className="bg-[#EEF4FA] text-[#1E3A5F] text-xs font-semibold px-2.5 py-0.5 rounded-md">
-                                {qa.category}
-                              </span>
-                              <span className="text-xs text-slate-500 font-semibold">
-                                {qa.author}
-                              </span>
-                              <div className="flex items-center gap-1.5 ml-auto">
-                                <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
-                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{qa.lawyerName} 답변</span>
-                              </div>
-                            </div>
-                            <h4 className="font-bold text-base sm:text-lg text-slate-900 dark:text-slate-100 pr-4 leading-snug">
-                              Q. {qa.question}
-                            </h4>
-                          </div>
-                          
-                          <span className="text-xs font-bold text-[#3B82F6] shrink-0 select-none pt-1">
-                            {isOpen ? '닫기 ▲' : '답변보기 ▼'}
-                          </span>
-                        </div>
-
-                        {/* Answer Details */}
-                        {isOpen && (
-                          <div className="px-5 pb-5 border-t border-slate-100 dark:border-slate-800 pt-4 bg-slate-50/50 dark:bg-slate-950/20 text-left space-y-4 animate-slideDown">
-                            <div className="flex items-start gap-3">
-                              <img
-                                src={qa.lawyerAvatar}
-                                alt={qa.lawyerName}
-                                className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-105 shrink-0"
-                              />
-                              <div className="space-y-1 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-base text-slate-900 dark:text-white">{qa.lawyerName}</span>
-                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2 py-0.5 rounded-md">변호사 답변</span>
-                                </div>
-                                <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
-                                  {qa.answer}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <button
-                                onClick={() => {
-                                  // Pre-fill question context
-                                  setTitle(`${qa.category} 관련 법률 상담 신청`);
-                                  setContent(`고민 사례 질문:\nQ. ${qa.question}\n\n위의 Q&A 고민 사례를 확인하고 저에게 동일하게 적용될 수 있는 법리적 가능성을 상담받고 싶습니다. 변호사님의 정밀 가이드가 필요합니다.`);
-                                  setRequestStep(3); // Go directly to submit step
-                                  setActiveTab('request');
-                                }}
-                                className="min-h-[44px] whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer active:scale-[0.98]"
-                              >
-                                비슷한 사례로 상담 신청
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* View More Button */}
-              <div className="pt-4 text-center">
-                <button 
-                  onClick={() => {
-                    setActiveTab('qna');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-2 px-7 py-4 whitespace-nowrap bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm sm:text-base transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
-                >
-                  <span>⚖️ 상담사례 전체보기</span>
-                  <span className="transition-transform group-hover:translate-x-1">→</span>
-                </button>
-              </div>
-            </div>
-
-            </div>
-            </section>
-
-            {/* ── 서비스 FAQ ─────────────── */}
-            <section className="w-full py-14 md:py-20 bg-[#0F172A]">
-              <div className="max-w-3xl mx-auto px-4 sm:px-6">
-                <div className="text-center space-y-3 mb-10">
-                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                    자주 묻는 질문
-                  </h3>
-                  <p className="text-sm md:text-base text-slate-400 font-medium">
-                    서비스 이용에 대해 궁금한 점을 확인하세요
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  {(() => {
-                    const faqItems = [
-                      { q: '플랫폼 이용에 비용이 발생하나요?', a: '채무 현황 AI 정리부터 변호사 상담 요청까지 플랫폼 이용료는 발생하지 않습니다. 정식 선임 시 비용은 각 변호사가 개별 안내합니다.' },
-                      { q: '제 개인정보가 노출되지 않나요?', a: '스텔스 가명 시스템을 통해 실명이나 연락처 없이 상담이 진행됩니다. 변호사에게도 가명만 공개되며, 모든 데이터는 SSL/TLS 암호화로 보호됩니다.' },
-                      { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 변호사가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
-                      { q: '어떤 변호사들이 등록되어 있나요?', a: '회생·파산 분야에서 실무 경험이 풍부한 전문 변호사만 등록되어 있으며, 프로필에서 경력, 전문 분야, 실제 의뢰인 후기를 직접 확인할 수 있습니다.' },
-                      { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅으로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
-                      { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 변호사가 안내합니다.' },
-                      { q: '개인회생과 개인파산의 차이는 무엇인가요?', a: '개인회생은 일정 소득이 있는 경우 채무의 일부를 3~5년간 변제하고 나머지를 면제받는 제도입니다. 개인파산은 변제 능력이 없는 경우 모든 채무를 면책받는 제도입니다. 소득 유무와 채무 규모에 따라 적합한 방안이 달라집니다.' },
-                      { q: '채무 체크 결과는 얼마나 정확한가요?', a: '법원 공개 기준과 실제 판례 데이터를 기반으로 분석하므로 참고 지표로 활용하기에 충분합니다. 다만, 정확한 법적 판단은 전문 변호사와의 상담을 통해 확인하시는 것을 권장합니다.' },
-                      { q: '변호사 상담 비용은 얼마인가요?', a: '플랫폼 내 상담 요청 및 제안서 수신 과정에서 의뢰인에게 별도 플랫폼 이용료는 없습니다. 정식 선임 시 발생하는 비용은 각 변호사가 개별 안내하며, 사전에 투명하게 비용을 확인한 뒤 결정하실 수 있습니다.' },
-                      { q: '이미 다른 곳에서 상담을 받은 적이 있는데, 다시 이용해도 되나요?', a: '물론입니다. 기존 상담 내역과 관계없이 새롭게 채무 상황을 체크하고, 다른 변호사의 의견을 비교해 보실 수 있습니다.' },
-                      { q: '채무가 소액이어도 이용할 수 있나요?', a: '네, 채무 금액에 상관없이 이용 가능합니다. 소액 채무의 경우에도 채무조정, 신용회복 등 확인할 수 있는 관련 제도 정보를 안내합니다.' },
-                      { q: '상담 내용이 가족이나 직장에 알려질 수 있나요?', a: '플랫폼은 가족이나 직장에 상담 사실을 알리지 않습니다. 상담은 스텔스 가명과 암호화된 채널로 진행되며, 개인정보는 본인 동의 또는 법령에 근거한 경우에만 제공됩니다. 다만 법원 절차가 시작되면 법령에 따라 채권자 등에게 송달이 이루어질 수 있으므로, 구체적인 사항은 담당 변호사와 상의하시기 바랍니다.' },
-                      { q: '서비스 이용 시간에 제한이 있나요?', a: '채무 상황 체크는 24시간 언제든 이용 가능합니다. 변호사 상담의 경우 비실시간 메시지를 남기시면 업무 시간 내에 답변을 받으실 수 있습니다.' },
-                      { q: '회원 탈퇴 후 데이터는 어떻게 처리되나요?', a: '회원 탈퇴 시 개인정보 및 상담 기록은 관련 법령에 따른 보관 기간 경과 후 완전히 삭제됩니다. 탈퇴는 마이페이지에서 간편하게 진행할 수 있습니다.' },
-                    ];
-                    const visibleItems = faqExpanded ? faqItems : faqItems.slice(0, 6);
-                    return visibleItems.map((item, idx) => {
-                      const isOpen = faqOpenId === idx;
-                      return (
-                        <div key={idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all">
-                          <button
-                            onClick={() => setFaqOpenId(isOpen ? null : idx)}
-                            className="w-full px-5 py-4 md:py-5 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-white/5 transition-colors"
-                          >
-                            <span className="font-bold text-base md:text-lg text-white">{item.q}</span>
-                            <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                          </button>
-                          {isOpen && (
-                            <div className="px-5 pb-5 text-sm md:text-base text-slate-300 leading-relaxed animate-slideDown border-t border-white/10 pt-4">
-                              {item.a}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-                {!faqExpanded && (
-                  <div className="mt-6 text-center">
-                    <a
-                      href="/faq"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-sm transition-all cursor-pointer active:scale-[0.98] border border-white/10"
-                    >
-                      더보기
-                    </a>
-                  </div>
-                )}
-                <div className="mt-10 bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-3">
-                  <p className="text-sm md:text-base text-slate-400 font-medium">원하시는 답변을 찾지 못하셨나요?</p>
-                  <button
-                    onClick={() => setShowInquiryPopup(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-white/20 text-white hover:bg-white/10 font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98]"
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    1:1 고객 문의하기
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {/* ── Sector 9: 법률 정보 (어드민에서 노출 설정) ─────────────────────── */}
-            {platformConfig.showLegalNews && (
-            <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 6. Legal News & Tips Section */}
-            <div className="space-y-4 text-left animate-fadeIn">
-              <div 
-                onClick={() => {
-                  setActiveTab('news');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="flex items-center justify-between gap-1 text-left cursor-pointer group"
-              >
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-[#1E3A5F]" />
-                  <span>알아두면 좋을 법률 정보</span>
-                  <ChevronRight className="w-4 h-4 text-[#7e7e8f] transition-transform group-hover:translate-x-1" />
-                </h3>
-                <span className="text-sm text-[#3B82F6] font-bold hover:underline shrink-0">
-                  더 많은 정보 보기 →
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {newsArticles.slice(0, 3).map(art => (
-                  <div 
-                    key={art.id} 
-                    onClick={() => {
-                      setSelectedArticle(art);
-                      // Increment view count locally
-                      setNewsArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: a.views + 1 } : a));
-                    }}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden cursor-pointer group"
-                  >
-                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
-                      <img 
-                        src={art.imageUrl} 
-                        alt={art.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {art.badge && (
-                        <span className={`absolute top-3.5 left-3.5 text-xs font-bold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
-                          art.badge === 'HOT' ? 'bg-[#0D9488]' :
-                          art.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
-                        }`}>
-                          {art.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                          <span>{art.category}</span>
-                          <span>•</span>
-                          <span>조회 {art.views}</span>
-                        </div>
-                        <h4 className="font-bold text-base text-slate-900 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-[#3B82F6] transition-colors text-left">
-                          {art.title}
-                        </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
-                          {art.excerpt}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-auto">
-                        <div className="flex items-center gap-2">
-                          <img 
-                            src={art.authorAvatar} 
-                            alt={art.authorName} 
-                            className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
-                          />
-                          <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">By {art.authorName}</span>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 transition-transform group-hover:translate-x-1" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            </div>
-            </section>
-            )}
-
-            {/* ── Final CTA Banner (풀위드) ─────────────── */}
-            <section className="w-full bg-gradient-to-r from-[#0F2440] via-[#1E3A5F] to-[#0F2440] py-12 md:py-16">
-              <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-5">
-                <div className="w-14 h-14 mx-auto bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <ShieldCheck className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight leading-snug">
-                  기록이나 노출 걱정 없이,<br />안전하게 내 채무 상황부터 진단해 보세요
-                </h3>
-                <button
-                  onClick={() => {
-                    setRequestType('open');
-                    setRequestStep(1);
-                    setActiveTab('request');
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-white hover:bg-slate-100 text-[#0F2440] font-extrabold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-lg"
-                >
-                  🔍 익명으로 내 상황 체크하기
-                </button>
-              </div>
-            </section>
-          </div>
-
+          <LandingView
+            qas={qas}
+            reviews={reviews}
+            newsArticles={newsArticles}
+            showLegalNews={!!platformConfig.showLegalNews}
+            remedies={Object.values(remedyData)}
+            maxLawyerSelections={LAWYER_MAX_SELECTIONS}
+            onStartCheck={handleStartDiagnosisClick}
+            onBrowseLawyers={() => setActiveTab('lawyers')}
+            onSelectRemedy={handleCategoryClick}
+            onSelectSolution={(type) => setActiveSolutionType(type)}
+            onConsultFromQa={(qa) => {
+              setTitle(`${qa.category} 관련 상담 요청`);
+              setContent(`참고한 상담 사례:\nQ. ${qa.question}\n\n위 사례와 비슷한 상황입니다. 제 경우에도 해당하는지 상담받고 싶습니다.`);
+              handleStartDiagnosisClick();
+            }}
+            onViewAllQna={() => setActiveTab('qna')}
+            onViewAllReviews={() => setActiveTab('reviews')}
+            onViewAllNews={() => setActiveTab('news')}
+            onOpenArticle={(art) => {
+              setSelectedArticle(art);
+              setNewsArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: a.views + 1 } : a));
+            }}
+            onOpenLawyerProfile={handleOpenLawyerProfile}
+            onOpenInquiry={() => setShowInquiryPopup(true)}
+          />
         )}
- 
- 
 
- 
- 
         {activeTab !== 'landing' && (
-        <div className={`w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 ${activeTab === 'request' ? 'py-0 px-0 md:py-6 md:px-4' : 'py-6'}`}>
-          <React.Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-24 space-y-4 animate-fadeIn">
-              <div className="w-10 h-10 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
-              <p className="text-xs text-slate-500 font-bold">페이지를 로딩하고 있습니다...</p>
-            </div>
-          }>
+        <div className={`w-full max-w-5xl mx-auto ${activeTab === 'request' ? 'md:px-6 md:py-6' : 'px-4 sm:px-6 lg:px-8 py-6 md:py-8'}`}>
+          {/* 탭이 바뀌면 오류 경계를 새로 만든다(한 화면의 오류가 다른 화면에 남지 않게) */}
+          <TabErrorBoundary key={activeTab} tabName={isClientTab(activeTab) ? CLIENT_TAB_LABELS[activeTab] : undefined} onNavigateHome={() => setActiveTab('landing')}>
+          <React.Suspense fallback={<PageSkeleton />}>
             {/* TAB: 회생동행 (3~5년 변제관리 & 면책 완주) */}
+            {/* 최상위 회생동행 = 소개 화면. 실제 관리는 마이페이지 '회생동행' 탭 (IA 통합안) */}
             {activeTab === 'companion' && (
-              <TabErrorBoundary tabName="회생동행" onNavigateHome={() => setActiveTab('landing')}>
-                <RehabCompanionView
-                  userAlias={userAlias}
-                  onNavigateToChat={() => setActiveTab('chat')}
-                  onNavigateToLawyers={() => setActiveTab('lawyers')}
-                />
-              </TabErrorBoundary>
+              <CompanionIntroView
+                lookupIds={[activeRequest?.id, isLoggedIn ? currentClientId : undefined, undefined]}
+                onOpenCompanion={() => { setMypageSubTab('companion'); setActiveTab('mypage'); window.scrollTo({ top: 0 }); }}
+                onStartCheck={handleStartDiagnosisClick}
+              />
             )}
 
-            {/* TAB: 탕감액 계산기 */}
-            {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); setActiveTab('request'); }} />)}
+            {/* TAB: 변제금 계산기 */}
+            {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); handleStartDiagnosisClick(); }} />)}
 
 
             {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}
             {activeTab === 'reviews' && (<ReviewsView reviews={reviews} onReviewClick={handleReviewClick} />)}
 
             {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
-            {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
+            {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} onOpenGuestInquiry={() => setShowInquiryPopup(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
 
             {/* TAB: MYPAGE (채무 진단 대시보드 + 개인 설정) */}
+            {/* TAB: 마이페이지 = 내 사건(진단·서류·계약·수임료) + 회생동행(진행·변제) + 알림·설정 (IA 통합안) */}
             {activeTab === 'mypage' && (
-              <TabErrorBoundary tabName="마이페이지" onNavigateHome={() => setActiveTab('landing')}>
-                <React.Suspense fallback={
-                  <div className="max-w-5xl mx-auto py-12 space-y-6 animate-pulse text-left">
-                    <div className="h-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"></div>
-                    <div className="h-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"></div>
-                  </div>
-                }>
-                  <div className="space-y-6">
-                    {activeRequest?.financialProfile ? (
-                      <MyPageView
-                        userAlias={userAlias}
-                        setUserAlias={setUserAlias}
-                        isEditingAlias={isEditingAlias}
-                        setIsEditingAlias={setIsEditingAlias}
-                        tempAlias={tempAlias}
-                        setTempAlias={setTempAlias}
-                        activeRequest={activeRequest}
-                        activeResult={activeResult}
-                        onUpdateFinancialProfile={handleUpdateFinancialProfile}
-                        onStartDiagnosis={() => setActiveTab('request')}
-                        requests={clientRequests}
-                        onNavigateToChat={() => setActiveTab('chat')}
-                        isCompact={false}
-                        initialSubTab={mypageSubTab}
-                        lawyers={directoryLawyers}
-                      />
-                    ) : (
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
-                          <FileText className="w-8 h-8 text-[#1E3A5F]" />
-                        </div>
-                        <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 확인 내역이 없습니다</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          "내 채무 상황 체크하기"를 통해 나의 채무 현황을 확인해 보세요.
-                        </p>
-                        <button
-                          onClick={() => setActiveTab('request')}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
-                        >
-                          채무 상황 체크하기
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 계정 설정 */}
-                    <MySettingsView
-                      isLoggedIn={isLoggedIn}
-                      userAlias={userAlias}
-                      setUserAlias={setUserAlias}
-                      onChangeAlias={handleChangeAlias}
-                      isEditingAlias={isEditingAlias}
-                      setIsEditingAlias={setIsEditingAlias}
-                      tempAlias={tempAlias}
-                      setTempAlias={setTempAlias}
-                      inquiries={inquiries}
-                      onNavigateToTab={(tab: string) => setActiveTab(tab as any)}
-                      onShowAuthModal={() => setShowAuthModal(true)}
-                      onLogout={async () => {
-                        await purgeClientSession();
-                        setIsLoggedIn(false);
-                        setUserAlias('');
-                        
-                        // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
-                        setRequests([]);
-                        setMessages([]);
-                        setInquiries([]);
-                        
-                        setShowLogoutSuccessModal(true);
-                        setActiveTab('landing');
-                      }}
-                    />
-                  </div>
-                </React.Suspense>
-              </TabErrorBoundary>
+              <MyPageView
+                userAlias={userAlias}
+                setUserAlias={setUserAlias}
+                isEditingAlias={isEditingAlias}
+                setIsEditingAlias={setIsEditingAlias}
+                tempAlias={tempAlias}
+                setTempAlias={setTempAlias}
+                activeRequest={activeRequest}
+                activeResult={activeResult}
+                onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                onStartDiagnosis={handleStartDiagnosisClick}
+                requests={clientRequests}
+                onNavigateToChat={(reqId) => { if (reqId) setActiveChatReqId(reqId); setActiveTab('chat'); }}
+                isCompact={false}
+                initialSubTab={mypageSubTab}
+                lawyers={directoryLawyers}
+                isLoggedIn={isLoggedIn}
+                // 예전 최상위 회생동행 탭은 로그인한 의뢰인 ID로 기록을 저장했다 → 함께 찾아 기록이 사라져 보이지 않게
+                companionFallbackIds={isLoggedIn && currentClientId ? [currentClientId] : undefined}
+                // 알림은 헤더와 같은 상태를 쓴다(누르면 읽음 + 관련 화면 이동, 헤더 숫자도 함께 갱신)
+                notifications={clientNotifications}
+                onNotificationClick={handleNotificationClick}
+                onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+                settingsPanel={
+                  <MySettingsView
+                    embedded
+                    isLoggedIn={isLoggedIn}
+                    userAlias={userAlias}
+                    setUserAlias={setUserAlias}
+                    onChangeAlias={handleChangeAlias}
+                    isEditingAlias={isEditingAlias}
+                    setIsEditingAlias={setIsEditingAlias}
+                    tempAlias={tempAlias}
+                    setTempAlias={setTempAlias}
+                    inquiries={inquiries}
+                    onNavigateToTab={(tab: string) => navigateTo(tab)}
+                    onShowAuthModal={() => setShowAuthModal(true)}
+                    onLogout={handleLogout}
+                  />
+                }
+              />
             )}
 
             {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사선택 + 채팅) */}
             {activeTab === 'chat' && (
               !isLoggedIn ? (
-                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                    <Lock className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">내 관리방</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm leading-relaxed">
-                    채무 상황 확인을 먼저 진행하시면 나의 채무 현황, 변호사 선택, 1:1 상담을 한 곳에서 관리할 수 있습니다.
-                  </p>
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowAuthModal(true)} className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer">로그인 / 회원가입</button>
-                    <button onClick={handleStartDiagnosisClick} className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">내 상황 체크하기</button>
-                  </div>
+                <div className="rounded-2xl border border-slate-200 bg-white">
+                  {/* 페이지 제목(화면 읽기용): 로그인 안내만 보일 때도 탭마다 h1 하나 */}
+                  <h1 className="sr-only">내 관리방</h1>
+                  <EmptyState
+                    icon={<Lock className="w-6 h-6" />}
+                    title="내 관리방은 로그인 후 이용할 수 있습니다"
+                    description="변호사에게 보낸 상담 요청, 도착한 제안서, 1:1 대화를 한곳에서 확인합니다. 아직 채무 정리를 하지 않았다면 내 상황 체크하기부터 시작해 보세요."
+                    action={<Button onClick={() => setShowAuthModal(true)}>로그인</Button>}
+                    secondaryAction={<Button variant="secondary" onClick={handleStartDiagnosisClick}>내 상황 체크하기</Button>}
+                  />
                 </div>
               ) : (
                 <ChatView 
                   requests={clientRequests} messages={messages} activeChatReqId={activeChatReqId} chatInput={chatInput}
-                  phoneConsultNum={phoneConsultNum} useSafeNumber050={useSafeNumber050} isLoggedIn={isLoggedIn} userAlias={userAlias}
-                  debtBanks={debtBanks} debtCards={debtCards} debtPersonals={debtPersonals}
-                  onSetActiveChatReqId={setActiveChatReqId} onSetChatInput={setChatInput} onSetPhoneConsultNum={setPhoneConsultNum}
-                  onSetUseSafeNumber050={setUseSafeNumber050} onSetActiveTab={(tab: string) => setActiveTab(tab as any)} onSetRequests={setRequests}
+                  isLoggedIn={isLoggedIn} userAlias={userAlias}
+                  onSetActiveChatReqId={setActiveChatReqId} onSetChatInput={setChatInput}
+                  onSetActiveTab={(tab: string) => navigateTo(tab)} onSetRequests={setRequests}
                   onSendChat={handleSendChat} onAddMessage={onAddMessage}
+                  onRetryMessage={onRetryMessage}
+                  onRequestLawyers={(request, lawyerIds) => requestLawyersWithConsent(request, lawyerIds)}
+                  onRequestOpenMatching={requestOpenMatchingWithConsent}
+                  onBrowseLawyersToRequest={(requestId) => {
+                    setLawyerSelectionTargetId(requestId);
+                    setLawyerSelectionMode(true);
+                    setActiveTab('lawyers');
+                    window.scrollTo({ top: 0 });
+                  }}
                   activeRequest={activeRequest} activeResult={activeResult} onUpdateFinancialProfile={handleUpdateFinancialProfile}
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
                   tempAlias={tempAlias} setTempAlias={setTempAlias}
                   lawyers={directoryLawyers}
-                  initialModalTrigger={chatModalTrigger}
-                  onClearModalTrigger={() => setChatModalTrigger(null)}
                   showDiagnosisReport={platformConfig.showDiagnosisReport}
                 />
               )
@@ -3168,43 +2203,54 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
             {/* TAB: LIVE Q&A CASE STUDIES */}
-            {activeTab === 'qna' && (<QnAView qas={qas} setQas={setQas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} initialCategory={initialQnACategory || undefined} />)}
+            {activeTab === 'qna' && (<QnAView qas={qas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); handleStartDiagnosisClick(); }} initialCategory={initialQnACategory || undefined} />)}
 
             {/* TAB 1-B: NOTICES TAB */}
             {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
 
-            {/* TAB: COMPANY INTRO */}
-            {activeTab === 'company' && (<React.Suspense fallback={null}><CompanyView onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></React.Suspense>)}
+            {/* TAB: COMPANY INTRO — 'diagnosis'·'request' 등은 navigateTo가 '체크 시작'으로 바꾼다 */}
+            {activeTab === 'company' && (<CompanyView onNavigate={(tab) => navigateTo(tab)} />)}
 
             {/* TAB: USAGE GUIDE */}
-            {activeTab === 'guide' && (<React.Suspense fallback={null}><GuideView onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></React.Suspense>)}
+            {activeTab === 'guide' && (<GuideView onNavigate={(tab) => navigateTo(tab)} />)}
 
 
             {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
             {activeTab === 'request' && (
-              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[var(--chatbot-vh,100dvh)] md:h-[600px] bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-3xl overflow-hidden relative shadow-2xl flex flex-col">
-                {/* 채무정보 정리 목적 고지 */}
-                <div className="px-4 py-2.5 bg-blue-950/40 border-b border-blue-800/30 shrink-0">
-                  <p className="text-xs sm:text-sm text-blue-300 font-medium leading-relaxed">
-                    ℹ️ 본 기능은 채무·소득·지출 정보를 정리하는 도구이며, 법률 자문을 제공하지 않습니다. 법률적 판단은 전문가 상담이 필요합니다.
-                  </p>
-                </div>
-                {/* 동적 안내 메시지 (RemedyModal에서 진입 시) */}
+              // 데스크톱(lg+)은 2열: 대화 + 입력 요약·진행 안내 / 태블릿은 대화만 가운데
+              <div className="w-full max-w-3xl lg:max-w-6xl mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 lg:items-start">
+              <div className="md:space-y-3 min-w-0">
+                {/* 페이지 제목(화면 읽기용). 화면에는 챗봇 머리가 제목 역할을 한다 */}
+                <h1 className="sr-only">내 상황 체크하기</h1>
+                {/* 목적 고지 (데스크톱: 대화창 위 / 모바일: 첫 인사 메시지에 같은 내용 포함) */}
+                <p className="hidden md:flex items-start gap-2 px-1 text-sm text-slate-600 leading-relaxed">
+                  <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+                  <span>채무·소득·지출 정보를 정리하는 도구이며 법률 자문을 제공하지 않습니다. 이름과 연락처는 묻지 않으며, 정리한 내용은 가명으로 처리됩니다.</span>
+                </p>
+                {/*
+                  레이아웃: 데스크톱은 페이지 안에 임베드(헤더·푸터 유지),
+                  모바일은 사이트 헤더 위를 덮는 전체 화면(z-50, 키보드 높이는 visualViewport 기준)
+                */}
+                <section
+                  aria-label={CLIENT_TAB_LABELS.request}
+                  className="flex flex-col overflow-hidden bg-white max-md:fixed max-md:inset-x-0 max-md:z-50 max-md:top-[var(--chatbot-vv-top,0px)] max-md:h-[var(--chatbot-vh,100dvh)] md:relative md:h-[min(760px,calc(100dvh-13rem))] md:min-h-[520px] md:rounded-3xl md:border md:border-slate-200 md:shadow-sm"
+                >
+                {/* 동적 안내 메시지 (상황별 정보에서 진입 시) */}
                 {chatbotAnnouncement && (
-                  <div className="px-4 py-3 bg-emerald-950/40 border-b border-emerald-800/30 shrink-0 flex items-start gap-2.5">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
-                    <p className="text-xs sm:text-sm text-emerald-300 font-bold leading-relaxed whitespace-pre-line flex-1">
+                  <div className="px-4 py-2.5 bg-secondary-light border-b border-teal-200 shrink-0 flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-secondary-hover mt-0.5 shrink-0" aria-hidden="true" />
+                    <p className="text-sm text-teal-900 font-medium leading-relaxed whitespace-pre-line flex-1">
                       {chatbotAnnouncement}
                     </p>
-                    <button onClick={() => setChatbotAnnouncement(null)} className="text-emerald-500 hover:text-emerald-300 shrink-0 p-1 cursor-pointer">
-                      <X className="w-4 h-4" />
+                    <button type="button" onClick={() => setChatbotAnnouncement(null)} aria-label="안내 닫기" className="w-9 h-9 -my-1.5 -mr-2 rounded-lg flex items-center justify-center text-teal-800 hover:bg-teal-100 shrink-0 cursor-pointer">
+                      <X className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
-                <div className="flex-1 overflow-hidden">
+                <div className="relative flex-1 min-h-0">
                 <AIRehabChatbotV2
                   isOpen={true}
-                  disablePortal={true}
+                  layout="embedded"
                   showDiagnosisReport={platformConfig.showDiagnosisReport}
                   onClose={() => {
                     if (pendingChatbotData) {
@@ -3222,99 +2268,111 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   }}
                   templateId="gradient"
                   themeMode="light"
-                  characterName="김변"
+                  characterName="정리도우미"
                   customColors={{
-                    primary: '#7264FF',
-                    secondary: '#f8f7ff',
-                    accent: '#5b4cf5',
+                    // 브랜드 네이비 (보라 테마 폐기)
+                    primary: '#1E3A5F',
+                    secondary: '#EEF4FA',
+                    accent: '#163152',
                     headerText: '#ffffff',
                     userText: '#ffffff',
-                    botText: '#334155'
+                    botText: '#1E293B'
                   }}
                   isLoggedIn={isLoggedIn}
                   onShowAuthModal={() => setShowAuthModal(true)}
                   onConsultation={() => {
-                    // 좋아요 변호사 확인 (무료 상담 변호사 수임하기 플로우)
-                    const FAVORITES_KEY = 'lawyer_favorites';
-                    let favIds: string[] = [];
-                    try { favIds = JSON.parse(secureGetItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
-                    if (favIds.length > 0) {
-                      setChatModalTrigger('fav');
-                    } else {
-                      setChatModalTrigger('no_fav');
+                    // 특정 변호사에게 상담하려고 시작한 진단이면 그 변호사에게 보낼지 동의 창부터 연다(로그인 전이면 로그인 후 이어서)
+                    const intentRequest = directIntent ? requests.find(r => r.id === directIntent.requestId) : undefined;
+                    if (directIntent && intentRequest) {
+                      setActiveChatReqId(intentRequest.id);
+                      if (isLoggedIn) setActiveTab('chat');
+                      requestFromDirectory(intentRequest, [directIntent.lawyerId]);
+                      setDirectIntent(null);
+                      return;
                     }
-                    setActiveTab('chat');
+                    // 변호사 찾기를 '여러 명 골라 요청하기' 모드로 연다. 즐겨찾기한 변호사가 있으면 즐겨찾기만 먼저 보여 준다
+                    let favIds: string[] = [];
+                    try { favIds = JSON.parse(secureGetItem('lawyer_favorites') || '[]'); } catch { /* ignore */ }
+                    if (favIds.length > 0) localStorage.setItem('lawyer_view_favorites_mode', 'true');
+                    const targetId = pendingNewRequest?.id || null;
+                    if (targetId) setActiveChatReqId(targetId);
+                    setLawyerSelectionTargetId(targetId);
+                    setLawyerSelectionMode(true);
+                    setActiveTab('lawyers');
+                    window.scrollTo({ top: 0 });
                   }}
+                  onProgressChange={setChatbotSnapshot}
                 />
                 </div>
+                </section>
+              </div>
+              {/* 데스크톱 옆 패널: 입력 요약·진행 방식 (lg 미만에서는 숨김 — 모바일은 전체 화면 대화) */}
+              <div className="hidden lg:block lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
+                <React.Suspense fallback={null}>
+                  <ChatbotSidePanel snapshot={chatbotSnapshot} />
+                </React.Suspense>
+              </div>
               </div>
             )}
 
             {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-            {activeTab === 'lawyers' && (<LawyersView lawyers={directoryLawyers} reviews={reviews} onSelectLawyer={(lawyerId) => { const l = directoryLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={LAWYER_MAX_SELECTIONS} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} hasCompletedCheck={!!activeResult} onStartCheck={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />)}
-
-
+            {activeTab === 'lawyers' && (
+              <LawyersView
+                lawyers={directoryLawyers}
+                reviews={reviews}
+                onSelectLawyer={handleConsultLawyer}
+                selectionMode={lawyerSelectionMode}
+                onSelectionModeChange={(on) => {
+                  setLawyerSelectionMode(on);
+                  if (!on) setLawyerSelectionTargetId(null);
+                }}
+                maxSelections={Math.max(0, LAWYER_MAX_SELECTIONS - lawyerTargetRequestedIds.length)}
+                requestLimit={LAWYER_MAX_SELECTIONS}
+                onConfirmSelection={handleConfirmLawyerSelection}
+                hasCompletedCheck={!!activeResult}
+                canRequestNow={!!lawyerRequestTarget}
+                requestedLawyerIds={lawyerTargetRequestedIds}
+                requiresLogin={!isLoggedIn}
+                onStartCheck={handleStartDiagnosisClick}
+                onOpenConsultRoom={() => {
+                  if (lawyerRequestTarget) setActiveChatReqId(lawyerRequestTarget.id);
+                  setActiveTab('chat');
+                }}
+              />
+            )}
 
             {/* 404 Not Found Fallback View */}
-            {!['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'].includes(activeTab) && (
-              <div className="py-20 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl">
-                  🔍
-                </div>
-                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
-                  요청하신 페이지를 찾을 수 없습니다
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  입력하신 주소가 잘못되었거나 변경되었습니다. 메인 홈으로 이동해 주세요.
-                </p>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('landing');
-                      window.history.pushState({ tab: 'landing' }, '', '?tab=landing');
-                    }}
-                    className="px-6 py-3 bg-brand text-white font-bold text-sm rounded-xl hover:bg-brand/90 transition-all cursor-pointer shadow-md press-scale"
-                  >
-                    홈으로 돌아가기
-                  </button>
-                </div>
+            {!isClientTab(activeTab) && (
+              <div className="rounded-2xl border border-slate-200 bg-white">
+                <EmptyState
+                  icon={<Search className="w-6 h-6" />}
+                  title="요청하신 페이지를 찾을 수 없습니다"
+                  description="주소가 잘못되었거나 변경되었습니다. 홈에서 다시 시작해 주세요."
+                  action={<Button onClick={() => setActiveTab('landing')}>홈으로 이동</Button>}
+                />
               </div>
             )}
           </React.Suspense>
+          </TabErrorBoundary>
         </div>
         )}
 
       </main>
 
-
-
-
-      {!isChatbotActive && (
-        <ClientFooter 
-          platformConfig={platformConfig} 
-          onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} 
-          onNavigate={(tab) => { 
-            setActiveTab(tab as any); 
-            if (tab === 'notices') {
-              setSelectedNoticeId(null);
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' }); 
-          }}
+      {/* 챗봇(전체 화면)과 변호사 선택 모드(하단 선택 바)에서는 푸터를 숨긴다 */}
+      {!isChatbotActive && !isLawyerSelectionActive && (
+        <ClientFooter
+          platformConfig={platformConfig}
+          onNavigate={(tab) => navigateTo(tab)}
+          onStartCheck={handleStartDiagnosisClick}
         />
-      )}
-
-      {showTermsModal && (
-        <React.Suspense fallback={null}>
-          <TermsModal termsModalType={termsModalType} platformConfig={platformConfig} onClose={() => setShowTermsModal(false)} />
-        </React.Suspense>
       )}
 
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (
         <React.Suspense fallback={null}>
           <AuthModal 
-            onClose={() => { setShowAuthModal(false); setPendingDiagnosisAfterLogin(false); }} 
+            onClose={() => { setShowAuthModal(false); setPendingDiagnosisAfterLogin(false); clearPendingLawyerRequest(); }} 
             onLoginSuccess={(alias,ep,ch) => { 
               setIsLoggedIn(true); 
               touchClientActivity();
@@ -3331,6 +2389,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 } else {
                   forceStartNewDiagnosis();
                 }
+              } else if (readPendingLawyerRequest()) {
+                // 변호사 찾기에서 고른 변호사가 있으면 이 화면에 머문 채 동의 창을 이어서 연다(위 useEffect)
               } else {
                 setActiveTab('chat');
               }
@@ -3339,7 +2399,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </React.Suspense>
       )}
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={(tab: string) => setActiveTab(tab as any)} onRequestConsult={handleStartDiagnosisClick} onStartDiagnosis={handleStartDiagnosisClick} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
+      <MobileGNB
+        activeTab={activeTab}
+        onNavigate={(tab) => navigateTo(tab)}
+        onStartCheck={handleStartDiagnosisClick}
+        showChatDot={hasUnreadConsultUpdate}
+        isHidden={isChatbotActive || isGnbHidden || isLawyerSelectionActive}
+      />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (
         <React.Suspense fallback={null}>
@@ -3348,12 +2414,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       )}
       {activeSolutionType && (
         <React.Suspense fallback={null}>
-          <SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); handleStartDiagnosisClick(); }} onApplyConsult={(ctaTitle, ctaContent) => { setEntryCategory({ type: 'solution', id: activeSolutionType, label: SOLUTION_LABELS[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); handleStartDiagnosisClick(); }} />
         </React.Suspense>
       )}
       {selectedArticle && (
         <React.Suspense fallback={null}>
-          <NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <NewsDetailModal article={selectedArticle} lawyers={directoryLawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setTitle(`[법률 정보 글 보고 상담 요청] ${lawyerName}`); setContent(`${lawyerName.replace(/\s*변호사$/, '')} 변호사님의 글 [${articleTitle}]을 읽고 상담을 요청합니다.\n\n제 소득과 채무 상황에 맞는 절차를 상담받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); }} />
         </React.Suspense>
       )}
 
@@ -3363,16 +2429,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             lawyer={selectedProfileLawyer}
             reviews={reviews}
             onClose={() => setSelectedProfileLawyer(null)}
+            isRequested={lawyerTargetRequestedIds.includes(selectedProfileLawyer.id)}
             onConsult={(lawyerId) => {
-              const l = directoryLawyers.find(x => x.id === lawyerId);
-              if (l) {
-                setTitle(l.name + ' 변호사 전담 상담 요청');
-              }
-              setSelectedLawyerId(lawyerId);
-              setRequestType('direct');
               setSelectedProfileLawyer(null);
-              setRequestStep(1);
-              setActiveTab('request');
+              handleConsultLawyer(lawyerId);
             }}
           />
         </React.Suspense>
@@ -3384,17 +2444,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           config={popupConfig}
           landingId="legal-crm-main"
           viewerRole="client"
-          onScrollToForm={() => {
-            setRequestType('open');
-            setRequestStep(1);
-            setActiveTab('request');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onOpenChat={() => {
-            setActiveTab('request');
-            setRequestType('open');
-            setRequestStep(1);
-          }}
+          onScrollToForm={handleStartDiagnosisClick}
+          onOpenChat={handleStartDiagnosisClick}
         />
       )}
 
@@ -3410,110 +2461,80 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             userAlias={userAlias}
             onNavigateToQnA={() => { setActiveTab('qna'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             onNavigateToLawyers={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            onNavigateToInquiry={() => { setActiveTab('inquiry'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           />
         </React.Suspense>
       )}
 
-      {/* 기존 확인 데이터 존재 시 재확인 커스텀 모달 */}
-      {showResetDiagnosisModal && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style={{ animation: 'fadeIn 0.3s ease-out forwards' }}>
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
-            style={{ animation: 'slideUp 0.3s ease-out forwards' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 상단 그라데이션 헤더 */}
-            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-5 text-center">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
-                <AlertTriangle className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-white font-extrabold text-base">기존 확인 정보가 있습니다</h3>
-            </div>
+      {/* 변호사에게 상담 정보 제공 동의 (상담 요청·공개 요청 직전) */}
+      <ThirdPartyConsentModal
+        open={!!pendingConsent}
+        scope={pendingConsent?.scope || 'selected'}
+        recipients={consentRecipients}
+        onClose={() => setPendingConsent(null)}
+        onAgree={handleThirdPartyConsentAgreed}
+      />
 
-            {/* 본문 */}
-            <div className="p-5 text-center space-y-3">
-              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                이미 입력된 내 상황 체크 정보가 있습니다.<br />
-                <strong className="text-slate-900 dark:text-white">새로 진행하시겠습니까?</strong>
-              </p>
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-left">
-                <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5 leading-relaxed font-semibold">
-                  <span className="shrink-0 mt-0.5">⚠️</span>
-                  <span>새로 진행하면 기존에 입력한 채무 및 자산 확인 데이터가 모두 초기화되어 삭제됩니다.</span>
-                </p>
-              </div>
-            </div>
+      {/* 이미 정리한 채무 정보가 있을 때 새로 체크할지 확인 */}
+      <Modal
+        open={showResetDiagnosisModal}
+        onClose={() => setShowResetDiagnosisModal(false)}
+        size="sm"
+        mobile="center"
+        icon={<RefreshCw className="w-5 h-5" />}
+        title="이미 정리한 채무 정보가 있습니다"
+        description="새로 체크하면 새 결과가 마이페이지와 내 관리방의 채무 현황에 표시됩니다."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowResetDiagnosisModal(false)} className="flex-1 sm:flex-none">
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                setShowResetDiagnosisModal(false);
+                forceStartNewDiagnosis();
+              }}
+              className="flex-1 sm:flex-none"
+            >
+              새로 체크하기
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700 leading-relaxed break-keep">
+          이전에 보낸 상담 요청과 대화 내용은 그대로 남습니다. 결과가 바뀌면 변호사에게 전달할 내용도 새 결과 기준으로 정리됩니다.
+        </p>
+      </Modal>
 
-            {/* 하단 버튼 */}
-            <div className="px-5 pb-5 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowResetDiagnosisModal(false)}
-                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowResetDiagnosisModal(false);
-                  forceStartNewDiagnosis();
-                }}
-                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                새로 체크 시작하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 로그아웃 완료 커스텀 모달 */}
-      {showLogoutSuccessModal && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style={{ animation: 'fadeIn 0.3s ease-out forwards' }}>
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
-            style={{ animation: 'slideUp 0.3s ease-out forwards' }}
-          >
-            {/* 상단 그라데이션 헤더 */}
-            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-5 text-center">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-white font-extrabold text-base">안전하게 로그아웃되었습니다</h3>
-            </div>
-
-            {/* 본문 */}
-            <div className="p-5 text-center space-y-3">
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3 text-left space-y-1.5">
-                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  <span>개인 체크 및 상담 기록이 완전히 초기화되었습니다</span>
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  <span>브라우저에 저장된 모든 데이터가 안전하게 삭제되었습니다</span>
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  <span>다른 사람이 이 기기를 사용해도 안전합니다</span>
-                </p>
-              </div>
-            </div>
-
-            {/* 하단 버튼 */}
-            <div className="px-5 pb-5">
-              <button
-                onClick={() => setShowLogoutSuccessModal(false)}
-                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 로그아웃 완료 안내 */}
+      <Modal
+        open={showLogoutSuccessModal}
+        onClose={() => setShowLogoutSuccessModal(false)}
+        size="sm"
+        mobile="center"
+        icon={<ShieldCheck className="w-5 h-5" />}
+        title="로그아웃되었습니다"
+        footer={
+          <Button onClick={() => setShowLogoutSuccessModal(false)} fullWidth>
+            확인
+          </Button>
+        }
+      >
+        <ul className="space-y-2 text-sm text-slate-700 leading-relaxed">
+          <li className="flex items-start gap-2">
+            <Check className="w-4 h-4 mt-0.5 text-secondary shrink-0" aria-hidden="true" />
+            <span>이 기기에 저장된 상담 기록·알림·로그인 정보를 지웠습니다.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Check className="w-4 h-4 mt-0.5 text-secondary shrink-0" aria-hidden="true" />
+            <span>계정에 저장된 상담 기록은 다시 로그인하면 이어서 볼 수 있습니다.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Check className="w-4 h-4 mt-0.5 text-secondary shrink-0" aria-hidden="true" />
+            <span>여러 사람이 쓰는 기기라면 브라우저 창도 닫아 주세요.</span>
+          </li>
+        </ul>
+      </Modal>
 
     </div>
     </div>

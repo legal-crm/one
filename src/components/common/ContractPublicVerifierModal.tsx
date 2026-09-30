@@ -21,12 +21,29 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   contract: ElectronicContract | null;
+  /**
+   * 로그인한 변호사·관리자 화면처럼 실명을 봐도 되는 곳에서만 true.
+   * 기본값(false)은 링크만 있으면 열리는 공개 검증 화면 — 위임인 이름 일부를 가린다.
+   */
+  revealFullName?: boolean;
 }
 
-const STATUS_COPY: Record<IntegrityCheckStatus, { title: string; desc: string; tone: 'ok' | 'bad' | 'info' }> = {
+/** 공개 화면용 이름 가림 — 홍길동 → 홍*동, 김철 → 김*, 남궁민수 → 남**수 */
+function maskPersonName(name?: string): string {
+  const chars = Array.from((name || '').trim());
+  if (chars.length === 0) return '-';
+  if (chars.length === 1) return '*';
+  if (chars.length === 2) return `${chars[0]}*`;
+  return `${chars[0]}${'*'.repeat(chars.length - 2)}${chars[chars.length - 1]}`;
+}
+
+/** 검증 결과 상태 + 이 화면에서 검증을 끝내지 못한 경우('error') */
+type VerifierStatus = IntegrityCheckStatus | 'error';
+
+const STATUS_COPY: Record<VerifierStatus, { title: string; desc: string; tone: 'ok' | 'bad' | 'info' }> = {
   match: {
     title: '원본 일치',
-    desc: '저장된 계약서 본문과 서명으로 전자지문을 다시 계산한 결과, 체결 당시 값과 같습니다. 체결 이후 계약서 내용이 바뀌지 않았습니다.',
+    desc: '저장된 계약서 본문과 서명으로 전자지문(문서 해시)을 다시 계산한 결과, 체결 당시 기록된 값과 같습니다. 전자지문이 같으면 서명 후 내용이 바뀌지 않았다는 뜻입니다.',
     tone: 'ok',
   },
   mismatch: {
@@ -44,13 +61,19 @@ const STATUS_COPY: Record<IntegrityCheckStatus, { title: string; desc: string; t
     desc: '이전 방식으로 봉인된 계약서라 이 화면에서 전자지문을 다시 계산할 수 없습니다. 원본 확인이 필요하면 담당 변호사에게 요청해 주세요.',
     tone: 'info',
   },
+  // 계산 중 오류는 '불일치'가 아니다 — 계약서가 바뀌었다고 안내하지 않는다
+  error: {
+    title: '검증을 완료하지 못했습니다',
+    desc: '이 화면에서 전자지문을 다시 계산하지 못했습니다. 계약서가 바뀌었다는 뜻은 아닙니다. 잠시 후 다시 열어 보시거나, 원본 확인이 필요하면 담당 변호사에게 요청해 주세요.',
+    tone: 'info',
+  },
 };
 
-export default function ContractPublicVerifierModal({ isOpen, onClose, contract }: Props) {
+export default function ContractPublicVerifierModal({ isOpen, onClose, contract, revealFullName = false }: Props) {
   const [copiedHash, setCopiedHash] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [verifyingNode, setVerifyingNode] = useState(false);
-  const [integrity, setIntegrity] = useState<{ status: IntegrityCheckStatus; recomputedFinalHash?: string } | null>(null);
+  const [integrity, setIntegrity] = useState<{ status: VerifierStatus; recomputedFinalHash?: string } | null>(null);
   const [liveResult, setLiveResult] = useState<{ verifiedOnChain: boolean; hashMatched?: boolean; statusText: string } | null>(null);
 
   useEffect(() => {
@@ -60,7 +83,7 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
     setLiveResult(null);
     verifyContractIntegrity(contract)
       .then(r => { if (!cancelled) setIntegrity(r); })
-      .catch(() => { if (!cancelled) setIntegrity({ status: 'mismatch' }); });
+      .catch(() => { if (!cancelled) setIntegrity({ status: 'error' }); });
     return () => { cancelled = true; };
   }, [isOpen, contract]);
 
@@ -77,6 +100,8 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
   const anchor = contract.blockchainAnchor;
   const onChain = !!anchor?.isRealOnChain && !!anchor?.txHash;
   const copy = integrity ? STATUS_COPY[integrity.status] : null;
+  // 공개 검증 화면에서는 위임인 실명을 그대로 노출하지 않는다
+  const clientDisplayName = revealFullName ? (contract.clientName || '-') : maskPersonName(contract.clientName);
 
   const handleCopyHash = async () => {
     if (!finalHash) return;
@@ -197,13 +222,18 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
                 </div>
                 <div className="flex justify-between border-b border-slate-200/70 pb-1">
                   <dt className="text-slate-600">위임인</dt>
-                  <dd className="font-bold text-slate-900">{contract.clientName}</dd>
+                  <dd className="font-bold text-slate-900">{clientDisplayName}</dd>
                 </div>
                 <div className="flex justify-between border-b border-slate-200/70 pb-1">
                   <dt className="text-slate-600">수임 변호사</dt>
                   <dd className="font-bold text-slate-900">{contract.lawFirmName} {contract.lawyerName}</dd>
                 </div>
               </dl>
+              {!revealFullName && (
+                <p className="mt-2 text-[10px] text-slate-500">
+                  공개 검증 화면에서는 개인정보 보호를 위해 위임인 이름 일부를 가려서 표시합니다.
+                </p>
+              )}
             </div>
 
             {/* 전자지문 */}

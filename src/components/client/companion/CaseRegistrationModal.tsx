@@ -9,10 +9,12 @@ import {
   registerNewCompanionCase, 
   registerNewBankruptcyCase,
   parseCaseDocumentOcr, 
-  getCourtSearchDeepLink 
+  getCourtSearchDeepLink,
+  loadRehabCompanionCase
 } from '../../../services/companionService';
 import { fetchCourtCase } from '../../../services/scourtService';
 import { toast } from 'sonner';
+import { useDialog } from '../../common/DialogProvider';
 
 interface CaseRegistrationModalProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function CaseRegistrationModal({
   clientId,
   initialCaseType = 'individual_rehab'
 }: CaseRegistrationModalProps) {
+  const dialog = useDialog();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [sourceType, setSourceType] = useState<CompanionSourceType>('external_office');
   const [externalOfficeName, setExternalOfficeName] = useState('');
@@ -94,6 +97,13 @@ export default function CaseRegistrationModal({
         forceRefresh: false
       });
 
+      // 시연용(가짜) 조회 결과는 어떤 입력란에도 채우지 않는다
+      // (이전: 법원·단계·월 변제금·납부 회차를 먼저 채운 뒤에 '채우지 않음'이라고 안내)
+      if (courtDetail.isMock || !courtDetail.isB2BLive) {
+        toast.info('대법원 자동 조회는 아직 연동되지 않았습니다. [대법원 사이트 열기]로 확인한 내용을 직접 입력해 주세요.', { duration: 5000 });
+        return;
+      }
+
       if (courtDetail.courtName) setCourtName(courtDetail.courtName);
       if (courtDetail.finalResult) {
         if (courtDetail.finalResult.includes('인가') || courtDetail.finalResult.includes('개시')) {
@@ -111,11 +121,6 @@ export default function CaseRegistrationModal({
         setCompletedRounds(paidCount);
       }
 
-      if (courtDetail.isMock || !courtDetail.isB2BLive) {
-        // 시연용 데이터로 사건 정보를 채우지 않음
-        toast.info('대법원 자동 조회는 아직 연동되지 않았습니다. [대법원 사이트 열기]로 확인한 내용을 직접 입력해 주세요.', { duration: 5000 });
-        return;
-      }
       setOcrStatus('success');
       toast.success('대법원 사건 정보를 불러왔습니다. 내용이 맞는지 확인해 주세요.');
     } catch (err: any) {
@@ -151,7 +156,7 @@ export default function CaseRegistrationModal({
         setOcrFailureHighlights(result.extractedHighlights || []);
         setOcrConfidence(result.confidenceScore || 0);
         setShowOcrAlertModal(true);
-        toast.error('⚠️ 서류 인식 실패: 법원 서류가 아니거나 사건번호를 식별하지 못했습니다.');
+        toast.error('서류에서 사건번호를 읽지 못했습니다. 안내에 따라 다시 올리거나 직접 입력해 주세요.');
         return;
       }
 
@@ -186,7 +191,7 @@ export default function CaseRegistrationModal({
     toast.success(`'${courtDeepLink.copySummaryText}'가 클립보드에 복사되었습니다. 대법원 사이트에서 붙여넣기 하세요.`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!caseNumber.trim()) {
       toast.error('사건번호를 입력해 주세요 (예: 2024개회123456)');
@@ -201,6 +206,23 @@ export default function CaseRegistrationModal({
     } else if (!courtName) {
       toast.error('관할 법원을 선택해 주세요.');
       return;
+    }
+
+    // 다른 사건번호로 다시 등록하면 기존 사건의 납부 기록을 대신하게 되므로 먼저 확인한다
+    // (같은 사건번호면 정보 수정으로 보고 회차별 기록을 그대로 옮긴다 — companionService)
+    if (caseType === 'individual_rehab') {
+      const existing = loadRehabCompanionCase(clientId);
+      const norm = (v?: string) => (v || '').replace(/\s+/g, '');
+      if (existing && norm(existing.caseNumber) !== norm(caseNumber)) {
+        const ok = await dialog.confirm({
+          title: '등록된 사건을 바꿀까요?',
+          message: `이미 등록된 사건(${existing.caseNumberMasked || existing.caseNumber || '사건번호 미입력'})이 있습니다. 새 사건으로 등록하면 기존 사건의 회차별 납부 기록은 이 화면에서 더 이상 보이지 않습니다.`,
+          confirmText: '새 사건으로 등록',
+          cancelText: '취소',
+          variant: 'danger',
+        });
+        if (!ok) return;
+      }
     }
 
     try {
@@ -248,14 +270,14 @@ export default function CaseRegistrationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+      <div role="dialog" aria-modal="true" aria-label="회생동행 사건 등록" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         
         {/* 모달 헤더 */}
-        <div className="p-6 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850/50">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div>
-            <span className="text-[11px] font-bold text-brand bg-brand/10 dark:bg-brand/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              무료 이용
+            <span className="text-xs font-bold text-brand bg-brand/10 dark:bg-brand/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              이용료 없음
             </span>
             <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
               마이김변 2.0 회생동행 간편 등록
@@ -282,7 +304,7 @@ export default function CaseRegistrationModal({
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                 step === s.num ? 'bg-brand text-white shadow-sm' :
                 step > s.num ? 'bg-emerald-500 text-white' :
-                'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
               }`}>
                 {step > s.num ? <Check className="w-3.5 h-3.5" /> : s.num}
               </div>
@@ -305,7 +327,7 @@ export default function CaseRegistrationModal({
                   현재 어떤 방식으로 사건을 진행하고 계신가요?
                 </h4>
                 <p className="text-xs text-slate-500">
-                  타 법무법인/법무사 또는 나홀로 전자소송으로 진행 중이셔도 모든 일정을 무료로 관리해 드립니다.
+                  다른 사무소에서 진행 중이거나 직접 진행하는 사건도 일정을 관리할 수 있어요.
                 </p>
               </div>
 
@@ -316,7 +338,7 @@ export default function CaseRegistrationModal({
                   className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                     sourceType === 'external_office'
                       ? 'border-brand bg-brand/5 ring-2 ring-brand/20 dark:bg-brand/10'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                   }`}
                 >
                   <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 w-fit">
@@ -324,7 +346,7 @@ export default function CaseRegistrationModal({
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">타 법률사무소 / 법무사</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">외부 사무소에서 수임 진행 중</span>
+                    <span className="text-xs text-slate-500 mt-0.5 block">외부 사무소에서 수임 진행 중</span>
                   </div>
                 </button>
 
@@ -334,15 +356,15 @@ export default function CaseRegistrationModal({
                   className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                     sourceType === 'self_litigant'
                       ? 'border-brand bg-brand/5 ring-2 ring-brand/20 dark:bg-brand/10'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                   }`}
                 >
-                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 w-fit">
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 w-fit">
                     <UserCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">나홀로 전자소송</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">본인이 직접 법원에 접수·진행</span>
+                    <span className="text-xs text-slate-500 mt-0.5 block">본인이 직접 법원에 접수·진행</span>
                   </div>
                 </button>
 
@@ -352,7 +374,7 @@ export default function CaseRegistrationModal({
                   className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                     sourceType === 'mykim_lawyer'
                       ? 'border-brand bg-brand/5 ring-2 ring-brand/20 dark:bg-brand/10'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                   }`}
                 >
                   <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 w-fit">
@@ -360,7 +382,7 @@ export default function CaseRegistrationModal({
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">마이김변 전담 변호사</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">마이김변 플랫폼 매칭 수임</span>
+                    <span className="text-xs text-slate-500 mt-0.5 block">마이김변 플랫폼 매칭 수임</span>
                   </div>
                 </button>
               </div>
@@ -377,7 +399,7 @@ export default function CaseRegistrationModal({
                     placeholder="예: 법무법인 율*, 서초 종합법률사무소 등"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
                   />
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     * 입력하신 상호명은 본인 캘린더 메모용으로만 활용되며 외부에 노출되지 않습니다.
                   </p>
                 </div>
@@ -390,24 +412,24 @@ export default function CaseRegistrationModal({
                   <button
                     type="button"
                     onClick={() => setCaseType('individual_rehab')}
-                    className={`py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`min-h-11 py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       caseType === 'individual_rehab'
                         ? 'bg-brand text-white border-brand shadow-sm'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    🌱 개인회생 (3~5년 월 분할변제)
+                    개인회생 (3~5년 월 분할변제)
                   </button>
                   <button
                     type="button"
                     onClick={() => setCaseType('bankruptcy')}
-                    className={`py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`min-h-11 py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       caseType === 'bankruptcy'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    🕊️ 개인파산·면책 (서류/기일 관리)
+                    개인파산·면책 (서류/기일 관리)
                   </button>
                 </div>
               </div>
@@ -419,7 +441,7 @@ export default function CaseRegistrationModal({
             <div className="space-y-5 animate-fadeIn">
               
               {/* Track 1: 스마트 문서 OCR 파싱 배너 */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-brand/10 via-brand/5 to-indigo-50/50 dark:to-slate-800/50 border border-brand/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-brand/10 via-brand/5 to-blue-50/50 dark:to-slate-800/50 border border-brand/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-xl bg-brand text-white shrink-0 mt-0.5 shadow-sm">
                     {isOcrProcessing ? (
@@ -429,32 +451,31 @@ export default function CaseRegistrationModal({
                     )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-brand/15 text-brand dark:text-brand-light">
-                        Track 1: 스마트 OCR
+                    {ocrConfidence && (
+                      <span className="inline-flex text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                        인식 신뢰도 {(ocrConfidence * 100).toFixed(0)}%
                       </span>
-                      {ocrConfidence && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                          인식 신뢰도 {(ocrConfidence * 100).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
+                    )}
                     <h5 className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                      결정문·접수증 사진으로 1초 자동 완성
+                      결정문·접수증 사진으로 자동 입력
                     </h5>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      인가결정문, 개시결정문 또는 법원 사건접수증을 업로드하시면 사건번호와 일정이 자동 추출됩니다.
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                      인가결정문, 개시결정문 또는 법원 사건접수증을 올리시면 사건번호와 일정을 읽어 채워 드립니다. 채운 내용은 꼭 확인해 주세요.
+                    </p>
+                    <p id="case-ocr-upload-notice" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      올린 서류 이미지는 인식을 위해 AI 서비스(Google Gemini)로 전송됩니다.
                     </p>
                   </div>
                 </div>
 
-                <label className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer shrink-0 flex items-center gap-2 active:scale-[0.98]">
-                  <Upload className="w-4 h-4" />
+                <label className="min-h-11 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer shrink-0 flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2">
+                  <Upload className="w-4 h-4" aria-hidden="true" />
                   <span>{isOcrProcessing ? '분석 중...' : '문서 사진 올리기'}</span>
                   <input 
                     type="file" 
                     accept="image/*,.pdf" 
-                    className="hidden" 
+                    className="sr-only" 
+                    aria-describedby="case-ocr-upload-notice"
                     disabled={isOcrProcessing}
                     onChange={(e) => {
                       if (e.target.files?.[0]) handleOcrUpload(e.target.files[0]);
@@ -468,9 +489,9 @@ export default function CaseRegistrationModal({
                 <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-fadeIn">
                   <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>문서 정밀 분석 완료: 아래 정보가 자동 채워졌습니다</span>
+                    <span>사진에서 읽은 정보를 아래에 채웠습니다. 맞는지 확인해 주세요.</span>
                   </div>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
                     {ocrHighlights.map((hl, idx) => (
                       <li key={idx} className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -484,25 +505,25 @@ export default function CaseRegistrationModal({
               {/* OCR 인식 결과: 실패/무관문서 시 주황색 경고 배너 */}
               {ocrStatus === 'failed' && (
                 <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/70 space-y-2.5 animate-fadeIn">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-200">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>서류 인식 실패: 사건번호를 찾지 못했습니다</span>
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                      <span>서류에서 사건번호를 찾지 못했습니다</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowOcrAlertModal(true)}
-                      className="text-[11px] font-bold text-amber-700 dark:text-amber-300 hover:underline flex items-center gap-0.5 cursor-pointer"
+                      className="min-h-11 shrink-0 text-xs font-bold text-amber-800 dark:text-amber-300 hover:underline flex items-center gap-0.5 cursor-pointer"
                     >
-                      <span>경고 팝업 다시보기</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <span>안내 다시 보기</span>
+                      <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                   </div>
                   <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
                     {ocrFailureReason || '업로드된 파일에서 공식 법원 회생·파산 사건번호를 식별하지 못했습니다.'}
                   </p>
                   {ocrFailureHighlights.length > 0 && (
-                    <ul className="text-[11px] text-amber-800/90 dark:text-amber-300/90 space-y-1 bg-amber-100/60 dark:bg-amber-900/40 p-2.5 rounded-xl">
+                    <ul className="text-xs text-amber-800/90 dark:text-amber-300/90 space-y-1 bg-amber-100/60 dark:bg-amber-900/40 p-2.5 rounded-xl">
                       {ocrFailureHighlights.map((hl, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
@@ -521,9 +542,10 @@ export default function CaseRegistrationModal({
                           input.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+                      className="min-h-11 px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98] inline-flex items-center gap-1"
                     >
-                      아래 입력란에서 직접 입력하기 ➔
+                      <span>아래 입력란에서 직접 입력하기</span>
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -533,34 +555,34 @@ export default function CaseRegistrationModal({
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                       Track 2: 대법원 공식 연계
                     </span>
                     <h5 className="text-xs font-black text-slate-800 dark:text-slate-200">
-                      대한민국 법원 실시간 사건조회
+                      대법원 나의 사건검색에서 직접 확인
                     </h5>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handleCopyCourtInfo}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 border border-slate-200 dark:border-slate-600 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                      className="min-h-11 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 border border-slate-200 dark:border-slate-600 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
                     >
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>사건정보 복사</span>
                     </button>
                     <a
                       href={courtDeepLink.mobileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand dark:hover:bg-brand-light text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="min-h-11 px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand dark:hover:bg-brand-light text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>대법원 조회 바로가기</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                     </a>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   * 대법원 대국민서비스는 보안상 자동입력방지문자(숫자 6자리)가 적용되어 있습니다. 위 버튼으로 공식 사이트 연결 후 사건번호를 붙여넣어 최신 송달·기일을 확인하세요.
                 </p>
               </div>
@@ -568,8 +590,8 @@ export default function CaseRegistrationModal({
               {/* 사건 단계 선택 (회생 라이프사이클) */}
               <div className="space-y-2 pt-1">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <span>🌱 현재 사건 진행 단계</span>
-                  <span className="text-[11px] text-slate-400 font-normal">(단계별 맞춤 혜택 추천의 기준이 됩니다)</span>
+                  <span>현재 사건 진행 단계</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-normal">(단계별 맞춤 혜택 추천의 기준이 됩니다)</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {[
@@ -586,11 +608,11 @@ export default function CaseRegistrationModal({
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                         caseStage === st.key
                           ? 'border-brand bg-brand/10 text-brand dark:text-brand-light ring-2 ring-brand/20 font-bold'
-                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                       }`}
                     >
                       <span className="text-xs font-bold block truncate">{st.label}</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">{st.desc}</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400 block mt-0.5">{st.desc}</span>
                     </button>
                   ))}
                 </div>
@@ -599,12 +621,16 @@ export default function CaseRegistrationModal({
               {/* 관할 법원 및 사건 번호 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">관할 법원</label>
+                  <label htmlFor="case-court-select" className="text-xs font-bold text-slate-700 dark:text-slate-300">관할 법원</label>
+                  {/* 값이 비어 있을 때 첫 법원이 선택된 것처럼 보이지 않도록 안내 옵션을 둔다 */}
                   <select
+                    id="case-court-select"
                     value={courtName}
                     onChange={(e) => setCourtName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
+                    className={`w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-brand/30 focus:outline-none ${courtName ? 'text-slate-800' : 'text-slate-500'}`}
                   >
+                    <option value="" disabled>법원을 선택해 주세요</option>
+                    {courtName && !COURTS.includes(courtName) && <option value={courtName}>{courtName}</option>}
                     {COURTS.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -615,7 +641,7 @@ export default function CaseRegistrationModal({
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>사건번호 <span className="text-red-500">*</span></span>
                     {ocrStatus === 'failed' && (
-                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
+                      <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
                         직접 입력 필요
                       </span>
                     )}
@@ -643,10 +669,10 @@ export default function CaseRegistrationModal({
                       type="button"
                       onClick={handleAutofillFromScourt}
                       disabled={isScourtAutofilling || !caseNumber.trim()}
-                      className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-40 flex items-center gap-1 active:scale-[0.98]"
+                      className="min-h-11 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-40 flex items-center gap-1 active:scale-[0.98]"
                       title="대법원 전산망 조회 후 폼 자동완성"
                     >
-                      <Sparkles className={`w-3.5 h-3.5 ${isScourtAutofilling ? 'animate-spin' : ''}`} />
+                      <Sparkles className={`w-3.5 h-3.5 ${isScourtAutofilling ? 'animate-spin' : ''}`} aria-hidden="true" />
                       <span>{isScourtAutofilling ? '조회중...' : '대법원 자동완성'}</span>
                     </button>
                   </div>
@@ -665,14 +691,14 @@ export default function CaseRegistrationModal({
                   placeholder="예: 신한은행 110-***-849201 (서울회생법원)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
                 />
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   * 가상계좌를 등록해 두시면 변제일마다 앱에서 바로 계좌번호를 복사해 송금하실 수 있습니다.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-150 dark:border-slate-800 flex items-start gap-2 text-slate-500">
-                <ShieldCheck className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-                <span className="text-[11px] leading-relaxed">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-start gap-2 text-slate-600 dark:text-slate-400">
+                <ShieldCheck className="w-4 h-4 text-brand shrink-0 mt-0.5" aria-hidden="true" />
+                <span className="text-xs leading-relaxed">
                   마이김변은 대법원 시스템을 무단 크롤링하지 않으며, 입력하신 사건정보는 안전하게 보호됩니다.
                 </span>
               </div>
@@ -693,18 +719,20 @@ export default function CaseRegistrationModal({
                     step={10000}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
                   />
-                  <span className="text-[11px] text-brand font-bold block">
+                  <span className="text-xs text-brand dark:text-brand-light font-bold block">
                     {(monthlyRepaymentAmount || 0).toLocaleString()}원 / 월
                   </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">매월 납부일</label>
+                  <label htmlFor="case-repayment-day" className="text-xs font-bold text-slate-700 dark:text-slate-300">매월 납부일</label>
                   <select
+                    id="case-repayment-day"
                     value={repaymentDay}
                     onChange={(e) => setRepaymentDay(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
+                    className={`w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-brand/30 focus:outline-none ${repaymentDay ? 'text-slate-800' : 'text-slate-500'}`}
                   >
+                    <option value={0} disabled>납부일을 선택해 주세요</option>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                       <option key={day} value={day}>매월 {day}일</option>
                     ))}
@@ -735,7 +763,7 @@ export default function CaseRegistrationModal({
                     max={totalRounds}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
                   />
-                  <span className="text-[11px] text-slate-500 block">
+                  <span className="text-xs text-slate-500 block">
                     진행률: {totalRounds > 0 ? ((completedRounds / totalRounds) * 100).toFixed(1) : 0}%
                   </span>
                 </div>
@@ -754,11 +782,11 @@ export default function CaseRegistrationModal({
               {/* 월 생계 밸런서 설정 */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
                 <h5 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  <span>💡 30일 생계 밸런서 기준값 (선택)</span>
+                  <span>이번 달 생활비 점검 기준값 (선택)</span>
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500 font-medium">월 실수령 소득</label>
+                    <label className="text-xs text-slate-500 font-medium">월 실수령 소득</label>
                     <input
                       type="number"
                       value={monthlyIncome}
@@ -768,7 +796,7 @@ export default function CaseRegistrationModal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500 font-medium">필수 생계비</label>
+                    <label className="text-xs text-slate-500 font-medium">필수 생계비</label>
                     <input
                       type="number"
                       value={essentialLivingCost}
@@ -778,7 +806,7 @@ export default function CaseRegistrationModal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500 font-medium">기타 고정지출</label>
+                    <label className="text-xs text-slate-500 font-medium">기타 고정지출</label>
                     <input
                       type="number"
                       value={otherFixedExpenses}
@@ -794,12 +822,12 @@ export default function CaseRegistrationModal({
           )}
 
           {/* 모달 하단 액션 버튼 */}
-          <div className="pt-4 border-t border-slate-150 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => (s - 1) as any)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="min-h-11 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 이전 단계
               </button>
@@ -808,17 +836,32 @@ export default function CaseRegistrationModal({
             {step < 3 ? (
               <button
                 type="button"
-                onClick={() => setStep((s) => (s + 1) as any)}
-                className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold transition-all shadow-md cursor-pointer active:scale-[0.98]"
+                onClick={() => {
+                  // 사건 정보 단계는 필수 값을 확인한 뒤에만 다음으로 넘어간다(마지막에 한꺼번에 오류가 나지 않게)
+                  if (step === 2) {
+                    if (!caseNumber.trim()) {
+                      toast.error('사건번호를 입력해 주세요 (예: 2024개회123456)');
+                      document.getElementById('case-number-input')?.focus();
+                      return;
+                    }
+                    if (caseType === 'individual_rehab' && !courtName) {
+                      toast.error('관할 법원을 선택해 주세요.');
+                      document.getElementById('case-court-select')?.focus();
+                      return;
+                    }
+                  }
+                  setStep((s) => (s + 1) as any);
+                }}
+                className="min-h-11 px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold transition-colors shadow-sm cursor-pointer active:scale-[0.98] whitespace-nowrap"
               >
-                다음 단계로 ➔
+                다음 단계
               </button>
             ) : (
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
+                className="min-h-11 px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold transition-colors shadow-sm cursor-pointer flex items-center gap-1.5 active:scale-[0.98] whitespace-nowrap"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4" aria-hidden="true" />
                 <span>회생동행 시작하기</span>
               </button>
             )}
@@ -837,12 +880,12 @@ export default function CaseRegistrationModal({
             <div className="p-5 border-b border-amber-100 dark:border-amber-900/40 bg-amber-500/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
-                  <AlertTriangle className="w-6 h-6" />
+                  <AlertTriangle className="w-6 h-6" aria-hidden="true" />
                 </div>
                 <div>
                   <h4 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>법원 서류 인식 실패 경고</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                    <span>법원 서류를 인식하지 못했습니다</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300">
                       인식 불가
                     </span>
                   </h4>
@@ -854,9 +897,10 @@ export default function CaseRegistrationModal({
               <button
                 type="button"
                 onClick={() => setShowOcrAlertModal(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+                aria-label="닫기"
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-all cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -864,14 +908,14 @@ export default function CaseRegistrationModal({
             <div className="p-6 space-y-4">
               {/* AI 판독 결과 박스 */}
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                  🔍 AI 이미지 판독 내용
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  AI 이미지 판독 내용
                 </span>
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
                   {ocrFailureReason || '회생·파산 공식 법원 결정문 또는 접수증이 아닌 이미지입니다.'}
                 </p>
                 {ocrFailureHighlights.length > 0 && (
-                  <ul className="space-y-1.5 pt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                  <ul className="space-y-1.5 pt-1 text-xs text-slate-600 dark:text-slate-400">
                     {ocrFailureHighlights.map((hl, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
@@ -885,13 +929,13 @@ export default function CaseRegistrationModal({
               {/* 다음 진행 방법 안내 */}
               <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 space-y-2">
                 <span className="text-xs font-black text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  다음 프로세스 진행 방법
+                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                  다음 진행 방법
                 </span>
                 <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                  회생동행 서비스를 정상적으로 이용하시려면 아래 2가지 방법 중 하나를 선택해 주세요:
+                  아래 2가지 방법 중 하나로 이어서 등록할 수 있습니다.
                 </p>
-                <div className="space-y-2 text-[11px] text-blue-800 dark:text-blue-300">
+                <div className="space-y-2 text-xs text-blue-800 dark:text-blue-300">
                   <div className="flex items-start gap-1.5">
                     <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">① 직접 입력:</span>
                     <span>사건번호(예: 2024개회108492)만 알고 계시다면 아래 입력란에 직접 입력하시고 바로 사건을 등록할 수 있습니다.</span>
@@ -905,14 +949,14 @@ export default function CaseRegistrationModal({
             </div>
 
             {/* 팝업 액션 버튼 */}
-            <div className="p-5 border-t border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex flex-col sm:flex-row items-center justify-end gap-2.5">
-              <label className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]">
-                <Upload className="w-4 h-4" />
+            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+              <label className="w-full sm:w-auto min-h-11 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-[0.98] focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2">
+                <Upload className="w-4 h-4" aria-hidden="true" />
                 <span>다른 서류 사진 다시 올리기</span>
                 <input 
                   type="file" 
                   accept="image/*,.pdf" 
-                  className="hidden" 
+                  className="sr-only" 
                   onChange={(e) => {
                     setShowOcrAlertModal(false);
                     if (e.target.files?.[0]) handleOcrUpload(e.target.files[0]);
@@ -933,10 +977,10 @@ export default function CaseRegistrationModal({
                     }
                   }, 120);
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                className="w-full sm:w-auto min-h-11 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
               >
                 <span>사건번호 직접 입력하기</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, Send, CheckCircle, ShieldAlert, FileText, ArrowRight, HeartHandshake } from 'lucide-react';
+import { X, Send, CheckCircle, ShieldAlert, FileText, ArrowRight, HeartHandshake, Lightbulb } from 'lucide-react';
 import { CrisisReasonType, LifeCrisisReport } from '../../../types';
 import { submitLifeCrisisReport } from '../../../services/companionService';
 import { toast } from 'sonner';
@@ -63,23 +63,23 @@ function LifeCrisisModalInner({
     }
     setDeliveredToLawyer(delivered);
     setIsSubmitted(true);
-    if (delivered) toast.success('생활위기 내용을 담당 변호사에게 전달했습니다.');
+    if (delivered) toast.success('작성하신 내용을 담당 변호사에게 전달했습니다.');
     else toast.info('내용을 이 기기에 저장했습니다. 담당 변호사·사무소에는 직접 연락해 주세요.', { duration: 5000 });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col text-left max-h-[90vh]">
         
         {/* 헤더 */}
-        <div className="p-6 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-amber-50/50 dark:bg-amber-950/20">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-amber-50/50 dark:bg-amber-950/20">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
+              <HeartHandshake className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white">
-                생활위기 SOS & 사정변경 상담 접수
+                사정변경 상담·지원 요청
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 변제금 마련이 어려우실 땐 고금리 대출 대신 공적 구제와 변호사 상담을 먼저 찾으세요.
@@ -112,8 +112,9 @@ function LifeCrisisModalInner({
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left space-y-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                💡 마이김변 권장 위기 대응 우선순위
+              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                <span>먼저 확인해 볼 지원과 절차</span>
               </span>
               <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
                 <li>보건복지부 긴급복지지원 — 위기가구 생계·의료 지원 (보건복지상담센터 129)</li>
@@ -129,15 +130,15 @@ function LifeCrisisModalInner({
                   onClose();
                   if (onNavigateToSupport) onNavigateToSupport();
                 }}
-                className="px-6 py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                className="min-h-11 px-6 py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>공적 복지 지원제도 확인하기</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="min-h-11 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 닫기
               </button>
@@ -161,13 +162,13 @@ function LifeCrisisModalInner({
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       selectedReason === r.type
                         ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 ring-1 ring-amber-500/30'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900'
                     }`}
                   >
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                       {r.label}
                     </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 block mt-0.5">
+                    <span className="text-xs text-slate-600 dark:text-slate-300 block mt-0.5">
                       {r.desc}
                     </span>
                   </button>
@@ -187,7 +188,7 @@ function LifeCrisisModalInner({
                 step={50000}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none"
               />
-              <span className="text-[11px] text-amber-600 font-bold block">
+              <span className="text-xs text-amber-800 dark:text-amber-400 font-bold block">
                 약 {(estimatedShortage || 0).toLocaleString()}원 부족 예상
               </span>
             </div>
@@ -207,28 +208,28 @@ function LifeCrisisModalInner({
             </div>
 
             {/* 안심 안내문구 */}
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-slate-700 dark:text-slate-300 text-[11px] leading-relaxed flex items-start gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs leading-relaxed flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
                 마이김변은 무단으로 상환유예를 단정하지 않으며, 정리된 사정변경 자료를 토대로 법적 가능성과 긴급 복지 혜택을 안전하게 안내합니다.
               </span>
             </div>
 
             {/* 모달 하단 버튼 */}
-            <div className="pt-3 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-2">
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="min-h-11 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 취소
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
+                className="min-h-11 px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
               >
-                <Send className="w-4 h-4" />
-                <span>{clientId ? '담당 변호사에게 알리기' : '위기 상황 기록하기'}</span>
+                <Send className="w-4 h-4" aria-hidden="true" />
+                <span>{clientId ? '담당 변호사에게 알리기' : '내 상황 기록하기'}</span>
               </button>
             </div>
 

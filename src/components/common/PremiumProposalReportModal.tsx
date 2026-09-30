@@ -29,6 +29,40 @@ import PrintableLawyerOpinionTemplate from '../client/PrintableLawyerOpinionTemp
 import ModalPortal from './ModalPortal';
 import { getRecognizedLivingCost2026 } from '../../services/repayment/rehabLegalCore';
 
+// ── 의뢰인 화면 표시 원칙 ──
+// 변호사가 작성하지 않은 소견·계획을 기본 문구로 채워 변호사 이름 아래 보여주지 않는다.
+const NOT_WRITTEN_TEXT = '변호사가 아직 작성하지 않았습니다.';
+/** 관할 법원 정보가 없을 때 표시 (임의 법원명을 넣지 않는다) */
+const UNKNOWN_COURT_LABEL = '관할 법원 확인 필요';
+/** 소견 없이 발송된 제안서에 저장되는 자리표시 문구 — 변호사가 작성한 소견으로 보지 않는다 */
+const PLACEHOLDER_REMARKS = ['제안서 발송'];
+/** 변호사 화면(에디터·미리보기)에서만 쓰는 수정 출발용 기본 소견 */
+const DEFAULT_LAWYER_COMMENT = '제출해 주신 소득·부양가족·채무 정보를 기준으로 개인회생 진행 방향을 검토했습니다. 신청 시 금지·중지명령을 함께 신청해 추심 부담을 줄이는 방안을 검토하고, 관할법원 실무에 맞는 변제계획안을 준비하겠습니다. 실제 개시·인가 여부는 법원 심리와 제출 서류에 따라 결정됩니다.';
+/** 변호사 화면(에디터·미리보기)에서만 쓰는 수정 출발용 기본 계획 */
+const DEFAULT_SPECIAL_NOTES = [
+  '서류가 준비되는 대로 신청서와 금지명령 신청을 함께 준비합니다.',
+  '최근 대출금 사용처 소명 자료(금융거래내역 등) 준비를 안내해 드립니다.',
+  '법원의 보정권고에는 담당 변호사가 검토 후 대응합니다.'
+];
+/** 수임 계약 이후의 상담 단계 — 이 단계에서는 '전자계약 진행' 버튼을 보여주지 않는다 */
+const CONTRACTED_REQUEST_STATUSES = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
+/** 제안서의 진행 가능성 문구 → 진단 상태 (변호사가 발송 시 남긴 값) */
+const FEASIBILITY_STATUS: Record<string, RehabCalculationResult['status']> = {
+  '진행 가능': 'POSSIBLE',
+  '진행 어려움': 'DIFFICULT',
+  '진행 불가': 'IMPOSSIBLE',
+};
+
+/** 앞에서부터 실제로 작성된(빈 값·자리표시 문구가 아닌) 문자열을 고른다 */
+function pickAuthoredText(...candidates: unknown[]): string {
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim();
+    if (trimmed && !PLACEHOLDER_REMARKS.includes(trimmed)) return candidate;
+  }
+  return '';
+}
+
 export interface PremiumReportData {
   lawyerInfo?: {
     name: string;
@@ -84,8 +118,11 @@ export interface PremiumProposalReportModalProps {
   onRejectProposal?: (proposalId: string) => void;
   onContactLawyer?: (lawyerInfo: any) => void;
   onAppointLawyer?: () => void;
+  /** false면 변호사 미리보기 화면. 생략하면 의뢰인 화면으로 본다 */
   isClientViewer?: boolean;
   isAppointed?: boolean;
+  /** 이 상담 요청의 수임 계약이 이미 완료(서명)된 경우 true — '전자계약 진행' 버튼 대신 완료 안내를 표시한다 */
+  isContracted?: boolean;
   embedded?: boolean;
   isLawyerEditor?: boolean;
   onApplyChanges?: (updatedData: {
@@ -110,6 +147,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   onRejectProposal,
   onContactLawyer,
   onAppointLawyer,
+  isClientViewer = true,
+  isContracted = false,
   embedded = false,
   isLawyerEditor = false,
   onApplyChanges
@@ -157,6 +196,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     }
   }, [isAIPremium, activeTab]);
 
+  // 의뢰인 화면 여부 — 변호사 에디터(isLawyerEditor)·변호사 미리보기(isClientViewer=false)가 아니면 의뢰인 화면
+  const isClientView = isClientViewer && !isLawyerEditor;
+
   // 2. Unify and normalize props across reportData & proposal & clientInfo
   const lawyerName = 
     reportData?.lawyerInfo?.name || 
@@ -192,13 +234,22 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     clientInfo?.name || 
     '의뢰인';
 
-  const rawCourt = 
+  // 관할 법원은 저장된 실제 값만 쓴다. 없으면 임의 법원(예: 서울회생법원)을 넣지 않고 '확인 필요'로 표시
+  const rawCourt: string = String(
     reportData?.diagnosis?.court || 
     proposalProp?.diagnosis?.court || 
+    proposalProp?.proposalData?.diagnosis?.court || 
     proposalProp?.court || 
     clientInfo?.court || 
-    '서울회생법원';
-  const courtName = rawCourt.includes('법원') ? rawCourt : `${rawCourt}회생법원`;
+    clientInfo?.financialProfile?.selectedCourt || 
+    ''
+  ).trim();
+  const isCourtKnown = rawCourt.length > 0;
+  const courtName = !isCourtKnown
+    ? UNKNOWN_COURT_LABEL
+    : rawCourt.includes('법원') ? rawCourt : `${rawCourt}회생법원`;
+  // 문장 안에 넣을 때 쓰는 표현 (미확인이면 '관할 법원')
+  const courtPhrase = isCourtKnown ? courtName : '관할 법원';
 
   // Currency normalizer:
   const normalizeToWon = (val: number | undefined | null): number => {
@@ -209,10 +260,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   const rawTotalDebt = 
     reportData?.diagnosis?.totalDebt ?? 
     proposalProp?.diagnosis?.totalDebt ?? 
+    proposalProp?.proposalData?.diagnosis?.totalDebt ?? 
     proposalProp?.totalDebt ?? 
-    clientInfo?.totalDebt ?? 
-    clientInfo?.financialProfile?.debtTotal ?? 
-    0;
+    clientInfo?.totalDebt;
+  // financialProfile.debtTotal은 항상 만원 단위 — normalizeToWon(1만 미만만 만원으로 간주)을 거치면
+  // 1억 원(1만 만원) 이상 채무가 원 단위로 오인되므로, 이 값은 직접 원으로 바꾼다
+  const profileDebtTotalManWon = Number(clientInfo?.financialProfile?.debtTotal);
+  const profileDebtTotalWon = Number.isFinite(profileDebtTotalManWon) && profileDebtTotalManWon > 0
+    ? Math.round(profileDebtTotalManWon * 10000)
+    : 0;
 
   const rawMonthlyPayment = 
     reportData?.diagnosis?.monthlyPayment ?? 
@@ -221,10 +277,13 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     clientInfo?.monthlyPayment ?? 
     0;
 
+  // 발송된 제안서(ConsultProposal)는 변제 기간을 duration에 저장한다 — 변호사가 제안한 기간을 우선 사용
   const repaymentMonths = 
     reportData?.diagnosis?.repaymentMonths || 
     proposalProp?.diagnosis?.repaymentMonths || 
+    proposalProp?.proposalData?.diagnosis?.repaymentMonths || 
     proposalProp?.repaymentMonths || 
+    proposalProp?.duration || 
     clientInfo?.repaymentMonths || 
     36;
 
@@ -239,7 +298,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     proposalProp?.debtReductionRate ?? 
     0;
 
-  const totalDebt = normalizeToWon(rawTotalDebt);
+  const totalDebt = rawTotalDebt != null ? normalizeToWon(rawTotalDebt) : profileDebtTotalWon;
   const monthlyPayment = normalizeToWon(rawMonthlyPayment);
   const totalRepaymentCalculated = monthlyPayment * repaymentMonths;
   const estimatedReduction = rawEstimatedReduction !== undefined && rawEstimatedReduction > 0
@@ -266,14 +325,20 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   const courtDepositWon = normalizeToWon(rawCourtDeposit);
 
   // Lawyer Comments & Notes
-  const lawyerComment = 
-    reportData?.lawyerComment || 
-    reportData?.lawyerOpinion || 
-    proposalProp?.lawyerComment || 
-    proposalProp?.lawyerOpinion || 
-    proposalProp?.opinion || 
-    proposalProp?.remark || 
-    '제출해 주신 소득·부양가족·채무 정보를 기준으로 개인회생 진행 방향을 검토했습니다. 신청 시 금지·중지명령을 함께 신청해 추심 부담을 줄이는 방안을 검토하고, 관할법원 실무에 맞는 변제계획안을 준비하겠습니다. 실제 개시·인가 여부는 법원 심리와 제출 서류에 따라 결정됩니다.';
+  // 변호사가 실제로 작성·저장한 소견만 '작성됨'으로 본다 (빈 값·'제안서 발송' 같은 자리표시 문구 제외)
+  const authoredLawyerComment = pickAuthoredText(
+    reportData?.lawyerComment,
+    reportData?.lawyerOpinion,
+    proposalProp?.lawyerComment,
+    proposalProp?.lawyerOpinion,
+    proposalProp?.opinion,
+    proposalProp?.remark,
+    proposalProp?.proposalData?.lawyerOpinion
+  );
+  const hasAuthoredLawyerComment = authoredLawyerComment.length > 0;
+  // 변호사 화면에서는 기본 문구를 수정 출발점으로 유지하고, 의뢰인 화면에는 작성된 소견만 보여준다
+  const lawyerComment = authoredLawyerComment || (isClientView ? '' : DEFAULT_LAWYER_COMMENT);
+  const isLawyerCommentMissing = isClientView && !hasAuthoredLawyerComment;
 
   // Lawyer Editing State (isLawyerEditor mode)
   const [editMonthlyPayment, setEditMonthlyPayment] = useState(monthlyPayment);
@@ -314,13 +379,17 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     }
   };
 
-  const specialNotes: string[] = 
+  const rawSpecialNotes: unknown = 
     reportData?.specialNotes || 
-    proposalProp?.specialNotes || [
-      '서류가 준비되는 대로 신청서와 금지명령 신청을 함께 준비합니다.',
-      '최근 대출금 사용처 소명 자료(금융거래내역 등) 준비를 안내해 드립니다.',
-      '법원의 보정권고에는 담당 변호사가 검토 후 대응합니다.'
-    ];
+    proposalProp?.specialNotes || 
+    proposalProp?.proposalData?.specialNotes;
+  // 의뢰인 화면: 변호사가 작성한 계획만 표시 (기본 계획 문구로 채우지 않음)
+  // 변호사 화면: 기존처럼 저장값이 없으면 기본 계획을 수정 출발점으로 표시
+  const specialNotes: string[] = isClientView
+    ? (Array.isArray(rawSpecialNotes)
+        ? rawSpecialNotes.filter((note): note is string => typeof note === 'string' && note.trim().length > 0)
+        : [])
+    : (Array.isArray(rawSpecialNotes) ? rawSpecialNotes as string[] : DEFAULT_SPECIAL_NOTES);
 
   const clientQnA: Array<{ question: string; answer: string }> = 
     proposalProp?.clientQnA || [];
@@ -338,9 +407,23 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   const fallbackFamilySize = Math.max(1, Number((clientInput as any)?.familySize) || 1);
   const fallbackLivingCost = getRecognizedLivingCost2026(fallbackFamilySize);
   const fallbackAdvice = useMemo(() => [
-    `${courtName} 실무준칙을 참고해 변제계획을 검토했습니다.`,
+    isCourtKnown
+      ? `${courtName} 실무준칙을 참고해 변제계획을 검토했습니다.`
+      : '관할 법원이 확인되지 않아 일반적인 실무 기준으로 계산한 예상치입니다. 관할 법원이 정해지면 변제계획이 달라질 수 있습니다.',
     `예상 월 변제금 ${formatCurrency(monthlyPayment)}원, ${repaymentMonths}개월 기준 원금 약 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면이 예상됩니다. 실제 금액은 법원 심리에 따라 달라질 수 있습니다.`
-  ], [courtName, monthlyPayment, repaymentMonths, debtReductionRate, estimatedReduction]);
+  ], [isCourtKnown, courtName, monthlyPayment, repaymentMonths, debtReductionRate, estimatedReduction]);
+  const fallbackCourtDescription = isCourtKnown ? `${courtName} 실무준칙 종합 적용` : UNKNOWN_COURT_LABEL;
+
+  // 진단 상태는 변호사가 제안서에 남긴 값을 우선 사용한다 (없을 때만 기존 기본값)
+  const rawProposalStatus =
+    reportData?.diagnosis?.status ||
+    proposalProp?.diagnosis?.status ||
+    proposalProp?.proposalData?.diagnosis?.status ||
+    FEASIBILITY_STATUS[String(proposalProp?.feasibility || '').trim()];
+  const proposalStatus: RehabCalculationResult['status'] =
+    rawProposalStatus === 'POSSIBLE' || rawProposalStatus === 'DIFFICULT' || rawProposalStatus === 'IMPOSSIBLE'
+      ? rawProposalStatus
+      : 'POSSIBLE';
 
   const activeCalcResult: RehabCalculationResult = useMemo(() => {
     const cr = calculationResult as any;
@@ -358,7 +441,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         totalDebt: cr.totalDebt || totalDebt,
         courtName: cr.courtName || courtName,
         court: cr.court || courtName,
-        courtDescription: cr.courtDescription || `${courtName} 실무준칙 종합 적용`,
+        courtDescription: cr.courtDescription || fallbackCourtDescription,
         status: cr.status || 'POSSIBLE',
         statusReason: cr.statusReason || '변호사 제안 조건 기준 예상치',
         availableIncome: cr.availableIncome || monthlyPayment,
@@ -396,8 +479,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       currentMonthlyBurden: currentBurden,
       court: courtName,
       courtName: courtName,
-      courtDescription: `${courtName} 실무준칙 종합 적용`,
-      status: 'POSSIBLE',
+      courtDescription: fallbackCourtDescription,
+      status: proposalStatus,
       statusReason: '변호사 제안 조건 기준 예상치',
       reasons: [],
       eligibleProcedures: ['individual_rehabilitation'],
@@ -415,7 +498,18 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       regionGroup: 'etc',
       alerts: [],
     } as RehabCalculationResult;
-  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated, fallbackLivingCost, fallbackAdvice]);
+  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated, fallbackLivingCost, fallbackAdvice, fallbackCourtDescription, proposalStatus]);
+
+  // 현재 월 상환 부담 — 실제 납부액 자료가 없어 항상 추정치다. 화면에는 산정 근거를 함께 표시하고, 값이 없으면 숨긴다.
+  const currentMonthlyBurden = Number(activeCalcResult.currentMonthlyBurden) || 0;
+  const hasCurrentBurdenEstimate = currentMonthlyBurden > 0;
+  const hasCalcBurdenSource = Boolean(
+    clientInput ||
+    ((calculationResult as any) && ((calculationResult as any).totalDebt || (calculationResult as any).monthlyPayment))
+  );
+  const currentBurdenBasis = hasCalcBurdenSource
+    ? '추정: 36개월 원리금균등상환·이자율 가정 기준'
+    : '추정: 총 채무의 4% 기준';
 
   const activeUserInput: RehabUserInput = useMemo(() => {
     if (clientInput) {
@@ -606,7 +700,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
       }
 
-      const filePrefix = isAIPremium ? 'AI_7p_정밀진단서' : '변호사_직접검토의견서';
+      const filePrefix = isAIPremium ? 'AI_분석리포트' : '변호사_직접검토의견서';
       const sanitizedName = (clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣_]/g, '');
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `${filePrefix}_${sanitizedName}_${dateStr}.pdf`;
@@ -615,7 +709,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
       toast.success(
         isAIPremium 
-          ? `AI 7p 정밀 진단서 PDF가 저장되었습니다. (${pageElements.length}p)` 
+          ? `AI 분석 리포트 PDF를 저장했습니다. (${pageElements.length}쪽)` 
           : `변호사 직접 검토 의견서 PDF가 저장되었습니다. (${pageElements.length}p)`, 
         { id: toastId }
       );
@@ -627,14 +721,18 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     }
   };
 
+  // 계약이 이미 끝난 상담이면 '전자계약 진행' 대신 완료 안내를 보여준다
+  const isContractDone = isContracted || CONTRACTED_REQUEST_STATUSES.includes(String(clientInfo?.status || ''));
+
   const handleAccept = () => {
+    if (isContractDone) return;
     if (onAcceptProposal && proposalId) {
       onAcceptProposal(proposalId);
     } else if (onAppointLawyer) {
       onAppointLawyer();
     } else {
-      toast.success('수임 제안이 수락되었습니다. 변호사가 곧 연락드립니다.');
-      onClose();
+      // 처리할 수 있는 연결(콜백·제안서 ID)이 없으면 수락된 것처럼 안내하지 않는다
+      toast.error('제안서 정보를 확인하지 못해 계약을 진행할 수 없습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 
@@ -679,8 +777,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             estimatedReduction={estimatedReduction}
             repaymentMonths={repaymentMonths}
             totalRepayment={totalRepaymentCalculated}
-            lawyerOpinion={lawyerComment}
-            specialNotes={specialNotes}
+            /* 의뢰인 PDF: 템플릿 자체 기본 소견·계획으로 채워지지 않도록, 미작성이면 미작성 문구를 넘긴다 */
+            lawyerOpinion={lawyerComment || NOT_WRITTEN_TEXT}
+            specialNotes={isClientView && specialNotes.length === 0 ? [NOT_WRITTEN_TEXT] : specialNotes}
             totalFeeWon={totalFeeWon}
             downPaymentWon={downPaymentWon}
             monthlyInstallmentWon={monthlyInstallmentWon}
@@ -736,7 +835,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   {isAIPremium ? (
                     <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-amber-300 text-slate-950 shadow-sm flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-slate-900" />
-                      AI 정밀 진단 & 변호사 제안서
+                      AI 분석 리포트 & 변호사 제안서
                     </span>
                   ) : (
                     <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1.5">
@@ -751,7 +850,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
                 
                 <h2 id="report-modal-title" className="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
-                  <span>{isAIPremium ? `${clientName}님의 개인회생 정밀 진단서` : `${clientName}님을 위한 변호사 제안서`}</span>
+                  <span>{isAIPremium ? `${clientName}님의 개인회생 AI 분석 리포트` : `${clientName}님을 위한 변호사 제안서`}</span>
                   <span className="text-sm font-normal text-slate-300">· {lawyerName}{lawyerFirmName ? ` (${lawyerFirmName})` : ''}</span>
                 </h2>
                 
@@ -831,13 +930,13 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               </span>
             </div>
             <div className="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium block">예상 원금 탕감률</span>
+              <span className="text-[11px] text-slate-400 font-medium block">예상 원금 감면율</span>
               <span className="text-sm sm:text-base font-black text-blue-400 mt-0.5 block">
                 {debtReductionRate}%
               </span>
             </div>
             <div className="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium block">총 탕감 예상액</span>
+              <span className="text-[11px] text-slate-400 font-medium block">예상 감면액</span>
               <span className="text-sm sm:text-base font-black text-amber-400 mt-0.5 block">
                 {formatCurrency(estimatedReduction)}
               </span>
@@ -857,7 +956,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </h4>
                 </div>
                 <span className="text-[11px] text-indigo-300 font-mono font-bold bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">
-                  실시간 탕감률 계산: 약 {editDebtReductionRate}%
+                  감면율 다시 계산: 약 {editDebtReductionRate}%
                 </span>
               </div>
 
@@ -900,7 +999,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <span className="text-[11px] text-slate-400 font-sans font-normal">감면</span>
                   </div>
                   <div className="text-[10px] text-emerald-400">
-                    탕감률: 약 {editDebtReductionRate}%
+                    예상 감면율: 약 {editDebtReductionRate}%
                   </div>
                 </div>
               </div>
@@ -1038,17 +1137,35 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     </div>
 
                     {/* 핵심 변호사 코멘트 및 소견 */}
-                    <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 text-slate-800 leading-relaxed space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-blue-600 text-2xl font-serif font-black leading-none select-none">“</span>
-                        <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
-                          제출해 주신 소득 요건과 부채 규모를 관할법원 실무 기준에 맞추어 검토한 변제 계획안입니다.
+                    {isClientView ? (
+                      /* 의뢰인 화면: 고정 안내 문장을 변호사 인용문처럼 붙이지 않고, 작성된 소견만 표시 */
+                      isLawyerCommentMissing ? (
+                        <p className="p-5 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-sm text-slate-500 leading-relaxed">
+                          {NOT_WRITTEN_TEXT}
+                        </p>
+                      ) : (
+                        <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 text-slate-800 leading-relaxed">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-blue-600 text-2xl font-serif font-black leading-none select-none" aria-hidden="true">“</span>
+                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                              {lawyerComment}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 text-slate-800 leading-relaxed space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-blue-600 text-2xl font-serif font-black leading-none select-none">“</span>
+                          <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                            제출해 주신 소득 요건과 부채 규모를 관할법원 실무 기준에 맞추어 검토한 변제 계획안입니다.
+                          </p>
+                        </div>
+                        <p className="text-sm text-slate-700 leading-relaxed pl-5 whitespace-pre-line">
+                          {lawyerComment}
                         </p>
                       </div>
-                      <p className="text-sm text-slate-700 leading-relaxed pl-5 whitespace-pre-line">
-                        {lawyerComment}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   {/* 2. 법원 보정명령 방어 및 직접 소명 3대 전략 */}
@@ -1062,17 +1179,24 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {specialNotes.map((note, idx) => (
-                        <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
-                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="text-slate-900 font-extrabold">계획 {idx + 1}</span>
+                    {isClientView && specialNotes.length === 0 ? (
+                      /* 의뢰인 화면: 변호사가 작성한 계획이 없으면 기본 계획으로 채우지 않는다 */
+                      <p className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-xs text-slate-500">
+                        {NOT_WRITTEN_TEXT}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {specialNotes.map((note, idx) => (
+                          <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="text-slate-900 font-extrabold">계획 {idx + 1}</span>
+                            </div>
+                            <p className="text-slate-600 leading-relaxed">{note}</p>
                           </div>
-                          <p className="text-slate-600 leading-relaxed">{note}</p>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* 3. 의뢰인 안내 사항 */}
@@ -1200,7 +1324,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                         </div>
                       </div>
                       <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        원금 {debtReductionRate}% 감면
+                        원금 약 {debtReductionRate}% 감면 예상
                       </span>
                     </div>
 
@@ -1220,10 +1344,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span className="text-slate-600">이자 감면</span>
                             <span className="font-bold text-red-600">0% (연체이자 누적)</span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-600">예상 월 상환 부담</span>
-                            <span className="font-bold text-red-700">{formatCurrency(activeCalcResult.currentMonthlyBurden)}</span>
-                          </div>
+                          {hasCurrentBurdenEstimate && (
+                            <div className="flex justify-between items-start gap-2 text-sm">
+                              <span className="text-slate-600">
+                                예상 월 상환 부담
+                                <span className="block text-[11px] text-slate-500">{currentBurdenBasis}</span>
+                              </span>
+                              <span className="font-bold text-red-700">약 {formatCurrency(currentMonthlyBurden)}</span>
+                            </div>
+                          )}
                           <div className="pt-2 border-t border-red-200/80 text-xs text-red-600 font-medium">
                             채권 추심, 압류 및 독촉 전화 노출 위험
                           </div>
@@ -1250,7 +1379,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span className="font-bold text-slate-900">{formatCurrency(totalRepaymentCalculated)}</span>
                           </div>
                           <div className="pt-2 border-t border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
-                            <span>예상 탕감 금액 (변제 완료·면책 시)</span>
+                            <span>예상 감면액 (변제 완료·면책 시)</span>
                             <span className="text-sm font-black text-emerald-700">{formatCurrency(estimatedReduction)}</span>
                           </div>
                         </div>
@@ -1274,8 +1403,10 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                           </span>
                         </div>
 
-                        <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed">
-                          {lawyerComment}
+                        <div className={`mt-3 p-4 rounded-xl bg-slate-50 border text-sm leading-relaxed ${
+                          isLawyerCommentMissing ? 'border-dashed border-slate-300 text-slate-500' : 'border-slate-200 text-slate-700'
+                        }`}>
+                          {isLawyerCommentMissing ? NOT_WRITTEN_TEXT : lawyerComment}
                         </div>
 
                         {specialNotes && specialNotes.length > 0 && (
@@ -1382,16 +1513,19 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
               </div>
 
-              {/* Monthly Repayment Burden Relief Meter */}
+              {/* Monthly Repayment Burden Relief Meter — 현재 부담은 추정치이므로 근거와 함께 표시하고, 추정할 자료가 없으면 숨긴다 */}
+              {hasCurrentBurdenEstimate && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <h3 className="text-base font-bold text-slate-900 mb-2">월 상환 부담 비교 체감치</h3>
-                <p className="text-xs text-slate-500 mb-5">현재 부담 중인 매월 원리금 상환액 대비 회생 인가 후 절감 효과입니다.</p>
+                <h3 className="text-base font-bold text-slate-900 mb-2">월 상환 부담 비교 (추정)</h3>
+                <p className="text-xs text-slate-500 mb-5">
+                  현재 월 상환 부담 추정치와 회생 인가 시 예상 월 변제금을 비교한 참고 자료입니다. 실제 상환액과 다를 수 있습니다. ({currentBurdenBasis})
+                </p>
 
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-xs font-medium mb-1">
-                      <span className="text-slate-500">현재 예상 원리금 상환 부담</span>
-                      <span className="text-red-600 font-bold">{formatCurrency(activeCalcResult.currentMonthlyBurden)}</span>
+                      <span className="text-slate-500">현재 원리금 상환 부담 (추정)</span>
+                      <span className="text-red-600 font-bold">약 {formatCurrency(currentMonthlyBurden)}</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                       <div className="h-full bg-red-500 rounded-full w-full" />
@@ -1406,20 +1540,20 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                       <div 
                         className="h-full bg-emerald-500 rounded-full"
-                        style={{ width: `${Math.min(100, Math.round((monthlyPayment / Math.max(1, activeCalcResult.currentMonthlyBurden)) * 100))}%` }}
+                        style={{ width: `${Math.min(100, Math.round((monthlyPayment / Math.max(1, currentMonthlyBurden)) * 100))}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
                     <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-center">
-                      <div className="text-[11px] text-emerald-700 font-bold">매월 가계 절약액</div>
+                      <div className="text-[11px] text-emerald-700 font-bold">월 부담 감소 (추정)</div>
                       <div className="text-sm sm:text-base font-black text-emerald-800 mt-0.5">
-                        {formatCurrency(Math.max(0, activeCalcResult.currentMonthlyBurden - monthlyPayment))}
+                        약 {formatCurrency(Math.max(0, currentMonthlyBurden - monthlyPayment))}
                       </div>
                     </div>
                     <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-center">
-                      <div className="text-[11px] text-blue-700 font-bold">총 원금 감면액</div>
+                      <div className="text-[11px] text-blue-700 font-bold">총 원금 감면액 (예상)</div>
                       <div className="text-sm sm:text-base font-black text-blue-900 mt-0.5">
                         {formatCurrency(estimatedReduction)}
                       </div>
@@ -1433,6 +1567,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </div>
                 </div>
               </div>
+              )}
 
             </div>
           )}
@@ -1450,7 +1585,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <h3 className="text-base font-bold text-slate-900">
                         공개 통계 기준 참고 비교
                       </h3>
-                      <p className="text-xs text-slate-600">공개된 개인회생 통계와 입력하신 소득·채무·예상 탕감률을 비교한 참고 자료입니다. 법원의 판단 기준이 아닙니다.</p>
+                      <p className="text-xs text-slate-600">공개된 개인회생 통계와 입력하신 소득·채무·예상 감면율을 비교한 참고 자료입니다. 법원의 판단 기준이 아닙니다.</p>
                     </div>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
@@ -1480,7 +1615,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     />
                   )}
                   <StatComparisonCard
-                    title="예상 탕감률 비교"
+                    title="예상 감면율 비교"
                     userValue={debtReductionRate}
                     averageValue={AVERAGE_VALUES.debtReductionRate}
                     percentile={calculateReductionRatePercentile(debtReductionRate)}
@@ -1490,7 +1625,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
 
                 <DistributionBar
-                  title="개인회생 원금 탕감률 분포 내 예상 위치 (참고)"
+                  title="개인회생 원금 감면율 분포 내 예상 위치 (참고)"
                   userValue={debtReductionRate}
                   distribution={REHAB_STATISTICS_2025.debtReductionRateDistribution || []}
                   highlightRange={(() => {
@@ -1504,8 +1639,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 />
 
                 <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-200 text-xs text-purple-900 leading-relaxed">
-                  💡 <strong>참고</strong>: 예상 탕감률({debtReductionRate}%)을 공개 통계 분포와 비교한 위치입니다. 
-                  통계 비교는 사건의 개시·인가 가능성을 보장하지 않으며, 실제 결과는 {courtName}의 심리와 제출 서류에 따라 달라집니다.
+                  💡 <strong>참고</strong>: 예상 감면율({debtReductionRate}%)을 공개 통계 분포와 비교한 위치입니다. 
+                  통계 비교는 사건의 개시·인가 가능성을 보장하지 않으며, 실제 결과는 {courtPhrase}의 심리와 제출 서류에 따라 달라집니다.
                 </div>
               </div>
             </div>
@@ -1646,18 +1781,29 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             )}
 
             {(onAcceptProposal || onAppointLawyer) && (
-              <button
-                onClick={handleAccept}
-                type="button"
-                className={`flex items-center justify-center gap-1.5 px-6 min-h-[44px] whitespace-nowrap rounded-xl text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md cursor-pointer ${
-                  isAIPremium 
-                    ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                <span>이 조건으로 전자계약 진행</span>
-              </button>
+              isContractDone ? (
+                /* 계약이 끝난 상담에는 새 전자계약 진행 버튼을 보여주지 않는다 */
+                <div
+                  role="status"
+                  className="flex items-center justify-center gap-1.5 px-6 min-h-[44px] whitespace-nowrap rounded-xl text-xs sm:text-sm font-bold w-full sm:w-auto bg-slate-100 text-slate-700 border border-slate-200"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                  <span>계약이 완료된 상담입니다</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleAccept}
+                  type="button"
+                  className={`flex items-center justify-center gap-1.5 px-6 min-h-[44px] whitespace-nowrap rounded-xl text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md cursor-pointer ${
+                    isAIPremium 
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                  <span>이 조건으로 전자계약 진행</span>
+                </button>
+              )
             )}
           </div>
         </div>

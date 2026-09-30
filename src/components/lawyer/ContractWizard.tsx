@@ -2885,6 +2885,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         isOpen={verifyModalOpen}
         onClose={() => setVerifyModalOpen(false)}
         contract={c}
+        revealFullName
       />
     </div>
   );

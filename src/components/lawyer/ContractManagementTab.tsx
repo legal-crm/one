@@ -857,6 +857,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         isOpen={Boolean(verifyModalContract)}
         onClose={() => setVerifyModalContract(null)}
         contract={verifyModalContract}
+        revealFullName
       />
 
     </div>

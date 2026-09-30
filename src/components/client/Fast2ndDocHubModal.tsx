@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  X, Sparkles, FileText, CheckCircle2, ChevronRight, Mic, 
-  HelpCircle, Send, Printer, ShieldCheck, ArrowRight, BookOpen,
-  DollarSign, Calculator, Layers, AlertCircle
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { FileText, CheckCircle2, ChevronDown, Mic, Send, Calculator, Layers, ClipboardList } from 'lucide-react';
 import LawyerDocShareModal from './LawyerDocShareModal';
 import type { SharedDocPackageItem } from '../../services/lawyerDocShareService';
+import { Badge, Button, Callout, Modal } from './ui';
+import { cn } from '../../utils/cn';
 
 interface Fast2ndDocHubModalProps {
   isOpen: boolean;
@@ -25,6 +22,24 @@ interface Fast2ndDocHubModalProps {
   onOpenPropertyModal: () => void;
 }
 
+interface DocCardInfo {
+  id: 'stmt' | 'inc' | 'prop';
+  title: string;
+  formCode: string;
+  summary: string;
+  done: boolean;
+  icon: React.ReactNode;
+  actionLabel: string;
+  actionIcon: React.ReactNode;
+  onOpen: () => void;
+  why: string;
+  how: string;
+}
+
+/**
+ * 서류 준비 허브 — 진술서·수지표·재산 기초자료를 한곳에서 작성하고 담당자에게 링크로 보낸다.
+ * 각 서류 창은 부모가 이 허브 위에 연다(나중에 열린 창이 위).
+ */
 export default function Fast2ndDocHubModal({
   isOpen,
   onClose,
@@ -64,333 +79,171 @@ export default function Fast2ndDocHubModal({
     debtSummary: debtSummary || null
   };
 
+  const cards: DocCardInfo[] = [
+    {
+      id: 'stmt',
+      title: '진술서',
+      formCode: 'D5104',
+      summary: '학력·경력, 주거, 채무가 늘어난 경위, 갚기 어려워진 사정, 앞으로의 다짐',
+      done: hasStatement,
+      icon: <Mic className="w-5 h-5" aria-hidden="true" />,
+      actionLabel: hasStatement ? '이어서 고치기' : '말로 작성하기',
+      actionIcon: <Mic className="w-4 h-4" aria-hidden="true" />,
+      onOpen: onOpenStatementModal,
+      why: '진술서는 채무가 생긴 경위를 신청인이 직접 설명하는 서류입니다. 법원과 회생위원은 진술서와 증빙을 함께 보고 채무 발생 경위를 확인합니다.',
+      how: '질문에 말로 답하거나 메모로 적으면, AI가 진술서에 흔히 쓰는 순서(채무 발생 원인 → 늘어난 경위 → 갚기 어려워진 시점 → 반성과 다짐)로 초안을 정리합니다. 초안이 사실과 맞는지 꼭 확인해 주세요.',
+    },
+    {
+      id: 'inc',
+      title: '수입·지출 내역서(수지표)',
+      formCode: 'D5103',
+      summary: '사업자·프리랜서·일용직이라면 필요해요. 한 달 평균 수입과 필요한 경비',
+      done: hasIncomeExpense,
+      icon: <Calculator className="w-5 h-5" aria-hidden="true" />,
+      actionLabel: hasIncomeExpense ? '이어서 고치기' : '작성하기',
+      actionIcon: <Calculator className="w-4 h-4" aria-hidden="true" />,
+      onOpen: onOpenIncomeExpenseModal,
+      why: '수지표는 매달 갚을 돈(월 변제금)을 정할 때 쓰이는 서류입니다. 사업을 한다면 매출에서 월세·배달료·재료비 같은 영업 경비를 증빙과 함께 적어야 실제 소득이 제대로 반영됩니다.',
+      how: '12개월 표를 몰라도 괜찮아요. 한 달 평균 매출과 경비를 적거나 말로 입력하면 12개월 표로 정리됩니다. 반영하기 전에 금액을 꼭 확인해 주세요.',
+    },
+    {
+      id: 'prop',
+      title: '재산 기초자료',
+      formCode: 'D5102',
+      summary: '예금·보험 해약환급금, 자동차, 임차보증금, 부동산 등 가진 재산',
+      done: hasProperty,
+      icon: <ClipboardList className="w-5 h-5" aria-hidden="true" />,
+      actionLabel: hasProperty ? '이어서 고치기' : '작성하기',
+      actionIcon: <FileText className="w-4 h-4" aria-hidden="true" />,
+      onOpen: onOpenPropertyModal,
+      why: '개인회생에서는 갚을 돈의 합계가 가진 재산의 가치(청산가치)보다 적으면 안 됩니다. 재산 기초자료는 이를 확인하는 자료이고, 소액 보증금처럼 빼 주는 재산은 담당 변호사가 검토해 반영합니다.',
+      how: '통장 잔액, 자동차, 보증금 등을 항목별로 적으면 법원 양식 모양의 재산 목록으로 정리됩니다.',
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        
-        {/* 상단 헤더 & 브랜드 슬로건 */}
-        <div className="p-6 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white relative shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand text-white">
-                Open Legal Prep Hub
-              </span>
-              <span className="text-xs text-indigo-300 font-bold">
-                2차 핵심 서류 원스톱 완성센터
+    <>
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        size="lg"
+        mobile="fullscreen"
+        className="sm:max-w-3xl"
+        icon={<Layers className="w-5 h-5" />}
+        title="회생 서류 한곳에서 준비하기"
+        description="진술서·수지표·재산 기초자료를 작성하고 담당자에게 링크로 보낼 수 있어요."
+        closeLabel="서류 준비 닫기"
+        bodyClassName="bg-slate-50 px-4 py-5 sm:px-6"
+        subHeader={
+          <div className="bg-white px-4 sm:px-6 py-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-bold text-slate-800">준비한 서류</span>
+              <span className="font-bold text-brand tabular-nums">
+                {completedCount}/{totalCount}건
               </span>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition"
+            <div
+              className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden"
+              role="progressbar"
+              aria-label="서류 준비 진행률"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPercent}
             >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-1 mt-1">
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              "개인회생 서류와 모든 준비는 <span className="text-emerald-400">마이김변에서 쉽고 빠르게!</span>"
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-              변호사를 어디서 선임하셨든 상관없습니다. 복잡한 진술서와 수지표를 말로 편하게 작성하고, 담당 변호사·사무장님께 링크로 전달할 수 있습니다.
-            </p>
-          </div>
-
-          {/* 진행도 게이지 바 */}
-          <div className="mt-5 p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15">
-            <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-              <span className="text-indigo-200">2차 필수서류 준비 완료율</span>
-              <span className="text-emerald-400 font-black">{completedCount}/{totalCount}건 준비됨 ({progressPercent}%)</span>
-            </div>
-            <div className="w-full bg-white/20 h-2.5 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
+              <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
-        </div>
-
-        {/* 바디 컨텐츠: 3대 필수 서류 카드 목록 */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1 text-left">
-          
-          {/* 열린 안내 배너 */}
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <span className="font-bold text-emerald-950 dark:text-emerald-200 block">
-                🌱 타 법률사무소 진행자 및 나홀로 전자소송 준비자도 무료로 이용할 수 있습니다
-              </span>
-              <p className="text-emerald-800/80 dark:text-emerald-300 leading-relaxed text-[11px]">
-                의뢰인이 준비해야 하는 진술서와 수지표 초안을 AI가 정리해 드립니다. 완성 후 담당자 휴대폰 번호로 전송하면 변호사·사무장님이 열람하고 검토할 수 있습니다.
-              </p>
-            </div>
-          </div>
-
-          {/* 1. 법원 진술서(D5104) 카드 */}
-          <div className="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3.5 transition-all hover:border-indigo-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Mic className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                      1. 대법원 표준 진술서 (D5104)
-                    </h3>
-                    {hasStatement ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>작성 완료됨</span>
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                        작성 대기
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    학력·경력, 거주형태, 채무증대과정, 지급불능 사정, 갱생다짐 4단 법원 서식
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setExpandedWhyHow(expandedWhyHow === 'stmt' ? null : 'stmt')}
-                  className="px-3 py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-600 transition"
-                >
-                  <span className="flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>왜 & 어떻게?</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenStatementModal}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>{hasStatement ? '🎙️ 말로 수정하기' : '🎙️ 말로 작성하기'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Why & How 가이드 아코디언 */}
-            {expandedWhyHow === 'stmt' && (
-              <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/50 text-xs space-y-2 animate-fadeIn">
-                <div className="space-y-1">
-                  <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1">
-                    🎯 왜 법원에 제출해야 하나요? (Why)
-                  </span>
-                  <p className="text-indigo-900/80 dark:text-indigo-300 text-[11px] leading-relaxed pl-3.5">
-                    진술서는 신청인이 채무가 생긴 경위를 직접 설명하는 서류입니다. 법원과 회생위원은 진술서와 증빙을 함께 보고 채무 발생 경위를 확인합니다.
-                  </p>
-                </div>
-                <div className="space-y-1 pt-1 border-t border-indigo-200/60 dark:border-indigo-900/40">
-                  <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1">
-                    💡 어떻게 쓰면 되나요? (How)
-                  </span>
-                  <p className="text-indigo-900/80 dark:text-indigo-300 text-[11px] leading-relaxed pl-3.5">
-                    마이크를 켜고 AI 질문에 편하게 대답만 하세요. AI가 진술서에 흔히 쓰는 구성(채무발생원인 → 증대경위 → 지급불능 시점 → 반성과 다짐)으로 초안을 정리합니다.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 2. 수입 및 지출 내역서(수지표, D5103) 카드 */}
-          <div className="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3.5 transition-all hover:border-emerald-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Calculator className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                      2. 수입 및 지출 내역서 (수지표, D5103)
-                    </h3>
-                    {hasIncomeExpense ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>작성 완료됨</span>
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                        작성 대기
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    사업자·프리랜서·일용직 필수! 월평균 수입, 필요경비, 12개월 장부 법원 규격
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setExpandedWhyHow(expandedWhyHow === 'inc' ? null : 'inc')}
-                  className="px-3 py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-600 transition"
-                >
-                  <span className="flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>왜 & 어떻게?</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenIncomeExpenseModal}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>{hasIncomeExpense ? '🎙️ 말로 수정하기' : '🎙️ 말로 작성하기'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Why & How 가이드 아코디언 */}
-            {expandedWhyHow === 'inc' && (
-              <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 text-xs space-y-2 animate-fadeIn">
-                <div className="space-y-1">
-                  <span className="font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1">
-                    🎯 왜 법원에 제출해야 하나요? (Why)
-                  </span>
-                  <p className="text-emerald-900/80 dark:text-emerald-300 text-[11px] leading-relaxed pl-3.5">
-                    수지표는 매월 갚아야 할 '월 변제금'을 결정하는 가장 중요한 서류입니다. 매출에서 상가월세, 배달료, 재료비 등 영업경비를 정확히 소명해야 가용소득이 합리적으로 인정되어 변제금이 낮아집니다.
-                  </p>
-                </div>
-                <div className="space-y-1 pt-1 border-t border-emerald-200/60 dark:border-emerald-900/40">
-                  <span className="font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1">
-                    💡 어떻게 쓰면 되나요? (How)
-                  </span>
-                  <p className="text-emerald-900/80 dark:text-emerald-300 text-[11px] leading-relaxed pl-3.5">
-                    복잡한 12개월 엑셀을 몰라도 됩니다! 마이크를 켜고 "카드 400에 현금 100이고, 월세 90, 배달비 50 나가요"라고 말씀하시면 금액을 찾아 수지표에 채워 드립니다. 반영 전 금액을 꼭 확인해 주세요.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 3. 재산상황표 (D5102) 카드 */}
-          <div className="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3.5 transition-all hover:border-blue-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                      3. 법원 제출용 재산상황표 (D5102)
-                    </h3>
-                    {hasProperty ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>작성 완료됨</span>
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
-                        선택 작성
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    예금·적금, 자동차, 임차보증금, 보험환급금 등 6대 재산 청산가치 소명
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setExpandedWhyHow(expandedWhyHow === 'prop' ? null : 'prop')}
-                  className="px-3 py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-600 transition"
-                >
-                  <span className="flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5 text-blue-500" />
-                    <span>왜 & 어떻게?</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenPropertyModal}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>{hasProperty ? '📋 수정하기' : '📋 간편 체크 작성'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Why & How 가이드 아코디언 */}
-            {expandedWhyHow === 'prop' && (
-              <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/40 rounded-2xl border border-blue-200/80 dark:border-blue-900/50 text-xs space-y-2 animate-fadeIn">
-                <div className="space-y-1">
-                  <span className="font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1">
-                    🎯 왜 법원에 제출해야 하나요? (Why)
-                  </span>
-                  <p className="text-blue-900/80 dark:text-blue-300 text-[11px] leading-relaxed pl-3.5">
-                    개인회생의 핵심 대원칙인 '청산가치 보장의 원칙'(총 변제금이 보유 재산보다 많아야 함)을 입증하는 서류입니다. 공제되는 면제재산(소액보증금 등)을 정확히 제외해야 변제금이 불필요하게 늘어나지 않습니다.
-                  </p>
-                </div>
-                <div className="space-y-1 pt-1 border-t border-blue-200/60 dark:border-blue-900/40">
-                  <span className="font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1">
-                    💡 어떻게 쓰면 되나요? (How)
-                  </span>
-                  <p className="text-blue-900/80 dark:text-blue-300 text-[11px] leading-relaxed pl-3.5">
-                    보유하신 통장잔액, 차량, 보증금 유무를 객관식 체크하듯 입력하시면 법원 기준 재산가액표로 자동 정돈됩니다.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* 하단 메인 액션 바 */}
-        <div className="p-4 sm:p-5 bg-slate-100 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
-            준비된 서류 패키지를 담당자 휴대폰 번호로 즉시 전달할 수 있습니다.
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => {
-                // 현재 화면을 브라우저 인쇄 (법원 서식 변환 아님)
-                window.print();
-              }}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-300 dark:border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
-            >
-              <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>A4 인쇄/PDF</span>
-            </button>
-
-            <button
-              type="button"
+        }
+        footerClassName="justify-between"
+        footer={
+          <>
+            <p className="hidden sm:block text-sm text-slate-600">다 쓴 서류를 담당자 휴대폰 번호로 보낼 수 있어요.</p>
+            <Button
               onClick={() => setIsShareModalOpen(true)}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs sm:text-sm font-black rounded-2xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
+              className="flex-1 sm:flex-none"
             >
-              <Send className="w-4 h-4" />
-              <span>변호사·사무장님께 전달하기</span>
-            </button>
-          </div>
-        </div>
+              변호사·사무소에 보내기
+            </Button>
+          </>
+        }
+      >
+        <ul className="space-y-3">
+          {cards.map(card => {
+            const open = expandedWhyHow === card.id;
+            const panelId = `doc-hub-why-${card.id}`;
+            return (
+              <li key={card.id} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="w-10 h-10 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0" aria-hidden="true">
+                      {card.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <h3 className="text-base font-bold text-slate-900">{card.title}</h3>
+                        <span className="text-xs text-slate-500">법원 양식 {card.formCode}</span>
+                        {card.done ? (
+                          <Badge tone="success" icon={<CheckCircle2 className="w-3 h-3" aria-hidden="true" />}>작성 완료</Badge>
+                        ) : (
+                          <Badge tone="warning">작성 전</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600 leading-relaxed break-keep">{card.summary}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={card.done ? 'secondary' : 'primary'}
+                    onClick={card.onOpen}
+                    leftIcon={card.actionIcon}
+                    className="w-full sm:w-auto shrink-0"
+                  >
+                    {card.actionLabel}
+                  </Button>
+                </div>
 
-      </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandedWhyHow(open ? null : card.id)}
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  className="min-h-11 inline-flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-brand"
+                >
+                  왜 필요하고 어떻게 쓰나요?
+                  <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+                </button>
+                {open && (
+                  <div id={panelId} className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5 text-sm leading-relaxed">
+                    <div>
+                      <p className="font-bold text-slate-900">왜 필요한가요?</p>
+                      <p className="mt-0.5 text-slate-700 break-keep">{card.why}</p>
+                    </div>
+                    <div className="pt-2.5 border-t border-slate-200">
+                      <p className="font-bold text-slate-900">어떻게 쓰나요?</p>
+                      <p className="mt-0.5 text-slate-700 break-keep">{card.how}</p>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
 
-      {/* 변호사·사무장 모바일 전달 모달 */}
-      <LawyerDocShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        clientId={clientId}
-        clientName={clientName}
-        docPackage={docPackage}
-      />
-    </div>
+        <Callout tone="neutral" className="mt-4">
+          서류는 모두 초안이고, 법원에 내는 최종본은 담당 변호사가 검토해 확정합니다. 다른 사무소에서 진행 중이거나 직접 준비하는 분도 이용할 수 있어요.
+        </Callout>
+      </Modal>
+
+      {/* 변호사·사무소 직원에게 보내기 — 허브 위에 뜨는 창 */}
+      {isShareModalOpen && (
+        <LawyerDocShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          clientId={clientId}
+          clientName={clientName}
+          docPackage={docPackage}
+        />
+      )}
+    </>
   );
 }

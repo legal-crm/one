@@ -1,10 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Edit2, Check, X, LogOut, MessageSquare, ExternalLink, CheckCircle2, Trash2, ShieldCheck, Lock } from 'lucide-react';
+import React, { useEffect, useId, useState } from 'react';
+import { CheckCircle2, ChevronDown, Lock, LogOut, MessageSquare, PencilLine, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import { supabase } from '../../supabaseClient';
 import { purgeAllClientData } from '../../services/consultService';
 import type { ClientInquiry } from '../../types';
+import ConsentStatusList from './ConsentStatusList';
+import { Badge, Button, Card, EmptyState, FormField, PageHeader, inputClass } from './ui';
+import { cn } from '../../utils/cn';
+
+/**
+ * 계정 설정 (마이페이지 '알림·설정' 탭 안)
+ * - 키트 부품으로 정리: 이모지 제목·그라디언트 버튼·32px 아이콘 버튼(title만 있음)·라벨 없는 가명 입력 → 글자 버튼·FormField
+ * - 문의 내역은 펼치기 버튼(aria-expanded)으로 (이전: div onClick이라 키보드로 열 수 없었음)
+ * - 사실과 다른 표시 정리: '안심번호'(구현되지 않음) 항목 삭제, 항상 켜진 '스텔스 보안 활성' 배지 삭제
+ */
 
 interface MySettingsViewProps {
   isLoggedIn: boolean;
@@ -20,6 +30,57 @@ interface MySettingsViewProps {
   onNavigateToTab: (tab: string) => void;
   onShowAuthModal: () => void;
   onLogout: () => void;
+  /** 마이페이지 '알림·설정' 탭 안에 넣을 때 (자체 제목·바깥 여백을 뺀다) */
+  embedded?: boolean;
+}
+
+const PROVIDER_LABEL: Record<string, string> = { google: 'Google', kakao: '카카오', email: '이메일' };
+
+const SECURITY_POINTS = [
+  { title: '1:1 대화 접근 제한', body: '전송 구간은 TLS로 암호화되고, 상담 당사자(본인·선택한 변호사)만 볼 수 있어요.' },
+  { title: '상담 기록 직접 삭제', body: '이 화면에서 대화와 진단 기록을 직접 영구 삭제할 수 있어요.' },
+  { title: '광고용 추적 도구 미사용', body: '상담 화면에 광고 목적의 외부 추적 스크립트를 넣지 않아요.' },
+  { title: '스텔스 가명', body: '수임 계약 전까지 변호사에게 실명과 연락처를 보내지 않아요. 상담방에는 가명이 보여요.' },
+];
+
+function InquiryItem({ inq }: { inq: ClientInquiry }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const replied = inq.status === 'replied';
+  return (
+    <li className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+      >
+        <span className="min-w-0">
+          <span className="block text-xs text-slate-500">{new Date(inq.createdAt).toLocaleDateString('ko-KR')}</span>
+          <span className="mt-0.5 block truncate text-sm font-bold text-slate-900">{inq.title}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <Badge tone={replied ? 'success' : 'warning'}>{replied ? '답변 완료' : '답변 대기'}</Badge>
+          <ChevronDown className={cn('h-4 w-4 text-slate-500 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+        </span>
+      </button>
+      {open && (
+        <div id={panelId} className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 break-keep">{inq.content}</p>
+          {replied && inq.replyContent ? (
+            <div className="rounded-xl border border-brand/15 bg-brand-light p-3.5">
+              <p className="text-sm font-bold text-brand">운영자 답변</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 break-keep">{inq.replyContent}</p>
+              {inq.repliedAt && <p className="mt-2 text-right text-xs text-slate-500">{new Date(inq.repliedAt).toLocaleString('ko-KR')}</p>}
+            </div>
+          ) : (
+            <p className="rounded-xl bg-slate-50 px-4 py-2.5 text-center text-sm text-slate-600">아직 답변이 등록되지 않았어요.</p>
+          )}
+        </div>
+      )}
+    </li>
+  );
 }
 
 export default function MySettingsView({
@@ -34,17 +95,18 @@ export default function MySettingsView({
   inquiries,
   onNavigateToTab,
   onShowAuthModal,
-  onLogout
+  onLogout,
+  embedded = false,
 }: MySettingsViewProps) {
   const dialog = useDialog();
   const [userEmail, setUserEmail] = useState<string>('');
   const [loginProvider, setLoginProvider] = useState<string>('');
-  const [expandedInquiryId, setExpandedInquiryId] = useState<string | null>(null);
+  const [savingAlias, setSavingAlias] = useState(false);
 
-  // [SECURITY Complete Client Purge] 의뢰인 데이터 전체 자폭(영구 파기)
+  // [SECURITY Complete Client Purge] 의뢰인 데이터 전체 영구 삭제
   const handlePurgeAllData = async () => {
     const confirmed = await dialog.confirm({
-      title: '나의 모든 상담·진단 데이터 영구 파기 (자폭)',
+      title: '나의 모든 상담·진단 데이터 영구 삭제',
       message: '다음 기록을 삭제합니다. 삭제 후에는 복구할 수 없습니다.\n\n· 서버: 내 상담 요청과 1:1 대화, 1:1 문의\n· 이 기기: 진단 결과, 작성 중인 서류, 회생동행 기록, 인증서 보관함, 알림\n\n※ 이미 사건을 맡긴 변호사 사무소의 수임 기록·전자계약서는 법령상 보관될 수 있어 이 기능으로 삭제되지 않습니다. 필요하면 해당 사무소에 삭제를 요청해 주세요.\n\n진행하시겠습니까?',
       confirmText: '삭제하기',
       variant: 'danger'
@@ -62,311 +124,193 @@ export default function MySettingsView({
     }
   };
 
+  const handleSaveAlias = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const next = tempAlias.trim();
+    if (!next) {
+      toast.error('가명을 입력해 주세요.');
+      return;
+    }
+    if (onChangeAlias) {
+      // 서버 중복 검사 통과 시에만 반영, 실패 시 편집 상태 유지
+      setSavingAlias(true);
+      const ok = await onChangeAlias(next);
+      setSavingAlias(false);
+      if (!ok) return;
+    } else {
+      setUserAlias(next);
+      supabase.auth.updateUser({ data: { alias: next } });
+    }
+    setIsEditingAlias(false);
+  };
+
   useEffect(() => {
     if (isLoggedIn) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           setUserEmail(session.user.email || '');
-          setLoginProvider(session.user.app_metadata?.provider || '이메일');
+          setLoginProvider(session.user.app_metadata?.provider || 'email');
         }
       });
     }
   }, [isLoggedIn]);
 
-  // Filter inquiries related to the current user's alias
+  // 현재 가명으로 남긴 문의
   const safeInquiries = Array.isArray(inquiries) ? inquiries : [];
-  const myInquiries = safeInquiries.filter(
-    (inq) => inq && inq.clientName === userAlias && userAlias !== ''
+  const myInquiries = safeInquiries.filter((inq) => inq && inq.clientName === userAlias && userAlias !== '');
+
+  const heading = embedded ? (
+    <h2 className="text-lg font-bold text-slate-900">계정 설정</h2>
+  ) : (
+    <PageHeader title="계정 설정" description="가명·로그인 계정, 기록 삭제, 1:1 문의 내역을 관리해요." />
   );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn text-left pb-24">
-      {/* Page Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-black text-slate-900 dark:text-white">마이페이지</h2>
-        <p className="text-sm text-slate-550 dark:text-slate-400 font-medium">
-          의뢰인님의 가명 계정 보안 설정 및 1:1 서비스 지원 현황입니다.
-        </p>
-      </div>
+    <div className={embedded ? 'space-y-4 text-left' : 'mx-auto max-w-5xl animate-fadeIn space-y-6 pb-24 text-left'}>
+      {heading}
 
       {!isLoggedIn ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 text-center space-y-6 shadow-xl">
-          <div className="w-14 h-14 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto">
-            <Shield className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-bold text-xl text-slate-900 dark:text-white">안심 로그인이 필요합니다</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-              마이페이지 및 문의 확인은 의뢰인의 개인 정보 보호를 위해 안전 로그인 후에만 조회가 가능합니다.
-            </p>
-          </div>
-          <button
-            onClick={onShowAuthModal}
-            className="px-8 py-4 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-md cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <span>3초 로그인하고 확인하기</span>
-          </button>
-        </div>
+        <Card>
+          <EmptyState
+            icon={<Lock className="h-6 w-6" />}
+            title="로그인하면 계정 설정을 볼 수 있어요"
+            description="개인 정보 보호를 위해 가명 변경, 기록 삭제, 문의 내역은 로그인한 뒤에만 보여요."
+            action={<Button onClick={onShowAuthModal}>로그인하기</Button>}
+          />
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* Left Column: Account settings & Inquiries */}
-          <div className="md:col-span-2 space-y-8">
-            
-            {/* Account Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-8 shadow-lg space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>👤</span> 스텔스 안심 프로필
-                </h3>
-                <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold">
-                  스텔스 보안 활성
-                </span>
-              </div>
-
-              <div className="space-y-5 bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-100 dark:border-slate-850">
-                {/* Nickname/Alias editing */}
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="space-y-1">
-                    <span className="text-xs text-slate-500 font-bold block">스텔스 가명 (채팅 발신 명칭)</span>
-                    {isEditingAlias ? (
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          if (tempAlias.trim() && onChangeAlias) {
-                            // 서버 중복 검사 통과 시에만 반영, 실패 시 편집 상태 유지
-                            const ok = await onChangeAlias(tempAlias.trim());
-                            if (!ok) return;
-                          } else if (tempAlias.trim()) {
-                            setUserAlias(tempAlias.trim());
-                            supabase.auth.updateUser({
-                              data: { alias: tempAlias.trim() }
-                            });
-                          }
-                          setIsEditingAlias(false);
-                        }}
-                        className="flex items-center gap-1.5 pt-1"
-                      >
-                        <input
-                          type="text"
-                          value={tempAlias}
-                          onChange={(e) => setTempAlias(e.target.value)}
-                          className="bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-base font-bold focus:ring-1 focus:ring-brand focus:outline-none w-44 text-slate-800 dark:text-white"
-                          maxLength={20}
-                          autoFocus
-                        />
-                        <button type="submit" className="p-2 bg-brand text-white rounded-lg hover:bg-brand-hover cursor-pointer" title="저장">
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button type="button" onClick={() => setIsEditingAlias(false)} className="p-2 bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer" title="취소">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </form>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-slate-800 dark:text-slate-200">
-                          {userAlias || '회원'}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setTempAlias(userAlias || '회원');
-                            setIsEditingAlias(true);
-                          }}
-                          className="text-slate-400 hover:text-brand p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
-                          title="가명 변경"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Email details */}
-                <div className="space-y-1 border-t border-slate-100 dark:border-slate-800/80 pt-4">
-                  <span className="text-xs text-slate-500 font-bold block">연동 계정 이메일</span>
-                  <span className="text-sm text-slate-750 dark:text-slate-300 font-medium">
-                    {userEmail || '확인 불가'} <span className="text-xs text-brand/80 font-bold">({loginProvider === 'google' ? 'Google' : loginProvider === 'kakao' ? 'Kakao' : loginProvider} 연동)</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Purge & Logout actions */}
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handlePurgeAllData}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-955/20 dark:hover:bg-rose-900/30 text-rose-650 dark:text-rose-400 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-95 border border-rose-200 dark:border-rose-900/30"
-                  title="서버 및 로컬에 저장된 본인의 모든 상담 기록과 진단표를 영구 소멸합니다"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>기록 완전 자폭(영구 파기)</span>
-                </button>
-                <button
-                  onClick={onLogout}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-95"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>안전 로그아웃</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Inquiries list */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-8 shadow-lg space-y-5">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>✉️</span> 나의 1:1 문의 내역
-                </h3>
-                <button
-                  onClick={() => onNavigateToTab('inquiry')}
-                  className="text-sm text-brand hover:text-brand-hover font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>새 문의 접수</span> <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {myInquiries.length === 0 ? (
-                <div className="py-12 text-center space-y-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-850">
-                  <MessageSquare className="w-9 h-9 text-slate-300 dark:text-slate-700 mx-auto" />
-                  <p className="text-sm text-slate-500 dark:text-slate-500 font-semibold">
-                    접수된 1:1 문의 내역이 없습니다.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[360px] overflow-y-auto">
-                  {myInquiries.map((inq) => {
-                    const isExpanded = expandedInquiryId === inq.id;
-                    return (
-                      <div
-                        key={inq.id}
-                        className="border border-slate-100 dark:border-slate-850 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-955/20"
-                      >
-                        <div
-                          onClick={() => setExpandedInquiryId(isExpanded ? null : inq.id)}
-                          className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors"
-                        >
-                          <div className="space-y-1 text-left">
-                            <span className="text-xs text-slate-400 font-medium">
-                              {new Date(inq.createdAt).toLocaleDateString()}
-                            </span>
-                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                              {inq.title}
-                            </h4>
-                          </div>
-                          <span
-                            className={`text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0 ${
-                              inq.status === 'replied'
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {inq.status === 'replied' ? '답변 완료' : '답변 대기'}
-                          </span>
-                        </div>
-
-                        {isExpanded && (
-                          <div className="px-4 pb-4 pt-1 space-y-4 text-sm border-t border-slate-100 dark:border-slate-850/80 animate-slideDown bg-white dark:bg-slate-900/40">
-                            {/* Question body */}
-                            <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg text-slate-600 dark:text-slate-350 leading-relaxed font-medium">
-                              {inq.content}
-                            </div>
-                            
-                            {/* Reply content */}
-                            {inq.status === 'replied' && inq.replyContent && (
-                              <div className="bg-brand/5 border border-brand/10 p-4 rounded-lg space-y-2">
-                                <div className="flex items-center gap-1.5 text-brand font-bold text-xs">
-                                  <span>🤖</span> <span>my김변 플랫폼 답변</span>
-                                </div>
-                                <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                                  {inq.replyContent}
-                                </p>
-                                <span className="block text-xs text-slate-400 text-right">
-                                  답변 시각: {new Date(inq.repliedAt || '').toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* Right Column: Stealth settings & Security status */}
-          <div className="space-y-8">
-            
-            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-8 shadow-lg space-y-6">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                <span>🛡️</span> 보안 및 약관 상태
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
+            {/* 계정 */}
+            <Card as="section" aria-labelledby="settings-account-title" className="space-y-5">
+              <h3 id="settings-account-title" className="text-base font-bold text-slate-900">
+                스텔스 안심 프로필
               </h3>
 
-              <div className="space-y-5">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">개인정보 제3자 제공 동의</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">의뢰인 안심 상담 진행을 위한 동의 완료</span>
+              {isEditingAlias ? (
+                <form onSubmit={handleSaveAlias} className="space-y-3">
+                  <FormField label="스텔스 가명" hint="상담방에서 변호사에게 보이는 이름이에요. 최대 20자.">
+                    {(p) => (
+                      <input
+                        {...p}
+                        type="text"
+                        value={tempAlias}
+                        onChange={(e) => setTempAlias(e.target.value)}
+                        maxLength={20}
+                        autoFocus
+                        className={cn(inputClass, 'sm:max-w-xs')}
+                      />
+                    )}
+                  </FormField>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" loading={savingAlias}>
+                      저장
+                    </Button>
+                    <Button variant="secondary" onClick={() => setIsEditingAlias(false)} disabled={savingAlias}>
+                      취소
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">마이데이터 조회 동의</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">채무 분석 조회 연동 동의 완료</span>
+                </form>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-600">스텔스 가명 (상담방에 보이는 이름)</p>
+                    <p className="mt-0.5 truncate text-base font-bold text-slate-900">{userAlias || '회원'}</p>
                   </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setTempAlias(userAlias || '회원');
+                      setIsEditingAlias(true);
+                    }}
+                    leftIcon={<PencilLine className="h-4 w-4" aria-hidden="true" />}
+                  >
+                    가명 바꾸기
+                  </Button>
                 </div>
+              )}
 
-                <div className="flex items-start gap-2.5">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">1:1 대화 접근 제한</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 block">전송 구간 TLS 암호화, 상담 당사자(본인·선택한 변호사)만 조회 가능</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">원클릭 데이터 자폭권 보장</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">원할 때 언제든 모든 대화와 진단 데이터 즉시 영구 소멸</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">외부 타깃 광고 트래커 차단</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">채무 사실 SNS 광고 유출 방지 (Zero-Tracker Shield)</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">스텔스 가명 및 안심번호</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">정식 수임 동의 전까지 실명·실제 연락처 완전 비공개</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-brand/5 border border-brand/10 p-5 rounded-xl space-y-2 text-left">
-                <h4 className="text-sm font-bold text-brand flex items-center gap-1.5">
-                  <span>🔒</span> my김변 스텔스 보안 보증
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                  상담 내용은 전송 구간(TLS)으로 암호화되어 오가고, 데이터베이스 접근 규칙에 따라 본인과 선택한 변호사만 조회할 수 있습니다. 원하면 언제든 상담 기록을 삭제할 수 있습니다. 종단간 암호화(E2EE)는 아닙니다.
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-sm font-bold text-slate-600">로그인 계정</p>
+                <p className="mt-0.5 break-all text-sm text-slate-900">
+                  {userEmail || '확인할 수 없어요'}
+                  {loginProvider && <span className="ml-1.5 text-slate-600">({PROVIDER_LABEL[loginProvider] || loginProvider} 로그인)</span>}
                 </p>
               </div>
-            </div>
 
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+                <Button
+                  variant="secondary"
+                  onClick={handlePurgeAllData}
+                  className="border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50"
+                  leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
+                >
+                  기록 영구 삭제
+                </Button>
+                <Button variant="secondary" onClick={onLogout} leftIcon={<LogOut className="h-4 w-4" aria-hidden="true" />}>
+                  안전 로그아웃
+                </Button>
+              </div>
+            </Card>
+
+            {/* 1:1 문의 내역 */}
+            <Card as="section" aria-labelledby="settings-inquiry-title" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="settings-inquiry-title" className="text-base font-bold text-slate-900">
+                  내 1:1 문의
+                </h3>
+                <Button variant="ghost" onClick={() => onNavigateToTab('inquiry')}>
+                  1:1 문의로 이동
+                </Button>
+              </div>
+              {myInquiries.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={<MessageSquare className="h-6 w-6" />}
+                  title="이 가명으로 남긴 문의가 없어요"
+                  description="사이트 이용 중 궁금한 점은 1:1 문의로 보내 주세요."
+                />
+              ) : (
+                <ul className="max-h-[360px] space-y-2 overflow-y-auto">
+                  {myInquiries.map((inq) => (
+                    <InquiryItem key={inq.id} inq={inq} />
+                  ))}
+                </ul>
+              )}
+            </Card>
           </div>
 
+          {/* 보안·동의 상태 */}
+          <Card as="section" aria-labelledby="settings-security-title" className="space-y-5">
+            <h3 id="settings-security-title" className="text-base font-bold text-slate-900">
+              보안 및 약관 상태
+            </h3>
+
+            {/* 동의 상태: 계정에 남은 실제 기록 (이전: '동의 완료' 고정 표시, 사용하지 않는 마이데이터 조회 동의 표시) */}
+            <ConsentStatusList />
+
+            <ul className="space-y-4">
+              {SECURITY_POINTS.map((pt) => (
+                <li key={pt.title} className="flex items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-slate-800">{pt.title}</span>
+                    <span className="mt-0.5 block text-sm leading-relaxed text-slate-600 break-keep">{pt.body}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="rounded-xl border border-brand/15 bg-brand-light p-4">
+              <p className="flex items-center gap-1.5 text-sm font-bold text-brand">
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                my김변 스텔스 보안 보증
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-700 break-keep">
+                상담 내용은 전송 구간(TLS)으로 암호화되어 오가고, 데이터베이스 접근 규칙에 따라 본인과 선택한 변호사만 조회할 수 있습니다. 원하면 언제든 상담 기록을 삭제할 수 있습니다. 종단간 암호화(E2EE)는 아닙니다.
+              </p>
+            </div>
+          </Card>
         </div>
       )}
     </div>

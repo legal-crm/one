@@ -5,7 +5,7 @@
 
 import type { PropertyListD5102Data } from '../../types/propertyTypes';
 import { recalculateD5102Totals } from './propertyValuationService';
-import { secureGetItem, secureSetItem } from '../../utils/secureStorage';
+import { isSensitiveKey, secureGetItem, secureSetItem } from '../../utils/secureStorage';
 
 const CLIENT_PROPERTY_STORAGE_PREFIX = 'legal_crm_client_property_';
 
@@ -63,9 +63,11 @@ export class ClientPropertyService {
     try {
       const key = `${CLIENT_PROPERTY_STORAGE_PREFIX}${data.clientId}`;
       const serialized = JSON.stringify(recalculated);
-      // secureStorage에만 저장 (평문 localStorage 중복 저장 제거 — 재산 정보 노출 방지)
       secureSetItem(key, serialized);
-      localStorage.removeItem(key);
+      // 민감 키(sessionStorage 저장)일 때만 예전 localStorage 사본을 지운다.
+      // (이전: 이 키는 민감 키 목록에 없어 secureSetItem이 localStorage에 쓰는데, 바로 다음 줄에서 같은 키를 지워
+      //  임시 저장·제출 기록이 한 번도 남지 않았음 — 다른 서류 초안과 같이 이 기기(localStorage)에 보관)
+      if (isSensitiveKey(key)) localStorage.removeItem(key);
     } catch (e) {
       console.warn('[ClientPropertyService] Failed to save to storage:', e);
     }

@@ -1,86 +1,73 @@
 import React from 'react';
-import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle, User, TrendingUp } from 'lucide-react';
-import { getUnreadCount } from '../../services/clientNotificationService';
+import { Home, ClipboardCheck, MessageSquare, Search, User } from 'lucide-react';
+import { cn } from '../../utils/cn';
+import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, type ClientTab } from './clientTabs';
 
+/**
+ * 모바일 하단 GNB (md 미만)
+ * - 높이 3.75rem + safe-area. 이 높이를 바꾸면 clientTabs.ts의 MOBILE_GNB_SPACER도 같이 바꾼다.
+ * - z-index 45 (헤더 40 위, 모달 60 아래)
+ */
 interface MobileGNBProps {
-  activeTab: string;
-  onSetActiveTab: (tab: string) => void;
-  onRequestConsult: () => void;
-  onStartDiagnosis: () => void;
-  onNavigateToLawyers: () => void;
-  onNavigateToQna: () => void;
+  activeTab: ClientTab;
+  onNavigate: (tab: ClientTab) => void;
+  onStartCheck: () => void;
+  /** 로그인 상태에서 상담 관련 읽지 않은 알림이 있으면 '내 관리방'에 점 표시 */
+  showChatDot?: boolean;
   isHidden?: boolean;
 }
 
-export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult, onStartDiagnosis, onNavigateToLawyers, onNavigateToQna, isHidden = false }: MobileGNBProps) {
-  const unreadCount = getUnreadCount();
-
-  const navItems = [
-    {
-      key: 'landing',
-      label: '홈',
-      icon: Home,
-      onClick: () => onSetActiveTab('landing'),
-      isActive: activeTab === 'landing',
-    },
-    {
-      key: 'request',
-      label: '내 상황 체크',
-      icon: ClipboardCheck,
-      onClick: onStartDiagnosis,
-      isActive: activeTab === 'request',
-    },
-    {
-      key: 'chat',
-      label: '내 관리방',
-      icon: MessageSquare,
-      onClick: () => onSetActiveTab('chat'),
-      isActive: activeTab === 'chat',
-      badgeCount: unreadCount,
-    },
-    {
-      key: 'lawyers',
-      label: '변호사 찾기',
-      icon: Search,
-      onClick: onNavigateToLawyers,
-      isActive: activeTab === 'lawyers',
-    },
-    {
-      key: 'mypage',
-      label: '마이(동행)',
-      icon: User,
-      onClick: () => onSetActiveTab('mypage'),
-      isActive: activeTab === 'mypage',
-    },
+export default function MobileGNB({ activeTab, onNavigate, onStartCheck, showChatDot = false, isHidden = false }: MobileGNBProps) {
+  const items: { tab: ClientTab; label: string; icon: React.ElementType; onClick: () => void; dot?: boolean }[] = [
+    { tab: 'landing', label: CLIENT_TAB_LABELS.landing, icon: Home, onClick: () => onNavigate('landing') },
+    { tab: 'request', label: '상황 체크', icon: ClipboardCheck, onClick: onStartCheck },
+    { tab: 'chat', label: CLIENT_TAB_LABELS.chat, icon: MessageSquare, onClick: () => onNavigate('chat'), dot: showChatDot },
+    { tab: 'lawyers', label: CLIENT_TAB_LABELS.lawyers, icon: Search, onClick: () => onNavigate('lawyers') },
+    { tab: 'mypage', label: CLIENT_TAB_LABELS.mypage, icon: User, onClick: () => onNavigate('mypage') },
   ];
 
-
   return (
-    <nav aria-label="주요 메뉴" className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-in-out ${isHidden ? 'translate-y-full' : ''}`}>
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <button
-            key={item.key}
-            type="button"
-            onClick={item.onClick}
-            aria-current={item.isActive ? 'page' : undefined}
-            aria-label={(item as any).badgeCount > 0 ? `${item.label} (새 알림 ${(item as any).badgeCount}건)` : item.label}
-            className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[52px] text-center transition-colors relative ${
-              item.isActive ? 'text-brand font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-800'
-            }`}
-          >
-            {item.isActive && <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-9 h-9 bg-brand/10 rounded-full" />}
-            <Icon className="w-5 h-5 relative z-10" aria-hidden="true" />
-            <span className="text-xs font-bold tracking-tight relative z-10 leading-tight mt-0.5">{item.label}</span>
-            {(item as any).badgeCount > 0 && (
-              <span aria-hidden="true" className="absolute top-0 right-1 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 z-20">
-                {(item as any).badgeCount > 9 ? '9+' : (item as any).badgeCount}
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <nav
+      aria-label="하단 메뉴"
+      aria-hidden={isHidden || undefined}
+      className={cn(
+        'md:hidden fixed bottom-0 inset-x-0 z-45 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.06)]',
+        'h-[calc(3.75rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-in-out',
+        isHidden && 'translate-y-full pointer-events-none',
+      )}
+    >
+      <ul className="h-full flex items-stretch">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = activeTab === item.tab;
+          return (
+            <li key={item.tab} className="flex-1 min-w-0">
+              <a
+                href={clientTabHref(item.tab)}
+                onClick={(e) => handleSpaLinkClick(e, item.onClick)}
+                tabIndex={isHidden ? -1 : undefined}
+                aria-current={active ? 'page' : undefined}
+                aria-label={item.tab === 'request' ? CLIENT_TAB_LABELS.request : undefined}
+                className={cn(
+                  'relative h-full flex flex-col items-center justify-center gap-1 transition-colors',
+                  active ? 'text-brand' : 'text-slate-600 hover:text-slate-900',
+                )}
+              >
+                <span className={cn('relative w-11 h-7 rounded-full flex items-center justify-center', active && 'bg-brand-light')}>
+                  <Icon className="w-5 h-5" aria-hidden="true" />
+                  {item.dot && (
+                    <>
+                      <span className="absolute top-0 right-2 w-2 h-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />
+                      <span className="sr-only">(새 소식 있음)</span>
+                    </>
+                  )}
+                </span>
+                <span className="text-[0.75rem] leading-none font-bold tracking-tight whitespace-nowrap">{item.label}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }

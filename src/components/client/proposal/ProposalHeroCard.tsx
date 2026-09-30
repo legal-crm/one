@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { ConsultProposal, ConsultRequest } from '../../../types';
 import { formatKoreanCurrency, formatNumber } from '../../../utils';
+import { authoredRemark } from '../proposalText';
 
 interface ProposalHeroCardProps {
   proposal: ConsultProposal;
@@ -47,7 +48,7 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
                   className="w-14 h-14 rounded-2xl object-cover border-2 border-blue-500/40 shadow-md"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-[#1E3A5F] text-white flex items-center justify-center font-black text-xl shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-brand text-white flex items-center justify-center font-black text-xl shadow-md">
                   {proposal.lawyerName.charAt(0)}
                 </div>
               )}
@@ -63,8 +64,8 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
                 </span>
                 {isAIPremium && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-slate-950 flex items-center gap-1 shadow-xs">
-                    <Sparkles className="w-3 h-3" />
-                    AI 7p 정밀 진단
+                    <Sparkles className="w-3 h-3" aria-hidden="true" />
+                    AI 분석 리포트 포함
                   </span>
                 )}
                 <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
@@ -81,31 +82,34 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-              <Award className="w-3.5 h-3.5" />
-              진행 가능성: {proposal.feasibility || '진행 가능'}
-            </span>
-          </div>
+          {/* 변호사가 적은 진행 가능성 의견만 표시 (이전: 비어 있으면 '진행 가능'으로 채움) */}
+          {proposal.feasibility && (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-xs px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                <Award className="w-3.5 h-3.5" aria-hidden="true" />
+                변호사 의견: {proposal.feasibility}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 3대 핵심 수치 그리드 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {/* 1. 예상 탕감률 */}
+          {/* 1. 예상 감면율 */}
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-xs space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
-                <TrendingDown className="w-4 h-4 text-emerald-500" />
-                예상 채무 탕감률
+                <TrendingDown className="w-4 h-4 text-emerald-500" aria-hidden="true" />
+                예상 원금 감면율
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">예상치</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">예상치</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
               {proposal.reductionRate}%
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               {proposal.totalReduction > 0 ? (
-                <>원금 중 약 <strong>{proposal.totalReduction}만원</strong> 탕감 예상</>
+                <>원금 중 약 <strong>{proposal.totalReduction}만원</strong> 감면 예상</>
               ) : (
                 <>총 채무 {totalDebtManWon}만원 기준 시뮬레이션</>
               )}
@@ -119,12 +123,12 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
                 <DollarSign className="w-4 h-4 text-blue-500" />
                 예상 월 변제금
               </span>
-              <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">{proposal.duration || 36}개월</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">{proposal.duration || 36}개월</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 pt-0.5">
               월 {proposal.monthlyPayment}만원
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               법원 기준 생계비를 반영한 예상액
             </p>
           </div>
@@ -133,44 +137,45 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-xs space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-indigo-500" />
+                <ShieldCheck className="w-4 h-4 text-blue-500" />
                 제안 수임료
               </span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white pt-0.5">
               {proposal.fee}만원
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
               {proposal.installment || '납부 조건은 상담 시 확인'}
             </p>
           </div>
         </div>
 
         {/* 변호사 법률 소견 한줄 요약 (따옴표 박스) */}
-        {proposal.remark && (
-          <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-150 dark:border-blue-900/40 text-xs sm:text-sm text-slate-700 dark:text-slate-300 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-[#1E3A5F] dark:text-blue-300 text-xs">
-              <Scale className="w-3.5 h-3.5" />
-              <span>{proposal.lawyerName} 변호사의 검토 의견:</span>
+        {/* 자리표시 문구('제안서 발송')는 변호사 의견으로 보여주지 않는다 */}
+        {authoredRemark(proposal.remark) && (
+          <div className="p-4 rounded-2xl bg-brand-light border border-brand/10 text-sm text-slate-700 space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-brand text-xs">
+              <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{proposal.lawyerName} 변호사의 검토 의견</span>
             </div>
-            <p className="leading-relaxed whitespace-pre-line pl-5 border-l-2 border-blue-400/50 italic text-slate-600 dark:text-slate-300">
-              "{proposal.remark}"
+            <p className="leading-relaxed whitespace-pre-line pl-5 border-l-2 border-brand/30 text-slate-700">
+              “{authoredRemark(proposal.remark)}”
             </p>
           </div>
         )}
 
-        {/* 1-Click 메인 CTA: [맞춤 제안서 & 7p 정밀 진단서 전문 열람] */}
+        {/* 메인 CTA: 제안서 전문 (AI 분석 리포트가 있으면 함께) */}
         <div>
           <button
             type="button"
             onClick={() => onViewReport(proposal)}
-            className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 hover:from-blue-800 hover:to-indigo-700 text-white font-black text-sm sm:text-base shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
+            className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-blue-700 hover:from-blue-800 hover:to-blue-700 text-white font-black text-sm sm:text-base shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
           >
             <FileText className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">{isAIPremium ? '제안서 & 정밀 진단서 전문 보기' : '제안서 전문 보기'}</span>
+            <span className="truncate">{isAIPremium ? '제안서와 AI 분석 리포트 보기' : '제안서 전문 보기'}</span>
             <ArrowRight className="w-4 h-4 text-white/80 shrink-0" aria-hidden="true" />
           </button>
-          <p className="text-center text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-2">
             변제금 계산 근거, 관할법원 참고 사항, 절차 안내가 담겨 있습니다. 실제 결과는 법원 심리에 따라 달라질 수 있습니다.
           </p>
         </div>
@@ -181,7 +186,7 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
             <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
               제안서를 확인하셨나요? 다음 단계를 선택하세요:
             </span>
-            <span className="text-[11px] text-slate-400">선택 1 or 선택 2</span>
+            <span className="text-xs text-slate-400">선택 1 or 선택 2</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

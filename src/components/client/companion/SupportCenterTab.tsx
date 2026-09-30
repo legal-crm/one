@@ -75,16 +75,16 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
     <div className="space-y-6 text-left animate-fadeIn">
       
       {/* ═══ 1. 헤더: 내 회생 단계 맞춤 추천 안내 배너 ═══ */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-indigo-950 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
         <div className="relative z-10 space-y-3 max-w-3xl">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold bg-brand/20 text-brand-light border border-brand/30 px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-xs font-bold bg-brand/20 text-brand-light border border-brand/30 px-3 py-1 rounded-full uppercase tracking-wider">
               국가 공적 복지 & 정책금융 큐레이션
             </span>
-            <span className="text-[11px] font-bold bg-white/10 text-white/90 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold bg-white/10 text-white/90 px-3 py-1 rounded-full">
               {getStageLabel()}
             </span>
-            <span className={`text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+            <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${
               isLiveApi 
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
                 : 'bg-white/10 text-slate-300 border border-white/10'
@@ -99,7 +99,7 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
           </h2>
           
           <p className="text-xs text-slate-300 leading-relaxed">
-            마이김변은 대부업체나 고금리 금융상품을 일체 배제합니다. 행정안전부, 보건복지부, 서민금융진흥원 등 공식 공공데이터를 기반으로 의뢰인님의 진행 단계에 맞는 무상 복지와 저금리 정책금융을 우선순위별로 선별 안내합니다.
+            마이김변은 대부업체나 고금리 금융상품은 안내하지 않습니다. 행정안전부, 보건복지부, 서민금융진흥원 등 공식 공공데이터를 기반으로 의뢰인님의 진행 단계에 맞는 무상 복지와 저금리 정책금융을 우선순위별로 선별 안내합니다.
           </p>
         </div>
 
@@ -108,23 +108,24 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
           <div className="mt-5 p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white">
             <div className="flex items-start gap-2.5">
               <div className="p-2 rounded-xl bg-emerald-500 text-white shrink-0 mt-0.5">
-                <Award className="w-5 h-5" />
+                <Award className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
                 <span className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-                  <span>🎖️ 성실 납부 6개월 돌파 특례 안내</span>
+                  <span>6회차 이상 납부 중이라면 확인해 볼 제도</span>
                 </span>
                 <p className="text-xs text-emerald-100/90 mt-0.5">
-                  개인회생 인가 후 6회차 이상 성실 상환 중이시므로 <strong className="text-white underline decoration-emerald-400">서민금융진흥원 소액대출(연 2~4% 저금리, 최대 700만 원)</strong> 공적 검토 대상입니다.
+                  개인회생 인가 후 6회차 이상 성실 상환 중이시므로 <strong className="text-white underline decoration-emerald-400">서민금융진흥원 소액대출(연 2~4% 저금리, 최대 700만 원)</strong> 신청을 검토해 볼 수 있습니다. 대상 여부는 기관 심사로 정해집니다.
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setSelectedCategory('diligent_repayment_loan')}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-sm shrink-0 cursor-pointer"
+              className="min-h-11 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-sm shrink-0 cursor-pointer inline-flex items-center gap-1"
             >
-              제도 상세 보기 ➔
+              <span>제도 자세히 보기</span>
+              <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -137,20 +138,20 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
           <button
             type="button"
             onClick={() => setSelectedCategory('stage_matched')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'stage_matched'
                 ? 'bg-brand text-white shadow-md'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>🎯 내 단계 맞춤 추천 ({stageMatchedCount})</span>
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>내 단계 맞춤 추천 ({stageMatchedCount})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedCategory('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               selectedCategory === 'all'
                 ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -162,68 +163,68 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
           <button
             type="button"
             onClick={() => setSelectedCategory('welfare_emergency')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'welfare_emergency'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-white dark:bg-slate-800 text-emerald-600 border border-emerald-200 dark:border-emerald-800/60'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
             }`}
           >
-            <span>🥇 1순위: 무상·긴급복지</span>
+            <span>1순위: 무상·긴급복지</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedCategory('public_debt_credit')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'public_debt_credit'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-white dark:bg-slate-800 text-blue-600 border border-blue-200 dark:border-blue-800/60'
             }`}
           >
-            <span>🥈 2순위: 공적 채무·법률</span>
+            <span>2순위: 공적 채무·법률</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedCategory('diligent_repayment_loan')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'diligent_repayment_loan'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'bg-white dark:bg-slate-800 text-purple-600 border border-purple-200 dark:border-purple-800/60'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800 text-blue-600 border border-blue-200 dark:border-blue-800/60'
             }`}
           >
-            <span>🥉 3순위: 성실상환 정책금융</span>
+            <span>3순위: 성실상환 정책금융</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedCategory('cost_reduction')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'cost_reduction'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'bg-white dark:bg-slate-800 text-amber-600 border border-amber-200 dark:border-amber-800/60'
+                ? 'bg-amber-700 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
             }`}
           >
-            <span>💡 4순위: 생활비·공과금 감면</span>
+            <span>4순위: 생활비·공과금 감면</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedCategory('housing_job')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'housing_job'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white dark:bg-slate-800 text-indigo-600 border border-indigo-200 dark:border-indigo-800/60'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800 text-blue-600 border border-blue-200 dark:border-blue-800/60'
             }`}
           >
-            <span>🏠 5순위: 주거·취업·자산</span>
+            <span>5순위: 주거·취업·자산</span>
           </button>
         </div>
 
         {/* 하단 2열: 지역 필터 */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400 font-bold flex items-center gap-1 shrink-0">
-            <MapPin className="w-3.5 h-3.5" />
+          <span className="text-slate-600 dark:text-slate-400 font-bold flex items-center gap-1 shrink-0">
+            <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
             <span>지역:</span>
           </span>
           {['all', '서울/경기', '지방'].map((reg) => (
@@ -231,7 +232,7 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
               key={reg}
               type="button"
               onClick={() => setSelectedRegion(reg)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+              className={`min-h-11 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedRegion === reg
                   ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-black'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800'
@@ -246,14 +247,14 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
       {/* ═══ 3. 공적 지원 프로그램 카드 그리드 ═══ */}
       {displayPrograms.length === 0 ? (
         <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-          <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
+          <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" aria-hidden="true" />
           <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
             선택하신 조건에 해당하는 제도가 없습니다.
           </p>
           <button
             type="button"
             onClick={() => { setSelectedCategory('all'); setSelectedRegion('all'); }}
-            className="px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl shadow-sm"
+            className="min-h-11 px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer"
           >
             전체 제도 보기
           </button>
@@ -275,19 +276,19 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                   {/* 상단 뱃지 & 기관 */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        prog.priority === 1 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' :
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        prog.priority === 1 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' :
                         prog.priority === 2 ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800' :
-                        prog.priority === 3 ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800' :
-                        prog.priority === 4 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800' :
-                        'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
+                        prog.priority === 3 ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800' :
+                        prog.priority === 4 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800' :
+                        'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                       }`}>
                         {prog.badge}
                       </span>
 
                       {isStageFit && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand dark:text-brand-light flex items-center gap-1">
-                          <Check className="w-3 h-3" />
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand dark:text-brand-light flex items-center gap-1">
+                          <Check className="w-3 h-3" aria-hidden="true" />
                           <span>현재 단계 적합</span>
                         </span>
                       )}
@@ -310,7 +311,7 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                   {prog.criteriaTags && (
                     <div className="flex items-center gap-1.5 flex-wrap pt-1">
                       {prog.criteriaTags.map(tag => (
-                        <span key={tag} className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
+                        <span key={tag} className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
                           #{tag}
                         </span>
                       ))}
@@ -320,8 +321,8 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                   {/* 요건 & 혜택 박스 */}
                   <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl space-y-1">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                        🎯 지원 대상 및 자격 요건
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                        지원 대상 및 자격 요건
                       </span>
                       <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                         {prog.eligibility}
@@ -329,8 +330,8 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                     </div>
 
                     <div className="bg-brand/5 dark:bg-brand/10 p-3 rounded-2xl space-y-1 border border-brand/10">
-                      <span className="text-[11px] font-bold text-brand dark:text-brand-light block">
-                        🎁 주요 지원 혜택
+                      <span className="text-xs font-bold text-brand dark:text-brand-light block">
+                        주요 지원 혜택
                       </span>
                       <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                         {prog.benefit}
@@ -338,7 +339,7 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                     </div>
 
                     {prog.safetyNotice && (
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl">
+                      <p className="text-xs text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 p-2 rounded-xl">
                         * {prog.safetyNotice}
                       </p>
                     )}
@@ -347,12 +348,12 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                 </div>
 
                 {/* 하단 공식 링크 & 전화 */}
-                <div className="pt-3 border-t border-slate-150 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
                   <a
                     href={`tel:${prog.contactNumber.replace(/[^0-9]/g, '')}`}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand transition-colors"
+                    className="min-h-11 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand transition-colors"
                   >
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <Phone className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
                     <span>{prog.contactNumber}</span>
                   </a>
 
@@ -360,10 +361,10 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
                     href={prog.officialUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand dark:hover:bg-brand-light text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                    className="min-h-11 px-3.5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand dark:hover:bg-brand-light text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
                   >
                     <span>공식 신청·안내</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                   </a>
                 </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  ShieldCheck, CheckCircle2, AlertCircle, FileText, 
-  RotateCcw, Send, Lock, ArrowLeft, PenTool, Check 
+  CheckCircle2, AlertCircle, FileText, 
+  RotateCcw, Info, ArrowLeft, PenTool, Check 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientMobileDocService, type MobileDocRequestItem } from '../../services/documents/clientMobileDocService';
@@ -22,26 +22,27 @@ export default function MobileDocFillView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 폼 입력 상태
+  // 의뢰인 진술 항목은 모두 빈 값으로 시작한다 (이전: 거주 사유·차용 용도·관계·분류를 미리 채워 의뢰인이 쓴 것처럼 저장됨)
   const [ownerName, setOwnerName] = useState('');
-  const [ownerRelation, setOwnerRelation] = useState('부모');
-  const [freeResidenceReason, setFreeResidenceReason] = useState('경제적 사정으로 독립 주거 유지가 어려워 부모님 댁에 무상으로 동거 중입니다.');
+  const [ownerRelation, setOwnerRelation] = useState('');
+  const [freeResidenceReason, setFreeResidenceReason] = useState('');
   
   // 사채진술서 필드
   const [lenderName, setLenderName] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [loanDate, setLoanDate] = useState('');
-  const [loanPurpose, setLoanPurpose] = useState('생활비 및 기존 채무 돌려막기');
+  const [loanPurpose, setLoanPurpose] = useState('');
 
   // 3. 100만 원 이상 출금 사용처 소명
   const [expenseDate, setExpenseDate] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseBank, setExpenseBank] = useState('');
   const [expenseRecipient, setExpenseRecipient] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('생활비');
+  const [expenseCategory, setExpenseCategory] = useState('');
   const [expenseDetails, setExpenseDetails] = useState('');
 
   // 4. 최근 1년 1,000만 원 이상 재산처분 소명
-  const [disposedAssetType, setDisposedAssetType] = useState('부동산');
+  const [disposedAssetType, setDisposedAssetType] = useState('');
   const [disposalDate, setDisposalDate] = useState('');
   const [disposalTotalAmount, setDisposalTotalAmount] = useState('');
   const [debtPayoffAmount, setDebtPayoffAmount] = useState('');
@@ -56,7 +57,7 @@ export default function MobileDocFillView({
   const [utilityExpense, setUtilityExpense] = useState('');
 
   // 6. 추가 생계비 신청
-  const [additionalLivingType, setAdditionalLivingType] = useState('주거비(고액월세)');
+  const [additionalLivingType, setAdditionalLivingType] = useState('');
   const [additionalAmount, setAdditionalAmount] = useState('');
   const [additionalReason, setAdditionalReason] = useState('');
 
@@ -133,6 +134,7 @@ export default function MobileDocFillView({
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
     if (!hasSigned) {
       toast.error('하단 서명란에 자필 서명을 완료해주세요.');
       return;
@@ -155,17 +157,18 @@ export default function MobileDocFillView({
     const docCode = requestItem?.docCode || '';
     const docTitle = requestItem?.docTitle || '';
 
+    // 입력하지 않은 항목은 빈 값 그대로 저장한다 (이전: '부모(소유자)'·'개인대여자'·오늘 날짜·'사실대로 진술함' 등을 대신 채움)
     if (docCode === '111110' || docTitle.includes('무상거주')) {
-      formData.ownerName = ownerName || '부모(소유자)';
+      formData.ownerName = ownerName;
       formData.ownerRelation = ownerRelation;
       formData.freeResidenceReason = freeResidenceReason;
     } else if (docCode === '121020' || docTitle.includes('사채') || docTitle.includes('차용')) {
-      formData.lenderName = lenderName || '개인대여자';
+      formData.lenderName = lenderName;
       formData.loanAmount = loanAmount;
       formData.loanDate = loanDate;
       formData.loanPurpose = loanPurpose;
     } else if (docCode === '122040' || docTitle.includes('사용처') || docTitle.includes('출금')) {
-      formData.expenseDate = expenseDate || new Date().toISOString().slice(0, 10);
+      formData.expenseDate = expenseDate;
       formData.expenseAmount = expenseAmount;
       formData.expenseBank = expenseBank;
       formData.expenseRecipient = expenseRecipient;
@@ -193,26 +196,35 @@ export default function MobileDocFillView({
       formData.spousePropertyList = spousePropertyList;
       formData.propertyDivisionDetail = propertyDivisionDetail;
       formData.childSupport = childSupport;
-    } else {
-      formData.genericStatement = freeResidenceReason || loanPurpose || '사실대로 진술함';
     }
+    // 그 밖의 서식은 별도 입력 항목이 없으므로 동의·서명만 저장한다
 
-    setTimeout(() => {
-      ClientMobileDocService.submitMobileDoc(token, formData, sigDataUrl);
-      setIsSubmitting(false);
+    // 실제 저장소는 이 기기(브라우저)의 localStorage뿐이다 — 법원·사무소 서버로 전송되지 않으며 전자서명 검증도 하지 않는다
+    // (이전: 600ms 가짜 지연 후 '법원에 정상 전송' 안내)
+    try {
+      const saved = ClientMobileDocService.submitMobileDoc(token, formData, sigDataUrl);
+      if (!saved) {
+        toast.error('작성 요청 정보를 찾지 못해 저장하지 못했습니다. 링크를 다시 확인해 주세요.');
+        return;
+      }
+      setRequestItem(ClientMobileDocService.getRequestByToken(token) ?? requestItem);
       setIsCompleted(true);
-      toast.success('서류 작성 및 전자서명이 법원에 정상 전송되었습니다.');
+      toast.success('작성한 내용을 이 기기에 저장했습니다.');
       if (onComplete) onComplete();
-    }, 600);
+    } catch {
+      toast.error('작성한 내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!requestItem) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
           <h3 className="font-bold text-lg text-slate-900">유효하지 않은 링크</h3>
-          <p className="text-xs text-slate-500">요청 정보를 찾을 수 없거나 이미 만료된 작성 링크입니다.</p>
+          <p className="text-xs text-slate-500">작성 요청 정보를 찾을 수 없습니다. 링크가 올바른지 확인해 주세요.</p>
           {onClose && (
             <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-bold">
               닫기
@@ -224,24 +236,24 @@ export default function MobileDocFillView({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[96vh] flex flex-col overflow-hidden my-auto">
         
         {/* 모바일 상단 바 */}
         <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <FileText className="w-5 h-5 text-slate-300" aria-hidden="true" />
             <div>
+              {/* 이전: '법원 전자소송 본인확인'·'암호화' 표시 — 실제 본인확인·법원 연동 없음 */}
               <div className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                <span>법원 전자소송 본인확인</span>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded font-mono">암호화</span>
+                <span>모바일 서류 작성</span>
               </div>
               <p className="text-[10px] text-slate-400">신청인: {requestItem.clientName} 귀하</p>
             </div>
           </div>
           {onClose && (
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg">
-              <ArrowLeft className="w-5 h-5" />
+            <button type="button" onClick={onClose} aria-label="닫기" className="min-w-11 min-h-11 flex items-center justify-center text-slate-400 hover:text-white p-1 rounded-lg">
+              <ArrowLeft className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -255,16 +267,16 @@ export default function MobileDocFillView({
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-extrabold text-lg text-slate-900">작성 및 전자서명 완료</h3>
+                <h3 className="font-extrabold text-lg text-slate-900">작성 내용 저장 완료</h3>
                 <p className="text-xs text-slate-600">
-                  [{requestItem.docTitle}]이(가) 법무법인 및 법원 제출 서류함으로 정상 전송되었습니다.
+                  [{requestItem.docTitle}] 작성 내용과 서명을 이 기기(브라우저)에 저장했습니다. 법원이나 담당 사무소로 자동 전송되지는 않습니다.
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left text-xs text-slate-600 space-y-1.5 font-mono">
-                <div>• 접수서식: {requestItem.docTitle} ({requestItem.docCode})</div>
+                <div>• 서식: {requestItem.docTitle} ({requestItem.docCode})</div>
                 <div>• 작성자: {requestItem.clientName}</div>
-                <div>• 접수일시: {new Date().toLocaleString()}</div>
-                <div>• 인증상태: 본인 자필 전자서명 검증 완료</div>
+                <div>• 저장 일시: {requestItem.completedAt ? new Date(requestItem.completedAt).toLocaleString('ko-KR') : '확인되지 않음'}</div>
+                <div>• 서명: 화면에 직접 쓴 서명 이미지 저장</div>
               </div>
               {onClose && (
                 <button 
@@ -285,7 +297,7 @@ export default function MobileDocFillView({
                 </div>
                 <h4 className="font-extrabold text-sm text-slate-900">{requestItem.docTitle}</h4>
                 <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  법원에 제출될 정식 서식입니다. 질문에 사실대로 답변해주신 후 하단에 자필 서명을 남겨주세요.
+                  법원 제출 서류를 준비하는 데 쓰이는 서식입니다. 질문에 사실대로 답변해주신 후 하단에 자필 서명을 남겨주세요.
                 </p>
               </div>
 
@@ -310,6 +322,7 @@ export default function MobileDocFillView({
                       onChange={e => setOwnerRelation(e.target.value)}
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
                     >
+                      <option value="" disabled>선택해 주세요</option>
                       <option value="부모">부모 (친부/친모)</option>
                       <option value="형제자매">형제 / 자매</option>
                       <option value="배우자">배우자 (부부 공동)</option>
@@ -322,6 +335,7 @@ export default function MobileDocFillView({
                     <label className="text-xs font-bold text-slate-800">무상 거주 사유</label>
                     <textarea 
                       rows={3}
+                      placeholder="무상으로 거주하게 된 사정을 사실대로 적어 주세요"
                       value={freeResidenceReason}
                       onChange={e => setFreeResidenceReason(e.target.value)}
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
@@ -370,6 +384,7 @@ export default function MobileDocFillView({
                     <label className="text-xs font-bold text-slate-800">빌린 돈의 사용처</label>
                     <textarea 
                       rows={2}
+                      placeholder="빌린 돈을 어디에 썼는지 사실대로 적어 주세요 (예: 생활비, 병원비)"
                       value={loanPurpose}
                       onChange={e => setLoanPurpose(e.target.value)}
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
@@ -382,7 +397,7 @@ export default function MobileDocFillView({
               {(requestItem.docCode === '122040' || requestItem.docTitle.includes('사용처') || requestItem.docTitle.includes('출금')) && (
                 <div className="space-y-3.5">
                   <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                    💡 <strong>법원 보정 1순위 소명:</strong> 통장에서 출금 또는 송금된 고액 자금의 객관적 사용 목적을 선택 및 소명해 주세요.
+                    💡 <strong>법원 보정에서 자주 요구되는 소명:</strong> 통장에서 출금 또는 송금된 고액 자금의 객관적 사용 목적을 선택 및 소명해 주세요.
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -437,6 +452,7 @@ export default function MobileDocFillView({
                       onChange={e => setExpenseCategory(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
                     >
+                      <option value="" disabled>선택해 주세요</option>
                       <option value="생활비">생활비 (식비, 주거비, 공과금)</option>
                       <option value="병원비/의료비">병원비 / 수술비 / 장기간병비</option>
                       <option value="기존채무변제">기존 대출금 / 카드대금 상환</option>
@@ -475,6 +491,7 @@ export default function MobileDocFillView({
                         onChange={e => setDisposedAssetType(e.target.value)}
                         className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
                       >
+                        <option value="" disabled>선택해 주세요</option>
                         <option value="부동산">부동산 (아파트, 빌라, 토지)</option>
                         <option value="자동차">자동차 / 오토바이</option>
                         <option value="임차보증금">전세 / 월세 임차보증금 반환</option>
@@ -606,7 +623,7 @@ export default function MobileDocFillView({
               {(requestItem.docCode === '122011' || requestItem.docTitle.includes('생계비')) && (
                 <div className="space-y-3.5">
                   <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 text-[11px] leading-relaxed">
-                    💡 <strong>변제금 절감 핵심:</strong> 기본 법정 생계비 외에 매월 고정적으로 지출되는 필수 비용을 추가 인정받아 변제금을 낮춥니다.
+                    💡 <strong>변제금 절감 핵심:</strong> 기본 법정 생계비 외에 매월 고정적으로 지출되는 필수 비용이 추가로 인정되면 변제금이 줄어들 수 있습니다.
                   </div>
 
                   <div className="space-y-1">
@@ -616,6 +633,7 @@ export default function MobileDocFillView({
                       onChange={e => setAdditionalLivingType(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
                     >
+                      <option value="" disabled>선택해 주세요</option>
                       <option value="주거비(고액월세)">주거비 (실제 지급 중인 고액 월세 실비)</option>
                       <option value="중증/만성질환 의료비">의료비 (본인 또는 가족의 중증 질환 정기 병원비)</option>
                       <option value="특수교육비">교육비 (장애/특수아동 교육 및 치료비)</option>
@@ -650,7 +668,7 @@ export default function MobileDocFillView({
               {/* 7) 배우자 재산 진술서 및 이혼 재산분할 소명서 */}
               {(requestItem.docCode === '113120' || requestItem.docTitle.includes('배우자') || requestItem.docTitle.includes('이혼')) && (
                 <div className="space-y-3.5">
-                  <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-950 text-[11px] leading-relaxed">
+                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-950 text-[11px] leading-relaxed">
                     💡 <strong>배우자 고유재산 소명:</strong> 배우자 명의 재산이 신청인의 은닉 자산이나 위장이혼이 아님을 진술합니다.
                   </div>
 
@@ -719,7 +737,7 @@ export default function MobileDocFillView({
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <PenTool className="w-3.5 h-3.5 text-blue-600" />
-                    <span>신청인 자필 전자서명 (정자 서명)</span>
+                    <span>신청인 자필 서명 (정자 서명)</span>
                   </label>
                   <button 
                     type="button"
@@ -748,25 +766,25 @@ export default function MobileDocFillView({
                   {!hasSigned && (
                     <div className="absolute pointer-events-none text-slate-400 text-xs flex flex-col items-center gap-1">
                       <span>손가락 또는 펜으로 이곳에 서명하세요</span>
-                      <span className="text-[10px] text-slate-400">(법원 제출용 정자 서명)</span>
+                      <span className="text-[10px] text-slate-400">(정자로 또박또박 써 주세요)</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 제출 버튼 */}
+              {/* 저장 버튼 — 이 기기에만 저장 (법원·사무소 전송 없음) */}
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full min-h-[48px] bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full min-h-[48px] bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
-                  <span>법원 서류 전송 중...</span>
+                  <span>저장 중...</span>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    <span>작성 완료 및 서류 제출</span>
+                    <Check className="w-4 h-4" aria-hidden="true" />
+                    <span>작성 완료 및 저장</span>
                   </>
                 )}
               </button>
@@ -775,11 +793,11 @@ export default function MobileDocFillView({
 
         </div>
 
-        {/* 푸터 보안 배너 */}
+        {/* 푸터 안내 (이전: '대법원 전자소송 보안 규격 256-bit SSL 암호화 적용' — 사실과 다른 표시) */}
         <div className="px-5 py-2.5 bg-slate-100 border-t border-slate-200 text-center shrink-0">
           <p className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-            <Lock className="w-3 h-3 text-slate-400" />
-            대법원 전자소송 보안 규격 256-bit SSL 암호화 적용
+            <Info className="w-3 h-3 text-slate-400" aria-hidden="true" />
+            작성 내용은 이 기기(브라우저)에만 저장됩니다.
           </p>
         </div>
 

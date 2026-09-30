@@ -203,9 +203,25 @@ interface AIRehabChatbotV2Props {
     introConfig?: RehabChatConfig['introConfig'];
     isStandalone?: boolean;
     disablePortal?: boolean; // NEW: For Admin Preview
+    /**
+     * overlay: 화면 전체를 덮는 팝업(기본)
+     * embedded: 부모 컨테이너를 채우는 페이지 임베드(고정 오버레이·배경 딤 없음, 확인 창도 컨테이너 안에 표시)
+     */
+    layout?: 'overlay' | 'embedded';
     isLoggedIn?: boolean;
     onShowAuthModal?: () => void;
     onConsultation?: () => void;
+    /** 단계·입력이 바뀔 때마다 알린다 (페이지 옆 '입력 요약' 표시용). 계산 결과에는 영향 없음 */
+    onProgressChange?: (snapshot: RehabChatProgressSnapshot) => void;
+}
+
+/** 대화 진행 상황 요약 (부모 화면 표시용) */
+export interface RehabChatProgressSnapshot {
+    step: string;
+    /** 0~100 */
+    progress: number;
+    input: Partial<RehabUserInput>;
+    isComplete: boolean;
 }
 
 const ASSET_LABELS: Record<AssetType, string> = {
@@ -234,7 +250,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     isOpen,
     onClose,
     onComplete,
-    characterName = '김변',
+    characterName = '정리도우미',
     characterImage,
     templateId = 'classic' as ChatbotTemplateId,
     themeMode = 'light',
@@ -246,6 +262,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     introConfig, // NEW prop
     isStandalone = false, // NEW prop from RehabChatButton
     disablePortal = false, // NEW prop
+    layout = 'overlay',
+    onProgressChange,
     isLoggedIn = false,
     showDiagnosisReport = true,
     onShowAuthModal,
@@ -533,10 +551,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         foundSession = true;
                         setTimeout(() => {
                             addBotMessage(
-                                `안녕하세요! 이전에 진행 중이던 진단 내역이 존재합니다. 이어서 진행하시겠습니까?`,
+                                `이전에 정리하던 내용이 이 기기에 남아 있습니다.\n이어서 진행할까요?`,
                                 [
-                                    { label: '⏮️ 이어서 진행하기', value: 'resume' },
-                                    { label: '🔄 처음부터 다시하기', value: 'restart' }
+                                    { label: '이어서 하기', value: 'resume' },
+                                    { label: '처음부터 다시 하기', value: 'restart' }
                                 ],
                                 'buttons'
                             );
@@ -550,9 +568,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             if (!foundSession) {
                 setTimeout(() => {
                     // [DEFAULT] 기본 인트로 메시지
+                    // 자동 정리 도구임을 밝힌다(변호사·상담사로 오인되지 않게). 소요 시간 표기는 사이트 전체 '약 3분'으로 통일
                     addBotMessage(
-                        `안녕하세요! 법률 상담사 김변입니다 😊\n\n빚 걱정, 혼자 안 하셔도 돼요.\n몇 가지만 알려주시면 법원 기준에 맞게 분석해 드릴게요.\n\n3분이면 충분합니다. 바로 시작해 볼까요?`,
-                        [{ label: '좋아요, 시작할게요', value: 'start' }],
+                        `안녕하세요. my김변 채무 정리 도우미입니다.\n\n몇 가지 질문에 답하시면 채무·소득·재산 상황을 한 번에 정리해 드려요. 이름과 연락처는 묻지 않습니다.\n\n정리 결과는 공개된 기준으로 계산한 참고용 추정치이며, 법률 자문이 아닙니다.\n\n약 3분 걸립니다. 시작해 볼까요?`,
+                        [{ label: '시작하기', value: 'start' }],
                         'buttons'
                     );
                 }, 500);
@@ -3571,7 +3590,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
         // V2.1: 5단계 분석 애니메이션
         const phases = [
-            '모든 정보를 입력해주셨어요! 🎉 법원 기준에 맞춰 정밀 분석을 시작할게요.',
+            '입력을 마쳤어요. 법원 실무 기준으로 계산해 볼게요.',
             '✅ 입력 데이터 검증 완료',
             '🏦 관할 법원 판별 중...',
             '📊 2026년 생계비 기준 적용 중...',
@@ -3599,7 +3618,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';
 
             // 무직자 안내 메시지
-            let resultMessage = `${statusEmoji} 분석이 완료되었습니다!\n\n입력하신 정보 기준 ${input.name || '의뢰인'}님의 예상 탕감률은 약 **${calculationResult.debtReductionRate}%**입니다.\n(참고용 추정치이며, 실제 결과는 법원 심사에 따라 달라질 수 있어요.)`;
+            let resultMessage = `${statusEmoji} 계산을 마쳤습니다.\n\n입력하신 정보 기준 ${input.name || '의뢰인'}님의 예상 감면율은 약 **${calculationResult.debtReductionRate}%**입니다.\n(참고용 추정치이며, 실제 결과는 법원 심사에 따라 달라질 수 있어요.)`;
 
             if (input.employmentType === 'none' || input.employmentType === 'basic_recipient') {
                 resultMessage += '\n\n💡 현재 확인된 정기 소득이 없어 **월 200만원 소득을 가정한 참고용 계산**입니다.\n\n개인회생은 계속적·반복적인 수입이 있어야 신청할 수 있어요. 소득이 없거나 매우 적다면 개인파산 절차도 함께 검토해 보시길 권합니다.';
@@ -3994,15 +4013,89 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         }
     }, [currentStep, userInput, processStep]); // calculateResult는 useEffect 내에 정의된게 아니라 컴포넌트 내 함수여야 함 (확인 필요)
 
+    // 부모 화면(데스크톱 옆 패널)에 진행 상황과 입력 요약을 알린다
+    const onProgressChangeRef = useRef(onProgressChange);
+    onProgressChangeRef.current = onProgressChange;
+    useEffect(() => {
+        onProgressChangeRef.current?.({
+            step: currentStep,
+            progress: getProgress(),
+            input: userInput,
+            isComplete: currentStep === 'result',
+        });
+    }, [currentStep, userInput, getProgress]);
+
     if (!isOpen) return null;
 
     const isDark = themeMode === 'dark';
-    const bgColor = isDark ? '#1e293b' : '#ffffff';
-    const borderColor = isDark ? '#374151' : '#e5e7eb';
+    const isEmbedded = layout === 'embedded';
+
+    // 진행 문구: 분기형 대화라 '몇 단계 중 몇 단계' 대신 진행률과 남은 시간(약 3분 기준)을 보여 준다
+    const progressPct = getProgress();
+    const progressLabel = currentStep === 'result' || progressPct >= 100
+        ? '정리 완료'
+        : currentStep === 'intro'
+            ? '약 3분 소요'
+            : `${Math.round(progressPct)}% · 약 ${Math.max(1, Math.ceil((3 * (100 - progressPct)) / 100))}분 남음`;
+
+    // ChatbotRenderer를 사용하여 템플릿별 UI 렌더링
+    const renderer = (
+                    <ChatbotRenderer
+                        templateId={templateId}
+                        mode={themeMode}
+                        colors={colors}
+                        messages={messages.map(msg => ({
+                            id: msg.id,
+                            type: msg.type,
+                            content: msg.content,
+                            options: msg.options?.map(opt => ({ label: opt.label, value: String(opt.value), selected: opt.selected })),
+                            inputType: msg.inputType,
+                            multiSelect: msg.multiSelect,
+                            timestamp: msg.timestamp,
+                            interactiveBlock: msg.interactiveBlock,
+                            blockState: msg.blockState,
+                            isAnswered: msg.isAnswered,
+                            stepId: msg.stepId
+                        }))}
+                        inputValue={inputValue}
+                        isTyping={isTyping}
+                        characterName={characterName}
+                        characterImage={characterImage}
+                        progress={progressPct}
+                        progressLabel={progressLabel}
+                        headerSubtitle="채무·소득·재산 상황 정리"
+                        closeLabel="채무 정리 닫기"
+                        flush={isEmbedded}
+                        onInputChange={setInputValue}
+                        onSubmit={handleSubmit}
+                        onOptionSelect={(opt, msgId) => handleOptionSelect({ label: opt.label, value: opt.value }, msgId)}
+                        onClose={handleCloseRequest}
+                        messagesEndRef={messagesEndRef}
+                        inputRef={inputRef}
+                        onBlockSubmit={handleBlockSubmit}
+                        enableFormBlocks={enableFormBlocks || interactiveBlockPreset !== 'none'}
+                        onGoBack={handleGoBack}
+                        canGoBack={stepHistory.length > 0 && currentStep !== 'intro' && currentStep !== 'result'}
+                        onBlockCancel={(id) => {
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === id ? { ...msg, blockState: { status: 'cancelled' } } : msg
+                            ));
+                            if (currentStep === 'client_note') {
+                                processStep('client_note', 'skip');
+                            }
+                        }}
+                    />
+    );
 
     // Portal 렌더링 또는 직접 렌더링
     const content = (
         <>
+            {isEmbedded ? (
+                // 페이지 임베드: 부모 컨테이너를 그대로 채운다(고정 오버레이·딤 없음)
+                <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ fontFamily: chatFontFamily || 'inherit' }}>
+                    {renderer}
+                </div>
+            ) : (
             <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -4025,50 +4118,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* ChatbotRenderer를 사용하여 템플릿별 UI 렌더링 */}
-                    <ChatbotRenderer
-                        templateId={templateId}
-                        mode={themeMode}
-                        colors={colors}
-                        messages={messages.map(msg => ({
-                            id: msg.id,
-                            type: msg.type,
-                            content: msg.content,
-                            options: msg.options?.map(opt => ({ label: opt.label, value: String(opt.value), selected: opt.selected })),
-                            inputType: msg.inputType,
-                            multiSelect: msg.multiSelect,
-                            timestamp: msg.timestamp,
-                            interactiveBlock: msg.interactiveBlock,
-                            blockState: msg.blockState,
-                            isAnswered: msg.isAnswered,
-                            stepId: msg.stepId
-                        }))}
-                        inputValue={inputValue}
-                        isTyping={isTyping}
-                        characterName={characterName}
-                        characterImage={characterImage}
-                        progress={getProgress()}
-                        onInputChange={setInputValue}
-                        onSubmit={handleSubmit}
-                        onOptionSelect={(opt, msgId) => handleOptionSelect({ label: opt.label, value: opt.value }, msgId)}
-                        onClose={handleCloseRequest}
-                        messagesEndRef={messagesEndRef}
-                        inputRef={inputRef}
-                        onBlockSubmit={handleBlockSubmit}
-                        enableFormBlocks={enableFormBlocks || interactiveBlockPreset !== 'none'}
-                        onGoBack={handleGoBack}
-                        canGoBack={stepHistory.length > 0 && currentStep !== 'intro' && currentStep !== 'result'}
-                        onBlockCancel={(id) => {
-                            setMessages(prev => prev.map(msg =>
-                                msg.id === id ? { ...msg, blockState: { status: 'cancelled' } } : msg
-                            ));
-                            if (currentStep === 'client_note') {
-                                processStep('client_note', 'skip');
-                            }
-                        }}
-                    />
+                    {renderer}
                 </motion.div>
             </motion.div>
+            )}
 
             {/* Intro Overlay */}
             {showIntro && introConfig && (
@@ -4112,9 +4165,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             )}
                             <button
                                 onClick={() => setShowIntro(false)}
-                                className="w-full py-4 bg-purple-600 text-white font-bold rounded-xl shadow-xl active:scale-95 transition-all text-lg animate-bounce-subtle"
+                                className="w-full py-4 bg-brand text-white font-bold rounded-xl shadow-xl active:scale-95 transition-all text-lg"
                             >
-                                상담 시작하기
+                                시작하기
                             </button>
                         </div>
                     </div>
@@ -4177,8 +4230,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+                    className={`${isEmbedded ? 'absolute z-30' : 'fixed z-[10000]'} inset-0 bg-slate-900/50 flex items-center justify-center p-6`}
                     onClick={() => setShowExitConfirm(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="rehab-exit-confirm-title"
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
@@ -4191,29 +4247,32 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                                 <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                                진단을 중단하시겠습니까?
+                            <h3 id="rehab-exit-confirm-title" className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                채무 정리를 그만할까요?
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                                지금 종료하면 입력된 진단 데이터가 모두 사라집니다.
+                                지금 나가면 입력한 내용이 이 기기에서 지워집니다.
                             </p>
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => setShowExitConfirm(false)}
-                                    className="flex-1 py-3 px-4 rounded-xl text-white font-medium transition-colors hover:opacity-90 cursor-pointer"
-                                    style={{ backgroundColor: colors.primary }}
-                                >
-                                    계속 진행하기
-                                </button>
-                                <button
+                                    type="button"
                                     onClick={() => {
                                         setShowExitConfirm(false);
                                         localStorage.removeItem('roi_rehab_chatbot_session');
                                         onClose();
                                     }}
-                                    className="flex-1 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                    className="flex-1 min-h-11 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                                 >
-                                    진단 종료하기
+                                    나가기
+                                </button>
+                                <button
+                                    type="button"
+                                    autoFocus
+                                    onClick={() => setShowExitConfirm(false)}
+                                    className="flex-1 min-h-11 py-3 px-4 rounded-xl text-white font-bold transition-colors hover:opacity-90 cursor-pointer"
+                                    style={{ backgroundColor: colors.primary }}
+                                >
+                                    계속하기
                                 </button>
                             </div>
                         </div>
@@ -4226,6 +4285,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 <RehabResultReport
                     result={result}
                     userInput={userInput as RehabUserInput}
+                    zIndexClass={isEmbedded ? 'z-[60]' : undefined}
                     onClose={() => {
                         setShowResult(false);
                         onClose();
@@ -4245,7 +4305,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         </>
     );
 
-    if (disablePortal) {
+    // 임베드 레이아웃은 부모 컨테이너 안에 그대로 렌더링한다(미리보기 전용 disablePortal 동작과 분리)
+    if (disablePortal || isEmbedded) {
         return content;
     }
 

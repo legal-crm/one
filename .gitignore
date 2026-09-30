@@ -24,3 +24,5 @@ assets/shorts/
 __pycache__/
 *.pyc
 _work/
+assets/cardnews/
+assets/kakao-moment-ads/

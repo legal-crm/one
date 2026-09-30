@@ -1,10 +1,7 @@
 import React, { useRef } from 'react';
-import { 
-  Printer, Download, X, CheckCircle2, Scale, 
-  Building2, Car, Shield, Briefcase, DollarSign, Home, FileText
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Printer, FileText } from 'lucide-react';
 import type { PropertyListD5102Data } from '../../../types/propertyTypes';
+import { Badge, Button, Modal } from '../ui';
 
 interface PrintablePropertyIntakeModalProps {
   data: PropertyListD5102Data;
@@ -12,6 +9,10 @@ interface PrintablePropertyIntakeModalProps {
   onClose: () => void;
 }
 
+/**
+ * 재산목록(D5102 양식) 미리보기 — 작성 창 위에 뜨는 창(z-70)
+ * 인쇄하면 [data-print-area] 종이 영역만 인쇄된다(index.css 인쇄 규칙)
+ */
 export default function PrintablePropertyIntakeModal({
   data,
   isOpen,
@@ -28,51 +29,34 @@ export default function PrintablePropertyIntakeModal({
   const won = (n: number) => (n || 0).toLocaleString();
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
-        
-        {/* 상단 컨트롤 바 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white print:hidden shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-lg">
-              🏛️
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-white">
-                  대법원 표준 [전산양식 D5102] 재산목록 미리보기
-                </h3>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
-                  의뢰인 작성본
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                신청인: <strong className="text-white">{data.clientName}</strong> · 작성일자: {data.baseDate}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>A4 인쇄 / PDF 저장</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors ml-1 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* 문서 본문 영역 (A4 인쇄 규격) */}
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="xl"
+      mobile="fullscreen"
+      zIndexClassName="z-[70]"
+      icon={<FileText className="w-5 h-5" />}
+      title="재산목록(D5102 양식) 미리보기"
+      description="입력한 내용을 법원 양식 모양으로 보여 드려요. 법원 제출본은 담당 변호사가 검토해 확정합니다."
+      meta={<Badge tone="neutral">의뢰인 작성본 · 기준일 {data.baseDate}</Badge>}
+      closeLabel="미리보기 닫기"
+      className="sm:h-[min(56rem,92dvh)] sm:max-h-[92dvh]"
+      bodyClassName="bg-slate-100 px-3 py-4 sm:p-6"
+      footerClassName="justify-between"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>닫기</Button>
+          <Button onClick={handlePrint} leftIcon={<Printer className="w-4 h-4" aria-hidden="true" />}>
+            인쇄 · PDF 저장
+          </Button>
+        </>
+      }
+    >
+        {/* 문서 본문 영역 (A4 인쇄 규격) — 인쇄 시 이 영역만 출력 */}
         <div 
           ref={printRef}
-          className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white text-slate-900 font-serif leading-relaxed text-xs print:p-0 print:text-[11px] print:overflow-visible"
+          data-print-area=""
+          className="mx-auto w-full max-w-[210mm] bg-white border border-slate-200 shadow-sm p-5 sm:p-10 text-slate-900 font-serif leading-relaxed text-xs print:p-0 print:text-[11px]"
         >
           {/* 법원 표제부 */}
           <div className="text-center mb-6 border-b-2 border-slate-900 pb-4">
@@ -83,7 +67,7 @@ export default function PrintablePropertyIntakeModal({
             <div className="flex justify-between items-end text-xs text-slate-700 mt-4 font-sans">
               <div>
                 <span>사건번호: </span>
-                <span className="font-bold underline">2026개회 (미정)</span>
+                <span className="font-bold underline">(접수 후 기재)</span>
               </div>
               <div>
                 <span>신청인(채무자): </span>
@@ -291,8 +275,6 @@ export default function PrintablePropertyIntakeModal({
             </div>
           </div>
         </div>
-
-      </div>
-    </div>
+    </Modal>
   );
 }

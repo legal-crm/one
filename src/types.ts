@@ -1176,6 +1176,8 @@ export interface ConsultMessage {
   content?: string; // 호환성 별칭
   createdAt: string;
   targetLawyerId?: string; // 비교 상담 모드에서 의뢰인 메시지의 대상 변호사 식별용
+  /** 이 기기에서만 쓰는 전송 상태 (서버에 저장하지 않음). 없으면 전송 완료로 본다. */
+  deliveryStatus?: 'sending' | 'failed';
 }
 
 export interface LawFirm {

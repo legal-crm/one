@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  X, Minus, Square, Move, 
-  Calculator, Percent, Coins, TrendingDown, Users, 
-  Scale, ShieldAlert, Landmark, BookOpen, CreditCard, FileText, Send, Building2,
-  CalendarCheck, Contact, CheckSquare, Pin
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Minus, Square, Move, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 import { QuickToolId, Position } from './types';
 import { ALL_QUICK_TOOLS } from './defaultTools';
+import { getToolIcon } from './toolIcons';
+import { resetDockShared } from './dockShared';
+import { useDialog } from '../../common/DialogProvider';
 
 // 개별 도구 뷰들 import
 import CalculatorTool from './tools/CalculatorTool';
@@ -25,6 +24,7 @@ import KoreanAgeCalcTool from './tools/KoreanAgeCalcTool';
 import CreditorSearchTool from './tools/CreditorSearchTool';
 import DocumentChecklistTool from './tools/DocumentChecklistTool';
 import FloatingPinMemoTool from './tools/FloatingPinMemoTool';
+import DeadlineCalcTool from './tools/DeadlineCalcTool';
 
 interface FloatingToolWindowProps {
   activeToolId: QuickToolId | null;
@@ -34,29 +34,45 @@ interface FloatingToolWindowProps {
   dockPosition: Position | null;
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Calculator,
-  Percent,
-  Coins,
-  TrendingDown,
-  Users,
-  Scale,
-  ShieldAlert,
-  Landmark,
-  BookOpen,
-  CreditCard,
-  FileText,
-  Send,
-  Building2,
-  CalendarCheck,
-  Contact,
-  CheckSquare,
-  Pin,
-};
-
 const WINDOW_STORAGE_KEY = 'legal_quick_window_pos_v2';
 const PADDING = 12;
-const WINDOW_WIDTH = 410; // 컴팩트 최적 너비
+const WINDOW_WIDTH = 410; // 데스크톱 기본 너비 (좁은 화면에서는 화면 너비에 맞춤)
+/** 제목줄 + 도구 탭 바 높이(대략) — 본문 최대 높이 계산용 */
+const CHROME_HEIGHT = 84;
+
+function windowWidthFor(viewportWidth: number): number {
+  return Math.min(WINDOW_WIDTH, Math.max(240, viewportWidth - PADDING * 2));
+}
+
+function clampWindowPos(x: number, y: number, width: number, vw: number, vh: number): Position {
+  return {
+    x: Math.min(Math.max(PADDING, x), Math.max(PADDING, vw - width - PADDING)),
+    y: Math.min(Math.max(PADDING, y), Math.max(PADDING, vh - 100)),
+  };
+}
+
+function renderTool(id: QuickToolId, isActive: boolean): React.ReactNode {
+  switch (id) {
+    case 'calculator': return <CalculatorTool />;
+    case 'median': return <MedianIncomeTool />;
+    case 'extraExpense': return <ExtraExpenseTool />;
+    case 'virtualAccount': return <VirtualAccountTool />;
+    case 'rehabPayCalc': return <RehabPayCalcTool />;
+    case 'liquidationCalc': return <LiquidationCalcTool />;
+    case 'courtGuidelines': return <CourtGuidelinesTool />;
+    case 'seizureLimits': return <SeizureLimitsTool />;
+    case 'quickMemo': return <QuickMemoTool />;
+    case 'interestCompare': return <InterestCompareTool />;
+    case 'legalArticles': return <LegalArticlesTool />;
+    case 'assetValuation': return <AssetValuationTool />;
+    case 'koreanAge': return <KoreanAgeCalcTool />;
+    case 'creditorSearch': return <CreditorSearchTool />;
+    case 'docChecklist': return <DocumentChecklistTool />;
+    case 'pinMemo': return <FloatingPinMemoTool isActive={isActive} />;
+    case 'deadlineCalc': return <DeadlineCalcTool />;
+    default: return null;
+  }
+}
 
 export default function FloatingToolWindow({
   activeToolId,
@@ -65,12 +81,25 @@ export default function FloatingToolWindow({
   onClose,
   dockPosition,
 }: FloatingToolWindowProps) {
+  const dialog = useDialog();
   const [isMinimized, setIsMinimized] = useState(false);
   const [winPos, setWinPos] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  
+  const [viewport, setViewport] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  /** 한 번 연 도구는 창을 닫을 때까지 마운트 유지 → 탭을 바꾸거나 접어도 입력값이 남는다 */
+  const [mountedIds, setMountedIds] = useState<QuickToolId[]>([]);
+  /** '새 상담' 초기화 시 도구 내부 상태까지 새로 시작하도록 key 갱신 */
+  const [resetNonce, setResetNonce] = useState(0);
+
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const width = windowWidthFor(viewport.w);
+  const bodyMaxHeight = Math.max(
+    220,
+    Math.min(viewport.h * 0.7, viewport.h - (winPos?.y ?? 0) - CHROME_HEIGHT - PADDING),
+  );
 
   // 초기 윈도우 위치 계산 (저장된 좌표 or 도크 인근 스마트 배치)
   // 창이 새로 열릴 때(null → 도구)만 계산 — 탭 전환·도크 이동 시 창 위치를 유지
@@ -80,18 +109,21 @@ export default function FloatingToolWindow({
   useEffect(() => {
     if (!isOpen) {
       setWinPos(null);
+      setMountedIds([]);
       return;
     }
-    const dockPosition = dockPosRef.current;
+    setIsMinimized(false);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const w = windowWidthFor(vw);
+    setViewport({ w: vw, h: vh });
 
     try {
       const saved = localStorage.getItem(WINDOW_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          const clampedX = Math.min(Math.max(PADDING, parsed.x), window.innerWidth - WINDOW_WIDTH - PADDING);
-          const clampedY = Math.min(Math.max(PADDING, parsed.y), window.innerHeight - 100);
-          setWinPos({ x: clampedX, y: clampedY });
+          setWinPos(clampWindowPos(parsed.x, parsed.y, w, vw, vh));
           return;
         }
       }
@@ -100,39 +132,32 @@ export default function FloatingToolWindow({
     }
 
     // 도크 인근 스마트 배치: 도크의 좌측 상단 또는 화면 안쪽
-    const dockX = dockPosition?.x ?? (window.innerWidth - 180);
-    const dockY = dockPosition?.y ?? (window.innerHeight - 80);
-
-    let initialX = dockX - WINDOW_WIDTH + 60;
-    let initialY = dockY - 480;
-
-    // 화면 경계 안전 보정
-    if (initialX < PADDING) initialX = PADDING;
-    if (initialX + WINDOW_WIDTH > window.innerWidth - PADDING) {
-      initialX = window.innerWidth - WINDOW_WIDTH - PADDING;
-    }
-    if (initialY < PADDING) initialY = PADDING;
-    if (initialY > window.innerHeight - 200) {
-      initialY = Math.max(PADDING, window.innerHeight - 520);
-    }
-
-    setWinPos({ x: initialX, y: initialY });
+    // 창 전체(제목줄+탭+본문 최대 70vh)가 화면 아래로 잘리지 않도록 위쪽으로 올려 배치
+    const dockX = dockPosRef.current?.x ?? (vw - 180);
+    const dockY = dockPosRef.current?.y ?? (vh - 80);
+    const estimatedHeight = Math.min(vh * 0.7 + CHROME_HEIGHT, vh - PADDING * 2);
+    const initialY = Math.min(dockY - 480, vh - estimatedHeight - PADDING);
+    setWinPos(clampWindowPos(dockX - w + 60, initialY, w, vw, vh));
   }, [isOpen]);
 
-  // 창 리사이즈 시 화면 밖 방지
+  // 창 리사이즈 시 너비·위치 보정 (화면 밖 방지)
   useEffect(() => {
     const handleResize = () => {
-      setWinPos(prev => {
-        if (!prev) return prev;
-        const clampedX = Math.min(Math.max(PADDING, prev.x), window.innerWidth - WINDOW_WIDTH - PADDING);
-        const clampedY = Math.min(Math.max(PADDING, prev.y), window.innerHeight - 100);
-        return { x: clampedX, y: clampedY };
-      });
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      setViewport({ w: vw, h: vh });
+      setWinPos(prev => (prev ? clampWindowPos(prev.x, prev.y, windowWidthFor(vw), vw, vh) : prev));
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 연 도구를 마운트 목록에 추가, 탭을 바꾸면 본문 스크롤을 맨 위로
+  useEffect(() => {
+    if (!activeToolId) return;
+    setMountedIds(prev => (prev.includes(activeToolId) ? prev : [...prev, activeToolId]));
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [activeToolId]);
 
   // 드래그 핸들 이벤트 (타이틀 바)
   const handleHeaderPointerDown = (e: React.PointerEvent) => {
@@ -153,18 +178,16 @@ export default function FloatingToolWindow({
 
   const handleHeaderPointerMove = (e: React.PointerEvent) => {
     if (!dragStartRef.current || !isDragging) return;
-
     const deltaX = e.clientX - dragStartRef.current.startX;
     const deltaY = e.clientY - dragStartRef.current.startY;
-
-    const nextX = dragStartRef.current.initX + deltaX;
-    const nextY = dragStartRef.current.initY + deltaY;
-
-    // 뷰포트 클램프
-    const clampedX = Math.min(Math.max(PADDING, nextX), window.innerWidth - WINDOW_WIDTH - PADDING);
-    const clampedY = Math.min(Math.max(PADDING, nextY), window.innerHeight - 70);
-
-    setWinPos({ x: clampedX, y: clampedY });
+    const next = clampWindowPos(
+      dragStartRef.current.initX + deltaX,
+      dragStartRef.current.initY + deltaY,
+      width,
+      window.innerWidth,
+      window.innerHeight + 30, // 타이틀바가 하단 가장자리까지 내려갈 수 있게 약간 여유
+    );
+    setWinPos(next);
   };
 
   const handleHeaderPointerUp = (e: React.PointerEvent) => {
@@ -186,26 +209,56 @@ export default function FloatingToolWindow({
     }
   };
 
+  // 창 안에서 Esc → 창 닫기
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && !e.defaultPrevented) {
+      e.stopPropagation();
+      onClose();
+    }
+  };
+
+  // 새 상담: 모든 계산기 공유값 초기화 (메모는 유지)
+  const handleResetAll = async () => {
+    const ok = await dialog.confirm({
+      title: '새 상담 시작',
+      message: '모든 계산기에 입력한 금액·인원수·채권자 목록을 지웁니다. 상담 메모와 핀 메모는 그대로 둡니다.',
+      confirmText: '입력값 지우기',
+      variant: 'warning',
+    });
+    if (!ok) return;
+    resetDockShared();
+    setResetNonce(n => n + 1);
+    toast.success('계산기 입력값을 모두 지웠습니다.');
+  };
+
   if (!activeToolId || !winPos) return null;
 
   const currentTool = ALL_QUICK_TOOLS.find(t => t.id === activeToolId) || ALL_QUICK_TOOLS[0];
-  const IconComponent = ICON_MAP[currentTool.iconName] || Calculator;
+  const IconComponent = getToolIcon(currentTool.iconName);
 
   // 활성화된 도구 탭 목록 (액션 전용 제외)
   const windowTools = ALL_QUICK_TOOLS.filter(
     t => enabledToolIds.includes(t.id) && !t.isActionOnly
   );
 
+  // 마운트 유지 중인 도구 (방금 연 도구는 effect 이전에도 바로 렌더)
+  const renderedIds = (mountedIds.includes(activeToolId) ? mountedIds : [...mountedIds, activeToolId])
+    .filter(id => id === activeToolId || enabledToolIds.includes(id));
+
   return (
     <div
       ref={windowRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="quickdock-window-title"
+      onKeyDown={handleKeyDown}
       style={{
         position: 'fixed',
         left: `${winPos.x}px`,
         top: `${winPos.y}px`,
-        width: `${WINDOW_WIDTH}px`,
+        width: `${width}px`,
       }}
-      className={`z-50 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 select-none ${
+      className={`z-50 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 ${
         isDragging ? 'shadow-blue-500/20 ring-2 ring-blue-500/50' : 'shadow-2xl'
       }`}
     >
@@ -219,89 +272,102 @@ export default function FloatingToolWindow({
       >
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center text-slate-400 hover:text-slate-200 cursor-grab active:cursor-grabbing">
-            <Move className="w-3.5 h-3.5" />
+            <Move className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className={`w-5 h-5 rounded-md ${currentTool.colorClass.bg} ${currentTool.colorClass.text} flex items-center justify-center shrink-0`}>
-            <IconComponent className="w-3 h-3" />
+            <IconComponent className="w-3 h-3" aria-hidden="true" />
           </div>
-          <div className="min-w-0 flex items-center gap-1.5">
-            <span className="font-bold text-xs text-white truncate">
-              {currentTool.title}
-            </span>
-            <span className="text-[10px] text-blue-300 bg-blue-500/20 px-1.5 py-0.2 rounded font-medium shrink-0">
-              플로팅 위젯
-            </span>
-          </div>
+          <span id="quickdock-window-title" className="font-bold text-xs text-white truncate">
+            {currentTool.title}
+          </span>
         </div>
 
-        {/* 윈도우 컨트롤러 (최소화, 닫기) */}
+        {/* 윈도우 컨트롤러 (새 상담, 최소화, 닫기) */}
         <div className="flex items-center gap-1 shrink-0">
           <button
+            type="button"
+            onClick={handleResetAll}
+            aria-label="계산기 입력값 모두 지우기 (새 상담)"
+            className="p-1 text-slate-400 hover:text-amber-300 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+            title="새 상담: 계산기 입력값 모두 지우기"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsMinimized(prev => !prev)}
             aria-label={isMinimized ? '창 펼치기' : '창 접기'}
+            aria-expanded={!isMinimized}
             className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
-            title={isMinimized ? '창 펼치기' : '창 최소화 (접기)'}
+            title={isMinimized ? '창 펼치기' : '창 접기 (입력값 유지)'}
           >
             {isMinimized ? <Square className="w-3 h-3" /> : <Minus className="w-3.5 h-3.5" />}
           </button>
           <button
+            type="button"
             onClick={onClose}
             aria-label="창 닫기"
             className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
-            title="창 닫기"
+            title="창 닫기 (Esc)"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* 최소화되지 않았을 때만 본문 및 탭 노출 */}
+      {/* ── 도구 빠른 탭 전환 바 ── */}
       {!isMinimized && (
-        <>
-          {/* ── 도구 빠른 탭 전환 바 (작업 능률 극대화) ── */}
-          <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100/90 border-b border-slate-200 overflow-x-auto no-scrollbar">
-            {windowTools.map(t => {
-              const TabIcon = ICON_MAP[t.iconName] || Calculator;
-              const isActive = t.id === activeToolId;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => onSelectTool(t.id)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                  title={t.title}
-                >
-                  <TabIcon className="w-3 h-3 shrink-0" />
-                  <span className="truncate max-w-[90px]">{t.title.split(' ')[0]}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ── 개별 도구 뷰 렌더링 ── */}
-          <div className="max-h-[70vh] overflow-y-auto bg-white">
-            {activeToolId === 'calculator' && <CalculatorTool />}
-            {activeToolId === 'median' && <MedianIncomeTool />}
-            {activeToolId === 'extraExpense' && <ExtraExpenseTool />}
-            {activeToolId === 'virtualAccount' && <VirtualAccountTool />}
-            {activeToolId === 'rehabPayCalc' && <RehabPayCalcTool />}
-            {activeToolId === 'liquidationCalc' && <LiquidationCalcTool />}
-            {activeToolId === 'courtGuidelines' && <CourtGuidelinesTool />}
-            {activeToolId === 'seizureLimits' && <SeizureLimitsTool />}
-            {activeToolId === 'quickMemo' && <QuickMemoTool />}
-            {activeToolId === 'interestCompare' && <InterestCompareTool />}
-            {activeToolId === 'legalArticles' && <LegalArticlesTool />}
-            {activeToolId === 'assetValuation' && <AssetValuationTool />}
-            {activeToolId === 'koreanAge' && <KoreanAgeCalcTool />}
-            {activeToolId === 'creditorSearch' && <CreditorSearchTool />}
-            {activeToolId === 'docChecklist' && <DocumentChecklistTool />}
-            {activeToolId === 'pinMemo' && <FloatingPinMemoTool />}
-          </div>
-        </>
+        <div
+          role="tablist"
+          aria-label="퀵툴 도구"
+          className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100/90 border-b border-slate-200 overflow-x-auto no-scrollbar select-none"
+        >
+          {windowTools.map(t => {
+            const TabIcon = getToolIcon(t.iconName);
+            const isActive = t.id === activeToolId;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`quickdock-tab-${t.id}`}
+                aria-selected={isActive}
+                aria-controls={`quickdock-panel-${t.id}`}
+                onClick={() => onSelectTool(t.id)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+                title={t.title}
+              >
+                <TabIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
+                <span>{t.shortTitle}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
+
+      {/* ── 개별 도구 뷰 (접어도 언마운트하지 않음) ──
+          본문 높이는 창 위치 아래 남은 공간까지만 (이전: 70vh 고정이라 창을 아래에 두면 하단 버튼이 화면 밖으로 잘림) */}
+      <div
+        ref={bodyRef}
+        style={isMinimized ? undefined : { maxHeight: `${bodyMaxHeight}px` }}
+        className={isMinimized ? 'hidden' : 'overflow-y-auto bg-white'}
+      >
+        {renderedIds.map(id => (
+          <div
+            key={`${id}-${resetNonce}`}
+            role="tabpanel"
+            id={`quickdock-panel-${id}`}
+            aria-labelledby={`quickdock-tab-${id}`}
+            hidden={id !== activeToolId}
+          >
+            {renderTool(id, id === activeToolId && !isMinimized)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -100,19 +100,19 @@ ${firmName}(이하 "수임인")은 의뢰인의 위임 사무를 적법하게 �
 
   legalEffect: {
     key: 'legalEffect',
-    title: '전자서명법 제3조 법적 효력 합의',
+    title: '전자서명으로 계약하는 데 합의',
     badge: '전자서명법 제3조·기본법 제4조',
-    summary: '본 전자서명은 종이 계약서 자필 서명과 동일한 법적 효력을 가짐에 합의합니다.',
-    getContent: ({ firmName = '수임 법무법인' }) => `[전자서명 및 전자문서 법적 효력 합의서]
+    summary: '이 위임계약을 전자서명으로 체결하는 데 합의합니다.',
+    getContent: ({ firmName = '수임 법무법인' }) => `[전자서명 및 전자문서 사용 합의서]
 
 위임인(의뢰인)과 수임인(${firmName})은 본 전자위임계약 및 부속 합의를 체결함에 있어 대한민국 전자서명법 및 관련 법령에 따라 다음과 같이 합의합니다.
 
-1. 전자서명의 완전한 법적 효력
-  - 대한민국 전자서명법 제3조(전자서명의 효력) 제1항 및 제2항에 의거하여, 당사자 간의 합의에 따라 본 시스템에서 수행되는 전자서명은 종이 서면의 자필 서명, 서명날인 또는 기명날인과 완전히 동일한 법적 효력을 가집니다.
+1. 전자서명의 효력
+  - 양 당사자는 이 계약의 서명 방식으로 본 시스템의 전자서명을 선택합니다. 전자서명법 제3조에 따라 전자서명은 전자적 형태라는 이유만으로 서명·서명날인·기명날인으로서의 효력이 부인되지 않으며, 당사자 간 약정에 따라 선택한 전자서명은 서명·서명날인·기명날인으로서의 효력을 가집니다.
 
-2. 전자문서의 진정성 및 무결성 보장
-  - 전자문서 및 전자거래 기본법 제4조(전자문서의 효력)에 따라, 본 계약은 전자적 형태로 작성·송신·수신 또는 저장되었다는 이유만으로 법적 효력이 부인되지 아니합니다.
-  - 본 전자계약서는 전문에 대한 SHA-256 암호화 해시 산출 및 3중 타임스탬프(통신사 본인인증, 원본 해시, 체결본 해시)로 봉인되어, 사후 위·변조가 기술적으로 불가능함을 보증합니다.
+2. 전자문서의 효력과 변경 확인
+  - 전자문서 및 전자거래 기본법 제4조(전자문서의 효력)에 따라, 본 계약은 전자적 형태로 작성·송신·수신 또는 저장되었다는 이유만으로 효력이 부인되지 아니합니다.
+  - 본 전자계약서는 전문에 대한 SHA-256 해시값과 타임스탬프(본인인증, 원본 해시, 체결본 해시)를 기록하여, 체결 후 계약서 내용이 바뀌었는지 확인할 수 있게 합니다.
 
 3. 계약 방식에 대한 상호 동의
   - 양 당사자는 종이 서면 대신 모바일 실명확인(통신사 PASS/문자 인증) 및 전자 터치 서명 방식으로 위임계약을 체결함에 확정적으로 상호 합의합니다.`,
@@ -174,9 +174,10 @@ export default function LegalContractTermsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
+            aria-label="약관 창 닫기"
+            className="min-w-11 min-h-11 flex items-center justify-center p-2 text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -187,7 +188,7 @@ export default function LegalContractTermsModal({
           </div>
           <div className="flex items-center gap-2 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-[11px] text-indigo-900">
             <ShieldCheck className="w-4 h-4 text-brand shrink-0" />
-            <span>본 약관은 전자서명법 및 개인정보보호법에 의거하여 분쟁 시 100% 법적 효력을 갖습니다.</span>
+            <span>동의한 약관 전문은 계약서와 함께 보관되며, 분쟁이 생기면 관련 법령에 따라 판단됩니다.</span>
           </div>
         </div>
 

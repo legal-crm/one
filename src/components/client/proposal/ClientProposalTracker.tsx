@@ -44,10 +44,10 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
             <span className="font-extrabold text-slate-800 dark:text-slate-200">
-              {hasProposals ? '맞춤 제안서 도착 (의뢰인 검토 단계)' : '변호사 사건 분석 및 제안서 작성 단계'}
+              {hasProposals ? '맞춤 제안서 도착 (의뢰인 검토 단계)' : '변호사 제안서를 기다리는 단계'}
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-xs text-slate-400 font-medium">
             전체 4단계 중 <strong>{currentPipelineStep}단계</strong> 진행 중
           </span>
         </div>
@@ -56,12 +56,12 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {/* Step 1: 상담 신청 */}
           <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
-            <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
               <Check className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">1. 상담 신청</p>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 truncate">접수 완료</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">1. 상담 신청</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate">접수 완료</p>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
               ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 shadow-xs'
               : 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
           }`}>
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
               currentPipelineStep === 2
                 ? 'bg-blue-600 text-white animate-pulse'
                 : 'bg-emerald-600 text-white'
@@ -79,11 +79,11 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
               {currentPipelineStep > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
             </div>
             <div className="min-w-0">
-              <p className={`text-[11px] font-bold truncate ${currentPipelineStep === 2 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'}`}>
+              <p className={`text-xs font-bold truncate ${currentPipelineStep === 2 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'}`}>
                 2. 제안서 작성
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
-                {currentPipelineStep === 2 ? '실시간 분석 중' : '작성 완료'}
+              <p className="text-xs text-slate-400 truncate">
+                {currentPipelineStep === 2 ? (activeRequest?.status === 'responding' ? '변호사 검토 중' : '확인 대기') : '작성 완료'}
               </p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
                 ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
                 : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 opacity-60'
           }`}>
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
               currentPipelineStep === 3
                 ? 'bg-blue-600 text-white shadow-xs'
                 : currentPipelineStep > 3
@@ -106,10 +106,10 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
               3
             </div>
             <div className="min-w-0">
-              <p className={`text-[11px] font-bold truncate ${currentPipelineStep === 3 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>
+              <p className={`text-xs font-bold truncate ${currentPipelineStep === 3 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>
                 3. 제안서 도착
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-xs text-slate-400 truncate">
                 {hasProposals ? `${proposals.length}건 수신` : '대기 중'}
               </p>
             </div>
@@ -121,7 +121,7 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
               ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 shadow-xs'
               : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 opacity-60'
           }`}>
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
               currentPipelineStep === 4
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
@@ -129,10 +129,10 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
               4
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
                 4. 추가상담 / 계약
               </p>
-              <p className="text-[10px] text-slate-400 truncate">의뢰인 결정</p>
+              <p className="text-xs text-slate-400 truncate">의뢰인 결정</p>
             </div>
           </div>
         </div>
@@ -165,10 +165,10 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
                     }`}
                   >
                     <span>{item.proposal.lawyerName} 변호사</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                    <span className={`text-xs px-1.5 py-0.2 rounded-full font-extrabold ${
                       selectedProposalIdx === idx ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-300'
                     }`}>
-                      {item.proposal.reductionRate}% 탕감
+                      감면 {item.proposal.reductionRate}%
                     </span>
                   </button>
                 ))}

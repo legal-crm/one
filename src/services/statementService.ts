@@ -69,7 +69,8 @@ export class StatementService {
       clientId,
       caseType,
       // 법원 제출 문서이므로 가짜 기본값(주민번호·주소·보증금·경력 등)을 채우지 않는다 — 미입력은 빈 값
-      courtName: initialData?.courtName || '서울회생법원',
+      // 관할 법원을 모르면 비워 둔다(이전: '서울회생법원'을 기본으로 넣어 인쇄본에 그대로 찍힘)
+      courtName: initialData?.courtName || '',
       applicantName: clientName,
       applicantRrnMasked: initialData?.applicantRrnMasked || '',
       applicantPhone: initialData?.applicantPhone || '',
@@ -83,9 +84,10 @@ export class StatementService {
       pastHistory: initialData?.pastHistory || {
         hasPastCase: false
       },
+      // 주거 형태도 선택 전에는 비워 둔다(이전: '임차(월세)'·보증금 0원이 신청인이 고른 값처럼 표시됨)
       residence: initialData?.residence || {
-        residenceType: 'RENT_LEASE',
-        residenceTypeLabel: '임차(월세)',
+        residenceType: '' as unknown as ResidenceDetail['residenceType'],
+        residenceTypeLabel: '',
         deposit: 0,
         monthlyRent: 0,
         ownerName: '',

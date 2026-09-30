@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  X, Calculator, Store, UserCheck, Clock, Hammer, DollarSign, 
-  Plus, Trash2, CheckCircle2, AlertCircle, Save, Send, HelpCircle, 
-  Sparkles, ArrowRight, ChevronRight, Info, RefreshCw, FileText,
-  Mic, MicOff, Volume2
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Calculator, Plus, Trash2, Save, Send, Sparkles, Info, Mic, MicOff, Volume2, Table2, ListChecks, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSpeechRecognition } from '../../../hooks/useSpeechRecognition';
-import type { 
-  IncomeExpenseD5103Data, 
+import { useDialog } from '../../common/DialogProvider';
+import { secureSetItem } from '../../../utils/secureStorage';
+import { cn } from '../../../utils/cn';
+import { Badge, Button, DocModal, FormField, MoneyInput, SegmentedTabs, buildSubmitConfirm, inputClass, useDocAutosave } from '../ui';
+import type {
+  IncomeExpenseD5103Data,
   DetailedIncomeType,
   DynamicExpenseItem,
   MonthlyLedgerItem,
@@ -19,7 +20,7 @@ import type {
   PartTimeLedger,
   PartTimeWorkplace
 } from '../../../types/incomeExpenseTypes';
-import { 
+import {
   generateMonthlyLedgerFromWizardInputs,
   recalculateBusinessMonthlyLedger,
   syncBusinessLedgerToD5103,
@@ -37,22 +38,105 @@ interface ClientMonthlyIncomeExpenseModalProps {
   onSaveD5103?: (updatedData: IncomeExpenseD5103Data) => Promise<void> | void;
 }
 
-// 자주 쓰이는 추천 경비 칩 프리셋 (원터치 추가)
 // 2026년 최저임금 (시간급, 고용노동부 고시)
 const MIN_WAGE_2026 = 10320;
 
-const POPULAR_EXPENSE_PRESETS: { name: string; target: 'operating' | 'rent' | 'utility' | 'electricity'; defaultAmt: number }[] = [
-  { name: '배달대행료 (배민/쿠팡/요기요)', target: 'operating', defaultAmt: 600000 },
-  { name: '세무기장료 및 세무신고비', target: 'operating', defaultAmt: 110000 },
-  { name: '아르바이트/직원 인건비', target: 'operating', defaultAmt: 1200000 },
-  { name: 'POS단말기 및 카드수수료', target: 'operating', defaultAmt: 80000 },
-  { name: '매장 정수기/캡스 렌탈료', target: 'operating', defaultAmt: 70000 },
-  { name: '매장 인터넷 및 유선전화료', target: 'operating', defaultAmt: 45000 },
-  { name: '주방 식자재 및 소모품비', target: 'operating', defaultAmt: 1500000 },
-  { name: '상가 관리비 (기본관리비)', target: 'rent', defaultAmt: 150000 },
-  { name: '상가 화재/배상책임보험료', target: 'operating', defaultAmt: 50000 },
-  { name: '영업용 차량 유류비 및 주차비', target: 'operating', defaultAmt: 250000 }
+// 자주 쓰는 경비 항목 이름(금액은 사용자가 직접 입력)
+const POPULAR_EXPENSE_PRESETS: { name: string; target: 'operating' | 'rent' | 'utility' | 'electricity' }[] = [
+  { name: '배달대행료 (배민/쿠팡/요기요)', target: 'operating' },
+  { name: '세무기장료 및 세무신고비', target: 'operating' },
+  { name: '아르바이트/직원 인건비', target: 'operating' },
+  { name: 'POS단말기 및 카드수수료', target: 'operating' },
+  { name: '매장 정수기/캡스 렌탈료', target: 'operating' },
+  { name: '매장 인터넷 및 유선전화료', target: 'operating' },
+  { name: '주방 식자재 및 소모품비', target: 'operating' },
+  { name: '상가 관리비 (기본관리비)', target: 'rent' },
+  { name: '상가 화재/배상책임보험료', target: 'operating' },
+  { name: '영업용 차량 유류비 및 주차비', target: 'operating' }
 ];
+
+// 소득 형태 탭(짧은 이름은 탭, 설명은 본문 첫 줄)
+const INCOME_TYPES: { id: DetailedIncomeType; label: string; desc: string }[] = [
+  { id: 'BUSINESS', label: '사업자', desc: '매장·도소매 등 개인사업자' },
+  { id: 'FREELANCER', label: '프리랜서', desc: '3.3% 원천징수 사업소득(배달·강사·개발 등)' },
+  { id: 'DAY_LABORER', label: '일용직', desc: '현장·물류 등 일당을 받는 일용근로' },
+  { id: 'PART_TIME', label: '아르바이트', desc: '시간제·단기 아르바이트' }
+];
+
+const won = (n: number) => (n || 0).toLocaleString('ko-KR');
+
+function StepTitle({ id, num, title, hint }: { id: string; num?: number; title: string; hint?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+      <h3 id={id} className="flex items-center gap-2 text-base font-bold text-slate-900">
+        {num !== undefined && (
+          <span className="w-6 h-6 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">
+            {num}
+          </span>
+        )}
+        {title}
+      </h3>
+      {hint && <span className="text-xs text-slate-600">{hint}</span>}
+    </div>
+  );
+}
+
+/** 계산 결과(참고 금액) 카드 */
+function ResultCard({ label, value, detail, evidence }: { label: string; value: number; detail?: React.ReactNode; evidence?: string }) {
+  return (
+    <section aria-label={`${label} 계산 결과`} className="rounded-2xl border-2 border-brand/20 bg-white p-4 sm:p-5 space-y-2">
+      <p className="text-xs font-bold text-slate-600">입력값으로 계산한 참고 금액 · 담당 변호사 확인 후 확정</p>
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="text-base font-bold text-slate-900">{label}</span>
+        <span className="text-2xl font-extrabold text-brand tabular-nums">{won(value)}원</span>
+      </p>
+      {detail && <p className="text-xs text-slate-600 tabular-nums leading-relaxed">{detail}</p>}
+      {evidence && <p className="text-xs text-slate-600 leading-relaxed">준비할 자료: {evidence}</p>}
+    </section>
+  );
+}
+
+/** 이름 + 월 금액 + 삭제 한 줄(모바일: 이름 줄 아래 금액) */
+function ExpenseRow({
+  name,
+  amount,
+  onName,
+  onAmount,
+  onRemove,
+  namePlaceholder = '경비 항목 이름',
+}: {
+  name: string;
+  amount: number;
+  onName: (v: string) => void;
+  onAmount: (v: number) => void;
+  onRemove: () => void;
+  namePlaceholder?: string;
+}) {
+  const label = name.trim() || '경비 항목';
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_2.75rem] sm:grid-cols-[minmax(0,1fr)_12rem_2.75rem] gap-2 items-start rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => onName(e.target.value)}
+        placeholder={namePlaceholder}
+        aria-label="경비 항목 이름"
+        className={cn(inputClass, 'text-sm font-medium')}
+      />
+      <div className="col-start-1 row-start-2 sm:col-start-2 sm:row-start-1">
+        <MoneyInput aria-label={`${label} 월 금액`} value={amount || null} onChange={(v) => onAmount(v ?? 0)} showKoreanHint={false} />
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`${label} 삭제`}
+        className="col-start-2 row-start-1 sm:col-start-3 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <Trash2 className="w-4 h-4" aria-hidden="true" />
+      </button>
+    </li>
+  );
+}
 
 export default function ClientMonthlyIncomeExpenseModal({
   isOpen,
@@ -64,7 +148,7 @@ export default function ClientMonthlyIncomeExpenseModal({
 }: ClientMonthlyIncomeExpenseModalProps) {
   // 소득 유형 탭 ('BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME')
   const [selectedIncomeType, setSelectedIncomeType] = useState<DetailedIncomeType>('BUSINESS');
-  
+
   // 사업자 간편 마법사 상태
   const [bizCard, setBizCard] = useState<number>(0);
   const [bizCash, setBizCash] = useState<number>(0);
@@ -73,8 +157,8 @@ export default function ClientMonthlyIncomeExpenseModal({
   const [bizUtility, setBizUtility] = useState<number>(0);
   const [bizElectricity, setBizElectricity] = useState<number>(0);
   const [dynamicExpenses, setDynamicExpenses] = useState<DynamicExpenseItem[]>([]);
-  
-  // 사업자: 1분 간편 마법사 vs 12개월 상세 엑셀 토글
+
+  // 사업자: 질문 방식 vs 12개월 표 직접 입력
   const [viewMode, setViewMode] = useState<'wizard' | 'sheet'>('wizard');
   const [manualMonths, setManualMonths] = useState<MonthlyLedgerItem[]>([]);
 
@@ -99,8 +183,22 @@ export default function ClientMonthlyIncomeExpenseModal({
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const dialog = useDialog();
 
-  // 🎙️ 말로 작성하는 수지표 (Voice Assistant) 상태
+  // 저장 경로: 변호사 CRM 연동 콜백이 있으면 사건 기록(서버), 없으면(회생동행 등) 이 기기에 저장
+  const savesToCrm = typeof onSaveD5103 === 'function';
+  const wasSubmitted = initialD5103?.d5103ClientStatus === 'client_submitted' || !!initialD5103?.d5103ClientSubmittedAt;
+
+  // 입력값 직렬화(변경 감지·자동 저장 기준)
+  const formSnapshot = JSON.stringify([
+    selectedIncomeType, bizCard, bizCash, bizBaseOperating, bizRent, bizUtility, bizElectricity, dynamicExpenses,
+    viewMode, manualMonths, flJobType, flGross, flExpenses, dlWorkDays, dlDailyWage, dlIsCash, ptWorkplaces,
+  ]);
+  // 기존 데이터 복원이 화면에 반영된 뒤의 상태를 기준점으로 삼는다(아래 초기 데이터 로드 effect가 restoreTick을 올림)
+  const [restoreTick, setRestoreTick] = useState(0);
+  const restoredFromRef = useRef<'none' | 'default' | 'data'>('none');
+
+  // 말로 작성하는 수지표(음성 입력) 상태
   const [isVoicePanelOpen, setIsVoicePanelOpen] = useState<boolean>(false);
   const [voiceParsedItems, setVoiceParsedItems] = useState<{ type: 'card' | 'cash' | 'rent' | 'utility' | 'expense'; label: string; amount: number }[]>([]);
   const [voiceTranscriptText, setVoiceTranscriptText] = useState<string>('');
@@ -204,15 +302,17 @@ export default function ClientMonthlyIncomeExpenseModal({
       if (cardOrCash) setFlGross(cardOrCash.amount);
     }
 
-    toast.success(`음성으로 인식된 ${appliedCount}개 수입·경비 항목이 수지표에 자동 반영되었습니다!`);
+    toast.success(`말한 내용에서 찾은 ${appliedCount}개 항목을 반영했어요. 금액이 맞는지 확인해 주세요.`);
     setIsVoicePanelOpen(false);
   };
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 — 저장본은 한 번만 불러온다(저장 뒤 부모가 새 객체를 넘겨도 입력 중인 화면을 덮어쓰지 않게)
   useEffect(() => {
     if (!isOpen) return;
+    if (restoredFromRef.current === 'data') return;
 
     if (initialD5103) {
+      restoredFromRef.current = 'data';
       if (initialD5103.detailedIncomeType) {
         setSelectedIncomeType(initialD5103.detailedIncomeType);
       } else if (initialD5103.incomeType === 'BUSINESS') {
@@ -259,7 +359,8 @@ export default function ClientMonthlyIncomeExpenseModal({
       if (initialD5103.partTimeLedger && initialD5103.partTimeLedger.workplaces) {
         setPtWorkplaces(initialD5103.partTimeLedger.workplaces);
       }
-    } else {
+    } else if (restoredFromRef.current === 'none') {
+      restoredFromRef.current = 'default';
       // 기본 12개월 생성
       const initialLedger = generateMonthlyLedgerFromWizardInputs({
         avgMonthlyCard: bizCard,
@@ -271,7 +372,11 @@ export default function ClientMonthlyIncomeExpenseModal({
         dynamicExpenses
       });
       setManualMonths(initialLedger.months);
+    } else {
+      return;
     }
+    setRestoreTick(t => t + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialD5103]);
 
   // 간편 마법사 입력값 변경 시 12개월 원장 실시간 동기화 계산
@@ -308,7 +413,102 @@ export default function ClientMonthlyIncomeExpenseModal({
     return ptWorkplaces.reduce((sum, wp) => sum + (wp.monthlyGrossIncome || 0), 0);
   }, [ptWorkplaces]);
 
+  // 현재 입력값으로 D5103 데이터 만들기(선택한 소득 형태만 반영)
+  const buildD5103 = (isSubmittingToLawyer: boolean): IncomeExpenseD5103Data => {
+    let baseD5103 = initialD5103 ? { ...initialD5103 } : ({} as IncomeExpenseD5103Data);
+
+    if (selectedIncomeType === 'BUSINESS') {
+      baseD5103 = syncBusinessLedgerToD5103(baseD5103, generatedLedger);
+    } else if (selectedIncomeType === 'FREELANCER') {
+      const flLedger: FreelancerMonthlyLedger = {
+        jobTypeDetail: flJobType,
+        monthlyGrossIncome: flGross,
+        expenses: flExpenses,
+        totalMonthlyExpenses: flTotalExpenses,
+        netMonthlyIncome: flNetIncome,
+        annualGrossRevenue: flGross * 12,
+        evidenceDocuments: [
+          '사업소득 원천징수영수증 (3.3%)',
+          '최근 1년분 입금 거래내역서',
+          '용역/위촉 계약서'
+        ]
+      };
+      baseD5103 = syncFreelancerLedgerToD5103(baseD5103, flLedger);
+    } else if (selectedIncomeType === 'DAY_LABORER') {
+      const dlLedger: DayLaborerLedger = {
+        workDaysPerMonth: dlWorkDays,
+        dailyWage: dlDailyWage,
+        monthlyGrossIncome: dlMonthlyIncome,
+        isDirectCash: dlIsCash,
+        evidenceDocuments: [
+          '일용근로소득지급명세서',
+          '고용산재보험 토탈서비스 일용근로내역서',
+          '급여입금통장 거래내역서'
+        ]
+      };
+      baseD5103 = syncDayLaborerLedgerToD5103(baseD5103, dlLedger);
+    } else if (selectedIncomeType === 'PART_TIME') {
+      const ptLedger: PartTimeLedger = {
+        workplaces: ptWorkplaces,
+        totalMonthlyGrossIncome: ptTotalIncome,
+        evidenceDocuments: [
+          '근로계약서 사본',
+          '급여입금통장 거래내역서',
+          '아르바이트 급여명세서'
+        ]
+      };
+      baseD5103 = syncPartTimeToD5103(baseD5103, ptLedger);
+    }
+
+    if (isSubmittingToLawyer) {
+      baseD5103.d5103ClientStatus = 'client_submitted';
+      baseD5103.d5103ClientSubmittedAt = new Date().toISOString();
+    } else {
+      // 임시저장이 이미 제출된 상태를 되돌리지 않도록 기존 상태 유지
+      baseD5103.d5103ClientStatus = baseD5103.d5103ClientStatus || 'not_started';
+    }
+    baseD5103.lastSavedAt = new Date().toISOString();
+    return baseD5103;
+  };
+
+  const persistD5103 = async (data: IncomeExpenseD5103Data) => {
+    if (onSaveD5103) {
+      await onSaveD5103(data);
+    } else {
+      // 연동 대상이 없으면 이 기기에만 저장한다
+      secureSetItem(`legal_crm_d5103_${clientId}`, JSON.stringify(data));
+    }
+  };
+
+  // 저장 상태: 이 기기 저장은 입력이 멈추면 자동 저장, 사건 기록(서버) 저장은 임시 저장 버튼·닫을 때 저장
+  const { saveState, isDirty, saveNow, markSaved } = useDocAutosave({
+    snapshot: formSnapshot,
+    ready: restoreTick > 0,
+    save: () => persistD5103(buildD5103(false)),
+    auto: !savesToCrm,
+    initialSavedAt: initialD5103?.lastSavedAt || null,
+  });
+
   if (!isOpen) return null;
+
+  // 닫기(X·ESC·배경): 바뀐 내용을 먼저 저장하고, 저장에 실패하면 닫을지 묻는다
+  const handleBeforeClose = async (): Promise<boolean> => {
+    if (isSubmitting) return false;
+    if (isListening) toggleListening();
+    if (!isDirty) return true;
+    const ok = await saveNow();
+    if (ok) {
+      if (savesToCrm) toast.success('작성 중인 수지표를 저장했어요.');
+      return true;
+    }
+    return dialog.confirm({
+      title: '수지표를 저장하지 못했어요',
+      message: '네트워크 상태를 확인해 주세요. 지금 닫으면 이번에 입력한 내용이 사라집니다.',
+      confirmText: '저장하지 않고 닫기',
+      cancelText: '계속 작성',
+      variant: 'danger',
+    });
+  };
 
   // 동적 경비 항목 추가
   const handleAddDynamicExpense = () => {
@@ -319,18 +519,16 @@ export default function ClientMonthlyIncomeExpenseModal({
     ]);
   };
 
-  // 프리셋 칩 클릭 추가
+  // 추천 항목 추가(이름만, 금액은 직접 입력)
   const handleAddPresetExpense = (preset: typeof POPULAR_EXPENSE_PRESETS[0]) => {
-    if (dynamicExpenses.some(e => e.name === preset.name)) {
-      toast.info('이미 추가된 항목입니다. 금액을 수정해주세요.');
-      return;
-    }
+    if (dynamicExpenses.some(e => e.name === preset.name)) return;
     const newId = `exp_${Date.now()}`;
     setDynamicExpenses(prev => [
       ...prev,
-      { id: newId, name: preset.name, monthlyAmount: preset.defaultAmt, rollupTarget: preset.target }
+      // 항목 이름만 추가하고 금액은 비워 둔다(이전: 식자재 150만·인건비 120만 등 근거 없는 금액을 자동 입력 → 순소득이 실제와 달라짐)
+      { id: newId, name: preset.name, monthlyAmount: 0, rollupTarget: preset.target }
     ]);
-    toast.success(`[${preset.name}] 항목이 추가되었습니다.`);
+    toast.success(`'${preset.name}' 항목을 추가했어요. 실제 월 금액을 입력해 주세요.`);
   };
 
   // 동적 경비 항목 삭제
@@ -350,1005 +548,623 @@ export default function ClientMonthlyIncomeExpenseModal({
     });
   };
 
-  // 저장 및 제출 핸들러
-  const handleSave = async (isSubmittingToLawyer: boolean) => {
+  const updateWorkplace = (id: string, patch: Partial<PartTimeWorkplace>) => {
+    setPtWorkplaces(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+  };
+
+  // 임시 저장(사건 기록에 저장)
+  const handleSaveDraft = async () => {
+    if (!isDirty) {
+      toast.info('바뀐 내용이 없어요. 이미 저장된 상태입니다.');
+      return;
+    }
+    const ok = await saveNow();
+    if (ok) toast.success(savesToCrm ? '수지표를 임시 저장했어요.' : '수지표를 이 기기에 임시 저장했어요.');
+    else toast.error('수지표를 저장하지 못했어요. 입력한 내용은 화면에 그대로 있으니 잠시 후 다시 시도해 주세요.');
+  };
+
+  // 제출 전 요약(선택한 소득 형태 기준)
+  const typeInfo = INCOME_TYPES.find(t => t.id === selectedIncomeType);
+  const summary = (() => {
+    if (selectedIncomeType === 'BUSINESS') {
+      const avg = generatedLedger.monthlyAverages;
+      return {
+        income: avg.avgGrossRevenue,
+        lines: [
+          `월평균 매출 ${won(avg.avgGrossRevenue)}원`,
+          `월평균 경비 ${won(avg.avgOperatingExpense)}원`,
+          `월평균 순소득 ${won(avg.avgNetIncome)}원`
+        ]
+      };
+    }
+    if (selectedIncomeType === 'FREELANCER') {
+      return {
+        income: flGross,
+        lines: [`월평균 총수입 ${won(flGross)}원`, `필요경비 ${won(flTotalExpenses)}원`, `월평균 순소득 ${won(flNetIncome)}원`]
+      };
+    }
+    if (selectedIncomeType === 'DAY_LABORER') {
+      return { income: dlMonthlyIncome, lines: [`한 달 ${dlWorkDays}일 × 일당 ${won(dlDailyWage)}원`, `월평균 수입 ${won(dlMonthlyIncome)}원`] };
+    }
+    return { income: ptTotalIncome, lines: [`근무지 ${ptWorkplaces.length}곳`, `합산 월소득 ${won(ptTotalIncome)}원`] };
+  })();
+
+  // 작성 완료 · 제출
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    const ok = await dialog.confirm(
+      buildSubmitConfirm({
+        title: savesToCrm ? '수지표를 변호사에게 제출할까요?' : '수지표 작성을 마칠까요?',
+        lines: [`소득 형태: ${typeInfo ? typeInfo.desc : '선택 안 함'}`, ...summary.lines],
+        note: [
+          summary.income <= 0 ? '월 수입이 0원으로 적혀 있어요. 맞는지 한 번 더 확인해 주세요.' : '',
+          savesToCrm
+            ? '제출하면 담당 변호사가 법원 서식에 맞는지 확인합니다.'
+            : '작성 내용은 이 기기에 저장돼요. 변호사에게 보내려면 서류 전달 화면에서 공유해 주세요.'
+        ].filter(Boolean).join('\n'),
+        confirmText: savesToCrm ? '제출하기' : '작성 완료',
+      })
+    );
+    if (!ok) return;
+
     setIsSubmitting(true);
     try {
-      let baseD5103 = initialD5103 ? { ...initialD5103 } : ({} as IncomeExpenseD5103Data);
-
-      if (selectedIncomeType === 'BUSINESS') {
-        const finalLedger = viewMode === 'sheet' && manualMonths.length === 12
-          ? recalculateBusinessMonthlyLedger(manualMonths, dynamicExpenses)
-          : generatedLedger;
-        baseD5103 = syncBusinessLedgerToD5103(baseD5103, finalLedger);
-      } else if (selectedIncomeType === 'FREELANCER') {
-        const flLedger: FreelancerMonthlyLedger = {
-          jobTypeDetail: flJobType,
-          monthlyGrossIncome: flGross,
-          expenses: flExpenses,
-          totalMonthlyExpenses: flTotalExpenses,
-          netMonthlyIncome: flNetIncome,
-          annualGrossRevenue: flGross * 12,
-          evidenceDocuments: [
-            '사업소득 원천징수영수증 (3.3%)',
-            '최근 1년분 입금 거래내역서',
-            '용역/위촉 계약서'
-          ]
-        };
-        baseD5103 = syncFreelancerLedgerToD5103(baseD5103, flLedger);
-      } else if (selectedIncomeType === 'DAY_LABORER') {
-        const dlLedger: DayLaborerLedger = {
-          workDaysPerMonth: dlWorkDays,
-          dailyWage: dlDailyWage,
-          monthlyGrossIncome: dlMonthlyIncome,
-          isDirectCash: dlIsCash,
-          evidenceDocuments: [
-            '일용근로소득지급명세서',
-            '고용산재보험 토탈서비스 일용근로내역서',
-            '급여입금통장 거래내역서'
-          ]
-        };
-        baseD5103 = syncDayLaborerLedgerToD5103(baseD5103, dlLedger);
-      } else if (selectedIncomeType === 'PART_TIME') {
-        const ptLedger: PartTimeLedger = {
-          workplaces: ptWorkplaces,
-          totalMonthlyGrossIncome: ptTotalIncome,
-          evidenceDocuments: [
-            '근로계약서 사본',
-            '급여입금통장 거래내역서',
-            '아르바이트 급여명세서'
-          ]
-        };
-        baseD5103 = syncPartTimeToD5103(baseD5103, ptLedger);
-      }
-
-      // 상태 업데이트
-      if (isSubmittingToLawyer) {
-        baseD5103.d5103ClientStatus = 'client_submitted';
-        baseD5103.d5103ClientSubmittedAt = new Date().toISOString();
-      } else {
-        // 임시저장이 이미 제출된 상태를 되돌리지 않도록 기존 상태 유지
-        baseD5103.d5103ClientStatus = baseD5103.d5103ClientStatus || 'not_started';
-      }
-      baseD5103.lastSavedAt = new Date().toISOString();
-
-      if (onSaveD5103) {
-        await onSaveD5103(baseD5103);
-      }
-
-      if (isSubmittingToLawyer) {
-        toast.success('수지표가 작성되어 담당 변호사에게 제출되었습니다! 변호사가 법원 서식 확인 후 검토를 완료합니다.');
-        onClose();
-      } else {
-        toast.success('수지표 작성 내용이 임시 저장되었습니다.');
-      }
+      if (isListening) toggleListening();
+      const data = buildD5103(true);
+      await persistD5103(data);
+      markSaved(data.lastSavedAt);
+      toast.success(
+        savesToCrm
+          ? '수지표를 담당 변호사에게 제출했습니다. 변호사가 법원 서식에 맞는지 확인합니다.'
+          : '수지표 작성을 마치고 이 기기에 저장했습니다. 담당 변호사에게 보내려면 서류 전달 화면에서 공유해 주세요.'
+      );
+      onClose();
     } catch (err) {
       console.error(err);
-      toast.error('수지표 저장 중 오류가 발생했습니다.');
+      toast.error('수지표를 저장하지 못했습니다. 입력한 내용은 화면에 그대로 있으니 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const won = (n: number) => (n || 0).toLocaleString();
+  const handleMicClick = () => {
+    if (!isSpeechSupported) {
+      toast.error('이 브라우저는 음성 입력을 지원하지 않습니다. 금액을 직접 입력해 주세요.');
+      return;
+    }
+    if (isListening) {
+      // 듣는 중 클릭 = 인식 종료 (패널은 유지해 결과 확인)
+      toggleListening();
+      return;
+    }
+    setIsVoicePanelOpen(true);
+    toggleListening();
+  };
+
+  const moneyField = (label: string, value: number, set: (v: number) => void, hint?: string) => (
+    <FormField label={label} hint={hint}>
+      {(p) => <MoneyInput {...p} value={value || null} onChange={(v) => set(v ?? 0)} />}
+    </FormField>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]">
-        
-        {/* 상단 헤더 */}
-        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-brand-sm">
-              <Calculator className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white">수입 및 지출 내역서 (수지표) 간편 작성</h3>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  고객 맞춤 1분 모드
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                복잡한 12개월 엑셀을 몰라도 괜찮습니다. 평소 월평균 매출과 경비만 툭툭 적으시면 법원 양식으로 자동 변환됩니다.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
-            aria-label="닫기"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <DocModal
+      open={isOpen}
+      onClose={onClose}
+      onBeforeClose={handleBeforeClose}
+      closeLabel="수지표 닫기"
+      icon={<Calculator className="w-5 h-5" />}
+      title="수입·지출 내역서(수지표) 작성"
+      description="평소 한 달 수입과 지출을 적으면 법원 제출용 12개월 표로 정리돼요. 담당 변호사가 확인한 뒤 확정합니다."
+      badges={wasSubmitted ? <Badge tone="success">{savesToCrm ? '변호사에게 제출함' : '작성 완료'}</Badge> : null}
+      saveState={saveState}
+      saveTarget={savesToCrm ? 'server' : 'device'}
+      dirtyLabel={savesToCrm ? '저장 전 변경이 있어요 · 닫으면 자동 저장돼요' : '입력 중 · 잠시 뒤 자동 저장돼요'}
+      idleLabel={savesToCrm ? '닫으면 자동 저장돼요' : '입력하면 이 기기에 자동 저장돼요'}
+      subHeader={
+        <div className="px-4 sm:px-6 py-3 bg-white">
+          <SegmentedTabs<DetailedIncomeType>
+            tabs={INCOME_TYPES.map(t => ({ id: t.id, label: t.label }))}
+            value={selectedIncomeType}
+            onChange={setSelectedIncomeType}
+            ariaLabel="주된 소득 형태"
+            idPrefix="ie"
+          />
         </div>
+      }
+      footer={
+        <>
+          <div className="flex items-center gap-2">
+            {savesToCrm && (
+              <Button
+                variant="secondary"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting || saveState.status === 'saving'}
+                leftIcon={<Save className="w-4 h-4" aria-hidden="true" />}
+              >
+                임시 저장
+              </Button>
+            )}
+          </div>
+          <Button
+            onClick={handleSubmit}
+            loading={isSubmitting}
+            leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}
+            className="flex-1 sm:flex-none"
+          >
+            {savesToCrm ? '변호사에게 제출' : '작성 완료'}
+          </Button>
+        </>
+      }
+    >
+      <div
+        role="tabpanel"
+        id={`ie-panel-${selectedIncomeType}`}
+        aria-labelledby={`ie-tab-${selectedIncomeType}`}
+        className="space-y-5"
+      >
+        <p className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed break-keep">
+          <Info className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+          <span>
+            <b className="text-slate-900">{typeInfo ? typeInfo.desc : '선택한 소득 형태'}</b> 기준으로 적어 주세요. 금액은 원 단위예요.
+          </span>
+        </p>
 
-        {/* 🎙️ 말로 작성하는 1분 수지표 AI 음성 비서 바 */}
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-3.5 px-5 border-b border-indigo-500/30 flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-500 text-white shrink-0 shadow-xs">
-                <Mic className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-black text-white">
-                    🎙️ 말로 작성하는 수지표 (음성 AI 비서)
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-slate-950">
-                    원터치 음성 입력
-                  </span>
-                </div>
-                <p className="text-[11px] text-indigo-200 mt-0.5">
-                  "카드매출 400에 현금 100이고, 월세 90, 배달대행 60, 식자재 180 나가요"라고 말씀하시면 금액을 자동으로 찾아 채워 드립니다. 반영 전 금액을 꼭 확인해 주세요.
+        {/* 말로 입력하기(음성) — 모바일에서도 한 줄로(입력 칸이 첫 화면에 보이게) */}
+        <section aria-labelledby="ie-voice-title" className="rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center sm:items-start gap-3 min-w-0">
+              <span className="w-10 h-10 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0" aria-hidden="true">
+                <Mic className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <h3 id="ie-voice-title" className="text-sm font-bold text-slate-900">말로 입력하기</h3>
+                <p className="hidden sm:block mt-0.5 text-xs text-slate-600 leading-relaxed break-keep">
+                  "카드 매출 400, 현금 100, 월세 90, 배달대행 60"처럼 말하면 금액을 찾아 드려요. 반영하기 전에 금액을 꼭 확인해 주세요.
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (!isSpeechSupported) {
-                  toast.error('이 브라우저는 음성 입력을 지원하지 않습니다. 금액을 직접 입력해 주세요.');
-                  return;
-                }
-                if (isListening) {
-                  // 듣는 중 클릭 = 인식 종료 (패널은 유지해 결과 확인)
-                  toggleListening();
-                  return;
-                }
-                setIsVoicePanelOpen(true);
-                toggleListening();
-              }}
-              className={`px-3.5 min-h-[44px] whitespace-nowrap rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm ${
-                isListening
-                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                  : 'bg-white text-indigo-950 hover:bg-indigo-50'
-              }`}
+            <Button
+              variant={isListening ? 'danger' : 'secondary'}
+              onClick={handleMicClick}
+              aria-pressed={isListening}
+              leftIcon={isListening ? <MicOff className="w-4 h-4" aria-hidden="true" /> : <Mic className="w-4 h-4" aria-hidden="true" />}
+              className="shrink-0"
             >
-              {isListening ? (
-                <>
-                  <MicOff className="w-3.5 h-3.5" />
-                  <span>듣고 있는 중... (완료 시 클릭)</span>
-                </>
-              ) : (
-                <>
-                  <Mic className="w-3.5 h-3.5 text-blue-600" />
-                  <span>마이크 켜고 말로 쓰기</span>
-                </>
-              )}
-            </button>
+              {isListening ? '끝내기' : '마이크 켜기'}
+            </Button>
           </div>
 
-          {/* 음성 인식 확장 패널 */}
           {isVoicePanelOpen && (
-            <div className="p-3.5 bg-black/40 rounded-xl border border-white/15 space-y-3 animate-fadeIn">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-                  실시간 인식 텍스트:
+                <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5 text-brand" aria-hidden="true" />
+                  들은 내용
                 </span>
                 {isListening && (
-                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    음성 수신 중...
+                  <span className="font-bold text-emerald-700 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                    듣는 중
                   </span>
                 )}
               </div>
-
-              <div className="p-2.5 bg-slate-950/80 rounded-lg border border-white/10 text-xs text-white min-h-[44px] leading-relaxed">
+              <p className="min-h-11 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-800 leading-relaxed break-keep">
                 {voiceTranscriptText || (
-                  <span className="text-slate-500 italic">
-                    지금 말씀해 주세요. (예: "매출은 카드로 380만원 들어오고, 월세 80에 배달비 50, 재료비 150만원 써요")
+                  <span className="text-slate-500">
+                    지금 말씀해 주세요. 예: "카드 매출 400, 현금 100, 월세 90, 배달대행 60" — 반영하기 전에 금액을 꼭 확인해 주세요.
                   </span>
                 )}
-              </div>
+              </p>
 
               {voiceParsedItems.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  <div className="text-[11px] text-slate-300 font-bold">
-                    💡 AI가 추출한 수입·지출 항목 ({voiceParsedItems.length}건):
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-700">찾은 금액 {voiceParsedItems.length}건</p>
+                  <ul className="flex flex-wrap gap-1.5">
                     {voiceParsedItems.map((item, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1"
-                      >
-                        <span>{item.label}:</span>
-                        <span className="text-white font-mono">{won(item.amount)}원</span>
-                      </span>
+                      <li key={idx} className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800">
+                        {item.label} <span className="text-brand tabular-nums">{won(item.amount)}원</span>
+                      </li>
                     ))}
-                  </div>
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <button
-                      type="button"
+                  </ul>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
                       onClick={() => {
                         setVoiceParsedItems([]);
                         setVoiceTranscriptText('');
                       }}
-                      className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg transition"
                     >
                       다시 말하기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={applyVoiceItemsToForm}
-                      className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>수지표에 일괄 반영하기</span>
-                    </button>
+                    </Button>
+                    <Button onClick={applyVoiceItemsToForm} leftIcon={<Sparkles className="w-4 h-4" aria-hidden="true" />}>
+                      수지표에 반영
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* 안내 바 & 5대 소득 유형 탭 선택 */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-blue-600" />
-              신청인의 주된 소득 형태를 선택해 주세요
-            </span>
-            <span className="text-xs text-slate-500">
-              * 작성 후 변호사가 최종 검토 및 법원 엑셀 서식으로 인쇄 제출합니다
-            </span>
-          </div>
+        {/* ════════════ 1. 개인사업자 ════════════ */}
+        {selectedIncomeType === 'BUSINESS' && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white pl-4 pr-2 py-2">
+              <p className="text-sm font-bold text-slate-800 break-keep">
+                {viewMode === 'wizard' ? '질문에 답하며 입력 중' : '12개월 표에서 입력 중'}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (viewMode === 'wizard') {
+                    setManualMonths(generatedLedger.months);
+                    setViewMode('sheet');
+                  } else {
+                    setViewMode('wizard');
+                  }
+                }}
+                leftIcon={viewMode === 'wizard' ? <Table2 className="w-4 h-4" aria-hidden="true" /> : <ListChecks className="w-4 h-4" aria-hidden="true" />}
+                className="shrink-0"
+              >
+                {viewMode === 'wizard' ? '12개월 표로 보기' : '질문 방식으로'}
+              </Button>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedIncomeType('BUSINESS')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition-all border ${
-                selectedIncomeType === 'BUSINESS'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Store className="w-4 h-4" />
-              <span>개인사업자 (매장/도소매)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedIncomeType('FREELANCER')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition-all border ${
-                selectedIncomeType === 'FREELANCER'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>프리랜서 (3.3%·배달)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedIncomeType('DAY_LABORER')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition-all border ${
-                selectedIncomeType === 'DAY_LABORER'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Hammer className="w-4 h-4" />
-              <span>일용직 (현장·일당)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedIncomeType('PART_TIME')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition-all border ${
-                selectedIncomeType === 'PART_TIME'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>단기/아르바이트</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 본문 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          
-          {/* ════════════ 1. 개인사업자 입력 영역 ════════════ */}
-          {selectedIncomeType === 'BUSINESS' && (
-            <div className="space-y-6">
-              
-              {/* 마법사 vs 12개월 엑셀 전환 버튼 */}
-              <div className="flex items-center justify-between bg-blue-50/60 p-3 rounded-xl border border-blue-100">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                    {viewMode === 'wizard' ? '현재 모드: 1분 초간편 마법사 (추천)' : '현재 모드: 12개월 정밀 엑셀 표'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (viewMode === 'wizard') {
-                      setManualMonths(generatedLedger.months);
-                      setViewMode('sheet');
-                    } else {
-                      setViewMode('wizard');
-                    }
-                  }}
-                  className="text-xs font-medium text-blue-700 hover:text-blue-900 bg-white border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-xs"
-                >
-                  {viewMode === 'wizard' ? '월별 엑셀 표 직접 보기/수정 →' : '← 간편 마법사로 돌아가기'}
-                </button>
-              </div>
-
-              {viewMode === 'wizard' ? (
-                <>
-                  {/* 카드 1: 월평균 수입(매출) */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">1</span>
-                        <h4 className="font-bold text-slate-800 text-sm sm:text-base">월평균 매출 (수입) 입력</h4>
-                      </div>
-                      <span className="text-xs text-slate-500">통장 및 포스기 평균치</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          월평균 카드 매출액
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step={10000}
-                            value={bizCard || ''}
-                            onChange={e => setBizCard(Number(e.target.value))}
-                            placeholder="0"
-                            className="w-full px-3 py-2.5 pr-10 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs text-slate-500">원</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">약 {(bizCard / 10000).toLocaleString()}만 원</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          월평균 현금 / 계좌이체 매출액
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step={10000}
-                            value={bizCash || ''}
-                            onChange={e => setBizCash(Number(e.target.value))}
-                            placeholder="0"
-                            className="w-full px-3 py-2.5 pr-10 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs text-slate-500">원</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">약 {(bizCash / 10000).toLocaleString()}만 원</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-emerald-50 rounded-xl flex items-center justify-between border border-emerald-100">
-                      <span className="text-xs font-bold text-emerald-800">월 총매출액 합계</span>
-                      <span className="text-sm sm:text-base font-extrabold text-emerald-900">
-                        {won(bizCard + bizCash)} 원 <span className="text-xs font-normal text-emerald-700">({((bizCard + bizCash) / 10000).toFixed(0)}만 원)</span>
-                      </span>
-                    </div>
+            {viewMode === 'wizard' ? (
+              <>
+                <section aria-labelledby="ie-biz-income" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                  <StepTitle id="ie-biz-income" num={1} title="월평균 매출(수입)" hint="통장·카드 단말기 기준 평균" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {moneyField('월평균 카드 매출', bizCard, setBizCard)}
+                    {moneyField('월평균 현금·계좌이체 매출', bizCash, setBizCash)}
                   </div>
-
-                  {/* 카드 2: 고정 사업장 지출 (월세 및 공과금) */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">2</span>
-                        <h4 className="font-bold text-slate-800 text-sm sm:text-base">사업장 고정 월세 및 공과금</h4>
-                      </div>
-                      <span className="text-xs text-slate-500">법원 4대 표준 지출 항목</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          사업장 월세 (임대료)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step={10000}
-                            value={bizRent || ''}
-                            onChange={e => setBizRent(Number(e.target.value))}
-                            placeholder="0"
-                            className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          전기요금 (한전 월평균)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step={10000}
-                            value={bizElectricity || ''}
-                            onChange={e => setBizElectricity(Number(e.target.value))}
-                            placeholder="0"
-                            className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          가스·수도·등유요금
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step={10000}
-                            value={bizUtility || ''}
-                            onChange={e => setBizUtility(Number(e.target.value))}
-                            placeholder="0"
-                            className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        기본 운영비 (재료구입·상품매입 등)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step={10000}
-                          value={bizBaseOperating || ''}
-                          onChange={e => setBizBaseOperating(Number(e.target.value))}
-                          placeholder="0"
-                          className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                    <span className="text-sm font-bold text-emerald-900">월 매출 합계</span>
+                    <span className="text-base font-extrabold text-emerald-900 tabular-nums">{won(bizCard + bizCash)}원</span>
                   </div>
+                </section>
 
-                  {/* 카드 3: 자주 쓰는 경비 원터치 칩 & 무제한 경비 추가 */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">3</span>
-                        <h4 className="font-bold text-slate-800 text-sm sm:text-base">추가 경비 항목 (원터치 추가 & 직접 등록)</h4>
-                      </div>
-                      <span className="text-xs text-amber-800 font-medium">실제 지출한 경비만 입력하고 영수증·이체내역을 보관해 주세요.</span>
-                    </div>
+                <section aria-labelledby="ie-biz-fixed" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                  <StepTitle id="ie-biz-fixed" num={2} title="사업장 월세와 공과금" hint="사업장에서 매달 나가는 돈" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {moneyField('사업장 월세(임대료)', bizRent, setBizRent)}
+                    {moneyField('전기요금(월평균)', bizElectricity, setBizElectricity)}
+                    {moneyField('가스·수도·등유 요금', bizUtility, setBizUtility)}
+                  </div>
+                  {moneyField('기본 운영비(재료 구입·상품 매입 등)', bizBaseOperating, setBizBaseOperating)}
+                </section>
 
-                    {/* 추천 칩 */}
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 mb-2">
-                        💡 아래 추천 항목을 누르면 바로 목록에 추가됩니다:
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {POPULAR_EXPENSE_PRESETS.map((preset, idx) => (
+                <section aria-labelledby="ie-biz-extra" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                  <StepTitle id="ie-biz-extra" num={3} title="그 밖의 경비" hint="실제로 쓴 경비만 적고 영수증·이체 내역을 보관해 주세요" />
+                  <div>
+                    <p className="mb-2 text-sm text-slate-700">자주 쓰는 항목을 누르면 목록에 추가돼요.</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {POPULAR_EXPENSE_PRESETS.map((preset) => {
+                        const added = dynamicExpenses.some(e => e.name === preset.name);
+                        return (
                           <button
-                            key={idx}
+                            key={preset.name}
                             type="button"
                             onClick={() => handleAddPresetExpense(preset)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-blue-100 hover:text-blue-800 border border-slate-200 transition"
+                            disabled={added}
+                            className={cn(
+                              'inline-flex items-center gap-1 min-h-11 px-3 rounded-xl border text-sm font-medium transition-colors',
+                              added
+                                ? 'border-brand/20 bg-brand-light text-brand cursor-default'
+                                : 'border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brand'
+                            )}
                           >
-                            <Plus className="w-3 h-3 text-slate-500" />
+                            {added ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Plus className="w-3.5 h-3.5" aria-hidden="true" />}
                             {preset.name}
+                            {added && <span className="sr-only">(추가됨)</span>}
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
+                  </div>
 
-                    {/* 추가된 경비 리스트 */}
-                    <div className="space-y-2 pt-2">
+                  {dynamicExpenses.length > 0 && (
+                    <ul className="space-y-2">
                       {dynamicExpenses.map((exp) => (
-                        <div key={exp.id} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                          <input
-                            type="text"
-                            value={exp.name}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setDynamicExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, name: val } : item));
-                            }}
-                            placeholder="경비 항목명"
-                            className="flex-1 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500"
-                          />
-                          <div className="relative w-36 sm:w-44">
-                            <input
-                              type="number"
-                              step={10000}
-                              value={exp.monthlyAmount || ''}
-                              onChange={e => {
-                                const val = Number(e.target.value);
-                                setDynamicExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, monthlyAmount: val } : item));
-                              }}
-                              placeholder="0"
-                              className="w-full px-3 py-1.5 pr-8 text-right text-xs font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500"
-                            />
-                            <span className="absolute right-2.5 top-1.5 text-xs text-slate-400">원</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveDynamicExpense(exp.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <ExpenseRow
+                          key={exp.id}
+                          name={exp.name}
+                          amount={exp.monthlyAmount}
+                          onName={(val) => setDynamicExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, name: val } : item))}
+                          onAmount={(val) => setDynamicExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, monthlyAmount: val } : item))}
+                          onRemove={() => handleRemoveDynamicExpense(exp.id)}
+                        />
                       ))}
+                    </ul>
+                  )}
 
-                      <button
-                        type="button"
-                        onClick={handleAddDynamicExpense}
-                        className="w-full py-2 border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center justify-center gap-1.5 transition"
-                      >
-                        <Plus className="w-4 h-4" />
-                        경비 항목 직접 추가하기
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                /* 12개월 엑셀 표 직접 편집 모드 */
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">12개월 수입 및 지출 명세서 (엑셀 정밀 수정)</h4>
-                      <p className="text-xs text-slate-500">법원 제출용 12개월 원본 표입니다. 각 월별 셀을 직접 수정하실 수 있습니다.</p>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table className="w-full text-xs text-left text-slate-700 border-collapse min-w-[700px]">
-                      <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                        <tr>
-                          <th className="p-2 border-r border-slate-200 text-center">날짜</th>
-                          <th className="p-2 border-r border-slate-200 text-right">카드(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right">현금(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right bg-emerald-50 text-emerald-900">수입 소계</th>
-                          <th className="p-2 border-r border-slate-200 text-right">운영비(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right">월세(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right">공과금(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right">전기료(원)</th>
-                          <th className="p-2 border-r border-slate-200 text-right bg-red-50 text-red-900">지출 소계</th>
-                          <th className="p-2 text-right bg-blue-50 text-blue-900 font-bold">월 순수익</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {manualMonths.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2 border-r border-slate-200 text-center font-medium">{row.month}</td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.incomeCard || 0}
-                                onChange={e => handleCellChange(idx, 'incomeCard', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.incomeCash || 0}
-                                onChange={e => handleCellChange(idx, 'incomeCash', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-2 border-r border-slate-200 text-right font-semibold bg-emerald-50/40">
-                              {won((row.incomeCard || 0) + (row.incomeCash || 0))}
-                            </td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.expenseOperating || 0}
-                                onChange={e => handleCellChange(idx, 'expenseOperating', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.expenseRent || 0}
-                                onChange={e => handleCellChange(idx, 'expenseRent', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.expenseUtility || 0}
-                                onChange={e => handleCellChange(idx, 'expenseUtility', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-1 border-r border-slate-200">
-                              <input
-                                type="number"
-                                value={row.expenseElectricity || 0}
-                                onChange={e => handleCellChange(idx, 'expenseElectricity', Number(e.target.value))}
-                                className="w-full p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td className="p-2 border-r border-slate-200 text-right font-semibold bg-red-50/40">
-                              {won((row.expenseOperating || 0) + (row.expenseRent || 0) + (row.expenseUtility || 0) + (row.expenseElectricity || 0))}
-                            </td>
-                            <td className="p-2 text-right font-bold text-blue-700 bg-blue-50/40">
-                              {won(
-                                ((row.incomeCard || 0) + (row.incomeCash || 0)) -
-                                ((row.expenseOperating || 0) + (row.expenseRent || 0) + (row.expenseUtility || 0) + (row.expenseElectricity || 0))
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* 실시간 월평균 순수익 요약 카드 */}
-              <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <Button variant="secondary" fullWidth onClick={handleAddDynamicExpense} leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />} className="border-dashed">
+                    경비 항목 직접 추가
+                  </Button>
+                </section>
+              </>
+            ) : (
+              /* 12개월 표 직접 편집 */
+              <section aria-labelledby="ie-sheet-title" className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">입력값 기준 예상 계산치</span>
-                  <h4 className="text-base sm:text-lg font-bold text-white mt-0.5">
-                    월평균 실질 순소득: <span className="text-emerald-400 font-extrabold text-xl">{won(generatedLedger.monthlyAverages.avgNetIncome)} 원</span>
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    연간 총매출 {won(generatedLedger.annualTotals.totalGrossRevenue)}원 - 총경비 {won(generatedLedger.annualTotals.totalOperatingExpense)}원 = 연 순익 {won(generatedLedger.annualTotals.totalNetProfit)}원
-                  </p>
-                </div>
-                <div className="text-right sm:text-right shrink-0">
-                  <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-                    담당 변호사 검토 후 확정
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ════════════ 2. 프리랜서 (3.3%) 입력 영역 ════════════ */}
-          {selectedIncomeType === 'FREELANCER' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h4 className="font-bold text-slate-800 text-base">프리랜서 용역 직종 및 월 총수입</h4>
-                  <span className="text-xs text-slate-500">3.3% 사업소득자</span>
+                  <h3 id="ie-sheet-title" className="text-base font-bold text-slate-900">12개월 수입·지출 표</h3>
+                  <p className="text-sm text-slate-600">법원 제출용 12개월 표입니다. 달마다 금액이 다르면 칸을 직접 고쳐 주세요.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      세부 직종 (용역 분야)
-                    </label>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl" role="region" aria-label="12개월 수입·지출 표" tabIndex={0}>
+                  <table className="w-full text-xs text-left text-slate-700 border-collapse min-w-[700px]">
+                    <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-center">날짜</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">카드(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">현금(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right bg-emerald-50 text-emerald-900">수입 소계</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">운영비(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">월세(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">공과금(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right">전기료(원)</th>
+                        <th scope="col" className="p-2 border-r border-slate-200 text-right bg-red-50 text-red-900">지출 소계</th>
+                        <th scope="col" className="p-2 text-right bg-blue-50 text-blue-900 font-bold">월 순수익</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {manualMonths.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <th scope="row" className="p-2 border-r border-slate-200 text-center font-medium">{row.month}</th>
+                          {([
+                            ['incomeCard', '카드 매출'],
+                            ['incomeCash', '현금 매출'],
+                          ] as [keyof MonthlyLedgerItem, string][]).map(([field, label]) => (
+                            <td key={field} className="p-1 border-r border-slate-200">
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                value={(row[field] as number) || 0}
+                                onChange={e => handleCellChange(idx, field, Number(e.target.value) || 0)}
+                                aria-label={`${row.month} ${label}`}
+                                className="w-full min-h-9 p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-brand rounded tabular-nums"
+                              />
+                            </td>
+                          ))}
+                          <td className="p-2 border-r border-slate-200 text-right font-semibold bg-emerald-50/40 tabular-nums">
+                            {won((row.incomeCard || 0) + (row.incomeCash || 0))}
+                          </td>
+                          {([
+                            ['expenseOperating', '운영비'],
+                            ['expenseRent', '월세'],
+                            ['expenseUtility', '공과금'],
+                            ['expenseElectricity', '전기료'],
+                          ] as [keyof MonthlyLedgerItem, string][]).map(([field, label]) => (
+                            <td key={field} className="p-1 border-r border-slate-200">
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                value={(row[field] as number) || 0}
+                                onChange={e => handleCellChange(idx, field, Number(e.target.value) || 0)}
+                                aria-label={`${row.month} ${label}`}
+                                className="w-full min-h-9 p-1 text-right border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-brand rounded tabular-nums"
+                              />
+                            </td>
+                          ))}
+                          <td className="p-2 border-r border-slate-200 text-right font-semibold bg-red-50/40 tabular-nums">
+                            {won((row.expenseOperating || 0) + (row.expenseRent || 0) + (row.expenseUtility || 0) + (row.expenseElectricity || 0))}
+                          </td>
+                          <td className="p-2 text-right font-bold text-blue-700 bg-blue-50/40 tabular-nums">
+                            {won(
+                              ((row.incomeCard || 0) + (row.incomeCash || 0)) -
+                              ((row.expenseOperating || 0) + (row.expenseRent || 0) + (row.expenseUtility || 0) + (row.expenseElectricity || 0))
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            <ResultCard
+              label="월평균 순소득"
+              value={generatedLedger.monthlyAverages.avgNetIncome}
+              detail={`연 매출 ${won(generatedLedger.annualTotals.totalGrossRevenue)}원 − 연 경비 ${won(generatedLedger.annualTotals.totalOperatingExpense)}원 = 연 순이익 ${won(generatedLedger.annualTotals.totalNetProfit)}원`}
+            />
+          </div>
+        )}
+
+        {/* ════════════ 2. 프리랜서 (3.3%) ════════════ */}
+        {selectedIncomeType === 'FREELANCER' && (
+          <div className="space-y-5">
+            <section aria-labelledby="ie-fl-income" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+              <StepTitle id="ie-fl-income" num={1} title="직종과 월 총수입" hint="3.3% 원천징수 사업소득" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="세부 직종(용역 분야)" optional>
+                  {(p) => (
                     <input
+                      {...p}
                       type="text"
                       value={flJobType}
                       onChange={e => setFlJobType(e.target.value)}
-                      placeholder="예: 배달라이더, 학습지교사, IT개발자 등"
-                      className="w-full px-3 py-2 text-sm text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                      placeholder="예: 배달 라이더, 학습지 교사, IT 개발자"
+                      className={inputClass}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      월평균 총 수수료/입금액 (원천징수 전)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step={10000}
-                        value={flGross || ''}
-                        onChange={e => setFlGross(Number(e.target.value))}
-                        className="w-full px-3 py-2 pr-10 text-right font-medium text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </FormField>
+                {moneyField('월평균 총수입(원천징수 전)', flGross, setFlGross)}
               </div>
+            </section>
 
-              {/* 프리랜서 필수 경비 항목 */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-base">업무 수행 필수 필요경비</h4>
-                    <p className="text-xs text-slate-500">유류비, 통신비, 프로그램비 등 인정받을 경비를 입력하세요.</p>
-                  </div>
-                  <span className="text-xs text-blue-600 font-semibold">
-                    경비 합계: {won(flTotalExpenses)}원
-                  </span>
-                </div>
-
-                <div className="space-y-2">
+            <section aria-labelledby="ie-fl-exp" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+              <StepTitle id="ie-fl-exp" num={2} title="일하는 데 드는 경비" hint={`경비 합계 ${won(flTotalExpenses)}원`} />
+              <p className="text-sm text-slate-700">유류비·통신비·프로그램 사용료처럼 실제로 쓰는 경비만 적어 주세요.</p>
+              {flExpenses.length > 0 && (
+                <ul className="space-y-2">
                   {flExpenses.map((exp) => (
-                    <div key={exp.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                      <input
-                        type="text"
-                        value={exp.name}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setFlExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, name: val } : item));
-                        }}
-                        className="flex-1 px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg"
-                      />
-                      <div className="relative w-36">
-                        <input
-                          type="number"
-                          step={10000}
-                          value={exp.monthlyAmount || ''}
-                          onChange={e => {
-                            const val = Number(e.target.value);
-                            setFlExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, monthlyAmount: val } : item));
-                          }}
-                          className="w-full px-3 py-1.5 pr-8 text-right text-xs font-semibold bg-white border border-slate-300 rounded-lg"
-                        />
-                        <span className="absolute right-2.5 top-1.5 text-xs text-slate-400">원</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFlExpenses(prev => prev.filter(item => item.id !== exp.id))}
-                        className="p-1.5 text-slate-400 hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <ExpenseRow
+                      key={exp.id}
+                      name={exp.name}
+                      amount={exp.monthlyAmount}
+                      onName={(val) => setFlExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, name: val } : item))}
+                      onAmount={(val) => setFlExpenses(prev => prev.map(item => item.id === exp.id ? { ...item, monthlyAmount: val } : item))}
+                      onRemove={() => setFlExpenses(prev => prev.filter(item => item.id !== exp.id))}
+                    />
                   ))}
+                </ul>
+              )}
+              <Button
+                variant="secondary"
+                fullWidth
+                className="border-dashed"
+                leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
+                onClick={() => {
+                  const newId = `fle_${Date.now()}`;
+                  // 금액은 비워 둔다(이전: 5만 원을 미리 채워 넣음)
+                  setFlExpenses(prev => [...prev, { id: newId, name: '', monthlyAmount: 0, category: 'other' }]);
+                }}
+              >
+                경비 항목 추가
+              </Button>
+            </section>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newId = `fle_${Date.now()}`;
-                      setFlExpenses(prev => [...prev, { id: newId, name: '기타 업무경비', monthlyAmount: 50000, category: 'other' }]);
-                    }}
-                    className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    필요경비 항목 추가
-                  </button>
-                </div>
-              </div>
+            <ResultCard
+              label="월평균 순소득"
+              value={flNetIncome}
+              detail={`총수입 − 원천징수 3.3%(${won(flWithholding)}원) − 경비 ${won(flTotalExpenses)}원`}
+              evidence="원천징수영수증, 입금 통장 내역"
+            />
+          </div>
+        )}
 
-              {/* 프리랜서 순소득 결과 */}
-              <div className="bg-slate-900 text-white rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400">프리랜서 월평균 순소득 (총수입 − 원천징수 3.3% {won(flWithholding)}원 − 필요경비)</span>
-                  <h4 className="text-xl font-bold text-emerald-400 mt-0.5">{won(flNetIncome)} 원</h4>
-                </div>
-                <div className="text-xs text-slate-400 text-right">
-                  소명자료: 원천징수영수증 + 통장내역
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ════════════ 3. 일용직 입력 영역 ════════════ */}
-          {selectedIncomeType === 'DAY_LABORER' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="pb-3 border-b border-slate-100">
-                  <h4 className="font-bold text-slate-800 text-base">일용직 근무 현황 및 일당</h4>
-                  <p className="text-xs text-slate-500">건설, 물류 등 최근 수개월간의 평균 근무 일수와 일당을 입력하세요.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      월평균 출근 일수
-                    </label>
+        {/* ════════════ 3. 일용직 ════════════ */}
+        {selectedIncomeType === 'DAY_LABORER' && (
+          <div className="space-y-5">
+            <section aria-labelledby="ie-dl" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+              <StepTitle id="ie-dl" title="근무 일수와 일당" hint="최근 몇 달의 평균" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="한 달 평균 출근 일수">
+                  {(p) => (
                     <div className="relative">
                       <input
+                        {...p}
                         type="number"
-                        min={1}
+                        inputMode="numeric"
+                        min={0}
                         max={31}
                         value={dlWorkDays || ''}
-                        onChange={e => setDlWorkDays(Number(e.target.value))}
-                        className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl"
+                        onChange={e => setDlWorkDays(Math.min(31, Math.max(0, Number(e.target.value) || 0)))}
+                        placeholder="0"
+                        className={cn(inputClass, 'pr-10 text-right tabular-nums font-bold')}
                       />
-                      <span className="absolute right-3 top-2 text-xs text-slate-500">일</span>
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 pointer-events-none" aria-hidden="true">일</span>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      1일 평균 일당 (실수령액 기준)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step={10000}
-                        value={dlDailyWage || ''}
-                        onChange={e => setDlDailyWage(Number(e.target.value))}
-                        className="w-full px-3 py-2 text-right font-medium text-slate-900 border border-slate-300 rounded-xl"
-                      />
-                      <span className="absolute right-3 top-2 text-xs text-slate-500">원</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="dl_cash"
-                    checked={dlIsCash}
-                    onChange={e => setDlIsCash(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300"
-                  />
-                  <label htmlFor="dl_cash" className="text-xs text-slate-700 cursor-pointer">
-                    통장 입금이 아닌 현금으로 직접 수령하는 경우가 포함되어 있습니다.
-                  </label>
-                </div>
+                  )}
+                </FormField>
+                {moneyField('하루 평균 일당(실제로 받는 돈)', dlDailyWage, setDlDailyWage)}
               </div>
+              <label className="flex items-center gap-3 min-h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={dlIsCash}
+                  onChange={e => setDlIsCash(e.target.checked)}
+                  className="w-5 h-5 shrink-0 accent-brand"
+                />
+                <span className="text-sm text-slate-800">통장 입금이 아니라 현금으로 받는 날도 있어요</span>
+              </label>
+            </section>
 
-              <div className="bg-slate-900 text-white rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400">일용근로 월평균 수입 ({dlWorkDays}일 × {won(dlDailyWage)}원)</span>
-                  <h4 className="text-xl font-bold text-emerald-400 mt-0.5">{won(dlMonthlyIncome)} 원</h4>
-                </div>
-                <div className="text-xs text-slate-400 text-right">
-                  소명자료: 고용산재보험 일용근로내역서
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ════════════ 4. 아르바이트 (시간제) 입력 영역 ════════════ */}
-          {selectedIncomeType === 'PART_TIME' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-base">아르바이트 근무지 및 시급 내역</h4>
-                    <p className="text-xs text-slate-500">복수의 아르바이트를 하시는 경우 사업장별로 추가해주세요.</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {ptWorkplaces.map((wp) => (
-                    <div key={wp.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <input
-                          type="text"
-                          value={wp.workplaceName}
-                          onChange={e => {
-                            const val = e.target.value;
-                            setPtWorkplaces(prev => prev.map(item => item.id === wp.id ? { ...item, workplaceName: val } : item));
-                          }}
-                          placeholder="근무 사업장명 (예: 메가커피, 편의점)"
-                          className="font-bold text-sm text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 w-60"
-                        />
-                        {ptWorkplaces.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setPtWorkplaces(prev => prev.filter(item => item.id !== wp.id))}
-                            className="text-slate-400 hover:text-red-500 text-xs p-1"
-                          >
-                            사업장 삭제
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[11px] text-slate-500 block mb-1">적용 시급</label>
-                          <input
-                            type="number"
-                            value={wp.hourlyWage}
-                            onChange={e => {
-                              const wage = Number(e.target.value);
-                              setPtWorkplaces(prev => prev.map(item => item.id === wp.id ? { ...item, hourlyWage: wage } : item));
-                            }}
-                            className="w-full text-xs font-semibold px-2 py-1.5 border rounded-lg bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-slate-500 block mb-1">주당 근무시간</label>
-                          <input
-                            type="number"
-                            value={wp.weeklyHours}
-                            onChange={e => {
-                              const hrs = Number(e.target.value);
-                              setPtWorkplaces(prev => prev.map(item => item.id === wp.id ? { ...item, weeklyHours: hrs } : item));
-                            }}
-                            className="w-full text-xs font-semibold px-2 py-1.5 border rounded-lg bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-slate-500 block mb-1">월 실수령 급여 (원)</label>
-                          <input
-                            type="number"
-                            step={10000}
-                            value={wp.monthlyGrossIncome}
-                            onChange={e => {
-                              const inc = Number(e.target.value);
-                              setPtWorkplaces(prev => prev.map(item => item.id === wp.id ? { ...item, monthlyGrossIncome: inc } : item));
-                            }}
-                            className="w-full text-xs font-semibold px-2 py-1.5 border rounded-lg bg-white text-right"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newId = `ptw_${Date.now()}`;
-                      setPtWorkplaces(prev => [
-                        ...prev,
-                        { id: newId, workplaceName: '', hourlyWage: MIN_WAGE_2026, weeklyHours: 0, hasWeeklyHolidayPay: false, monthlyGrossIncome: 0 }
-                      ]);
-                    }}
-                    className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    알바 근무지 추가하기
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-900 text-white rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400">아르바이트 합산 월소득</span>
-                  <h4 className="text-xl font-bold text-emerald-400 mt-0.5">{won(ptTotalIncome)} 원</h4>
-                </div>
-                <div className="text-xs text-slate-400 text-right">
-                  소명자료: 근로계약서 + 급여통장 사본
-                </div>
-              </div>
-            </div>
-          )}
-
-        </div>
-
-        {/* 하단 액션 버튼 바 */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSave(false)}
-            disabled={isSubmitting}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs sm:text-sm flex items-center gap-1.5 transition shadow-xs"
-          >
-            <Save className="w-4 h-4 text-slate-500" />
-            <span>임시 저장</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200/60 font-medium text-xs sm:text-sm transition"
-            >
-              닫기
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-brand-md transition press-scale"
-            >
-              <Send className="w-4 h-4" />
-              <span>작성 완료 (변호사에게 제출)</span>
-            </button>
+            <ResultCard
+              label="월평균 수입"
+              value={dlMonthlyIncome}
+              detail={`${dlWorkDays}일 × ${won(dlDailyWage)}원`}
+              evidence="일용근로소득 지급명세서, 고용·산재보험 일용근로내역서"
+            />
           </div>
-        </div>
+        )}
 
+        {/* ════════════ 4. 아르바이트 (시간제) ════════════ */}
+        {selectedIncomeType === 'PART_TIME' && (
+          <div className="space-y-5">
+            <section aria-labelledby="ie-pt" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+              <StepTitle id="ie-pt" title="근무지별 시급과 월급" hint="두 곳 이상이면 근무지를 추가해 주세요" />
+              <ul className="space-y-3">
+                {ptWorkplaces.map((wp, idx) => (
+                  <li key={wp.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 space-y-3">
+                    <div className="flex items-end gap-2">
+                      <FormField label={`근무지 ${idx + 1}`} className="flex-1 min-w-0">
+                        {(p) => (
+                          <input
+                            {...p}
+                            type="text"
+                            value={wp.workplaceName}
+                            onChange={e => updateWorkplace(wp.id, { workplaceName: e.target.value })}
+                            placeholder="예: 카페, 편의점"
+                            className={inputClass}
+                          />
+                        )}
+                      </FormField>
+                      {ptWorkplaces.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => setPtWorkplaces(prev => prev.filter(item => item.id !== wp.id))}
+                          aria-label={`근무지 ${idx + 1} 삭제`}
+                          leftIcon={<Trash2 className="w-4 h-4" aria-hidden="true" />}
+                        >
+                          삭제
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <FormField label="시급">
+                        {(p) => <MoneyInput {...p} value={wp.hourlyWage || null} onChange={(v) => updateWorkplace(wp.id, { hourlyWage: v ?? 0 })} showKoreanHint={false} />}
+                      </FormField>
+                      <FormField label="주당 근무 시간">
+                        {(p) => (
+                          <div className="relative">
+                            <input
+                              {...p}
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              max={168}
+                              value={wp.weeklyHours || ''}
+                              onChange={e => updateWorkplace(wp.id, { weeklyHours: Math.min(168, Math.max(0, Number(e.target.value) || 0)) })}
+                              placeholder="0"
+                              className={cn(inputClass, 'pr-14 text-right tabular-nums font-bold')}
+                            />
+                            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 pointer-events-none" aria-hidden="true">시간</span>
+                          </div>
+                        )}
+                      </FormField>
+                      <FormField label="월 실수령 급여">
+                        {(p) => <MoneyInput {...p} value={wp.monthlyGrossIncome || null} onChange={(v) => updateWorkplace(wp.id, { monthlyGrossIncome: v ?? 0 })} />}
+                      </FormField>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant="secondary"
+                fullWidth
+                className="border-dashed"
+                leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
+                onClick={() => {
+                  const newId = `ptw_${Date.now()}`;
+                  setPtWorkplaces(prev => [
+                    ...prev,
+                    { id: newId, workplaceName: '', hourlyWage: MIN_WAGE_2026, weeklyHours: 0, hasWeeklyHolidayPay: false, monthlyGrossIncome: 0 }
+                  ]);
+                }}
+              >
+                근무지 추가
+              </Button>
+            </section>
+
+            <ResultCard label="합산 월소득" value={ptTotalIncome} evidence="근로계약서, 급여 입금 통장 사본" />
+          </div>
+        )}
       </div>
-    </div>
+    </DocModal>
   );
 }

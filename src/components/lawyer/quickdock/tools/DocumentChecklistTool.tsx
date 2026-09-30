@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { CheckSquare, Copy, Check, FileText, Send, Building, DollarSign, Home, Car } from 'lucide-react';
-import { toast } from 'sonner';
+import { getOfficeProfile } from '../../../../services/lawyer/officeProfile';
+import { useCopyFeedback } from '../clipboard';
+import CopyButton from '../ui/CopyButton';
 
 type JobType = 'employee' | 'business' | 'freelancer' | 'unemployed';
 type HousingType = 'rent' | 'own' | 'free';
@@ -19,7 +20,9 @@ export default function DocumentChecklistTool() {
   const [housingType, setHousingType] = useState<HousingType>('rent');
   const [hasVehicle, setHasVehicle] = useState(true);
   const [hasSpouse, setHasSpouse] = useState(false);
-  const [copied, setCopied] = useState(false);
+  /** 수령 확인한 서류 (이 창에서만 유지, 저장하지 않음) */
+  const [received, setReceived] = useState<string[]>([]);
+  const { copiedKey, copy } = useCopyFeedback();
 
   // 조건에 따른 맞춤형 서류 목록 동적 구성
   const docSections = useMemo(() => {
@@ -101,7 +104,7 @@ export default function DocumentChecklistTool() {
     if (hasSpouse) {
       assetDocs.push(
         { id: 'a21', name: '배우자 지방세 세목별 과세증명서', source: '주민센터', description: '배우자 재산 유무 확인(최근 3년)', required: true },
-        { id: 'a22', name: '배우자 재산 소명자료(부동산/차량)', source: '등기부/원부', description: '회생 시 1/2 청산가치 반영 검토', required: false }
+        { id: 'a22', name: '배우자 재산 소명자료(부동산/차량)', source: '등기부/원부', description: '회생 시 청산가치 반영 여부 검토', required: false }
       );
     }
 
@@ -113,70 +116,74 @@ export default function DocumentChecklistTool() {
     ];
   }, [caseType, jobType, housingType, hasVehicle, hasSpouse]);
 
-  // 카톡/문자 발송용 텍스트 생성 및 복사
-  const handleCopyForClient = () => {
-    let message = `[법무법인 개인회생·파산 준비서류 안내]\n`;
-    message += `안녕하세요, 의뢰인님. 원활한 법원 접수를 위해 아래 서류를 준비해주시기 바랍니다.\n\n`;
+  const allItems = docSections.flatMap(sec => sec.items);
+  const totalDocCount = allItems.length;
+  const receivedCount = allItems.filter(d => received.includes(d.id)).length;
+  const missingCount = totalDocCount - receivedCount;
 
-    docSections.forEach(sec => {
-      message += `📌 ${sec.category}\n`;
-      sec.items.forEach((doc, idx) => {
-        message += ` ${idx + 1}. ${doc.name} [발급처: ${doc.source}]\n   - ${doc.description}\n`;
-      });
-      message += `\n`;
-    });
-
-    message += `⚠️ 유의사항: 모든 서류는 주민등록번호 뒷자리까지 모두 공개하여 상세로 발급받으셔야 합니다. 준비되시는 대로 사진 또는 팩스/방문 전달 부탁드립니다.`;
-
-    navigator.clipboard.writeText(message);
-    setCopied(true);
-    toast.success('의뢰인 발송용 서류 안내문이 클립보드에 복사되었습니다.');
-    setTimeout(() => setCopied(false), 2000);
+  const toggleReceived = (id: string) => {
+    setReceived(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const totalDocCount = docSections.reduce((acc, sec) => acc + sec.items.length, 0);
+  // 카톡/문자 발송용 텍스트 (전체 또는 미제출만)
+  const buildMessage = (onlyMissing: boolean) => {
+    const firm = getOfficeProfile().firmName.trim();
+    let message = `[${firm ? `${firm} ` : ''}개인회생·파산 ${onlyMissing ? '추가 제출 서류' : '준비서류'} 안내]\n`;
+    message += onlyMissing
+      ? '안녕하세요. 아래 서류가 아직 확인되지 않았습니다. 준비되는 대로 전달 부탁드립니다.\n\n'
+      : '안녕하세요. 원활한 법원 접수를 위해 아래 서류를 준비해 주시기 바랍니다.\n\n';
+
+    docSections.forEach(sec => {
+      const items = onlyMissing ? sec.items.filter(d => !received.includes(d.id)) : sec.items;
+      if (items.length === 0) return;
+      message += `📌 ${sec.category}\n`;
+      items.forEach((doc, idx) => {
+        message += ` ${idx + 1}. ${doc.name}${doc.required ? '' : ' (해당 시)'} [발급처: ${doc.source}]\n   - ${doc.description}\n`;
+      });
+      message += '\n';
+    });
+
+    message += '⚠️ 유의사항: 증명서는 주민등록번호 뒷자리까지 모두 공개된 상세 발급본으로 준비해 주세요. 준비되시는 대로 사진·팩스·방문으로 전달 부탁드립니다.';
+    return message;
+  };
 
   return (
     <div className="p-3.5 space-y-3 text-xs text-slate-800">
-      {/* ── 조건 선택 컨트롤러 ── */}
-      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-2">
-        <span className="font-extrabold text-slate-700 block text-[11px]">
-          의뢰인 상황 맞춤 필터 (서류 자동 최적화)
-        </span>
+      {/* ── 조건 선택 ── */}
+      <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-2">
+        <span className="font-extrabold text-slate-700 block text-[11px]">의뢰인 상황 (서류 목록 자동 구성)</span>
 
         <div className="grid grid-cols-2 gap-2 text-[11px]">
-          {/* 사건 구분 */}
           <div>
-            <label className="text-[10px] text-slate-500 block mb-0.5 font-medium">신청 사건</label>
-            <div className="grid grid-cols-2 gap-1">
-              <button
-                type="button"
-                onClick={() => setCaseType('rehab')}
-                className={`py-1 rounded font-bold transition-all cursor-pointer ${
-                  caseType === 'rehab' ? 'bg-teal-700 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
-                }`}
-              >
-                개인회생
-              </button>
-              <button
-                type="button"
-                onClick={() => setCaseType('bankruptcy')}
-                className={`py-1 rounded font-bold transition-all cursor-pointer ${
-                  caseType === 'bankruptcy' ? 'bg-teal-700 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
-                }`}
-              >
-                개인파산
-              </button>
+            <span className="text-[10px] text-slate-600 block mb-0.5 font-medium" id="doc-case-label">신청 사건</span>
+            <div className="grid grid-cols-2 gap-1" role="radiogroup" aria-labelledby="doc-case-label">
+              {([
+                ['rehab', '개인회생'],
+                ['bankruptcy', '개인파산'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={caseType === value}
+                  onClick={() => setCaseType(value)}
+                  className={`py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    caseType === value ? 'bg-teal-700 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 직업 형태 */}
           <div>
-            <label className="text-[10px] text-slate-500 block mb-0.5 font-medium">소득 형태</label>
+            <label htmlFor="doc-job" className="text-[10px] text-slate-600 block mb-0.5 font-medium">소득 형태</label>
             <select
+              id="doc-job"
               value={jobType}
               onChange={e => setJobType(e.target.value as JobType)}
-              className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-bold cursor-pointer text-xs"
+              className="w-full px-2 py-1 bg-white border border-slate-300 rounded-xl font-bold cursor-pointer text-xs"
             >
               <option value="employee">직장인(급여소득)</option>
               <option value="business">자영업/개인사업자</option>
@@ -188,11 +195,12 @@ export default function DocumentChecklistTool() {
 
         <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-slate-200/60">
           <div>
-            <label className="text-[10px] text-slate-500 block mb-0.5 font-medium">주거 형태</label>
+            <label htmlFor="doc-housing" className="text-[10px] text-slate-600 block mb-0.5 font-medium">주거 형태</label>
             <select
+              id="doc-housing"
               value={housingType}
               onChange={e => setHousingType(e.target.value as HousingType)}
-              className="w-full px-1.5 py-1 bg-white border border-slate-300 rounded font-bold cursor-pointer text-xs"
+              className="w-full px-1.5 py-1 bg-white border border-slate-300 rounded-xl font-bold cursor-pointer text-xs"
             >
               <option value="rent">임차(월세/전세)</option>
               <option value="own">자가(본인소유)</option>
@@ -201,71 +209,93 @@ export default function DocumentChecklistTool() {
           </div>
 
           <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 pt-3">
-            <input
-              type="checkbox"
-              checked={hasVehicle}
-              onChange={e => setHasVehicle(e.target.checked)}
-              className="rounded accent-teal-600"
-            />
+            <input type="checkbox" checked={hasVehicle} onChange={e => setHasVehicle(e.target.checked)} className="rounded accent-teal-600" />
             차량 보유
           </label>
 
           <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 pt-3">
-            <input
-              type="checkbox"
-              checked={hasSpouse}
-              onChange={e => setHasSpouse(e.target.checked)}
-              className="rounded accent-teal-600"
-            />
+            <input type="checkbox" checked={hasSpouse} onChange={e => setHasSpouse(e.target.checked)} className="rounded accent-teal-600" />
             배우자 있음
           </label>
         </div>
       </div>
 
-      {/* ── 생성된 서류 목록 뷰어 ── */}
+      {/* ── 서류 목록 & 수령 체크 ── */}
       <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
-        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-          <span className="font-bold text-teal-800">
-            필요 서류: 총 {totalDocCount}종 선별됨
-          </span>
-          <span className="text-[10px] text-slate-400">카톡/문자 즉시 전송 가능</span>
+        <div className="flex items-center justify-between text-[11px] px-1">
+          <span className="font-bold text-teal-900">필요 서류 {totalDocCount}종 · 수령 {receivedCount}종</span>
+          {receivedCount > 0 && (
+            <button type="button" onClick={() => setReceived([])} className="text-[10px] font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
+              체크 초기화
+            </button>
+          )}
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden" aria-hidden="true">
+          <div
+            className="h-full bg-teal-600 transition-all"
+            style={{ width: `${totalDocCount ? Math.round((receivedCount / totalDocCount) * 100) : 0}%` }}
+          />
         </div>
 
-        {docSections.map((sec, idx) => (
-          <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+        {docSections.map(sec => (
+          <div key={sec.category} className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
             <div className="bg-slate-100/80 px-3 py-1.5 font-black text-slate-700 text-[11px] border-b border-slate-200 flex items-center justify-between">
               <span>{sec.category}</span>
-              <span className="text-[10px] text-slate-400 font-normal">{sec.items.length}개</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                {sec.items.filter(d => received.includes(d.id)).length}/{sec.items.length}
+              </span>
             </div>
             <div className="divide-y divide-slate-100">
-              {sec.items.map(doc => (
-                <div key={doc.id} className="p-2 hover:bg-slate-50/80 transition-colors">
-                  <div className="flex items-start justify-between gap-1.5">
-                    <span className="font-bold text-slate-900 text-xs leading-tight">
-                      {doc.name}
+              {sec.items.map(doc => {
+                const isReceived = received.includes(doc.id);
+                return (
+                  <label key={doc.id} className={`flex items-start gap-2 p-2 cursor-pointer transition-colors ${isReceived ? 'bg-teal-50/50' : 'hover:bg-slate-50/80'}`}>
+                    <input
+                      type="checkbox"
+                      checked={isReceived}
+                      onChange={() => toggleReceived(doc.id)}
+                      className="mt-0.5 rounded accent-teal-600 shrink-0"
+                      aria-label={`${doc.name} 수령`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-1.5">
+                        <span className={`font-bold text-xs leading-tight ${isReceived ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                          {doc.name}
+                          {!doc.required && <span className="ml-1 text-[10px] font-medium text-slate-500">(해당 시)</span>}
+                        </span>
+                        <span className="text-[9px] bg-teal-50 text-teal-900 px-1.5 py-0.5 rounded border border-teal-200 font-medium shrink-0">
+                          {doc.source}
+                        </span>
+                      </span>
+                      <span className="block text-[10px] text-slate-500 mt-0.5 leading-tight">{doc.description}</span>
                     </span>
-                    <span className="text-[9px] bg-teal-50 text-teal-800 px-1.5 py-0.2 rounded border border-teal-200 font-medium shrink-0">
-                      {doc.source}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
-                    {doc.description}
-                  </p>
-                </div>
-              ))}
+                  </label>
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── 카카오톡/문자 발송문 원클릭 복사 버튼 ── */}
-      <button
-        onClick={handleCopyForClient}
-        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale active:scale-[0.98]"
-      >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-        <span>{copied ? '복사 완료!' : '의뢰인 발송용 서류 안내문 전체 복사'}</span>
-      </button>
+      {/* ── 복사 ── */}
+      <div className={`grid gap-2 ${receivedCount > 0 && missingCount > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <CopyButton
+          copied={copiedKey === 'all'}
+          onClick={() => copy(buildMessage(false), '의뢰인 발송용 서류 안내문이 복사되었습니다.', 'all')}
+          label="전체 안내문 복사"
+          copiedLabel="복사 완료"
+        />
+        {receivedCount > 0 && missingCount > 0 && (
+          <CopyButton
+            variant="light"
+            copied={copiedKey === 'missing'}
+            onClick={() => copy(buildMessage(true), `미제출 서류 ${missingCount}종 안내문이 복사되었습니다.`, 'missing')}
+            label={`미제출 ${missingCount}종만 복사`}
+            copiedLabel="복사 완료"
+          />
+        )}
+      </div>
+      <p className="text-[10px] text-slate-500">수령 체크는 이 창에만 남고 저장되지 않습니다. 사무소명은 [설정 &gt; 사업자 정보]의 상호를 씁니다.</p>
     </div>
   );
 }

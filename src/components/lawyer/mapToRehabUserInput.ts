@@ -52,6 +52,8 @@ export function mapToRehabUserInput(req: any): RehabUserInput {
     clientNotes: fp.clientNotes || (fp.clientNote ? [fp.clientNote] : []),
     clientNote: fp.clientNote || '',
     riskFactor: fp.debtCause === 'INVESTMENT' ? 'investment' : fp.debtCause === 'GAMBLING' ? 'gambling' : 'none',
+    // 24개월 특례(취약계층) — 계산 엔진이 사용하는 값 (이전: 누락되어 제안서 계산에 특례가 반영되지 않음)
+    specialCondition: fp.specialCondition || 'none',
     name: fp.clientName || req?.clientName || '',
     phone: req?.phone || fp.clientPhone || '',
   };

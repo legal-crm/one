@@ -17,14 +17,19 @@ export type QuickToolId =
   | 'koreanAge'        // 만나이 & 도산 실무 자격 판정기
   | 'creditorSearch'   // 전국 채권자 공식 송달주소록
   | 'docChecklist'     // 필수서류 발급 체크리스트 생성기
-  | 'pinMemo';         // 사진 & 텍스트 자유 핀 메모 보드
+  | 'pinMemo'          // 사진 & 텍스트 자유 핀 메모 보드
+  | 'deadlineCalc';    // 기한·기일 계산기 (민법 제157·160·161조)
 
 export interface QuickToolMeta {
   id: QuickToolId;
   title: string;
+  /** 플로팅 창 탭에 표시할 짧은 이름 */
+  shortTitle: string;
   subtitle: string;
   category: ToolCategory;
   badge?: string;
+  /** 메뉴 검색용 추가 검색어 */
+  keywords?: string[];
   iconName: string;
   colorClass: {
     bg: string;

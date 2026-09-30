@@ -98,7 +98,7 @@ export default function SolutionDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -106,7 +106,7 @@ export default function SolutionDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative p-5 bg-[#0F2440] text-white">
+        <div className="relative p-5 bg-brand-deep text-white">
           <button
             onClick={onClose}
             aria-label="닫기"
@@ -130,7 +130,7 @@ export default function SolutionDetailModal({
           <div className="space-y-2.5">
             {data.keyPoints.map((point, i) => (
               <div key={i} className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#0F766E] mt-2 shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-secondary-hover mt-2 shrink-0" />
                 <span className="text-sm sm:text-base text-slate-800 dark:text-slate-200 font-semibold">{point}</span>
               </div>
             ))}
@@ -150,7 +150,7 @@ export default function SolutionDetailModal({
               onClose();
               onStartDiagnosis();
             }}
-            className="flex-1 px-5 py-3.5 bg-[#1E3A5F] hover:bg-[#162D4A] text-white rounded-xl text-base font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
+            className="flex-1 px-5 py-3.5 bg-brand hover:bg-brand-hover text-white rounded-xl text-base font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
           >
             채무 체크 시작하기
             <ArrowRight className="w-4 h-4" />

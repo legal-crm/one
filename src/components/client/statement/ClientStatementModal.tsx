@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, Mic, MicOff, Sparkles, Scale, FileText, CheckCircle2, 
+  Mic, MicOff, Sparkles, Scale, FileText, CheckCircle2, 
   AlertTriangle, ArrowRight, ArrowLeft, RefreshCw, Send, 
-  Printer, ShieldCheck, HelpCircle, Plus, Trash2, Edit3, Volume2,
-  Building2, MessageSquare 
+  Printer, ShieldCheck, Plus, Trash2, Volume2,
+  Building2, MessageSquare, Save, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
-import confetti from 'canvas-confetti';
+import { Badge, Button, Callout, DocModal, ErrorState, FormField, MoneyInput, SegmentedTabs, Skeleton, SkeletonText, buildSubmitConfirm, inputClass, textareaClass, useDocAutosave } from '../ui';
+import { useDialog } from '../../common/DialogProvider';
+import { cn } from '../../../utils/cn';
 import type { 
   CourtStatementData, 
   CourtStatementCaseType,
@@ -31,6 +33,18 @@ interface ClientStatementModalProps {
   onSuccessSubmitted?: (statement: CourtStatementData) => void;
 }
 
+const STEPS: { step: 1 | 2 | 3 | 4 | 5; label: string }[] = [
+  { step: 1, label: '학력·경력' },
+  { step: 2, label: '과거 이력·주거' },
+  { step: 3, label: '사연 입력' },
+  { step: 4, label: 'AI 초안 검토' },
+  { step: 5, label: '확인·제출' },
+];
+
+// 변경 감지용 직렬화(저장할 때마다 바뀌는 updatedAt은 제외)
+const serializeStatement = (s: CourtStatementData | null, transcript: string) =>
+  s ? JSON.stringify([{ ...s, updatedAt: '' }, transcript]) : '';
+
 const CAUSE_KEYWORDS = [
   '생활비 부족',
   '사업 부진 및 폐업',
@@ -50,9 +64,10 @@ function ClientStatementModalInner({
   clientId,
   clientName = '신청인',
   caseType: initialCaseType = 'rehab',
-  courtName = '서울회생법원',
-  totalDebtAmount = 5000,
-  monthlyIncome = 250,
+  // 모르는 값은 비워 둔다(이전: 서울회생법원·채무 5,000만·소득 250만 가짜 기본값이 AI 초안에 들어감)
+  courtName = '',
+  totalDebtAmount = 0,
+  monthlyIncome = 0,
   onSuccessSubmitted
 }: ClientStatementModalProps) {
 
@@ -61,8 +76,13 @@ function ClientStatementModalInner({
   const [caseType, setCaseType] = useState<CourtStatementCaseType>(initialCaseType);
   const [statement, setStatement] = useState<CourtStatementData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 불러오기 실패 시 무한 로딩 대신 오류 카드와 다시 시도 버튼을 보여 준다
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialog = useDialog();
   
   // AI 옵션
   const [selectedTone, setSelectedTone] = useState<'formal' | 'emotional' | 'concise'>('formal');
@@ -93,6 +113,7 @@ function ClientStatementModalInner({
     let mounted = true;
     (async () => {
       setIsLoading(true);
+      setLoadFailed(false);
       try {
         const loaded = await StatementService.loadStatement(clientId, caseType, clientName, {
           courtName,
@@ -107,51 +128,66 @@ function ClientStatementModalInner({
         }
       } catch (e) {
         console.warn('[ClientStatementModal] Load error', e);
+        if (mounted) setLoadFailed(true);
       } finally {
         if (mounted) setIsLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, [clientId, caseType, clientName, courtName, setTranscript]);
+  }, [clientId, caseType, clientName, courtName, setTranscript, reloadKey]);
+
+  // 음성·메모 입력(transcript)을 사연 칸에 합친 저장용 사본
+  const withTranscript = (s: CourtStatementData): CourtStatementData => ({
+    ...s,
+    story: {
+      ...s.story,
+      voiceTranscript: transcript,
+      rawCustomerNotes: transcript || s.story.rawCustomerNotes
+    }
+  });
+
+  // 저장 상태: 임시 저장 버튼·닫을 때 저장(저장하면 사건 기록에도 동기화되므로 입력마다 자동 저장하지는 않음)
+  const { saveState, isDirty, saveNow, markSaved } = useDocAutosave({
+    snapshot: serializeStatement(statement, transcript),
+    ready: !isLoading && !!statement,
+    save: async () => {
+      if (statement) await StatementService.saveStatement(withTranscript(statement));
+    },
+    // 방금 새로 만든 진술서(저장한 적 없음)는 '저장됨'으로 표시하지 않는다
+    initialSavedAt:
+      statement && Date.parse(statement.updatedAt) - Date.parse(statement.createdAt) > 1000 ? statement.updatedAt : null,
+  });
 
   // 임시 저장
   const handleSaveDraft = async () => {
     if (!statement) return;
-    try {
-      const toSave = {
-        ...statement,
-        story: {
-          ...statement.story,
-          voiceTranscript: transcript,
-          rawCustomerNotes: transcript || statement.story.rawCustomerNotes
-        }
-      };
-      await StatementService.saveStatement(toSave);
-      setStatement(toSave);
-      toast.success('진술서가 임시 저장되었습니다.');
-    } catch {
-      toast.error('저장에 실패했습니다.');
+    if (!isDirty) {
+      toast.info('바뀐 내용이 없어요. 이미 저장된 상태입니다.');
+      return;
     }
+    const ok = await saveNow();
+    if (ok) toast.success('진술서를 임시 저장했어요.');
+    else toast.error('저장하지 못했어요. 입력한 내용은 화면에 그대로 있으니 잠시 후 다시 시도해 주세요.');
   };
 
-  // 닫기 시 작성 중인 내용 자동 임시저장 (입력 유실 방지)
-  const handleCloseWithAutosave = async () => {
-    if (statement) {
-      try {
-        await StatementService.saveStatement({
-          ...statement,
-          story: {
-            ...statement.story,
-            voiceTranscript: transcript,
-            rawCustomerNotes: transcript || statement.story.rawCustomerNotes
-          }
-        });
-      } catch {
-        // 저장 실패해도 닫기는 진행 — 다음 진입 시 마지막 저장본 로드
-      }
+  // 닫기(X·ESC·배경): 작성 중인 내용을 먼저 저장(입력 유실 방지). AI 초안 작성·제출 중에는 닫지 않는다
+  const handleBeforeClose = async (): Promise<boolean> => {
+    if (isAiGenerating) {
+      toast.info('AI 초안을 만드는 중이에요. 끝난 뒤에 닫아 주세요.');
+      return false;
     }
+    if (isSubmitting) return false;
     if (isListening) stopListening();
-    onClose();
+    if (!statement || !isDirty) return true;
+    const ok = await saveNow();
+    if (ok) return true;
+    return dialog.confirm({
+      title: '진술서를 저장하지 못했어요',
+      message: '지금 닫으면 마지막 저장 이후에 입력한 내용이 사라집니다.',
+      confirmText: '저장하지 않고 닫기',
+      cancelText: '계속 작성',
+      variant: 'danger',
+    });
   };
 
   // 키워드 토글
@@ -181,8 +217,10 @@ function ClientStatementModalInner({
       jobHistories: merged.length > 0 ? merged : importedItems
     };
     setStatement(updatedStatement);
-    StatementService.saveStatement(updatedStatement);
-    toast.success(`${importedItems.length}건의 직장 경력이 성공적으로 추가되었습니다.`);
+    void StatementService.saveStatement(withTranscript(updatedStatement))
+      .then(() => markSaved(undefined, serializeStatement(updatedStatement, transcript)))
+      .catch(() => {});
+    toast.success(`직장 경력 ${importedItems.length}건을 추가했어요. 내용이 맞는지 확인해 주세요.`);
   };
 
   // Gemini AI 진술서 자동 생성 실행
@@ -236,7 +274,8 @@ function ClientStatementModalInner({
         };
 
         setStatement(updatedStatement);
-        await StatementService.saveStatement(updatedStatement);
+        await StatementService.saveStatement({ ...updatedStatement });
+        markSaved(undefined, serializeStatement(updatedStatement, transcript));
         setCurrentStep(4); // 검토 단계로 자동 이동
         if (res.source === 'gemini_ai') {
           toast.success('AI가 진술서 초안을 작성했습니다. 사실과 다른 부분이 없는지 꼭 확인해 주세요.');
@@ -254,115 +293,178 @@ function ClientStatementModalInner({
     }
   };
 
-  // 변호사에게 최종 제출
+  // 변호사에게 최종 제출(제출 전 요약 확인)
   const handleSubmitToLawyer = async () => {
-    if (!statement) return;
+    if (!statement || isSubmitting) return;
+    const s = statement.story;
+    const hasStory = [s.initialCauseDetail, s.growthProcessDetail, s.insolvencyTriggerDetail, s.resolutionAndApology]
+      .some(v => (v || '').trim().length > 0);
+    const jobCount = (statement.jobHistories || []).filter(j => (j.companyName || '').trim().length > 0).length;
+    const ok = await dialog.confirm(
+      buildSubmitConfirm({
+        title: '진술서를 변호사에게 제출할까요?',
+        lines: [
+          `${statement.caseType === 'rehab' ? '개인회생' : '개인파산'} 진술서`,
+          `채무가 생긴 이유: ${(s.initialCauseKeywords || []).join(', ') || '선택 안 함'}`,
+          `직장 경력 ${jobCount}건`,
+        ],
+        note: [
+          hasStory ? '' : '진술 내용(채무 발생 원인 등)이 아직 비어 있어요. 그래도 제출하면 담당 변호사가 상담하며 함께 채웁니다.',
+          '제출하면 담당 변호사 사건 기록에 저장되고, 변호사가 검토·보완한 뒤 법원 제출용으로 확정합니다.',
+        ].filter(Boolean).join('\n'),
+      })
+    );
+    if (!ok) return;
+
+    setIsSubmitting(true);
     try {
-      const res = await StatementService.deliverStatementToLawyer(statement);
+      if (isListening) stopListening();
+      const toSubmit = withTranscript(statement);
+      const res = await StatementService.deliverStatementToLawyer(toSubmit);
       if (!res.ok) {
         toast.error(res.message);
         return;
       }
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+      markSaved(toSubmit.updatedAt, serializeStatement(toSubmit, transcript));
       toast.success(res.message);
       if (onSuccessSubmitted) {
-        onSuccessSubmitted(statement);
+        onSuccessSubmitted(toSubmit);
       }
       onClose();
     } catch {
-      toast.error('제출 중 문제가 발생했습니다.');
+      toast.error('제출 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading || !statement) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand" />
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">법원 진술서 시스템을 준비 중입니다...</p>
-        </div>
-      </div>
-    );
-  }
+  const loadingOrFailed = isLoading || !statement;
+  const failed = loadFailed || (!isLoading && !statement);
+  const isRehab = (statement?.caseType || caseType) === 'rehab';
+  const isDelivered = !!statement && (statement.status === 'client_completed' || !!statement.deliveredToLawyerAt);
 
-  const isRehab = statement.caseType === 'rehab';
+  const headerBadges = statement ? (
+    <>
+      {statement.status === 'lawyer_reviewed' ? (
+        <Badge tone="info">변호사 검토 완료</Badge>
+      ) : isDelivered ? (
+        <Badge tone="success">변호사에게 제출함</Badge>
+      ) : null}
+    </>
+  ) : null;
+
+  const stepNav = (
+    <nav aria-label="진술서 작성 단계" className="bg-white px-3 sm:px-6 py-2.5">
+      <ol className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        {STEPS.map(s => {
+          const active = currentStep === s.step;
+          const done = currentStep > s.step;
+          return (
+            <li key={s.step} className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(s.step)}
+                aria-current={active ? 'step' : undefined}
+                className={cn(
+                  'min-h-11 min-w-11 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 text-sm font-bold whitespace-nowrap transition-colors',
+                  active ? 'bg-brand text-white' : done ? 'text-emerald-700 hover:bg-slate-100' : 'text-slate-600 hover:bg-slate-100'
+                )}
+              >
+                {done ? (
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <span className={cn('w-5 h-5 rounded-full text-xs flex items-center justify-center', active ? 'bg-white/20' : 'bg-slate-100')} aria-hidden="true">
+                    {s.step}
+                  </span>
+                )}
+                <span className={cn(!active && 'sr-only sm:not-sr-only')}>
+                  <span className="sr-only">{s.step}단계 </span>
+                  {s.label}
+                </span>
+                {done && <span className="sr-only">(완료)</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+
+  const footer = !loadingOrFailed && statement ? (
+    <>
+      <div className="flex items-center gap-2">
+        {currentStep > 1 && (
+          <Button
+            variant="ghost"
+            onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4 | 5)}
+            leftIcon={<ArrowLeft className="w-4 h-4" aria-hidden="true" />}
+          >
+            이전
+          </Button>
+        )}
+        <Button
+          variant="secondary"
+          onClick={handleSaveDraft}
+          disabled={saveState.status === 'saving' || isSubmitting}
+          leftIcon={<Save className="w-4 h-4" aria-hidden="true" />}
+        >
+          임시 저장
+        </Button>
+      </div>
+      {currentStep < 5 ? (
+        // 하단 바는 단계 이동만 맡는다(AI 초안 만들기는 3·4단계 본문의 버튼 — 같은 뜻의 버튼을 두 곳에 두지 않음)
+        <Button
+          onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4 | 5)}
+          disabled={isAiGenerating}
+          rightIcon={<ArrowRight className="w-4 h-4" aria-hidden="true" />}
+        >
+          다음 단계
+        </Button>
+      ) : (
+        <Button onClick={handleSubmitToLawyer} loading={isSubmitting} leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}>
+          {isDelivered ? '다시 제출하기' : '변호사에게 제출'}
+        </Button>
+      )}
+    </>
+  ) : undefined;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
-        
-        {/* ═══ 상단 헤더 ═══ */}
-        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-bold">
-              ⚖️
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-white">
-                  법원 제출용 {isRehab ? '개인회생' : '개인파산'} 진술서 간편 작성기
-                </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 whitespace-nowrap">
-                  AI 초안 도우미
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                신청인: {statement.applicantName} · 말로 이야기하면 AI가 진술서 초안을 정리합니다. 입력 내용은 초안 작성을 위해 AI 서비스(Google Gemini)로 전송되며, 최종본은 담당 변호사가 검토합니다.
-              </p>
-            </div>
+    <>
+    <DocModal
+      open={isOpen}
+      onClose={onClose}
+      onBeforeClose={handleBeforeClose}
+      closeLabel="진술서 작성 닫기"
+      icon={<Scale className="w-5 h-5" />}
+      title={`법원 제출용 ${isRehab ? '개인회생' : '개인파산'} 진술서 작성`}
+      description="말로 이야기하거나 메모하면 AI가 진술서 초안을 정리해요. 입력 내용은 초안 작성을 위해 AI 서비스(Google Gemini)로 전송되며, 최종본은 담당 변호사가 검토합니다."
+      badges={headerBadges}
+      saveState={loadingOrFailed ? undefined : saveState}
+      saveTarget="server"
+      dirtyLabel="저장 전 변경이 있어요 · 닫으면 자동 저장돼요"
+      idleLabel="닫으면 자동 저장돼요"
+      subHeader={loadingOrFailed ? undefined : stepNav}
+      footer={footer}
+      bodyClassName="bg-white px-4 py-5 sm:px-8 sm:py-7"
+    >
+      {loadingOrFailed ? (
+        failed ? (
+          <ErrorState
+            title="진술서를 불러오지 못했습니다"
+            description="네트워크 상태를 확인한 뒤 다시 시도해 주세요. 문제가 계속되면 1:1 문의로 알려 주세요."
+            onRetry={() => setReloadKey(k => k + 1)}
+            secondaryAction={<Button variant="secondary" onClick={onClose}>닫기</Button>}
+          />
+        ) : (
+          <div className="space-y-5" role="status" aria-live="polite">
+            <span className="sr-only">진술서를 불러오는 중입니다</span>
+            <Skeleton className="h-6 w-2/3" />
+            <SkeletonText lines={4} />
+            <Skeleton className="h-40 w-full" />
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              className="px-3 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer press-scale whitespace-nowrap"
-            >
-              임시저장
-            </button>
-            <button
-              type="button"
-              onClick={handleCloseWithAutosave}
-              aria-label="진술서 작성 닫기 (자동 임시저장)"
-              className="text-slate-300 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg cursor-pointer"
-            >
-              <X className="w-5 h-5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ 단계 네비게이션 프로그레스 바 ═══ */}
-        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-bold overflow-x-auto">
-          {[
-            { step: 1, label: '1. 학력 & 경력' },
-            { step: 2, label: '2. 과거이력 & 주거' },
-            { step: 3, label: '3. 말로 사연 입력 (음성/메모)' },
-            { step: 4, label: '4. AI 생성 & 검토' },
-            { step: 5, label: '5. 법원양식 확인 & 제출' },
-          ].map(s => (
-            <button
-              key={s.step}
-              onClick={() => setCurrentStep(s.step as any)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                currentStep === s.step
-                  ? 'bg-brand text-white shadow-xs'
-                  : currentStep > s.step
-                  ? 'text-emerald-600 dark:text-emerald-400 hover:bg-slate-200/50'
-                  : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              {currentStep > s.step ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span>{s.step}.</span>}
-              <span>{s.label.split('. ')[1]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ═══ 본문 영역 ═══ */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+        )
+      ) : (
+        <div className="space-y-6">
 
           {/* ────────────────────────────────────────
               STEP 1: 학력 및 직업 경력
@@ -370,58 +472,65 @@ function ClientStatementModalInner({
           {currentStep === 1 && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">1</span>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 break-keep">
+                  <span className="w-6 h-6 shrink-0 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">1</span>
                   최종 학력 및 직업 경력을 선택해 주세요
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
+                </h3>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed break-keep">
                   법원에서 신청인의 생계 유지 능력과 과거 경제활동 배경을 확인하는 기본 항목입니다.
                 </p>
               </div>
 
-              {/* 최종 학력 */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">최종 학력</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {['고등학교 졸업', '전문대학 졸업', '대학교 졸업', '대학원 졸업 / 기타'].map(edu => (
-                    <button
-                      key={edu}
-                      type="button"
-                      onClick={() => setStatement({ ...statement, finalEducation: edu })}
-                      className={`p-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
-                        statement.finalEducation === edu
-                          ? 'border-brand bg-brand/5 text-brand shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      {edu}
-                    </button>
-                  ))}
+              {/* 최종 학력(하나만 선택) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
+                <h4 id="stmt-edu-title" className="text-base font-bold text-slate-900">최종 학력</h4>
+                <div role="group" aria-labelledby="stmt-edu-title" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['고등학교 졸업', '전문대학 졸업', '대학교 졸업', '대학원 졸업 / 기타'].map(edu => {
+                    const selected = statement.finalEducation === edu;
+                    return (
+                      <button
+                        key={edu}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setStatement({ ...statement, finalEducation: edu })}
+                        className={cn(
+                          'min-h-11 px-3 py-2 rounded-xl border text-sm font-bold text-center break-keep inline-flex items-center justify-center gap-1.5 transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                          selected
+                            ? 'border-brand bg-brand-light text-brand'
+                            : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                        )}
+                      >
+                        {selected && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                        {edu}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* 직업 경력 목록 */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
-                  <div>
-                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <section aria-labelledby="stmt-jobs-title" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="min-w-0">
+                    <h4 id="stmt-jobs-title" className="text-base font-bold text-slate-900 break-keep">
                       과거 및 현재 직업 경력 (최근 2~3개)
-                    </label>
-                    <p className="text-[11px] text-slate-500">
-                      기억이 잘 안 나시면 공단 조회를 통해 과거 경력을 한 번에 불러올 수 있습니다.
+                    </h4>
+                    <p className="mt-1 text-sm text-slate-600 leading-relaxed break-keep">
+                      기억이 잘 안 나면 건강보험 자격득실확인서나 국민연금 가입증명서 사진으로 과거 경력을 불러올 수 있습니다.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                    <Button
+                      variant="subtle"
                       onClick={() => setIsJobImportOpen(true)}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand/90 hover:to-indigo-500 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                      leftIcon={<Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                      className="w-full sm:w-auto whitespace-normal sm:whitespace-nowrap"
                     >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>🏢 자격득실확인서로 경력 불러오기</span>
-                    </button>
-                    <button
-                      type="button"
+                      자격득실확인서로 경력 불러오기
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => {
                         const updated = [
                           ...statement.jobHistories,
@@ -429,77 +538,105 @@ function ClientStatementModalInner({
                         ];
                         setStatement({ ...statement, jobHistories: updated });
                       }}
-                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                      leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
+                      className="w-full sm:w-auto"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>직접 추가</span>
-                    </button>
+                      직접 추가
+                    </Button>
                   </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  {statement.jobHistories.map((job, idx) => (
-                    <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-                      <input
-                        type="text"
-                        placeholder="기간 (예: 2021.03 ~ 현재)"
-                        value={job.period}
-                        onChange={e => {
-                          const updated = [...statement.jobHistories];
-                          updated[idx] = { ...updated[idx], period: e.target.value };
-                          setStatement({ ...statement, jobHistories: updated });
-                        }}
-                        className="w-full sm:w-36 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                      />
-                      <input
-                        type="text"
-                        placeholder="직장명 또는 상호"
-                        value={job.companyName}
-                        onChange={e => {
-                          const updated = [...statement.jobHistories];
-                          updated[idx] = { ...updated[idx], companyName: e.target.value };
-                          setStatement({ ...statement, jobHistories: updated });
-                        }}
-                        className="w-full sm:flex-1 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                      />
-                      <input
-                        type="text"
-                        placeholder="직위/업종"
-                        value={job.position}
-                        onChange={e => {
-                          const updated = [...statement.jobHistories];
-                          updated[idx] = { ...updated[idx], position: e.target.value };
-                          setStatement({ ...statement, jobHistories: updated });
-                        }}
-                        className="w-full sm:w-28 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                      />
-                      <input
-                        type="text"
-                        placeholder="퇴직/폐업 사유"
-                        value={job.reasonForLeaving}
-                        onChange={e => {
-                          const updated = [...statement.jobHistories];
-                          updated[idx] = { ...updated[idx], reasonForLeaving: e.target.value };
-                          setStatement({ ...statement, jobHistories: updated });
-                        }}
-                        className="w-full sm:w-40 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                      />
-                      {statement.jobHistories.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = statement.jobHistories.filter((_, i) => i !== idx);
-                            setStatement({ ...statement, jobHistories: updated });
-                          }}
-                          className="text-slate-400 hover:text-rose-500 p-1 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+                <ul className="space-y-3">
+                  {statement.jobHistories.map((job, idx) => {
+                    const jobName = (job.companyName || '').trim();
+                    return (
+                      <li key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2 min-h-11">
+                          <h5 className="text-sm font-bold text-slate-800">경력 {idx + 1}</h5>
+                          {statement.jobHistories.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = statement.jobHistories.filter((_, i) => i !== idx);
+                                setStatement({ ...statement, jobHistories: updated });
+                              }}
+                              aria-label={jobName ? `${jobName} 경력 삭제` : `경력 ${idx + 1} 삭제`}
+                              className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                            >
+                              <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <FormField label="기간">
+                            {(p) => (
+                              <input
+                                {...p}
+                                type="text"
+                                placeholder="예: 2021.03 ~ 현재"
+                                value={job.period}
+                                onChange={e => {
+                                  const updated = [...statement.jobHistories];
+                                  updated[idx] = { ...updated[idx], period: e.target.value };
+                                  setStatement({ ...statement, jobHistories: updated });
+                                }}
+                                className={inputClass}
+                              />
+                            )}
+                          </FormField>
+                          <FormField label="직장명 또는 상호">
+                            {(p) => (
+                              <input
+                                {...p}
+                                type="text"
+                                value={job.companyName}
+                                onChange={e => {
+                                  const updated = [...statement.jobHistories];
+                                  updated[idx] = { ...updated[idx], companyName: e.target.value };
+                                  setStatement({ ...statement, jobHistories: updated });
+                                }}
+                                className={inputClass}
+                              />
+                            )}
+                          </FormField>
+                          <FormField label="직위/업종">
+                            {(p) => (
+                              <input
+                                {...p}
+                                type="text"
+                                placeholder="예: 사원, 음식점 운영"
+                                value={job.position}
+                                onChange={e => {
+                                  const updated = [...statement.jobHistories];
+                                  updated[idx] = { ...updated[idx], position: e.target.value };
+                                  setStatement({ ...statement, jobHistories: updated });
+                                }}
+                                className={inputClass}
+                              />
+                            )}
+                          </FormField>
+                          <FormField label="퇴직/폐업 사유">
+                            {(p) => (
+                              <input
+                                {...p}
+                                type="text"
+                                placeholder="예: 계약 만료, 매출 감소로 폐업"
+                                value={job.reasonForLeaving}
+                                onChange={e => {
+                                  const updated = [...statement.jobHistories];
+                                  updated[idx] = { ...updated[idx], reasonForLeaving: e.target.value };
+                                  setStatement({ ...statement, jobHistories: updated });
+                                }}
+                                className={inputClass}
+                              />
+                            )}
+                          </FormField>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             </div>
           )}
 
@@ -509,404 +646,454 @@ function ClientStatementModalInner({
           {currentStep === 2 && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">2</span>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 break-keep">
+                  <span className="w-6 h-6 shrink-0 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">2</span>
                   과거 면책 이력 및 현재 주거 상황을 확인합니다
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
+                </h3>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed break-keep">
                   과거 5년/7년 이내 면책 여부와 현재 임차보증금 등 재산 상태를 소명하기 위한 법원 필수 서식입니다.
                 </p>
               </div>
 
               {/* 과거 이력 */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  과거 개인회생, 파산면책, 신용회복(워크아웃)을 신청하신 적이 있습니까?
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasPastCase"
-                      checked={!statement.pastHistory.hasPastCase}
-                      onChange={() => setStatement({
-                        ...statement,
-                        pastHistory: { ...statement.pastHistory, hasPastCase: false }
-                      })}
-                      className="accent-brand"
-                    />
-                    <span>아니오 (최초 신청입니다)</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasPastCase"
-                      checked={statement.pastHistory.hasPastCase}
-                      onChange={() => setStatement({
-                        ...statement,
-                        pastHistory: { ...statement.pastHistory, hasPastCase: true }
-                      })}
-                      className="accent-brand"
-                    />
-                    <span>예 (과거 신청 경험이 있습니다)</span>
-                  </label>
-                </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
+                <fieldset>
+                  <legend className="text-base font-bold text-slate-900 break-keep">
+                    과거 개인회생, 파산면책, 신용회복(워크아웃)을 신청하신 적이 있습니까?
+                  </legend>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label
+                      className={cn(
+                        'flex items-center gap-3 min-h-11 rounded-xl border px-3 py-2 cursor-pointer transition-colors',
+                        !statement.pastHistory.hasPastCase ? 'border-brand bg-brand-light' : 'border-slate-300 bg-white hover:bg-slate-50'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="hasPastCase"
+                        checked={!statement.pastHistory.hasPastCase}
+                        onChange={() => setStatement({
+                          ...statement,
+                          pastHistory: { ...statement.pastHistory, hasPastCase: false }
+                        })}
+                        className="w-5 h-5 shrink-0 accent-brand"
+                      />
+                      <span className="text-sm font-bold text-slate-800 break-keep">아니요 (최초 신청입니다)</span>
+                    </label>
+                    <label
+                      className={cn(
+                        'flex items-center gap-3 min-h-11 rounded-xl border px-3 py-2 cursor-pointer transition-colors',
+                        statement.pastHistory.hasPastCase ? 'border-brand bg-brand-light' : 'border-slate-300 bg-white hover:bg-slate-50'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="hasPastCase"
+                        checked={statement.pastHistory.hasPastCase}
+                        onChange={() => setStatement({
+                          ...statement,
+                          pastHistory: { ...statement.pastHistory, hasPastCase: true }
+                        })}
+                        className="w-5 h-5 shrink-0 accent-brand"
+                      />
+                      <span className="text-sm font-bold text-slate-800 break-keep">예 (과거 신청 경험이 있습니다)</span>
+                    </label>
+                  </div>
+                </fieldset>
 
                 {statement.pastHistory.hasPastCase && (
-                  <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-slate-200 dark:border-slate-700">
-                    <input
-                      type="text"
-                      placeholder="신청 연도 (예: 2018년)"
-                      value={statement.pastHistory.year || ''}
-                      onChange={e => setStatement({
-                        ...statement,
-                        pastHistory: { ...statement.pastHistory, year: e.target.value }
-                      })}
-                      className="px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                    />
-                    <input
-                      type="text"
-                      placeholder="법원/기관명 (예: 수원지방법원)"
-                      value={statement.pastHistory.courtOrAgency || ''}
-                      onChange={e => setStatement({
-                        ...statement,
-                        pastHistory: { ...statement.pastHistory, courtOrAgency: e.target.value }
-                      })}
-                      className="px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                    />
-                    <input
-                      type="text"
-                      placeholder="사건번호 또는 결과 (예: 면책완료)"
-                      value={statement.pastHistory.caseNumber || ''}
-                      onChange={e => setStatement({
-                        ...statement,
-                        pastHistory: { ...statement.pastHistory, caseNumber: e.target.value }
-                      })}
-                      className="px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                    />
+                  <div className="mt-4 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-100">
+                    <FormField label="신청 연도">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="text"
+                          placeholder="예: 2018년"
+                          value={statement.pastHistory.year || ''}
+                          onChange={e => setStatement({
+                            ...statement,
+                            pastHistory: { ...statement.pastHistory, year: e.target.value }
+                          })}
+                          className={inputClass}
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="법원/기관명">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="text"
+                          placeholder="예: 수원지방법원"
+                          value={statement.pastHistory.courtOrAgency || ''}
+                          onChange={e => setStatement({
+                            ...statement,
+                            pastHistory: { ...statement.pastHistory, courtOrAgency: e.target.value }
+                          })}
+                          className={inputClass}
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="사건번호 또는 결과">
+                      {(p) => (
+                        <input
+                          {...p}
+                          type="text"
+                          placeholder="예: 면책완료"
+                          value={statement.pastHistory.caseNumber || ''}
+                          onChange={e => setStatement({
+                            ...statement,
+                            pastHistory: { ...statement.pastHistory, caseNumber: e.target.value }
+                          })}
+                          className={inputClass}
+                        />
+                      )}
+                    </FormField>
                   </div>
                 )}
               </div>
 
               {/* 현재 주거 상황 */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  현재 주거 형태를 선택해 주세요
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { type: 'RENT_LEASE', label: '임차(월세/전세)' },
-                    { type: 'RELATIVE_FREE', label: '친족 주택 무상거주' },
-                    { type: 'NON_RELATIVE_FREE', label: '타인 주택 무상거주' },
-                    { type: 'OWNED', label: '신청인 소유(자가)' },
-                  ].map(res => (
-                    <button
-                      key={res.type}
-                      type="button"
-                      onClick={() => setStatement({
-                        ...statement,
-                        residence: {
-                          ...statement.residence,
-                          residenceType: res.type as any,
-                          residenceTypeLabel: res.label
-                        }
-                      })}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                        statement.residence.residenceType === res.type
-                          ? 'border-brand bg-brand/5 text-brand shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      {res.label}
-                    </button>
-                  ))}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                <div className="space-y-3">
+                  <h4 id="stmt-res-title" className="text-base font-bold text-slate-900 break-keep">
+                    현재 주거 형태를 선택해 주세요
+                  </h4>
+                  <div role="group" aria-labelledby="stmt-res-title" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { type: 'RENT_LEASE', label: '임차(월세/전세)' },
+                      { type: 'RELATIVE_FREE', label: '친족 주택 무상거주' },
+                      { type: 'NON_RELATIVE_FREE', label: '타인 주택 무상거주' },
+                      { type: 'OWNED', label: '신청인 소유(자가)' },
+                    ].map(res => {
+                      const selected = statement.residence.residenceType === res.type;
+                      return (
+                        <button
+                          key={res.type}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setStatement({
+                            ...statement,
+                            residence: {
+                              ...statement.residence,
+                              residenceType: res.type as any,
+                              residenceTypeLabel: res.label
+                            }
+                          })}
+                          className={cn(
+                            'min-h-11 px-3 py-2 rounded-xl border text-sm font-bold text-center break-keep inline-flex items-center justify-center gap-1.5 transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                            selected
+                              ? 'border-brand bg-brand-light text-brand'
+                              : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                          )}
+                        >
+                          {selected && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                          {res.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">보증금 (원)</label>
-                    <input
-                      type="number"
-                      value={statement.residence.deposit || 0}
-                      onChange={e => setStatement({
-                        ...statement,
-                        residence: { ...statement.residence, deposit: Number(e.target.value) }
-                      })}
-                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">월세 (원)</label>
-                    <input
-                      type="number"
-                      value={statement.residence.monthlyRent || 0}
-                      onChange={e => setStatement({
-                        ...statement,
-                        residence: { ...statement.residence, monthlyRent: Number(e.target.value) }
-                      })}
-                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+                  <FormField label="보증금">
+                    {(p) => (
+                      <MoneyInput
+                        {...p}
+                        value={statement.residence.deposit || null}
+                        onChange={(v) => setStatement({
+                          ...statement,
+                          residence: { ...statement.residence, deposit: v ?? 0 }
+                        })}
+                      />
+                    )}
+                  </FormField>
+                  <FormField label="월세">
+                    {(p) => (
+                      <MoneyInput
+                        {...p}
+                        value={statement.residence.monthlyRent || null}
+                        onChange={(v) => setStatement({
+                          ...statement,
+                          residence: { ...statement.residence, monthlyRent: v ?? 0 }
+                        })}
+                      />
+                    )}
+                  </FormField>
                 </div>
               </div>
             </div>
           )}
 
           {/* ────────────────────────────────────────
-              STEP 3: 말로 사연 입력 (AI 음성 인터뷰 or 자유 음성) - 핵심!
+              STEP 3: 말로 사연 입력 (AI 음성 인터뷰 또는 자유 음성·메모)
           ──────────────────────────────────────── */}
           {currentStep === 3 && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">3</span>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 break-keep">
+                  <span className="w-6 h-6 shrink-0 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">3</span>
                   어떻게 빚이 생기셨나요? 편하게 말씀해 주세요
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
+                </h3>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed break-keep">
                   글쓰기 부담 없이 질문에 답하시면 AI가 진술서에 흔히 쓰이는 4단 구성(발생원인·증대경위·지급불능·반성과 다짐)으로 초안을 정리해 드립니다.
                 </p>
               </div>
 
-              {/* 탭 모드 전환: [🎙️ AI 대화형 음성 인터뷰 (6문 6답 · 추천)] vs [📝 자유 음성/직접 메모 입력] */}
-              <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setStoryInputTab('interview')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    storyInputTab === 'interview'
-                      ? 'bg-white dark:bg-slate-900 text-brand shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>AI 대화형 음성 인터뷰 (6문 6답 · 추천)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStoryInputTab('free')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    storyInputTab === 'free'
-                      ? 'bg-white dark:bg-slate-900 text-brand shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Mic className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>자유 음성녹음 / 직접 메모 입력</span>
-                </button>
-              </div>
+              {/* 입력 방식 전환: AI 대화형 음성 인터뷰(6문 6답·추천) / 자유 음성녹음·직접 메모 (좁은 화면은 짧은 이름) */}
+              <SegmentedTabs<'interview' | 'free'>
+                tabs={[
+                  {
+                    id: 'interview',
+                    icon: <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />,
+                    label: (
+                      <>
+                        <span className="md:hidden">AI 인터뷰 (추천)</span>
+                        <span className="hidden md:inline">AI 대화형 음성 인터뷰 (6문 6답 · 추천)</span>
+                      </>
+                    ),
+                  },
+                  {
+                    id: 'free',
+                    icon: <Mic className="w-4 h-4 shrink-0" aria-hidden="true" />,
+                    label: (
+                      <>
+                        <span className="md:hidden">자유 녹음·메모</span>
+                        <span className="hidden md:inline">자유 음성녹음 / 직접 메모 입력</span>
+                      </>
+                    ),
+                  },
+                ]}
+                value={storyInputTab}
+                onChange={setStoryInputTab}
+                ariaLabel="사연 입력 방식"
+                idPrefix="stmt-story"
+              />
 
-              {/* 모드 1: 대화형 인터뷰 */}
-              {storyInputTab === 'interview' ? (
-                <div className="space-y-5">
-                  <VoiceInterviewSection
-                    answers={statement.story.lifeInterviewAnswers || {}}
-                    onChangeAnswers={(updated) => {
-                      setStatement({
-                        ...statement,
-                        story: {
-                          ...statement.story,
-                          lifeInterviewAnswers: updated
-                        }
-                      });
-                    }}
-                    onCompleteInterview={handleGenerateAiStatement}
-                    isAiGenerating={isAiGenerating}
-                  />
-
-                  {/* AI 문체 톤 선택 및 생성 버튼 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap">법원 제출 문체:</span>
-                      <div className="flex gap-1">
-                        {[
-                          { id: 'formal', label: '정중·격식' },
-                          { id: 'emotional', label: '진솔·호소력' },
-                          { id: 'concise', label: '간결·명확' }
-                        ].map(t => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setSelectedTone(t.id as any)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                              selectedTone === t.id
-                                ? 'bg-indigo-600 text-white shadow-xs'
-                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleGenerateAiStatement}
-                      disabled={isAiGenerating}
-                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer press-scale disabled:opacity-50 whitespace-nowrap"
-                    >
-                      {isAiGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>제미나이가 6대 문답을 법원 서식으로 엮는 중...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 text-yellow-300" />
-                          <span>✨ 인터뷰 답변으로 법원 진술서 완성하기</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* 모드 2: 기존 자유 음성 녹음 및 키워드/메모 입력 */
-                <div className="space-y-6">
-                  {/* 1) 채무 사유 키워드 칩 */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <span>해당되는 사유를 선택해 주세요 (다중 선택 가능)</span>
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {CAUSE_KEYWORDS.map(kw => {
-                        const isSelected = statement.story.initialCauseKeywords?.includes(kw);
-                        return (
-                          <button
-                            key={kw}
-                            type="button"
-                            onClick={() => toggleKeyword(kw)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                              isSelected
-                                ? 'bg-brand text-white shadow-xs scale-102'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                            }`}
-                          >
-                            {isSelected && <span>✓</span>}
-                            <span>{kw}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 2) 음성 마이크 녹음 컨트롤러 */}
-                  <div className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center justify-center text-center gap-4 ${
-                    isListening 
-                      ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20' 
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30'
-                  }`}>
-                    <button
-                      type="button"
-                      onClick={toggleListening}
-                      className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-all shadow-xl cursor-pointer press-scale relative ${
-                        isListening
-                          ? 'bg-rose-500 hover:bg-rose-600 ring-8 ring-rose-200 dark:ring-rose-950/60'
-                          : 'bg-indigo-600 hover:bg-indigo-700 ring-4 ring-indigo-100 dark:ring-indigo-950/40'
-                      }`}
-                      title={isListening ? '음성 녹음 중지' : '음성 녹음 시작'}
-                    >
-                      {isListening ? (
-                        <>
-                          <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-75"></span>
-                          <MicOff className="w-8 h-8 relative z-10" />
-                        </>
-                      ) : (
-                        <Mic className="w-8 h-8" />
-                      )}
-                    </button>
-
-                    <div className="space-y-1">
-                      <p className="font-extrabold text-sm text-slate-900 dark:text-white">
-                        {isListening 
-                          ? '🔴 듣고 있습니다. 편안하게 말씀해 주세요...' 
-                          : '마이크 버튼을 누르고 말씀하세요 (모바일/PC 지원)'}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        예: "2021년에 식당을 열었는데 코로나 때문에 손님이 줄어서 월세 내려고 카드 돌려막기 하다가 빚이 7천만 원까지 늘어났고 결국 작년에 폐업했습니다..."
-                      </p>
-                    </div>
-
-                    {speechError && (
-                      <p className="text-xs text-rose-500 font-bold bg-rose-100 dark:bg-rose-900/30 px-3 py-1.5 rounded-xl">
-                        ⚠️ {speechError}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 3) 실시간 음성 자막 / 텍스트 편집 영역 */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Volume2 className="w-4 h-4 text-indigo-500" />
-                        <span>음성 인식 결과 및 메모 (키보드로 직접 수정하실 수 있습니다)</span>
-                      </label>
-                      {transcript && (
-                        <button
-                          type="button"
-                          onClick={() => setTranscript('')}
-                          className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                        >
-                          내용 지우기
-                        </button>
-                      )}
-                    </div>
-
-                    <textarea
-                      rows={4}
-                      value={transcript + (interimTranscript ? ` (${interimTranscript})` : '')}
-                      onChange={e => setTranscript(e.target.value)}
-                      placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 AI가 초안으로 다듬어 드립니다. 사실과 다른 내용은 쓰지 말아 주세요."
-                      className="w-full p-4 text-xs font-sans bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-brand focus:outline-hidden leading-relaxed"
+              <div
+                role="tabpanel"
+                id={`stmt-story-panel-${storyInputTab}`}
+                aria-labelledby={`stmt-story-tab-${storyInputTab}`}
+              >
+                {/* 모드 1: 대화형 인터뷰 */}
+                {storyInputTab === 'interview' ? (
+                  <div className="space-y-5">
+                    <VoiceInterviewSection
+                      answers={statement.story.lifeInterviewAnswers || {}}
+                      onChangeAnswers={(updated) => {
+                        setStatement({
+                          ...statement,
+                          story: {
+                            ...statement.story,
+                            lifeInterviewAnswers: updated
+                          }
+                        });
+                      }}
+                      onCompleteInterview={handleGenerateAiStatement}
+                      isAiGenerating={isAiGenerating}
                     />
-                  </div>
 
-                  {/* 4) AI 문체 톤 선택 및 생성 실행 버튼 */}
-                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap">문체 톤:</span>
-                      <div className="flex gap-1">
-                        {[
-                          { id: 'formal', label: '정중·격식' },
-                          { id: 'emotional', label: '진솔·호소력' },
-                          { id: 'concise', label: '간결·명확' }
-                        ].map(t => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setSelectedTone(t.id as any)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                              selectedTone === t.id
-                                ? 'bg-indigo-600 text-white shadow-xs'
-                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
+                    {/* 문체 선택 및 AI 초안 만들기 */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-brand/20 bg-brand-light p-4 sm:p-5">
+                      <div role="group" aria-labelledby="stmt-tone-interview" className="flex flex-wrap items-center gap-2">
+                        <span id="stmt-tone-interview" className="text-sm font-bold text-slate-800 whitespace-nowrap">진술서 문체</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { id: 'formal', label: '정중·격식' },
+                            { id: 'emotional', label: '진솔·호소력' },
+                            { id: 'concise', label: '간결·명확' }
+                          ].map(t => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              aria-pressed={selectedTone === t.id}
+                              onClick={() => setSelectedTone(t.id as any)}
+                              className={cn(
+                                'min-h-11 px-3.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-colors',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                                selectedTone === t.id
+                                  ? 'bg-brand border-brand text-white'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                              )}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleGenerateAiStatement}
+                        disabled={isAiGenerating}
+                        loading={isAiGenerating}
+                        leftIcon={<Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                        className="w-full lg:w-auto whitespace-normal sm:whitespace-nowrap"
+                      >
+                        {isAiGenerating ? 'AI가 인터뷰 답변으로 초안을 만드는 중…' : '인터뷰 답변으로 진술서 초안 만들기'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* 모드 2: 자유 음성 녹음 및 키워드·메모 입력 */
+                  <div className="space-y-6">
+                    {/* 1) 채무 사유 키워드(여러 개 선택) */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
+                      <h4 id="stmt-cause-title" className="text-base font-bold text-slate-900 break-keep">
+                        해당되는 사유를 선택해 주세요
+                        <span className="ml-1.5 inline-block text-sm font-medium text-slate-600">(여러 개 선택 가능)</span>
+                      </h4>
+                      <div role="group" aria-labelledby="stmt-cause-title" className="flex flex-wrap gap-2">
+                        {CAUSE_KEYWORDS.map(kw => {
+                          const isSelected = statement.story.initialCauseKeywords?.includes(kw);
+                          return (
+                            <button
+                              key={kw}
+                              type="button"
+                              aria-pressed={!!isSelected}
+                              onClick={() => toggleKeyword(kw)}
+                              className={cn(
+                                'min-h-11 px-3.5 rounded-xl border text-sm font-bold text-left break-keep inline-flex items-center gap-1.5 transition-colors',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                                isSelected
+                                  ? 'bg-brand border-brand text-white hover:bg-brand-hover'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                              )}
+                            >
+                              {isSelected && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                              {kw}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleGenerateAiStatement}
-                      disabled={isAiGenerating}
-                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer press-scale disabled:opacity-50 whitespace-nowrap"
+                    {/* 2) 음성 마이크 녹음 컨트롤러 */}
+                    <div
+                      className={cn(
+                        'rounded-2xl border p-5 sm:p-6 flex flex-col items-center justify-center text-center gap-4 transition-colors',
+                        isListening ? 'border-red-300 bg-red-50/60' : 'border-slate-200 bg-white'
+                      )}
                     >
-                      {isAiGenerating ? (
+                      <button
+                        type="button"
+                        onClick={toggleListening}
+                        aria-pressed={isListening}
+                        aria-label="음성 녹음"
+                        className={cn(
+                          'relative w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg transition-colors active:scale-[0.98]',
+                          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                          isListening
+                            ? 'bg-red-600 hover:bg-red-700 ring-8 ring-red-100'
+                            : 'bg-brand hover:bg-brand-hover ring-4 ring-brand/15'
+                        )}
+                      >
+                        {isListening ? (
+                          <>
+                            <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-75" aria-hidden="true"></span>
+                            <MicOff className="w-8 h-8 relative z-10" aria-hidden="true" />
+                          </>
+                        ) : (
+                          <Mic className="w-8 h-8" aria-hidden="true" />
+                        )}
+                      </button>
+
+                      <div className="space-y-1">
+                        <p aria-live="polite" className="flex items-center justify-center gap-1.5 text-sm font-bold text-slate-900 break-keep">
+                          {isListening ? (
+                            <>
+                              <span className="w-2 h-2 shrink-0 rounded-full bg-red-600" aria-hidden="true" />
+                              듣고 있습니다. 편안하게 말씀해 주세요.
+                            </>
+                          ) : (
+                            '마이크 버튼을 누르고 말씀하세요'
+                          )}
+                        </p>
+                        <p className="text-sm text-slate-600 leading-relaxed break-keep">
+                          예: "2021년에 식당을 열었는데 코로나 때문에 손님이 줄어서 월세 내려고 카드 돌려막기 하다가 빚이 7천만 원까지 늘어났고 결국 작년에 폐업했습니다..."
+                        </p>
+                      </div>
+
+                      {speechError && (
+                        <p role="alert" className="flex items-start gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-left text-sm font-bold text-red-700 break-keep">
+                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                          <span>{speechError}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 3) 실시간 음성 자막 / 텍스트 편집 영역 */}
+                    <FormField
+                      label={
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>제미나이가 법원 문장으로 다듬는 중...</span>
+                          <Volume2 className="w-4 h-4 shrink-0 text-brand" aria-hidden="true" />
+                          음성 인식 결과 및 메모
+                          <span className="text-xs font-medium text-slate-600">(키보드로 직접 수정하실 수 있습니다)</span>
                         </>
-                      ) : (
+                      }
+                    >
+                      {(p) => (
                         <>
-                          <Sparkles className="w-4 h-4 text-yellow-300" />
-                          <span>✨ 제미나이로 법원 진술서 완성하기</span>
+                          <textarea
+                            {...p}
+                            rows={4}
+                            value={transcript + (interimTranscript ? ` (${interimTranscript})` : '')}
+                            onChange={e => setTranscript(e.target.value)}
+                            placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 AI가 초안으로 다듬어 드립니다. 사실과 다른 내용은 쓰지 말아 주세요."
+                            className={cn(textareaClass, 'min-h-40')}
+                          />
+                          {transcript && (
+                            <div className="flex justify-end">
+                              <Button variant="ghost" onClick={() => setTranscript('')}>
+                                내용 지우기
+                              </Button>
+                            </div>
+                          )}
                         </>
                       )}
-                    </button>
+                    </FormField>
+
+                    {/* 4) 문체 선택 및 AI 초안 만들기 */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-brand/20 bg-brand-light p-4 sm:p-5">
+                      <div role="group" aria-labelledby="stmt-tone-free" className="flex flex-wrap items-center gap-2">
+                        <span id="stmt-tone-free" className="text-sm font-bold text-slate-800 whitespace-nowrap">진술서 문체</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { id: 'formal', label: '정중·격식' },
+                            { id: 'emotional', label: '진솔·호소력' },
+                            { id: 'concise', label: '간결·명확' }
+                          ].map(t => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              aria-pressed={selectedTone === t.id}
+                              onClick={() => setSelectedTone(t.id as any)}
+                              className={cn(
+                                'min-h-11 px-3.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-colors',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+                                selectedTone === t.id
+                                  ? 'bg-brand border-brand text-white'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                              )}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleGenerateAiStatement}
+                        disabled={isAiGenerating}
+                        loading={isAiGenerating}
+                        leftIcon={<Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                        className="w-full lg:w-auto whitespace-normal sm:whitespace-nowrap"
+                      >
+                        {isAiGenerating ? 'AI가 초안을 만드는 중…' : 'AI로 진술서 초안 만들기'}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
@@ -915,152 +1102,152 @@ function ClientStatementModalInner({
           ──────────────────────────────────────── */}
           {currentStep === 4 && (
             <div className="space-y-6 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">4</span>
-                    제미나이가 완성한 법원 제출용 진술문 검토
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 break-keep">
+                    <span className="w-6 h-6 shrink-0 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">4</span>
+                    AI가 만든 진술서 초안을 검토해 주세요
+                  </h3>
+                  <p className="mt-1.5 text-sm text-slate-600 leading-relaxed break-keep">
                     4단 구성 초안으로 정리했습니다. 사실과 다르거나 과장된 부분이 없는지 읽어보고 직접 수정해 주세요.
                   </p>
                 </div>
 
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={handleGenerateAiStatement}
                   disabled={isAiGenerating}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                  loading={isAiGenerating}
+                  leftIcon={<RefreshCw className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                  className="w-full sm:w-auto shrink-0"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isAiGenerating ? 'animate-spin' : ''}`} />
-                  <span>다시 생성하기</span>
-                </button>
+                  {isAiGenerating ? 'AI가 초안을 만드는 중…' : 'AI 초안 다시 만들기'}
+                </Button>
               </div>
 
-              {/* 법률 안전 검증 경고 배너 (Safety Check) */}
+              {/* 표현 점검 결과(키워드 검사): 변호사 확인 권고 */}
               {safetyWarnings.length > 0 && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    <span>법률 안전 사전 검토 안내 (변호사 확인 권고)</span>
-                  </div>
-                  <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1 pl-5 list-disc">
+                <Callout tone="warning" title="변호사 확인이 필요한 내용이 있어요">
+                  <ul className="mt-1 space-y-1 pl-5 list-disc">
                     {safetyWarnings.map((warn, i) => (
                       <li key={i}>{warn}</li>
                     ))}
                   </ul>
-                </div>
+                </Callout>
               )}
 
               {/* 4단 구조 편집 섹션 */}
-              <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-5">
                 {/* 1. 발생 원인 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    1. 채무 발생의 최초 원인
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={statement.story.initialCauseDetail}
-                    onChange={e => setStatement({
-                      ...statement,
-                      story: { ...statement.story, initialCauseDetail: e.target.value }
-                    })}
-                    className="w-full p-3.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl leading-relaxed font-sans"
-                  />
-                </div>
+                <FormField label="1. 채무 발생의 최초 원인">
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      rows={3}
+                      value={statement.story.initialCauseDetail}
+                      onChange={e => setStatement({
+                        ...statement,
+                        story: { ...statement.story, initialCauseDetail: e.target.value }
+                      })}
+                      className={cn(textareaClass, 'min-h-36')}
+                    />
+                  )}
+                </FormField>
 
                 {/* 2. 증대 경위 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    2. 채무가 점차 증대된 구체적 경위 (돌려막기, 고금리 등)
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={statement.story.growthProcessDetail}
-                    onChange={e => setStatement({
-                      ...statement,
-                      story: { ...statement.story, growthProcessDetail: e.target.value }
-                    })}
-                    className="w-full p-3.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl leading-relaxed font-sans"
-                  />
-                </div>
+                <FormField label="2. 채무가 점차 증대된 구체적 경위 (돌려막기, 고금리 등)">
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      rows={4}
+                      value={statement.story.growthProcessDetail}
+                      onChange={e => setStatement({
+                        ...statement,
+                        story: { ...statement.story, growthProcessDetail: e.target.value }
+                      })}
+                      className={cn(textareaClass, 'min-h-36')}
+                    />
+                  )}
+                </FormField>
 
                 {/* 3. 지급불능 사정 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    3. 지급불능에 이르게 된 결정적 사정 및 시점
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={statement.story.insolvencyTriggerDetail}
-                    onChange={e => setStatement({
-                      ...statement,
-                      story: { ...statement.story, insolvencyTriggerDetail: e.target.value }
-                    })}
-                    className="w-full p-3.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl leading-relaxed font-sans"
-                  />
-                </div>
+                <FormField label="3. 지급불능에 이르게 된 결정적 사정 및 시점">
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      rows={3}
+                      value={statement.story.insolvencyTriggerDetail}
+                      onChange={e => setStatement({
+                        ...statement,
+                        story: { ...statement.story, insolvencyTriggerDetail: e.target.value }
+                      })}
+                      className={cn(textareaClass, 'min-h-36')}
+                    />
+                  )}
+                </FormField>
 
                 {/* 4. 반성과 다짐 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    4. 신청인의 반성과 향후 성실한 갱생/변제 다짐
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={statement.story.resolutionAndApology}
-                    onChange={e => setStatement({
-                      ...statement,
-                      story: { ...statement.story, resolutionAndApology: e.target.value }
-                    })}
-                    className="w-full p-3.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl leading-relaxed font-sans"
-                  />
-                </div>
+                <FormField label="4. 신청인의 반성과 향후 성실한 갱생/변제 다짐">
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      rows={3}
+                      value={statement.story.resolutionAndApology}
+                      onChange={e => setStatement({
+                        ...statement,
+                        story: { ...statement.story, resolutionAndApology: e.target.value }
+                      })}
+                      className={cn(textareaClass, 'min-h-36')}
+                    />
+                  )}
+                </FormField>
               </div>
             </div>
           )}
 
           {/* ────────────────────────────────────────
-              STEP 5: 법원 정식 양식 확인 & 제출
+              STEP 5: 법원 양식 모양 미리보기 · 제출 안내
           ──────────────────────────────────────── */}
           {currentStep === 5 && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">5</span>
-                  법원 정식 서식으로 완성되었습니다
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  작성하신 내용이 대법원·회생법원 표준 규격 A4 양식에 맞추어 정렬되었습니다. 담당 변호사에게 전달하여 사건 서류철에 첨부할 수 있습니다.
+                <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 break-keep">
+                  <span className="w-6 h-6 shrink-0 rounded-full bg-brand-light text-brand text-xs font-bold flex items-center justify-center" aria-hidden="true">5</span>
+                  법원 양식 모양으로 정리했어요
+                </h3>
+                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed break-keep">
+                  입력한 내용을 법원 제출 양식 모양으로 보여 드려요. 담당 변호사가 검토·보완한 뒤 법원 제출본을 확정합니다.
                 </p>
               </div>
 
               {/* 미리보기 카드 */}
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-                  <div className="flex items-center gap-2 font-bold text-xs text-slate-800 dark:text-slate-200">
-                    <FileText className="w-4 h-4 text-emerald-600" />
-                    <span>{isRehab ? '개인회생' : '개인파산'} 진술서 제출 양식 미리보기</span>
-                  </div>
-                  <button
-                    type="button"
+              <section aria-labelledby="stmt-preview-title" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <h4 id="stmt-preview-title" className="flex items-center gap-2 text-base font-bold text-slate-900 break-keep">
+                    <FileText className="w-5 h-5 shrink-0 text-brand" aria-hidden="true" />
+                    {isRehab ? '개인회생' : '개인파산'} 진술서 제출 양식 미리보기
+                  </h4>
+                  <Button
+                    variant="secondary"
                     onClick={() => setIsPrintModalOpen(true)}
-                    className="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand text-xs font-bold rounded-xl text-slate-700 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer"
+                    leftIcon={<Printer className="w-4 h-4" aria-hidden="true" />}
+                    className="w-full sm:w-auto shrink-0"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>정식 양식 크게보기 & PDF 저장</span>
-                  </button>
+                    양식 크게 보기·인쇄
+                  </Button>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 text-xs font-serif leading-relaxed text-slate-800 dark:text-slate-200 max-h-72 overflow-y-auto">
-                  <div className="text-center font-bold text-base tracking-widest pb-2 border-b border-slate-200 dark:border-slate-800">
-                    진 &nbsp; &nbsp; 술 &nbsp; &nbsp; 서
-                  </div>
+                {/* 스크롤되는 미리보기: 키보드로도 스크롤할 수 있게 포커스 가능 영역으로 둔다 */}
+                <div
+                  role="region"
+                  aria-label="진술서 미리보기 내용"
+                  tabIndex={0}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-6 space-y-4 text-sm font-serif leading-relaxed text-slate-800 max-h-72 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <p className="text-center font-bold text-base tracking-widest pb-2 border-b border-slate-200">
+                    <span aria-hidden="true">진 &nbsp; &nbsp; 술 &nbsp; &nbsp; 서</span>
+                    <span className="sr-only">진술서</span>
+                  </p>
                   <div>
                     <span className="font-bold font-sans">1. 채무 발생 원인: </span>
                     {statement.story.initialCauseDetail}
@@ -1078,89 +1265,43 @@ function ClientStatementModalInner({
                     {statement.story.resolutionAndApology}
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* 변호사 자동 전달 안내 배너 */}
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-xs space-y-1">
-                  <p className="font-bold text-emerald-900 dark:text-emerald-300">
-                    제출하면 담당 변호사 사건 기록에 저장됩니다
-                  </p>
-                  <p className="text-emerald-700 dark:text-emerald-400">
-                    담당 변호사가 진술서 내용을 검토·보완한 뒤 법원 제출용으로 확정합니다. 제출 후에도 변호사 요청에 따라 수정될 수 있습니다.
-                  </p>
-                </div>
-              </div>
+              {/* 제출 안내: 제출 버튼은 하단 바에만 둔다 */}
+              <Callout
+                tone="success"
+                icon={<ShieldCheck className="w-4 h-4 text-emerald-700" />}
+                title="제출하면 담당 변호사 사건 기록에 저장됩니다"
+              >
+                화면 아래의 ‘{isDelivered ? '다시 제출하기' : '변호사에게 제출'}’ 버튼을 눌러 주세요. 담당 변호사가 진술서 내용을 검토·보완한 뒤 법원 제출용으로 확정합니다. 제출 후에도 변호사 요청에 따라 수정될 수 있습니다.
+              </Callout>
             </div>
           )}
 
         </div>
 
-        {/* ═══ 하단 네비게이션 툴바 ═══ */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            {currentStep > 1 ? (
-              <button
-                type="button"
-                onClick={() => setCurrentStep((currentStep - 1) as any)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl flex items-center gap-1.5 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>이전 단계</span>
-              </button>
-            ) : (
-              <span className="text-xs text-slate-400">1단계입니다</span>
-            )}
-          </div>
+      )}
+    </DocModal>
 
-          <div className="flex items-center gap-2">
-            {currentStep < 5 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentStep === 3 && !statement.story.initialCauseDetail) {
-                    // 3단계에서 아직 AI 생성을 안 누르고 다음을 누르면 AI 생성 권장
-                    handleGenerateAiStatement();
-                    return;
-                  }
-                  setCurrentStep((currentStep + 1) as any);
-                }}
-                className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer press-scale shadow-sm"
-              >
-                <span>다음 단계</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmitToLawyer}
-                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold rounded-xl flex items-center gap-2 cursor-pointer press-scale shadow-lg"
-              >
-                <Send className="w-4 h-4" />
-                <span>변호사에게 자동 전달 & 서류 첨부하기</span>
-              </button>
-            )}
-          </div>
-        </div>
+      {/* 과거 직장 경력 불러오기 — 작성 창 위에 뜨는 창 */}
+      {statement && (
+        <JobHistoryImportModal
+          isOpen={isJobImportOpen}
+          onClose={() => setIsJobImportOpen(false)}
+          clientName={statement.applicantName}
+          onConfirmImport={handleImportJobs}
+        />
+      )}
 
-      </div>
-
-      {/* 공단 과거 직장 경력 일괄 불러오기 모달 */}
-      <JobHistoryImportModal
-        isOpen={isJobImportOpen}
-        onClose={() => setIsJobImportOpen(false)}
-        clientName={statement.applicantName}
-        onConfirmImport={handleImportJobs}
-      />
-
-      {/* 대법원 정식 서식 인쇄/PDF 저장 모달 */}
-      <PrintableCourtStatementModal
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        statement={statement}
-      />
-    </div>
+      {/* 법원 양식 미리보기·인쇄 — 작성 창 위에 뜨는 창 */}
+      {statement && (
+        <PrintableCourtStatementModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          statement={withTranscript(statement)}
+        />
+      )}
+    </>
   );
 }
 

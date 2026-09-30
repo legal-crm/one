@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { BookOpen, ChevronRight, Search } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { BookOpen, ChevronRight, SearchX } from 'lucide-react';
 import { NewsArticle } from '../../types';
+import { Badge, Button, EmptyState, FilterChips, PageHeader, Pagination, SearchField } from './ui';
 
-const NEWS_CATEGORIES = ['전체', '개인회생', '개인파산', '금지명령/추심', '변제금/생계비'];
+const ALL = '전체';
 const ITEMS_PER_PAGE = 6;
 
 interface NewsViewProps {
@@ -11,121 +12,115 @@ interface NewsViewProps {
   onUpdateViews: (id: string) => void;
 }
 
+/**
+ * 법률 정보(칼럼·뉴스) 목록
+ * - 분야 칩은 실제 글이 있는 분야만(건수 포함). 근거 없는 조회수·'HOT' 표시는 하지 않는다('NEW'만 표시)
+ * - 카드 전체가 버튼(키보드로 열 수 있음)
+ */
 export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews }: NewsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('전체');
+  const [categoryFilter, setCategoryFilter] = useState(ALL);
   const [page, setPage] = useState(1);
 
-  const filtered = newsArticles.filter(art => {
-    const matchesSearch =
-      art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === '전체' || art.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    newsArticles.forEach((a) => { if (a?.category) counts.set(a.category, (counts.get(a.category) || 0) + 1); });
+    const cats = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
+    return [{ value: ALL, label: ALL, count: newsArticles.length }, ...cats.map(([value, count]) => ({ value, label: value, count }))];
+  }, [newsArticles]);
+
+  const query = searchQuery.trim().toLowerCase();
+  const filtered = newsArticles.filter((art) => {
+    const matchesCategory = categoryFilter === ALL || art.category === categoryFilter;
+    if (!matchesCategory) return false;
+    if (!query) return true;
+    return (
+      art.title.toLowerCase().includes(query) ||
+      (art.excerpt || '').toLowerCase().includes(query) ||
+      (art.content || '').toLowerCase().includes(query)
+    );
   });
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const sliced = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const activePage = Math.min(page, totalPages);
+  const sliced = filtered.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
+
+  const reset = () => {
+    setSearchQuery('');
+    setCategoryFilter(ALL);
+    setPage(1);
+  };
 
   return (
-    <div className="space-y-8 animate-fadeIn text-left">
-      {/* Page Header */}
-      <div className="bg-[#0F172A] border border-slate-800 rounded-3xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-        <div className="absolute left-1/3 bottom-0 w-80 h-80 bg-brand/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
-        <div className="max-w-2xl relative z-10 space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-sm font-extrabold rounded-full border border-indigo-500/30">
-            <BookOpen className="w-3.5 h-3.5 text-brand" />
-            <span>알아두면 좋을 법률 정보</span>
-          </span>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">my김변 법률 정보 &amp; 뉴스 센터</h1>
-          <p className="text-slate-350 text-sm md:text-base leading-relaxed">
-            회생·파산 관련 법률 칼럼과 뉴스입니다. 일반적인 정보이며 개별 사건에 대한 법률 자문이 아닙니다.<br/>
-            제도와 절차를 이해하는 데 참고하고, 내 상황은 변호사 상담으로 확인하세요.
-          </p>
-        </div>
+    <div className="animate-fadeIn text-left">
+      <PageHeader
+        title="법률 정보"
+        description="회생·파산 관련 칼럼과 소식이에요. 일반적인 정보이며 개별 사건에 대한 법률 자문이 아니에요. 내 상황은 변호사 상담으로 확인하세요."
+      />
+
+      <div className="space-y-3">
+        <SearchField
+          value={searchQuery}
+          onChange={(v) => { setSearchQuery(v); setPage(1); }}
+          label="법률 정보 검색"
+          placeholder="예: 코인, 압류, 금지명령"
+        />
+        <FilterChips options={categoryOptions} value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} label="분야" />
+        <p className="text-sm text-slate-600" aria-live="polite">
+          글 <strong className="font-bold text-slate-900">{filtered.length}</strong>개
+        </p>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="관심 있는 키워드나 제목을 입력해 검색하세요 (예: 코인, 압류)"
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="w-full bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full py-2.5 pl-9 pr-4 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-slate-100 placeholder:text-slate-450"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-2.5 text-sm text-slate-405 hover:text-slate-700 font-bold">초기화</button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {NEWS_CATEGORIES.map(cat => (
-              <button key={cat} type="button" onClick={() => { setCategoryFilter(cat); setPage(1); }} className={`text-sm px-3.5 py-1.5 rounded-full font-bold transition-all ${categoryFilter === cat ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10' : 'bg-[#F8FAFC] dark:bg-slate-950 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850'}`}>
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* News Grid */}
       {filtered.length === 0 ? (
-        <div className="py-16 text-center text-slate-600 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 space-y-2">
-          <BookOpen className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 opacity-55 animate-pulse" />
-          <p className="text-sm">검색 결과에 맞는 법률 칼럼이 존재하지 않습니다.</p>
-          <p className="text-sm font-semibold text-[#7e7e8f]">다른 단어로 검색하시거나 카테고리를 변경해 보세요.</p>
-        </div>
+        <EmptyState
+          icon={<SearchX className="h-6 w-6" />}
+          title="찾는 글이 없어요"
+          description="다른 검색어나 분야로 찾아보세요."
+          action={<Button variant="secondary" onClick={reset}>조건 초기화</Button>}
+        />
       ) : (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sliced.map(art => (
-              <div key={art.id} onClick={() => { onSelectArticle(art); onUpdateViews(art.id); }} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden cursor-pointer group text-left">
-                <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
-                  <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  {art.badge && (
-                    <span className={`absolute top-3.5 left-3.5 text-xs font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${art.badge === 'HOT' ? 'bg-[#0D9488]' : art.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'}`}>{art.badge}</span>
+        <ul className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {sliced.map((art) => (
+            <li key={art.id} className="h-full">
+              <button
+                type="button"
+                onClick={() => { onSelectArticle(art); onUpdateViews(art.id); }}
+                className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-xs transition-colors hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <span className="relative block aspect-video w-full shrink-0 overflow-hidden bg-slate-100">
+                  {art.imageUrl ? (
+                    <img src={art.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-slate-400" aria-hidden="true">
+                      <BookOpen className="h-8 w-8" />
+                    </span>
                   )}
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-sm text-slate-500 font-bold"><span>{art.category}</span><span>•</span><span>조회 {art.views}</span></div>
-                    <h4 className="font-semibold text-base sm:text-lg text-slate-850 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">{art.title}</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-405 leading-relaxed line-clamp-2 text-left">{art.excerpt}</p>
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-auto">
-                    <div className="flex items-center gap-2">
-                      <img src={art.authorAvatar} alt={art.authorName} className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
-                      <span className="text-sm font-bold text-[#484760] dark:text-slate-400">By {art.authorName}</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-350 dark:text-slate-655 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 pt-4">
-              <button type="button" disabled={page === 1} onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">이전</button>
-              <div className="flex gap-1">
-                {Array.from({ length: totalPages }).map((_, idx) => {
-                  const pageNum = idx + 1;
-                  return (
-                    <button key={pageNum} type="button" onClick={() => { setPage(pageNum); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl border transition-all cursor-pointer ${page === pageNum ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850'}`}>{pageNum}</button>
-                  );
-                })}
-              </div>
-              <button type="button" disabled={page === totalPages} onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">다음</button>
-            </div>
-          )}
-        </div>
+                  {art.badge === 'NEW' && <Badge tone="brand" className="absolute left-3 top-3">새 글</Badge>}
+                </span>
+                <span className="flex flex-1 flex-col p-5">
+                  <span className="text-sm font-bold text-slate-600">
+                    {art.category}
+                    {art.date ? ` · ${art.date}` : ''}
+                  </span>
+                  <span className="mt-1.5 block text-base font-bold leading-snug text-slate-900 line-clamp-2 break-keep group-hover:text-brand sm:text-lg">
+                    {art.title}
+                  </span>
+                  {art.excerpt && <span className="mt-2 block text-sm leading-relaxed text-slate-600 line-clamp-2 break-keep">{art.excerpt}</span>}
+                  <span className="mt-auto flex items-center justify-between gap-2 pt-4 text-sm">
+                    <span className="min-w-0 truncate font-bold text-slate-700">{art.authorName ? `${art.authorName}` : ''}</span>
+                    <span className="inline-flex shrink-0 items-center gap-0.5 font-bold text-brand">
+                      읽기
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
+
+      <Pagination page={activePage} totalPages={totalPages} onChange={(p) => { setPage(p); window.scrollTo({ top: 0 }); }} />
     </div>
   );
 }

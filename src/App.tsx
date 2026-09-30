@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { DialogProvider } from './components/common/DialogProvider';
 import { 
   loadConsultRequests, 
@@ -37,7 +37,8 @@ const HoneypotAdminLogin = React.lazy(() => import('./components/admin/HoneypotA
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
 import { openSharedReport } from './services/sharedReportService';
 import SharedReportViewer from './components/client/SharedReportViewer';
-import ClientRemoteSignView from './components/client/ClientRemoteSignView';
+// 원격 전자서명(?view=sign)은 문자 링크로만 여는 독립 화면이라 첫 화면 번들에서 뺀다
+const ClientRemoteSignView = React.lazy(() => import('./components/client/ClientRemoteSignView'));
 import UnregisteredLawyerDocViewer from './components/client/UnregisteredLawyerDocViewer';
 import ContractPublicVerifierModal from './components/common/ContractPublicVerifierModal';
 import { getContract } from './services/contractService';
@@ -153,14 +154,29 @@ export default function App() {
   const [verifiedContract, setVerifiedContract] = useState<ElectronicContract | null>(null);
   const [showPublicVerifyModal, setShowPublicVerifyModal] = useState(false);
 
+  // 고객용 화면(고객 셸·원격 서명·공유 리포트)은 라이트 고정 + 고객 타이포 스케일 적용 (index.css CLIENT SURFACE SCOPE)
+  // body에 붙여야 포털로 띄우는 모달까지 같은 규칙을 받는다.
+  const isClientSurface = !docShareToken && (currentRole === 'client' || !!signParams?.cid || !!sharePayload);
+  useEffect(() => {
+    const classes = ['client-light', 'client-scale'];
+    if (isClientSurface) document.body.classList.add(...classes);
+    else document.body.classList.remove(...classes);
+  }, [isClientSurface]);
+
   useEffect(() => {
     if (verifyContractId) {
-      getContract(verifyContractId).then(c => {
-        if (c) {
-          setVerifiedContract(c);
-          setShowPublicVerifyModal(true);
-        }
-      });
+      // 찾지 못하면 이전에는 아무 안내 없이 첫 화면만 보였다
+      const notFound = () => toast.error('검증할 계약서를 찾지 못했어요. QR 코드나 링크 주소를 다시 확인해 주세요.');
+      getContract(verifyContractId)
+        .then(c => {
+          if (c) {
+            setVerifiedContract(c);
+            setShowPublicVerifyModal(true);
+          } else {
+            notFound();
+          }
+        })
+        .catch(notFound);
     }
   }, [verifyContractId]);
 
@@ -338,7 +354,13 @@ export default function App() {
   const mergeConsultMessages = React.useCallback((existingList: ConsultMessage[], incomingList: ConsultMessage[] = []): ConsultMessage[] => {
     const map = new Map<string, ConsultMessage>();
     existingList.forEach(m => map.set(m.id, m));
-    incomingList.forEach(m => map.set(m.id, m));
+    incomingList.forEach(m => {
+      const prev = map.get(m.id);
+      // 서버 행에는 대상 변호사(targetLawyerId) 칸이 없다. 이 기기에서 만든 메시지의 대상 정보를 유지해야
+      // 비교 상담 중 보낸 메시지가 5초 동기화 뒤 사라지거나 다른 변호사 탭에 섞이지 않는다.
+      // 서버에서 온 행이 들어오면 전송 상태(deliveryStatus)는 자연히 지워진다(= 전송 완료).
+      map.set(m.id, prev?.targetLawyerId && !m.targetLawyerId ? { ...m, targetLawyerId: prev.targetLawyerId } : m);
+    });
     return Array.from(map.values())
       .filter(m => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3' && !isProdSeedRequest(m.consultRequestId))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -378,7 +400,10 @@ export default function App() {
     try {
       const saved = secureGetItem('legal_crm_messages');
       if (saved) {
-        return JSON.parse(saved).filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3' && !isProdSeedRequest(m.consultRequestId));
+        return JSON.parse(saved)
+          .filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3' && !isProdSeedRequest(m.consultRequestId))
+          // 보내는 도중 창을 닫은 메시지는 실패로 보여 '다시 보내기'를 할 수 있게 한다
+          .map((m: ConsultMessage) => (m.deliveryStatus === 'sending' ? { ...m, deliveryStatus: 'failed' as const } : m));
       }
     } catch {}
     return [];
@@ -690,7 +715,17 @@ export default function App() {
     }
   }, [activityLogs]);
 
+  // 메시지 한 건의 화면 상태만 바꾼다 (서버 전체 재동기화 없이 기기 저장만)
+  const patchMessageLocal = React.useCallback((id: string, patch: Partial<ConsultMessage>) => {
+    _setMessages(prev => {
+      const next = prev.map(m => (m.id === id ? { ...m, ...patch } : m));
+      try { secureSetItem('legal_crm_messages', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   // Method to add customized chat messages
+  // @returns 서버 저장까지 끝났으면 true. 의뢰인 대화 메시지는 전송 상태(보내는 중/실패)를 말풍선에 표시한다.
   const handleAddMessage = (
     reqId: string, 
     text: string, 
@@ -698,7 +733,8 @@ export default function App() {
     senderId: string, 
     name: string,
     targetLawyerId?: string
-  ) => {
+  ): Promise<boolean> => {
+    const tracksDelivery = sender === 'client' && senderId !== 'system';
     const newMessage: ConsultMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       consultRequestId: reqId,
@@ -707,10 +743,16 @@ export default function App() {
       senderName: name,
       message: text,
       createdAt: new Date().toISOString(),
-      ...(targetLawyerId ? { targetLawyerId } : {})
+      ...(targetLawyerId ? { targetLawyerId } : {}),
+      ...(tracksDelivery ? { deliveryStatus: 'sending' as const } : {}),
     };
     setMessages(prev => mergeConsultMessages(prev, [newMessage]));
-    saveConsultMessage(newMessage).catch(() => {});
+    const delivery = saveConsultMessage(newMessage)
+      .catch(() => false)
+      .then(ok => {
+        if (tracksDelivery) patchMessageLocal(newMessage.id, { deliveryStatus: ok ? undefined : 'failed' });
+        return ok;
+      });
 
     // Update the corresponding request status to active 'counseling' & preserve acceptedLawyerIds
     const isActualChat = (sender === 'client' && senderId !== 'system') || (sender === 'lawyer' && senderId !== 'system');
@@ -727,6 +769,20 @@ export default function App() {
       }
       return req;
     }));
+    return delivery;
+  };
+
+  // 전송 실패한 메시지를 같은 id로 다시 보낸다 (이미 서버에 있으면 그대로 두고 성공 처리)
+  const handleRetryMessage = (messageId: string): Promise<boolean> => {
+    const target = messages.find(m => m.id === messageId);
+    if (!target) return Promise.resolve(false);
+    patchMessageLocal(messageId, { deliveryStatus: 'sending' });
+    return saveConsultMessage(target)
+      .catch(() => false)
+      .then(ok => {
+        patchMessageLocal(messageId, { deliveryStatus: ok ? undefined : 'failed' });
+        return ok;
+      });
   };
 
   // Log activity helper
@@ -789,7 +845,11 @@ export default function App() {
     return (
       <>
         <Toaster position="top-center" richColors />
-        <ClientRemoteSignView cid={signParams.cid} token={signParams.token} />
+        <React.Suspense
+          fallback={<div className="min-h-dvh bg-slate-50" role="status" aria-label="계약서 화면을 불러오는 중이에요" />}
+        >
+          <ClientRemoteSignView cid={signParams.cid} token={signParams.token} />
+        </React.Suspense>
       </>
     );
   }
@@ -827,7 +887,7 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-[Pretendard] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
         {/* Shaking & unlock css inject */}
         <style>{`
           @keyframes shake {
@@ -840,16 +900,15 @@ export default function App() {
           }
         `}</style>
 
-        <div className={`w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center space-y-5 ${isShaking ? 'shake-input' : ''}`}>
-          <div className="p-4 bg-[#7264FF]/10 text-[#7264FF] rounded-2xl">
-            <Lock className="w-8 h-8" />
+        <div className={`w-full max-w-sm bg-white border border-slate-200 rounded-3xl p-6 shadow-lg flex flex-col items-center text-center space-y-5 ${isShaking ? 'shake-input' : ''}`}>
+          <div className="p-4 bg-brand-light text-brand rounded-2xl">
+            <Lock className="w-8 h-8" aria-hidden="true" />
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-extrabold text-lg text-white">보안 보호된 채무 리포트</h3>
-            <p className="text-xs text-slate-500 leading-relaxed px-4">
-              본 채무 리포트는 비밀번호로 보호되어 있습니다.<br />
-              공유자로부터 전달받은 <strong>숫자 6자리 비밀번호</strong>를 입력해 주세요.
+            <h1 className="font-extrabold text-lg text-slate-900">비밀번호로 보호된 채무 정리 리포트</h1>
+            <p className="text-sm text-slate-600 leading-relaxed px-2 break-keep">
+              리포트를 공유한 분에게 받은 <strong className="text-slate-900">숫자 6자리 비밀번호</strong>를 입력해 주세요.
             </p>
           </div>
 
@@ -865,15 +924,18 @@ export default function App() {
               }}
               disabled={shareLocked}
               placeholder="••••••"
+              inputMode="numeric"
+              autoComplete="one-time-code"
               aria-label="보고서 비밀번호 6자리"
+              aria-invalid={pinError || undefined}
               className={`w-full text-center text-3xl tracking-[0.6em] font-bold py-3.5 border-2 ${
-                pinError ? 'border-red-500 bg-red-500/5 focus:border-red-500' : 'border-slate-800 bg-slate-950 focus:border-[#7264FF]'
-              } rounded-xl outline-none transition-colors placeholder:text-slate-500 text-white`}
+                pinError ? 'border-red-500 bg-red-50 focus:border-red-600' : 'border-slate-300 bg-white focus:border-brand'
+              } rounded-xl outline-none transition-colors placeholder:text-slate-400 text-slate-900`}
               onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
             />
 
             {pinError && (
-              <div role="alert" className="flex items-start gap-1.5 justify-center text-red-400 text-[13px] font-bold">
+              <div role="alert" className="flex items-start gap-1.5 justify-center text-red-700 text-[13px] font-bold">
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{pinErrorMessage || '비밀번호가 일치하지 않습니다.'}</span>
               </div>
@@ -883,7 +945,7 @@ export default function App() {
           <button
             onClick={handleUnlock}
             disabled={pin.length !== 6 || shareLocked || isUnlocking}
-            className="w-full min-h-[44px] py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-400 text-white text-xs font-bold rounded-xl transition-colors"
+            className="w-full min-h-12 py-3.5 bg-brand hover:bg-brand-hover disabled:bg-slate-200 disabled:text-slate-500 text-white text-sm font-bold rounded-xl transition-colors"
           >
             {isUnlocking ? '확인 중...' : shareLocked ? '열 수 없는 링크입니다' : '보고서 잠금 해제하기'}
           </button>
@@ -924,6 +986,7 @@ export default function App() {
                 setMessages={setMessages}
                 lawyers={lawyers}
                 onAddMessage={handleAddMessage}
+                onRetryMessage={handleRetryMessage}
                 newsArticles={newsArticles}
                 setNewsArticles={setNewsArticles}
                 qas={qas}

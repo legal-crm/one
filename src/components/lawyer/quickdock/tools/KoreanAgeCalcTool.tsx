@@ -1,288 +1,229 @@
 import React, { useState } from 'react';
-import { CalendarCheck, Copy, Check, Sparkles, UserCheck, AlertCircle, Baby, Briefcase, HeartHandshake } from 'lucide-react';
-import { toast } from 'sonner';
+import { CalendarCheck, AlertCircle, Baby, HeartHandshake, Briefcase } from 'lucide-react';
+import { calculateKoreanAgeInfo } from '../../../../services/documents/familyParserService';
+import { checkSpecial24Eligibility, COURTS_ALLOWING_24_MONTHS } from '../../../../services/repayment/rehabLegalCore';
+import { localYmd, parseLocalYmd } from '../../../../utils/localDate';
+import { useCopyFeedback } from '../clipboard';
+import CopyButton from '../ui/CopyButton';
 
+type Subject = 'child' | 'parent' | 'debtor';
+
+const SUBJECTS: { value: Subject; label: string }[] = [
+  { value: 'child', label: '자녀' },
+  { value: 'parent', label: '부모' },
+  { value: 'debtor', label: '채무자 본인' },
+];
+
+const COURTS_24_LABEL = COURTS_ALLOWING_24_MONTHS.map(c => c.replace('회생법원', '')).join('·') + '회생법원';
+
+/** 기준일부터 target까지 남은 개월 수 (지났으면 0) */
+function monthsUntil(target: Date, base: Date): number {
+  let months = (target.getFullYear() - base.getFullYear()) * 12 + (target.getMonth() - base.getMonth());
+  if (target.getDate() < base.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+function addYears(d: Date, years: number): Date {
+  return new Date(d.getFullYear() + years, d.getMonth(), d.getDate());
+}
+
+/**
+ * 만나이 & 부양자격 판정
+ * - 나이 분류는 가족관계 서류 파서(calculateKoreanAgeInfo)와 같은 기준:
+ *   만 19세 미만 미성년 / 만 19~20세 성년 자녀(서울회생법원 소명 대상) / 만 21세 이상 / 만 65세 이상
+ * - 24개월 단축 특례는 rehabLegalCore.checkSpecial24Eligibility와 같은 기준(만 30세 미만·고령자, 운영 법원 한정)
+ * - 생년월일은 저장하지 않는다.
+ */
 export default function KoreanAgeCalcTool() {
-  // 생년월일 입력값 (기본값: 1995-05-15)
-  const [birthInput, setBirthInput] = useState('1998-08-20');
-  const [copied, setCopied] = useState(false);
+  const [subject, setSubject] = useState<Subject>('child');
+  const [birthInput, setBirthInput] = useState('');
+  const [baseDate, setBaseDate] = useState(() => localYmd());
+  const { copied, copy } = useCopyFeedback();
 
-  // 생년월일 파싱 및 유효성 검사
-  const parseBirthDate = (raw: string): Date | null => {
-    const cleaned = raw.replace(/[^0-9]/g, '');
-    let year = 0;
-    let month = 0;
-    let day = 0;
+  const base = parseLocalYmd(baseDate) || new Date();
+  const info = calculateKoreanAgeInfo(birthInput.trim(), base);
 
-    if (cleaned.length === 6) {
-      // YYMMDD
-      const yy = parseInt(cleaned.slice(0, 2), 10);
-      year = yy >= 30 ? 1900 + yy : 2000 + yy;
-      month = parseInt(cleaned.slice(2, 4), 10);
-      day = parseInt(cleaned.slice(4, 6), 10);
-    } else if (cleaned.length === 8) {
-      // YYYYMMDD
-      year = parseInt(cleaned.slice(0, 4), 10);
-      month = parseInt(cleaned.slice(4, 6), 10);
-      day = parseInt(cleaned.slice(6, 8), 10);
-    } else if (raw.includes('-')) {
-      const parts = raw.split('-');
-      if (parts.length === 3) {
-        year = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        day = parseInt(parts[2], 10);
-      }
+  // 파서가 통과시킨 값도 실제 달력 날짜인지(예: 2월 31일) 한 번 더 확인
+  let birth: Date | null = null;
+  if (info.birthDateFormatted) {
+    const [y, m, d] = info.birthDateFormatted.split('.').map(Number);
+    const candidate = new Date(y, m - 1, d);
+    if (candidate.getFullYear() === y && candidate.getMonth() === m - 1 && candidate.getDate() === d && candidate <= base) {
+      birth = candidate;
     }
-
-    if (year < 1920 || year > 2026 || month < 1 || month > 12 || day < 1 || day > 31) {
-      return null;
-    }
-    const d = new Date(year, month - 1, day);
-    if (isNaN(d.getTime())) return null;
-    return d;
-  };
-
-  const birthDate = parseBirthDate(birthInput);
-  const today = new Date();
-
-  // 나이 계산
-  let internationalAge = 0;
-  let yearAge = 0;
-  let countingAge = 0;
-  let isBirthdayPassed = false;
-  let nextBirthdayDday = 0;
-  let age19Date: Date | null = null;
-  let monthsUntil19 = 0;
-
-  if (birthDate) {
-    const birthYear = birthDate.getFullYear();
-    const birthMonth = birthDate.getMonth();
-    const birthDay = birthDate.getDate();
-
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    const currentDay = today.getDate();
-
-    yearAge = currentYear - birthYear;
-    countingAge = yearAge + 1;
-
-    // 생일 지났는지 여부
-    if (currentMonth > birthMonth || (currentMonth === birthMonth && currentDay >= birthDay)) {
-      isBirthdayPassed = true;
-      internationalAge = yearAge;
-    } else {
-      isBirthdayPassed = false;
-      internationalAge = Math.max(0, yearAge - 1);
-    }
-
-    // 다음 생일까지 D-day
-    const nextBdayYear = isBirthdayPassed ? currentYear + 1 : currentYear;
-    const nextBday = new Date(nextBdayYear, birthMonth, birthDay);
-    const diffTime = nextBday.getTime() - today.getTime();
-    nextBirthdayDday = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    // 만 19세 도달일 (성년)
-    age19Date = new Date(birthYear + 19, birthMonth, birthDay);
-    const diffMonths = (age19Date.getFullYear() - today.getFullYear()) * 12 + (age19Date.getMonth() - today.getMonth());
-    monthsUntil19 = Math.max(0, diffMonths);
   }
 
-  // ── 도산 실무 특례 판정 ──
-  const isMinorUnder19 = birthDate ? internationalAge < 19 : false;
-  const isYouthUnder29 = birthDate ? internationalAge <= 29 : false;
-  const isYouthUnder34 = birthDate ? internationalAge <= 34 : false;
-  const isSeniorOver65 = birthDate ? internationalAge >= 65 : false;
+  const fullAge = info.fullAge;
+  const yearAge = birth ? base.getFullYear() - birth.getFullYear() : 0;
+  const birthdayPassed = birth
+    ? base.getMonth() > birth.getMonth() || (base.getMonth() === birth.getMonth() && base.getDate() >= birth.getDate())
+    : false;
+  const nextBirthday = birth
+    ? new Date(base.getFullYear() + (birthdayPassed ? 1 : 0), birth.getMonth(), birth.getDate())
+    : null;
+  const nextBirthdayDday = nextBirthday ? Math.round((nextBirthday.getTime() - base.getTime()) / 86_400_000) : 0;
+
+  const special24 = checkSpecial24Eligibility({ courtAllows24: true, age: fullAge, elderly: fullAge >= 65 });
+  const monthsTo19 = birth ? monthsUntil(addYears(birth, 19), base) : 0;
+  const monthsTo21 = birth ? monthsUntil(addYears(birth, 21), base) : 0;
+  const monthsTo65 = birth ? monthsUntil(addYears(birth, 65), base) : 0;
+  const turns30 = birth ? localYmd(addYears(birth, 30)) : '';
+
+  // ── 대상별 판정 문구 ──
+  let verdictTitle = '';
+  let verdictBody = '';
+  let verdictTone: 'good' | 'check' | 'neutral' = 'neutral';
+
+  if (birth) {
+    if (subject === 'child') {
+      if (fullAge < 19) {
+        verdictTone = 'good';
+        verdictTitle = '미성년 자녀 — 부양가족 산정 대상 (원칙)';
+        verdictBody = `만 19세까지 약 ${monthsTo19}개월 남았습니다.${
+          monthsTo19 <= 60 ? ' 변제기간 중 성년이 되면 부양가족 수 변동을 변제계획에 반영할지 검토하세요.' : ''
+        }`;
+      } else if (fullAge <= 20) {
+        verdictTone = 'check';
+        verdictTitle = '성년 자녀 (만 19~20세) — 소명 시 인정 검토';
+        verdictBody = `경제적으로 자립하지 못한 경우 서울회생법원 등에서 부양가족으로 인정한 기준이 있습니다. 재학·취업준비 사실을 소명하고 관할 법원 기준을 확인하세요. 만 21세까지 약 ${monthsTo21}개월.`;
+      } else {
+        verdictTone = 'neutral';
+        verdictTitle = '성년 자녀 (만 21세 이상) — 원칙적으로 부양가족 제외';
+        verdictBody = '중증 장애·질병 등으로 근로능력이 없음을 진단서 등으로 소명하면 예외적으로 검토될 수 있습니다.';
+      }
+    } else if (subject === 'parent') {
+      if (fullAge >= 65) {
+        verdictTone = 'good';
+        verdictTitle = '만 65세 이상 부모 — 부양가족 산정 검토 대상';
+        verdictBody = '소득·재산이 없음(지방세 세목별 과세증명서, 건강보험 자격)과 생활비 지원 사실을 소명하면 부양가족으로 검토될 수 있습니다.';
+      } else {
+        verdictTone = 'neutral';
+        verdictTitle = '만 65세 미만 부모 — 근로능력이 있는 것으로 보는 경향';
+        verdictBody = `중증 질환·장애 등 근로능력이 없다는 소명이 필요합니다. 만 65세까지 약 ${monthsTo65}개월.`;
+      }
+    } else {
+      if (special24.eligible) {
+        verdictTone = 'good';
+        verdictTitle = `24개월 단축 특례 검토 대상 (${special24.reason})`;
+        verdictBody = `플랫폼 기준 특례 운영 법원: ${COURTS_24_LABEL}. 소득·재산 요건과 재판부 기준을 확인하세요.${
+          fullAge < 30 ? ` 만 30세가 되는 날: ${turns30}.` : ''
+        }`;
+      } else {
+        verdictTone = 'neutral';
+        verdictTitle = '연령 특례 비해당 — 기본 36개월';
+        verdictBody = '기초생활수급자·중증장애인·한부모 가족·전세사기 피해자 등 다른 특례 요건을 확인하세요. 청산가치 보장 등 필요 시 최장 60개월.';
+      }
+    }
+  }
 
   const handleCopy = () => {
-    if (!birthDate) {
-      toast.error('올바른 생년월일을 입력해주세요.');
-      return;
-    }
-
-    const text = `[만나이 및 도산 실무 자격 판정]
-• 생년월일: ${birthDate.getFullYear()}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}
-• 만 나이: 만 ${internationalAge}세 (${isBirthdayPassed ? '올해 생일 지남' : `생일 전, D-${nextBirthdayDday}`})
-• 연 나이 / 세는나이: ${yearAge}세 / ${countingAge}세
--------------------------------------------
-[실무상 자격 판정]
-1. 미성년 부양가족: ${isMinorUnder19 ? `✅ 미성년 인정 (만 19세까지 약 ${monthsUntil19}개월 잔여)` : '❌ 만 19세 성년 (부양가족 제외 원칙)'}
-2. 청년 회생 24개월 단축: ${isYouthUnder29 ? '✅ 만 29세 이하 청년 특례 대상 (변제기간 24개월)' : isYouthUnder34 ? '🟡 만 34세 이하 청년 (일부 법원 단축특례 검토 대상)' : '❌ 청년 특례 비해당 (일반 36개월)'}
-3. 고령자 부양가족: ${isSeniorOver65 ? '✅ 만 65세 이상 고령자 (부양가족 산입 및 단축변제 검토 가능)' : '❌ 만 65세 미만'}`;
-
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success('나이 및 실무 자격 판정 결과가 복사되었습니다.');
-    setTimeout(() => setCopied(false), 2000);
+    if (!birth) return;
+    const subjectLabel = SUBJECTS.find(s => s.value === subject)?.label || '';
+    const text = `[만나이 및 도산 실무 판정 (참고)]
+• 대상: ${subjectLabel}
+• 생년월일: ${localYmd(birth)} / 기준일: ${baseDate}
+• 만 나이: 만 ${fullAge}세 (${birthdayPassed ? '올해 생일 지남' : `생일까지 ${nextBirthdayDday}일`}) · 연 나이 ${yearAge}세
+• 판정: ${verdictTitle}
+• 참고: ${verdictBody}
+※ 부양가족 인정·특례 적용은 소명 자료와 관할 법원 판단에 따릅니다.`;
+    copy(text, '나이 및 실무 판정 결과가 복사되었습니다.');
   };
+
+  const toneClass =
+    verdictTone === 'good'
+      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+      : verdictTone === 'check'
+      ? 'bg-blue-50/80 border-blue-200 text-blue-950'
+      : 'bg-slate-50 border-slate-200 text-slate-800';
+  const VerdictIcon = subject === 'child' ? Baby : subject === 'parent' ? HeartHandshake : Briefcase;
 
   return (
     <div className="p-4 space-y-3.5 text-xs text-slate-800">
-      {/* 생년월일 입력 */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-          <span>생년월일 입력 (주민번호 앞자리 또는 YYYY-MM-DD)</span>
-          <span className="text-[10px] text-rose-600 font-mono font-medium">기준일: 오늘</span>
-        </label>
-        <div className="flex gap-2">
+      {/* 판정 대상 */}
+      <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl" role="radiogroup" aria-label="판정 대상">
+        {SUBJECTS.map(s => (
+          <button
+            key={s.value}
+            type="button"
+            role="radio"
+            aria-checked={subject === s.value}
+            onClick={() => setSubject(s.value)}
+            className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              subject === s.value ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 입력 */}
+      <div className="grid grid-cols-5 gap-2">
+        <div className="col-span-3">
+          <label htmlFor="age-birth" className="text-[11px] font-bold text-slate-700 block mb-1">생년월일</label>
           <input
+            id="age-birth"
             type="text"
+            autoComplete="off"
             value={birthInput}
             onChange={e => setBirthInput(e.target.value)}
             placeholder="예: 980820 또는 1998-08-20"
-            className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+            aria-describedby="age-birth-help"
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
           />
         </div>
-        <p className="text-[10px] text-slate-500">
-          💡 주민등록번호 앞 6자리(예: 051120)만 쳐도 자동으로 만 나이와 특례가 계산됩니다.
-        </p>
+        <div className="col-span-2">
+          <label htmlFor="age-base" className="text-[11px] font-bold text-slate-700 block mb-1">기준일</label>
+          <input
+            id="age-base"
+            type="date"
+            value={baseDate}
+            onChange={e => setBaseDate(e.target.value || localYmd())}
+            className="w-full px-2 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+          />
+        </div>
       </div>
+      <p id="age-birth-help" className="text-[10px] text-slate-500 -mt-2">
+        주민번호는 앞 6자리(필요하면 성별 1자리)까지만 입력하세요. 입력값은 저장되지 않습니다.
+      </p>
 
-      {birthDate ? (
+      {birth ? (
         <>
-          {/* 나이 결과 요약 카드 */}
+          {/* 나이 요약 */}
           <div className="bg-gradient-to-br from-rose-50 to-pink-50/50 p-3.5 rounded-2xl border border-rose-200/80 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
-                <CalendarCheck className="w-4 h-4 text-rose-600" />
-                법정 만 나이 (대한민국 표준)
+                <CalendarCheck className="w-4 h-4 text-rose-700" aria-hidden="true" />
+                법정 만 나이 ({baseDate} 기준)
               </span>
-              <span className="text-[11px] text-rose-700 font-bold">
-                {isBirthdayPassed ? '올해 생일 지남' : `생일까지 D-${nextBirthdayDday}`}
+              <span className="text-[11px] text-rose-800 font-bold">
+                {birthdayPassed ? '올해 생일 지남' : `생일까지 D-${nextBirthdayDday}`}
               </span>
             </div>
-
             <div className="flex items-baseline justify-between pt-1 border-t border-rose-200/60">
-              <span className="text-2xl font-black text-rose-600 font-mono tracking-tight">
-                만 {internationalAge}세
-              </span>
-              <div className="text-right text-[11px] text-slate-500">
-                <span>연 나이: {yearAge}세</span>
-                <span className="mx-1 text-slate-300">|</span>
-                <span>세는나이: {countingAge}세</span>
-              </div>
+              <span className="text-2xl font-black text-rose-700 tabular-nums tracking-tight">만 {fullAge}세</span>
+              <span className="text-[11px] text-slate-600">연 나이 {yearAge}세 · 생년월일 {localYmd(birth)}</span>
             </div>
           </div>
 
-          {/* ── 도산 실무 특례 3대 판정 리포트 ── */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">
-              회생·파산 실무상 자격 판정
-            </span>
-
-            {/* 1. 미성년 자녀 부양가족 */}
-            <div className={`p-2.5 rounded-xl border flex items-start gap-2.5 ${
-              isMinorUnder19 ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-700'
-            }`}>
-              <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${isMinorUnder19 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                <Baby className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs">
-                    {isMinorUnder19 ? '미성년 자녀 (부양가족 인정 O)' : '만 19세 성년 (원칙상 부양가족 제외)'}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    isMinorUnder19 ? 'bg-emerald-200/70 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {isMinorUnder19 ? '부양가능' : '제외대상'}
-                  </span>
-                </div>
-                {isMinorUnder19 ? (
-                  <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
-                    만 19세 성년 도달일까지 <strong>약 {monthsUntil19}개월</strong> 남음. 
-                    {monthsUntil19 <= 36 && ' (36개월 내 성년 도달 시 단계적 변제계획 검토 필요)'}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    성년 자녀는 중증 장애 또는 지속적 질병 등 특별사유 소명 시에만 예외적 인정.
-                  </p>
-                )}
-              </div>
+          {/* 판정 */}
+          <div className={`p-3 rounded-2xl border flex items-start gap-2.5 ${toneClass}`} aria-live="polite">
+            <div className="p-1.5 rounded-lg shrink-0 mt-0.5 bg-white/70">
+              <VerdictIcon className="w-4 h-4" aria-hidden="true" />
             </div>
-
-            {/* 2. 청년 회생 24개월 단축 특례 */}
-            <div className={`p-2.5 rounded-xl border flex items-start gap-2.5 ${
-              isYouthUnder29 
-                ? 'bg-blue-50/80 border-blue-300 text-blue-950' 
-                : isYouthUnder34 
-                ? 'bg-cyan-50/80 border-cyan-300 text-cyan-950'
-                : 'bg-slate-50 border-slate-200 text-slate-700'
-            }`}>
-              <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
-                isYouthUnder29 ? 'bg-blue-600 text-white' : isYouthUnder34 ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-500'
-              }`}>
-                <Briefcase className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs">
-                    {isYouthUnder29 
-                      ? '청년 회생 24개월 단축 특례 (만 29세 이하)' 
-                      : isYouthUnder34 
-                      ? '청년 회생 준칙 검토 대상 (만 34세 이하)'
-                      : '청년 단축 특례 비해당 (36개월 원칙)'}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    isYouthUnder29 
-                      ? 'bg-blue-200/80 text-blue-800' 
-                      : isYouthUnder34 
-                      ? 'bg-cyan-200/80 text-cyan-800'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {isYouthUnder29 ? '24개월 단축' : isYouthUnder34 ? '준칙확인' : '일반36개월'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                  {isYouthUnder29 
-                    ? '일부 회생법원 실무준칙상 청년 채무자 변제기간 단축(예: 24개월) 검토 대상 — 소득·재산 요건과 관할 법원 기준 확인 필요' 
-                    : isYouthUnder34 
-                    ? '관할 법원에 따라 청년 지원 정책으로 변제기간 단축 대상 여부 확인 권장.' 
-                    : '일반 채무자로 기본 36개월(청산가치 초과 시 최장 60개월) 변제계획안 작성.'}
-                </p>
-              </div>
-            </div>
-
-            {/* 3. 고령자 부양가족 / 고령자 특례 */}
-            <div className={`p-2.5 rounded-xl border flex items-start gap-2.5 ${
-              isSeniorOver65 ? 'bg-purple-50/80 border-purple-200 text-purple-950' : 'bg-slate-50 border-slate-200 text-slate-700'
-            }`}>
-              <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${isSeniorOver65 ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                <HeartHandshake className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs">
-                    {isSeniorOver65 ? '만 65세 이상 고령자 (부양가족 인정 O)' : '만 65세 미만'}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    isSeniorOver65 ? 'bg-purple-200/80 text-purple-800' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {isSeniorOver65 ? '고령자부양' : '일반'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                  {isSeniorOver65 
-                    ? '부모님 부양 시 소득 유무 확인 후 기본 부양가족 산입 가능. 채무자 본인인 경우 고령자 단축변제 검토 가능.' 
-                    : '부모님 만 65세 미만인 경우 근로능력이 인정되어 중증 질환 소명 없이는 부양가족 불인정 경향.'}
-                </p>
-              </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <p className="font-extrabold text-xs">{verdictTitle}</p>
+              <p className="text-[11px] leading-relaxed opacity-90">{verdictBody}</p>
             </div>
           </div>
 
-          {/* 복사 버튼 */}
-          <button
-            onClick={handleCopy}
-            className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale active:scale-[0.98]"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? '복사 완료' : '만나이 & 실무 판정결과 복사'}</span>
-          </button>
+          <CopyButton copied={copied} onClick={handleCopy} label="만나이 & 실무 판정 복사" copiedLabel="복사 완료" />
         </>
       ) : (
-        <div className="p-4 bg-slate-50 rounded-xl text-center text-slate-500 border border-slate-200">
-          <AlertCircle className="w-5 h-5 mx-auto text-slate-400 mb-1" />
-          <p className="font-bold">올바른 생년월일 형식으로 입력해주세요.</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">예: 950515 또는 1995-05-15</p>
+        <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
+          <AlertCircle className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
+          <p className="font-bold">{birthInput.trim() ? '생년월일 형식을 확인해 주세요.' : '생년월일을 입력하세요.'}</p>
+          <p className="text-[11px] text-slate-500">예: 950515, 950515-1, 1995-05-15, 1995.5.15</p>
         </div>
       )}
     </div>

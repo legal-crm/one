@@ -12,6 +12,10 @@ import { toast } from 'sonner';
 import type { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 import { formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 import type { AIAnalysisData } from './LawyerProposalDraft';
+import {
+  JOB_TYPE_LABELS, MARITAL_LABELS, HOUSING_LABELS, DEBT_CAUSE_LABELS,
+  HARASSMENT_LABELS, SPECIAL_COND_LABELS,
+} from '../../constants/clientProfileLabels';
 
 interface ClientReferencePanelProps {
   consultRequest: any;
@@ -27,72 +31,7 @@ interface ClientReferencePanelProps {
   onOpenAIReport?: () => void;
 }
 
-// ── 한글 라벨 맵핑 ──
-const JOB_TYPE_LABELS: Record<string, string> = {
-  SALARIED: '직장인 (4대보험 가입)',
-  salary: '직장인 (4대보험 가입)',
-  BUSINESS: '개인사업자 / 자영업',
-  business: '개인사업자 / 자영업',
-  DAILY: '일용직 / 계약직',
-  daily: '일용직 / 계약직',
-  FREELANCER: '프리랜서 / 특수고용',
-  freelancer: '프리랜서 / 특수고용',
-  worker_no_ins: '4대보험 미가입 근로자',
-  unemployed: '무직 / 구직 중',
-  none: '무직 / 구직 중',
-  both: '근로 및 사업 병행',
-  basic_recipient: '기초생활수급자'
-};
-
-const MARITAL_LABELS: Record<string, string> = {
-  SINGLE: '미혼 (1인 가구)',
-  single: '미혼 (1인 가구)',
-  MARRIED: '기혼 (배우자 동거)',
-  married: '기혼 (배우자 동거)',
-  DIVORCED: '이혼 / 한부모',
-  divorced: '이혼 / 한부모',
-  WIDOWED: '사별',
-  widowed: '사별',
-  other: '기타'
-};
-
-const HOUSING_LABELS: Record<string, string> = {
-  rent: '월세 (임차 거주)',
-  jeonse: '전세 (임차 거주)',
-  owned: '자가 (본인/배우자 소유)',
-  free: '무상 거주 (가족/친척 집)',
-  dormitory: '기숙사 / 고시원'
-};
-
-const DEBT_CAUSE_LABELS: Record<string, string> = {
-  LIVING: '생계비 / 생활고 부족',
-  living: '생계비 / 생활고 부족',
-  BUSINESS: '사업 실패 / 매출 부진',
-  business: '사업 실패 / 매출 부진',
-  INVESTMENT: '주식 / 코인 투자 손실',
-  investment: '주식 / 코인 투자 손실',
-  GUARANTEE: '타인 보증 채무',
-  guarantee: '타인 보증 채무',
-  GAMBLING: '도박 / 사행성 채무',
-  gambling: '도박 / 사행성 채무',
-  FRAUD: '사기 피해 (보이스피싱/전세사기)',
-  OTHER: '기타 사유'
-};
-
-const HARASSMENT_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  CALL: { label: '전화 / 문자 독촉', color: 'bg-amber-50 text-amber-800 border-amber-200', desc: '채권사 수시 전화·문자 독촉' },
-  LETTER: { label: '독촉장 / 자택 방문', color: 'bg-orange-50 text-orange-800 border-orange-200', desc: '우편 독촉장 및 방문 통보' },
-  LAWSUIT: { label: '지급명령 / 법원 소송', color: 'bg-rose-50 text-rose-800 border-rose-200', desc: '법원 소송 및 지급명령 접수됨' },
-  SEIZURE: { label: '통장 / 급여 압류 진행', color: 'bg-red-100 text-red-900 border-red-300 font-bold', desc: '계좌 압류 또는 유체동산 압류 상태' }
-};
-
-const SPECIAL_COND_LABELS: Record<string, string> = {
-  basic_recipient: '기초생활수급자 (취약계층 특례)',
-  severe_disability: '중증 장애인 (취약계층 특례)',
-  elderly: '65세 이상 고령자 (취약계층 특례)',
-  single_parent: '한부모가족 (취약계층 특례)',
-  rent_fraud: '전세사기 피해자 (특별법 지원)'
-};
+// 한글 라벨 맵은 상담 채팅 분석서와 공유한다 (src/constants/clientProfileLabels.ts)
 
 export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
   consultRequest,

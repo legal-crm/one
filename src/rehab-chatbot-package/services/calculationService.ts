@@ -268,13 +268,13 @@ export function calculateRepayment(
         const isRehabWork = workplaceCourt.includes('회생법원');
 
         if (isRehabRes && !isRehabWork) {
-            aiAdvice.push(`⚖️ 거주지 관할 법원인 **${residenceCourt}**은(는) 전문 회생법원으로서 일반 지방법원(${workplaceCourt})에 비해 실무 준칙이 유연하고(배우자 재산 제외 등) 진행 속도가 신속하므로, 거주지 관할 법원 기준으로 정밀 분석을 진행했습니다.`);
+            aiAdvice.push(`⚖️ 거주지 관할 법원인 **${residenceCourt}**(회생법원) 실무 기준으로 계산했습니다. 회생법원과 일반 지방법원(${workplaceCourt})은 배우자 재산 반영 등 실무 기준이 다를 수 있습니다.`);
         } else if (!isRehabRes && isRehabWork) {
-            aiAdvice.push(`⚖️ 직장 관할 법원인 **${workplaceCourt}**은(는) 전문 회생법원으로서 일반 지방법원(${residenceCourt})에 비해 실무 준칙이 유연하고(배우자 재산 제외 등) 진행 속도가 신속하므로, 직장 관할 법원 기준으로 정밀 분석을 진행했습니다. 실제 신청 시에도 직장 소재지 법원으로 접수하시는 것이 훨씬 유리합니다.`);
+            aiAdvice.push(`⚖️ 직장 관할 법원인 **${workplaceCourt}**(회생법원) 실무 기준으로 계산했습니다. 거주지 관할 법원(${residenceCourt})과 기준이 다를 수 있으니, 신청할 법원은 담당 변호사와 상의해 정하세요.`);
         } else if (isRehabRes && isRehabWork) {
-            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 전문 회생법원인 경우, 실무상 신청 및 보정 권고 대응의 편의성을 위해 거주지 관할 법원을 기준으로 정밀 분석을 진행했습니다.`);
+            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 회생법원이라 거주지 관할 법원 기준으로 계산했습니다.`);
         } else {
-            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 일반 지방법원인 경우, 실무 준칙상 주소지 우선 원칙에 따라 거주지 관할 법원을 기준으로 정밀 분석을 진행했습니다.`);
+            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 일반 지방법원이라 거주지 관할 법원 기준으로 계산했습니다.`);
         }
     }
 
@@ -590,8 +590,8 @@ export function calculateRepayment(
     // 8. 상태 판단
     if (input.unemployedReason === 'illness') {
         status = 'IMPOSSIBLE';
-        statusReason = '질병이나 장애로 근로능력이 없어 개인회생보다 파산 면책 신청이 적합합니다.';
-        aiAdvice.push('💡 질병이나 장애로 인해 근로활동이 불가능한 경우, 법률상 개인회생 신청 요건(반복적이고 확실한 수입)을 충족하기 어렵습니다. 대신 채무 전액을 면책받을 수 있는 개인파산 신청 대상이 될 수 있으므로, 전문 변호사와 파산 가능 여부를 상의하시는 것이 유리합니다.');
+        statusReason = '질병이나 장애로 근로가 어려우면 개인회생보다 파산 면책 신청을 먼저 검토해 볼 수 있습니다.';
+        aiAdvice.push('💡 질병이나 장애로 근로활동이 어려우면 개인회생 신청 요건(반복적이고 확실한 수입)을 충족하기 어렵습니다. 개인파산으로 남은 채무의 면책을 신청할 수 있는지 변호사와 상의해 보세요.');
     } else if (corePlan.status === 'LIQUIDATION_EXCEEDS') {
         status = 'IMPOSSIBLE';
         statusReason = '재산 가치가 채무보다 많아 개인회생 신청이 어렵습니다.';
@@ -611,22 +611,22 @@ export function calculateRepayment(
         statusReason = '가용소득으로 원금을 모두 갚을 수 있는 수준이라 개인회생의 감면 실익이 적습니다.';
     } else if (debtReductionRate < 30) {
         status = 'DIFFICULT';
-        statusReason = '탕감율이 낮아 실익이 적을 수 있습니다.';
+        statusReason = '예상 감면율이 낮아 실익이 적을 수 있습니다.';
     } else {
         status = 'POSSIBLE';
-        statusReason = '개인회생 신청이 가능합니다.';
+        statusReason = '입력값 기준으로 개인회생 신청 요건을 충족하는 것으로 계산됩니다.';
     }
 
     // 9. AI 조언 생성 (업데이트) — 24개월 특례 안내는 5~7단계에서 처리
     if (courtTrait.spousePropertyRate === 0 && input.isMarried) {
-        aiAdvice.push('이 법원은 배우자 재산을 반영하지 않아 유리합니다.');
+        aiAdvice.push('이 법원 실무 기준에 따라 배우자 재산을 반영하지 않고 계산했습니다.');
     }
 
-    // 탕감율 관련
+    // 감면율 관련
     if (debtReductionRate >= 80) {
-        aiAdvice.push(`입력하신 정보 기준 예상 탕감률은 약 ${debtReductionRate}%입니다. 실제 결과는 법원 심사에 따라 달라질 수 있습니다.`);
+        aiAdvice.push(`입력하신 정보 기준 예상 감면율은 약 ${debtReductionRate}%입니다. 실제 결과는 법원 심사에 따라 달라질 수 있습니다.`);
     } else if (debtReductionRate >= 50) {
-        aiAdvice.push(`약 ${debtReductionRate}% 탕감이 예상됩니다.`);
+        aiAdvice.push(`입력하신 정보 기준 예상 감면율은 약 ${debtReductionRate}%입니다.`);
     }
 
     // 리스크 경고
@@ -943,7 +943,7 @@ function buildRiskFactors(input: RehabUserInput): RiskFactor[] {
             level: 'high',
             title: '사행성 채무 포함',
             description: '도박으로 인한 채무는 면책불허가 사유에 해당할 수 있습니다.',
-            solution: '치료·반성 증거 준비, 전문 변호사 사전 법리 검토 필수',
+            solution: '치료·반성 자료 준비, 신청 전 변호사 검토 필요',
         });
     }
     if (input.riskFactor === 'investment') {
@@ -961,7 +961,7 @@ function buildRiskFactors(input: RehabUserInput): RiskFactor[] {
             level: 'high',
             title: '사금융 채무 포함',
             description: '불법 추심 및 과도한 이자 위험이 있습니다.',
-            solution: '대리인 선임 후 불법 추심 즉시 차단, 채무 원금 확인 절차 진행',
+            solution: '채무자대리인 선임으로 추심 연락을 대리인에게 돌리고, 채무 원금 확인 절차 진행',
         });
     }
     if (input.debtTypes?.includes('guarantee')) {

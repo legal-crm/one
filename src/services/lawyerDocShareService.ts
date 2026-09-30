@@ -157,7 +157,7 @@ export function generateShareMessage(pkg: LawyerDocSharePackage, shareUrl: strin
   shareTitle: string;
   shareBody: string;
 } {
-  const roleLabel = pkg.recipientType === 'LAWYER' ? '변호사님' : '사무장님';
+  const roleLabel = pkg.recipientType === 'LAWYER' ? '변호사님' : '사무소 직원분';
   const firmPrefix = pkg.recipientFirmName ? `[${pkg.recipientFirmName}] ` : '';
   const title = `[마이김변] 의뢰인 ${pkg.clientName}님의 개인회생 서류 초안 공유`;
 

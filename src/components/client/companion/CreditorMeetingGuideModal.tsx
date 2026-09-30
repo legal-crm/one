@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Users, Calendar, MapPin, CheckCircle2, AlertTriangle, Clock, ShieldCheck, FileText } from 'lucide-react';
+import { X, Users, Calendar, MapPin, CheckCircle2, AlertTriangle, Clock, ShieldCheck, FileText, Landmark } from 'lucide-react';
 
 interface CreditorMeetingGuideModalProps {
   isOpen: boolean;
@@ -21,27 +21,29 @@ export default function CreditorMeetingGuideModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* 상단 헤더 */}
-        <div className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
+        <div className="p-6 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl font-bold border border-indigo-400/20">
-              🏛️
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/20">
+              <Landmark className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-black text-base md:text-lg text-white">채권자집회 출석 완벽 가이드</h3>
-              <p className="text-xs text-indigo-200">
+              <h3 className="font-black text-base md:text-lg text-white">채권자집회 출석 가이드</h3>
+              <p className="text-xs text-blue-200">
                 {courtName} · 사건번호: <span className="font-mono font-bold text-white">{caseNumber}</span>
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+            aria-label="닫기"
+            className="w-11 h-11 shrink-0 flex items-center justify-center text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-all cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -49,17 +51,17 @@ export default function CreditorMeetingGuideModal({
         <div className="p-6 space-y-5 overflow-y-auto text-xs text-slate-700 dark:text-slate-300">
           
           {/* 핵심 일정 안내 */}
-          <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-indigo-600" />
+              <span className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-blue-600" />
                 지정 집회 일시
               </span>
-              <span className="font-black text-sm text-indigo-700 dark:text-indigo-400 font-mono">
+              <span className="font-black text-sm text-blue-700 dark:text-blue-400 font-mono">
                 {meetingDate}
               </span>
             </div>
-            <div className="flex items-center justify-between pt-1 border-t border-indigo-100 dark:border-indigo-900/50">
+            <div className="flex items-center justify-between pt-1 border-t border-blue-100 dark:border-blue-900/50">
               <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-slate-500" />
                 출석 장소
@@ -70,58 +72,58 @@ export default function CreditorMeetingGuideModal({
             </div>
           </div>
 
-          {/* 🚨 가장 중요한 필수 준비물 */}
+          {/* 가장 중요한 필수 준비물 */}
           <div className="space-y-2">
             <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-5 h-5 rounded-lg bg-red-500 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+              <span className="w-5 h-5 rounded-lg bg-brand text-white flex items-center justify-center text-xs font-bold">1</span>
               당일 필수 지참물
             </h4>
-            <div className="p-3.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 space-y-1.5">
-              <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-bold">
-                <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />
+            <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/20 space-y-1.5">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
                 <span>신분증 원본 (주민등록증, 운전면허증, 여권 중 1개 필수)</span>
               </div>
-              <p className="text-[11px] text-red-700/80 dark:text-red-300/70 pl-6 leading-relaxed">
+              <p className="text-xs text-amber-800 dark:text-amber-300 pl-6 leading-relaxed">
                 신분증이 없으면 본인 확인이 어려워 불출석으로 처리될 수 있습니다. 실물 신분증 지참을 권장합니다.
               </p>
             </div>
           </div>
 
-          {/* ⏱️ 실제 진행 절차 및 소요 시간 */}
+          {/* 실제 진행 절차 및 소요 시간 */}
           <div className="space-y-2">
             <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-5 h-5 rounded-lg bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+              <span className="w-5 h-5 rounded-lg bg-brand text-white flex items-center justify-center text-xs font-bold">2</span>
               실제 진행 절차 (소요시간: 약 3~5분)
             </h4>
             <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
               <div className="flex items-start gap-2.5">
-                <Clock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <Clock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold text-slate-800 dark:text-slate-200 block">지정 시간보다 여유 있게 도착 (10~15분 전 권장)</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">방청석에 앉아 계시면 판사님이 사건번호와 신청인 성함을 순서대로 호명합니다.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">방청석에 앉아 계시면 판사님이 사건번호와 신청인 성함을 순서대로 호명합니다.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold text-slate-800 dark:text-slate-200 block">호명 시 앞으로 나가 "네, 출석했습니다" 답변</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">신분증을 확인하고, 채권자 이의 유무를 확인한 뒤 이상이 없으면 바로 퇴정하게 됩니다.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">신분증을 확인하고, 채권자 이의 유무를 확인한 뒤 이상이 없으면 바로 퇴정하게 됩니다.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 💡 채권자가 나와서 따지나요? 안심 안내 */}
+          {/* 채권자가 나와서 따지나요? 안심 안내 */}
           <div className="space-y-2">
             <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-5 h-5 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+              <span className="w-5 h-5 rounded-lg bg-brand text-white flex items-center justify-center text-xs font-bold">3</span>
               자주 묻는 질문: "채권자가 나와서 따지나요?"
             </h4>
             <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-1">
               <p className="font-bold text-emerald-900 dark:text-emerald-300">
                 대부분의 금융기관 채권자는 법정에 출석하지 않습니다.
               </p>
-              <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/70 leading-relaxed">
+              <p className="text-xs text-emerald-800 dark:text-emerald-300/80 leading-relaxed">
                 채권자가 실제로 출석하는 경우는 많지 않지만, 출석해 질문할 수도 있습니다. 질문을 받으면 사실대로 짧게 답하고, 모르는 내용은 대리인과 상의하겠다고 말씀하시면 됩니다.
               </p>
             </div>
@@ -129,9 +131,9 @@ export default function CreditorMeetingGuideModal({
 
           {/* 주의사항 */}
           <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              <strong>불출석 시 기각 또는 폐지 사유:</strong> 정당한 사유 없이 채권자집회에 출석하지 않으면 회생절차가 폐지될 수 있습니다. 부득이한 사정으로 출석이 어려우신 경우 즉시 담당 변호사에게 연락해 기일 연기 신청을 해야 합니다.
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
+              <strong>출석이 어려울 때:</strong> 정당한 사유 없이 채권자집회에 출석하지 않으면 신청이 기각되거나 회생절차가 폐지될 수 있습니다. 부득이한 사정으로 출석이 어려우시면 가능한 한 빨리 담당 변호사에게 연락해 기일 연기 신청을 상의하세요.
             </p>
           </div>
 
@@ -142,7 +144,7 @@ export default function CreditorMeetingGuideModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all cursor-pointer press-scale shadow-sm"
+            className="min-h-11 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all cursor-pointer press-scale shadow-sm"
           >
             확인했습니다
           </button>

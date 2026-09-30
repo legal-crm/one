@@ -40,8 +40,8 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     description: '익명으로 채무 상황을 정리하고 나에게 맞는 해결 방향을 확인합니다.',
   },
   lawyers: {
-    title: '변호사 상담 & 선택 | 도산 전문 변호사 | my김변',
-    description: '상담을 원하는 도산 전문 변호사를 직접 비교하고 선택하세요.',
+    title: '변호사 찾기 | 회생·파산 상담 변호사 | my김변',
+    description: '회생·파산 상담이 가능한 변호사의 프로필을 비교하고, 상담할 변호사를 직접 선택하세요.',
   },
   chat: {
     title: '내 관리방 | 변호사 상담 | my김변',
@@ -56,12 +56,12 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     description: '실제 이용자들의 채무 상담 경험과 후기를 확인하세요.',
   },
   companion: {
-    title: '마이김변 회생동행 | 3~5년 변제관리 & 면책 완주 플랫폼 | my김변',
-    description: '타 사무소 수임자도 나홀로 소송자도 100% 무료! 매월 변제금 D-Day, 36개월 납부 캘린더, 생계 밸런서, 공적 복지지원까지 면책까지 동행합니다.',
+    title: '회생동행 | 변제 기간 납부 관리 | my김변',
+    description: '개인회생 인가 후 변제 기간 동안 납부일 알림, 납부 기록, 생활비 점검, 공적 지원 정보를 한곳에서 확인하세요. 다른 사무소에서 진행 중이거나 직접 신청한 분도 이용할 수 있습니다.',
   },
   qna: {
-    title: '채무 고민상담 Q&A | 변호사 무료 답변 | my김변',
-    description: '채무 관련 궁금한 점을 질문하고 전문 변호사 답변을 받으세요.',
+    title: '상담 사례 | 채무 고민 Q&A | my김변',
+    description: '개인회생·파산·채무조정과 관련해 자주 받는 질문과 답변 사례를 살펴보고, 내 상황은 변호사 상담으로 확인하세요.',
   },
   news: {
     title: '채무 관련 뉴스 & 판례 | my김변',
@@ -82,5 +82,9 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
   mypage: {
     title: '마이페이지 | my김변',
     description: '내 상담 내역과 계정 정보를 관리합니다.',
+  },
+  company: {
+    title: '회사 소개 | my김변',
+    description: 'my김변을 운영하는 몬스터랩과 서비스 운영 원칙을 소개합니다.',
   },
 };

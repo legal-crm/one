@@ -93,16 +93,17 @@ export default function PrintableLawyerOpinionTemplate({
 
   const years = repaymentMonths % 12 === 0 ? `${repaymentMonths / 12}년` : `${(repaymentMonths / 12).toFixed(1)}년`;
 
-  const finalOpinion = lawyerOpinion || 
-    proposal?.proposalData?.lawyerOpinion || 
-    proposal?.remark || 
-    '담당 변호사가 의뢰인이 제공한 소득·재산·채무 정보를 검토하였습니다. 아래 변제 계획은 관할법원 실무 기준을 참고한 예상안이며, 신청 시 금지·중지명령을 함께 신청하는 방안을 검토하겠습니다.';
+  // 변호사가 실제로 작성한 소견만 변호사 명의로 싣는다.
+  // (이전: 소견이 없으면 '검토하였습니다…' 기본 문구, 또는 자리표시 '제안서 발송'을 소견처럼 인쇄)
+  const NOT_WRITTEN = '변호사가 아직 작성하지 않았습니다.';
+  const PLACEHOLDER_REMARKS = ['제안서 발송'];
+  const authored = [lawyerOpinion, proposal?.proposalData?.lawyerOpinion, proposal?.remark]
+    .map(v => (typeof v === 'string' ? v.trim() : ''))
+    .find(v => v && !PLACEHOLDER_REMARKS.includes(v) && v !== NOT_WRITTEN) || '';
+  const hasAuthoredOpinion = authored.length > 0;
+  const finalOpinion = hasAuthoredOpinion ? authored : NOT_WRITTEN;
 
-  const notes = specialNotes.length > 0 ? specialNotes : [
-    '제출 서류를 충실히 준비해 보정권고를 줄이는 방향으로 신청서를 작성합니다.',
-    '신청 시 금지·중지명령을 함께 신청해 추심 부담을 줄이는 방안을 검토합니다.',
-    '보정권고가 나오면 담당 변호사가 검토해 대응합니다.'
-  ];
+  const notes = specialNotes.length > 0 ? specialNotes : [NOT_WRITTEN];
 
   // A4 Page Container (794px x 1123px @ 96DPI)
   const PageWrapper = ({ children, pageNumber }: { children: React.ReactNode; pageNumber: number }) => (
@@ -274,7 +275,7 @@ export default function PrintableLawyerOpinionTemplate({
           marginBottom: '20px'
         }}>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #93c5fd', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 700 }}>예상 원금 탕감률</div>
+            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 700 }}>예상 원금 감면율</div>
             <div style={{ fontSize: '17px', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>{debtReductionRate}%</div>
             <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>원금 감면안</div>
           </div>
@@ -284,7 +285,7 @@ export default function PrintableLawyerOpinionTemplate({
             <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{repaymentMonths}개월 기준</div>
           </div>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>총 탕감 예상액</div>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>예상 감면액</div>
             <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginTop: '3px' }}>{formatCurrency(estimatedReduction)}</div>
             <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>변제 완료·면책 시</div>
           </div>
@@ -320,10 +321,12 @@ export default function PrintableLawyerOpinionTemplate({
             lineHeight: 1.65,
             color: '#334155'
           }}>
-            <p style={{ margin: '0 0 10px 0', fontWeight: 600, color: '#0f172a' }}>
-              의뢰인이 제공한 소득 상황과 부채 정보를 바탕으로 「채무자 회생 및 파산에 관한 법률」상 개인회생 신청 가능성을 검토하였습니다.
-            </p>
-            <p style={{ margin: 0 }}>
+            {hasAuthoredOpinion && (
+              <p style={{ margin: '0 0 10px 0', fontWeight: 600, color: '#0f172a' }}>
+                의뢰인이 제공한 소득 상황과 부채 정보를 바탕으로 「채무자 회생 및 파산에 관한 법률」상 개인회생 신청 가능성을 검토하였습니다.
+              </p>
+            )}
+            <p style={{ margin: 0, color: hasAuthoredOpinion ? undefined : '#64748b' }}>
               {finalOpinion}
             </p>
           </div>
@@ -436,7 +439,7 @@ export default function PrintableLawyerOpinionTemplate({
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>▲ {formatCurrency(estimatedReduction)} 감면</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                <td style={{ padding: '8px 12px', fontWeight: 600 }}>원금 탕감률</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>예상 원금 감면율</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right' }}>0% (전액 상환 의무)</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{debtReductionRate}%</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>인가·면책 시 예상</td>

@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* ── 다크 변형 정책 ──
+   고객 사이트(.client-light 범위: 고객 셸·원격 서명·공유 리포트)는 항상 라이트로 고정한다.
+   변호사·관리자 화면은 기존처럼 OS의 prefers-color-scheme 설정을 따른다. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:not(:where(.client-light, .client-light *)) {
+      @slot;
+    }
+  }
+}
+
 /* ═══════════════════════════════════════════════
    DESIGN TOKEN SYSTEM — Premium Upgrade v3.0
    Deep Navy + Teal + Trust Blue + Hope Green
@@ -10,23 +21,9 @@
   /* ── Typography ── */
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 
-  /* ── Font Size Scale (로톡/로앤굿 최적화 v3) ── */
-  --font-size-xs: 0.8125rem;              /* 13px */
-  --font-size-xs--line-height: 1.25rem;   /* 20px */
-  --font-size-sm: 0.875rem;               /* 14px */
-  --font-size-sm--line-height: 1.375rem;  /* 22px */
-  --font-size-base: 1rem;                 /* 16px */
-  --font-size-base--line-height: 1.65rem; /* 26px */
-  --font-size-lg: 1.125rem;               /* 18px */
-  --font-size-lg--line-height: 1.75rem;   /* 28px */
-  --font-size-xl: 1.25rem;                /* 20px */
-  --font-size-xl--line-height: 1.875rem;  /* 30px */
-  --font-size-2xl: 1.5rem;                /* 24px */
-  --font-size-2xl--line-height: 2.125rem; /* 34px */
-  --font-size-3xl: 1.875rem;              /* 30px */
-  --font-size-3xl--line-height: 2.375rem; /* 38px */
-  --font-size-4xl: 2.25rem;               /* 36px */
-  --font-size-4xl--line-height: 2.75rem;  /* 44px */
+  /* ── Font Size Scale ──
+     Tailwind v4는 --text-* 이름만 인식한다(기존 --font-size-* 정의는 적용되지 않았음).
+     고객 사이트 전용 스케일(text-xs 13px 등)은 아래 .client-scale 블록에서 범위 한정으로 적용한다. */
 
   /* ── Brand Colors (Deep Navy System) ── */
   --color-brand: #1E3A5F;           /* Deep Navy — 주 브랜드 */
@@ -74,6 +71,62 @@
   --shadow-brand-md: 0 4px 20px rgba(30, 58, 95, 0.15);
   --shadow-secondary-sm: 0 2px 12px rgba(13, 148, 136, 0.1);
   --shadow-secondary-md: 0 4px 20px rgba(13, 148, 136, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════
+   CLIENT SURFACE SCOPE (고객 사이트 전용)
+   - body에 .client-light .client-scale 클래스가 붙는 화면에만 적용된다(App.tsx).
+   - 레이어 순서(z-index) 규칙
+       30 고정 보조바 · 40 사이트 헤더 · 45 모바일 하단 GNB·하단 고정 액션바
+       50 모바일 전체 화면(챗봇 등) · 60 모달/시트 · 70 로그인 모달(다른 모달 위에서 열림)
+       99999 공용 확인 다이얼로그(DialogProvider)
+   ═══════════════════════════════════════════════ */
+
+.client-light {
+  color-scheme: light;
+}
+
+.client-scale {
+  --text-xs: 0.8125rem;              /* 13px */
+  --text-xs--line-height: 1.25rem;   /* 20px */
+  --text-sm: 0.875rem;               /* 14px */
+  --text-sm--line-height: 1.375rem;  /* 22px */
+  --text-base: 1rem;                 /* 16px */
+  --text-base--line-height: 1.625rem;/* 26px */
+  --text-lg: 1.125rem;               /* 18px */
+  --text-lg--line-height: 1.75rem;   /* 28px */
+  --text-xl: 1.25rem;                /* 20px */
+  --text-xl--line-height: 1.875rem;  /* 30px */
+  --text-2xl: 1.5rem;                /* 24px */
+  --text-2xl--line-height: 2.125rem; /* 34px */
+  --text-3xl: 1.875rem;              /* 30px */
+  --text-3xl--line-height: 2.375rem; /* 38px */
+  --text-4xl: 2.25rem;               /* 36px */
+  --text-4xl--line-height: 2.75rem;  /* 44px */
+}
+
+/* 고정 헤더(64/72px)·모바일 하단 메뉴 아래로 포커스·스크롤 대상이 가려지지 않게 (WCAG 2.4.11)
+   하단 고정 선택 바처럼 더 높은 바가 뜨는 화면은 그동안 html 인라인 스타일로 값을 늘린다(LawyersView) */
+html:has(> body.client-scale) {
+  scroll-padding-top: 5rem;
+  scroll-padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  html:has(> body.client-scale) {
+    scroll-padding-top: 5.5rem;
+    scroll-padding-bottom: 1rem;
+  }
+}
+
+/* 움직임 줄이기 설정 사용자: 반복·장식 애니메이션과 전환을 최소화 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 
@@ -185,13 +238,13 @@
   /* ── Count-up Animation Helper ── */
   @keyframes countUp {
     from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* ── Fade In Up (primary entrance) ── */
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* ── Fade In (simple) ── */
@@ -203,7 +256,7 @@
   /* ── Fade In Scale ── */
   @keyframes fadeInScale {
     from { opacity: 0; transform: scale(0.97); }
-    to   { opacity: 1; transform: scale(1); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* ── Slide Down (accordion expand) ── */
@@ -215,13 +268,13 @@
   /* ── Slide Up (modal entrance) ── */
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* ── Slide In From Bottom (Floating CTA) ── */
   @keyframes slideInBottom {
     from { opacity: 0; transform: translateY(100%); }
-    to   { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* ── Animation utility classes ── */
@@ -247,6 +300,16 @@
 
   .animate-slideInBottom {
     animation: slideInBottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ── Slide In From Right (전체 메뉴 등 오른쪽 패널) ── */
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   /* ── Stagger delay system ── */
@@ -500,5 +563,50 @@
 @media screen {
   .court-page {
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   인쇄 전용 영역 ([data-print-area])
+   - 화면에 [data-print-area]가 있으면 그 영역만 인쇄한다(서류 미리보기 모달 등).
+   - 조상 요소는 고정 배치·스크롤·높이 제한·애니메이션을 풀어 여러 쪽으로 이어지게 하고, 나머지는 숨긴다.
+   - [data-print-area]가 없으면 아무 규칙도 적용되지 않는다(기존 인쇄 방식 유지).
+   ═══════════════════════════════════════════════ */
+@media print {
+  html:has([data-print-area]) body :not([data-print-area], [data-print-area] *, :has([data-print-area])) {
+    display: none !important;
+  }
+  html:has([data-print-area]) :has([data-print-area]) {
+    position: static !important;
+    display: block !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    transform: none !important;
+    animation: none !important;
+    backdrop-filter: none !important;
+    filter: none !important;
+  }
+  html:has([data-print-area]) [data-print-area] {
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

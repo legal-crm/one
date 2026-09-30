@@ -46,8 +46,8 @@ const PROCEDURE_STEPS: ProcedureStep[] = [
         description: '법원에서 신청서류 검토 후 개시 결정',
         duration: '1~2개월',
         icon: <Scale className="w-5 h-5" />,
-        color: 'text-purple-400',
-        bgColor: 'bg-purple-500/20',
+        color: 'text-indigo-400',
+        bgColor: 'bg-indigo-500/20',
         warning: '추가 서류 제출이나 보정이 요구될 수 있으며, 보정명령 시 신속한 대응이 필요합니다.'
     },
     {
@@ -122,7 +122,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
             {/* Timeline */}
             <div className="relative">
                 {/* Connecting Line */}
-                <div className="absolute left-[22px] top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 via-cyan-500 via-green-500 via-orange-500 to-yellow-500 opacity-30" />
+                <div className="absolute left-[22px] top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-500 via-indigo-500 via-cyan-500 via-green-500 via-orange-500 to-yellow-500 opacity-30" />
 
                 {/* Steps */}
                 <div className="space-y-3">
@@ -133,12 +133,23 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.1 }}
                         >
+                            {/* 펼치기 단추: 키보드(Enter·Space)로도 열고 닫는다 (이전: div onClick만 있어 키보드로 열 수 없었음) */}
                             <div
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={expandedStep === step.id}
                                 className={`
-                                    relative pl-12 cursor-pointer
+                                    relative pl-12 cursor-pointer rounded-xl
                                     transition-all duration-300
+                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400
                                 `}
                                 onClick={() => toggleStep(step.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        toggleStep(step.id);
+                                    }
+                                }}
                             >
                                 {/* Step Icon */}
                                 <motion.div
@@ -225,7 +236,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="mt-4 p-3 rounded-xl bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20"
+                className="mt-4 p-3 rounded-xl bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border border-cyan-500/20"
             >
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -249,7 +260,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
                         transition={{ duration: 2, ease: 'easeOut', delay: 1 }}
-                        className="h-full bg-gradient-to-r from-blue-500 via-purple-500 via-cyan-500 via-green-500 via-orange-500 to-yellow-500"
+                        className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 via-cyan-500 via-green-500 via-orange-500 to-yellow-500"
                     />
                 </div>
                 <div className="flex justify-between mt-1 text-[12px] text-slate-600">

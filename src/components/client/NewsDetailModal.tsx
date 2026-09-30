@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { NewsArticle } from '../../types';
+import { Badge, Button, Modal } from './ui';
 
 interface NewsDetailModalProps {
   article: NewsArticle;
@@ -9,106 +10,83 @@ interface NewsDetailModalProps {
   onConsultWithLawyer: (lawyerId: string, lawyerName: string, articleTitle: string) => void;
 }
 
+/**
+ * 법률 정보 글 상세 (키트 Modal: 모바일 전체 화면, ESC·포커스 관리)
+ * - 글쓴 변호사를 목록에서 찾은 경우에만 상담 요청 버튼을 보인다(다른 변호사로 대체하지 않는다)
+ * - 이전: '📞 ○○ 변호사에게 1:1 상담 예약' — 예약이 아니라 상담 요청이므로 문구를 바로잡음. 근거 없는 조회수 표시 제거
+ */
 export default function NewsDetailModal({ article, lawyers, onClose, onConsultWithLawyer }: NewsDetailModalProps) {
-  // 작성 변호사를 찾지 못하면 다른 변호사(목록 첫 번째)로 대체하지 않는다 — 상담 버튼도 숨김
-  const matchingLawyer = lawyers.find(l => l.id === article.authorId)
-    || ({ id: '', name: (article as any).author || '작성자', fields: [], bio: '', avatar: '' } as any);
-
+  const author = article.authorId ? lawyers.find((l) => l.id === article.authorId) : undefined;
+  const authorName = String(author?.name || article.authorName || '').replace(/\s*변호사$/, '');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-        
-        {/* Header / Cover Image */}
-        <div className="relative h-48 md:h-64 w-full bg-slate-200 dark:bg-slate-950 shrink-0">
-          <img 
-            src={article.imageUrl} 
-            alt={article.title} 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-          
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white border border-white/10 transition-colors cursor-pointer"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="absolute bottom-6 left-6 right-6 text-white text-left space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="bg-brand text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                {article.category}
-              </span>
-              {article.badge && (
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
-                  article.badge === 'HOT' ? 'bg-[#0D9488]' :
-                  article.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
-                }`}>
-                  {article.badge}
-                </span>
-              )}
-              <span className="text-xs text-slate-300 font-medium">
-                조회 {article.views} • {article.date}
-              </span>
-            </div>
-            <h3 className="text-xl md:text-2xl font-extrabold tracking-tight leading-snug drop-shadow-md">
-              {article.title}
-            </h3>
-          </div>
-        </div>
-
-        {/* Scrollable Content Body */}
-        <div className="p-6 md:p-8 space-y-6 overflow-y-auto text-left flex-1 min-h-0">
-          <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border-l-4 border-brand text-slate-700 dark:text-slate-300 text-sm sm:text-base italic leading-relaxed font-semibold">
-            "{article.excerpt}"
-          </div>
-          <div className="text-slate-700 dark:text-slate-200 text-base leading-relaxed space-y-4 font-normal whitespace-pre-wrap">
-            {article.content}
-          </div>
-        </div>
-
-        {/* Lawyer Match Footer */}
-        <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3.5 text-left w-full sm:w-auto">
-            <img 
-              src={matchingLawyer.avatar} 
-              alt={matchingLawyer.name} 
-              className="w-13 h-13 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" 
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base text-slate-900 dark:text-white">{matchingLawyer.name}</span>
-                {matchingLawyer.id && <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-0.5 rounded-md">변호사</span>}
-              </div>
-              <span className="text-xs text-slate-600 dark:text-slate-400 font-bold block">
-                {matchingLawyer.fields?.join(' · ') || ''}
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-normal line-clamp-1 block">
-                {matchingLawyer.bio}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
-            <button 
-              onClick={onClose}
-              className="px-5 py-3 rounded-2xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
+    <Modal
+      open
+      onClose={onClose}
+      title={article.title}
+      size="lg"
+      mobile="fullscreen"
+      closeLabel="글 닫기"
+      meta={
+        <>
+          <Badge tone="brand">{article.category}</Badge>
+          {article.date && <span className="text-sm text-slate-600">{article.date}</span>}
+        </>
+      }
+      footer={
+        author ? (
+          <>
+            <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose}>
               닫기
-            </button>
-            {matchingLawyer.id && <button 
-              onClick={() => onConsultWithLawyer(matchingLawyer.id, matchingLawyer.name, article.title)}
-              className="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold rounded-2xl text-sm transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+            </Button>
+            <Button
+              className="flex-1 sm:flex-none"
+              onClick={() => onConsultWithLawyer(author.id, author.name, article.title)}
+              rightIcon={<ArrowRight className="h-4 w-4" aria-hidden="true" />}
             >
-              <span>📞 {matchingLawyer.name} 변호사에게 1:1 상담 예약</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>}
+              {authorName} 변호사에게 상담 요청
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose}>
+            닫기
+          </Button>
+        )
+      }
+    >
+      {article.imageUrl && (
+        <div className="-mx-5 -mt-5 mb-5 aspect-video overflow-hidden bg-slate-100 sm:-mx-6 sm:rounded-none">
+          <img src={article.imageUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+
+      {article.excerpt && (
+        <p className="rounded-xl border-l-4 border-brand bg-slate-50 px-4 py-3 text-base font-bold leading-relaxed text-slate-800 break-keep">
+          {article.excerpt}
+        </p>
+      )}
+      <div className="mt-5 text-base leading-relaxed text-slate-800 whitespace-pre-wrap break-keep">{article.content}</div>
+
+      {authorName && (
+        <div className="mt-8 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          {author?.avatar || article.authorAvatar ? (
+            <img src={author?.avatar || article.authorAvatar} alt="" className="h-12 w-12 shrink-0 rounded-full border border-slate-200 bg-white object-cover" />
+          ) : (
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-base font-bold text-white" aria-hidden="true">
+              {authorName.charAt(0)}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm text-slate-600">글쓴이</p>
+            <p className="text-base font-bold text-slate-900">{authorName} {author ? '변호사' : ''}</p>
+            {author?.fields && author.fields.length > 0 && <p className="text-sm text-slate-600">{author.fields.join(' · ')}</p>}
           </div>
         </div>
+      )}
 
-      </div>
-    </div>
+      <p className="mt-6 text-sm leading-relaxed text-slate-600 break-keep">
+        일반적인 법률 정보이며 개별 사건에 대한 법률 자문이 아니에요. 내 상황은 변호사 상담으로 확인하세요.
+      </p>
+    </Modal>
   );
 }

@@ -23,6 +23,8 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
     .map(id => lawyers.find(l => l.id === id))
     .filter((l): l is User => !!l);
   const requestedCount = targetIds.length;
+  // 변호사가 실제로 답변을 시작했을 때(responding)만 '검토 중'이라고 쓴다. 그 전에는 '확인 대기'
+  const reviewing = request?.status === 'responding';
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-900/40 rounded-3xl p-6 sm:p-8 shadow-xl shadow-blue-950/5 relative overflow-hidden">
@@ -39,12 +41,12 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
-                  변호사 검토 중
+                  {reviewing ? '변호사 검토 중' : '변호사 확인 대기'}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">신청 접수 완료</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">요청 보냄</span>
               </div>
               <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">
-                선택하신 변호사가 사건 내용을 검토하고 있습니다
+                {reviewing ? '선택하신 변호사가 사건 내용을 검토하고 있습니다' : '선택하신 변호사의 확인을 기다리고 있습니다'}
               </h3>
             </div>
           </div>
@@ -58,7 +60,7 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
             </div>
             <div>
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">1. 상담 신청 접수</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">채무·소득 현황 전달 완료</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">채무·소득 현황 전달 완료</p>
             </div>
           </li>
           <li className="flex items-start gap-3" aria-current="step">
@@ -66,8 +68,8 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
               2
             </div>
             <div>
-              <p className="text-xs font-bold text-blue-700 dark:text-blue-400">2. 변호사 검토 중</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">가용소득·변제 계획 검토</p>
+              <p className="text-xs font-bold text-blue-700 dark:text-blue-400">{reviewing ? '2. 변호사 검토 중' : '2. 변호사 확인'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">가용소득·변제 계획 검토</p>
             </div>
           </li>
           <li className="flex items-start gap-3">
@@ -76,7 +78,7 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
             </div>
             <div>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300">3. 제안서 도착</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">마이페이지·상담방에서 확인</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">마이페이지·상담방에서 확인</p>
             </div>
           </li>
         </ol>
@@ -94,17 +96,17 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
                 <Calculator className="w-4 h-4 text-blue-500" aria-hidden="true" />
                 <span>예상 월 변제금</span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 법원 기준 생계비와 추가 주거비 등을 반영한 예상 변제액
               </p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-1">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                <Scale className="w-4 h-4 text-indigo-500" aria-hidden="true" />
+                <Scale className="w-4 h-4 text-blue-500" aria-hidden="true" />
                 <span>관할법원 실무 검토</span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 거주지 관할법원 실무준칙에 맞춘 변제 계획과 유의사항
               </p>
             </div>
@@ -114,7 +116,7 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
                 <ShieldCheck className="w-4 h-4 text-emerald-500" aria-hidden="true" />
                 <span>수임료와 납부 조건</span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 변호사별 수임료와 분납 여부를 제안서에서 비교할 수 있어요
               </p>
             </div>
@@ -126,16 +128,16 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
           <div className="text-slate-600 dark:text-slate-400">
             {matched.length > 0 ? (
               <span>
-                검토 중: <strong className="text-slate-800 dark:text-slate-200">{matched.map(l => `${l.name} 변호사`).join(', ')}</strong>
+                요청한 변호사: <strong className="text-slate-800 dark:text-slate-200">{matched.map(l => `${l.name.replace(/\s*변호사$/, '')} 변호사`).join(', ')}</strong>
               </span>
             ) : requestedCount > 0 ? (
-              <span>선택하신 변호사 <strong>{requestedCount}명</strong>이 검토하고 있습니다.</span>
+              <span>선택하신 변호사 <strong>{requestedCount}명</strong>에게 요청했습니다.</span>
             ) : (
               <span>변호사를 선택하시면 제안서 작성이 시작됩니다.</span>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px]">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs">
             <Bell className="w-3.5 h-3.5" aria-hidden="true" />
             <span>제안서가 도착하면 이 화면과 상담방에서 확인하실 수 있어요. 검토 기간은 변호사마다 다를 수 있습니다.</span>
           </div>

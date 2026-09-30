@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T05:34:33.548Z",
+  "generatedAt": "2026-09-30T13:02:23.172Z",
   "origin": "https://mykim.kr",
   "counts": {
     "pages": 30,
@@ -7,7 +7,7 @@
     "guides": 11,
     "articles": 8,
     "rssItems": 19,
-    "pagesWithIssues": 9
+    "pagesWithIssues": 8
   },
   "pages": [
     {
@@ -41,9 +41,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "home",
-      "hash": "9ee9dddc3cb5af9e",
+      "hash": "5dfa6b5595db0f2a",
       "issues": [],
-      "lastmod": "2026-09-29"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "about.html",
@@ -69,19 +69,19 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "d3aaab765f10f69a",
+      "hash": "8d23be6f31e4926b",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "faq.html",
       "url": "https://mykim.kr/faq",
-      "title": "개인회생·파산 자주 묻는 질문 FAQ | 도산 전문 변호사 답변 | my김변",
-      "titleLength": 42,
-      "description": "개인회생 추심 차단, 직장 노출, 자격 조건 등 도산 전문 변호사 답변 13선.",
-      "descriptionLength": 44,
+      "title": "개인회생·파산 자주 묻는 질문 FAQ | 상황별 답변 예시 | my김변",
+      "titleLength": 39,
+      "description": "개인회생 추심 차단, 직장 노출, 자격 조건 등 자주 묻는 채무 고민 13가지와 답변 예시.",
+      "descriptionLength": 51,
       "canonical": "https://mykim.kr/faq",
       "noindex": false,
       "h1Count": 1,
@@ -97,18 +97,16 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "1de02a74d43b3de0",
-      "issues": [
-        "description 짧음 (44자)"
-      ],
-      "lastmod": "2026-09-02"
+      "hash": "a01c3329fb223a9f",
+      "issues": [],
+      "lastmod": "2026-09-30"
     },
     {
       "file": "lawyers.html",
       "url": "https://mykim.kr/lawyers",
-      "title": "변호사 상담 & 선택 | 도산 전문 변호사 | my김변",
-      "titleLength": 30,
-      "description": "상담을 원하는 도산 전문 변호사를 직접 비교하고 선택하세요.",
+      "title": "변호사 상담 & 선택 | 회생·파산 사건을 다루는 변호사 | my김변",
+      "titleLength": 38,
+      "description": "회생·파산 사건을 다루는 변호사를 직접 비교하고 선택하세요.",
       "descriptionLength": 33,
       "canonical": "https://mykim.kr/lawyers",
       "noindex": false,
@@ -126,11 +124,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "ff694c4bb461e272",
+      "hash": "31992fafaea375b2",
       "issues": [
         "description 짧음 (33자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "legal.html",
@@ -148,11 +146,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "90e817a6f362a803",
+      "hash": "048389f26f1f0ab6",
       "issues": [
         "title 짧음 (14자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "news.html",
@@ -176,11 +174,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "7ea70ec74959ce4d",
+      "hash": "dac87ccfae74460b",
       "issues": [
         "description 짧음 (31자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "privacy.html",
@@ -198,17 +196,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "ff0ffcf1f1b57b02",
+      "hash": "250b0246f0fe8d0a",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "qna.html",
       "url": "https://mykim.kr/qna",
-      "title": "채무 고민상담 Q&A | 변호사 무료 답변 | my김변",
-      "titleLength": 30,
-      "description": "채무 관련 궁금한 점을 질문하고 전문 변호사 답변을 받으세요.",
-      "descriptionLength": 34,
+      "title": "채무 고민상담 Q&A | 익명 질문과 답변 예시 | my김변",
+      "titleLength": 33,
+      "description": "채무 관련 궁금한 점을 익명으로 질문하고, 비슷한 상황의 답변 예시를 확인하세요.",
+      "descriptionLength": 45,
       "canonical": "https://mykim.kr/qna",
       "noindex": false,
       "h1Count": 1,
@@ -224,11 +222,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "fcfede6f282e5128",
+      "hash": "1b9d83ebf045d353",
       "issues": [
-        "description 짧음 (34자)"
+        "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "reviews.html",
@@ -252,11 +250,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "374f8f7a8799cd87",
+      "hash": "368c8bbad3da4ff6",
       "issues": [
         "description 짧음 (29자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "security.html",
@@ -280,11 +278,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "dd81ee8b6bce07a7",
+      "hash": "e434a3a99b447f34",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "tos.html",
@@ -302,9 +300,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "ec8a0fa1d6e34bd7",
+      "hash": "ca1d051d4f213df7",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/bankruptcy.html",
@@ -328,9 +326,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "6d06c5cec498c0cf",
+      "hash": "4f0de8d994694091",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/credit-recovery.html",
@@ -354,17 +352,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "7defd8f5672967ff",
+      "hash": "0723642b188342a4",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/debt-agent.html",
       "url": "https://mykim.kr/guide/debt-agent.html",
-      "title": "채무자대리인 제도란? 불법추심 즉시 차단하는 법 | my김변",
-      "titleLength": 33,
-      "description": "채무자대리인은 추심 연락이 심하거나 불법추심이 의심될 때 변호사가 채무자를 대신해 채권자와 소통하는 제도입니다. 선임 즉시 독촉 전화·문자·방문이 법적으로 차단됩니다. 대부업·사채 추심도 대응 가능.",
-      "descriptionLength": 111,
+      "title": "채무자대리인 제도란? 불법추심에 대응하는 법 | my김변",
+      "titleLength": 31,
+      "description": "채무자대리인은 추심 연락이 심하거나 불법추심이 의심될 때 변호사가 채무자를 대신해 채권자와 소통하는 제도입니다. 대리인 선임을 채권자에게 알리면 대부업체 등 채권추심법 적용 대상 채권자는 채무자에게 직접 연락할 수 없습니다. 대부업·사채 추심도 대응 가능.",
+      "descriptionLength": 143,
       "canonical": "https://mykim.kr/guide/debt-agent.html",
       "noindex": false,
       "h1Count": 1,
@@ -380,9 +378,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "516a1854404374d4",
+      "hash": "b9f5c697a6bffb39",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/debt-management.html",
@@ -406,9 +404,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "31e1b54de107c60d",
+      "hash": "3090c506e2710389",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/debt-types.html",
@@ -432,9 +430,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "16467e8c7d776179",
+      "hash": "b92a3aa926a22675",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/garnishment-defense.html",
@@ -458,11 +456,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "219a156992e29556",
+      "hash": "046b53dca9440efa",
       "issues": [
         "description 짧음 (31자)"
       ],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/occupation-guide.html",
@@ -486,17 +484,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "bada13928365151e",
+      "hash": "6865f6a2e075ce45",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/personal-rehabilitation.html",
       "url": "https://mykim.kr/guide/personal-rehabilitation.html",
       "title": "개인회생 신청자격·비용·절차 완전 가이드 (2026년) | my김변 채무관리 플랫폼",
       "titleLength": 46,
-      "description": "개인회생 신청자격, 비용, 절차, 변제금 계산까지 한눈에. 일용직·프리랜서도 가능? 코인 빚도 탕감? 개인회생 전 반드시 확인해야 할 모든 것을 도산 전문 변호사가 정리했습니다.",
-      "descriptionLength": 99,
+      "description": "개인회생 신청자격, 비용, 절차, 변제금 계산까지 한눈에. 일용직·프리랜서도 가능? 코인 빚도 탕감? 개인회생 전 반드시 확인해야 할 모든 것을 정리했습니다.",
+      "descriptionLength": 88,
       "canonical": "https://mykim.kr/guide/personal-rehabilitation.html",
       "noindex": false,
       "h1Count": 1,
@@ -512,9 +510,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "d81c7443e9f84ca9",
+      "hash": "848f1ad5aa2691a4",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/rehabilitation-cost.html",
@@ -538,17 +536,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "a77a5ed4840a82ee",
+      "hash": "739c2356218094c7",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/rehabilitation-eligibility.html",
       "url": "https://mykim.kr/guide/rehabilitation-eligibility.html",
       "title": "개인회생 신청자격·조건 자가진단 체크리스트 (2026년) | my김변",
       "titleLength": 38,
-      "description": "개인회생 신청자격을 자가진단으로 확인하세요. 소득 요건, 채무 한도(무담보 10억·담보 15억), 직업별 요건(직장인·자영업자·프리랜서·일용직·알바), 불가능한 경우까지 도산 전문 변호사가 정리합니다.",
-      "descriptionLength": 112,
+      "description": "개인회생 신청자격을 자가진단으로 확인하세요. 소득 요건, 채무 한도(무담보 10억·담보 15억), 직업별 요건(직장인·자영업자·프리랜서·일용직·알바), 불가능한 경우까지 정리합니다.",
+      "descriptionLength": 101,
       "canonical": "https://mykim.kr/guide/rehabilitation-eligibility.html",
       "noindex": false,
       "h1Count": 1,
@@ -564,17 +562,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "2435f4e71fdf101a",
+      "hash": "4e4a4addc9f4e0e2",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "guide/tax-debt.html",
       "url": "https://mykim.kr/guide/tax-debt.html",
       "title": "세금체납과 개인회생 | 국세·지방세 소멸시효·압류 대응 가이드 | my김변",
       "titleLength": 41,
-      "description": "세금체납은 개인회생이나 파산으로 완전히 해결되지 않는 특수 채무입니다. 국세·지방세 소멸시효(5년/10년), 압류 시효중단, 세금체납 상태에서 개인회생 시 주의사항을 전문 변호사가 정리합니다.",
-      "descriptionLength": 107,
+      "description": "세금체납은 개인회생이나 파산으로 완전히 해결되지 않는 특수 채무입니다. 국세·지방세 소멸시효(5년/10년), 압류 시효중단, 세금체납 상태에서 개인회생 시 주의사항을 정리합니다.",
+      "descriptionLength": 99,
       "canonical": "https://mykim.kr/guide/tax-debt.html",
       "noindex": false,
       "h1Count": 1,
@@ -590,17 +588,17 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "cf62168acced327b",
+      "hash": "097d1cb3f68fad68",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/crypto-stock-debt.html",
       "url": "https://mykim.kr/articles/crypto-stock-debt.html",
       "title": "주식·코인 손실 빚 8,000만원, 개인회생 전 먼저 확인해야 할 3가지 | my김변",
       "titleLength": 47,
-      "description": "가상화폐·주식 투자 실패로 감당할 수 없는 채무를 지게 되셨나요? 서울회생법원 실무준칙 개정으로 투자 손실 청산가치 제외 방법과 입증 가이드를 도산 전문 변호사가 공개합니다.",
-      "descriptionLength": 97,
+      "description": "가상화폐·주식 투자 실패로 감당할 수 없는 채무를 지게 되셨나요? 서울회생법원 실무준칙 개정에 따른 투자 손실 청산가치 제외 방법과 입증 가이드를 정리했습니다.",
+      "descriptionLength": 89,
       "canonical": "https://mykim.kr/articles/crypto-stock-debt.html",
       "noindex": false,
       "h1Count": 1,
@@ -616,9 +614,9 @@
       "datePublished": "2026-05-28",
       "dateModified": "",
       "section": "article",
-      "hash": "3a445e00b46838a2",
+      "hash": "529e5e0c20df0723",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/debt-collection-defense.html",
@@ -642,9 +640,9 @@
       "datePublished": "2026-06-01",
       "dateModified": "",
       "section": "article",
-      "hash": "6f1600cd371fda00",
+      "hash": "682a69ae863f81bd",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/professional-license-preservation.html",
@@ -668,9 +666,9 @@
       "datePublished": "2026-05-10",
       "dateModified": "",
       "section": "article",
-      "hash": "967699a684aebed5",
+      "hash": "29aecafab7685d8f",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/rehabilitation-vs-bankruptcy.html",
@@ -694,17 +692,17 @@
       "datePublished": "2026-05-15",
       "dateModified": "",
       "section": "article",
-      "hash": "e85447de1f3fb3f0",
+      "hash": "d942a4a93dda0b77",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/secret-rehabilitation.html",
       "url": "https://mykim.kr/articles/secret-rehabilitation.html",
       "title": "가족 모르게 비밀 개인회생 가능한가? 직장·배우자 노출 차단법 | my김변",
       "titleLength": 41,
-      "description": "개인회생 신청하면 회사에 알려지나요? 가족에게 알려지나요? 경험 풍부한 변호사를 선임하면 직장·가족 모르게 100% 비밀 유지하며 인가까지 가능합니다. 3대 안심 방어막 소개.",
-      "descriptionLength": 98,
+      "description": "개인회생 신청하면 회사에 알려지나요? 가족에게 알려지나요? 직장·가족에게 알려질 가능성을 줄이는 3대 안심 방어막을 소개합니다.",
+      "descriptionLength": 71,
       "canonical": "https://mykim.kr/articles/secret-rehabilitation.html",
       "noindex": false,
       "h1Count": 1,
@@ -720,9 +718,9 @@
       "datePublished": "2026-05-30",
       "dateModified": "",
       "section": "article",
-      "hash": "88b060472d1d65a6",
+      "hash": "f12e5fcd39bf750f",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/self-employed-rehabilitation.html",
@@ -746,9 +744,9 @@
       "datePublished": "2026-05-19",
       "dateModified": "",
       "section": "article",
-      "hash": "cca74c4a1f2e14e0",
+      "hash": "86551e364ff6a9ad",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/tax-debt-statute.html",
@@ -772,9 +770,9 @@
       "datePublished": "2026-05-25",
       "dateModified": "",
       "section": "article",
-      "hash": "9c496bff981099e6",
+      "hash": "c08099f8858ee958",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     },
     {
       "file": "articles/wage-garnishment-defense.html",
@@ -798,9 +796,9 @@
       "datePublished": "2026-05-22",
       "dateModified": "",
       "section": "article",
-      "hash": "c6b9c93e77022632",
+      "hash": "d98421d74aa973a1",
       "issues": [],
-      "lastmod": "2026-09-02"
+      "lastmod": "2026-09-30"
     }
   ]
 }

@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
-import { RehabCompanionCase, RepaymentRoundItem } from '../../../types';
-import { 
-  Calendar, CheckCircle, Clock, DollarSign, FileText, 
-  TrendingUp, AlertTriangle, ShieldCheck, Copy, 
-  ChevronRight, ArrowUpRight, Sparkles, Upload, 
-  Layers, Percent, Activity, RefreshCw, Send, Check,
-  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet, Users, Mic
+import React, { useMemo, useState } from 'react';
+import { RehabCompanionCase, RepaymentRoundItem, RepaymentVerificationStatus } from '../../../types';
+import {
+  Award, CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, FileSpreadsheet, FileText, HeartHandshake,
+  Layers, LifeBuoy, Pencil, Search, Users, CircleAlert, Wallet
 } from 'lucide-react';
-import { getCourtSearchDeepLink, evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
+import { evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
 import { updateCrmClientExtension } from '../../../services/crmService';
-import { parseLocalYmd } from '../../../utils/localDate';
+import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
 import CreditorMeetingGuideModal from './CreditorMeetingGuideModal';
 import BankStatementAuditModal from '../../common/BankStatementAuditModal';
-import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
+import { getIncomeExpenseProgress, getPropertyProgress, getStatementProgress, loadLocalD5103 } from '../docDrafts';
+import { Badge, Button, Callout } from '../ui';
+import { cn } from '../../../utils/cn';
 import { toast } from 'sonner';
 
 const Fast2ndDocHubModal = React.lazy(() => import('../Fast2ndDocHubModal'));
@@ -33,55 +32,134 @@ interface CompanionDashboardProps {
   onNavigateToSupport?: () => void;
 }
 
+const PAID_STATUSES: RepaymentVerificationStatus[] = ['court_confirmed', 'receipt_uploaded', 'self_marked'];
+const isPaidRound = (s: RepaymentRoundItem) => PAID_STATUSES.includes(s.status);
+
+// 상태 표시: 색만으로 구분하지 않도록 아이콘·글자를 함께 쓴다(이전: 🟢🔵🟡🔴⚪ 이모지 + 깜빡이는 빨간 칸)
+const STATUS_META: Record<RepaymentVerificationStatus, { label: string; dot: string; tile: string }> = {
+  court_confirmed: { label: '법원 확인', dot: 'bg-emerald-600', tile: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
+  receipt_uploaded: { label: '증빙 첨부', dot: 'bg-blue-600', tile: 'border-blue-200 bg-blue-50 text-blue-900' },
+  self_marked: { label: '직접 표시', dot: 'bg-amber-500', tile: 'border-amber-200 bg-amber-50 text-amber-900' },
+  overdue_check_needed: { label: '기록 없음', dot: 'bg-red-600', tile: 'border-red-200 bg-red-50 text-red-900' },
+  pending: { label: '예정', dot: 'bg-slate-300', tile: 'border-slate-200 bg-white text-slate-700' },
+};
+const LEGEND_ORDER: RepaymentVerificationStatus[] = ['court_confirmed', 'receipt_uploaded', 'self_marked', 'overdue_check_needed', 'pending'];
+
+const STAGE_LABEL: Record<string, string> = {
+  preparing: '신청 준비',
+  submitted: '접수·서류 검토',
+  correction: '보정 진행',
+  started: '개시결정',
+  approved: '변제계획 인가',
+  completed: '변제 완료',
+};
+
+const won = (n: number) => `${(n || 0).toLocaleString('ko-KR')}원`;
+/** 'YYYY-MM-DD' → 'M월 D일' */
+const monthDay = (ymd?: string) => (ymd && ymd.length >= 10 ? `${Number(ymd.slice(5, 7))}월 ${Number(ymd.slice(8, 10))}일` : '');
+/** 오늘(로컬 자정) 기준 남은 날 수 */
+const daysUntil = (ymd?: string) => {
+  const due = parseLocalYmd(ymd || '');
+  if (!due) return NaN;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
+};
+const ddayText = (d: number) => (Number.isNaN(d) ? '' : d > 0 ? `D-${d}` : d === 0 ? '오늘 납부일' : `${-d}일 지남`);
+
+function Stat({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'brand' | 'success' }) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border px-4 py-3',
+        tone === 'brand' ? 'border-brand/20 bg-brand-light/60' : tone === 'success' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'
+      )}
+    >
+      <dt className="text-xs font-bold text-slate-600">{label}</dt>
+      <dd className={cn('mt-0.5 text-base font-extrabold tabular-nums', tone === 'brand' ? 'text-brand' : tone === 'success' ? 'text-emerald-800' : 'text-slate-900')}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function RoundTile({ item, onOpen }: { item: RepaymentRoundItem; onOpen: (item: RepaymentRoundItem) => void }) {
+  const eff = getEffectiveRoundStatus(item);
+  const meta = STATUS_META[eff];
+  const Icon = PAID_STATUSES.includes(eff) ? CheckCircle2 : eff === 'overdue_check_needed' ? CircleAlert : Circle;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      aria-label={`${item.round}회차 ${monthDay(item.dueDate)} ${meta.label}`}
+      className={cn(
+        'w-full min-h-16 rounded-xl border px-1 py-2 flex flex-col items-center justify-center gap-0.5 text-center transition-colors hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        meta.tile
+      )}
+    >
+      <span className="text-xs font-bold">{item.round}회</span>
+      <span className="text-xs tabular-nums opacity-80">{Number(item.dueDate.slice(5, 7))}월</span>
+      <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+    </button>
+  );
+}
+
 export default function CompanionDashboard({
   caseData,
   clientId,
   onOpenPaymentModal,
   onOpenCrisisModal,
   onOpenRegisterModal,
-  onUpdateCashflow,
   onNavigateToSupport
 }: CompanionDashboardProps) {
   const schedules = Array.isArray(caseData?.schedules) ? caseData.schedules : [];
+  const documents = Array.isArray(caseData?.documents) ? caseData.documents : [];
+  const today = localYmd();
+  const thisMonth = today.slice(0, 7);
 
-  // 이번 달 납부 예정 회차 찾기
-  const nextRoundIndex = schedules.findIndex(
-    s => !['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
-  );
-  const currentTargetRound = nextRoundIndex >= 0 
-    ? schedules[nextRoundIndex] 
-    : (schedules.length > 0 ? schedules[schedules.length - 1] : undefined);
-
-  // D-Day 계산
-  // 로컬 자정 기준 날짜 차이 (이전: 'YYYY-MM-DD'를 UTC로 해석 + 현재 시각 기준 올림 → 시간대에 따라 하루 어긋남)
-  const calculateDday = (dueDateStr?: string): number => {
-    const due = parseLocalYmd(dueDateStr || '');
-    if (!due) return NaN;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.round((due.getTime() - today.getTime()) / 86400000);
-  };
-  const dDay = calculateDday(currentTargetRound?.dueDate);
-
-  // 통계 계산
+  // ── 진행 통계 ──
   const totalRounds = caseData?.totalRounds || schedules.length || 0;
-  const completedCount = schedules.filter(s => 
-    ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
-  ).length;
-  const progressPercent = totalRounds > 0 ? ((completedCount / totalRounds) * 100).toFixed(1) : '0';
-
-  const courtConfirmedCount = schedules.filter(s => s.status === 'court_confirmed').length;
-  const receiptCount = schedules.filter(s => s.status === 'receipt_uploaded').length;
-  const selfMarkedCount = schedules.filter(s => s.status === 'self_marked').length;
-  const checkNeededCount = schedules.filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed').length;
-
+  const completedCount = schedules.filter(isPaidRound).length;
+  const progressPercent = totalRounds > 0 ? Math.round((completedCount / totalRounds) * 1000) / 10 : 0;
+  const allDone = totalRounds > 0 && completedCount >= totalRounds;
   const monthlyRepaymentAmount = caseData?.monthlyRepaymentAmount || 0;
-  const totalScheduledAmount = totalRounds * monthlyRepaymentAmount;
-  const totalConfirmedPaidAmount = completedCount * monthlyRepaymentAmount;
-  const totalRemainingAmount = Math.max(0, totalScheduledAmount - totalConfirmedPaidAmount);
+  const totalScheduledAmount = schedules.length > 0
+    ? schedules.reduce((sum, s) => sum + (s.scheduledAmount || 0), 0)
+    : totalRounds * monthlyRepaymentAmount;
+  const totalRecordedAmount = schedules.filter(isPaidRound).reduce((sum, s) => sum + (s.actualPaidAmount ?? s.scheduledAmount ?? 0), 0);
+  const totalRemainingAmount = Math.max(0, totalScheduledAmount - totalRecordedAmount);
 
-  // 30일 생계 밸런서 계산
-  // 입력하지 않은 값은 0 — 임의 소득(250만)·생계비(150만)로 흑자/적자를 판정하지 않는다
+  const legendCount = useMemo(() => {
+    const c: Record<RepaymentVerificationStatus, number> = { court_confirmed: 0, receipt_uploaded: 0, self_marked: 0, overdue_check_needed: 0, pending: 0 };
+    schedules.forEach(s => { c[getEffectiveRoundStatus(s)] += 1; });
+    return c;
+  }, [schedules]);
+
+  // ── 이번 달 할 일: 달력상 이번 달 회차 → 다가오는 회차 → 기록 없는 지난 회차 순으로 고른다 ──
+  // (이전: '아직 납부 표시가 없는 첫 회차'를 이번 달로 보여 지난 회차가 이번 달처럼 보이고, 모두 내면 마지막 회차에 '납부일 지남' 표시)
+  const overdueRounds = schedules.filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed');
+  const thisMonthRound = schedules.find(s => (s.dueDate || '').slice(0, 7) === thisMonth);
+  const nextUpcoming = schedules.find(s => !isPaidRound(s) && (s.dueDate || '') >= today);
+  const focusRound = thisMonthRound || nextUpcoming || overdueRounds[0] || null;
+  const focusPaid = !!focusRound && isPaidRound(focusRound);
+  const focusDays = daysUntil(focusRound?.dueDate);
+  const focusAmount = focusRound?.scheduledAmount || monthlyRepaymentAmount;
+  const nextAfterFocus = focusRound
+    ? schedules.find(s => !isPaidRound(s) && (s.dueDate || '') > (focusRound.dueDate || ''))
+    : undefined;
+  const upcomingRounds = [...overdueRounds, ...schedules.filter(s => !isPaidRound(s) && (s.dueDate || '') >= today)].slice(0, 3);
+
+  // 연도별 회차(모바일은 접어 두고, 데스크톱은 펼쳐 둔다)
+  const roundsByYear = useMemo(() => {
+    const map = new Map<string, RepaymentRoundItem[]>();
+    schedules.forEach(s => {
+      const y = (s.dueDate || '').slice(0, 4) || '미정';
+      map.set(y, [...(map.get(y) || []), s]);
+    });
+    return [...map.entries()];
+  }, [schedules]);
+
+  // ── 생활비 점검(입력하지 않은 값은 0 — 임의 소득·생계비로 흑자/적자를 판정하지 않는다) ──
   const cashflow = caseData?.cashflow || { monthlyIncome: 0, essentialLivingCost: 0, repaymentAmount: monthlyRepaymentAmount, otherFixedExpenses: 0 };
   const monthlyIncome = cashflow.monthlyIncome || 0;
   const essentialLivingCost = cashflow.essentialLivingCost || 0;
@@ -93,716 +171,506 @@ export default function CompanionDashboard({
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
   const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
-  const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
   const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
   const [isDischargeRequested, setIsDischargeRequested] = useState(false);
+  const [showAllRounds, setShowAllRounds] = useState(false);
+  const [showAllTools, setShowAllTools] = useState(false);
 
-  // 🎙️ 2차 서류 원스톱 완성 허브 및 서류 모달 상태
+  // 서류 준비 허브 및 서류 모달 상태
   const [isDocHubOpen, setIsDocHubOpen] = useState(false);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [isIncomeExpenseModalOpen, setIsIncomeExpenseModalOpen] = useState(false);
   const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
 
-  // 미납 및 폐지 위험도 진단
-  const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
+  // 서류 실제 작성 상태 (모달이 닫힐 때마다 다시 읽음)
+  const docClientId = caseData?.id || 'client-self';
+  const docStatus = useMemo(() => ({
+    statement: getStatementProgress(docClientId),
+    incomeExpense: getIncomeExpenseProgress(loadLocalD5103(docClientId)),
+    property: getPropertyProgress(docClientId, caseData?.alias),
+  }), [docClientId, caseData?.alias, isStatementModalOpen, isIncomeExpenseModalOpen, isPropertyModalOpen, isDocHubOpen]);
+  // 이 기기에 저장해 둔 수지표(연동 대상이 없는 회생동행 사건) — 모달을 열 때 한 번만 읽는다
+  const localD5103 = useMemo(
+    () => (isIncomeExpenseModalOpen ? loadLocalD5103(docClientId) : null),
+    [isIncomeExpenseModalOpen, docClientId],
+  );
 
-  // 대법원 사건검색 모달 열기
-  const handleOpenCourtSearch = () => {
-    setIsCourtModalOpen(true);
+  // 미납 참고 기준(법원별 일반 경향 — 실제 판단은 재판부)
+  const overdueRisk = evaluateOverdueRisk(caseData || ({ schedules: [] } as any));
+
+  const handleOpenCourtSearch = () => setIsCourtModalOpen(true);
+
+  const handleCopyAccount = () => {
+    const account = caseData.courtVirtualAccount;
+    if (!account) return;
+    if (!navigator?.clipboard) {
+      toast.error('자동 복사가 되지 않아요. 계좌번호를 길게 눌러 복사해 주세요.');
+      return;
+    }
+    navigator.clipboard
+      .writeText(account)
+      .then(() => toast.success('법원 가상계좌를 복사했어요.'))
+      .catch(() => toast.error('복사하지 못했어요. 계좌번호를 길게 눌러 복사해 주세요.'));
   };
 
-  // 가상계좌 복사
-  const handleCopyAccount = () => {
-    if (caseData.courtVirtualAccount) {
-      navigator.clipboard.writeText(caseData.courtVirtualAccount);
-      toast.success('법원 가상계좌가 클립보드에 복사되었습니다.');
+  const handleDischargeRequest = async () => {
+    // 마이김변 변호사 사건: CRM에 요청 시각을 기록해 담당 변호사가 확인 / 그 외: 사실대로 안내
+    if (caseData.sourceType === 'mykim_lawyer' && clientId) {
+      const ok = await updateCrmClientExtension(clientId, { dischargeRequestedAt: new Date().toISOString() });
+      if (!ok) {
+        toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
+      setIsDischargeRequested(true);
+      toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
+    } else {
+      toast.info(
+        caseData.sourceType === 'external_office'
+          ? '진행 중인 법률사무소에 면책신청 진행을 직접 요청해 주세요.'
+          : '면책신청은 관할 법원에 직접 제출합니다. [회복 아카데미]에서 서식을 내려받을 수 있습니다.',
+        { duration: 5000 }
+      );
     }
   };
 
+  const sourceLabel =
+    caseData.sourceType === 'external_office'
+      ? (caseData.externalOfficeName ? `${caseData.externalOfficeName} 진행` : '다른 법률사무소 진행')
+      : caseData.sourceType === 'self_litigant'
+        ? '직접 진행'
+        : '마이김변 담당 변호사';
+
+  // ── 도구와 안내: 사건 단계에 맞는 도구를 앞에 둔다 ──
+  type ToolId = 'docs' | 'audit' | 'overdue' | 'meeting' | 'court' | 'support';
+  const toolDefs: Record<ToolId, { icon: React.ReactNode; title: string; desc: string; onClick: () => void } | null> = {
+    docs: { icon: <Layers className="w-5 h-5" />, title: '회생 서류 준비', desc: '진술서·수지표·재산 기초자료 초안을 만들고 담당자에게 보내요', onClick: () => setIsDocHubOpen(true) },
+    audit: { icon: <FileSpreadsheet className="w-5 h-5" />, title: '통장·카드 거래 소명', desc: '큰 금액 거래의 사용처를 정리해 법원 제출 양식으로 만들어요', onClick: () => setIsBankAuditModalOpen(true) },
+    overdue: { icon: <LifeBuoy className="w-5 h-5" />, title: '변제금이 밀렸을 때', desc: '분납·변제계획 변경 등 대처 방법을 알려 드려요', onClick: () => setIsDefenseGuideModalOpen(true) },
+    meeting: { icon: <Users className="w-5 h-5" />, title: '채권자집회 안내', desc: '출석 전에 준비할 것과 진행 순서', onClick: () => setIsCreditorMeetingModalOpen(true) },
+    court: { icon: <Search className="w-5 h-5" />, title: '대법원 사건검색', desc: '법원 사이트에서 내 사건 진행을 확인하는 방법', onClick: handleOpenCourtSearch },
+    support: onNavigateToSupport
+      ? { icon: <HeartHandshake className="w-5 h-5" />, title: '공적 지원 제도', desc: '생계·주거·금융 지원 제도를 찾아봐요', onClick: onNavigateToSupport }
+      : null,
+  };
+  const toolOrder: ToolId[] =
+    caseData.caseStage === 'submitted' || caseData.caseStage === 'correction' || caseData.caseStage === 'preparing'
+      ? ['audit', 'docs', 'court', 'meeting', 'overdue', 'support']
+      : caseData.caseStage === 'started'
+        ? ['meeting', 'docs', 'audit', 'court', 'overdue', 'support']
+        : ['overdue', 'court', 'support', 'docs', 'audit', 'meeting'];
+  const tools = toolOrder.map(id => ({ id, def: toolDefs[id] })).filter(t => !!t.def) as { id: ToolId; def: NonNullable<(typeof toolDefs)[ToolId]> }[];
+  const TOOL_PREVIEW = 4;
+  const visibleTools = showAllTools ? tools : tools.slice(0, TOOL_PREVIEW);
+
+  // ── 이번 달 카드 문구 ──
+  let headline = '';
+  let subline = '';
+  let statusBadge: React.ReactNode = null;
+  if (allDone) {
+    headline = '모든 회차의 납부 기록이 등록됐어요';
+    subline = `변제를 마치면 법원이 면책 여부를 결정합니다(채무자회생법 제624조). 면책신청서 제출이 필요한지, 법원 기록상 완납이 확인되는지 담당 변호사 또는 법원에 확인해 주세요.${legendCount.self_marked > 0 ? ' 직접 표시한 회차는 법원 확인 전 기록이에요.' : ''}`;
+    statusBadge = <Badge tone="success" icon={<Award className="w-3.5 h-3.5" aria-hidden="true" />}>{totalRounds}회차 기록 완료</Badge>;
+  } else if (!focusRound) {
+    headline = '납부 일정이 아직 없어요';
+    subline = '변제 조건(월 변제금·납부일·회차)을 입력하면 매달 납부일과 금액을 알려 드려요.';
+  } else if (focusPaid) {
+    headline = `${Number(focusRound.dueDate.slice(5, 7))}월 변제금 납부를 기록했어요`;
+    subline = `${focusRound.round}회차 · ${STATUS_META[focusRound.status].label}${focusRound.paidDate ? ` · ${monthDay(focusRound.paidDate)} 납부` : ''}`;
+    statusBadge = <Badge tone="success" icon={<CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />}>기록 완료</Badge>;
+  } else {
+    headline = `${monthDay(focusRound.dueDate)}까지 ${won(focusAmount)}`;
+    subline = `${focusRound.round}회차 변제금${caseData.courtVirtualAccount ? ' · 법원 가상계좌로 납부해요' : ''}`;
+    statusBadge = (
+      <Badge tone={focusDays < 0 ? 'warning' : focusDays === 0 ? 'warning' : 'brand'} size="md">
+        {ddayText(focusDays)}
+      </Badge>
+    );
+  }
+
   return (
-    <div className="space-y-6 text-left animate-fadeIn">
-      
-      {/* ═══ 0.1 36회차 성실 변제 완납 & 별도 면책신청(제624조) 축하 배너 ═══ */}
-      {totalRounds > 0 && completedCount >= totalRounds && (
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 border border-purple-500/40 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
-          <div className="flex items-start gap-3.5">
-            <div className="p-3 rounded-2xl bg-purple-500 text-white shrink-0 shadow-md">
-              <Award className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-400 text-slate-950">
-                  {totalRounds}회차 기록 완료
-                </span>
-                <span className="text-xs font-bold text-purple-200">
-                  {completedCount}/{totalRounds}회차 납부 기록
-                </span>
-              </div>
-              <h4 className="text-base font-black tracking-tight text-white">
-                모든 회차의 납부 기록이 등록되었습니다.
-              </h4>
-              <p className="text-xs text-purple-200/90 leading-relaxed">
-                변제를 마치면 법원이 면책 여부를 결정합니다(채무자회생법 제624조). 면책신청서 제출이 필요한지, 법원 기록상 완납이 확인되는지 담당 변호사 또는 법원에 확인해 주세요. 고객 표시(🟡) 회차는 법원 확인 전 기록입니다.
+    <div className="space-y-5 text-left">
+
+      {/* ═══ 1. 이번 달 할 일 (가장 위) ═══ */}
+      <section aria-labelledby="companion-this-month" className="rounded-3xl border-2 border-brand/15 bg-white p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-brand">이번 달 할 일</p>
+            <h2 id="companion-this-month" className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums break-keep">
+              {headline}
+            </h2>
+            {subline && <p className="mt-1 text-sm text-slate-600 leading-relaxed break-keep">{subline}</p>}
+          </div>
+          {statusBadge}
+        </div>
+
+        {/* 법원 가상계좌 */}
+        {!allDone && focusRound && caseData.courtVirtualAccount && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                <Wallet className="w-3.5 h-3.5" aria-hidden="true" />
+                법원 가상계좌
               </p>
+              <p className="mt-0.5 text-sm font-bold text-slate-900 tabular-nums break-all select-all">{caseData.courtVirtualAccount}</p>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              // 마이김변 변호사 사건: CRM에 요청 시각을 기록해 담당 변호사가 확인 / 그 외: 사실대로 안내
-              if (caseData.sourceType === 'mykim_lawyer' && clientId) {
-                const ok = await updateCrmClientExtension(clientId, { dischargeRequestedAt: new Date().toISOString() });
-                if (!ok) { toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
-                setIsDischargeRequested(true);
-                toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
-              } else {
-                toast.info(caseData.sourceType === 'external_office'
-                  ? '진행 중인 법률사무소에 면책신청 진행을 직접 요청해 주세요.'
-                  : '면책신청은 관할 법원에 직접 제출합니다. [회복 아카데미]에서 서식을 내려받을 수 있습니다.', { duration: 5000 });
-              }
-            }}
-            disabled={isDischargeRequested}
-            className={`px-5 min-h-[44px] rounded-2xl text-xs font-black transition-all shadow-lg cursor-pointer press-scale shrink-0 whitespace-nowrap flex items-center gap-2 ${
-              isDischargeRequested
-                ? 'bg-emerald-500 text-slate-950 cursor-default'
-                : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white'
-            }`}
-          >
-            <Award className="w-4 h-4" />
-            <span>{isDischargeRequested ? '✅ 면책신청 요청 전달됨' : (caseData.sourceType === 'mykim_lawyer' ? '담당 변호사에게 면책신청 요청' : '면책신청 방법 안내')}</span>
-          </button>
-        </div>
-      )}
-
-      {/* ═══ 0. 미납 & 폐지위험 스마트 경보 배너 (위험 감지 시만 노출) ═══ */}
-      {overdueRisk.riskLevel !== 'safe' && (
-        <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-2xl bg-red-600 text-white shrink-0 mt-0.5 shadow-sm">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-600 text-white">
-                  {overdueRisk.stageInfo?.stageName || '위험 단계'}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                  {overdueRisk.courtThreshold?.courtName} 기준: {overdueRisk.courtThreshold?.repealRiskRounds}회 이상 시 폐지 심리
-                </span>
-              </div>
-              <h4 className="text-sm font-black tracking-tight">{overdueRisk.message}</h4>
-              <p className="text-xs text-red-600/90 dark:text-red-300/90 mt-1 leading-relaxed">
-                {overdueRisk.recommendedAction}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => setIsDefenseGuideModalOpen(true)}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98] whitespace-nowrap"
-            >
-              🚨 3대 대처법 & 폐지방어
-            </button>
-            <button
-              type="button"
-              onClick={onOpenCrisisModal}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl transition-all shadow-md cursor-pointer active:scale-[0.98] whitespace-nowrap"
-            >
-              위기 SOS 접수
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ 1. 사건 헤더 & 가상계좌 바 ═══ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full">
-              {caseData.sourceType === 'external_office' ? '타 법률사무소 진행' : 
-               caseData.sourceType === 'self_litigant' ? '나홀로 전자소송' : '마이김변 전담 변호사'}
-            </span>
-            <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold">
-              {caseData.courtName}
-            </span>
-            <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-2.5 py-0.5 rounded-full font-semibold">
-              사건번호: {caseData.caseNumberMasked}
-            </span>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-              {caseData.caseStage === 'approved' ? `🌱 인가 완료 (${completedCount}/${totalRounds}회차)` : '진행 중'}
-            </span>
-          </div>
-
-          <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🌱 <span className="text-brand dark:text-brand-light">{caseData.alias}</span> 님의 회생동행</span>
-          </h2>
-          
-          <p className="text-xs text-slate-500 leading-relaxed max-w-xl">
-            대한민국 법원 전자소송에 등록된 변제계획을 토대로 면책까지의 매월 납부 일정과 생활 안정을 함께 관리합니다.
-          </p>
-        </div>
-
-        {/* 우측 대법원 사건검색 & 가상계좌 버튼 */}
-        <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0 w-full md:w-64">
-          <button
-            type="button"
-            onClick={handleOpenCourtSearch}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-2xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm group active:scale-[0.98]"
-            title="대법원 나의 사건검색 실시간 조회"
-          >
-            <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-brand-light dark:text-brand" />
-              <span>대법원 사건검색 조회</span>
-            </div>
-            <ExternalLink className="w-3.5 h-3.5 text-white/70 dark:text-slate-500" />
-          </button>
-
-          {caseData.courtVirtualAccount && (
-            <button
-              type="button"
-              onClick={handleCopyAccount}
-              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group active:scale-[0.98]"
-              title="가상계좌 복사"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <DollarSign className="w-4 h-4 text-brand shrink-0" />
-                <span className="truncate">{caseData.courtVirtualAccount}</span>
-              </div>
-              <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand shrink-0" />
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsCreditorMeetingModalOpen(true)}
-            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 rounded-2xl text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center justify-between transition-all cursor-pointer group active:scale-[0.98]"
-            title="채권자집회 출석 가이드"
-          >
-            <div className="flex items-center gap-2 truncate">
-              <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>채권자집회 출석 가이드</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-indigo-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenRegisterModal}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-center cursor-pointer"
-          >
-            ⚙️ 사건 정보 / 변제 조건 변경
-          </button>
-        </div>
-      </div>
-
-      {/* ═══ 1.1 "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!" 2차 서류 원스톱 완성 배너 ═══ */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/40 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="p-3 rounded-2xl bg-indigo-600 text-white shrink-0 shadow-md">
-            <Mic className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-400 text-slate-950">
-                열린 서류 준비 허브
-              </span>
-              <span className="text-xs font-bold text-indigo-200">
-                타 로펌 진행자 및 나홀로 소송도 100% 무료
-              </span>
-            </div>
-            <h3 className="text-base font-black tracking-tight text-white">
-              "개인회생 서류와 모든 준비는 마이김변에서 쉽고 빠르게!"
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              가장 까다로운 <strong>진술서(D5104)</strong>와 <strong>수지표(D5103)</strong>를 말로 5분 만에 완성하고, 담당 변호사나 사무장님 휴대폰 번호로 즉시 전달하세요.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsDocHubOpen(true)}
-          className="shrink-0 px-5 py-3 bg-gradient-to-r from-indigo-500 to-emerald-500 hover:from-indigo-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] whitespace-nowrap"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>🎙️ 2차 서류 말로 완성 & 전달</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* ═══ 1.2 간편인증 숨은 채무·체납 10초 전수조회 퀵 배너 ═══ */}
-      <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-50 via-indigo-50 to-blue-50 dark:from-slate-850 dark:to-indigo-950/30 border border-amber-200/80 dark:border-indigo-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-2xl bg-amber-500 text-white shrink-0 shadow-xs">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-black text-slate-900 dark:text-white">
-                외부 서류 발급 없이 10초 만에 숨은 채무·세금체납 불러오기
-              </h4>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                카카오/PASS 간편인증
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              한국신용정보원 대출·카드, 국세청 체납, 전 금융권 계좌잔액, 대법원 지급명령 사건을 원클릭으로 전수조회합니다.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsDiscoveryModalOpen(true)}
-          className="shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98] whitespace-nowrap"
-        >
-          <span>⚡ 10초 전수조회</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* ═══ 1.5 맞춤 공적 혜택 퀵 브릿지 배너 ═══ */}
-      {onNavigateToSupport && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 dark:from-slate-850 dark:to-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                현재 {completedCount}회차 성실 수행 중: 지금 신청 검토 가능한 국가 공적 제도가 있습니다
-              </h4>
-              <p className="text-[11px] text-slate-500">
-                서민금융진흥원 소액대출(연 2~4%), 취약계층 전기·통신요금 감면, LH 긴급주거 등 맞춤 혜택을 확인하세요.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onNavigateToSupport}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
-          >
-            <span>맞춤 혜택 보러가기</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* ═══ 1.6. 미납·폐지방어 상시 안내 가이드 배너 ═══ */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 text-white border border-slate-700/60 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
-              도산 전문 실무 가이드
-            </span>
-            <span className="text-xs text-slate-300 font-medium">
-              인가 후 변제금 관리 수칙 (일반 안내)
-            </span>
-          </div>
-          <h4 className="text-sm md:text-base font-black text-white">
-            변제금 미납 시 폐지 기준과 3대 대처 방안 (분납·변제계획변경·특별면책)
-          </h4>
-          <p className="text-xs text-slate-300/90 leading-relaxed">
-            법원 가상계좌 분할 입금 요령(무이자)부터 {overdueRisk.courtThreshold?.courtName} 폐지 기준, 폐지 시 14일 즉시항고 골든타임까지 실전 매뉴얼을 확인하세요.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsDefenseGuideModalOpen(true)}
-          className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap flex items-center justify-center gap-1.5"
-        >
-          <span>실전 대처 가이드 열기</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* ═══ 1.7. 법원 1차 보정 통장·카드 거래내역 소명 도우미 ═══ */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border border-emerald-500/30 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950">
-              보정명령 필수 준비 도구
-            </span>
-            <span className="text-xs text-emerald-300 font-medium">
-              30만원 / 50만원 이상 거래처 자동 소명기
-            </span>
-          </div>
-          <h4 className="text-sm md:text-base font-black text-white">
-            1차 보정 대비: 통장 및 카드 거래내역 엑셀 업로드 & 사용처 소명서 작성
-          </h4>
-          <p className="text-xs text-slate-300/90 leading-relaxed">
-            통장·카드 거래내역을 업로드하거나 붙여넣으면 30만/50만 원 이상 건을 자동 추출하고, 사행성·현금인출·생활비 등 표준 법원 소명 문구를 원클릭으로 입력해 법원 제출용 소명서를 완성할 수 있습니다.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsBankAuditModalOpen(true)}
-          className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap flex items-center justify-center gap-1.5"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
-          <span>통장·카드 소명기 열기</span>
-        </button>
-      </div>
-
-      {/* ═══ 2. Hero D-Day & 이번 달 납부 현황 배너 ═══ */}
-      <div className="bg-gradient-to-br from-brand/90 to-brand-hover text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-3 max-w-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black bg-white/20 text-white px-3 py-1 rounded-full backdrop-blur-sm">
-              {Number.isNaN(dDay) ? '납부 일정 미등록' : dDay > 0 ? `⚡ 다음 변제일까지 D-${dDay}일` : dDay === 0 ? '🔥 오늘이 변제금 납부일입니다' : '⚠️ 납부일이 지난 회차가 있습니다'}
-            </span>
-            <span className="text-xs text-brand-light font-bold">
-              {currentTargetRound?.dueDate} 납부 예정
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-xs text-white/80 font-medium block">
-              {currentTargetRound?.round || completedCount + 1}회차 이번 달 납부 예정액
-            </span>
-            <div className="text-2xl md:text-4xl font-black tracking-tight">
-              {caseData.monthlyRepaymentAmount.toLocaleString()}원
-            </div>
-          </div>
-
-          <p className="text-xs text-white/80 leading-relaxed">
-            * 등록된 변제계획 기준 금액입니다. 납부 후 아래 버튼을 눌러 영수증을 첨부하거나 납부 표시를 완료해 주세요.
-          </p>
-        </div>
-
-        {/* 액션 CTA 버튼들 */}
-        <div className="flex flex-col gap-2.5 shrink-0 w-full md:w-64">
-          <button
-            type="button"
-            onClick={() => currentTargetRound && onOpenPaymentModal(currentTargetRound)}
-            className="w-full py-3.5 bg-white hover:bg-slate-50 text-brand font-black text-xs md:text-sm rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-          >
-            <Check className="w-4 h-4" />
-            <span>이번 달 납부 완료 / 증빙 등록</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenCrisisModal}
-            className="w-full py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
-            <span>이번 달 변제금이 부족하신가요?</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ═══ 3. 회생 완주 진행률 게이지 & 통계 ═══ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-brand" />
-              <span>변제계획상 납부 진행률</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              인가된 변제계획(총 {totalRounds}회차)에 따른 상환 완주 진척도입니다.
-            </p>
-          </div>
-
-          <div className="text-right">
-            <span className="text-2xl md:text-3xl font-black text-brand dark:text-brand-light">
-              {progressPercent}%
-            </span>
-            <span className="text-xs text-slate-500 font-bold ml-1.5">
-              ({completedCount}회 / 총 {totalRounds}회)
-            </span>
-          </div>
-        </div>
-
-        {/* 프로그레스 바 */}
-        <div className="space-y-2">
-          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
-            <div 
-              className="h-full bg-gradient-to-r from-brand to-emerald-500 rounded-full transition-all duration-700 shadow-sm"
-              style={{ width: `${Math.min(100, Math.max(3, Number(progressPercent)))}%` }}
-            />
-          </div>
-
-          <div className="flex justify-between text-[11px] text-slate-400 font-medium">
-            <span>시작 (1회차)</span>
-            <span>반환점 (18회차)</span>
-            <span>완주 ({totalRounds}회차 / 면책신청)</span>
-          </div>
-        </div>
-
-        {/* 누적 금액 3열 통계 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-1">
-            <span className="text-[11px] text-slate-500 font-bold">총 변제 예정액</span>
-            <p className="text-sm md:text-base font-black text-slate-900 dark:text-white">
-              {totalScheduledAmount.toLocaleString()}원
-            </p>
-          </div>
-
-          <div className="bg-emerald-50/60 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 space-y-1">
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">확인된 누적 납부액</span>
-            <p className="text-sm md:text-base font-black text-emerald-700 dark:text-emerald-300">
-              {totalConfirmedPaidAmount.toLocaleString()}원
-            </p>
-          </div>
-
-          <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/40 space-y-1">
-            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">남은 변제 예정액</span>
-            <p className="text-sm md:text-base font-black text-amber-700 dark:text-amber-300">
-              {totalRemainingAmount.toLocaleString()}원
-            </p>
-          </div>
-        </div>
-
-        {/* 법적 면책 안내 고지 */}
-        <p className="text-[11px] text-slate-400 leading-relaxed">
-          * 개인회생은 인가된 변제계획을 완료한 후 법원의 최종 면책결정이 확정되어야 잔여 채무에 관한 법적 책임이 면제됩니다.
-        </p>
-      </div>
-
-      {/* ═══ 4. 36~60개월 납부 히트맵 캘린더 ═══ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-brand" />
-              <span>{totalRounds}개월 상환 히트맵 & 캘린더</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              각 회차 블록을 클릭하여 납부 상태 변경 및 영수증을 첨부할 수 있습니다.
-            </p>
-          </div>
-
-          {/* 범례 배지 */}
-          <div className="flex items-center gap-2 flex-wrap text-[11px] font-bold">
-            <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
-              🟢 법원자료 ({courtConfirmedCount})
-            </span>
-            <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
-              🔵 증빙첨부 ({receiptCount})
-            </span>
-            <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
-              🟡 고객표시 ({selfMarkedCount})
-            </span>
-            {checkNeededCount > 0 && (
-              <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100">
-                🔴 확인필요 ({checkNeededCount})
-              </span>
-            )}
-            <span className="flex items-center gap-1 text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">
-              ⚪ 도래전 ({totalRounds - completedCount})
-            </span>
-          </div>
-        </div>
-
-        {/* 캘린더 그리드 (6열 or 12열 반응형) */}
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2.5">
-          {schedules.map((item) => {
-            const eff = getEffectiveRoundStatus(item);
-            const isCourt = eff === 'court_confirmed';
-            const isReceipt = eff === 'receipt_uploaded';
-            const isSelf = eff === 'self_marked';
-            const isOverdue = eff === 'overdue_check_needed';
-
-            return (
-              <button
-                key={item.round}
-                type="button"
-                onClick={() => onOpenPaymentModal(item)}
-                aria-label={`${item.round}회차 ${item.dueDate} ${isCourt ? '법원 확인' : isReceipt ? '증빙 첨부' : isSelf ? '고객 표시' : isOverdue ? '확인 필요' : '예정'}`}
-                className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col justify-between items-center h-20 active:scale-95 group ${
-                  isCourt ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 hover:border-emerald-400' :
-                  isReceipt ? 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 hover:border-blue-400' :
-                  isSelf ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 hover:border-amber-400' :
-                  isOverdue ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:border-red-500 animate-pulse' :
-                  'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-[10px] font-black">{item.round}회</span>
-                  <span className="text-xs">
-                    {isCourt ? '🟢' : isReceipt ? '🔵' : isSelf ? '🟡' : isOverdue ? '🔴' : '⚪'}
-                  </span>
-                </div>
-
-                <div className="space-y-0.5">
-                  <span className="text-[9px] block text-slate-400 truncate">
-                    {item.dueDate.slice(2, 7)}
-                  </span>
-                  <span className="text-[9px] font-bold block truncate">
-                    {isCourt ? '법원확인' : isReceipt ? '증빙첨부' : isSelf ? '고객표시' : isOverdue ? '확인필요' : '예정'}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="text-[11px] text-slate-400 text-center">
-          💡 각 회차 카드를 클릭하여 과거 납부 영수증을 확인하거나, 납부 완료 표시를 변경할 수 있습니다.
-        </p>
-      </div>
-
-      {/* ═══ 5. 30일 생계 현금흐름 밸런서 ═══ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-brand" />
-              <span>이번 달 생계 현금흐름 밸런서</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              월 소득에서 필수생계비와 변제금을 제외한 실제 가계 잔여 여유자금을 점검합니다.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-black px-3 py-1 rounded-full ${
-              expectedSurplus >= 0
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200'
-                : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 border border-red-200'
-            }`}>
-              {!hasCashflowInput ? '소득 미입력' : expectedSurplus >= 0 ? '💡 이번 달 잔여액 있음' : '⚠️ 이번 달 부족 예상'}
-            </span>
-          </div>
-        </div>
-
-        {/* 4분할 수식 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-center">
-          
-          <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <span className="text-[11px] text-slate-500 font-bold block">월 실수령 소득 (+)</span>
-            <span className="text-sm font-black text-slate-800 dark:text-white mt-1 block">
-              {monthlyIncome.toLocaleString()}원
-            </span>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <span className="text-[11px] text-slate-500 font-bold block">필수 생계비 (-)</span>
-            <span className="text-sm font-black text-slate-800 dark:text-white mt-1 block">
-              {essentialLivingCost.toLocaleString()}원
-            </span>
-          </div>
-
-          <div className="bg-brand/5 dark:bg-brand/10 p-4 rounded-2xl border border-brand/20">
-            <span className="text-[11px] text-brand font-bold block">월 변제금 (-)</span>
-            <span className="text-sm font-black text-brand dark:text-brand-light mt-1 block">
-              {repaymentAmount.toLocaleString()}원
-            </span>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <span className="text-[11px] text-slate-500 font-bold block">기타 고정지출 (-)</span>
-            <span className="text-sm font-black text-slate-800 dark:text-white mt-1 block">
-              {otherFixedExpenses.toLocaleString()}원
-            </span>
-          </div>
-
-          <div className={`p-4 rounded-2xl border ${
-            expectedSurplus >= 0
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-              : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300'
-          }`}>
-            <span className="text-[11px] font-bold block">예상 잔여액 (=)</span>
-            <span className="text-sm font-black mt-1 block">
-              {expectedSurplus >= 0 ? `+${expectedSurplus.toLocaleString()}원` : `${expectedSurplus.toLocaleString()}원`}
-            </span>
-          </div>
-
-        </div>
-
-        {/* 적자 예상 시 변호사 & 복지 연결 배너 */}
-        {!hasCashflowInput ? (
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200">
-            월 소득과 생계비가 입력되지 않아 잔여액을 계산하지 않았습니다. 사건 등록 시 소득·생계비를 입력하면 이번 달 여유자금을 확인할 수 있습니다.
-          </div>
-        ) : expectedSurplus < 0 ? (
-          <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <p className="text-xs font-bold leading-relaxed">
-                이번 달 예상 잔고가 부족합니다. 연체 방지를 위해 공적 긴급생계비 지원을 신청하거나 담당 변호사에게 변제계획 변경 검토를 요청하세요.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenCrisisModal}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer"
-            >
-              생활위기 SOS 접수
-            </button>
-          </div>
-        ) : (
-          <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" />
-              <span>입력하신 금액 기준으로 이번 달 잔여액이 있습니다.</span>
-            </div>
-            <button
-              type="button"
-              onClick={onNavigateToSupport}
-              className="text-xs font-bold underline hover:text-emerald-800 dark:hover:text-emerald-200 cursor-pointer"
-            >
-              성실상환자 혜택 보기 ➔
-            </button>
+            <Button variant="secondary" onClick={handleCopyAccount} leftIcon={<Copy className="w-4 h-4" aria-hidden="true" />} className="shrink-0">
+              복사
+            </Button>
           </div>
         )}
-      </div>
 
-      {/* ═══ 6. 스마트 법원 서류 보관함 ═══ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-brand" />
-              <span>스마트 법원 서류 보관함</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              등록한 서류 목록입니다. 이 기기(브라우저)에만 저장되며 담당 사무소로 자동 전송되지 않습니다.
-            </p>
-          </div>
+        {/* 이번 달을 기록했으면 다음 납부 안내 */}
+        {!allDone && focusPaid && nextAfterFocus && (
+          <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 tabular-nums">
+            다음 납부: <b className="text-slate-900">{monthDay(nextAfterFocus.dueDate)}</b> · {won(nextAfterFocus.scheduledAmount || monthlyRepaymentAmount)}
+            {!Number.isNaN(daysUntil(nextAfterFocus.dueDate)) && <span className="text-slate-600"> ({ddayText(daysUntil(nextAfterFocus.dueDate))})</span>}
+          </p>
+        )}
 
-          <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
-            {caseData.documents.length}개 서류 보관 중
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {caseData.documents.map((doc) => (
-            <div
-              key={doc.id}
-              className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex flex-col justify-between gap-3 hover:border-brand/40 transition-all"
-            >
-              <div className="flex items-start gap-2.5">
-                <FileText className="w-5 h-5 text-brand shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
-                    {doc.name}
-                  </p>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    {new Date(doc.uploadedAt).toLocaleDateString('ko')} 등록
-                  </span>
-                </div>
+        {/* 기록 없는 지난 회차 — 겁주기보다 할 일을 알려 준다 */}
+        {!allDone && overdueRounds.length > 0 && (
+          <Callout
+            tone="warning"
+            title={`납부 기록이 없는 지난 회차가 ${overdueRounds.length}건 있어요`}
+            action={
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => onOpenPaymentModal(overdueRounds[0])}>
+                  {overdueRounds[0].round}회차 기록하기
+                </Button>
+                <Button variant="ghost" onClick={() => setIsDefenseGuideModalOpen(true)}>
+                  밀렸을 때 대처 방법
+                </Button>
               </div>
+            }
+          >
+            이미 냈다면 회차를 눌러 기록을 남겨 주세요. 납부가 어려웠다면 미납이 쌓이기 전에 담당 변호사와 상의하는 것이 좋아요.
+            {caseData.courtName && overdueRisk.courtThreshold?.repealRiskRounds ? (
+              <span className="mt-1 block text-xs">
+                참고: {overdueRisk.courtThreshold.courtName}의 일반적인 경향으로는 미납 {overdueRisk.courtThreshold.repealRiskRounds}회 안팎부터 폐지를 검토할 수 있어요. 실제 판단은 재판부가 합니다.
+              </span>
+            ) : null}
+          </Callout>
+        )}
 
-              {doc.dataUrl ? (
-                <a
-                  href={doc.dataUrl}
-                  download={doc.name}
-                  className="w-full min-h-[44px] flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:text-brand transition-colors cursor-pointer"
-                >
-                  내려받기
-                </a>
-              ) : (
-                <span className="text-[11px] text-slate-600 dark:text-slate-300">파일 원본은 저장되지 않았습니다.</span>
+        {/* 행동 버튼(주 버튼은 하나) */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          {allDone ? (
+            <Button
+              onClick={handleDischargeRequest}
+              disabled={isDischargeRequested}
+              leftIcon={<Award className="w-4 h-4" aria-hidden="true" />}
+              className="w-full sm:w-auto"
+            >
+              {isDischargeRequested
+                ? '면책신청 요청을 보냈어요'
+                : caseData.sourceType === 'mykim_lawyer' ? '담당 변호사에게 면책신청 요청' : '면책신청 방법 안내'}
+            </Button>
+          ) : !focusRound ? (
+            <Button onClick={onOpenRegisterModal} leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
+              변제 조건 입력하기
+            </Button>
+          ) : focusPaid ? (
+            <Button variant="secondary" onClick={() => onOpenPaymentModal(focusRound)} className="w-full sm:w-auto">
+              기록 보기·고치기
+            </Button>
+          ) : (
+            <Button onClick={() => onOpenPaymentModal(focusRound)} leftIcon={<CheckCircle2 className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
+              납부 기록하기
+            </Button>
+          )}
+          {!allDone && focusRound && (
+            <Button variant="ghost" onClick={onOpenCrisisModal} leftIcon={<LifeBuoy className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
+              이번 달 납부가 어려워요
+            </Button>
+          )}
+        </div>
+        {!allDone && focusRound && (
+          <p className="text-xs text-slate-600 leading-relaxed">
+            기록은 이 기기에 저장되는 개인 기록이에요. 법원의 공식 변제 현황과 다를 수 있어요.
+          </p>
+        )}
+      </section>
+
+      {/* ═══ 2. 사건 요약 · 변제 진행 ═══ */}
+      <section aria-labelledby="companion-progress" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <h2 id="companion-progress" className="text-lg font-bold text-slate-900 break-keep">
+              {caseData.alias} 님의 변제 진행
+            </h2>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone="brand">{sourceLabel}</Badge>
+              {caseData.courtName && <Badge tone="neutral">{caseData.courtName}</Badge>}
+              {caseData.caseNumberMasked && <Badge tone="neutral">사건번호 {caseData.caseNumberMasked}</Badge>}
+              {caseData.caseStage && (
+                <Badge tone={caseData.caseStage === 'approved' || caseData.caseStage === 'completed' ? 'success' : 'neutral'}>
+                  {STAGE_LABEL[caseData.caseStage] || '진행 중'}
+                </Badge>
               )}
             </div>
-          ))}
+          </div>
+          <Button variant="ghost" onClick={onOpenRegisterModal} leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />} className="self-start shrink-0">
+            사건 정보 변경
+          </Button>
         </div>
-      </div>
 
-      {/* 대법원 실시간 사건 조회 모달 */}
+        <div>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-bold text-slate-700 tabular-nums">
+              납부 기록 {completedCount}/{totalRounds}회
+            </p>
+            <p className="text-2xl font-extrabold text-brand tabular-nums">{progressPercent}%</p>
+          </div>
+          <div
+            className="mt-2 h-3 rounded-full bg-slate-100 overflow-hidden"
+            role="progressbar"
+            aria-label="변제 진행률"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressPercent)}
+          >
+            <div className="h-full rounded-full bg-brand transition-all duration-700" style={{ width: `${Math.min(100, progressPercent)}%` }} />
+          </div>
+          {totalRounds > 0 && (
+            <div className="mt-1.5 flex justify-between text-xs text-slate-600 tabular-nums">
+              <span>1회차</span>
+              {totalRounds >= 4 && <span>{Math.ceil(totalRounds / 2)}회차</span>}
+              <span>{totalRounds}회차</span>
+            </div>
+          )}
+        </div>
+
+        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <Stat label="총 변제 예정액" value={won(totalScheduledAmount)} />
+          <Stat label="납부 기록 합계" value={won(totalRecordedAmount)} tone="success" />
+          <Stat label="남은 금액" value={won(totalRemainingAmount)} />
+        </dl>
+        <p className="text-xs text-slate-600 leading-relaxed">직접 남긴 기록을 바탕으로 계산했어요. 법원 공식 변제 현황과 다를 수 있어요.</p>
+      </section>
+
+      {/* ═══ 3. 회차별 납부 일정 (모바일: 다가오는 3회차 + 연도별 펼치기) ═══ */}
+      <section aria-labelledby="companion-schedule" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
+          <div>
+            <h2 id="companion-schedule" className="text-lg font-bold text-slate-900">회차별 납부 일정</h2>
+            <p className="mt-0.5 text-sm text-slate-600">회차를 누르면 납부 기록을 남기거나 고칠 수 있어요.</p>
+          </div>
+          <ul className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs font-bold text-slate-700" aria-label="상태 표시">
+            {LEGEND_ORDER.filter(k => k !== 'overdue_check_needed' || legendCount[k] > 0).map(k => (
+              <li key={k} className="inline-flex items-center gap-1.5 tabular-nums">
+                <span className={cn('w-2.5 h-2.5 rounded-full', STATUS_META[k].dot)} aria-hidden="true" />
+                {STATUS_META[k].label} {legendCount[k]}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {schedules.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+            등록된 납부 일정이 없어요. 변제 조건을 입력하면 회차별 일정이 만들어져요.
+          </p>
+        ) : (
+          <>
+            <ol className="md:hidden space-y-2" aria-label="다가오는 회차">
+              {upcomingRounds.length === 0 ? (
+                <li className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">남은 회차가 없어요.</li>
+              ) : (
+                upcomingRounds.map(item => {
+                  const eff = getEffectiveRoundStatus(item);
+                  return (
+                    <li key={item.round}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenPaymentModal(item)}
+                        className="w-full min-h-14 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-brand transition-colors"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-bold text-slate-900 tabular-nums">
+                            {item.round}회차 · {monthDay(item.dueDate)}
+                          </span>
+                          <span className="block text-xs text-slate-600 tabular-nums">{won(item.scheduledAmount || monthlyRepaymentAmount)}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
+                          <span className={cn('w-2.5 h-2.5 rounded-full', STATUS_META[eff].dot)} aria-hidden="true" />
+                          {STATUS_META[eff].label}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ol>
+
+            <Button
+              variant="secondary"
+              fullWidth
+              className="md:hidden"
+              aria-expanded={showAllRounds}
+              aria-controls="companion-all-rounds"
+              onClick={() => setShowAllRounds(v => !v)}
+              rightIcon={<ChevronDown className={cn('w-4 h-4 transition-transform', showAllRounds && 'rotate-180')} aria-hidden="true" />}
+            >
+              {showAllRounds ? '전체 회차 접기' : `전체 ${schedules.length}회차 보기`}
+            </Button>
+
+            <div id="companion-all-rounds" className={cn(showAllRounds ? 'block' : 'hidden', 'md:block space-y-4')}>
+              {roundsByYear.map(([year, items]) => (
+                <div key={year} className="space-y-2">
+                  <h3 className="text-sm font-bold text-slate-800">{year}년</h3>
+                  <ul className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
+                    {items.map(item => (
+                      <li key={item.round}>
+                        <RoundTile item={item} onOpen={onOpenPaymentModal} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ═══ 4. 이번 달 생활비 점검 ═══ */}
+      <section aria-labelledby="companion-cashflow" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 id="companion-cashflow" className="text-lg font-bold text-slate-900">이번 달 생활비 점검</h2>
+            <p className="mt-0.5 text-sm text-slate-600">월 소득에서 생계비와 변제금을 빼고 남는 돈을 살펴봐요.</p>
+          </div>
+          <Badge tone={!hasCashflowInput ? 'neutral' : expectedSurplus >= 0 ? 'success' : 'warning'}>
+            {!hasCashflowInput ? '소득 미입력' : expectedSurplus >= 0 ? '이번 달 여유 있음' : '이번 달 부족 예상'}
+          </Badge>
+        </div>
+
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <Stat label="월 실수령 소득" value={won(monthlyIncome)} />
+          <Stat label="필수 생계비" value={`- ${won(essentialLivingCost)}`} />
+          <Stat label="월 변제금" value={`- ${won(repaymentAmount)}`} tone="brand" />
+          <Stat label="기타 고정지출" value={`- ${won(otherFixedExpenses)}`} />
+        </dl>
+
+        {hasCashflowInput && (
+          <div
+            className={cn(
+              'flex items-center justify-between gap-3 rounded-2xl border px-4 py-3',
+              expectedSurplus >= 0 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
+            )}
+          >
+            <span className="text-sm font-bold text-slate-800">예상 남는 돈</span>
+            <span className={cn('text-lg font-extrabold tabular-nums', expectedSurplus >= 0 ? 'text-emerald-800' : 'text-amber-900')}>
+              {expectedSurplus >= 0 ? '+' : ''}
+              {expectedSurplus.toLocaleString('ko-KR')}원
+            </span>
+          </div>
+        )}
+
+        {!hasCashflowInput ? (
+          <Callout tone="neutral">
+            월 소득과 생계비를 입력하지 않아 남는 돈을 계산하지 않았어요. [사건 정보 변경]에서 입력하면 이번 달 여유자금을 볼 수 있어요.
+          </Callout>
+        ) : expectedSurplus < 0 ? (
+          <Callout
+            tone="warning"
+            title="이번 달 생활비가 빠듯할 수 있어요"
+            action={
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={onOpenCrisisModal} leftIcon={<LifeBuoy className="w-4 h-4" aria-hidden="true" />}>
+                  상담·지원 요청하기
+                </Button>
+                {onNavigateToSupport && (
+                  <Button variant="ghost" onClick={onNavigateToSupport}>
+                    지원 제도 보기
+                  </Button>
+                )}
+              </div>
+            }
+          >
+            입력한 금액으로는 {Math.abs(expectedSurplus).toLocaleString('ko-KR')}원이 부족해요. 혼자 버티기보다 담당 변호사와 변제계획 변경을 상의하거나 긴급 생계 지원을 알아보세요.
+          </Callout>
+        ) : null}
+      </section>
+
+      {/* ═══ 5. 도구와 안내 (이전: 큰 배너 5개가 이번 달 정보보다 위에 있었음) ═══ */}
+      <section aria-labelledby="companion-tools" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-3">
+        <h2 id="companion-tools" className="text-lg font-bold text-slate-900">도구와 안내</h2>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {visibleTools.map(({ id, def }) => (
+            <li key={id}>
+              <button
+                type="button"
+                onClick={def.onClick}
+                className="w-full min-h-16 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-brand transition-colors"
+              >
+                <span className="w-10 h-10 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0" aria-hidden="true">
+                  {def.icon}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold text-slate-900">{def.title}</span>
+                  <span className="block text-xs text-slate-600 leading-relaxed break-keep">{def.desc}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {tools.length > TOOL_PREVIEW && (
+          <Button
+            variant="ghost"
+            onClick={() => setShowAllTools(v => !v)}
+            aria-expanded={showAllTools}
+            rightIcon={<ChevronDown className={cn('w-4 h-4 transition-transform', showAllTools && 'rotate-180')} aria-hidden="true" />}
+          >
+            {showAllTools ? '접기' : `도구 ${tools.length - TOOL_PREVIEW}개 더 보기`}
+          </Button>
+        )}
+      </section>
+
+      {/* ═══ 6. 서류 보관함 ═══ */}
+      <section aria-labelledby="companion-docs" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 id="companion-docs" className="text-lg font-bold text-slate-900">서류 보관함</h2>
+            <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
+              등록한 서류 목록이에요. 이 기기(브라우저)에만 저장되고 담당 사무소로 자동 전송되지 않아요.
+            </p>
+          </div>
+          <Badge tone="neutral">{documents.length}개</Badge>
+        </div>
+
+        {documents.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+            등록한 서류가 없어요.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {documents.map((doc) => (
+              <li key={doc.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex flex-col justify-between gap-3">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <FileText className="w-5 h-5 text-brand shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{doc.name}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">{new Date(doc.uploadedAt).toLocaleDateString('ko-KR')} 등록</p>
+                  </div>
+                </div>
+                {doc.dataUrl ? (
+                  <a
+                    href={doc.dataUrl}
+                    download={doc.name}
+                    className="w-full min-h-11 flex items-center justify-center rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:border-brand hover:text-brand transition-colors"
+                  >
+                    내려받기<span className="sr-only">: {doc.name}</span>
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-600">파일 원본은 저장되지 않았습니다.</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* 대법원 사건 조회 안내 모달 */}
       <CourtCaseModal
         isOpen={isCourtModalOpen}
         onClose={() => setIsCourtModalOpen(false)}
@@ -811,7 +679,7 @@ export default function CompanionDashboard({
         clientName={caseData.alias}
       />
 
-      {/* 개인회생 변제금 미납 폐지 기준 & 3대 대처방안 모달 */}
+      {/* 변제금 미납 대처 안내 모달 */}
       <OverdueDefenseGuideModal
         isOpen={isDefenseGuideModalOpen}
         onClose={() => setIsDefenseGuideModalOpen(false)}
@@ -819,7 +687,7 @@ export default function CompanionDashboard({
         onOpenCrisisModal={onOpenCrisisModal}
       />
 
-      {/* 법원 1차 보정 통장/카드 거래내역 소명 모달 */}
+      {/* 통장·카드 거래내역 소명 모달 */}
       <BankStatementAuditModal
         isOpen={isBankAuditModalOpen}
         onClose={() => setIsBankAuditModalOpen(false)}
@@ -829,15 +697,7 @@ export default function CompanionDashboard({
         isClientMode={true}
       />
 
-      {/* 간편인증 숨은 채무·체납 10초 전수조회 모달 */}
-      <DebtDiscoveryModal
-        isOpen={isDiscoveryModalOpen}
-        onClose={() => setIsDiscoveryModalOpen(false)}
-        clientName={caseData.alias || '의뢰인'}
-        clientPhone=""
-      />
-
-      {/* 채권자집회 출석 완벽 가이드 모달 */}
+      {/* 채권자집회 안내 모달 */}
       <CreditorMeetingGuideModal
         isOpen={isCreditorMeetingModalOpen}
         onClose={() => setIsCreditorMeetingModalOpen(false)}
@@ -845,7 +705,7 @@ export default function CompanionDashboard({
         caseNumber={caseData.caseNumber}
       />
 
-      {/* 🎙️ 2차 서류 원스톱 완성 & 변호사·사무장 전달 허브 모달 */}
+      {/* 서류 준비 허브 */}
       {isDocHubOpen && (
         <React.Suspense fallback={null}>
           <Fast2ndDocHubModal
@@ -853,10 +713,10 @@ export default function CompanionDashboard({
             onClose={() => setIsDocHubOpen(false)}
             clientName={caseData.alias || '신청인'}
             clientId={caseData.id || 'client-self'}
-            // 작성 여부·채무 요약은 실제 데이터가 없으므로 '완료'나 추정 수치(총채무 ×1.6, 탕감률 64% 등)를 넘기지 않는다
-            hasStatement={false}
-            hasIncomeExpense={false}
-            hasProperty={false}
+            // 작성 여부는 저장된 실제 상태로만 판단(제출 완료일 때만 '완료'). 추정 수치는 넘기지 않는다
+            hasStatement={docStatus.statement === 'submitted'}
+            hasIncomeExpense={docStatus.incomeExpense === 'submitted'}
+            hasProperty={docStatus.property === 'submitted'}
             onOpenStatementModal={() => setIsStatementModalOpen(true)}
             onOpenIncomeExpenseModal={() => setIsIncomeExpenseModalOpen(true)}
             onOpenPropertyModal={() => setIsPropertyModalOpen(true)}
@@ -885,11 +745,13 @@ export default function CompanionDashboard({
             onClose={() => setIsIncomeExpenseModalOpen(false)}
             clientId={caseData.id || 'client-self'}
             clientName={caseData.alias || '신청인'}
+            // 변호사 CRM 연동이 없는 사건: 모달이 이 기기에 저장하고, 다시 열면 저장본을 불러온다
+            initialD5103={localD5103}
           />
         </React.Suspense>
       )}
 
-      {/* 재산상황표 작성 모달 */}
+      {/* 재산 기초자료 작성 모달 */}
       {isPropertyModalOpen && (
         <React.Suspense fallback={null}>
           <ClientPropertyIntakeModal

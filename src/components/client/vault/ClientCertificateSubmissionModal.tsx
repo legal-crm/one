@@ -216,7 +216,7 @@ export default function ClientCertificateSubmissionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* 모달 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
@@ -311,16 +311,16 @@ export default function ClientCertificateSubmissionModal({
                   onClick={() => setCertType('financial')}
                   className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                     certType === 'financial'
-                      ? 'bg-violet-950/30 border-violet-500 shadow-sm'
+                      ? 'bg-blue-950/30 border-blue-500 shadow-sm'
                       : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600'
                   }`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
                         <Smartphone className="w-4 h-4" />
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
                         클라우드 방식
                       </span>
                     </div>
@@ -329,7 +329,7 @@ export default function ClientCertificateSubmissionModal({
                       금융결제원 클라우드에 보관되며 유효기간이 3년입니다. 발급 시마다 스마트폰으로 2자리 승인번호 확인이 필요합니다.
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-700/40 text-[11px] text-violet-400 font-medium">
+                  <div className="mt-3 pt-2 border-t border-slate-700/40 text-[11px] text-blue-400 font-medium">
                     실시간 휴대폰 푸시/알림톡 릴레이
                   </div>
                 </div>
@@ -447,7 +447,7 @@ export default function ClientCertificateSubmissionModal({
                     </div>
                   </div>
 
-                  <div className="p-3 bg-violet-950/20 border border-violet-900/30 rounded-xl text-xs text-violet-300 leading-relaxed">
+                  <div className="p-3 bg-blue-950/20 border border-blue-900/30 rounded-xl text-xs text-blue-300 leading-relaxed">
                     변호사 사무실에서 부채증명서를 발급할 때마다 위 번호로 <strong>2자리 숫자 승인 요청</strong>이 발송됩니다.
                   </div>
                 </>
@@ -546,7 +546,7 @@ export default function ClientCertificateSubmissionModal({
                 </>
               ) : (
                 <div className="space-y-4 text-center py-4">
-                  <Smartphone className="w-12 h-12 text-violet-400 mx-auto" />
+                  <Smartphone className="w-12 h-12 text-blue-400 mx-auto" />
                   <h4 className="text-sm font-bold text-white">금융인증서는 비밀번호를 제출하지 않습니다</h4>
                   <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
                     금융인증서는 6자리 핀번호나 생체인증을 고객님의 휴대폰에서 직접 진행하므로,

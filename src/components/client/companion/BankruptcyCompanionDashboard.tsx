@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BankruptcyCompanionCase } from '../../../types';
-import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, AlertCircle, ShieldCheck, UserCheck, MessageSquare, Search } from 'lucide-react';
+import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, Search, Pencil } from 'lucide-react';
+import { Badge, Button, buttonClassName } from '../ui';
 import { toast } from 'sonner';
 import { validateUploadFile } from '../../../utils/fileSecurity';
 import CourtCaseModal from './CourtCaseModal';
@@ -12,13 +13,15 @@ interface BankruptcyCompanionDashboardProps {
   clientId?: string;
   onCaseUpdated?: (updated: BankruptcyCompanionCase) => void;
   onOpenCrisisModal: () => void;
+  /** 사건 정보 변경(등록 창 열기) */
+  onOpenRegisterModal?: () => void;
 }
 
 export default function BankruptcyCompanionDashboard({
   caseData,
   clientId,
   onCaseUpdated,
-  onOpenCrisisModal
+  onOpenRegisterModal
 }: BankruptcyCompanionDashboardProps) {
   const uploadedFiles = caseData?.documents || [];
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
@@ -60,158 +63,153 @@ export default function BankruptcyCompanionDashboard({
     toast.success(`'${file.name}'을(를) 제출 준비 목록에 기록했습니다. 파산관재인 제출은 관재인 안내 방법(우편·이메일 등) 또는 담당 사무소를 통해 진행해 주세요.`, { duration: 6000 });
   };
 
+  const sourceLabel =
+    caseData.sourceType === 'external_office' ? '다른 법률사무소 진행' : caseData.sourceType === 'self_litigant' ? '직접 진행' : '마이김변 담당 변호사';
+
   return (
-    <div className="space-y-6 text-left animate-fadeIn">
-      
-      {/* 사건 요약 카드 */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full">
-              개인파산·면책 절차 모드
-            </span>
-            <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold">
-              {caseData.sourceType === 'external_office' ? '타 사무소 진행' : caseData.sourceType === 'self_litigant' ? '나홀로 진행' : '마이김변 변호사'}
-            </span>
-          </div>
-          <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">
-            🕊️ <span className="text-purple-600 dark:text-purple-400">{caseData.alias}</span> 님의 파산동행
-          </h2>
-          <p className="text-xs text-slate-500">
-            {caseData.courtName} | 사건번호: {caseData.caseNumberMasked || '미등록'} | 담당 파산관재인: {caseData.bankruptcyTrusteeName || '미등록'}
-          </p>
-        </div>
+    <div className="space-y-5 text-left">
 
-        <div className="flex flex-col gap-2 shrink-0 w-full md:w-72">
-          <div className="bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 p-4 rounded-2xl space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
-              <Clock className="w-4 h-4" />
-              <span>다음 주요 기일 D-Day</span>
-            </div>
-            <p className="text-sm font-black text-slate-900 dark:text-white">
-              {nextStage ? `${nextStage.targetDate} (${nextStage.stageName})` : '등록된 기일 없음'}
+      {/* 다음 기일(가장 위) + 사건 요약 */}
+      <section aria-labelledby="bk-summary-title" className="rounded-3xl border-2 border-brand/15 bg-white p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm font-bold text-brand">다음 할 일</p>
+            <h2 id="bk-summary-title" className="text-xl sm:text-2xl font-extrabold text-slate-900 break-keep">
+              {nextStage ? `${nextStage.stageName} · ${nextStage.targetDate}` : '등록된 기일이 아직 없어요'}
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed break-keep">
+              {nextDday === null
+                ? '법원이나 파산관재인에게 받은 기일을 등록하면 남은 날을 알려 드려요.'
+                : nextDday > 0 ? `${nextDday}일 남았어요.` : nextDday === 0 ? '오늘이에요.' : `${-nextDday}일 지났어요. 진행 상황을 담당자에게 확인해 주세요.`}
             </p>
-            <span className="text-[11px] text-slate-600 dark:text-slate-300 block">
-              {nextDday === null ? '법원·관재인에게 받은 기일을 등록하면 D-Day를 표시합니다.' : nextDday >= 0 ? `D-${nextDday}` : `${-nextDday}일 지남`}
-            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCourtModalOpen(true)}
-            className="w-full px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-2xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-[0.98]"
-          >
-            <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-purple-400 dark:text-purple-600" />
-              <span>대법원 파산사건 실시간 조회</span>
-            </div>
-            <Scale className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* 파산 절차 6단계 타임라인 */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Scale className="w-5 h-5 text-purple-600" />
-            <span>파산·면책 절차 타임라인</span>
-          </h3>
-          <span className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 px-3 py-1 rounded-full">
-            {timelines.length === 0 ? '단계 미등록' : currentIdx >= 0 ? `${currentIdx + 1}단계 진행 중 (총 ${timelines.length}단계)` : `${doneCount}/${timelines.length}단계 완료`}
-          </span>
+          {nextDday !== null && (
+            <Badge tone={nextDday < 0 ? 'warning' : 'brand'} size="md" icon={<Clock className="w-3.5 h-3.5" aria-hidden="true" />}>
+              {nextDday > 0 ? `D-${nextDday}` : nextDday === 0 ? '오늘' : `${-nextDday}일 지남`}
+            </Badge>
+          )}
         </div>
 
-        <div className="space-y-4">
-          {(caseData.timelines || []).map((stage, idx) => {
-            const isDone = stage.status === 'completed';
-            const isCurrent = stage.status === 'in_progress';
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge tone="brand">{sourceLabel}</Badge>
+          {caseData.courtName && <Badge tone="neutral">{caseData.courtName}</Badge>}
+          <Badge tone="neutral">사건번호 {caseData.caseNumberMasked || '미등록'}</Badge>
+          <Badge tone="neutral">파산관재인 {caseData.bankruptcyTrusteeName || '미등록'}</Badge>
+        </div>
 
-            return (
-              <div
-                key={stage.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                  isCurrent
-                    ? 'border-purple-500 bg-purple-50/30 dark:bg-purple-950/20 ring-1 ring-purple-500/20'
-                    : isDone
-                    ? 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50'
-                    : 'border-slate-150 dark:border-slate-850 opacity-60'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${
-                    isDone ? 'bg-emerald-500 text-white' :
-                    isCurrent ? 'bg-purple-600 text-white animate-pulse' :
-                    'bg-slate-200 dark:bg-slate-800 text-slate-500'
-                  }`}>
-                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className={`text-sm font-bold ${isCurrent ? 'text-purple-700 dark:text-purple-300' : 'text-slate-800 dark:text-slate-200'}`}>
-                        {stage.stageName}
-                      </h4>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                        isDone ? 'bg-emerald-50 text-emerald-600' :
-                        isCurrent ? 'bg-purple-100 text-purple-700' :
-                        'bg-slate-100 text-slate-400'
-                      }`}>
-                        {isDone ? '완료' : isCurrent ? '진행 중' : '예정'}
-                      </span>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="secondary" onClick={() => setIsCourtModalOpen(true)} leftIcon={<Search className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
+            대법원 사건검색
+          </Button>
+          {onOpenRegisterModal && (
+            <Button variant="ghost" onClick={onOpenRegisterModal} leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
+              사건 정보 변경
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {/* 파산·면책 절차 타임라인 */}
+      <section aria-labelledby="bk-timeline-title" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="bk-timeline-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Scale className="w-5 h-5 text-brand" aria-hidden="true" />
+            파산·면책 절차
+          </h2>
+          <Badge tone="neutral">
+            {timelines.length === 0 ? '단계 미등록' : currentIdx >= 0 ? `${currentIdx + 1}단계 진행 중 · 총 ${timelines.length}단계` : `${doneCount}/${timelines.length}단계 완료`}
+          </Badge>
+        </div>
+
+        {timelines.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+            등록된 절차 단계가 없어요.
+          </p>
+        ) : (
+          <ol className="space-y-2.5">
+            {timelines.map((stage, idx) => {
+              const isDone = stage.status === 'completed';
+              const isCurrent = stage.status === 'in_progress';
+              return (
+                <li
+                  key={stage.id}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  className={`rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    isCurrent ? 'border-brand/40 bg-brand-light/50' : isDone ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                        isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {isDone ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-bold text-slate-900">{stage.stageName}</h3>
+                        <Badge tone={isDone ? 'success' : isCurrent ? 'brand' : 'neutral'}>{isDone ? '완료' : isCurrent ? '진행 중' : '예정'}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">{stage.description}</p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {stage.description}
-                    </p>
                   </div>
-                </div>
-
-                {stage.targetDate && (
-                  <div className="text-right shrink-0">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  {stage.targetDate && (
+                    <span className="text-sm font-bold text-slate-700 flex items-center gap-1 shrink-0 tabular-nums">
+                      <Calendar className="w-4 h-4 text-slate-500" aria-hidden="true" />
                       {stage.targetDate}
                     </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
 
-      {/* 파산관재인 소명 서류 보관함 */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-purple-600" />
-            <span>파산관재인 제출 및 소명 서류함</span>
-          </h3>
-          <label className="px-3.5 min-h-[44px] bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]">
-            <Upload className="w-3.5 h-3.5" />
-            <span>제출 서류 기록</span>
-            <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileUpload} />
+      {/* 파산관재인 제출 서류 기록 */}
+      <section aria-labelledby="bk-docs-title" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <h2 id="bk-docs-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-brand" aria-hidden="true" />
+              파산관재인 제출 서류 기록
+            </h2>
+            <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
+              제출할 서류의 이름과 날짜를 이 기기에 기록해요. 파일은 관재인에게 자동으로 제출되지 않아요.
+            </p>
+          </div>
+          <label className={buttonClassName('secondary', 'md', 'shrink-0 cursor-pointer focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2')}>
+            <Upload className="w-4 h-4" aria-hidden="true" />
+            제출 서류 기록
+            <input type="file" className="sr-only" accept="image/*,.pdf" onChange={handleFileUpload} />
           </label>
         </div>
 
-        <div className="space-y-2">
-          {uploadedFiles.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-750">
-              <div className="flex items-center gap-3">
-                <FileText className="w-4 h-4 text-purple-500" />
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-white">{doc.name}</p>
-                  <p className="text-[10px] text-slate-400">등록일: {doc.uploadedAt}</p>
+        {uploadedFiles.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+            기록한 서류가 없어요.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {uploadedFiles.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{doc.name}</p>
+                    <p className="text-xs text-slate-600">기록일 {doc.uploadedAt}</p>
+                  </div>
                 </div>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${doc.status === 'reviewed' ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300' : 'text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300'}`}>
-                {doc.status === 'reviewed' ? '검토 완료' : '제출 준비'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+                <Badge tone={doc.status === 'reviewed' ? 'success' : 'warning'}>{doc.status === 'reviewed' ? '검토 완료' : '제출 준비'}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      {/* 대법원 실시간 파산사건 조회 모달 */}
+      {/* 대법원 사건 조회 안내 모달 */}
       <CourtCaseModal
         isOpen={isCourtModalOpen}
         onClose={() => setIsCourtModalOpen(false)}

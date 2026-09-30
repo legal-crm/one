@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Download, Scale, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CourtStatementData } from '../../../types/statementTypes';
@@ -9,12 +10,39 @@ interface PrintableCourtStatementModalProps {
   statement: CourtStatementData;
 }
 
+/**
+ * 진술서 법원 양식 미리보기 (의뢰인 진술서 작성 창·변호사 검토 화면 공용)
+ * - document.body 포털 + z-70: 작성 창(모달) 위에 뜬다
+ * - data-app-dialog: 아래 모달이 ESC·Tab을 가로채지 않게 한다(이 창이 ESC로 닫힘)
+ * - 인쇄하면 [data-print-area] 종이 영역만 인쇄된다(index.css 인쇄 규칙)
+ */
 export default function PrintableCourtStatementModal({
   isOpen,
   onClose,
   statement
 }: PrintableCourtStatementModalProps) {
-  if (!isOpen) return null;
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus({ preventScroll: true });
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (prevFocus && document.contains(prevFocus)) prevFocus.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
+
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const isRehab = statement.caseType === 'rehab';
   const s = statement.story;
@@ -38,52 +66,83 @@ export default function PrintableCourtStatementModal({
     day: 'numeric'
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+  // 값이 없을 때는 특정 법원·문구를 대신 넣지 않는다 — 인쇄본에는 손으로 적을 빈 줄, 표에는 '미입력'
+  // (이전: '서울회생법원 귀중', '변호사 작성 시 기재', 사건번호 '기억나지 않음', 기관 '법원' 등)
+  const handBlank = (widthClass = 'w-40') => (
+    <span className={`inline-block ${widthClass} border-b border-slate-500 align-bottom`}>
+      <span className="sr-only">미입력</span>&nbsp;
+    </span>
+  );
+  const missingText = <span className="text-slate-500">미입력</span>;
+  const isRentLease = residence?.residenceType === 'RENT_LEASE';
+  /** 보증금·월세: 임차는 0이 '입력 안 함'일 수 있어 '확인 필요', 자가·무상거주는 해당 없음 */
+  const residenceAmount = (n: number | undefined) => {
+    if (typeof n === 'number' && n > 0) return `${n.toLocaleString()} 원`;
+    return isRentLease ? <span className="text-slate-500">확인 필요</span> : '해당 없음';
+  };
+  const statusLabel: Record<CourtStatementData['status'], string> = {
+    draft: '작성 중',
+    client_completed: '작성 완료',
+    lawyer_reviewed: '변호사 검토 완료',
+    filed_to_court: '법원 제출 처리됨',
+  };
+
+  return createPortal(
+    <div data-app-dialog="" className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn text-left">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${isRehab ? '개인회생' : '개인파산'} 진술서 미리보기`}
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden"
+      >
         
         {/* 상단 툴바 (인쇄 시 숨김) */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              ⚖️
+        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between gap-3 print:hidden">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0" aria-hidden="true">
+              <Scale className="w-4 h-4" />
             </span>
             <div>
               <h3 className="font-extrabold text-sm text-white">
                 {isRehab ? '개인회생' : '개인파산'} 진술서 미리보기
               </h3>
               <p className="text-[11px] text-slate-400">
-                신청인: {statement.applicantName} · 관할: {statement.courtName} · 상태: {statement.status === 'client_completed' ? '제출 완료' : '작성 중'}
+                신청인: {statement.applicantName || '미입력'} · 관할: {statement.courtName || '미입력'} · 상태: {statusLabel[statement.status] || '작성 중'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={handlePrint}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-700 cursor-pointer press-scale whitespace-nowrap"
+              className="px-3.5 min-h-11 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-700 cursor-pointer press-scale whitespace-nowrap"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-3.5 h-3.5" aria-hidden="true" />
               <span>인쇄하기</span>
             </button>
             <button
+              type="button"
               onClick={handleDownloadPdf}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap"
+              className="hidden sm:flex px-4 min-h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
               <span>PDF 저장</span>
             </button>
             <button
+              ref={closeRef}
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg ml-2 cursor-pointer"
+              aria-label="미리보기 닫기"
+              className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
 
-        {/* 법원 정식 서식 본문 (A4 규격) */}
-        <div className="p-8 sm:p-14 overflow-y-auto bg-white text-slate-900 font-serif leading-relaxed text-sm flex-1 print:p-0 print:overflow-visible space-y-8">
+        {/* 법원 정식 서식 본문 (A4 규격) — 인쇄 시 이 영역만 출력 */}
+        <div data-print-area="" className="p-8 sm:p-14 overflow-y-auto bg-white text-slate-900 font-serif leading-relaxed text-sm flex-1 print:p-0 print:overflow-visible space-y-8">
           
           {/* 제목 */}
           <div className="text-center space-y-2 mb-8">
@@ -105,15 +164,15 @@ export default function PrintableCourtStatementModal({
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">신 &nbsp; 청 &nbsp; 인 :</span>
-              <span className="font-bold">{statement.applicantName} (주민등록번호: {statement.applicantRrnMasked || '변호사 작성 시 기재'})</span>
+              <span className="font-bold">{statement.applicantName || handBlank('w-28')} (주민등록번호: {statement.applicantRrnMasked || handBlank('w-36')})</span>
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">연 &nbsp; 락 &nbsp; 처 :</span>
-              <span>{statement.applicantPhone || '-'}</span>
+              <span>{statement.applicantPhone || handBlank('w-36')}</span>
             </div>
             <div className="flex">
               <span className="w-28 font-bold text-slate-700">주 &nbsp; &nbsp; &nbsp; 소 :</span>
-              <span>{statement.applicantAddress || '변호사 작성 시 기재'}</span>
+              <span className="flex-1">{statement.applicantAddress || handBlank('w-full max-w-md')}</span>
             </div>
           </div>
 
@@ -136,7 +195,11 @@ export default function PrintableCourtStatementModal({
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job, idx) => (
+                {jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="border border-slate-300 p-2 text-center">{missingText}</td>
+                  </tr>
+                ) : jobs.map((job, idx) => (
                   <tr key={idx}>
                     <td className="border border-slate-300 p-2 text-center font-mono">{job.period}</td>
                     <td className="border border-slate-300 p-2 font-bold">{job.companyName}</td>
@@ -157,8 +220,8 @@ export default function PrintableCourtStatementModal({
               {statement.pastHistory.hasPastCase ? (
                 <div className="space-y-1">
                   <span className="font-bold text-amber-700">이용 경험 있음:</span>{' '}
-                  {statement.pastHistory.year ? `${String(statement.pastHistory.year).replace(/년$/, '')}년경` : '시기 미기재'} {statement.pastHistory.courtOrAgency || '법원'}{' '}
-                  (사건번호: {statement.pastHistory.caseNumber || '기억나지 않음'})
+                  {statement.pastHistory.year ? `${String(statement.pastHistory.year).replace(/년$/, '')}년경` : '시기 미기재'} {statement.pastHistory.courtOrAgency || '기관 미기재'}{' '}
+                  (사건번호: {statement.pastHistory.caseNumber || '미기재'})
                   {statement.pastHistory.resultStatus && ` - 결과: ${statement.pastHistory.resultStatus}`}
                 </div>
               ) : (
@@ -178,18 +241,22 @@ export default function PrintableCourtStatementModal({
               <tbody>
                 <tr>
                   <td className="border border-slate-300 p-2.5 bg-slate-100 font-bold w-28">주거 형태</td>
-                  <td className="border border-slate-300 p-2.5">{residence.residenceTypeLabel}</td>
+                  <td className="border border-slate-300 p-2.5">{residence.residenceTypeLabel || missingText}</td>
                   <td className="border border-slate-300 p-2.5 bg-slate-100 font-bold w-28">소유자 및 관계</td>
-                  <td className="border border-slate-300 p-2.5">{residence.ownerName} ({residence.ownerRelation})</td>
+                  <td className="border border-slate-300 p-2.5">
+                    {residence.ownerName || residence.ownerRelation
+                      ? <>{residence.ownerName || missingText}{residence.ownerRelation ? ` (${residence.ownerRelation})` : ''}</>
+                      : missingText}
+                  </td>
                 </tr>
                 <tr>
                   <td className="border border-slate-300 p-2.5 bg-slate-100 font-bold">임차 보증금</td>
                   <td className="border border-slate-300 p-2.5 font-mono">
-                    {residence.deposit ? `${residence.deposit.toLocaleString()} 원` : '해당 없음'}
+                    {residenceAmount(residence.deposit)}
                   </td>
                   <td className="border border-slate-300 p-2.5 bg-slate-100 font-bold">월 차임(월세)</td>
                   <td className="border border-slate-300 p-2.5 font-mono">
-                    {residence.monthlyRent ? `${residence.monthlyRent.toLocaleString()} 원` : '해당 없음'}
+                    {residenceAmount(residence.monthlyRent)}
                   </td>
                 </tr>
                 {residence.freeStayReason && (
@@ -310,20 +377,24 @@ export default function PrintableCourtStatementModal({
 
             <div className="flex items-center justify-end pr-8 gap-4 text-sm font-bold text-slate-900">
               <span>위 신청인 :</span>
-              <span className="text-base font-extrabold tracking-wider underline underline-offset-4">{statement.applicantName}</span>
+              {statement.applicantName ? (
+                <span className="text-base font-extrabold tracking-wider underline underline-offset-4">{statement.applicantName}</span>
+              ) : handBlank('w-32')}
               <span className="w-8 h-8 rounded-full border border-red-500 text-red-500 flex items-center justify-center text-[10px] font-bold">
                 (인)
               </span>
             </div>
 
+            {/* 관할 법원이 없으면 특정 법원을 넣지 않고 손으로 적을 빈 줄을 남긴다 (이전: '서울회생법원' 고정) */}
             <div className="pt-8 font-black text-lg sm:text-xl text-slate-900 tracking-wider">
-              {statement.courtName || '서울회생법원'} 귀중
+              {statement.courtName || handBlank('w-48')} 귀중
             </div>
           </div>
 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

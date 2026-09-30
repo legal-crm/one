@@ -176,6 +176,28 @@ function ClientDebtIntakeWizardModalInner({
     onClose();
   };
 
+  // 닫기 = 이 기기에 임시 저장 후 닫기 (이전: '닫기(임시보관)'이라고 쓰여 있었지만 실제로는 저장하지 않아 입력이 사라짐)
+  const handleCloseWithDraft = () => {
+    if (entries.length > 0) {
+      try {
+        DebtIntakeRuleService.saveClientIntake({
+          clientId,
+          clientName,
+          clientPhone,
+          submittedAt: existingIntake?.submittedAt || '',
+          entries,
+          // 사무소에 보내기 전 임시본 — 제출 완료로 표시하지 않는다
+          confirmedByClient: false,
+        });
+        toast.success('입력한 내용을 이 기기에 임시 저장했습니다. 다시 열면 이어서 작성할 수 있습니다.');
+      } catch {
+        toast.error('임시 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
+        return;
+      }
+    }
+    onClose();
+  };
+
   // 총 발급 건수 계산 (카드 분리 반영)
   const totalIssueCount = useMemo(() => {
     return DebtIntakeRuleService.convertIntakeToAgencyCreditorRows(entries).length;
@@ -183,7 +205,7 @@ function ClientDebtIntakeWizardModalInner({
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-sm animate-fadeIn">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-sm animate-fadeIn">
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
           
           {/* 상단 헤더 */}
@@ -207,8 +229,8 @@ function ClientDebtIntakeWizardModalInner({
               </div>
             </div>
 
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
-              <X className="w-6 h-6" />
+            <button type="button" onClick={handleCloseWithDraft} aria-label="임시 저장 후 닫기" className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white rounded-xl cursor-pointer">
+              <X className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
 
@@ -567,10 +589,11 @@ function ClientDebtIntakeWizardModalInner({
           {/* 모달 하단 액션 버튼 */}
           <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
             <button
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 rounded-xl cursor-pointer"
+              type="button"
+              onClick={handleCloseWithDraft}
+              className="min-h-11 px-4 py-2 text-sm font-bold text-slate-700 hover:text-slate-900 rounded-xl cursor-pointer whitespace-nowrap"
             >
-              닫기 (임시보관)
+              임시 저장 후 닫기
             </button>
             <button
               onClick={handleSaveAndSubmit}

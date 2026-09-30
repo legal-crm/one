@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, AlertTriangle, ShieldCheck, CheckCircle2, Clock, 
   HelpCircle, ChevronRight, Landmark, FileText, ArrowRight,
-  Flame, Award, DollarSign, RefreshCw, AlertOctagon, HeartHandshake
+  Scale, Award, DollarSign, RefreshCw, HeartHandshake
 } from 'lucide-react';
 import { RehabCompanionCase } from '../../../types';
 import { getCourtRepealStandard, getEffectiveRoundStatus } from '../../../services/companionService';
@@ -27,35 +27,36 @@ function OverdueDefenseGuideModalInner({
   const overdueCount = (caseData.schedules || []).filter(s => getEffectiveRoundStatus(s) === 'overdue_check_needed').length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-left">
         
         {/* 상단 헤더 */}
-        <div className="p-6 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white flex items-center justify-between shrink-0">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-xs shrink-0">
-              <AlertOctagon className="w-6 h-6 text-white" />
+            <div className="p-2.5 rounded-2xl bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light shrink-0">
+              <HeartHandshake className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                  도산 전문 실무 가이드
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded-full">
+                  도산 실무 가이드
                 </span>
-                <span className="text-xs bg-amber-400 text-slate-950 font-bold px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-amber-50 border border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200 font-bold px-2 py-0.5 rounded-full">
                   관할: {courtThreshold.courtName}
                 </span>
               </div>
-              <h3 className="text-lg md:text-xl font-black mt-1">
-                개인회생 변제금 미납 폐지 기준 & 3대 대처 방안
+              <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mt-1">
+                변제금이 밀렸을 때: 폐지 기준과 3가지 대처 방법
               </h3>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/20 transition-colors text-white cursor-pointer"
+            aria-label="닫기"
+            className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -66,11 +67,11 @@ function OverdueDefenseGuideModalInner({
             onClick={() => setActiveTab('matrix')}
             className={`py-3.5 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'matrix'
-                ? 'border-red-600 text-red-600 dark:text-red-400'
+                ? 'border-brand text-brand dark:border-brand-light dark:text-brand-light'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <Flame className="w-4 h-4" />
+            <Scale className="w-4 h-4" aria-hidden="true" />
             <span>회차별 폐지 기준 & 법원 실무</span>
           </button>
 
@@ -79,7 +80,7 @@ function OverdueDefenseGuideModalInner({
             onClick={() => setActiveTab('partial')}
             className={`py-3.5 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'partial'
-                ? 'border-red-600 text-red-600 dark:text-red-400'
+                ? 'border-brand text-brand dark:border-brand-light dark:text-brand-light'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
@@ -92,7 +93,7 @@ function OverdueDefenseGuideModalInner({
             onClick={() => setActiveTab('modify')}
             className={`py-3.5 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'modify'
-                ? 'border-red-600 text-red-600 dark:text-red-400'
+                ? 'border-brand text-brand dark:border-brand-light dark:text-brand-light'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
@@ -105,7 +106,7 @@ function OverdueDefenseGuideModalInner({
             onClick={() => setActiveTab('special_discharge')}
             className={`py-3.5 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'special_discharge'
-                ? 'border-red-600 text-red-600 dark:text-red-400'
+                ? 'border-brand text-brand dark:border-brand-light dark:text-brand-light'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
@@ -118,12 +119,12 @@ function OverdueDefenseGuideModalInner({
             onClick={() => setActiveTab('appeal')}
             className={`py-3.5 px-4 text-xs font-bold border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'appeal'
-                ? 'border-red-600 text-red-600 dark:text-red-400'
+                ? 'border-brand text-brand dark:border-brand-light dark:text-brand-light'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <Clock className="w-4 h-4" />
-            <span>🚨 폐지결정과 즉시항고 기간</span>
+            <Clock className="w-4 h-4" aria-hidden="true" />
+            <span>폐지결정과 즉시항고 기간</span>
           </button>
         </div>
 
@@ -138,15 +139,24 @@ function OverdueDefenseGuideModalInner({
               <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                    현재 나의 미납 현황 ({caseData.courtName})
+                    현재 납부 현황 ({caseData.courtName})
                   </div>
                   <div className="text-base font-black text-slate-900 dark:text-white mt-0.5">
                     {overdueCount === 0 ? (
-                      <span className="text-emerald-600 dark:text-emerald-400">🟢 정상 납부 진행 중 (미납 0회)</span>
+                      <span className="flex items-start gap-1.5 text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-1" aria-hidden="true" />
+                        <span>밀린 회차 없이 납부 중이에요</span>
+                      </span>
                     ) : overdueCount <= 2 ? (
-                      <span className="text-amber-600 dark:text-amber-400">⚡ 주의 단계: {overdueCount}회 미납 발생</span>
+                      <span className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+                        <Clock className="w-4 h-4 shrink-0 mt-1" aria-hidden="true" />
+                        <span>{overdueCount}회 납부 기록이 없어요</span>
+                      </span>
                     ) : (
-                      <span className="text-red-600 dark:text-red-400">🚨 위험 단계: {overdueCount}회 연체 누적 (폐지 위험)</span>
+                      <span className="flex items-start gap-1.5 text-amber-800 dark:text-amber-300">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-1" aria-hidden="true" />
+                        <span>{overdueCount}회 납부 기록이 없어요 · 담당 변호사와 상의가 필요해요</span>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -160,7 +170,7 @@ function OverdueDefenseGuideModalInner({
               {/* 회차별 3단계 폐지 매트릭스 카드 */}
               <div className="space-y-3">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-red-500" />
+                  <Scale className="w-4 h-4 text-brand dark:text-brand-light" aria-hidden="true" />
                   <span>회차별 미납 시 법원 조치 단계</span>
                 </h4>
 
@@ -171,7 +181,7 @@ function OverdueDefenseGuideModalInner({
                       <span className="text-xs font-black text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-md bg-amber-200/60 dark:bg-amber-900/60">
                         1 ~ 2회차
                       </span>
-                      <span className="text-xs font-bold text-amber-600 dark:text-amber-400">주의 단계</span>
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-400">1단계</span>
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">단순 지연 및 납부 독려</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -185,7 +195,7 @@ function OverdueDefenseGuideModalInner({
                       <span className="text-xs font-black text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-md bg-rose-200/60 dark:bg-rose-900/60">
                         3회차
                       </span>
-                      <span className="text-xs font-bold text-rose-600 dark:text-rose-400">경고 단계</span>
+                      <span className="text-xs font-bold text-rose-700 dark:text-rose-400">2단계</span>
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">납부 독촉·폐지 검토 가능</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -199,9 +209,9 @@ function OverdueDefenseGuideModalInner({
                       <span className="text-xs font-black text-red-800 dark:text-red-200 px-2 py-0.5 rounded-md bg-red-200 dark:bg-red-900">
                         4회차 이상
                       </span>
-                      <span className="text-xs font-black text-red-600 dark:text-red-400">폐지 착수</span>
+                      <span className="text-xs font-bold text-red-700 dark:text-red-400">3단계</span>
                     </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white">법원 직권 폐지 결정</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">법원의 폐지 결정 가능</div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                       회생위원 의견 등을 거쳐 재판부가 절차 폐지를 결정할 수 있습니다. 불복하려면 즉시항고 기간(공고일부터 14일) 안에 제기해야 하며, 인용 여부는 법원이 판단합니다.
                     </p>
@@ -213,10 +223,10 @@ function OverdueDefenseGuideModalInner({
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-brand" />
-                    <span>실무상 법원별 폐지 임계치 비교</span>
+                    <Landmark className="w-4 h-4 text-brand dark:text-brand-light" aria-hidden="true" />
+                    <span>법원별 폐지 검토 경향 비교</span>
                   </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">참고용 일반 경향 (재판부마다 다름)</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">참고용 일반 경향 (재판부마다 다름)</span>
                 </div>
 
                 <div className="space-y-2 text-xs">
@@ -225,7 +235,7 @@ function OverdueDefenseGuideModalInner({
                       ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-slate-800 dark:text-slate-200 font-medium'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                   }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold text-[10px] shrink-0">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white font-bold text-xs shrink-0">
                       서울회생법원
                     </span>
                     <div>
@@ -238,7 +248,7 @@ function OverdueDefenseGuideModalInner({
                       ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-slate-800 dark:text-slate-200 font-medium'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                   }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white font-bold text-[10px] shrink-0">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-700 text-white font-bold text-xs shrink-0">
                       수원·부산회생법원
                     </span>
                     <div>
@@ -248,10 +258,10 @@ function OverdueDefenseGuideModalInner({
 
                   <div className={`p-3 rounded-xl border flex items-start gap-3 ${
                     courtThreshold.leniencyLevel === 'STRICT'
-                      ? 'bg-red-50 dark:bg-red-950/30 border-red-300 text-slate-800 dark:text-slate-200 font-medium'
+                      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 text-slate-800 dark:text-slate-200 font-medium'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                   }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white font-bold text-[10px] shrink-0">
+                    <span className="px-2 py-0.5 rounded-md bg-rose-700 text-white font-bold text-xs shrink-0">
                       기타 지방법원
                     </span>
                     <div>
@@ -269,8 +279,8 @@ function OverdueDefenseGuideModalInner({
             <div className="space-y-5 animate-fadeIn">
               <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
                 <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>가장 안전하고 쉬운 해결책: 법원 가상계좌 쪼개기 입금</span>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
+                  <span>먼저 검토할 방법: 법원 가상계좌로 나누어 입금하기</span>
                 </div>
                 <p className="text-xs text-emerald-900/80 dark:text-emerald-200/80 mt-1 leading-relaxed">
                   한 달 치를 한 번에 채우기 어렵다면 <strong>가능한 금액부터 가상계좌로 나누어 입금</strong>하는 방법을 검토할 수 있습니다. 분납 처리 방식과 최소 금액은 회생위원 안내를 따르세요.
@@ -279,12 +289,12 @@ function OverdueDefenseGuideModalInner({
 
               <div className="space-y-3">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                  💡 실무 변제금 분납 3대 행동 원칙
+                  변제금을 나눠 낼 때 알아 둘 점
                 </h4>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-[10px]">
+                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       1
                     </span>
                     <div>
@@ -296,25 +306,25 @@ function OverdueDefenseGuideModalInner({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-[10px]">
+                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       2
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">입금자명은 반드시 본인 성명 입력</strong>
+                      <strong className="text-slate-900 dark:text-white">입금자명은 본인 성명으로 입력</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        부여받은 법원 가상계좌로 이체할 때 입금자명을 의뢰인 본인 성명(또는 사건번호)으로 지정해야 법원 전산에 착오 없이 즉시 매칭됩니다.
+                        부여받은 법원 가상계좌로 이체할 때 입금자명을 의뢰인 본인 성명(또는 사건번호)으로 지정해야 법원 전산에서 착오 없이 확인됩니다.
                       </p>
                     </div>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-[10px]">
+                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       3
                     </span>
                     <div>
-                      <strong className="text-slate-900 dark:text-white">회생위원에게 분납 계획서 사전 제출</strong>
+                      <strong className="text-slate-900 dark:text-white">회생위원에게 분납 일정 미리 알리기</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        2회 이상 밀릴 위험이 있다면 회생위원에게 유선 또는 소명서를 통해 분납 일정을 사전 고지하면 폐지 결정을 1~2개월 이상 늦출 수 있습니다.
+                        2회 이상 밀릴 것 같다면 회생위원에게 전화나 소명서로 분납 일정을 미리 알리세요. 받아들여지는지와 처리 방식은 회생위원·재판부마다 다릅니다.
                       </p>
                     </div>
                   </div>
@@ -338,33 +348,33 @@ function OverdueDefenseGuideModalInner({
 
               <div className="space-y-3">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                  📋 변경 신청 인정 사유 체크리스트
+                  변경 신청 사유별 준비 서류
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <strong className="text-slate-900 dark:text-white">💼 실직 또는 권고사직</strong>
+                    <strong className="text-slate-900 dark:text-white">실직 또는 권고사직</strong>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">
                       고용보험 수급자격증, 퇴직증명서, 새로운 직장의 급여명세서로 소득 감소 증빙
                     </p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <strong className="text-slate-900 dark:text-white">📉 사업 부진 또는 폐업</strong>
+                    <strong className="text-slate-900 dark:text-white">사업 부진 또는 폐업</strong>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">
                       폐업사실증명원, 부가가치세 과세표준증명원으로 매출 급감 객관적 소명
                     </p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <strong className="text-slate-900 dark:text-white">🏥 본인 또는 가족의 중증 질환</strong>
+                    <strong className="text-slate-900 dark:text-white">본인 또는 가족의 중증 질환</strong>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">
                       진단서, 수술 확인서, 월 고정 의료비 영수증을 제출하여 추가 생계비 인정 요청
                     </p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <strong className="text-slate-900 dark:text-white">👶 부양가족 추가 발생</strong>
+                    <strong className="text-slate-900 dark:text-white">부양가족 추가 발생</strong>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">
                       자녀 출산, 연로하신 부모님 부양 등 주민등록등본 및 기본증명서 제출
                     </p>
@@ -372,9 +382,9 @@ function OverdueDefenseGuideModalInner({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-xs text-amber-900 dark:text-amber-200">
-                  <strong>⚠️ 유의사항:</strong> 청산가치(보유재산 평가액) 이상의 총 변제액은 유지되어야 변경 인가가 가능합니다.
+                  <strong>유의사항:</strong> 청산가치(보유재산 평가액) 이상의 총 변제액은 유지되어야 변경 인가가 가능합니다.
                 </div>
                 <button
                   type="button"
@@ -382,9 +392,10 @@ function OverdueDefenseGuideModalInner({
                     onClose();
                     onOpenCrisisModal();
                   }}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-sm active:scale-[0.98]"
+                  className="min-h-11 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-sm active:scale-[0.98] inline-flex items-center gap-1.5"
                 >
-                  변호사에게 변경 요청하기 →
+                  <span>담당 변호사와 변경 상의하기</span>
+                  <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -393,24 +404,24 @@ function OverdueDefenseGuideModalInner({
           {/* TAB 4: 특별면책 (채무자회생법 제624조 제2항) */}
           {activeTab === 'special_discharge' && (
             <div className="space-y-5 animate-fadeIn">
-              <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-sm">
-                  <ShieldCheck className="w-5 h-5 text-purple-600" />
+              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-bold text-sm">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
                   <span>채무자회생법 제624조 제2항에 따른 특별면책</span>
                 </div>
-                <p className="text-xs text-purple-900/80 dark:text-purple-200/80 mt-1 leading-relaxed">
+                <p className="text-xs text-blue-900/80 dark:text-blue-200/80 mt-1 leading-relaxed">
                   변제계획을 완료하지 못했더라도 <strong>책임질 수 없는 사유</strong>가 있고, <strong>이미 변제한 금액이 파산 시 배당액(청산가치) 이상</strong>이며, <strong>변제계획 변경이 불가능</strong>하면 법원이 면책결정을 할 수 있는 제도입니다. 면책 여부는 법원이 이해관계인 의견을 들은 뒤 판단하며, 면책되지 않는 채권도 있습니다.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                  ⚖️ 특별면책의 3대 필수 요건
+                  특별면책 요건 3가지 (모두 충족 필요)
                 </h4>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
+                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       1
                     </span>
                     <div>
@@ -422,7 +433,7 @@ function OverdueDefenseGuideModalInner({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
+                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       2
                     </span>
                     <div>
@@ -434,7 +445,7 @@ function OverdueDefenseGuideModalInner({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
+                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 text-xs">
                       3
                     </span>
                     <div>
@@ -447,8 +458,11 @@ function OverdueDefenseGuideModalInner({
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300">
-                💡 <strong>변호사 자문 권고:</strong> 특별면책 요건 충족 여부는 청산가치와 기납부액 계산이 정밀해야 하므로, 위기에 처하셨다면 즉시 전담 변호사와 상담하세요.
+              <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                <HelpCircle className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
+                <p>
+                  <strong>상담 안내:</strong> 특별면책 요건 충족 여부는 청산가치와 기납부액 계산이 필요하므로, 납부가 어렵다면 담당 변호사와 먼저 상담하세요.
+                </p>
               </div>
             </div>
           )}
@@ -456,24 +470,24 @@ function OverdueDefenseGuideModalInner({
           {/* TAB 5: 폐지 결정 시 14일 즉시항고 골든타임 */}
           {activeTab === 'appeal' && (
             <div className="space-y-5 animate-fadeIn">
-              <div className="p-4 rounded-2xl bg-red-600 text-white space-y-2">
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-900 dark:text-red-200 space-y-2">
                 <div className="flex items-center gap-2 font-black text-base">
-                  <AlertTriangle className="w-5 h-5 text-amber-300" />
+                  <Clock className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0" aria-hidden="true" />
                   <span>폐지결정 공고일부터 14일: 즉시항고 기간</span>
                 </div>
-                <p className="text-xs text-red-100 leading-relaxed">
+                <p className="text-xs text-red-800 dark:text-red-300 leading-relaxed">
                   폐지결정에 불복하려면 <strong>공고일부터 14일</strong>(채무자회생법 제13조 제2항) 안에 즉시항고장을 내야 합니다. 밀린 변제금을 완납하는 것이 중요하지만, <strong>폐지결정이 취소될지는 법원이 판단</strong>합니다.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                  ⏱️ 폐지 위기 탈출 4단계 긴급 행동 요령
+                  폐지 통지를 받았을 때 할 일 4단계
                 </h4>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="font-black text-red-600 dark:text-red-400 text-sm">STEP 1</span>
+                    <span className="font-black text-brand dark:text-brand-light text-sm shrink-0">STEP 1</span>
                     <div>
                       <strong className="text-slate-900 dark:text-white">대법원 공고일 및 14일 기한 계산</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
@@ -483,17 +497,17 @@ function OverdueDefenseGuideModalInner({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="font-black text-red-600 dark:text-red-400 text-sm">STEP 2</span>
+                    <span className="font-black text-brand dark:text-brand-light text-sm shrink-0">STEP 2</span>
                     <div>
                       <strong className="text-slate-900 dark:text-white">미납 변제금 전액 가상계좌 입금</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                        지인 차용, 가족 지원 등을 통해 밀린 변제금 총액을 법원 가상계좌로 즉시 전액 입금하고 이체확인증(영수증)을 확보합니다.
+                        지인·가족의 도움 등으로 밀린 변제금 총액을 가능한 한 빨리 법원 가상계좌로 입금하고 이체확인증(영수증)을 받아 둡니다.
                       </p>
                     </div>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="font-black text-red-600 dark:text-red-400 text-sm">STEP 3</span>
+                    <span className="font-black text-brand dark:text-brand-light text-sm shrink-0">STEP 3</span>
                     <div>
                       <strong className="text-slate-900 dark:text-white">즉시항고장 + 완납 영수증 첨부 법원 접수</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
@@ -503,7 +517,7 @@ function OverdueDefenseGuideModalInner({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-                    <span className="font-black text-red-600 dark:text-red-400 text-sm">STEP 4</span>
+                    <span className="font-black text-brand dark:text-brand-light text-sm shrink-0">STEP 4</span>
                     <div>
                       <strong className="text-slate-900 dark:text-white">항고법원의 판단</strong>
                       <p className="text-slate-600 dark:text-slate-400 mt-0.5">
@@ -514,8 +528,11 @@ function OverdueDefenseGuideModalInner({
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-800 dark:text-red-300">
-                🚨 <strong>기간이 지나면:</strong> 폐지결정이 확정되어 채권자의 강제집행·추심이 다시 가능해질 수 있고, 다시 절차를 이용하려면 새로 신청해야 할 수 있습니다. 폐지 관련 통지를 받았다면 바로 담당 변호사에게 연락하세요.
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-800 dark:text-red-300 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <p>
+                  <strong>기간이 지나면:</strong> 폐지결정이 확정되어 채권자의 강제집행·추심이 다시 가능해질 수 있고, 다시 절차를 이용하려면 새로 신청해야 할 수 있습니다. 폐지 관련 통지를 받았다면 바로 담당 변호사에게 연락하세요.
+                </p>
               </div>
             </div>
           )}
@@ -534,14 +551,15 @@ function OverdueDefenseGuideModalInner({
                 onClose();
                 onOpenCrisisModal();
               }}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-11 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer inline-flex items-center justify-center gap-1.5"
             >
-              🚨 전담 변호사에게 긴급 위기 SOS 접수
+              <HeartHandshake className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>담당 변호사에게 상담·지원 요청하기</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="min-h-11 px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               닫기
             </button>

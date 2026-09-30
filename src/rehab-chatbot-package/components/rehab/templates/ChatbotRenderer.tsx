@@ -21,7 +21,7 @@ import { ChatbotTemplateId, ChatbotColorPalette, ThemeMode, getTemplateById, Tem
 import InteractiveBlock from './InteractiveBlock';
 
 // **text** 마크다운을 컬러 강조 <span>으로 변환하는 유틸리티
-const parseHighlight = (text: string, accentColor: string = '#6366f1'): React.ReactNode[] => {
+const parseHighlight = (text: string, accentColor: string = '#1E3A5F'): React.ReactNode[] => {
     const parts = text.split(/(\*\*[^*]+\*\*)/);
     return parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -74,6 +74,14 @@ interface ChatbotRendererProps {
     // 뒤로 가기 기능
     onGoBack?: () => void;
     canGoBack?: boolean;
+    /** 헤더 이름 아래 보조 문구(기본 헤더) */
+    headerSubtitle?: string;
+    /** 진행 막대 옆 문구(예: '40% · 약 2분 남음') */
+    progressLabel?: string;
+    /** 닫기 버튼의 접근성 이름 */
+    closeLabel?: string;
+    /** 바깥 컨테이너가 모서리·테두리를 담당할 때(페이지 임베드·모바일 전체 화면) 둥근 모서리 제거 */
+    flush?: boolean;
 }
 
 const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
@@ -97,7 +105,11 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
     onBlockCancel,
     enableFormBlocks = false,
     onGoBack,
-    canGoBack = false
+    canGoBack = false,
+    headerSubtitle,
+    progressLabel,
+    closeLabel = '닫기',
+    flush = false
 }) => {
     const isDark = mode === 'dark';
     const template = getTemplateById(templateId);
@@ -116,7 +128,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                 default: return '#1e293b';
             }
         }
-        return '#fafbff';
+        return '#f8fafc';
     };
 
     // 메시지 그룹화 (연속 메시지 묶기)
@@ -158,7 +170,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             </div>
                             <span style={{ color: colors.headerText }} className="font-bold">{characterName}</span>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                        <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-2 hover:bg-white/10 rounded-full transition-colors">
                             <X className="w-5 h-5" style={{ color: colors.headerText }} />
                         </button>
                     </div>
@@ -209,7 +221,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             <p className="text-xs opacity-70" style={{ color: colors.headerText }}>AI 법률 상담</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-2 hover:bg-white/10 rounded-lg transition-colors">
                         <X className="w-5 h-5" style={{ color: colors.headerText }} />
                     </button>
                 </div>
@@ -233,7 +245,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             <p className="text-xs opacity-70" style={{ color: colors.headerText }}>상담 진행 중</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:opacity-70">
+                    <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-1 hover:opacity-70">
                         <X className="w-5 h-5" style={{ color: colors.headerText }} />
                     </button>
                 </div>
@@ -259,7 +271,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             <p className="text-xs opacity-80" style={{ color: colors.headerText }}>온라인</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+                    <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
                         <X className="w-5 h-5" style={{ color: colors.headerText }} />
                     </button>
                 </div>
@@ -284,10 +296,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                         <span style={{ color: colors.headerText }} className="font-medium text-sm">{characterName}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <button className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
-                            <Search className="w-4 h-4" style={{ color: colors.headerText }} />
-                        </button>
-                        <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
+                        <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-1.5 hover:bg-white/10 rounded-full transition-colors">
                             <X className="w-4 h-4" style={{ color: colors.headerText }} />
                         </button>
                     </div>
@@ -317,7 +326,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             <p className="text-xs" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>참여자 1명</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1" style={{ color: colors.primary }}>
+                    <button type="button" onClick={onClose} aria-label="대화 닫기" className="min-w-11 min-h-11 flex items-center justify-center p-1" style={{ color: colors.primary }}>
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -355,8 +364,10 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                         </span>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-2 rounded-lg transition-all hover:scale-110"
+                        aria-label="대화 닫기"
+                        className="min-w-11 min-h-11 flex items-center justify-center p-2 rounded-lg transition-all hover:scale-110"
                         style={{
                             backgroundColor: isDark ? colors.primary : 'rgba(255,255,255,0.2)',
                             boxShadow: isDark ? `0 0 10px ${colors.accent}40` : 'none'
@@ -368,21 +379,38 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
             );
         }
 
-        // 01. 클래식 카드형 (기본)
+        // 01. 클래식 카드형 (기본) — 자동 정리 도구임을 드러내는 아이콘, 44px 닫기 버튼
         return (
             <div
-                className="px-4 py-3 flex items-center justify-between"
+                className="px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0"
                 style={{
                     backgroundColor: colors.primary,
+                    minHeight: '56px',
                     borderBottom: showBorder ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none'
                 }}
             >
-                <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                    <span style={{ color: colors.headerText }} className="font-semibold">{characterName}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center overflow-hidden shrink-0" aria-hidden="true">
+                        {characterImage ? (
+                            <img src={characterImage} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <Bot className="w-5 h-5" style={{ color: colors.headerText }} />
+                        )}
+                    </div>
+                    <div className="min-w-0">
+                        <p style={{ color: colors.headerText }} className="font-bold text-[15px] leading-tight truncate">{characterName}</p>
+                        {headerSubtitle && (
+                            <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: colors.headerText, opacity: 0.8 }}>{headerSubtitle}</p>
+                        )}
+                    </div>
                 </div>
-                <button onClick={onClose} className="p-1 hover:opacity-70 transition-opacity">
-                    <X className="w-5 h-5" style={{ color: colors.headerText }} />
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label={closeLabel}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                    <X className="w-5 h-5" style={{ color: colors.headerText }} aria-hidden="true" />
                 </button>
             </div>
         );
@@ -468,7 +496,10 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
 
         return (
             <div
-                className="flex-1 overflow-y-auto p-4 chatbot-scroll-area"
+                role="log"
+                aria-live="polite"
+                aria-label="채무 정리 대화"
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 chatbot-scroll-area"
                 style={{
                     backgroundColor: getBackgroundColor(),
                     paddingLeft: hasRail ? '72px' : hasTimeline ? '48px' : '16px'
@@ -541,9 +572,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                         style={{ backgroundColor: characterImage ? 'transparent' : colors.primary }}
                                     >
                                         {characterImage ? (
-                                            <img src={characterImage} alt="Bot" className="w-full h-full object-cover" />
+                                            <img src={characterImage} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-base">🧑‍⚖️</span>
+                                            <Bot className="w-4 h-4" style={{ color: colors.headerText }} aria-hidden="true" />
                                         )}
                                     </div>
                                 )}
@@ -578,7 +609,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                                     whileHover={{ scale: 1.03 }}
                                                     whileTap={{ scale: 0.97 }}
                                                     onClick={() => onOptionSelect(opt, msg.id)}
-                                                    className="px-4 py-2.5 text-sm font-semibold transition-all"
+                                                    className="min-h-11 px-4 py-2.5 text-sm font-semibold transition-all"
                                                     style={(() => {
                                                         const isCompleteBtn = opt.label.includes('선택완료');
                                                         const isNoneBtn = opt.label.includes('없어요');
@@ -592,7 +623,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                                         let borderStyle = `1.5px solid ${colors.primary}`;
                                                         let shadowStyle = opt.selected
                                                             ? `0 0 12px ${colors.primary}40`
-                                                            : (isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)');
+                                                            : (isDark ? 'none' : '0 1px 3px rgba(15, 23, 42, 0.08)');
 
                                                         if (isCompleteBtn) {
                                                             bgColor = '#10b981'; // Emerald Green
@@ -624,21 +655,6 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                     {/* Interactive Block (폼-혼합형) */}
                                     {(() => {
                                         const shouldRender = (layout?.hasFormBlocks || enableFormBlocks) && msg.interactiveBlock && msg.blockState && onBlockSubmit;
-
-                                        // 디버깅: 마지막 메시지인 경우 항상 로그 출력
-                                        if (msg.isLast || msg.interactiveBlock) {
-                                            console.log(`[Renderer] Msg ${msg.id} Render Check:`, {
-                                                content: msg.content.substring(0, 20),
-                                                shouldRender,
-                                                hasFormBlocks: layout?.hasFormBlocks,
-                                                enableFormBlocks,
-                                                msgHasBlock: !!msg.interactiveBlock,
-                                                msgState: msg.blockState,
-                                                hasSubmitHandler: !!onBlockSubmit,
-                                                // interactiveBlock 내용 확인
-                                                blockConfig: msg.interactiveBlock
-                                            });
-                                        }
 
                                         return shouldRender ? (
                                             <div className="mt-3">
@@ -728,6 +744,8 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
     // ==================== Composer 렌더링 ====================
     const renderComposer = () => {
         const inputRadius = layout?.composerInputRadius || 20;
+        // 마지막 질문의 입력 형식(금액이면 숫자 키패드)
+        const lastBotInputType = [...messages].reverse().find(m => m.type === 'bot')?.inputType;
 
         const renderMoneyHelper = () => {
             const lastBotMsg = [...messages].reverse().find(m => m.type === 'bot');
@@ -756,7 +774,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
             return (
                 <div className="flex flex-col gap-2 mb-2 px-3 pt-2">
                     {currentVal > 0 && (
-                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400 px-1">
+                        <div className="text-sm font-bold px-1" style={{ color: isDark ? '#93c5fd' : colors.primary }} aria-live="polite">
                             현재 입력: {formatKoreanMoney(currentVal)}
                         </div>
                     )}
@@ -796,8 +814,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             return buttons.map((btn, idx) => (
                             <button
                                 key={idx}
+                                type="button"
                                 onClick={() => addAmount(btn.value)}
-                                className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border"
+                                className="min-h-10 px-3 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors border shrink-0"
                                 style={{
                                     backgroundColor: isDark ? '#1e293b' : '#ffffff',
                                     borderColor: isDark ? '#475569' : '#e2e8f0',
@@ -809,8 +828,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             ));
                         })()}
                         <button
+                            type="button"
                             onClick={resetAmount}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"
+                            className="min-h-10 px-3 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors border shrink-0 bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"
                         >
                             초기화
                         </button>
@@ -868,10 +888,12 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             }}
                         />
                         <motion.button
+                            type="button"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={onSubmit}
-                            className="p-3 transition-all flex-shrink-0"
+                            aria-label="보내기"
+                            className="min-w-11 min-h-11 flex items-center justify-center p-3 transition-all flex-shrink-0"
                             style={{
                                 backgroundColor: colors.primary,
                                 color: colors.headerText,
@@ -899,11 +921,11 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     <div
                         className="mb-2 px-3 py-2 rounded-lg text-sm text-center"
                         style={{
-                            backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-                            color: isDark ? '#a5b4fc' : '#6366f1'
+                            backgroundColor: isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(30, 58, 95, 0.06)',
+                            color: isDark ? '#cbd5e1' : '#1E3A5F'
                         }}
                     >
-                        위 블록에서 입력을 완료해주세요
+                        위 입력란을 먼저 완료해 주세요
                     </div>
                 )}
 
@@ -914,43 +936,47 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     {/* 뒤로 가기 버튼 */}
                     {canGoBack && onGoBack && (
                         <motion.button
-                            whileHover={{ scale: 1.05 }}
+                            type="button"
                             whileTap={{ scale: 0.95 }}
                             onClick={onGoBack}
-                            className="p-2.5 rounded-xl transition-all flex-shrink-0"
+                            className="w-11 h-11 rounded-xl transition-colors flex-shrink-0 flex items-center justify-center"
                             style={{
-                                backgroundColor: isDark ? '#374151' : '#f3f4f6',
-                                color: isDark ? '#d1d5db' : '#6b7280'
+                                backgroundColor: isDark ? '#374151' : '#f1f5f9',
+                                color: isDark ? '#d1d5db' : '#475569'
                             }}
+                            aria-label="이전 질문으로"
                             title="이전 질문으로"
                         >
-                            <ChevronLeft className="w-5 h-5" />
+                            <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                         </motion.button>
                     )}
                     <input
                         ref={inputRef}
                         type="text"
+                        inputMode={lastBotInputType === 'money' || lastBotInputType === 'number' ? 'numeric' : undefined}
                         value={inputValue}
                         onChange={(e) => onInputChange(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && !isComposerLocked && onSubmit()}
-                        placeholder={isComposerLocked ? "블록 입력 대기 중..." : "입력해주세요..."}
+                        placeholder={isComposerLocked ? '위 입력란을 먼저 완료해 주세요' : lastBotInputType === 'money' ? '금액 입력 (만 원 단위)' : '답변을 입력해 주세요'}
+                        aria-label="답변 입력"
                         disabled={isComposerLocked}
-                        className="flex-1 min-w-0 px-4 py-3 border outline-none focus:ring-2 transition-all"
+                        className="flex-1 min-w-0 min-h-11 px-4 py-2.5 text-base border outline-none focus:ring-2 focus:ring-slate-400/40 transition-all"
                         style={{
-                            backgroundColor: isDark ? '#334155' : '#f8fafc',
-                            color: isDark ? '#f1f5f9' : '#1e293b',
-                            borderColor: isDark ? '#475569' : '#e2e8f0',
+                            backgroundColor: isDark ? '#334155' : '#ffffff',
+                            color: isDark ? '#f1f5f9' : '#0f172a',
+                            borderColor: isDark ? '#475569' : '#cbd5e1',
                             borderRadius: `${inputRadius}px`,
                             opacity: isComposerLocked ? 0.6 : 1,
                             cursor: isComposerLocked ? 'not-allowed' : 'text'
                         }}
                     />
                     <motion.button
-                        whileHover={isComposerLocked ? {} : { scale: 1.05 }}
+                        type="button"
                         whileTap={isComposerLocked ? {} : { scale: 0.95 }}
                         onClick={onSubmit}
                         disabled={isComposerLocked}
-                        className="p-3 transition-all flex-shrink-0"
+                        aria-label="보내기"
+                        className="w-11 h-11 transition-all flex-shrink-0 flex items-center justify-center"
                         style={{
                             backgroundColor: colors.primary,
                             color: colors.headerText,
@@ -959,7 +985,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             cursor: isComposerLocked ? 'not-allowed' : 'pointer'
                         }}
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="w-5 h-5" aria-hidden="true" />
                     </motion.button>
                 </div>
             </div>
@@ -997,9 +1023,10 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
     };
 
     // ==================== 메인 렌더링 ====================
+    const progressValue = Math.max(0, Math.min(100, Math.round(progress)));
     return (
         <div
-            className={getContainerStyle()}
+            className={flush ? 'w-full h-full flex flex-col overflow-hidden' : getContainerStyle()}
             style={{
                 backgroundColor: getBackgroundColor(),
                 borderColor: templateId === 'sidebar' ? colors.primary : undefined,
@@ -1009,15 +1036,32 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
             {/* Header */}
             {renderHeader()}
 
-            {/* Progress Bar */}
-            <div className="h-1" style={{ backgroundColor: isDark ? '#374151' : '#ede9fe' }}>
-                <motion.div
-                    className="h-full"
-                    style={{ background: isDark ? colors.accent : `linear-gradient(90deg, ${colors.primary}, ${colors.accent})` }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.3 }}
-                />
+            {/* Progress — 막대 + 진행 문구 */}
+            <div
+                className="flex items-center gap-3 px-4 py-2 border-b shrink-0"
+                style={{ backgroundColor: isDark ? '#111827' : '#ffffff', borderColor: isDark ? '#374151' : '#e2e8f0' }}
+            >
+                <div
+                    className="flex-1 h-1.5 rounded-full overflow-hidden"
+                    style={{ backgroundColor: isDark ? '#374151' : '#e2e8f0' }}
+                    role="progressbar"
+                    aria-label="채무 정리 진행률"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progressValue}
+                    aria-valuetext={progressLabel || `${progressValue}%`}
+                >
+                    <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: isDark ? colors.accent : colors.primary }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressValue}%` }}
+                        transition={{ duration: 0.3 }}
+                    />
+                </div>
+                <span className="text-xs font-bold tabular-nums whitespace-nowrap" style={{ color: isDark ? '#cbd5e1' : '#475569' }} aria-hidden="true">
+                    {progressLabel || `${progressValue}%`}
+                </span>
             </div>
 
             {/* Messages (탭 조건부) */}

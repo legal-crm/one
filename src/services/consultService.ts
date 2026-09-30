@@ -518,33 +518,44 @@ function readStoredMessage(id: string, stored: string): string {
   return stored;
 }
 
-export async function saveConsultMessage(message: ConsultMessage): Promise<void> {
+/**
+ * 새 메시지 1건 저장.
+ * @returns 서버 저장까지 끝났으면 true (서버 미연동 환경은 기기 저장만으로 true), 서버 저장에 실패하면 false
+ *
+ * 같은 id가 이미 서버에 있으면 그대로 둔다(ON CONFLICT DO NOTHING). 전체 동기화(saveAllConsultMessages)가
+ * 먼저 넣은 경우나 '다시 보내기'로 같은 메시지를 재전송한 경우에도 UPDATE 권한 없이 성공으로 처리된다.
+ */
+export async function saveConsultMessage(message: ConsultMessage): Promise<boolean> {
+  // 전송 상태는 이 기기 화면용 값이라 저장하지 않는다
+  const { deliveryStatus: _localOnly, ...stored } = message;
   const messages = getLocalData<ConsultMessage[]>(MESSAGES_STORAGE_KEY, []);
-  const idx = messages.findIndex(m => m.id === message.id);
-  if (idx >= 0) messages[idx] = message;
-  else messages.push(message);
+  const idx = messages.findIndex(m => m.id === stored.id);
+  if (idx >= 0) messages[idx] = stored;
+  else messages.push(stored);
   setLocalData(MESSAGES_STORAGE_KEY, messages);
 
-  if (isSupabaseConfigured) {
-    try {
-      // 레거시 암호문 메시지는 안내 문구로 덮어쓰지 않는다
-      if (legacyEncryptedMessageIds.has(message.id)) return;
+  if (!isSupabaseConfigured) return true;
+  try {
+    // 레거시 암호문 메시지는 안내 문구로 덮어쓰지 않는다
+    if (legacyEncryptedMessageIds.has(stored.id)) return true;
 
-      const { error } = await supabase.from('consult_messages').upsert({
-        id: message.id,
-        consult_request_id: message.consultRequestId,
-        sender_type: message.senderType,
-        sender_id: message.senderId,
-        sender_name: message.senderName,
-        message: message.message,
-        created_at: message.createdAt,
-      }, { onConflict: 'id' });
-      if (error) {
-        logSupabaseError('saveConsultMessage', error);
-      }
-    } catch (e) {
-      logSupabaseError('saveConsultMessage (exception)', e);
+    const { error } = await supabase.from('consult_messages').upsert({
+      id: stored.id,
+      consult_request_id: stored.consultRequestId,
+      sender_type: stored.senderType,
+      sender_id: stored.senderId,
+      sender_name: stored.senderName,
+      message: stored.message,
+      created_at: stored.createdAt,
+    }, { onConflict: 'id', ignoreDuplicates: true });
+    if (error) {
+      logSupabaseError('saveConsultMessage', error);
+      return false;
     }
+    return true;
+  } catch (e) {
+    logSupabaseError('saveConsultMessage (exception)', e);
+    return false;
   }
 }
 

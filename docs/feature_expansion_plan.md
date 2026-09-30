@@ -371,7 +371,7 @@ Supabase RPC로 처리하므로 Vercel 함수는 늘지 않는다.
 > - 라우터 `api/_lib/route-dispatch.js`: 쿼리 파라미터 → 원래 경로 순으로 라우트를 정하고, 핸들러에는 통합 전 경로를 넘긴다. rate limit 키(ip + 경로)와 invoice·alimtok의 액션 판별이 API별로 그대로 유지된다.
 > - `telegram`의 CORS import를 `cors-helper.js`로 바꿔 알림 함수 번들에서 팝빌 SDK를 뺐다.
 > - 검증: 라우팅 스모크 테스트 16건 통과. 이 중 8건은 통합 함수 8개 경로가 실제 핸들러까지 도달해 각자의 인증 오류(401·403)로 응답하는지 확인했다. `node --check` 전 파일 통과, `tsc` 신규 오류 0건, `vite build` 통과.
-> - ❔ 미확인: 배포 환경의 rewrites 동작. 배포 후 기존 12개 URL을 각각 호출해 확인한다.
+> - ✅ 운영 확인 (2026-09-29, 커밋 `e1643b3`, https://mykim.kr): 옮긴 URL 8개가 모두 원래 핸들러의 인증 오류(401·403)로 응답했고, 잘못된 라우트는 라우터 404로 응답했다. 그대로 둔 4개(`benefits`·`contract`·`generate-statement`·`inquiry`)도 정상 응답했다. 인증이 필요한 실제 기능(발송·OCR·조회)은 로그인한 상태로 한 번씩 써 보는 확인이 남았다.
 > - ⚠️ 기존 문제(통합과 무관): `send-email`이 `nodemailer`를 동적으로 import하지만 `package.json`에 없어 이메일 발송이 런타임에 실패한다.
 
 의존성이 같은 파일끼리 합친다. 기존 URL은 `vercel.json` rewrites로 유지해 **클라이언트 코드는 바꾸지 않는다**.

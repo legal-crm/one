@@ -8,8 +8,10 @@ import {
   loadRehabCompanionCase,
   saveRehabCompanionCase,
   syncCompanionWithCrmCase,
-  loadBankruptcyCase
+  loadBankruptcyCase,
+  saveBankruptcyCase
 } from '../../../services/companionService';
+import { SegmentedTabs } from '../ui';
 import CompanionDashboard from './CompanionDashboard';
 import BankruptcyCompanionDashboard from './BankruptcyCompanionDashboard';
 import SupportCenterTab from './SupportCenterTab';
@@ -25,6 +27,10 @@ interface RehabCompanionViewProps {
   clientId?: string;
   onNavigateToChat?: (reqId?: string) => void;
   onNavigateToLawyers?: () => void;
+  /** clientId로 저장된 기록이 없을 때 차례로 찾아볼 예전 저장 키 (예: 최상위 회생동행 탭에서 쓰던 의뢰인 ID) */
+  fallbackClientIds?: string[];
+  /** 마이페이지 탭 안에 넣을 때 (바깥 여백을 줄인다) */
+  embedded?: boolean;
 }
 
 /** CRM(담당 변호사 등록 정보)이 있으면 동기화, 없으면 이 기기에 저장된 사건 — 둘 다 없으면 null */
@@ -42,22 +48,64 @@ function resolveRehabCase(clientId: string | undefined, alias: string): RehabCom
   return loadRehabCompanionCase(clientId);
 }
 
-const TAB_BASE = 'px-3.5 min-h-[44px] rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 whitespace-nowrap';
+/**
+ * 기록이 없으면 예전 저장 키에서도 찾는다.
+ * 예전 키에서 찾으면 지금 키(clientId)로 옮겨 저장한다 — 납부 기록 저장이 clientId 키로만 사건을 찾기 때문
+ * (이전: 예전 키의 사건은 화면에는 보이지만 납부 기록을 저장하면 '사건 정보를 찾지 못해' 실패)
+ */
+function resolveRehabCaseWithFallback(clientId: string | undefined, alias: string, fallbackIds: string[] = []): RehabCompanionCase | null {
+  const primary = resolveRehabCase(clientId, alias);
+  if (primary) return primary;
+  for (const id of fallbackIds) {
+    if (!id || id === clientId) continue;
+    const found = loadRehabCompanionCase(id);
+    if (found) {
+      if (clientId) saveRehabCompanionCase({ ...found, clientId }, clientId);
+      return clientId ? { ...found, clientId } : found;
+    }
+  }
+  return null;
+}
+
+function loadBankruptcyCaseWithFallback(clientId: string | undefined, fallbackIds: string[] = []): BankruptcyCompanionCase | null {
+  const primary = loadBankruptcyCase(clientId);
+  if (primary) return primary;
+  for (const id of fallbackIds) {
+    if (!id || id === clientId) continue;
+    const found = loadBankruptcyCase(id);
+    if (found) {
+      if (clientId) saveBankruptcyCase(found, clientId);
+      return found;
+    }
+  }
+  return null;
+}
+
+type CompanionSubTab = 'dashboard' | 'support' | 'academy';
+const SUB_TABS: { id: CompanionSubTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'dashboard', label: '대시보드', icon: <Layers className="w-4 h-4" aria-hidden="true" /> },
+  { id: 'support', label: '공적 지원', icon: <HeartHandshake className="w-4 h-4" aria-hidden="true" /> },
+  { id: 'academy', label: '회복 아카데미', icon: <BookOpen className="w-4 h-4" aria-hidden="true" /> },
+];
 
 export default function RehabCompanionView({
   userAlias = '회원',
   clientId,
+  fallbackClientIds,
+  embedded = false,
 }: RehabCompanionViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'support' | 'academy'>('dashboard');
-  const [rehabCase, setRehabCase] = useState<RehabCompanionCase | null>(() => resolveRehabCase(clientId, userAlias));
-  const [bankruptcyCase, setBankruptcyCase] = useState<BankruptcyCompanionCase | null>(() => loadBankruptcyCase(clientId));
+  const fallbackKey = (fallbackClientIds || []).join('|');
+  const [activeSubTab, setActiveSubTab] = useState<CompanionSubTab>('dashboard');
+  const [rehabCase, setRehabCase] = useState<RehabCompanionCase | null>(() => resolveRehabCaseWithFallback(clientId, userAlias, fallbackClientIds));
+  const [bankruptcyCase, setBankruptcyCase] = useState<BankruptcyCompanionCase | null>(() => loadBankruptcyCaseWithFallback(clientId, fallbackClientIds));
   // 저장된 사건 유형에 맞춰 시작 모드 결정
   const [caseTypeMode, setCaseTypeMode] = useState<'rehab' | 'bankruptcy'>(() => (!rehabCase && bankruptcyCase ? 'bankruptcy' : 'rehab'));
 
   const refreshData = useCallback(() => {
-    setRehabCase(resolveRehabCase(clientId, userAlias));
-    setBankruptcyCase(loadBankruptcyCase(clientId));
-  }, [clientId, userAlias]);
+    setRehabCase(resolveRehabCaseWithFallback(clientId, userAlias, fallbackClientIds));
+    setBankruptcyCase(loadBankruptcyCaseWithFallback(clientId, fallbackClientIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, userAlias, fallbackKey]);
 
   useEffect(() => {
     refreshData();
@@ -80,15 +128,15 @@ export default function RehabCompanionView({
   };
 
   const emptyState = (kind: 'rehab' | 'bankruptcy') => (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-sm">
-      <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto">
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 text-center space-y-4">
+      <div className="w-12 h-12 rounded-2xl bg-brand-light text-brand flex items-center justify-center mx-auto">
         <Scale className="w-6 h-6" aria-hidden="true" />
       </div>
-      <div className="space-y-1">
-        <h2 className="text-base font-black text-slate-900 dark:text-white">
-          {kind === 'rehab' ? '등록된 개인회생 사건이 없습니다' : '등록된 개인파산 사건이 없습니다'}
+      <div className="space-y-1.5">
+        <h2 className="text-lg font-bold text-slate-900">
+          {kind === 'rehab' ? '등록된 개인회생 사건이 없어요' : '등록된 개인파산 사건이 없어요'}
         </h2>
-        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
+        <p className="text-sm text-slate-600 leading-relaxed max-w-md mx-auto break-keep">
           사건번호와 {kind === 'rehab' ? '변제 조건(월 변제금·납부일·회차)' : '관할 법원'}을 등록하면 납부 일정과 절차 진행을 이곳에서 관리할 수 있습니다.
           마이김변 변호사에게 사건을 맡기셨다면, 담당 변호사가 사건 정보를 입력하는 대로 자동으로 표시됩니다.
         </p>
@@ -105,64 +153,42 @@ export default function RehabCompanionView({
   );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left pb-16">
+    <div className={embedded ? 'space-y-6 text-left' : 'max-w-5xl mx-auto space-y-6 animate-fadeIn text-left pb-16'}>
 
-      {/* ═══ 상단 모드 전환 & 서브 네비게이션 ═══ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 px-4 shadow-sm">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl" role="group" aria-label="사건 유형">
-          <button
-            type="button"
-            aria-pressed={caseTypeMode === 'rehab'}
-            onClick={() => setCaseTypeMode('rehab')}
-            className={`px-3.5 min-h-[44px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              caseTypeMode === 'rehab' ? 'bg-white dark:bg-slate-900 text-brand shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
-            }`}
-          >
-            🌱 개인회생동행
-          </button>
-          <button
-            type="button"
-            aria-pressed={caseTypeMode === 'bankruptcy'}
-            onClick={() => setCaseTypeMode('bankruptcy')}
-            className={`px-3.5 min-h-[44px] rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              caseTypeMode === 'bankruptcy' ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
-            }`}
-          >
-            🕊️ 개인파산·면책동행
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="동행 메뉴">
-          {([
-            { id: 'dashboard', label: '동행 대시보드', icon: Layers },
-            { id: 'support', label: '공적 지원센터', icon: HeartHandshake },
-            { id: 'academy', label: '회복 아카데미', icon: BookOpen },
-          ] as const).map(t => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={activeSubTab === t.id}
-              onClick={() => setActiveSubTab(t.id)}
-              className={`${TAB_BASE} ${activeSubTab === t.id ? 'bg-brand text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-            >
-              <t.icon className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{t.label}</span>
-            </button>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setIsRegisterOpen(true)}
-            className={`${TAB_BASE} ml-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand`}
-          >
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>사건 등록</span>
-          </button>
-        </div>
+      {/* ═══ 상단 메뉴: 탭(모바일에서도 한 줄) · 대시보드일 때만 사건 유형 전환 ═══
+          (이전: 탭 3개 + '사건 등록'이 한 줄에서 잘리고, 사건이 없을 때 '사건 등록'이 빈 화면의 '내 사건 등록하기'와 겹침) */}
+      <div className="space-y-3">
+        <SegmentedTabs<CompanionSubTab>
+          tabs={SUB_TABS.map(t => ({ id: t.id, label: t.label, icon: <span className="hidden sm:inline-flex">{t.icon}</span> }))}
+          value={activeSubTab}
+          onChange={setActiveSubTab}
+          ariaLabel="회생동행 메뉴"
+          idPrefix="companion"
+        />
+        {activeSubTab === 'dashboard' && (
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 w-full sm:w-fit" role="group" aria-label="사건 유형">
+            {([
+              { id: 'rehab', label: '개인회생' },
+              { id: 'bankruptcy', label: '개인파산·면책' },
+            ] as const).map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={caseTypeMode === opt.id}
+                onClick={() => setCaseTypeMode(opt.id)}
+                className={`flex-1 sm:flex-none px-4 min-h-11 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${
+                  caseTypeMode === opt.id ? 'bg-white text-brand shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ═══ 탭 컨텐츠 ═══ */}
+      <div role="tabpanel" id={`companion-panel-${activeSubTab}`} aria-labelledby={`companion-tab-${activeSubTab}`}>
       {activeSubTab === 'dashboard' && (
         caseTypeMode === 'rehab' ? (
           rehabCase ? (
@@ -187,6 +213,7 @@ export default function RehabCompanionView({
               clientId={clientId}
               onCaseUpdated={setBankruptcyCase}
               onOpenCrisisModal={() => setIsCrisisOpen(true)}
+              onOpenRegisterModal={() => setIsRegisterOpen(true)}
             />
           ) : emptyState('bankruptcy')
         )
@@ -199,6 +226,7 @@ export default function RehabCompanionView({
       {activeSubTab === 'academy' && (
         <RecoveryAcademyTab />
       )}
+      </div>
 
       {/* ═══ 모달 ═══ */}
       <CaseRegistrationModal

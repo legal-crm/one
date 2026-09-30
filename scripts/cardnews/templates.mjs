@@ -224,7 +224,7 @@ mark{background:linear-gradient(transparent 58%,var(--hl) 58%);color:inherit;pad
 .quote-mark{font-size:${S(220)};line-height:.7;font-weight:900;color:var(--acc);opacity:.9;height:${S(110)};}
 .quote-t{font-size:${S(50)};font-weight:700;line-height:1.5;letter-spacing:-0.035em;}
 .quote-by{margin-top:${S(36)};font-size:${S(30)};font-weight:700;color:var(--sub);}
-.sample{display:inline-block;margin-top:${S(24)};font-size:${S(22)};font-weight:700;color:var(--sub);padding:6px 14px;border-radius:12px;border:2px solid var(--line);}
+.sample{display:inline-block;align-self:flex-start;margin-top:${S(24)};font-size:${S(22)};font-weight:700;color:var(--sub);padding:6px 14px;border-radius:12px;border:2px solid var(--line);}
 
 /* ── GLOSSARY ───────────────────── */
 .gl .item-t{color:var(--acc);}
@@ -401,30 +401,37 @@ export const SLIDE_TYPES = Object.keys(R);
 // ─────────────────────────────────────────────────────────────
 export const CTA_VARIANTS = {
   check: {
+    btn: 'mykim.kr/check 익명 채무 체크',
     title: '내 채무 상황부터\n**정리해 보세요**',
     pts: [['ClipboardList', '익명 채무 체크로 현재 상황 정리'], ['GitCompare', '회생·파산·채무조정 해결 경로 비교'], ['Info', '결과는 참고용, 인가·면책은 법원이 판단']],
   },
   anon: {
+    btn: 'mykim.kr 에서 가명으로 상담 요청',
     title: '이름·번호 없이\n**먼저 물어보세요**',
     pts: [['UserRoundX', '스텔스 가명으로 상담 요청'], ['PhoneOff', '010 번호 없이 시작'], ['Lock', '실명·연락처는 계약 전까지 비공개']],
   },
   compare: {
+    btn: 'mykim.kr 에서 변호사 프로필 보기',
     title: '변호사는\n**직접 보고 고르세요**',
     pts: [['IdCard', '변호사 프로필을 먼저 확인'], ['Users', '최대 3명에게 한 번에 상담 요청'], ['MessagesSquare', '답변 비교 후 원할 때만 진행']],
   },
   docs: {
+    btn: 'mykim.kr 에서 서류 준비 시작',
     title: '서류·진술서 준비,\n**혼자 끙끙대지 마세요**',
     pts: [['Mic', 'AI 음성 진술서로 초안 작성 보조'], ['FolderOpen', '서류 허브에서 제출 서류 한곳에 정리'], ['UserCheck', '최종 검토는 선택한 변호사가']],
   },
   contract: {
+    btn: 'mykim.kr 에서 상담 요청하기',
     title: '사무실 안 가도\n**상담부터 계약까지**',
     pts: [['MessageCircle', '상담방에서 편한 시간에 대화'], ['PenLine', '모바일 전자서명으로 계약'], ['Fingerprint', '전자지문(해시)으로 원본 확인']],
   },
   companion: {
+    btn: 'mykim.kr 회생동행 알아보기',
     title: '인가 후 변제기간,\n**납부일 놓치지 않게**',
     pts: [['CalendarClock', '회생동행 캘린더로 다음 변제일 확인'], ['BellRing', '납부 기록이 없으면 미납 경고'], ['ListChecks', '회차별 납부 기록을 한곳에']],
   },
   fee: {
+    btn: 'mykim.kr 에서 수임료 조건 확인',
     title: '비용도 미리\n**확인하고 선택하세요**',
     pts: [['Wallet', '상담 요청 단계 플랫폼 이용료 0원'], ['Filter', '수임료 분납 가능 변호사 필터'], ['Handshake', '금액은 선택한 법률사무소와 직접 협의']],
   },
@@ -442,7 +449,7 @@ function renderCta(post, ctx) {
     <main class="content">
       <h2 class="cta-title">${md(title)}</h2>
       <div class="cta-pts">${pts}</div>
-      <div class="cta-btn">mykim.kr 에서 익명 채무 체크 ${icon('ArrowRight', 36, 2.6)}</div>
+      <div class="cta-btn">${esc(v.btn)} ${icon('ArrowRight', 36, 2.6)}</div>
       <p class="cta-disc">${DISCLAIMER}</p>
     </main>
     ${ctx.bot}

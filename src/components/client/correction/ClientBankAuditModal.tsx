@@ -1,20 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Sparkles, 
-  ChevronDown, ChevronUp, RefreshCw, Printer, Send, Save, ArrowRight, 
-  ShieldCheck, Check, Clock, Plus, HelpCircle, FileText, Info, 
-  Search, ShieldAlert, Sparkle, AlertCircle
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Upload, FileSpreadsheet, CheckCircle2, ChevronDown, ChevronUp, Printer, Send, Check, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
-import ModalPortal from '../../common/ModalPortal';
 import { useDialog } from '../../common/DialogProvider';
 import PrintableHighValueAuditModal from '../../common/PrintableHighValueAuditModal';
+import { Badge, Button, Callout, DocModal, EmptyState, FormField, buildSubmitConfirm, buttonClassName, inputClass, textareaClass } from '../ui';
+import { cn } from '../../../utils/cn';
 import { 
   AUDIT_PRESET_TEMPLATES, 
   getStoredBankAuditData, 
   saveStoredBankAuditData, 
   submitBankAuditToLawyer, 
-  calculateAuditStats, 
   parseExcelBankStatement, 
   parseRawBankStatementText 
 } from '../../../services/bankAuditService';
@@ -50,7 +47,8 @@ export default function ClientBankAuditModal({
   clientId = 'client-default',
   clientName = '신청인',
   caseNumber = '',
-  courtName = '서울회생법원',
+  // 관할 법원을 모르면 비워 둔다(이전: '서울회생법원'이 인쇄본에 찍힘)
+  courtName = '',
   onSubmittedSuccess,
   onSyncToCrm
 }: ClientBankAuditModalProps) {
@@ -75,6 +73,9 @@ export default function ClientBankAuditModal({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 마지막 자동 저장 시각(모든 입력은 바뀔 때마다 이 기기에 저장된다)
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 1. 데이터 로드 및 로컬스토리지 실시간 이벤트 구독
   useEffect(() => {
@@ -100,12 +101,18 @@ export default function ClientBankAuditModal({
 
   if (!isOpen || !auditData) return null;
 
+  // 이 기기에 저장하고 저장 시각 표시
+  const persist = (d: BankStatementAuditData) => {
+    saveStoredBankAuditData(d);
+    setSavedAt(Date.now());
+  };
+
   const thresholdLabel = `${(threshold / 10000).toLocaleString()}만 원`;
   const handleThresholdChange = (value: number) => {
     setThreshold(value);
     const updated = { ...auditData, thresholdAmount: value };
     setAuditData(updated);
-    saveStoredBankAuditData(updated);
+    persist(updated);
   };
 
   // 기준 금액 이상 대상 항목들
@@ -154,7 +161,7 @@ export default function ClientBankAuditModal({
     };
 
     setAuditData(updatedData);
-    saveStoredBankAuditData(updatedData);
+    persist(updatedData);
     toast.success(isExplanationComplete(templateText) ? '소명 사유 예시를 넣었습니다. 사실과 맞게 수정해 주세요.' : '예시 문구의 [ ] 부분을 실제 내용으로 바꿔 주세요.', { duration: 2500 });
   };
 
@@ -177,7 +184,7 @@ export default function ClientBankAuditModal({
     };
 
     setAuditData(updatedData);
-    saveStoredBankAuditData(updatedData);
+    persist(updatedData);
   };
 
   // ═══ 핸들러: 고객 메모 입력 ═══
@@ -198,7 +205,7 @@ export default function ClientBankAuditModal({
     };
 
     setAuditData(updatedData);
-    saveStoredBankAuditData(updatedData);
+    persist(updatedData);
   };
 
   // ═══ 핸들러: 증빙 자료 수정 ═══
@@ -219,42 +226,50 @@ export default function ClientBankAuditModal({
     };
 
     setAuditData(updatedData);
-    saveStoredBankAuditData(updatedData);
+    persist(updatedData);
   };
 
-  // ═══ 핸들러: 임시 저장 ═══
-  const handleSaveDraft = () => {
-    saveStoredBankAuditData(auditData);
-    toast.success('작성하신 내용을 이 기기에 임시 저장했습니다.');
-  };
-
-  // ═══ 핸들러: 변호사에게 최종 제출 ═══
+  // ═══ 핸들러: 변호사에게 제출(제출 전 요약 확인) ═══
   const handleSubmitToLawyer = async () => {
-    if (unresolvedCount > 0) {
-      const confirmSubmit = await dialog.confirm({
-        title: '미작성 소명이 남아 있습니다',
-        message: `아직 소명이 작성되지 않은 내역이 ${unresolvedCount}건 남아 있습니다.\n현재 상태로 제출하시겠습니까? (미작성 건은 변호사 상담 시 추가로 확인합니다)`,
-        confirmText: '그대로 제출',
-        cancelText: '계속 작성',
-        variant: 'primary'
-      });
-      if (!confirmSubmit) return;
-    }
+    if (isSubmitting) return;
+    const ok = await dialog.confirm(
+      buildSubmitConfirm({
+        title: '소명표를 변호사에게 제출할까요?',
+        lines: [
+          totalTargetCount > 0
+            ? `${thresholdLabel} 이상 출금 ${totalTargetCount}건 · 총 ${totalAmountSum.toLocaleString()}원`
+            : `${thresholdLabel} 이상 출금 거래 없음`,
+          totalTargetCount > 0 ? `소명 작성 ${resolvedCount}건${unresolvedCount > 0 ? ` · 아직 안 쓴 거래 ${unresolvedCount}건` : ''}` : null,
+        ],
+        note: [
+          unresolvedCount > 0 ? '아직 안 쓴 거래는 변호사 상담 때 추가로 확인합니다.' : '',
+          '제출하면 담당 변호사 사건 기록에 저장되고, 변호사가 검토해 보완을 요청하거나 법원 제출용으로 정리합니다.',
+        ].filter(Boolean).join('\n'),
+        confirmText: unresolvedCount > 0 ? '그대로 제출' : '제출하기',
+      })
+    );
+    if (!ok) return;
 
-    const updated = submitBankAuditToLawyer(clientId);
-    setAuditData(updated);
-    const synced = onSyncToCrm ? await onSyncToCrm(updated) : false;
-    if (synced) {
+    setIsSubmitting(true);
+    try {
+      const updated = submitBankAuditToLawyer(clientId);
+      setAuditData(updated);
+      setSavedAt(Date.now());
+      const synced = onSyncToCrm ? await onSyncToCrm(updated) : false;
+      if (!synced) {
+        toast.warning('소명표는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 잠시 후 다시 제출해 주세요.');
+        return;
+      }
       toast.success('소명표를 담당 변호사 사건 기록에 제출했습니다.', {
         description: '변호사가 검토 후 필요한 보완을 요청하거나 법원 제출용으로 정리합니다.'
       });
-    } else {
-      toast.warning('소명표는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 잠시 후 다시 제출해 주세요.');
-      return;
-    }
-
-    if (onSubmittedSuccess) {
-      onSubmittedSuccess();
+      onSubmittedSuccess?.();
+      onClose();
+    } catch (e) {
+      console.error(e);
+      toast.error('제출 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -279,7 +294,7 @@ export default function ClientBankAuditModal({
       };
 
       setAuditData(updatedData);
-      saveStoredBankAuditData(updatedData);
+      persist(updatedData);
       setShowImportSection(false);
       toast.success(`${parsedItems.length}건의 ${thresholdLabel} 이상 출금 내역을 새로 등록했습니다.`);
     } catch (err) {
@@ -310,7 +325,7 @@ export default function ClientBankAuditModal({
     };
 
     setAuditData(updatedData);
-    saveStoredBankAuditData(updatedData);
+    persist(updatedData);
     setPasteText('');
     setShowImportSection(false);
     toast.success(`${parsed.length}건의 ${thresholdLabel} 이상 출금 내역이 추가되었습니다.`);
@@ -319,421 +334,305 @@ export default function ClientBankAuditModal({
   const isSubmitted = auditData.status === 'submitted' || auditData.status === 'lawyer_approved';
   const isApproved = auditData.status === 'lawyer_approved';
 
+  const filterTabs: { id: 'ALL' | 'UNRESOLVED' | 'RESOLVED'; label: string }[] = [
+    { id: 'ALL', label: `전체 ${totalTargetCount}` },
+    { id: 'UNRESOLVED', label: `소명 필요 ${unresolvedCount}` },
+    { id: 'RESOLVED', label: `소명 완료 ${resolvedCount}` },
+  ];
+
+  const txTypeLabel = (t: AuditTransactionItem['transactionType']) =>
+    t === 'WITHDRAWAL' ? '계좌 출금' : t === 'CARD_PAYMENT' ? '카드 결제' : t === 'ATM_CASH' ? 'ATM 현금 출금' : '입금';
+
+  const toggleClass = (active: boolean) =>
+    cn(
+      'min-h-11 px-3.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-colors',
+      active ? 'bg-brand text-white border-brand' : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+    );
+
   return (
-    <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto">
-        <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh]">
-
-          {/* ════ 1. 모달 상단 헤더 ════ */}
-          <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-t-2xl shrink-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40 text-blue-200 text-xs font-bold flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-                    법원 보정명령 1순위 소명자료
-                  </span>
-                  {isApproved ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                      변호사 점검 완료 (법원 제출 준비됨)
-                    </span>
-                  ) : isSubmitted ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/30 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-300" />
-                      변호사 검토 대기 중
-                    </span>
-                  ) : null}
-                </div>
-                <h2 className="text-lg sm:text-xl font-extrabold tracking-tight">
-                  {thresholdLabel} 이상 출금 거래 사용처 소명표
-                </h2>
-                {/* 소명 기준 금액 선택 (관할법원·회생위원 요청 기준에 맞춰 변경) */}
-                <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="소명 기준 금액">
-                  <span className="text-[11px] text-blue-100">소명 기준:</span>
-                  {THRESHOLD_OPTIONS.map(v => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={threshold === v}
-                      onClick={() => handleThresholdChange(v)}
-                      className={`min-h-[36px] px-3 rounded-lg text-xs font-bold whitespace-nowrap border transition-colors cursor-pointer ${threshold === v ? 'bg-white text-slate-900 border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
-                    >
-                      {v / 10000}만 원
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs sm:text-[13px] text-blue-100/80 leading-relaxed">
-                  회생위원은 큰 금액의 출금 내역에 대해 재산 은닉이나 편파변제가 없는지 확인합니다. 아래 거래마다 <strong>실제 사용처를 사실대로</strong> 적어 주세요. 예시 문구를 눌러도 [ ] 부분은 직접 채워야 합니다.
-                </p>
+    <>
+      <DocModal
+        open={isOpen}
+        onClose={onClose}
+        onBeforeClose={() => !isSubmitting}
+        closeLabel="소명표 닫기"
+        icon={<FileSpreadsheet className="w-5 h-5" />}
+        title={`${thresholdLabel} 이상 출금 소명표`}
+        description="큰 금액이 나간 거래마다 실제로 어디에 썼는지 사실대로 적어 주세요."
+        badges={
+          isApproved ? (
+            <Badge tone="success" icon={<CheckCircle2 className="w-3 h-3" aria-hidden="true" />}>변호사 점검 완료</Badge>
+          ) : isSubmitted ? (
+            <Badge tone="warning" icon={<Clock className="w-3 h-3" aria-hidden="true" />}>변호사 검토 대기</Badge>
+          ) : null
+        }
+        saveState={savedAt ? { status: 'saved', at: savedAt } : { status: 'idle' }}
+        saveTarget="device"
+        idleLabel="입력하면 이 기기에 자동 저장돼요"
+        subHeader={
+          <div className="bg-white px-4 sm:px-6 py-3 space-y-3">
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+                <span className="font-bold text-slate-800">
+                  {totalTargetCount > 0 ? (
+                    <>
+                      소명 {resolvedCount}/{totalTargetCount}건 <span className="text-brand tabular-nums">{progressPercent}%</span>
+                    </>
+                  ) : (
+                    '아직 소명할 거래가 없어요'
+                  )}
+                </span>
+                {totalTargetCount > 0 && <span className="text-xs text-slate-600 tabular-nums">총 출금액 {totalAmountSum.toLocaleString()}원</span>}
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="소명표 닫기"
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+              <div
+                className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden"
+                role="progressbar"
+                aria-label="소명 진행률"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={totalTargetCount > 0 ? progressPercent : 0}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* 진척도 바 & 통계 */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-blue-200">
-                  소명 진척도 ({resolvedCount}/{totalTargetCount}건 완료)
-                </span>
-                <span className="px-2 py-0.5 rounded-md bg-white/15 font-extrabold text-white text-[11px]">
-                  {progressPercent}%
-                </span>
-              </div>
-              <div className="text-slate-300 text-[11px]">
-                {thresholdLabel} 이상 총 출금액: <strong className="text-white text-xs">{totalAmountSum.toLocaleString()}원</strong>
+                <div className="h-full rounded-full bg-brand transition-all duration-300" style={{ width: `${totalTargetCount > 0 ? progressPercent : 0}%` }} />
               </div>
             </div>
-
-            {/* 프로그레스 바 */}
-            <div className="w-full bg-black/30 rounded-full h-2 mt-2 overflow-hidden border border-white/10">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-400 to-emerald-400 transition-all duration-300 rounded-full"
-                style={{ width: `${progressPercent}%` }}
-              />
+            <div role="group" aria-label="거래 보기" className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+              {filterTabs.map(t => (
+                <button key={t.id} type="button" aria-pressed={filterMode === t.id} onClick={() => setFilterMode(t.id)} className={toggleClass(filterMode === t.id)}>
+                  {t.label}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* ════ 2. 툴바 및 필터 바 ════ */}
-          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
-            {/* 상태 탭 필터 */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setFilterMode('ALL')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer ${
-                  filterMode === 'ALL'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                전체 ({totalTargetCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('UNRESOLVED')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1 ${
-                  filterMode === 'UNRESOLVED'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 hover:bg-amber-50'
-                }`}
-              >
-                <span>미소명 ({unresolvedCount})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('RESOLVED')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1 ${
-                  filterMode === 'RESOLVED'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50'
-                }`}
-              >
-                <span>소명완료 ({resolvedCount})</span>
-              </button>
+        }
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowPrintModal(true)} leftIcon={<Printer className="w-4 h-4" aria-hidden="true" />}>
+              미리보기·인쇄
+            </Button>
+            <Button onClick={handleSubmitToLawyer} loading={isSubmitting} leftIcon={<Send className="w-4 h-4" aria-hidden="true" />}>
+              {isSubmitted ? '다시 제출하기' : '변호사에게 제출'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* 소명 기준 금액 (관할 법원·회생위원 요청 기준에 맞춰 변경) */}
+          <section aria-labelledby="audit-threshold-title" className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+            <div>
+              <h3 id="audit-threshold-title" className="text-sm font-bold text-slate-900">소명 기준 금액</h3>
+              <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
+                관할 법원이나 회생위원이 요청한 기준에 맞춰 고르세요. 기준 이상 출금만 소명 대상이 됩니다.
+              </p>
             </div>
-
-            {/* 우측 툴 버튼군 */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowImportSection(!showImportSection)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
-              >
-                <Upload className="w-3.5 h-3.5 text-indigo-500" />
-                <span>거래내역 추가</span>
-                {showImportSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowPrintModal(true)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
-                title="법원 제출 서식 인쇄 또는 PDF 미리보기"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                <span>미리보기 & 인쇄</span>
-              </button>
+            <div role="group" aria-label="소명 기준 금액" className="flex flex-wrap gap-2">
+              {THRESHOLD_OPTIONS.map(v => (
+                <button key={v} type="button" aria-pressed={threshold === v} onClick={() => handleThresholdChange(v)} className={toggleClass(threshold === v)}>
+                  {(v / 10000).toLocaleString('ko-KR')}만 원 이상
+                </button>
+              ))}
             </div>
+            <p className="text-xs text-slate-600 leading-relaxed break-keep">
+              회생위원은 큰 금액의 출금에 재산 은닉이나 편파변제가 없는지 확인합니다. 예시 문구를 눌러도 [ ] 부분은 직접 채워야 해요.
+            </p>
+          </section>
+
+          {/* 거래 목록 머리: 거래내역 추가(파일·붙여넣기) 열고 닫기 */}
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base font-bold text-slate-900">
+              {thresholdLabel} 이상 출금 {totalTargetCount}건
+            </h3>
+            <Button
+              variant="secondary"
+              onClick={() => setShowImportSection(v => !v)}
+              aria-expanded={showImportSection}
+              aria-controls="audit-import"
+              leftIcon={<Upload className="w-4 h-4" aria-hidden="true" />}
+              rightIcon={showImportSection ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
+              className="shrink-0"
+            >
+              거래내역 추가
+            </Button>
           </div>
 
-          {/* ════ 2-1. 거래내역 파일/텍스트 추가 접이식 섹션 ════ */}
+          {/* 거래내역 파일/텍스트 추가 */}
           {showImportSection && (
-            <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/50 space-y-3 shrink-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                  은행 엑셀 파일 또는 모바일 뱅킹 텍스트 붙여넣기
-                </span>
-                <span className="text-[11px] text-indigo-700 dark:text-indigo-300">
-                  ※ {thresholdLabel} 이상 출금 건만 자동 필터링됩니다
-                </span>
+            <section id="audit-import" aria-labelledby="audit-import-title" className="rounded-2xl border border-brand/20 bg-brand-light/50 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="audit-import-title" className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                  <FileSpreadsheet className="w-4 h-4 text-brand" aria-hidden="true" />
+                  은행 엑셀 파일 또는 거래내역 붙여넣기
+                </h3>
+                <span className="text-xs text-slate-600">{thresholdLabel} 이상 출금만 골라 담아요</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                {/* 엑셀 파일 업로드 */}
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 flex flex-col items-center justify-center text-center">
-                  <p className="text-slate-600 dark:text-slate-400 mb-2">
-                    은행 홈페이지에서 받은 <strong>엑셀 파일(.xlsx, .xls)</strong>을 올려주세요.
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 flex flex-col items-center justify-center text-center gap-2.5">
+                  <p className="text-sm text-slate-700 break-keep">
+                    은행 홈페이지에서 받은 <strong>엑셀 파일(.xlsx, .xls, .csv)</strong>을 올려 주세요.
                   </p>
-                  <label className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs">
-                    <Upload className="w-4 h-4" />
-                    <span>엑셀 파일 선택</span>
-                    <input 
-                      ref={fileInputRef}
-                      type="file" 
-                      accept=".xlsx,.xls,.csv" 
-                      className="hidden" 
-                      onChange={handleFileUpload} 
-                    />
+                  <label className={buttonClassName('primary', 'md', 'focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2')}>
+                    <Upload className="w-4 h-4" aria-hidden="true" />
+                    엑셀 파일 선택
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="sr-only" onChange={handleFileUpload} />
                   </label>
                 </div>
 
-                {/* 텍스트 붙여넣기 */}
-                <div className="space-y-1.5">
-                  <textarea
-                    rows={2}
-                    placeholder="모바일 뱅킹 거래내역을 복사하여 여기에 붙여넣으세요... (예: 2025-11-20 김철수 1,200,000)"
-                    value={pasteText}
-                    onChange={(e) => setPasteText(e.target.value)}
-                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handlePasteParse}
-                    className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs cursor-pointer"
-                  >
-                    붙여넣은 거래내역 자동 추출
-                  </button>
+                <div className="space-y-2">
+                  <FormField label="모바일 뱅킹 거래내역 붙여넣기">
+                    {(p) => (
+                      <textarea
+                        {...p}
+                        rows={3}
+                        placeholder="예: 2025-11-20 김철수 1,200,000"
+                        value={pasteText}
+                        onChange={(e) => setPasteText(e.target.value)}
+                        className={cn(textareaClass, 'min-h-24')}
+                      />
+                    )}
+                  </FormField>
+                  <Button variant="secondary" fullWidth onClick={handlePasteParse}>
+                    붙여넣은 내역에서 찾기
+                  </Button>
                 </div>
               </div>
-            </div>
+            </section>
           )}
 
-          {/* ════ 3. 본문: 100만 원 이상 거래 카드 목록 ════ */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-slate-100 dark:bg-slate-950">
-            {displayedItems.length === 0 ? (
-              <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-                <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                  {filterMode === 'UNRESOLVED' ? `모든 ${thresholdLabel} 이상 거래의 소명이 완료되었습니다.` : '소명 대상 거래가 없습니다.'}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  {filterMode === 'UNRESOLVED' ? '하단의 [변호사에게 제출하기] 버튼을 눌러 점검을 요청하세요.' : '새로운 거래내역을 추가하려면 상단의 [거래내역 추가]를 이용하세요.'}
-                </p>
-              </div>
-            ) : (
-              displayedItems.map((item, index) => {
+          {/* 기준 금액 이상 거래 목록 */}
+          {displayedItems.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<CheckCircle2 className="w-6 h-6" />}
+              title={filterMode === 'UNRESOLVED' && totalTargetCount > 0 ? `${thresholdLabel} 이상 거래를 모두 소명했어요` : '소명할 거래가 없어요'}
+              description={
+                filterMode === 'UNRESOLVED' && totalTargetCount > 0
+                  ? "아래 '변호사에게 제출'을 눌러 점검을 요청해 주세요."
+                  : '은행 엑셀 파일을 올리거나 모바일 뱅킹 거래내역을 붙여 넣으면 기준 금액 이상 출금만 골라 담아요.'
+              }
+              className="rounded-2xl border border-slate-200 bg-white"
+            />
+          ) : (
+            <ul className="space-y-3">
+              {displayedItems.map((item, index) => {
                 const isResolved = item.isResolved && item.explanation && item.explanation.trim().length > 0;
                 const isDanger = item.riskCategory === 'DANGER_SPECULATION' || item.riskCategory === 'DANGER_LUXURY';
                 const isCaution = item.riskCategory === 'CAUTION_CASH' || item.riskCategory === 'CAUTION_TRANSFER';
 
                 return (
-                  <div 
+                  <li
                     key={item.id}
-                    className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all ${
-                      isResolved 
-                        ? 'border-emerald-200 dark:border-emerald-900/40 shadow-xs' 
-                        : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300'
-                    }`}
+                    className={cn('rounded-2xl border bg-white p-4 sm:p-5', isResolved ? 'border-emerald-200' : 'border-slate-200')}
                   >
-                    {/* 카드 상단: 거래일, 금융사, 금액, 상태 */}
-                    <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                            #{index + 1}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            {item.date}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                            {item.bankOrCard}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
-                            {item.transactionType === 'WITHDRAWAL' ? '계좌출금' : 
-                             item.transactionType === 'CARD_PAYMENT' ? '카드결제' : 
-                             item.transactionType === 'ATM_CASH' ? 'ATM현금출금' : '입금'}
-                          </span>
-                          {/* 위험도 라벨 */}
+                    {/* 거래일·금융사·금액·상태 */}
+                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="font-bold text-slate-600">#{index + 1}</span>
+                          <span className="font-semibold text-slate-700 tabular-nums">{item.date}</span>
+                          <Badge tone="neutral">{item.bankOrCard}</Badge>
+                          <Badge tone="info">{txTypeLabel(item.transactionType)}</Badge>
                           {item.riskBadgeText && (
-                            <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                              isDanger 
-                                ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800' 
-                                : isCaution 
-                                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' 
-                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                            }`}>
-                              {item.riskBadgeText}
-                            </span>
+                            <Badge tone={isDanger ? 'danger' : isCaution ? 'warning' : 'neutral'}>{item.riskBadgeText}</Badge>
                           )}
                         </div>
-
-                        {/* 거래 상대방 (적요) */}
-                        <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>{item.counterparty}</span>
-                        </div>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 break-keep">{item.counterparty}</h3>
                       </div>
-
-                      {/* 금액 및 완료 뱃지 */}
                       <div className="text-right shrink-0">
-                        <div className="text-base sm:text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
-                          {item.amount.toLocaleString()}원
-                        </div>
+                        <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums">{item.amount.toLocaleString()}원</p>
                         <div className="mt-1">
                           {isResolved ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                              <Check className="w-3 h-3" /> 소명 완료
-                            </span>
+                            <Badge tone="success" icon={<Check className="w-3 h-3" aria-hidden="true" />}>소명 완료</Badge>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                              소명 필요
-                            </span>
+                            <Badge tone="warning">소명 필요</Badge>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* 위험 주의 도움말 (코인/사치/현금 등) */}
+                    {/* 회생위원이 자세히 보는 거래(코인·사치·현금 등) */}
                     {(isDanger || isCaution) && item.riskAdvice && (
-                      <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div className="space-y-0.5">
-                          <strong className="font-bold">법원 회생위원 심사 유의:</strong>
-                          <p className="leading-relaxed">{item.riskAdvice}</p>
-                        </div>
-                      </div>
+                      <Callout tone="warning" title="회생위원이 자세히 볼 수 있는 거래예요" className="mt-3">
+                        {item.riskAdvice}
+                      </Callout>
                     )}
 
-                    {/* ═══ 원터치 빠른 사유 칩 ═══ */}
-                    <div className="mt-3.5 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>어디에 쓰신 돈인가요? (원터치 빠른 사유 선택):</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 예시 사유 */}
+                    <div className="mt-3.5 space-y-2">
+                      <p className="text-sm font-bold text-slate-800">어디에 쓴 돈인가요? 예시를 누르면 칸에 채워져요</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {AUDIT_PRESET_TEMPLATES.map(preset => (
                           <button
                             key={preset.id}
                             type="button"
                             onClick={() => handleApplyPreset(item.id, preset.templateText, preset.suggestedEvidence)}
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1 cursor-pointer active:scale-[0.98]"
+                            className="min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-brand hover:text-brand transition-colors"
                           >
-                            <span>{preset.icon}</span>
-                            <span>{preset.name}</span>
+                            {preset.name}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* 소명 문구 입력란 */}
-                    <div className="mt-3 space-y-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                          구체적 사용처 소명내용 (법원 제출용):
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={item.explanation}
-                          onChange={(e) => handleExplanationChange(item.id, e.target.value)}
-                          placeholder="위 원터치 칩을 누르거나, 실제 어디에 지출하셨는지 간략히 적어주세요..."
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 leading-relaxed"
-                        />
+                    {/* 소명 내용·증빙·메모 */}
+                    <div className="mt-3 space-y-3">
+                      <FormField label="실제 사용처(법원 제출용)">
+                        {(p) => (
+                          <textarea
+                            {...p}
+                            rows={2}
+                            value={item.explanation}
+                            onChange={(e) => handleExplanationChange(item.id, e.target.value)}
+                            placeholder="예시를 누르거나, 실제로 어디에 썼는지 적어 주세요"
+                            className={cn(textareaClass, 'min-h-20')}
+                          />
+                        )}
+                      </FormField>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField label="증빙 서류" optional>
+                          {(p) => (
+                            <input
+                              {...p}
+                              type="text"
+                              value={item.evidenceType || ''}
+                              onChange={(e) => handleEvidenceChange(item.id, e.target.value)}
+                              placeholder="예: 카드 영수증, 진료비 계산서, 이체 확인증"
+                              className={inputClass}
+                            />
+                          )}
+                        </FormField>
+                        <FormField label="변호사에게 전할 메모" optional>
+                          {(p) => (
+                            <input
+                              {...p}
+                              type="text"
+                              value={item.clientNote || ''}
+                              onChange={(e) => handleClientNoteChange(item.id, e.target.value)}
+                              placeholder="더 알려 드릴 사정이 있으면 적어 주세요"
+                              className={inputClass}
+                            />
+                          )}
+                        </FormField>
                       </div>
 
-                      {/* 하단 보조 입력: 증빙 자료 & 고객 비고 메모 */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                            첨부 증빙 서류:
-                          </label>
-                          <input
-                            type="text"
-                            value={item.evidenceType || ''}
-                            onChange={(e) => handleEvidenceChange(item.id, e.target.value)}
-                            placeholder="예: 카드영수증, 진료비계산서, 이체증 등"
-                            className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                            변호사 전달 메모 (선택사항):
-                          </label>
-                          <input
-                            type="text"
-                            value={item.clientNote || ''}
-                            onChange={(e) => handleClientNoteChange(item.id, e.target.value)}
-                            placeholder="변호사님께 전달할 추가 사정이 있다면 적어주세요"
-                            className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* 변호사 검토 의견이 있는 경우 표시 */}
                       {item.lawyerReviewNote && (
-                        <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 text-xs text-blue-900 dark:text-blue-200">
-                          <strong>변호사 검토 의견:</strong> {item.lawyerReviewNote}
-                        </div>
+                        <Callout tone="info" title="변호사 검토 의견">
+                          {item.lawyerReviewNote}
+                        </Callout>
                       )}
                     </div>
-
-                  </div>
+                  </li>
                 );
-              })
-            )}
-          </div>
+              })}
+            </ul>
+          )}
 
-          {/* ════ 4. 하단 고정 액션 바 ════ */}
-          <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-b-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
-              💡 작성 내용이 완벽하지 않아도 괜찮습니다. 담당 변호사가 법리적으로 검토하여 보완합니다.
-            </div>
-
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              {/* 임시저장 버튼 */}
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
-              >
-                <Save className="w-4 h-4" />
-                <span>임시저장</span>
-              </button>
-
-              {/* 미리보기 & 인쇄 버튼 */}
-              <button
-                type="button"
-                onClick={() => setShowPrintModal(true)}
-                className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
-              >
-                <Printer className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                <span>미리보기/인쇄</span>
-              </button>
-
-              {/* 메인 CTA: 변호사에게 제출하기 */}
-              <button
-                type="button"
-                onClick={handleSubmitToLawyer}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98]"
-              >
-                <Send className="w-4 h-4" />
-                <span>변호사에게 제출하기</span>
-              </button>
-            </div>
-          </div>
-
+          <p className="text-xs text-slate-600 leading-relaxed">
+            작성 내용이 정확하지 않아도 괜찮아요. 담당 변호사가 검토하면서 함께 보완합니다.
+          </p>
         </div>
-      </div>
+      </DocModal>
 
-      {/* 법원 공식 별지 인쇄 / PDF 미리보기 모달 */}
+      {/* 법원 제출용 별지 미리보기·인쇄 — 소명표 창 위에 뜨는 창 */}
       <PrintableHighValueAuditModal
         isOpen={showPrintModal}
         onClose={() => setShowPrintModal(false)}
@@ -744,7 +643,6 @@ export default function ClientBankAuditModal({
         thresholdAmount={threshold}
         isClientView={true}
       />
-    </ModalPortal>
+    </>
   );
 }
-

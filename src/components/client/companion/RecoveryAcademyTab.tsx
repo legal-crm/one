@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, CheckCircle, Download, FileText, Sparkles, TrendingUp, ShieldCheck, ChevronRight, Award } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge, Button, Modal } from '../ui';
 
 const ACADEMY_LESSONS = [
   {
@@ -19,7 +20,7 @@ const ACADEMY_LESSONS = [
     category: '생활 금융',
     readTime: '2분',
     summary: '신용카드가 발급되지 않더라도 소액 신용한도가 탑재된 후불교통 체크카드 발급 요령과 통신비·공과금 캐시백 혜택을 챙기는 법을 안내합니다.',
-    keyPoints: ['케이뱅크/토스/카카오뱅크 후불교통 체크카드', '지역화폐 및 제로페이 충전 인센티브 활용', '통신사 알뜰폰 유심 변경으로 월 4만 원 절약']
+    keyPoints: ['케이뱅크/토스/카카오뱅크 후불교통 체크카드', '지역화폐 및 제로페이 충전 인센티브 활용', '알뜰폰 요금제로 바꿔 통신비 줄이기']
   },
   {
     id: 'lesson-3',
@@ -27,8 +28,8 @@ const ACADEMY_LESSONS = [
     title: '성실상환자(6회 완납)가 누릴 수 있는 공적 혜택 총정리',
     category: '공적 혜택',
     readTime: '2분',
-    summary: '6회차 이상 미납 없이 납부하면 서민금융진흥원 및 신용회복위원회의 긴급 소액 생활안정자금 신청 자격이 부여됩니다.',
-    keyPoints: ['서민금융진흥원 연 2~4%대 긴급의료비·학자금', '신용회복위원회 소액대출 요건 점검', '사금융 고금리 대출 유혹 절대 금지']
+    summary: '6회차 이상 미납 없이 납부하면 서민금융진흥원 및 신용회복위원회의 긴급 소액 생활안정자금 신청을 검토해 볼 수 있습니다. 대상 여부는 각 기관 심사로 정해집니다.',
+    keyPoints: ['서민금융진흥원 연 2~4%대 긴급의료비·학자금', '신용회복위원회 소액대출 요건 점검', '사금융 고금리 대출은 피하기']
   },
   {
     id: 'lesson-4',
@@ -42,7 +43,7 @@ const ACADEMY_LESSONS = [
   {
     id: 'lesson-5',
     month: '24개월 차',
-    title: '회생 반환점(2년 완납) 돌파! 특별면책 요건 알아보기',
+    title: '회생 반환점(2년 완납): 특별면책 요건 알아보기',
     category: '면책 대비',
     readTime: '2분',
     summary: '불가피한 중대 사고나 질병으로 잔여 변제 수행이 불가능해진 경우, 법에 정해진 요건을 갖추면 남은 변제를 면제받는 특별면책 제도를 설명합니다.',
@@ -51,7 +52,7 @@ const ACADEMY_LESSONS = [
   {
     id: 'lesson-6',
     month: '36개월 차',
-    title: '36회 완납 후 필수! 법원 면책신청서 제출 가이드',
+    title: '36회 완납 후: 법원 면책신청서 제출 가이드',
     category: '최종 면책',
     readTime: '3분',
     summary: '변제를 마쳐도 법원의 면책결정이 있어야 남은 채무의 책임이 면제됩니다. 면책신청서 제출이 필요한지 관할 법원 또는 담당 변호사에게 확인하세요. (면책되지 않는 채무도 있습니다)',
@@ -80,87 +81,87 @@ export default function RecoveryAcademyTab() {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2.5 py-0.5 rounded-full">
               회생 완주 & 신용 리스타트
             </span>
-            <span className="text-[11px] bg-emerald-500/10 text-emerald-600 px-2.5 py-0.5 rounded-full font-bold">
-              1분 숏폼 가이드
+            <span className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold">
+              짧은 가이드
             </span>
           </div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">
             마이김변 회복 아카데미
           </h2>
           <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
-            3~5년의 변제 여정 동안 꼭 알아야 할 금융 지식, 법률 팁, 그리고 완납 후 정상 신용 복귀까지의 모든 노하우를 담았습니다.
+            3~5년 변제 기간에 알아 두면 좋은 금융 지식과 법률 정보, 완납 후 신용 회복 과정을 정리했습니다.
           </p>
         </div>
 
         {/* 36회 완납 고객 전용 면책 서식 다운로드 배너 */}
-        <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-750 shrink-0 w-full md:w-72 space-y-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            변제 완료 고객 필수 자료
+        <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0 w-full md:w-72 space-y-2">
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+            변제 완료 후 참고 자료
           </span>
           <p className="text-xs font-bold text-slate-800 dark:text-white">
-            법원 면책신청서 표준 양식
+            법원 면책신청서 양식 (HWP)
           </p>
           <button
             type="button"
             onClick={handleDownloadForm}
-            className="w-full py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+            className="w-full min-h-11 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>면책신청서 무료 다운로드</span>
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>면책신청서 양식 내려받기</span>
           </button>
         </div>
       </div>
 
       {/* 12개월 신용 리스타트 로드맵 */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-3xl p-6 shadow-md space-y-4">
-        <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200">
-          <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+      <div className="bg-gradient-to-r from-blue-50 to-blue-50 dark:from-blue-950/30 dark:to-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-3xl p-6 shadow-md space-y-4">
+        <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
           <h3 className="font-black text-sm md:text-base">
-            면책 확정 후 12개월 신용 회복 4단계 로드맵
+            면책 확정 후 12개월 신용 회복 4단계 (일반적인 예시)
           </h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-100 dark:border-slate-800 space-y-1.5">
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-blue-100 dark:border-slate-800 space-y-1.5">
+            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
               Step 1. 면책 직후
             </span>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">1101 공공기록 삭제 확인</h4>
-            <p className="text-[11px] text-slate-500 leading-tight">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               한국신용정보원(크레딧포유)에서 법원 특수기록 해제 여부 조회
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-100 dark:border-slate-800 space-y-1.5">
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-blue-100 dark:border-slate-800 space-y-1.5">
+            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
               Step 2. 3개월 차
             </span>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">주거래은행 실적 재구축</h4>
-            <p className="text-[11px] text-slate-500 leading-tight">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               급여이체, 예·적금 납입, 체크카드 월 30만 원 이상 꾸준한 사용
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-100 dark:border-slate-800 space-y-1.5">
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-blue-100 dark:border-slate-800 space-y-1.5">
+            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
               Step 3. 6개월 차
             </span>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-white">신용점수 600점대 진입</h4>
-            <p className="text-[11px] text-slate-500 leading-tight">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-white">신용점수 관리 시작</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               KCB/NICE 소액 신용카드 발급 및 통신비 납부실적 가점 등록
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-100 dark:border-slate-800 space-y-1.5">
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-blue-100 dark:border-slate-800 space-y-1.5">
+            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
               Step 4. 12개월 차
             </span>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-white">1금융권 정상 금융 복귀</h4>
-            <p className="text-[11px] text-slate-500 leading-tight">
-              햇살론·디딤돌 등 정책 대출 및 1금융권 저금리 금융거래 정상화
+            <h4 className="text-xs font-bold text-slate-800 dark:text-white">정상 금융거래 준비</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              햇살론·디딤돌 등 정책 대출 및 1금융권 저금리 금융거래 가능 여부 확인
             </p>
           </div>
         </div>
@@ -175,36 +176,43 @@ export default function RecoveryAcademyTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {ACADEMY_LESSONS.map((lesson) => (
+            // 카드 전체를 누를 수 있게: 제목 버튼의 ::after가 카드를 덮는다(이전: div onClick이라 키보드로 열 수 없었음)
             <div
               key={lesson.id}
-              onClick={() => setSelectedLesson(lesson)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-brand/40 transition-all cursor-pointer space-y-3 group"
+              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-brand/40 transition-all space-y-3 group focus-within:ring-2 focus-within:ring-brand"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-lg">
+                  <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-lg">
                     {lesson.month}
                   </span>
-                  <span className="text-[10px] font-bold bg-brand/10 text-brand px-2 py-0.5 rounded-lg">
+                  <span className="text-xs font-bold bg-brand/10 text-brand dark:text-brand-light px-2 py-0.5 rounded-lg">
                     {lesson.category}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 flex items-center gap-0.5 group-hover:text-brand transition-colors">
-                  읽기 {lesson.readTime} ➔
+                <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-0.5 group-hover:text-brand transition-colors">
+                  <span>읽기 {lesson.readTime}</span>
+                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </span>
               </div>
 
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-brand transition-colors">
-                  {lesson.title}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLesson(lesson)}
+                    className="text-left cursor-pointer after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none"
+                  >
+                    {lesson.title}
+                  </button>
                 </h4>
                 <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                   {lesson.summary}
                 </p>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
                 <span>핵심 포인트 {lesson.keyPoints.length}개 포함</span>
               </div>
             </div>
@@ -212,60 +220,35 @@ export default function RecoveryAcademyTab() {
         </div>
       </div>
 
-      {/* 가이드 상세 보기 모달 */}
+      {/* 가이드 상세 보기 (키트 Modal: ESC·포커스 가두기·닫으면 누른 카드로 포커스 복귀) */}
       {selectedLesson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl p-6 space-y-5 text-left animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-brand bg-brand/10 px-2.5 py-0.5 rounded-full">
-                  {selectedLesson.month}
-                </span>
-                <span className="text-xs text-slate-400 font-semibold">{selectedLesson.category}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedLesson(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                {selectedLesson.title}
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {selectedLesson.summary}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                📌 실천 핵심 체크리스트
-              </span>
-              <ul className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                {selectedLesson.keyPoints.map((pt: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-brand shrink-0 mt-0.5" />
-                    <span>{pt}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedLesson(null)}
-                className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
-              >
-                확인 완료
-              </button>
-            </div>
+        <Modal
+          open
+          onClose={() => setSelectedLesson(null)}
+          title={selectedLesson.title}
+          meta={
+            <>
+              <Badge tone="brand">{selectedLesson.month}</Badge>
+              <span className="text-sm text-slate-600">{selectedLesson.category}</span>
+            </>
+          }
+          size="md"
+          mobile="sheet"
+          footer={<Button onClick={() => setSelectedLesson(null)}>확인</Button>}
+        >
+          <p className="text-sm leading-relaxed text-slate-700 break-keep">{selectedLesson.summary}</p>
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h3 className="text-sm font-bold text-slate-800">실천 체크리스트</h3>
+            <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+              {selectedLesson.keyPoints.map((pt: string, idx: number) => (
+                <li key={idx} className="flex items-start gap-2 break-keep">
+                  <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
+        </Modal>
       )}
 
     </div>

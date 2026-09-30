@@ -244,7 +244,7 @@ export function registerNewCompanionCase(params: {
     ? `${params.caseNumber.slice(0, -4)}****`
     : params.caseNumber;
 
-  const schedules = generateRepaymentSchedules(
+  const freshSchedules = generateRepaymentSchedules(
     params.startRepaymentDate,
     params.totalRounds,
     params.monthlyRepaymentAmount,
@@ -252,8 +252,21 @@ export function registerNewCompanionCase(params: {
     params.completedRounds || 0
   );
 
+  // 같은 사건을 다시 등록(정보 수정)하면 회차별 납부 기록·영수증·메모와 등록 문서를 그대로 옮겨 담는다
+  // (이전: 새 사건으로 통째로 저장해 기존 납부 기록이 사라짐)
+  const normalizeCaseNo = (v?: string) => (v || '').replace(/\s+/g, '');
+  const existing = loadRehabCompanionCase(params.clientId);
+  const isSameCase = !!existing && normalizeCaseNo(existing.caseNumber) === normalizeCaseNo(params.caseNumber);
+  const prevByRound = new Map((isSameCase ? existing!.schedules || [] : []).map(s => [s.round, s]));
+  const schedules = freshSchedules.map(s => {
+    const prev = prevByRound.get(s.round);
+    return prev && prev.status !== 'pending'
+      ? { ...s, status: prev.status, actualPaidAmount: prev.actualPaidAmount, paidDate: prev.paidDate, receiptName: prev.receiptName, receiptDataUrl: prev.receiptDataUrl, memo: prev.memo }
+      : s;
+  });
+
   const newCase: RehabCompanionCase = {
-    id: `case-${Date.now()}`,
+    id: isSameCase ? existing!.id : `case-${Date.now()}`,
     clientId: params.clientId,
     alias: params.alias || '회원',
     sourceType: params.sourceType,
@@ -276,9 +289,9 @@ export function registerNewCompanionCase(params: {
       otherFixedExpenses: params.otherFixedExpenses || 0,
     },
     schedules,
-    documents: [],
-    notificationLevel: 'basic',
-    createdAt: new Date().toISOString(),
+    documents: isSameCase ? existing!.documents || [] : [],
+    notificationLevel: isSameCase ? existing!.notificationLevel || 'basic' : 'basic',
+    createdAt: isSameCase ? existing!.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -333,7 +346,9 @@ export function updateRepaymentRound(
   status: RepaymentVerificationStatus,
   receipt?: { name: string; dataUrl: string },
   memo?: string,
-  clientId?: string
+  clientId?: string,
+  /** 사용자가 고른 실제 납부일(YYYY-MM-DD). 없으면 기존 값 → 오늘 (이전: 화면에서 고른 날짜가 저장되지 않음) */
+  paidDate?: string
 ): RehabCompanionCase | null {
   const currentCase = loadRehabCompanionCase(clientId);
   if (!currentCase) return null;
@@ -345,7 +360,7 @@ export function updateRepaymentRound(
       ...item,
       status,
       actualPaidAmount: isPaid ? item.scheduledAmount : undefined,
-      paidDate: isPaid ? (item.paidDate || todayYmd()) : undefined,
+      paidDate: isPaid ? (paidDate || item.paidDate || todayYmd()) : undefined,
       receiptName: receipt ? receipt.name : item.receiptName,
       receiptDataUrl: receipt ? receipt.dataUrl : item.receiptDataUrl,
       memo: memo !== undefined ? memo : item.memo,
@@ -583,12 +598,12 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       courtThreshold: threshold,
       stageInfo: {
         stageNumber: 3,
-        stageName: '폐지 위험 (기준 도달)',
+        stageName: '참고 기준 도달',
         description: `참고용 경향 기준(${threshold.courtName} ${threshold.repealRiskRounds}회)에 도달했습니다. 실제 폐지 여부는 재판부가 판단합니다.`,
-        actionTip: '미납금 즉시 분납 또는 긴급 변제계획 변경신청·특별면책 검토가 시급합니다.'
+        actionTip: '담당 변호사와 미납금 분납, 변제계획 변경신청, 특별면책 가능 여부를 서둘러 상의하세요.'
       },
-      message: `🚨 납부 기록이 없는 회차 ${count}건: 절차 폐지 위험이 높습니다. 바로 담당 변호사와 상의하세요.`,
-      recommendedAction: '즉시 담당 변호사와 상의해 미납금 납부, 변제계획 변경신청, 요건이 되면 면책 신청(법 제624조 제2항) 가능 여부를 검토하세요.'
+      message: `납부 기록이 없는 회차 ${count}건: 폐지 검토로 이어질 수 있어요. 담당 변호사와 바로 상의하세요.`,
+      recommendedAction: '담당 변호사와 상의해 미납금 납부, 변제계획 변경신청, 요건이 되면 면책 신청(법 제624조 제2항) 가능 여부를 검토하세요.'
     };
   } else if (count >= 3) {
     return {
@@ -598,11 +613,11 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       courtThreshold: threshold,
       stageInfo: {
         stageNumber: 2,
-        stageName: '경고 (3회)',
+        stageName: '미납 3회',
         description: '미납이 누적되어 법원·회생위원이 납부 독촉이나 폐지 검토를 할 수 있는 단계입니다.',
         actionTip: '가능한 범위에서 가상계좌로 분할 입금하거나 급여감소 등 사정변경 소명을 준비하세요.'
       },
-      message: `⚠️ 납부 기록이 없는 회차 ${count}건: 미납이 누적되면 ${threshold.courtName}이 절차 폐지를 검토할 수 있습니다.`,
+      message: `납부 기록이 없는 회차 ${count}건: 미납이 쌓이면 ${threshold.courtName}이 절차 폐지를 검토할 수 있어요.`,
       recommendedAction: '가능한 금액부터 가상계좌로 입금하고, 소득이 줄었다면 담당 변호사와 변제계획 변경신청을 검토하세요. (분납 가능 여부는 법원·회생위원 안내에 따릅니다)'
     };
   } else if (count >= 1) {
@@ -613,12 +628,12 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       courtThreshold: threshold,
       stageInfo: {
         stageNumber: 1,
-        stageName: '주의 (1~2회)',
+        stageName: '미납 1~2회',
         description: '납부일이 지났는데 납부 기록이 없는 회차가 있습니다.',
         actionTip: '이미 납부했다면 이체확인증을 등록해 기록을 정리해 주세요.'
       },
-      message: `⚡ 납부 확인이 안 된 회차 ${count}건: 실제로 냈다면 영수증을 등록하고, 못 냈다면 누적되기 전에 담당 변호사와 상의하세요.`,
-      recommendedAction: '법원 가상계좌로 분할 납부하시거나 이번 달 생활위기 SOS를 통해 사전 납부대책을 수립하세요.'
+      message: `납부 확인이 안 된 회차 ${count}건: 실제로 냈다면 기록을 남기고, 못 냈다면 쌓이기 전에 담당 변호사와 상의하세요.`,
+      recommendedAction: '가능한 금액부터 법원 가상계좌로 나눠 내거나, 상담·지원 요청으로 담당 변호사와 납부 방법을 상의하세요.'
     };
   }
 
@@ -629,11 +644,11 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
     courtThreshold: threshold,
     stageInfo: {
       stageNumber: 1,
-      stageName: '안전 (0회)',
+      stageName: '밀린 회차 없음',
       description: '정상 성실 변제 수행 중',
       actionTip: '매월 지정일 자동이체 유지 및 대법원 나의사건검색 대조를 권장합니다.'
     },
-    message: '🟢 납부일이 지난 미기록 회차가 없습니다.',
+    message: '납부일이 지난 미기록 회차가 없어요.',
     recommendedAction: '정기적인 납부일 확인과 영수증 등록을 유지해 주세요.'
   };
 }

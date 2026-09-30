@@ -14,10 +14,8 @@ rehab-chatbot-package/
 │   └── rehab/                # 챗봇 UI 컴포넌트 폴더
 │       ├── animations/       # 보고서용 애니메이션 컴포넌트
 │       ├── templates/        # 챗봇 레이아웃 템플릿 및 렌더러
-│       ├── AIRehabChatbot.tsx    # [Legacy] 챗봇 V1
 │       ├── AIRehabChatbotV2.tsx  # [핵심] 고도화 챗봇 V2 (대형 스크립트 기반)
 │       ├── ProcedureTimeline.tsx # 보고서 하단 진행 절차 타임라인
-│       ├── RehabChatButton.tsx   # 플로팅 / 임베디드 전환 버튼
 │       ├── RehabResultReport.tsx # 최종 진단 결과 보고서 화면
 │       └── StatisticalComparison.tsx # 타 통계 데이터와 비교 차트
 ├── services/

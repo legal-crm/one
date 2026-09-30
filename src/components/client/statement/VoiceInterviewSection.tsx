@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Volume2, VolumeX, Mic, MicOff, Sparkles, ChevronRight, 
-  ChevronLeft, CheckCircle2, HelpCircle, ArrowRight, RotateCcw 
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Volume2, VolumeX, Mic, MicOff, ChevronRight, ChevronLeft, CheckCircle2, Plus } from 'lucide-react';
+import { Badge, Button, textareaClass } from '../ui';
+import { cn } from '../../../utils/cn';
 import { speechSynthesizer } from '../../../utils/speechSynthesis';
 import { useSpeechRecognition } from '../../../hooks/useSpeechRecognition';
 
@@ -124,7 +122,7 @@ export default function VoiceInterviewSection({
   isAiGenerating = false
 }: VoiceInterviewSectionProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [isTtsMuted, setIsTtsMuted] = useState(false);
+  const [isTtsMuted, setIsTtsMuted] = useState(true);
   const currentQ = QUESTIONS[currentIdx];
 
   // 음성 STT 훅
@@ -139,15 +137,33 @@ export default function VoiceInterviewSection({
     continuous: true,
     interimResults: true,
     onResult: (text) => {
-      // 실시간으로 현재 질문 답변에 업데이트
-      const currentVal = answers[currentQ.id] || '';
-      const updated = (currentVal ? currentVal.trim() + ' ' : '') + text.trim();
-      onChangeAnswers({
-        ...answers,
-        [currentQ.id]: updated
+      // text는 이번 녹음을 시작한 뒤 인식된 전체 문장(누적값)이다.
+      // 녹음 시작 시점의 답변(base) 뒤에 붙여야 한다 — 매번 현재 답변에 누적값을 덧붙이면 같은 말이 반복 저장됨
+      const base = dictationBaseRef.current;
+      const updated = (base ? base.trim() + ' ' : '') + text.trim();
+      onChangeAnswersRef.current({
+        ...answersRef.current,
+        [dictationQuestionIdRef.current]: updated
       });
     }
   });
+
+  // 녹음 시작 시점의 답변·질문과 최신 answers/onChange를 보관
+  const dictationBaseRef = React.useRef('');
+  const dictationQuestionIdRef = React.useRef(currentQ.id);
+  const answersRef = React.useRef(answers);
+  answersRef.current = answers;
+  const onChangeAnswersRef = React.useRef(onChangeAnswers);
+  onChangeAnswersRef.current = onChangeAnswers;
+
+  const handleToggleDictation = () => {
+    if (!isListening) {
+      dictationBaseRef.current = answers[currentQ.id] || '';
+      dictationQuestionIdRef.current = currentQ.id;
+      setTranscript('');
+    }
+    toggleListening();
+  };
 
   // 질문이 바뀔 때마다 AI가 음성으로 읽어주기 (TTS)
   useEffect(() => {
@@ -180,197 +196,184 @@ export default function VoiceInterviewSection({
   };
 
   const answeredCount = Object.values(answers).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+  const answerId = `voice-answer-${currentQ.id}`;
 
   return (
-    <div className="space-y-6 animate-fadeIn text-left">
-      
-      {/* 상단 안내 & TTS 음소거 토글 바 */}
-      <div className="p-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 rounded-3xl text-white flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl shrink-0">
-            🎙️
+    <div className="space-y-5 text-left">
+
+      {/* 안내 + 질문 읽어 주기(기본 꺼짐 — 열자마자 소리가 나지 않게) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0" aria-hidden="true">
+            <Mic className="w-5 h-5" />
           </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-extrabold text-sm sm:text-base text-white">
-                AI 대화형 인생 질문 인터뷰 (6문 6답)
-              </h4>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-400 text-slate-950">
-                {answeredCount} / 6 완료
-              </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-sm sm:text-base font-bold text-slate-900">질문 6개에 답하며 사연 정리하기</h4>
+              <Badge tone={answeredCount === QUESTIONS.length ? 'success' : 'neutral'}>
+                {answeredCount}/{QUESTIONS.length} 답함
+              </Badge>
             </div>
-            <p className="text-xs text-indigo-200 mt-0.5">
-              AI의 목소리를 듣고 마이크로 편하게 대답하거나, 추천 단어 칩을 클릭해 주세요.
+            <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
+              마이크로 말하거나 예시를 눌러 답을 채워 주세요. 원하면 질문을 소리로 읽어 드려요.
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          aria-pressed={!isTtsMuted}
           onClick={() => {
             if (!isTtsMuted) speechSynthesizer.stop();
             setIsTtsMuted(!isTtsMuted);
           }}
-          className={`p-2.5 rounded-2xl transition-all cursor-pointer ${
-            isTtsMuted ? 'bg-white/10 text-white/60' : 'bg-white text-indigo-950 shadow-sm'
-          }`}
-          title={isTtsMuted ? 'AI 목소리 켜기' : 'AI 목소리 끄기'}
+          leftIcon={isTtsMuted ? <VolumeX className="w-4 h-4" aria-hidden="true" /> : <Volume2 className="w-4 h-4" aria-hidden="true" />}
+          className="w-full sm:w-auto shrink-0"
         >
-          {isTtsMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-        </button>
+          {isTtsMuted ? '질문 읽어 주기 켜기' : '질문 읽어 주기 끄기'}
+        </Button>
       </div>
 
-      {/* 6단계 진행 인디케이터 */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {QUESTIONS.map((q, idx) => {
-          const isDone = !!(answers[q.id] && answers[q.id]!.trim().length > 0);
-          return (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => {
-                speechSynthesizer.stop();
-                if (isListening) stopListening();
-                setCurrentIdx(idx);
-              }}
-              className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
-                currentIdx === idx
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : isDone
-                  ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
-              }`}
-            >
-              <span>Q{idx + 1}. {q.title.split('. ')[1]?.slice(0, 4)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* 6개 질문 이동 */}
+      <nav aria-label="인터뷰 질문">
+        <ol className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+          {QUESTIONS.map((q, idx) => {
+            const isDone = !!(answers[q.id] && answers[q.id]!.trim().length > 0);
+            const active = currentIdx === idx;
+            return (
+              <li key={q.id} className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    speechSynthesizer.stop();
+                    if (isListening) stopListening();
+                    setCurrentIdx(idx);
+                  }}
+                  aria-current={active ? 'step' : undefined}
+                  aria-label={`질문 ${idx + 1}: ${q.title.split('. ')[1] || q.title}${isDone ? ' (답함)' : ''}`}
+                  className={cn(
+                    'min-h-11 min-w-11 px-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1 transition-colors',
+                    active
+                      ? 'bg-brand text-white'
+                      : isDone
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:border-slate-400'
+                  )}
+                >
+                  {isDone && !active && <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
+                  Q{idx + 1}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
-      {/* 현재 질문 인터뷰 카드 */}
-      <div className="p-6 bg-slate-50 dark:bg-slate-800/40 border-2 border-indigo-200 dark:border-indigo-900/50 rounded-3xl space-y-5 shadow-xs">
-        
-        {/* 질문 헤더 */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-              QUESTION {currentIdx + 1} OF 6
+      {/* 현재 질문 카드 */}
+      <section aria-labelledby={`${answerId}-q`} className="rounded-2xl border-2 border-brand/20 bg-white p-4 sm:p-5 space-y-4">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-brand">
+              질문 {currentIdx + 1} / {QUESTIONS.length} · {currentQ.title.split('. ')[1] || currentQ.title}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => speechSynthesizer.speak(currentQ.speechText)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+              leftIcon={<Volume2 className="w-4 h-4" aria-hidden="true" />}
+              className="min-h-11"
             >
-              <Volume2 className="w-3.5 h-3.5" />
-              <span>질문 다시 듣기</span>
-            </button>
+              질문 듣기
+            </Button>
           </div>
-          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+          <h3 id={`${answerId}-q`} className="text-base sm:text-lg font-bold text-slate-900 leading-snug break-keep">
             {currentQ.speechText}
           </h3>
-          <p className="text-xs text-slate-500">
-            💡 {currentQ.description}
-          </p>
+          <p className="text-sm text-slate-600 leading-relaxed break-keep">{currentQ.description}</p>
         </div>
 
-        {/* 원터치 추천 단어 칩 리스트 */}
+        {/* 예시 답변(누르면 답변 칸에 추가) */}
         <div className="space-y-2">
-          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block">
-            👇 해당되는 내용을 클릭하시면 답변에 바로 추가됩니다:
-          </label>
+          <p className="text-sm font-bold text-slate-800">해당하는 내용을 누르면 답변에 더해져요</p>
           <div className="flex flex-wrap gap-2">
             {currentQ.chips.map(chip => (
               <button
                 key={chip}
                 type="button"
                 onClick={() => handleChipClick(chip)}
-                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-xl shadow-xs transition-all cursor-pointer active:scale-98"
+                className="min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:border-brand hover:text-brand transition-colors inline-flex items-center gap-1"
               >
-                + {chip}
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                {chip}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 음성 마이크 녹음 버튼 + 실시간 답변 입력창 */}
+        {/* 답변(마이크 또는 직접 입력) */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              신청인의 답변 (마이크로 말씀하시거나 글을 다듬으실 수 있습니다)
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor={answerId} className="text-sm font-bold text-slate-800">
+              내 답변 <span className="font-medium text-slate-600">(말로 하거나 글로 다듬어 주세요)</span>
             </label>
-
-            {/* 마이크 토글 버튼 */}
-            <button
-              type="button"
-              onClick={toggleListening}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer press-scale ${
-                isListening
-                  ? 'bg-rose-500 text-white animate-pulse shadow-md'
-                  : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-              }`}
+            <Button
+              variant={isListening ? 'danger' : 'subtle'}
+              onClick={handleToggleDictation}
+              aria-pressed={isListening}
+              leftIcon={isListening ? <MicOff className="w-4 h-4" aria-hidden="true" /> : <Mic className="w-4 h-4" aria-hidden="true" />}
             >
-              {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              <span>{isListening ? '듣고 있습니다 (클릭 시 멈춤)' : '마이크 켜고 말하기'}</span>
-            </button>
+              {isListening ? '듣는 중 · 누르면 멈춤' : '마이크 켜고 말하기'}
+            </Button>
           </div>
-
+          {isListening && (
+            <p className="sr-only" role="status">
+              듣고 있습니다
+            </p>
+          )}
           <textarea
+            id={answerId}
             rows={3}
             value={answers[currentQ.id] || ''}
             onChange={e => handleTextChange(e.target.value)}
             placeholder={currentQ.placeholder}
-            className="w-full p-4 text-xs font-sans bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden leading-relaxed"
+            className={cn(textareaClass, 'min-h-28')}
           />
         </div>
 
-        {/* 질문 네비게이션 버튼 (이전 / 다음 질문) */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-          <button
-            type="button"
+        {/* 이전 / 다음 질문 (초안 만들기는 인터뷰 아래 버튼 하나로) */}
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+          <Button
+            variant="ghost"
             disabled={currentIdx === 0}
             onClick={() => {
               speechSynthesizer.stop();
               if (isListening) stopListening();
               setCurrentIdx(prev => Math.max(0, prev - 1));
             }}
-            className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl flex items-center gap-1 cursor-pointer disabled:opacity-30"
+            leftIcon={<ChevronLeft className="w-4 h-4" aria-hidden="true" />}
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>이전 질문</span>
-          </button>
+            이전 질문
+          </Button>
 
           {currentIdx < QUESTIONS.length - 1 ? (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={() => {
                 speechSynthesizer.stop();
                 if (isListening) stopListening();
                 setCurrentIdx(prev => Math.min(QUESTIONS.length - 1, prev + 1));
               }}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer press-scale"
+              rightIcon={<ChevronRight className="w-4 h-4" aria-hidden="true" />}
             >
-              <span>다음 질문 (Q{currentIdx + 2})</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              다음 질문
+            </Button>
           ) : (
-            <button
-              type="button"
-              disabled={isAiGenerating}
-              onClick={() => {
-                speechSynthesizer.stop();
-                if (isListening) stopListening();
-                onCompleteInterview();
-              }}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black rounded-xl shadow-md flex items-center gap-2 cursor-pointer press-scale disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-              <span>✨ 6문 6답 바탕으로 법원 진술문 완성하기</span>
-            </button>
+            <p className="text-sm font-bold text-slate-700 text-right break-keep">
+              마지막 질문이에요. 아래에서 초안을 만들어 주세요.
+            </p>
           )}
         </div>
-
-      </div>
-
+      </section>
     </div>
   );
 }

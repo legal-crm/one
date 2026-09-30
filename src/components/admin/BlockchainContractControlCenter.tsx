@@ -698,6 +698,7 @@ export default function BlockchainContractControlCenter() {
           setSelectedContract(null);
         }}
         contract={selectedContract}
+        revealFullName
       />
 
       {/* ── 7. 블록체인 네트워크 및 노드 설정 모달 (메인넷 ↔ 테스트넷 전환) ── */}

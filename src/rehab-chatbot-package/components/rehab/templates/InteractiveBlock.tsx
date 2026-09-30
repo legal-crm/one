@@ -537,14 +537,14 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => handleSaveEdit(index)}
-                                            className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                                            className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0"
                                         >
                                             저장
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setEditingIndex(null)}
-                                            className="px-2 py-1 bg-slate-400 hover:bg-slate-500 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                                            className="px-2 py-1 bg-slate-400 hover:bg-slate-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0"
                                         >
                                             취소
                                         </button>
@@ -558,7 +558,7 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => handleStartEdit(index, note)}
-                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 transition-all cursor-pointer"
+                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-all cursor-pointer"
                                                 title="수정"
                                             >
                                                 <Edit className="w-3.5 h-3.5" />
