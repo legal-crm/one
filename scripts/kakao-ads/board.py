@@ -1,7 +1,8 @@
 """미리보기 보드: 제작된 소재를 비율별로 한 장에 모은다 (검수·보고용).
 
-사용법: python scripts/kakao-ads/board.py [id,id,...] [--variant=logo|nologo]
+사용법: python scripts/kakao-ads/board.py [id,id,...] [--variant=logo|nologo] [--root=검수폴더]
 출력: assets/kakao-moment-ads/_preview/board_{ratio}_{variant}.jpg, board_bizboard_{variant}.png
+      (--root 를 주면 그 폴더의 소재를 모아 그 폴더/_preview 에 저장)
 """
 import glob
 import os
@@ -16,6 +17,7 @@ PREV = os.path.join(OUT, "_preview")
 FONT = "C:/Windows/Fonts/malgunbd.ttf"
 
 RATIOS = {"2x1_1200x600": 360, "1x1_1080x1080": 300, "4x5_1080x1350": 300, "9x16_1080x1920": 250}
+TAG = ""  # --tag=A → board_4x5_logo_A.jpg (컨셉별 등 나눠 보기)
 
 
 def dirs_for(ids):
@@ -54,7 +56,7 @@ def board(ids, variant):
             y = gap + (i // cols) * (th_h + lab + gap)
             dr.text((x, y), f"#{n:03d}", fill=(40, 44, 52), font=font)
             canvas.paste(th, (x, y + lab))
-        path = os.path.join(PREV, f"board_{r.split('_')[0]}_{variant}.jpg")
+        path = os.path.join(PREV, f"board_{r.split('_')[0]}_{variant}{TAG}.jpg")
         canvas.save(path, quality=88)
         print(path)
     # 비즈보드: 카카오 박스 배경(#F3F3F3) 위에 합성
@@ -77,7 +79,7 @@ def board(ids, variant):
             x = gap + (i % 2) * (tw + gap)
             y = gap + (i // 2) * (th + gap)
             canvas.paste(t, (x, y))
-        path = os.path.join(PREV, f"board_bizboard_{variant}.png")
+        path = os.path.join(PREV, f"board_bizboard_{variant}{TAG}.png")
         canvas.save(path)
         print(path)
 
@@ -88,6 +90,11 @@ if __name__ == "__main__":
     for a in sys.argv[1:]:
         if a.startswith("--variant="):
             variant = a.split("=", 1)[1]
+        elif a.startswith("--root="):
+            OUT = os.path.abspath(a.split("=", 1)[1])
+            PREV = os.path.join(OUT, "_preview")
+        elif a.startswith("--tag="):
+            TAG = "_" + a.split("=", 1)[1]
         else:
             ids = [int(x) for x in a.split(",") if x]
     board(ids, variant)

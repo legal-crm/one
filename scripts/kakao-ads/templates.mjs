@@ -17,7 +17,7 @@ export const THEMES = {
   night: { bg: 'linear-gradient(180deg,#0B1230 0%,#1C2656 100%)', fg: '#F5F7FF', acc: '#F6D48B', sub: '#C7CDEA', orb: 'rgba(255,255,255,.06)', o: '#7FE0B8', x: '#FF8A80', dark: 1 },
   blue: { bg: 'linear-gradient(160deg,#2463EB 0%,#1846C4 100%)', fg: '#FFFFFF', acc: '#FFD877', sub: '#DDE7FF', orb: 'rgba(255,255,255,.09)', o: '#8EF0C4', x: '#FFB4A8', dark: 1 },
   teal: { bg: 'linear-gradient(160deg,#115650 0%,#0A3B37 100%)', fg: '#FFFFFF', acc: '#F4D38C', sub: '#CBE6E1', orb: 'rgba(255,255,255,.065)', o: '#9BF0CF', x: '#FF9C8F', dark: 1 },
-  white: { bg: 'linear-gradient(180deg,#FFFFFF 0%,#F4F6F9 100%)', fg: '#111827', acc: '#D9434A', sub: '#4B5563', orb: '#EEF1F5', o: '#0E9F6E', x: '#D9434A', dark: 0 },
+  white: { bg: 'linear-gradient(180deg,#FFFFFF 0%,#F4F6F9 100%)', fg: '#111827', acc: '#D9434A', sub: '#4B5563', orb: '#EEF1F5', o: '#0B8A5E', x: '#D9434A', dark: 0 },
   ivory: { bg: 'linear-gradient(170deg,#FBF7EF 0%,#F2EADB 100%)', fg: '#1C2230', acc: '#1F4E9C', sub: '#585E6A', orb: 'rgba(31,78,156,.06)', o: '#0E8A63', x: '#C8413F', dark: 0 },
   sand: { bg: 'linear-gradient(170deg,#F4EBDD 0%,#E9DBC6 100%)', fg: '#2A231D', acc: '#B0431F', sub: '#5E5349', orb: 'rgba(255,255,255,.45)', o: '#1B7F5A', x: '#B0431F', dark: 0 },
   peach: { bg: 'linear-gradient(170deg,#FFEEE2 0%,#FFDCC7 100%)', fg: '#2B1D14', acc: '#D0461E', sub: '#654D40', orb: 'rgba(255,255,255,.55)', o: '#1B7F5A', x: '#D0461E', dark: 0 },
@@ -37,27 +37,26 @@ const PRE1 = new Set('또 빚 월 총 약 안 못 더 꼭 잘 왜 내 그 이 �
 const DEP = '수|것|거|때|줄|뿐|데|등|중|적|전|후|채|척|듯|번|건|원|곳|분|쪽|째|씩|쯤|만큼|대로|동안|정도|이상|이하|이내|미만|초과|가량|무렵|이후|이전|만에';
 const JOSA = '(?:은|는|이|가|을|를|도|만|에|의|로|와|과|인|에서|에게|에도|에는|부터|까지|이면|이라면|이어도|이라도|입니다|이다|이죠|인가요|일까요?|예요|이에요|이지만|인데|이고|으로|으로도|로도|이나|나|이라|이란)?';
 const POST_RE = new RegExp(`^(?:${DEP})${JOSA}[.,?!…)]*$`);
-const AUX_RE = /^(?:보세요|봅니다|보기|볼|봐|봐요|봐야|보면|보고|보는|보셔도|보십시오|드립니다|드려요|드릴게요|드려|드리는|주세요|줍니다|있습니다|없습니다|있어요|없어요|있다|없다|있나요|없나요|있을까요?|있고|없고|있는|없는|있으면|없으면|있어도|없어도|않습니다|않아요|않는|않고|않아도|않나요|않다|않게|않으면|됩니다|돼요|된다|됩니까|되나요|될까요?)[.,?!…]*$/;
+const AUX_RE = /^(?:보세요|봅니다|보기|볼|봐|봐요|봐야|보면|보고|보는|보셔도|보십시오|드립니다|드려요|드릴게요|드려|드리는|주세요|줍니다|있습니다|없습니다|있어요|없어요|있다|없다|있나요|없나요|있을까요?|있고|없고|있는|없는|있으면|없으면|있어도|없어도|않습니다|않아요|않는|않고|않아도|않나요|않다|않게|않으면|됩니다|돼요|된다|됩니까|되나요|될까요?|가능|불가|없음|있음|가정)[.,?!…]*$/;
 const MAX_GROUP = 9; // 한 덩어리 최대 폭 (한글 1음절 = 1, 숫자·영문 = 0.6)
 const syl = (w) => (w.match(/[\uAC00-\uD7A3]/g) || []).length + (w.match(/[A-Za-z0-9]/g) || []).length * 0.6;
 const core = (w) => w.replace(/\*\*/g, '').replace(/^[("'“‘]+/, '');
 const TIME_END = /\d(?:년|달|개월|주|일|시간|분)$/;
-// a(앞말)와 b(뒷말) 사이에서 줄을 바꾸면 안 되는가
-function glued(a, b, isLast) {
+// p(앞앞말)·a(앞말)·b(뒷말): a 와 b 사이에서 줄을 바꾸면 안 되는가
+function glued(p, a, b, isLast) {
   if (/[,.!?…:]$/.test(a)) return false; // 쉼표·마침표 뒤는 자연스러운 끊김
   if (/^[−+=×÷~]$/.test(a) || /^[−+=×÷~]$/.test(b)) return true; // '소득 − 생계비' 는 한 덩어리
   if (a === '→') return true; // 화살표는 줄 끝에 남기지 않는다
   if (/^\d+인$/.test(a)) return true; // '1인 가구'
   if (/\d[만억천]$/.test(a) && /^\d/.test(b)) return true; // '8만 1,723건'
   if (/^\(?제\d+(?:조|항|호)/.test(b)) return true; // '채무자회생법 제579조'
-  if (b === '새') return TIME_END.test(a); // '10년 새' (사이) / '새 출발' (관형사)
-  if (a === '새') return !TIME_END.test(ws_prev(a));
+  if (b === '새') return TIME_END.test(a); // '10년 새'(사이)는 앞말에
+  if (a === '새') return !TIME_END.test(p); // '새 출발'(관형사)은 뒷말에
   if (syl(a) === 1 && PRE1.has(a)) return true; // '또 빚', '월 소득', '한 번'
   if (POST_RE.test(b) || AUX_RE.test(b)) return true; // '할 수', '볼 때입니다', '방법이 있습니다'
   if (syl(b) === 1 && (!PRE1.has(b) || isLast)) return true; // 1음절 단위·의존명사, 끝에 홀로 남는 1음절
   return false;
 }
-const ws_prev = () => ''; // '새' 가 관형사로 쓰일 때는 앞말과 무관하게 뒷말에 붙인다
 export function koGroups(line) {
   if (line.includes('|')) return line.split('|').map((s) => s.trim()).filter(Boolean);
   const ws = line.split(/ +/).filter(Boolean);
@@ -65,8 +64,9 @@ export function koGroups(line) {
   let cur = [];
   ws.forEach((w, i) => {
     if (!cur.length) { cur.push(w); return; }
-    const bind = glued(core(cur[cur.length - 1]), core(w), i === ws.length - 1);
-    if (bind && syl(cur.join('')) + syl(w) <= MAX_GROUP) cur.push(w);
+    const bind = glued(core(ws[i - 2] || ''), core(ws[i - 1]), core(w), i === ws.length - 1);
+    const max = /^\(?제\d+(?:조|항|호)/.test(core(w)) ? MAX_GROUP + 2 : MAX_GROUP; // 법명+조문은 조금 길어도 묶는다
+    if (bind && syl(cur.join('')) + syl(w) <= max) cur.push(w);
     else { out.push(cur.join(' ')); cur = [w]; }
   });
   if (cur.length) out.push(cur.join(' '));
@@ -99,7 +99,7 @@ ul{list-style:none}
 .h em,.nv em,.sval em{font-style:normal;color:var(--acc)}
 .sub{font-weight:500;color:var(--sub);font-size:max(var(--min),calc(var(--ss)*var(--k)));line-height:1.35;margin-top:var(--gap)}
 .note{font-weight:500;color:var(--sub);font-size:var(--ns);line-height:1.4;margin-top:calc(var(--gap)*.9);letter-spacing:-0.02em}
-.sub,.ans,.note,.ncap,.slabel,.cl li>span{text-wrap:balance}
+.h,.sub,.ans,.note,.ncap,.slabel,.cl li>span{text-wrap:balance}
 .vis{position:relative;flex:1 1 auto;min-height:0;min-width:0;display:flex;align-items:center;justify-content:center}
 .vis .stage{position:relative;width:300px;height:300px;flex:none}
 .vis img{position:absolute;display:block;object-fit:contain}
@@ -133,7 +133,7 @@ const CSS_RATIO = `
 .r-9x16 .box > .vis{flex:1 1 auto;align-self:stretch;margin-top:20px;justify-content:center;align-items:center}
 .l-number .main{align-items:center;text-align:center}
 .l-stat .main{align-items:flex-start}
-.r-4x5 .notes,.r-4x5.l-ox .ans,.r-4x5.l-check .sub{max-width:76%}
+.r-4x5 .notes,.r-4x5.l-ox .ans,.r-4x5.l-check .sub,.r-4x5.l-type .sub{max-width:76%}
 `;
 
 // 레이아웃: hero(헤드라인+일러스트) / type(큰 타이포)
@@ -155,9 +155,9 @@ const CSS_NUMBER = `
 .nrow{display:flex;flex-direction:column;align-items:center;gap:calc(var(--gap)*.6)}
 .ncol{display:flex;flex-direction:column;align-items:center}
 .ns{font-weight:500;color:var(--sub);font-size:max(var(--min),calc(var(--ss)*var(--k)));line-height:1.3}
-.na{font-weight:800;font-size:calc(var(--na)*var(--k));line-height:1.15;letter-spacing:-0.045em;white-space:nowrap}
-.nv{font-weight:800;font-size:calc(var(--nv)*var(--k));line-height:1.05;letter-spacing:-0.05em;white-space:nowrap}
-.nv small{font-size:.42em;color:var(--acc);font-weight:800;margin-left:.08em;letter-spacing:-0.03em}
+.na{font-weight:800;font-size:calc(var(--na)*var(--k)*var(--kn,1));line-height:1.15;letter-spacing:-0.045em;white-space:nowrap}
+.nv{font-weight:800;font-size:calc(var(--nv)*var(--k)*var(--kn,1));line-height:1.05;letter-spacing:-0.05em;white-space:nowrap}
+.nv small{font-size:max(var(--min),.42em);color:var(--acc);font-weight:800;margin-left:.08em;letter-spacing:-0.03em}
 .narrow{width:calc(var(--na)*.9*var(--k));height:calc(var(--na)*.9*var(--k));color:var(--acc);transform:rotate(90deg)}
 .ncap{font-weight:500;color:var(--sub);font-size:max(var(--min),calc(var(--ss)*var(--k)));line-height:1.3;margin-top:calc(var(--gap)*.8)}
 .l-number .note{max-width:100%}
@@ -174,6 +174,7 @@ const CSS_OX = `
 .oxm.o{color:var(--o)}
 .l-ox .h em{color:inherit}
 .ans{font-weight:800;color:var(--acc);font-size:max(var(--min),calc(var(--as)*var(--k)));line-height:1.3;margin-top:var(--gap)}
+.l-ox .ans{color:var(--o)}
 .r-2x1.l-ox .box{flex-direction:row;align-items:center;gap:52px;--om:250px}
 .r-2x1.l-ox .txt{flex:1 1 auto}
 .r-1x1.l-ox .box{--om:210px}
@@ -199,13 +200,14 @@ const CSS_LIST = `
 .si img{width:100%;height:100%;object-fit:contain;display:block}
 .sline{position:absolute;background:currentColor;opacity:.16;border-radius:4px;z-index:0}
 .r-1x1 .steps{--ls:64px}
+.r-9x16 .steps{--ls:74px}
 .r-2x1 .steps{flex-direction:row;justify-content:space-between;align-items:flex-start;gap:10px;margin-top:30px}
 .r-2x1 .st{flex-direction:column;gap:12px;text-align:center}
 .r-2x1 .si{width:80px;height:80px}
 .l-stat .box{align-items:flex-start}
 .slabel{font-weight:500;color:var(--sub);font-size:max(var(--min),calc(var(--ss)*var(--k)));line-height:1.3}
-.sval{font-weight:800;font-size:calc(var(--sv)*var(--k));line-height:1.02;letter-spacing:-0.05em;margin:calc(var(--gap)*.35) 0 calc(var(--gap)*.8);white-space:nowrap}
-.sval small{font-size:.4em;color:var(--acc);font-weight:800;margin-left:.1em;letter-spacing:-0.03em}
+.sval{font-weight:800;font-size:calc(var(--sv)*var(--k)*var(--kn,1));line-height:1.02;letter-spacing:-0.05em;margin:calc(var(--gap)*.35) 0 calc(var(--gap)*.8);white-space:nowrap}
+.sval small{font-size:max(var(--min),.4em);color:var(--acc);font-weight:800;margin-left:.1em;letter-spacing:-0.03em}
 .l-stat .h{font-size:calc(var(--hs)*.8*var(--k))}
 .r-2x1.l-stat .h br{display:none}
 `;
@@ -264,7 +266,7 @@ function heroBody(c, r, o) {
   const useEb = c.eyebrow && (r !== '2x1' || lineCount(c.headline) + (c.sub ? 1 : 0) + 1 <= 3);
   const eb = useEb ? `<div class="eb">${esc(c.eyebrow)}</div>` : '';
   const sub = c.sub ? `<div class="sub">${mdk(c.sub)}</div>` : '';
-  return `<div class="txt">${eb}<div class="h">${md(c.headline)}</div>${sub}${notes(c, o)}</div>${o.noVis ? '' : visual(c)}`;
+  return `<div class="txt">${eb}<div class="h">${mdk(c.headline)}</div>${sub}${notes(c, o)}</div>${o.noVis ? '' : visual(c)}`;
 }
 function numberBody(c, r, o) {
   const m = c.num.label.match(/^(\S+\s\S+)\s+(.+)$/) || [null, c.num.label, ''];
@@ -272,10 +274,10 @@ function numberBody(c, r, o) {
     + `<div class="narrow">${SVG.arrow}</div><div class="ncol r"><span class="ns">${esc(c.num.pre)}</span><span class="nv"><em>${esc(c.num.value)}</em><small>${esc(c.num.unit)}</small></span></div></div>`
     + `<div class="ncap">${mdk(c.num.caption)}</div>${notes(c, o)}`;
 }
-const oxBody = (c, r, o) => `<div class="oxm ${c.ox === 'O' ? 'o' : 'x'}">${SVG[c.ox]}</div><div class="txt"><div class="h">${md(c.headline)}</div><div class="ans">${mdk(c.sub)}</div>${notes(c, o)}</div>`;
-const checkBody = (c, r, o) => `<div class="ch"><div class="h">${md(c.headline)}</div></div><ul class="cl${c.mark === 'x' ? ' x' : ''}">${c.checks.map((t) => `<li>${c.mark === 'x' ? SVG.xmark : SVG.check}<span>${mdk(t)}</span></li>`).join('')}</ul>${c.sub ? `<div class="sub">${mdk(c.sub)}</div>` : ''}${notes(c, o)}`;
-const stepsBody = (c, r, o) => `<div class="h">${md(c.headline)}</div><div class="steps"><i class="sline"></i>${c.steps.map(([ic, label]) => `<div class="st"><span class="si"><img src="icons/color/${ic}.svg" alt=""></span><span class="sl">${esc(label)}</span></div>`).join('')}</div>${notes(c, o)}`;
-const statBody = (c, r, o) => `<div class="slabel">${mdk(c.stat.label)}</div><div class="sval"><em>${esc(c.stat.value)}</em><small>${esc(c.stat.unit)}</small></div><div class="h">${md(r === '2x1' ? c.headline.replace(/\n/g, ' ') : c.headline)}</div>${notes(c, o)}`;
+const oxBody = (c, r, o) => `<div class="oxm ${c.ox === 'O' ? 'o' : 'x'}">${SVG[c.ox]}</div><div class="txt"><div class="h">${mdk(c.headline)}</div><div class="ans">${mdk(c.sub)}</div>${notes(c, o)}</div>`;
+const checkBody = (c, r, o) => `<div class="ch"><div class="h">${mdk(c.headline)}</div></div><ul class="cl${c.mark === 'x' ? ' x' : ''}">${c.checks.map((t) => `<li>${c.mark === 'x' ? SVG.xmark : SVG.check}<span>${mdk(t)}</span></li>`).join('')}</ul>${c.sub ? `<div class="sub">${mdk(c.sub)}</div>` : ''}${notes(c, o)}`;
+const stepsBody = (c, r, o) => `<div class="h">${mdk(r === '2x1' ? c.headline.replace(/\n/g, ' ') : c.headline)}</div><div class="steps"><i class="sline"></i>${c.steps.map(([ic, label]) => `<div class="st"><span class="si"><img src="icons/color/${ic}.svg" alt=""></span><span class="sl">${esc(label)}</span></div>`).join('')}</div>${notes(c, o)}`;
+const statBody = (c, r, o) => `<div class="slabel">${mdk(c.stat.label)}</div><div class="sval"><em>${esc(c.stat.value)}</em><small>${esc(c.stat.unit)}</small></div><div class="h">${mdk(r === '2x1' ? c.headline.replace(/\n/g, ' ') : c.headline)}</div>${notes(c, o)}`;
 const BODY = { hero: heroBody, type: heroBody, number: numberBody, ox: oxBody, check: checkBody, steps: stepsBody, stat: statBody };
 
 // 9:16 은 주요 문구를 권장 영역(상단 419px~하단 657px 제외)에 두고, 아래쪽 여백은 일러스트로 채운다

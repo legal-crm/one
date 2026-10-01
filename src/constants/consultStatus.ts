@@ -23,7 +23,8 @@ export const CONSULT_STATUS_META: Record<ConsultStatus, ConsultStatusMeta> = {
   filed:      { label: '접수 완료', group: 'retained' },
   commenced:  { label: '개시 결정', group: 'retained' },
   repaying:   { label: '변제 중', group: 'retained' },
-  discharged: { label: '면책 확정', group: 'discharged' },
+  // 의뢰인 화면(client/consultFlow.ts)과 같은 이름 — 같은 상담을 두 화면이 다르게 부르지 않도록 (이전: '면책 확정')
+  discharged: { label: '면책 결정', group: 'discharged' },
   closed:     { label: '상담 종료', group: 'closed' },
   cancelled:  { label: '요청 취소', group: 'closed' },
 };

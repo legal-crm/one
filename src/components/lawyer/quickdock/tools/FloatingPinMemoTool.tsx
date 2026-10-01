@@ -25,6 +25,12 @@ function persistSlots(slots: MemoSlot[]) {
     if (s.imageDataUrl) pinImageCache.set(s.id, s.imageDataUrl);
     else pinImageCache.delete(s.id);
   });
+  // 지운 칸의 이미지(신분증 등 민감 이미지)도 캐시에서 바로 지운다
+  // (이전: 현재 칸 목록만 갱신해, 삭제한 칸의 이미지가 새로고침·로그아웃 전까지 메모리에 남았음)
+  const liveIds = new Set(slots.map(s => s.id));
+  pinImageCache.forEach((_img, id) => {
+    if (!liveIds.has(id)) pinImageCache.delete(id);
+  });
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(slots.map(({ imageDataUrl: _img, ...rest }) => rest)));
   } catch {

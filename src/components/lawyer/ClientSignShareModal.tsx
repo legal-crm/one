@@ -3,6 +3,7 @@ import { X, Copy, Check, Share2, Smartphone, ShieldCheck, Clock, Send, MessageCi
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import ModalPortal from '../common/ModalPortal';
+import { feeTotalWon } from '../../utils/feeUnits';
 
 interface Props {
   contract: ElectronicContract;
@@ -21,7 +22,9 @@ export default function ClientSignShareModal({ contract, isOpen, onClose }: Prop
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
   const signUrl = signToken ? `${origin}?view=sign&token=${signToken}&cid=${contract.id}` : '';
 
-  const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
+  // 원·만원이 섞여 저장된 값을 공용 규칙으로 맞춘다 — 의뢰인 서명 화면(signFormat.contractFeeWon)과 같은 금액
+  // (이전: 무조건 ×10,000 → 원 단위로 저장된 계약은 안내 문자에 1만 배 금액이 적혔다)
+  const feeFormatted = feeTotalWon(contract.totalFee).toLocaleString();
 
   // 안내 문자/알림톡 템플릿 문안
   const messageTemplate = `[${contract.lawFirmName}] 전자계약서 서명 요청 안내

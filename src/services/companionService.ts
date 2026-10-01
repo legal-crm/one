@@ -186,27 +186,37 @@ export function syncCompanionWithCrmCase(
 
   const assignedLawyerName = ds.assignedLawyerName || crmExt.assignedLawyerName || existing?.assignedLawyerName || '';
 
+  // CRM에 아직 없는 값은 기존 동행 사건 값을 유지한다
+  // (이전: CRM에 사건번호·가상계좌·월 변제금이 비어 있으면 의뢰인이 입력해 둔 값까지 빈 값·0으로 덮어썼다)
+  const keptCaseNumber = realCaseNumber || existing?.caseNumber || '';
+  const keptCaseNumberMasked = realCaseNumber ? caseNumberMasked : (existing?.caseNumberMasked || caseNumberMasked);
+  const keptMonthly = monthlyRepayment || existing?.monthlyRepaymentAmount || 0;
+  const keptAccount = courtAccount || existing?.courtVirtualAccount || '';
+  // 의뢰인이 다른 사무소·나홀로 사건으로 등록한 동행 사건은 출처·별칭·사무소명을 바꾸지 않는다
+  const keepsOwnSource = existing?.sourceType === 'external_office' || existing?.sourceType === 'self_litigant';
+
   const syncedCase: RehabCompanionCase = {
     id: existing?.id || `case-crm-${clientId}`,
     clientId,
-    alias: clientName,
-    sourceType: 'mykim_lawyer',
+    alias: keepsOwnSource ? (existing?.alias || clientName) : clientName,
+    sourceType: keepsOwnSource && existing ? existing.sourceType : 'mykim_lawyer',
+    ...(keepsOwnSource && existing?.externalOfficeName ? { externalOfficeName: existing.externalOfficeName } : {}),
     caseType: 'individual_rehab',
     caseStage: companionStage,
     courtName,
-    caseNumber: realCaseNumber,
-    caseNumberMasked,
-    monthlyRepaymentAmount: monthlyRepayment,
+    caseNumber: keptCaseNumber,
+    caseNumberMasked: keptCaseNumberMasked,
+    monthlyRepaymentAmount: keptMonthly,
     repaymentDay: repaymentDay || existing?.repaymentDay || 0,
     totalRounds: totalRounds || schedules.length,
     completedRounds,
     startRepaymentDate: startYearMonth || existing?.startRepaymentDate || '',
-    courtVirtualAccount: courtAccount,
+    courtVirtualAccount: keptAccount,
     assignedLawyerName,
     cashflow: {
       monthlyIncome: existing?.cashflow?.monthlyIncome || Number(ds.monthlyIncome || 0),
       essentialLivingCost: existing?.cashflow?.essentialLivingCost || Number(ds.essentialLivingCost || 0),
-      repaymentAmount: monthlyRepayment,
+      repaymentAmount: keptMonthly,
       otherFixedExpenses: existing?.cashflow?.otherFixedExpenses || 0,
     },
     schedules,

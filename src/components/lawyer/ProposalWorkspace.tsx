@@ -20,9 +20,11 @@ interface ProposalWorkspaceProps {
   rehabUserInput: RehabUserInput;
   consultRequest: any;
   onClose: () => void;
-  onSendProposal: (proposalData: ProposalData) => void;
+  /** false를 돌려주면 발송이 막힌 것 (작성 중인 초안을 지우지 않는다) */
+  onSendProposal: (proposalData: ProposalData) => void | boolean;
   viewerRole?: 'lawyer' | 'staff' | 'reviewer';
-  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void;
+  /** false를 돌려주면 컨펌 요청이 막힌 것 (작성 중인 초안을 지우지 않는다) */
+  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void | boolean;
   onApproveProposal?: (proposalData: ProposalData) => void;
   onRejectProposal?: (reason: string) => void;
   pendingStaffName?: string;
@@ -163,16 +165,19 @@ export default function ProposalWorkspace({
     toast.success('AI 보고서 수정 사항이 제안서 에디터에 즉시 반영되었습니다.');
   };
 
+  // 발송·컨펌 요청이 막히면(false) 초안을 지우지 않는다
+  // (이전: 요청받지 않은 요청·이미 보낸 요청 등으로 발송이 막혀도 초안이 지워져 다시 작성해야 했다)
   const handleSendProposal = useCallback((data: ProposalData) => {
-    onSendProposal(data);
-    clearDraft();
+    const result = onSendProposal(data);
+    if (result !== false) clearDraft();
+    return result;
   }, [onSendProposal, clearDraft]);
 
   const handleRequestConfirm = useCallback((data: ProposalData, memo: string) => {
-    if (onRequestConfirm) {
-      onRequestConfirm(data, memo);
-      clearDraft();
-    }
+    if (!onRequestConfirm) return false;
+    const result = onRequestConfirm(data, memo);
+    if (result !== false) clearDraft();
+    return result;
   }, [onRequestConfirm, clearDraft]);
 
   const handleQuoteQuestion = useCallback((question: string, defaultAnswer?: string) => {

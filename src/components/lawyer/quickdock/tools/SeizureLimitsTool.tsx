@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,10 +27,22 @@ const WAGE_CAP_FROM = WAGE_EXEMPTION_CAP_BASE_KRW * 2; // 600만
 
 export default function SeizureLimitsTool() {
   const shared = useDockShared();
+  const sharedLease = shared.liquidation.leaseDeposit;
   const [tab, setTab] = useState<'deposit' | 'housing'>('deposit');
   const [wage, setWage] = useState<number>(0);
-  const [leaseDeposit, setLeaseDeposit] = useState<number>(() => shared.liquidation.leaseDeposit);
+  /**
+   * 이 도구에서 입력했지만 아직 청산가치 점검기에 반영하지 않은 임차보증금.
+   * undefined면 공유값(청산가치 점검기 등 다른 도구에서 넣은 값)을 그대로 보여 준다.
+   * 이전: 처음 열 때만 공유값을 복사해, 다른 도구에서 바꾼 값이 보이지 않고 '반영'이 옛 값으로 덮어썼음
+   */
+  const [leaseDraft, setLeaseDraft] = useState<number | undefined>(undefined);
+  const leaseDeposit = leaseDraft ?? sharedLease;
   const { copied, copy } = useCopyFeedback();
+
+  // 공유값이 바뀌면(다른 도구에서 입력·새 상담) 이 도구의 미반영 입력을 버리고 최신 공유값을 보여 준다
+  useEffect(() => {
+    setLeaseDraft(undefined);
+  }, [sharedLease]);
 
   const wageExempt = wageExemptAmount(wage);
   const lease = HOUSING_EXEMPT_DEPOSIT_LIMITS[shared.region];
@@ -39,6 +51,7 @@ export default function SeizureLimitsTool() {
 
   const handleApplyLease = () => {
     setDockLiquidation({ leaseDeposit });
+    setLeaseDraft(undefined); // 반영 후에는 공유값을 그대로 표시
     toast.success(`임차보증금 ${formatWonKorean(leaseDeposit)}을 청산가치 점검기에 반영했습니다.`);
   };
 
@@ -164,7 +177,7 @@ ${housingLines}
               </div>
               <div>
                 <label htmlFor="seizure-lease" className="text-[10px] text-slate-600 font-semibold block mb-0.5">임차보증금</label>
-                <MoneyInput id="seizure-lease" value={leaseDeposit} onChange={setLeaseDeposit} placeholder="예: 5000만" />
+                <MoneyInput id="seizure-lease" value={leaseDeposit} onChange={setLeaseDraft} placeholder="예: 5000만" />
               </div>
             </div>
             {leaseDeposit > 0 && (

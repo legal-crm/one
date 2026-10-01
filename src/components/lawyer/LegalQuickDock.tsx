@@ -39,7 +39,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
   const {
     position,
     isDragging,
-    hasMoved,
+    wasDragged,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -50,6 +50,11 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [activeToolId, setActiveToolId] = useState<QuickToolId | null>(null);
+  /**
+   * 메뉴에서 도구를 고를 때마다 1씩 증가 → 접혀 있던 도구 창을 다시 펼친다.
+   * Esc가 창을 닫지 않고 접게 바뀌어, 접힌 창에서 같은 도구를 다시 골라도 펼쳐져야 한다.
+   */
+  const [windowOpenSignal, setWindowOpenSignal] = useState(0);
   const [enabledToolIds, setEnabledToolIds] = useState<QuickToolId[]>(DEFAULT_ENABLED_TOOL_IDS);
   const [visibilityMode, setVisibilityMode] = useState<DockVisibilityMode>('normal');
   const [query, setQuery] = useState('');
@@ -213,19 +218,25 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
       return;
     }
 
-    // 작업형 툴은 Non-modal 플로팅 창으로 열기
+    // 작업형 툴은 Non-modal 플로팅 창으로 열기 (접혀 있으면 펼침)
     setActiveToolId(id);
+    setWindowOpenSignal(n => n + 1);
     setIsMenuOpen(false);
   };
 
   // 도크 버튼 클릭 (드래그가 아닐 때만 토글)
-  const handleButtonClick = () => {
-    if (hasMoved) return;
+  // 키보드(Enter/Space)로 생긴 click은 detail이 0 → 직전 드래그 여부와 무관하게 연다.
+  // 마우스·터치 click은 클릭 시점의 드래그 여부를 훅의 ref에서 직접 읽는다.
+  const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (e.detail !== 0 && wasDragged()) return;
     setIsMenuOpen(prev => !prev);
   };
 
   // 현재 활성화된 도구 메타 목록
   const activeTools = ALL_QUICK_TOOLS.filter(t => enabledToolIds.includes(t.id));
+  // 독 배지에 쓰는 도구 수 — 알림톡 같은 바로가기 동작(isActionOnly)은 도구가 아니므로 뺀다
+  // (이전: enabledToolIds.length를 그대로 써서 바로가기까지 세었음)
+  const enabledToolCount = activeTools.filter(t => !t.isActionOnly).length;
   const trimmedQuery = query.trim();
   // 검색 시 꺼진 도구까지 찾고, 켜진 도구를 먼저 보여준다 (정렬은 안정 정렬 → 분류 순서 유지)
   const searchResults: QuickToolMeta[] = trimmedQuery
@@ -323,12 +334,14 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
 
   return (
     <>
-      {/* ── 1. 완전 숨김(hidden) 상태일 때: 우측 하단 미니 복원 트리거 ── */}
+      {/* ── 1. 완전 숨김(hidden) 상태일 때: 우측 하단 미니 복원 트리거 ──
+          z-40: 어드민 모달(z-50) 아래. 모바일(lg 미만)은 하단 탭바(--mobile-gnb-height) 위로 올린다
+          (이전: bottom-4라 모바일 하단 탭의 '더보기' 버튼을 덮어 누르기 어려웠음) */}
       {visibilityMode === 'hidden' && (
         <button
           type="button"
           onClick={() => handleSetVisibility('normal')}
-          className="fixed bottom-4 right-4 z-40 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
+          className="fixed bottom-[calc(0.75rem+var(--mobile-gnb-height))] lg:bottom-4 right-4 z-40 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
           title="실무 퀵툴 다시 켜기"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" aria-hidden="true" />
@@ -344,7 +357,8 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             top: `${position ? Math.min(position.y, window.innerHeight - 60) : window.innerHeight - 80}px`,
             [isDockOnLeft ? 'left' : 'right']: 0,
           }}
-          className="z-50 select-none animate-in fade-in slide-in-from-right-2 duration-200"
+          // z-40: 어드민 인라인 모달(z-50)이 항상 위에 오도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
+          className="z-40 select-none animate-in fade-in slide-in-from-right-2 duration-200"
         >
           <button
             type="button"
@@ -362,7 +376,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             </div>
             <span className="text-xs font-extrabold tracking-tight">실무 퀵툴</span>
             <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-bold">
-              {enabledToolIds.length}
+              {enabledToolCount}
             </span>
           </button>
         </div>
@@ -378,7 +392,8 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             top: `${position.y}px`,
             touchAction: 'none',
           }}
-          className="z-50 select-none"
+          // z-40: 독 버튼·메뉴가 어드민 인라인 모달(z-50) 아래로 가도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
+          className="z-40 select-none"
         >
           {/* ── 퀵툴 메뉴 팝오버 ── */}
           {isMenuOpen && (
@@ -545,7 +560,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onClick={handleButtonClick}
-            aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolIds.length}개)`}
+            aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolCount}개)`}
             aria-expanded={isMenuOpen}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold shadow-2xl transition-all press-scale cursor-grab active:cursor-grabbing ${
               isDragging
@@ -565,7 +580,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             </div>
             <span className="text-xs tracking-tight font-black hidden sm:inline">실무 퀵툴</span>
             <span className="text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-extrabold text-white">
-              {enabledToolIds.length}
+              {enabledToolCount}
             </span>
           </button>
         </div>
@@ -578,6 +593,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
         onSelectTool={setActiveToolId}
         onClose={() => setActiveToolId(null)}
         dockPosition={position}
+        openSignal={windowOpenSignal}
       />
 
       {/* ── 퀵툴 기능 추가 / 삭제 커스텀 관리 모달 ── */}

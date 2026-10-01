@@ -2,7 +2,7 @@
 // 사용법:
 //   node scripts/kakao-ads/render.mjs            → 파일럿 10종 (컨셉별 1개)
 //   node scripts/kakao-ads/render.mjs --all      → 100종 전체
-//   node scripts/kakao-ads/render.mjs --only=1,12 [--ratios=2x1,1x1] [--no-biz] [--fit-only]
+//   node scripts/kakao-ads/render.mjs --only=1,12 [--ratios=2x1,1x1] [--no-biz] [--fit-only] [--out=검수폴더]
 //   광고책임변호사 성명 표시: 환경변수 KAKAO_AD_LAWYER="홍길동" 또는 --lawyer=홍길동
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,12 +15,12 @@ import { RATIOS, BIZ, buildCss, renderAd, renderBiz, renderBizObject, plain } fr
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
-const OUT = path.join(ROOT, 'assets', 'kakao-moment-ads');
-const SRC = path.join(OUT, '_src');
-const STAGE = path.join(OUT, '_stage');
-
 const args = process.argv.slice(2);
 const arg = (k) => (args.find((a) => a.startsWith(`--${k}=`)) || '').split('=').slice(1).join('=');
+// --out=DIR: 검수용으로 다른 폴더에 출력 (글꼴·아이콘·로고는 항상 기본 폴더의 _src 사용)
+const OUT = arg('out') ? path.resolve(arg('out')) : path.join(ROOT, 'assets', 'kakao-moment-ads');
+const SRC = path.join(ROOT, 'assets', 'kakao-moment-ads', '_src');
+const STAGE = path.join(OUT, '_stage');
 const has = (k) => args.includes(`--${k}`);
 const LAWYER = arg('lawyer') || process.env.KAKAO_AD_LAWYER || '';
 const ONLY = arg('only').split(',').filter(Boolean).map(Number);
@@ -63,7 +63,7 @@ async function fitInPage(html, R, ratio) {
   let k = 1;
   const apply = () => { ad.style.setProperty('--k', String(k)); setStage(); };
   const visible = (el) => el.offsetParent !== null && el.getBoundingClientRect().width > 0;
-  // 헤드라인이 의도한 줄바꿈보다 더 쪼개지면(고아 단어) 조금(최대 16%)까지 줄여서 맞춘다
+  // 헤드라인이 의도한 줄바꿈보다 더 쪼개지면(고아 단어) 조금(최대 22%)까지 줄여서 맞춘다
   const hLines = (el) => {
     const range = document.createRange();
     range.selectNodeContents(el);
@@ -72,7 +72,23 @@ async function fitInPage(html, R, ratio) {
     return tops.length;
   };
   const extraWrap = () => { const h = ad.querySelector('.box .h'); return !!h && visible(h) && hLines(h) > h.querySelectorAll('br').length + 1; };
-  const fitLoop = () => { k = 1; apply(); while (k > 0.56 && (over() || (k > 0.84 && extraWrap()))) { k = Math.round((k - 0.02) * 100) / 100; apply(); } };
+  const dec = (v) => Math.round((v - 0.02) * 100) / 100;
+  // 큰 숫자(통계·변제금)는 먼저 자기 폭에 맞춰 따로 줄인다 → 헤드라인 등 다른 글자 크기는 유지
+  const nums = [...ad.querySelectorAll('.sval,.nv,.na')];
+  let kn = 1;
+  const numWide = () => nums.some((el) => el.scrollWidth > el.clientWidth + 1) || box.scrollWidth > box.clientWidth + 1;
+  if (nums.length) { apply(); while (kn > 0.5 && numWide()) { kn = dec(kn); ad.style.setProperty('--kn', String(kn)); setStage(); } }
+  // 넘치지 않을 때까지 줄이고, 헤드라인이 의도보다 더 쪼개지면 0.78배까지 더 줄여 본다. 그래도 안 되면 되돌린다(자연 줄바꿈)
+  let kOver = 1; // 넘침(높이·폭) 때문에 줄어든 배율 (고아줄 맞춤 축소 제외)
+  const fitLoop = () => {
+    k = 1; apply();
+    while (k > 0.56 && over()) { k = dec(k); apply(); }
+    kOver = k;
+    if (!extraWrap()) return;
+    const base = k;
+    while (k > 0.78 && extraWrap()) { k = dec(k); apply(); }
+    if (extraWrap()) { k = base; apply(); }
+  };
   const countLines = () => {
     const rows = [];
     for (const el of texts()) {
@@ -97,11 +113,21 @@ async function fitInPage(html, R, ratio) {
     for (const sel of ['.eb', '.sub']) {
       if (countLines() <= R.lines) break;
       const el = ad.querySelector(`.box ${sel}`);
-      if (el && visible(el)) { el.style.display = 'none'; dropped.push(sel.slice(1)); fitLoop(); }
+      if (el && visible(el)) {
+        el.style.display = 'none'; dropped.push(sel.slice(1));
+        // 서브를 설명하던 부가 안내(noteOpt)는 서브와 함께 뺀다
+        const on = sel === '.sub' && ad.querySelector('.box .note.opt');
+        if (on && visible(on)) { on.style.display = 'none'; dropped.push('note'); }
+        fitLoop();
+      }
     }
-    // 부가 안내(noteOpt, 법적 고지 아님)는 글자가 0.8배 밑으로 줄 때만 빼고 다시 맞춘다
-    const opt = ad.querySelector('.box .note.opt');
-    if (k < 0.8 && opt && visible(opt)) { opt.style.display = 'none'; dropped.push('note'); fitLoop(); }
+  }
+  // 모든 비율: 넘침 때문에 글자가 0.8배 밑으로 줄면 장식 요소를 순서대로 빼고 다시 맞춘다
+  // 부가 안내(noteOpt, 법적 고지 아님) → 아이브로우 → 큰 타이포형 상단 아이콘(1:1·4:5). 법적 고지·변호사 성명은 빼지 않는다
+  for (const [sel, tag] of [['.box .note.opt', 'note'], ['.box .eb', 'eb'], ['.r-1x1.l-type .box > .vis, .r-4x5.l-type .box > .vis', 'icon']]) {
+    if (kOver >= 0.8) break;
+    const el = ad.querySelector(sel);
+    if (el && visible(el)) { el.style.display = 'none'; dropped.push(tag); fitLoop(); }
   }
   const overflow = over();
   // 진행 단계 연결선
@@ -117,7 +143,7 @@ async function fitInPage(html, R, ratio) {
   // 측정: 최소/최대 글자, 세이프존 이탈, 권장영역(9:16), 우하단(4:5), 텍스트 줄 수(고지 제외)
   const A = ad.getBoundingClientRect();
   const W = ad.clientWidth; const H = ad.clientHeight; const S = R.safe;
-  const res = { k, overflow, dropped, minText: 999, minNote: 999, maxText: 0, outside: [], outRec: [], cornerHit: [], lines: 0, colors: [] };
+  const res = { k, kn, overflow, dropped, minText: 999, minNote: 999, maxText: 0, outside: [], outRec: [], cornerHit: [], lines: 0, colors: [] };
   const styleSet = new Set();
   for (const el of texts()) {
     if (!visible(el)) continue;
@@ -134,6 +160,7 @@ async function fitInPage(html, R, ratio) {
     for (const em of el.querySelectorAll('em')) { const ec = getComputedStyle(em); styleSet.add(`${ec.fontWeight}|${ec.color}`); }
   }
   res.lines = countLines();
+  res.wrap = extraWrap(); // 헤드라인 자연 줄바꿈(의도한 줄보다 많음) 여부
   res.styles = styleSet.size;
   res.colors = [...styleSet];
   return res;
@@ -161,8 +188,8 @@ function judge(ratio, m) {
   if (R.lines && m.lines > R.lines) warns.push(`텍스트 ${m.lines}줄 (2:1 권장 ${R.lines}줄)`);
   if (m.outRec?.length) warns.push(`9:16 권장영역 밖: ${m.outRec.join(',')}`);
   if (m.cornerHit?.length) warns.push(`4:5 우하단 UI 겹침 가능: ${m.cornerHit.join(',')}`);
-  if (m.k < 0.8) warns.push(`글자 축소 ${m.k}`);
-  if (m.dropped?.length) warns.push(`2:1 맞춤으로 생략: ${m.dropped.join(',')}`);
+  if (m.k < 0.78) warns.push(`글자 축소 ${m.k}`);
+  if (m.dropped?.length) warns.push(`공간 맞춤으로 생략: ${m.dropped.join(',')}`);
   return { errs, warns };
 }
 
@@ -225,7 +252,7 @@ async function main() {
         const name = `${pad3(c.id)}_${RATIOS[ratio].label}_${logo ? 'logo' : 'nologo'}`;
         const m = await page.evaluate(fitInPage, renderAd(c, ratio, { logo, lawyer: LAWYER, decoIcon: CONCEPTS[c.code[0]].bizIcon }), RATIOS[ratio], ratio);
         const j = judge(ratio, m);
-        qa.push({ id: c.id, code: c.code, file: name, ratio, logo, ...j, k: m.k, lines: m.lines, minText: Math.round(m.minText), styles: m.styles });
+        qa.push({ id: c.id, code: c.code, file: name, ratio, logo, ...j, k: m.k, kn: m.kn, wrap: m.wrap, lines: m.lines, minText: Math.round(m.minText), styles: m.styles });
         if (!FIT_ONLY) {
           const el = await page.$('#root > .ad');
           const png = path.join(STAGE, `${name}.png`);
@@ -299,6 +326,8 @@ async function main() {
   console.log(`\n완료: 소재 ${TARGETS.length}종, 이미지 ${n}장(+비즈보드) · 오류 ${bad.length}건 · 경고 ${warn.length}건`);
   for (const q of bad) console.log(`  [오류] ${q.file}: ${q.errs.join(' / ')}`);
   for (const q of warn) console.log(`  [경고] ${q.file}: ${q.warns.join(' / ')}`);
+  const wraps = qa.filter((q) => q.wrap && q.logo);
+  if (wraps.length) console.log(`  [참고] 헤드라인 자연 줄바꿈(로고 버전 기준): ${wraps.map((q) => q.file.replace(/_(\d+x\d+)_\d+x\d+_logo$/, ':$1')).join(', ')}`);
   if (bad.length) process.exitCode = 1;
 }
 

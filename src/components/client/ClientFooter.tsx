@@ -13,6 +13,63 @@ interface ClientFooterProps {
   reserveBottomNav?: boolean;
 }
 
+interface SocialChannel {
+  name: string;
+  href: string;
+  label: string;
+  hoverColor: string;
+  icon: (props: { className?: string }) => React.JSX.Element;
+}
+
+const SOCIAL_CHANNELS: SocialChannel[] = [
+  {
+    name: '유튜브',
+    href: 'https://www.youtube.com/channel/UCJr9fGI1Tr8eoQd3U0ASaHg',
+    label: 'my김변 공식 유튜브 채널 (새 창에서 열림)',
+    hoverColor: 'hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/10',
+    icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    ),
+  },
+  {
+    name: '인스타그램',
+    href: 'https://www.instagram.com/my_kim999/',
+    label: 'my김변 공식 인스타그램 (새 창에서 열림)',
+    hoverColor: 'hover:text-pink-400 hover:border-pink-500/40 hover:bg-pink-500/10',
+    icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+      </svg>
+    ),
+  },
+  {
+    name: '틱톡',
+    href: 'https://www.tiktok.com/@mykim9992',
+    label: 'my김변 공식 틱톡 채널 (새 창에서 열림)',
+    hoverColor: 'hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-cyan-500/10',
+    icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.49 6.3 6.3 0 0 0 1.96-4.57V8.5a8.28 8.28 0 0 0 4.81 1.54V6.69z"/>
+      </svg>
+    ),
+  },
+  {
+    name: '스레드',
+    href: 'https://www.threads.net/@my_kim999',
+    label: 'my김변 공식 스레드 (새 창에서 열림)',
+    hoverColor: 'hover:text-slate-100 hover:border-slate-400/40 hover:bg-white/10',
+    icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12.186 24C5.467 24 0 18.533 0 11.814 0 5.094 5.467 0 12.186 0c6.643 0 11.977 5.234 12.022 11.854 0 .092-.008.183-.008.275 0 6.643-5.234 11.871-12.014 11.871zm.008-2.182c5.441 0 9.774-4.25 9.825-9.673C21.966 6.804 17.584 2.182 12.194 2.182c-5.325 0-9.64 4.316-9.64 9.632 0 5.317 4.315 9.632 9.64 9.632v.372z"/>
+      </svg>
+    ),
+  },
+];
+
 const linkClass = 'inline-flex items-center min-h-11 text-sm font-medium text-slate-300 hover:text-white transition-colors whitespace-nowrap';
 
 export default function ClientFooter({ platformConfig, onNavigate, onStartCheck, reserveBottomNav = true }: ClientFooterProps) {
@@ -41,12 +98,38 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
     <footer className={cn('w-full bg-slate-900 text-slate-400', reserveBottomNav && MOBILE_GNB_SPACER)}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
         <div className="grid gap-8 md:grid-cols-[1.2fr_3fr]">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <BrandLogo tagline={BRAND_TAGLINE} taglineClassName="block" onDark />
             <p className="text-sm text-slate-400 leading-relaxed flex items-start gap-1.5 max-w-xs">
               <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-slate-300" aria-hidden="true" />
               <span>상담정보는 가명으로 처리되며, 변호사가 사건 내용을 파악하고 답변하기 위한 목적으로만 사용됩니다.</span>
             </p>
+
+            {/* 공식 SNS 채널 바로가기 */}
+            <div className="pt-1">
+              <span className="block text-xs font-semibold text-slate-300 mb-2.5">공식 채널</span>
+              <div className="flex items-center gap-2">
+                {SOCIAL_CHANNELS.map((ch) => {
+                  const Icon = ch.icon;
+                  return (
+                    <a
+                      key={ch.name}
+                      href={ch.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={ch.label}
+                      title={ch.name}
+                      className={cn(
+                        'min-w-11 min-h-11 w-11 h-11 rounded-xl border border-white/10 bg-slate-800/80 text-slate-300 flex items-center justify-center transition-all press-scale shadow-xs',
+                        ch.hoverColor
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* 모바일: 2열(서비스 | 알아보기·고객지원), sm 이상: 3열 */}

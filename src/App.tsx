@@ -372,8 +372,10 @@ export default function App() {
     existingList.forEach(m => map.set(m.id, m));
     incomingList.forEach(m => {
       const prev = map.get(m.id);
-      // 서버 행에는 대상 변호사(targetLawyerId) 칸이 없다. 이 기기에서 만든 메시지의 대상 정보를 유지해야
-      // 비교 상담 중 보낸 메시지가 5초 동기화 뒤 사라지거나 다른 변호사 탭에 섞이지 않는다.
+      // 대상 변호사(targetLawyerId): 서버 값이 있으면 서버 값, 없으면 이 기기 값을 유지한다.
+      // 서버 대상 칸(target_lawyer_id, 마이그레이션 030)이 없거나 칸이 생기기 전에 저장된 행은 대상 없이 오므로,
+      // 이 기기에서 만든 메시지의 대상 정보를 지우면 비교 상담 중 보낸 메시지가 5초 동기화 뒤 사라지거나
+      // 다른 변호사 탭에 섞인다. 칸이 생긴 뒤 저장된 행은 서버 값이 그대로 쓰인다.
       // 서버에서 온 행이 들어오면 전송 상태(deliveryStatus)는 자연히 지워진다(= 전송 완료).
       map.set(m.id, prev?.targetLawyerId && !m.targetLawyerId ? { ...m, targetLawyerId: prev.targetLawyerId } : m);
     });
@@ -735,7 +737,7 @@ export default function App() {
   }, []);
 
   // Method to add customized chat messages
-  // @returns 서버 저장까지 끝났으면 true. 의뢰인 대화 메시지는 전송 상태(보내는 중/실패)를 말풍선에 표시한다.
+  // @returns 서버 저장까지 끝났으면 true. 의뢰인·변호사 대화 메시지는 전송 상태(보내는 중/실패)를 말풍선에 표시한다.
   const handleAddMessage = (
     reqId: string, 
     text: string, 
@@ -744,7 +746,8 @@ export default function App() {
     name: string,
     targetLawyerId?: string
   ): Promise<boolean> => {
-    const tracksDelivery = sender === 'client' && senderId !== 'system';
+    // 시스템 안내(senderId 'system')는 표시하지 않는다. 이전: 의뢰인 메시지만 추적해 변호사 메시지는 실패해도 알 수 없었다.
+    const tracksDelivery = senderId !== 'system' && (sender === 'client' || sender === 'lawyer');
     const newMessage: ConsultMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       consultRequestId: reqId,
@@ -764,21 +767,18 @@ export default function App() {
         return ok;
       });
 
-    // Update the corresponding request status to active 'counseling' & preserve acceptedLawyerIds
-    const isActualChat = (sender === 'client' && senderId !== 'system') || (sender === 'lawyer' && senderId !== 'system');
-    setRequests(prev => prev.map(req => {
-      if (req.id === reqId) {
-        const accepted = req.acceptedLawyerIds || [];
-        const isLawyerSender = sender === 'lawyer' && senderId && senderId !== 'system';
-        const updatedAccepted = isLawyerSender && !accepted.includes(senderId) ? [...accepted, senderId] : accepted;
-        return {
-          ...req,
-          acceptedLawyerIds: updatedAccepted,
-          status: (isActualChat && (req.status === 'requested' || req.status === 'responding')) ? 'counseling' : req.status
-        };
-      }
-      return req;
-    }));
+    // 의뢰인 대화 메시지만 요청 상태를 바꾼다 (requested/responding → counseling, 기존 동작 유지).
+    // 이전: 변호사가 보낸 대화 메시지가 acceptedLawyerIds에 그 변호사를 넣고 상태를 counseling으로 바꿔,
+    // 의뢰인이 제안서의 '상담 시작'을 누르기 전(consultFlow getConsultRoomStage)인데도 대화가 열린 것처럼 처리됐다.
+    // 대화를 여는 것은 의뢰인 화면의 '상담 시작'(ChatView startConsultWithProposal)뿐이다.
+    const isClientChat = sender === 'client' && senderId !== 'system';
+    if (isClientChat) {
+      setRequests(prev => prev.map(req => (
+        req.id === reqId && (req.status === 'requested' || req.status === 'responding')
+          ? { ...req, status: 'counseling' as const }
+          : req
+      )));
+    }
     return delivery;
   };
 
@@ -1027,6 +1027,7 @@ export default function App() {
                 lawyers={lawyers}
                 setLawyers={setLawyers}
                 onAddMessage={handleAddMessage}
+                onRetryMessage={handleRetryMessage}
                 cases={cases}
                 setCases={setCases}
                 members={members}

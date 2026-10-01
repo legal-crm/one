@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowDown, CheckCircle2, FileText, Info, MessageSquareDashed, PhoneCall } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowDown, CheckCircle2, FileText, Info, MessageSquareDashed, PhoneCall } from 'lucide-react';
 import type { ConsultMessage, ConsultRequest } from '../../../types';
 import { buildChatTimeline, type ChatTimelineItem } from './chatSelectors';
 import { formatChatTime, formatDayDivider, formatFullDateTime, localDayKey } from './chatFormat';
@@ -91,29 +91,63 @@ function SystemEvent({ item }: { item: Extract<ChatTimelineItem, { kind: 'system
   );
 }
 
-function MessageGroup({ group, clientName }: { group: Extract<ChatTimelineItem, { kind: 'group' }>; clientName: string }) {
+function MessageGroup({
+  group,
+  clientName,
+  onRetry,
+}: {
+  group: Extract<ChatTimelineItem, { kind: 'group' }>;
+  clientName: string;
+  onRetry?: (messageId: string) => void;
+}) {
   const { mine, messages } = group;
   return (
     <div className={`flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}>
       {!mine && <span className="px-1 text-[12px] font-bold text-slate-700">{clientName}</span>}
       {messages.map((m, i) => {
         const isLast = i === messages.length - 1;
-        const time = isLast ? (
+        // 이 기기에서 보낸 메시지의 전송 상태 (App.handleAddMessage가 기록 — 없으면 전송 완료)
+        // (이전: 변호사 메시지는 전송 상태를 추적하지 않아 저장에 실패해도 보낸 것처럼 보였다)
+        const delivery = mine ? m.deliveryStatus : undefined;
+        const time = isLast && !delivery ? (
           <span className="shrink-0 pb-0.5 text-[12px] text-slate-500 tabular-nums">{formatChatTime(m.createdAt)}</span>
         ) : null;
         return (
-          <div key={m.id} className={`flex items-end gap-2 w-full ${mine ? 'justify-end' : 'justify-start'}`}>
-            {mine && time}
-            <div
-              title={formatFullDateTime(m.createdAt)}
-              className={`max-w-[min(75%,560px)] rounded-2xl border px-3.5 py-2.5 text-base text-slate-900 whitespace-pre-wrap [overflow-wrap:anywhere] ${
-                mine ? 'bg-brand-light border-brand/15' : 'bg-white border-slate-200'
-              }`}
-            >
-              <span className="sr-only">{mine ? '보낸 메시지' : `${clientName} 메시지`}, {formatChatTime(m.createdAt)}: </span>
-              <MessageBody text={m.message} />
+          <div key={m.id} className={`flex flex-col gap-1 w-full ${mine ? 'items-end' : 'items-start'}`}>
+            <div className={`flex items-end gap-2 w-full ${mine ? 'justify-end' : 'justify-start'}`}>
+              {mine && time}
+              <div
+                title={formatFullDateTime(m.createdAt)}
+                className={`max-w-[min(75%,560px)] rounded-2xl border px-3.5 py-2.5 text-base text-slate-900 whitespace-pre-wrap [overflow-wrap:anywhere] ${
+                  mine ? 'bg-brand-light border-brand/15' : 'bg-white border-slate-200'
+                } ${delivery === 'sending' ? 'opacity-70' : ''} ${delivery === 'failed' ? 'ring-2 ring-red-300' : ''}`}
+              >
+                <span className="sr-only">
+                  {mine ? '보낸 메시지' : `${clientName} 메시지`}, {formatChatTime(m.createdAt)}
+                  {delivery === 'sending' ? ', 보내는 중' : delivery === 'failed' ? ', 전송되지 않음' : ''}:{' '}
+                </span>
+                <MessageBody text={m.message} />
+              </div>
+              {!mine && time}
             </div>
-            {!mine && time}
+            {delivery === 'sending' && (
+              <span className="px-1 text-[12px] font-medium text-slate-500">보내는 중…</span>
+            )}
+            {delivery === 'failed' && (
+              <div className="flex items-center gap-1 px-1 text-[12px] font-semibold text-red-700">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>전송되지 않았습니다</span>
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={() => onRetry(m.id)}
+                    className="min-h-11 px-2.5 -my-2 rounded-lg font-bold text-brand hover:bg-brand-light whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                  >
+                    다시 보내기
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -191,10 +225,14 @@ interface ChatTimelineProps {
   now: Date;
   /** 값이 바뀌면 신청서 사연을 펼치고 그 위치로 이동 */
   revealIntakeSignal?: number;
+  /** 전송 실패한 내 메시지의 '다시 보내기' (넘기지 않으면 버튼을 그리지 않는다) */
+  onRetry?: (messageId: string) => void;
+  /** 의뢰인이 아직 대화를 열지 않았는지 (빈 대화 안내 문구용) */
+  chatLocked?: boolean;
 }
 
 /** 스레드마다 key로 새로 마운트한다 — 열면 맨 아래(최신 메시지)부터 보인다 */
-export default function ChatTimeline({ request, messages, lawyerId, clientName, now, revealIntakeSignal = 0 }: ChatTimelineProps) {
+export default function ChatTimeline({ request, messages, lawyerId, clientName, now, revealIntakeSignal = 0, onRetry, chatLocked = false }: ChatTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const intakeRef = useRef<HTMLElement>(null);
   const nearBottomRef = useRef(true);
@@ -264,14 +302,18 @@ export default function ChatTimeline({ request, messages, lawyerId, clientName, 
           {items.map(item => {
             if (item.kind === 'day') return <DayDivider key={item.key} at={item.at} now={now} />;
             if (item.kind === 'system') return <SystemEvent key={item.key} item={item} />;
-            return <MessageGroup key={item.key} group={item} clientName={clientName} />;
+            return <MessageGroup key={item.key} group={item} clientName={clientName} onRetry={onRetry} />;
           })}
 
           {messages.length === 0 && (
             <div className="flex flex-col items-center text-center gap-2 py-6">
               <MessageSquareDashed className="w-8 h-8 text-slate-300" aria-hidden="true" />
               <p className="text-sm font-semibold text-slate-700">아직 주고받은 메시지가 없습니다</p>
-              <p className="text-xs text-slate-600">아래 입력창이나 ‘자주 쓰는 답변’으로 첫 메시지를 보내 상담을 시작하세요.</p>
+              <p className="text-xs text-slate-600">
+                {chatLocked
+                  ? '의뢰인이 제안서의 ‘상담 시작’을 누르면 대화가 열립니다.'
+                  : '아래 입력창이나 ‘자주 쓰는 답변’으로 첫 메시지를 보내 상담을 시작하세요.'}
+              </p>
             </div>
           )}
         </div>

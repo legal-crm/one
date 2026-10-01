@@ -1,12 +1,78 @@
 /**
  * 상담 채팅 데이터 가공 (화면과 분리한 순수 함수)
  *
- * `filterAndSanitizeMessagesForLawyer`는 LawyerRole.tsx 채팅 탭에 있던 함수를 동작 변경 없이 옮긴 것이다.
+ * `filterAndSanitizeMessagesForLawyer`는 LawyerRole.tsx 채팅 탭에 있던 함수를 옮긴 것이다.
  * 다른 변호사의 메시지·이름을 가리는 로직이므로 수정할 때는 비교 상담 데이터로 전후 결과를 확인한다.
+ * (문구 규칙 확인 스크립트: .tmp-admin-work/verify-chat-filter.ts)
  */
 import type { ConsultMessage, ConsultRequest, User } from '../../../types';
 import { isClosedConsultStatus } from '../../../constants/consultStatus';
+// consultFlow는 type-only import만 있어 변호사 화면 번들에 의뢰인 화면 코드가 딸려 오지 않는다
+import { LAWYER_REQUEST_RECEIVED_NOTICE, OPEN_REQUEST_CLIENT_NOTICE } from '../../client/consultFlow';
+import { getTargetLawyerColumnState } from '../../../services/consultMessageSchema';
+import { hasProposalFrom, isChatOpenWithLawyer } from '../requestScope';
 import { localDayKey } from './chatFormat';
+
+// ── 대상 정보(targetLawyerId) 없이 온 시스템 안내의 문구 판정 ──
+// 서버 consult_messages에 대상 변호사 칸이 없던 동안 저장된 메시지는 다른 기기에 대상 정보 없이 온다.
+// 그때는 저장 문구로 받는 사람을 추정하므로, 의뢰인 화면(consultFlow·ChatView)의 저장 문구를 바꾸면 여기도 확인한다.
+
+/**
+ * buildClientRequestNotice(consultFlow) 문장 꼬리 — 요청한 변호사 이름·인원과 관계없이 이 부분은 같다.
+ * (예: 'A, B 변호사님에게 상담 요청을 보냈습니다. 변호사가 채무 현황을 검토한 뒤 …')
+ */
+export const CLIENT_REQUEST_NOTICE_TAIL = '에게 상담 요청을 보냈습니다. 변호사가 채무 현황을 검토한 뒤';
+
+/** 문장의 첫 문장 ('. ' 앞까지). 뒤 문장이 나중에 바뀌어도 과거 저장분을 같은 안내로 알아보기 위해 쓴다 */
+function leadingSentence(text: string): string {
+  const end = text.indexOf('. ');
+  return end > 0 ? text.slice(0, end + 1) : text;
+}
+
+const OPEN_REQUEST_NOTICE_HEAD = leadingSentence(OPEN_REQUEST_CLIENT_NOTICE);
+const LAWYER_REQUEST_NOTICE_HEAD = leadingSentence(LAWYER_REQUEST_RECEIVED_NOTICE);
+
+/** 앞머리 '[System]' 표시를 뗀 본문 */
+function stripSystemPrefix(text: string): string {
+  return text.replace(/^\[System\]\s*/i, '').trim();
+}
+
+/** 의뢰인 화면 전용 안내인지 (변호사 화면에는 대상 정보가 없어도 보이지 않아야 한다) */
+export function isClientOnlyNoticeText(raw: string | undefined): boolean {
+  const text = stripSystemPrefix(String(raw || ''));
+  if (!text) return false;
+  if (OPEN_REQUEST_NOTICE_HEAD && text.startsWith(OPEN_REQUEST_NOTICE_HEAD)) return true;
+  if (text.includes(CLIENT_REQUEST_NOTICE_TAIL)) return true;
+  // 개편(b7ed0c6) 전 의뢰인 안내 문구
+  return text.includes('상담 요청이 선택하신') || text.includes('변호사가 고객님의 채무 현황을 검토한 뒤');
+}
+
+/** 변호사에게 온 '상담 요청 접수' 안내인지 (LAWYER_REQUEST_RECEIVED_NOTICE로 시작) */
+export function isLawyerRequestReceivedText(raw: string | undefined): boolean {
+  const text = stripSystemPrefix(String(raw || ''));
+  return Boolean(LAWYER_REQUEST_NOTICE_HEAD) && text.startsWith(LAWYER_REQUEST_NOTICE_HEAD);
+}
+
+/**
+ * 대상 정보 없는 전화상담 요청을 받을 변호사: 상담 변호사(selectedLawyerId),
+ * 없으면 대화 중인 변호사(acceptedLawyerIds)가 정확히 한 명일 때 그 변호사. 판단할 수 없으면 undefined
+ */
+function soleCounselingLawyerId(request?: ConsultRequest | null): string | undefined {
+  if (!request) return undefined;
+  if (request.selectedLawyerId) return request.selectedLawyerId;
+  const accepted = Array.from(new Set((request.acceptedLawyerIds || []).filter(Boolean)));
+  return accepted.length === 1 ? accepted[0] : undefined;
+}
+
+export interface LawyerMessageFilterOptions {
+  /**
+   * 대상 정보(targetLawyerId) 없는 의뢰인 대화 메시지를, 이 요청의 acceptedLawyerIds가 2명 이상이면 숨긴다
+   * (누구에게 한 말인지 알 수 없어서 — 의뢰인 화면 ChatView와 같은 규칙).
+   * 기본값: 서버에 target_lawyer_id 칸이 있다고 확인됐을 때만(consultMessageSchema 'present') 켠다.
+   * 칸이 없으면 모든 메시지가 대상 없이 오므로, 켜면 비교 상담 대화가 통째로 사라진다.
+   */
+  hideUntargetedClientMessagesWhenMultiple?: boolean;
+}
 
 /** 시스템(플랫폼) 메시지 판정 — 기존 채팅 탭과 같은 기준 */
 export function isSystemChatMessage(m: ConsultMessage): boolean {
@@ -24,12 +90,21 @@ export function isSystemChatMessage(m: ConsultMessage): boolean {
 export const filterAndSanitizeMessagesForLawyer = (
   rawMessages: ConsultMessage[],
   lawyer: User,
-  request?: ConsultRequest | null
+  request?: ConsultRequest | null,
+  options?: LawyerMessageFilterOptions
 ): ConsultMessage[] => {
   if (!rawMessages || rawMessages.length === 0) return [];
 
   const result: ConsultMessage[] = [];
   const seenSystemTexts = new Set<string>();
+  const hideUntargetedClient = options?.hideUntargetedClientMessagesWhenMultiple ?? (getTargetLawyerColumnState() === 'present');
+  const acceptedCount = new Set((request?.acceptedLawyerIds || []).filter(Boolean)).size;
+  /** 대상 정보 없는 안내를 문장 기준으로 한 번만 보인다 (요청받은 변호사 수만큼 같은 안내가 복사돼 저장된다) */
+  const pushOnce = (m: ConsultMessage, key: string) => {
+    if (seenSystemTexts.has(key)) return;
+    seenSystemTexts.add(key);
+    result.push(m);
+  };
 
   for (const m of rawMessages) {
     const isSystem = 
@@ -55,6 +130,11 @@ export const filterAndSanitizeMessagesForLawyer = (
       if (m.targetLawyerId && m.targetLawyerId !== lawyer.id) {
         continue;
       }
+      // 대상 정보 없는 의뢰인 메시지: 대화 중인 변호사가 2명 이상이면 누구에게 한 말인지 알 수 없어 숨긴다
+      // (의뢰인 화면 ChatView와 같은 규칙). 서버에 대상 칸이 있다고 확인된 경우에만 켠다(옵션 설명 참고).
+      if (!m.targetLawyerId && hideUntargetedClient && acceptedCount >= 2) {
+        continue;
+      }
       result.push(m);
       continue;
     }
@@ -74,10 +154,54 @@ export const filterAndSanitizeMessagesForLawyer = (
       }
 
       // 3-2. targetLawyerId가 없는 레거시/공통 브로드캐스트 시스템 메시지
+      // 서버에 대상 칸이 없던 동안 저장된 안내는 다른 기기(변호사)에 대상 정보 없이 온다 → 문구와 요청 정보로 받는 사람을 추정
       const text = m.message || (m as any).content || '';
+      const plain = stripSystemPrefix(text);
 
-      // 의뢰인용 안내 문구 차단
-      if (text.includes('상담 요청이 선택하신') || text.includes('변호사가 고객님의 채무 현황을 검토한 뒤')) {
+      // (1) 의뢰인 화면 전용 안내 차단 — 맨 앞에서 거른다.
+      //     이전: 고객 페이지 개편(b7ed0c6)으로 문구가 바뀌어 기존 규칙에 걸리지 않았고, 이름형 문장
+      //     ('A, B 변호사님에게 상담 요청을 보냈습니다…')은 아래 '변호사님' 규칙에서 이름이 든 변호사에게
+      //     함께 요청받은 다른 변호사 이름까지 원문 그대로 보였다.
+      if (isClientOnlyNoticeText(plain)) {
+        continue;
+      }
+
+      // (2) 전화상담 요청 — '상담을 요청했습니다' 규칙보다 먼저 본다.
+      //     이전: 그 규칙이 일반 '상담 요청 접수' 안내로 바꿔 '답변 필요'가 켜지지 않았고, 대화 중인 모든 변호사에게 보였다.
+      //     상담 변호사(selectedLawyerId)에게만, 없으면 대화 중인 변호사가 나 한 명일 때만 원문 그대로 보인다
+      //     (원문을 유지해야 classifySystemText가 attention → needsReply로 분류한다).
+      if (plain.includes('의뢰인이 전화상담을 요청')) {
+        if (!lawyer.id || soleCounselingLawyerId(request) !== lawyer.id) continue;
+        // 연달아 저장된 같은 요청(여러 번 누름)은 하나로 줄인다. 답변 뒤 다시 요청하면 새 요청으로 보여 '답변 필요'가 다시 켜진다.
+        const prev = result[result.length - 1];
+        if (prev && isSystemChatMessage(prev) && stripSystemPrefix(prev.message || '') === plain) continue;
+        result.push(m);
+        continue;
+      }
+
+      // (3) 전담 선임 안내 — 선임된 변호사에게만 (이전: '변호사님' 규칙에 걸리지 않아 대화 중인 모든 변호사에게 보였다)
+      if (plain.includes('의뢰인이 귀하를 전담 변호사로 선임')) {
+        if (!lawyer.id || request?.selectedLawyerId !== lawyer.id) continue;
+        pushOnce(m, plain);
+        continue;
+      }
+
+      // (4) 타 변호사 전담 선임 알림 — 선임되지 않은 변호사에게 한 번만 (나머지 변호사 수만큼 복사돼 저장된다)
+      if (plain.includes('다른 변호사를 전담으로 선임하였습니다')) {
+        if (request?.selectedLawyerId === lawyer.id) continue;
+        pushOnce(m, plain);
+        continue;
+      }
+
+      // (5) 상담 요청 접수 안내(LAWYER_REQUEST_RECEIVED_NOTICE) — 의뢰인이 나를 골라 요청한 경우에만 한 번
+      //     (이전: 공개 요청에 제안한 변호사 등 요청받지 않은 변호사에게도 보였다)
+      if (isLawyerRequestReceivedText(plain)) {
+        const requestedMe = Boolean(lawyer.id) && (
+          request?.selectedLawyerId === lawyer.id ||
+          (request?.selectedLawyerIds || []).includes(lawyer.id)
+        );
+        if (!requestedMe) continue;
+        pushOnce(m, LAWYER_REQUEST_NOTICE_HEAD);
         continue;
       }
 
@@ -169,15 +293,6 @@ export const filterAndSanitizeMessagesForLawyer = (
         continue;
       }
 
-      // 타 변호사 전담 선임 알림
-      if (text.includes('다른 변호사를 전담으로 선임하였습니다')) {
-        if (request?.selectedLawyerId === lawyer.id) {
-          continue;
-        }
-        result.push(m);
-        continue;
-      }
-
       // 기타 시스템 메시지 중 타 변호사 이름이 포함된 경우 차단
       if (text.includes('변호사님') || text.includes('변호사가')) {
         const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
@@ -214,6 +329,13 @@ export interface LawyerChatThread {
   needsReply: boolean;
   /** 답변 대기 시작 시각 (내 마지막 답변 이후 첫 의뢰인 메시지) */
   waitingSince?: string;
+  /**
+   * 이 변호사와 의뢰인의 대화가 열렸는지 (requestScope.isChatOpenWithLawyer).
+   * 제안서만 보냈고 의뢰인이 아직 '상담 시작'을 누르지 않았으면 false — 작성창을 잠근다.
+   */
+  chatOpen: boolean;
+  /** 이 변호사가 제안서를 보냈는지 (대화가 잠겼을 때 안내 문구를 고르는 데 쓴다) */
+  hasMyProposal: boolean;
 }
 
 function groupMessagesByRequest(messages: ConsultMessage[]): Map<string, ConsultMessage[]> {
@@ -267,6 +389,8 @@ export function summarizeThread(request: ConsultRequest, visible: ConsultMessage
     lastActivityAt: lastTime,
     needsReply,
     waitingSince,
+    chatOpen: isChatOpenWithLawyer(request, lawyerId),
+    hasMyProposal: hasProposalFrom(request, lawyerId),
   };
 }
 

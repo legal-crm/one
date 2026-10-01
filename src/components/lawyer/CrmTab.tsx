@@ -61,6 +61,8 @@ import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
 import { formatVaultDday } from '../../services/vault/certificateVaultService';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
+import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
+import { isNewRequestForLawyer, requestTypeLabel } from './requestScope';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
 import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
@@ -124,6 +126,7 @@ interface CrmTabProps {
   firmTenantId?: string;
 }
 
+type CrmDetailTab = NonNullable<CrmTabProps['initialDetailTab']>;
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
 type SortDir = 'asc' | 'desc';
 type ViewMode = 'list' | 'kanban' | 'leads';
@@ -169,6 +172,18 @@ function getCaseTypeBadge(r: ConsultRequest) {
   );
 }
 
+/**
+ * crmStatus만 바꾸는 저장에 13단계 동기화를 더한다 (13단계를 직접 지정한 저장은 그대로)
+ * 이전: 13단계는 스테퍼에서만 바뀌어, 상태 드롭다운·칸반·일괄 변경 뒤에도 의뢰인 마이페이지 단계가 예전 값으로 남음
+ */
+function withThirteenStageSync(current: CrmClientExtension, updates: Partial<CrmClientExtension>): Partial<CrmClientExtension> {
+  const nextStatus = updates.crmStatus;
+  if (!nextStatus || nextStatus === current.crmStatus || 'thirteenStage' in updates) return updates;
+  const isBk = current.caseType === 'bankruptcy' || current.caseType === 'individual_bankruptcy';
+  const nextStage = thirteenStageAfterStatusChange(current.thirteenStage, nextStatus, isBk);
+  return nextStage === current.thirteenStage ? updates : { ...updates, thirteenStage: nextStage };
+}
+
 export default function CrmTab({ 
   requests, 
   lawyers, 
@@ -188,6 +203,8 @@ export default function CrmTab({
   const dialog = useDialog();
   // ── 기본 State ──
   const [crmData, setCrmData] = useState<CrmDataStore>({});
+  /** 첫 CRM 데이터 불러오기가 끝났는지 (끝나기 전 자동 저장 금지) */
+  const [crmLoaded, setCrmLoaded] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [activeStaff, setActiveStaff] = useState<StaffMember | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(initialView || 'list');
@@ -249,7 +266,13 @@ export default function CrmTab({
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   // ── 5단계 실무 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
-  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>('pipeline');
+  // 부모가 고객과 서브탭을 지정해 열면 서브탭이 보이는 'subtabs' 모드로 시작 (이전: 항상 'pipeline'이라 지정 탭이 보이지 않음)
+  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>(() => (initialClientId && initialDetailTab ? 'subtabs' : 'pipeline'));
+  // 부모가 지정한 서브탭 — [selectedId] 효과가 고객을 고른 뒤 이 값을 적용하고 비운다
+  // (이전: 그 효과가 고객 선택 때마다 'info'로 덮어 '메모'·'전자계약' 링크도 종합 정보 탭으로 열림)
+  const pendingDetailTabRef = React.useRef<{ clientId: string; tab: CrmDetailTab } | null>(
+    initialClientId && initialDetailTab ? { clientId: initialClientId, tab: initialDetailTab } : null
+  );
 
   // ── 리걸플로 벤치마킹 실무 모달 상태 ──
   const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
@@ -279,13 +302,16 @@ export default function CrmTab({
   const [showMetaAccordion, setShowMetaAccordion] = useState(false);
   const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
 
-  // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
+  // 외부(채팅 '고객관리에서 열기'·메모 링크·계약 체결 뒤 이동 등)에서 지정한 고객 ID 및 탭 동기화
+  // 고객 없이 탭만 온 경우는 무시한다 (부모의 기본 탭 값 'info'로 모드가 바뀌지 않게)
   useEffect(() => {
-    if (initialClientId) {
-      setSelectedId(initialClientId);
-    }
+    if (!initialClientId) return;
+    setSelectedId(initialClientId);
+    setViewMode('list'); // 상세 화면은 리스트 보기에서만 열린다
     if (initialDetailTab) {
+      pendingDetailTabRef.current = { clientId: initialClientId, tab: initialDetailTab };
       setDetailTab(initialDetailTab);
+      setPipelineViewMode('subtabs');
     }
   }, [initialClientId, initialDetailTab]);
 
@@ -385,6 +411,7 @@ export default function CrmTab({
   useEffect(() => {
     loadCrmData().then(data => {
       setCrmData(data);
+      setCrmLoaded(true);
       // 보관 기간(30일) 지난 휴지통 정리 — 이 브라우저 + 서버(본인 권한 범위)
       cleanupRecycleBin().then(r => {
         const total = Math.max(r.localDeleted, r.serverDeleted);
@@ -426,7 +453,9 @@ export default function CrmTab({
   const myRequests = useMemo(() => requests.filter(isMine), [requests, isMine]);
 
   // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 (현재 변호사 관련 요청만) ──
+  // CRM 데이터를 불러온 뒤에만 실행 (이전: 첫 렌더의 빈 crmData로 기본값 행을 만들어 서버 행의 메모·서류·활동을 덮어씀)
   useEffect(() => {
+    if (!crmLoaded) return;
     requests.forEach(r => {
       if (!isMine(r)) return;
 
@@ -435,7 +464,8 @@ export default function CrmTab({
         if (ext.crmStatus !== 'cancelled') {
           const updated = { 
             ...ext, 
-            crmStatus: 'cancelled' as CrmStatus,
+            // 13단계도 함께 맞춘다 (접수 전이면 비워 의뢰인 화면에 '법원 기각·폐지' 안내가 나가지 않게)
+            ...withThirteenStageSync(ext, { crmStatus: 'cancelled' as CrmStatus }),
             lastActivityAt: new Date().toISOString(),
             activities: [
               ...(ext.activities || []),
@@ -456,17 +486,26 @@ export default function CrmTab({
         }
       }
     });
-  }, [requests, crmData]);
+  }, [requests, crmData, crmLoaded]);
 
   // ── CRM 확장 데이터 가져오기/생성 ──
   const getCrmExt = useCallback((clientId: string): CrmClientExtension => {
     return crmData[clientId] || createDefaultCrmExtension(clientId);
   }, [crmData]);
 
+  // ── 신규 리드: 이 변호사가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (대시보드·사이드바 배지와 같은 기준) ──
+  // (이전: 상태가 requested/responding일 때만 포함해 비교 상담 중 추가로 요청받은 건이 빠졌고,
+  //  공개 요청은 제안서 자리가 찼거나 다른 변호사와 상담을 이어가기로 한 뒤에도 계속 보였다)
+  const newLeadRequests = useMemo(
+    () => requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers)),
+    [requests, activeLawyer, lawyers]
+  );
+
   /** @returns 서버 저장 성공 여부 (실패 시 이 기기에만 저장된 상태) */
   const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> => {
     const current = getCrmExt(clientId);
-    const updated = { ...current, ...updates, lastActivityAt: new Date().toISOString() };
+    // 상태만 바꾸는 저장이면 13단계도 새 상태에 맞춘다 (상태 변경 핸들러·칸반·일괄 변경·배정·이탈 처리 공통)
+    const updated = { ...current, ...withThirteenStageSync(current, updates), lastActivityAt: new Date().toISOString() };
     setCrmData(prev => ({ ...prev, [clientId]: updated }));
     return saveCrmClient(clientId, updated);
   }, [getCrmExt]);
@@ -629,6 +668,9 @@ export default function CrmTab({
   }, [selectedId, selectedClient, selectedExt]);
 
   useEffect(() => {
+    // 부모가 지정한 탭은 그 고객을 고른 이번 한 번만 쓴다 (다른 고객으로 바꾸면 'info')
+    const pending = pendingDetailTabRef.current;
+    pendingDetailTabRef.current = null;
     if (selectedClient && selectedExt) {
       setEditName(selectedClient.clientName);
       setEditPhone(selectedClient.phone);
@@ -637,7 +679,7 @@ export default function CrmTab({
       setEditLawyerId(selectedExt.assignedLawyerId || '');
       setEditConsultantId(selectedExt.assignedConsultantId || '');
       setEditStaffId(selectedExt.assignedStaffId || '');
-      setDetailTab('info');
+      setDetailTab(pending && pending.clientId === selectedId ? pending.tab : 'info');
       // 상태 기반 6단계 파이프라인 단계 자동 동기화 (고객 전환 시)
       setPipelineStage(stageForStatus(selectedExt.crmStatus));
     }
@@ -1738,7 +1780,8 @@ export default function CrmTab({
           {/* 신규 리드 & 뷰 토글 */}
           <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
             {handleOpenProposalDraft && (() => {
-              const newLeadsCount = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id)).length;
+              // 이전: 이 변호사에게 온 요청인지 보지 않고 모든 요청을 세어, 목록(아래 신규 리드 뷰)과 건수가 달랐다
+              const newLeadsCount = newLeadRequests.length;
               return (
                 <button
                   onClick={() => setViewMode('leads')}
@@ -2063,7 +2106,7 @@ export default function CrmTab({
                                       onClick={() => {
                                         const updated: CrmClientExtension = {
                                           ...ext,
-                                          crmStatus: st,
+                                          ...withThirteenStageSync(ext, { crmStatus: st }), // 13단계도 새 상태에 맞춤
                                           lastActivityAt: new Date().toISOString(),
                                           activities: [
                                             ...(ext.activities || []),
@@ -3096,7 +3139,8 @@ export default function CrmTab({
                           onNavigateToChat={() => {
                             if (setActiveTab) setActiveTab('chat');
                           }}
-                          onSimulateContactShare={() => {
+                          // 시연용 — 개발 환경에서만 연결한다 (운영에서는 의뢰인 동의 없이 연락처 공개 상태로 바꾸게 됨)
+                          onSimulateContactShare={!import.meta.env.DEV ? undefined : () => {
                             setRequests(prev => prev.map(r => {
                               if (r.id === selectedId) {
                                 return {
@@ -3388,20 +3432,8 @@ export default function CrmTab({
                       {(() => {
                         const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                         
-                        // crmStatus를 기반으로 기본 13단계 매핑 (지정되지 않았을 때 fallback)
-                        const defaultStageMap: Record<string, string> = {
-                          requested: 'consult_waiting',
-                          consulting: 'consult_completed',
-                          contracted: 'contract_done',
-                          document: 'doc_prep',
-                          filed: 'petition_submitted',
-                          commenced: isBk ? 'bankruptcy_declared' : 'commencement',
-                          repaying: isBk ? 'hearing_date' : 'confirmation',
-                          discharged: 'completed',
-                          cancelled: isBk ? 'bankruptcy_closed' : 'dismissed_revoked',
-                        };
-
-                        const currentStage = selectedExt.thirteenStage || defaultStageMap[selectedExt.crmStatus] || 'consult_waiting';
+                        // crmStatus 기반 기본 13단계 (지정되지 않았을 때 fallback) — 매핑은 pipeline/journeyStage.ts 공용 산식
+                        const currentStage = selectedExt.thirteenStage || defaultThirteenStageFor(selectedExt.crmStatus, isBk);
                         const showDecisionCard = ['commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus) || 
                           selectedExt.thirteenStage === 'commencement' || 
                           selectedExt.thirteenStage === 'confirmation' || 
@@ -3414,34 +3446,11 @@ export default function CrmTab({
                               currentStageId={currentStage}
                               isBankruptcy={isBk}
                               isDismissedRevoked={!!selectedExt.isDismissedRevoked}
-                              onSelectStage={(newStageId) => {
-                                if (!selectedClient) return;
+                              onSelectStage={async (newStageId) => {
+                                if (!selectedClient) return false;
 
-                                // 13단계를 CrmStatus 8단계로 상호 호환 매핑
-                                const stageToCrmStatus: Record<string, CrmStatus> = {
-                                  consult_waiting: 'requested',
-                                  consult_completed: 'consulting',
-                                  contract_done: 'contracted',
-                                  doc_prep: 'document',
-                                  petition_drafting: 'document',
-                                  petition_submitted: 'filed',
-                                  prohibition_order: 'filed',
-                                  correction_period: 'filed',
-                                  commencement: 'commenced',
-                                  creditor_meeting: 'commenced',
-                                  confirmation: 'repaying',
-                                  dismissed_revoked: 'cancelled',
-                                  completed: 'discharged',
-                                  // 파산 단계 매핑
-                                  bankruptcy_declared: 'commenced',
-                                  hearing_date: 'commenced',
-                                  asset_liquidation: 'repaying',
-                                  bankruptcy_closed: 'cancelled',
-                                  discharge_granted: 'discharged',
-                                  discharge_denied: 'cancelled',
-                                };
-
-                                const mappedStatus = stageToCrmStatus[newStageId] || selectedExt.crmStatus;
+                                // 13단계 → CrmStatus 매핑 (pipeline/journeyStage.ts 공용 산식)
+                                const mappedStatus = crmStatusForThirteenStage(newStageId) || selectedExt.crmStatus;
 
                                 const updatedExt: CrmClientExtension = {
                                   ...selectedExt,
@@ -3450,24 +3459,30 @@ export default function CrmTab({
                                   lastActivityAt: new Date().toISOString(),
                                 };
 
-                                saveCrmClient(selectedClient.id, updatedExt);
                                 setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+                                // 저장 결과를 기다린 뒤 안내 (이전: 기다리지 않아 서버 저장이 실패해도 '변경되었습니다'와 의뢰인 알림이 나감)
+                                const ok = await saveCrmClient(selectedClient.id, updatedExt);
+                                if (!ok) {
+                                  toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+                                  return false;
+                                }
 
-                                // 의뢰인 인앱 알림 실시간 발송
+                                // 의뢰인 인앱 알림 — 사실만 안내하고 법적 효과는 결정문으로 확인하게 한다
+                                // (이전: '압류가 전면 금지', '관공서 15종', '연체정보가 완전히 해제', '전액 면책' 등 단정 문구)
                                 const NOTIF_MAP: Record<string, { title: string; body: string; emoji: string; linkTab?: 'companion' | 'diagnosis' | 'settings' }> = {
-                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 도산전문 변호사가 배정되어 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
-                                  consult_completed: { title: '[상담 완료] 초기 법률 상담이 완료되었습니다', body: '맞춤형 채무조정 방향과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
-                                  contract_done: { title: '[수임계약 체결] 정식 수임계약이 체결되었습니다', body: '변호사 사무소와 함께 법원 제출용 필수 서류 수합을 시작합니다.', emoji: '📝', linkTab: 'diagnosis' },
-                                  doc_prep: { title: '[서류 준비] 법원 필수 서류를 수집 중입니다', body: '관공서 15종 서류 및 AI 음성 진술서 작성을 진행해 주세요.', emoji: '📂', linkTab: 'diagnosis' },
-                                  petition_drafting: { title: '[신청서 작성] 법원 제출용 개시신청서를 작성 중입니다', body: '변호사팀이 8대 서식과 변제계획안을 정밀하게 검토하고 있습니다.', emoji: '✍️', linkTab: 'diagnosis' },
-                                  petition_submitted: { title: '[법원 접수 완료] 회생법원에 정식 접수되었습니다', body: '법원 사건번호가 부여되었습니다. 나의사건검색에서 심리 진행을 확인하세요.', emoji: '⚖️', linkTab: 'diagnosis' },
-                                  prohibition_order: { title: '[금지명령 인용 🎉] 채권추심 및 압류가 전면 금지되었습니다!', body: '법원에서 금지명령이 발령되었습니다. 채권자 독촉 전화 시 1초 독촉방어 문자를 활용하세요.', emoji: '🛡️', linkTab: 'diagnosis' },
-                                  correction_period: { title: '[보정권고 송달 ⚠️] 법원 회생위원의 보정사항이 도착했습니다', body: '기한(14일) 내에 변호사가 요청한 소명자료(통장/최근대출 등)를 업로드해 주세요.', emoji: '⚠️', linkTab: 'diagnosis' },
-                                  commencement: { title: '[개시결정 확정 🔍] 법원의 개인회생 개시결정이 내려졌습니다!', body: '법원 가상계좌가 발급되었습니다. 회생완주동행 대시보드에서 36개월 변제 스케줄을 확인하세요.', emoji: '🏛️', linkTab: 'companion' },
-                                  creditor_meeting: { title: '[채권자집회 기일 안내 🏛️] 법원 출석 기일이 지정되었습니다', body: '신분증을 지참하여 법정에 출석하셔야 합니다. 채권자집회 출석 가이드를 확인하세요.', emoji: '👥', linkTab: 'companion' },
-                                  confirmation: { title: '[인가결정 확정 🎉] 변제계획 인가결정이 최종 확정되었습니다!', body: '법원의 모든 심리가 통과되었습니다. 성실히 변제금을 납부하시면 면책을 받으실 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
-                                  dismissed_revoked: { title: '[사건 종결 안내] 사건이 기각 또는 폐지되었습니다', body: '즉시항고 또는 재신청 가능 여부를 담당 변호사와 상담하세요.', emoji: '🚫', linkTab: 'diagnosis' },
-                                  completed: { title: '[최종 면책 완료 🕊️] 잔여 채무가 전액 면책되었습니다!', body: '36개월 완주를 축하드립니다! 한국신용정보원의 연체정보가 완전히 해제됩니다.', emoji: '🎉', linkTab: 'companion' },
+                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 변호사가 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
+                                  consult_completed: { title: '[상담 완료] 초기 상담이 완료되었습니다', body: '상담 내용과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
+                                  contract_done: { title: '[수임계약] 수임계약이 체결되었습니다', body: '법원 제출 서류 준비를 시작합니다. 필요한 서류는 서류함에서 확인해 주세요.', emoji: '📝', linkTab: 'diagnosis' },
+                                  doc_prep: { title: '[서류 준비] 법원 제출 서류를 준비하고 있습니다', body: '서류함에서 요청된 서류를 확인하고 올려 주세요.', emoji: '📂', linkTab: 'diagnosis' },
+                                  petition_drafting: { title: '[신청서 작성] 담당 변호사가 신청서를 작성하고 있습니다', body: '신청서와 첨부 서류를 작성하는 단계입니다.', emoji: '✍️', linkTab: 'diagnosis' },
+                                  petition_submitted: { title: '[법원 접수] 신청서가 법원에 접수되었습니다', body: '사건번호와 이후 진행은 담당 변호사가 안내해 드립니다. 대법원 나의 사건검색에서도 확인할 수 있습니다.', emoji: '⚖️', linkTab: 'diagnosis' },
+                                  prohibition_order: { title: '[금지명령] 법원이 금지명령을 내렸습니다', body: '금지명령의 범위에서 강제집행과 변제 독촉이 제한됩니다. 적용 범위는 결정문으로 확인해 주세요.', emoji: '🛡️', linkTab: 'diagnosis' },
+                                  correction_period: { title: '[보정권고] 법원의 보정권고가 도착했습니다', body: '담당 변호사가 요청한 소명자료를 제출 기한 안에 올려 주세요. 기한은 보정권고서에 적힌 날짜를 따릅니다.', emoji: '⚠️', linkTab: 'diagnosis' },
+                                  commencement: { title: '[개시결정] 법원이 개인회생 개시결정을 내렸습니다', body: '변제금 납부 계좌와 일정은 결정문과 담당 변호사 안내로 확인해 주세요.', emoji: '🏛️', linkTab: 'companion' },
+                                  creditor_meeting: { title: '[채권자집회] 채권자집회 기일이 지정되었습니다', body: '기일과 장소는 법원 통지서로 확인하고, 신분증을 지참해 출석해 주세요.', emoji: '👥', linkTab: 'companion' },
+                                  confirmation: { title: '[인가결정] 법원이 변제계획 인가결정을 내렸습니다', body: '인가된 변제계획에 따라 변제금을 납부해 주세요. 변제를 마친 뒤 면책을 신청할 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
+                                  dismissed_revoked: { title: '[기각·폐지] 법원이 신청을 기각하거나 절차를 폐지했습니다', body: '결정 내용은 결정문으로 확인해 주세요. 이후 절차는 담당 변호사와 상의해 주세요.', emoji: '🚫', linkTab: 'diagnosis' },
+                                  completed: { title: '[종료] 사건이 종료 단계로 변경되었습니다', body: '면책 여부와 효력은 법원 결정문으로 확인해 주세요. 궁금한 점은 담당 변호사에게 문의해 주세요.', emoji: '🎉', linkTab: 'companion' },
                                 };
 
                                 const notif = NOTIF_MAP[newStageId];
@@ -3487,6 +3502,7 @@ export default function CrmTab({
                                 try {
                                   syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
                                 } catch { /* ignore */ }
+                                return true;
                               }}
                               onToggleDismissedRevoked={(val) => {
                                 if (!selectedClient) return;
@@ -3523,10 +3539,16 @@ export default function CrmTab({
                                     syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
                                     const accountChanged = !!newSummary.virtualAccountNumber &&
                                       (newSummary.virtualAccountNumber !== prevSummary?.virtualAccountNumber || newSummary.virtualAccountBank !== prevSummary?.virtualAccountBank);
+                                    // 월 변제금은 만원 또는 원으로 입력된다 — 1만 미만이면 만원 단위로 보고 원으로 바꿔 표시 (companionService와 같은 규칙)
+                                    // (이전: 만원 단위 값 '45'를 그대로 '45원'으로 안내)
+                                    const monthlyRaw = Number(newSummary.monthlyPayment || 0);
+                                    const monthlyWon = monthlyRaw > 0 && monthlyRaw < 10000 ? monthlyRaw * 10000 : monthlyRaw;
                                     if (accountChanged) addClientNotification({
                                       type: 'status_change',
                                       title: '[법원 가상계좌 발급 안내]',
-                                      body: `법원 가상계좌(${newSummary.virtualAccountBank} ${newSummary.virtualAccountNumber}) 및 월 변제금(${newSummary.monthlyPayment.toLocaleString()}원)이 등록되었습니다.`,
+                                      body: monthlyWon > 0
+                                        ? `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')}) 및 월 변제금(${monthlyWon.toLocaleString()}원)이 등록되었습니다.`
+                                        : `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')})가 등록되었습니다.`,
                                       emoji: '🏛️',
                                       linkTab: 'companion',
                                     });
@@ -4586,8 +4608,15 @@ export default function CrmTab({
                               <button onClick={async () => {
                                 if (!newDocRequestLabel.trim()) return toast.error('서류명을 입력해주세요');
                                 const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true });
-                                const savedReq = await loadCrmData().then(d => d[selectedId]).catch(() => undefined);
+                                // 화면에 있는 최신 고객 데이터의 사본을 기준으로 저장한다 (함수가 이 사본을 저장한 값으로 바꾼다)
+                                // (이전: 이 기기 사본에 고객 행이 없으면 아무것도 저장하지 않았는데도 '등록되었습니다'가 떴다)
+                                const target = { ...getCrmExt(selectedId) };
+                                const saved = await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true }, target);
+                                if (!saved) {
+                                  // 입력값과 화면 상태는 그대로 둔다 — 다시 보내도 요청이 두 번 쌓이지 않게
+                                  toast.error('서류 요청을 서버에 저장하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 보내 주세요.');
+                                  return;
+                                }
                                 addClientNotification({
                                   type: 'document_request',
                                   title: '추가 서류 제출 요청',
@@ -4598,7 +4627,7 @@ export default function CrmTab({
                                 setShowDocRequest(false);
                                 setNewDocRequestLabel('');
                                 setNewDocRequestDesc('');
-                                if (savedReq) setCrmData(prev => ({ ...prev, [selectedId]: savedReq }));
+                                setCrmData(prev => ({ ...prev, [selectedId]: target }));
                                 toast.success('서류 요청이 등록되었습니다. 의뢰인 마이페이지 서류함에 표시됩니다.');
                               }} className="px-3 py-1.5 text-xs font-bold text-white bg-brand hover:bg-brand-hover rounded-xl press-scale transition-colors shadow-sm">요청 보내기</button>
                             </div>
@@ -4690,9 +4719,12 @@ export default function CrmTab({
                                           onClick={async (e) => {
                                             e.stopPropagation();
                                             const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                            await approveDocument(selectedId, doc.id, actor.name);
-                                            toast.success('서류를 승인했습니다.');
-                                            setCrmData({ ...crmData });
+                                            // 화면의 최신 데이터 사본 기준으로 저장하고, 저장한 값을 화면에 반영한다
+                                            // (이전: 이 기기 사본만 고쳐 화면·서버에 반영되지 않았는데도 '승인했습니다'가 떴다)
+                                            const target = { ...getCrmExt(selectedId) };
+                                            const ok = await approveDocument(selectedId, doc.id, actor.name, target);
+                                            setCrmData(prev => ({ ...prev, [selectedId]: target }));
+                                            notifySaved(ok, '서류를 승인했습니다.');
                                           }} 
                                           className="px-2 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap press-scale transition-colors"
                                           title="서류 승인"
@@ -4733,11 +4765,12 @@ export default function CrmTab({
                                         onClick={async () => {
                                           if (!rejectReason.trim()) return toast.error('반려 사유를 입력해주세요');
                                           const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                          await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim());
+                                          const target = { ...getCrmExt(selectedId) };
+                                          const ok = await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim(), target);
                                           setRejectingDocId(null);
                                           setRejectReason('');
-                                          toast.success('서류를 반려했습니다.');
-                                          setCrmData({ ...crmData });
+                                          setCrmData(prev => ({ ...prev, [selectedId]: target }));
+                                          notifySaved(ok, '서류를 반려했습니다.');
                                         }} 
                                         className="px-2 py-1 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg press-scale shrink-0"
                                       >
@@ -5042,21 +5075,10 @@ export default function CrmTab({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {requests
-              .filter(r => {
-                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
-                                    r.selectedLawyerId === activeLawyer.id ||
-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
-                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-                  const targetLawyer = lawyers.find(l => l.id === id);
-                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-                });
-                const openMatch = r.requestType === 'open';
-                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
-              })
-              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
+            {newLeadRequests
               .map((r, idx) => {
-                const fp = r.financialProfile;
+                // 자가진단 전에 요청한 의뢰인도 있어 재무 정보가 비어 있을 수 있다
+                const fp = r.financialProfile || ({} as ConsultRequest['financialProfile']);
                 const assets = fp.assetsTotal ?? fp.myAssets ?? 0;
                 return (
                   <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col">
@@ -5069,7 +5091,8 @@ export default function CrmTab({
                           r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
                           'bg-slate-200 text-slate-700'
                         }`}>
-                          {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
+                          {/* 대시보드·AI 사건 분석과 같은 이름 */}
+                          {requestTypeLabel(r.requestType)}
                         </span>
                         <span className="text-sm font-bold text-slate-900">{getDisplayClientName(r)}</span>
                         {isNewCase(r.createdAt) && <NewBadge />}
@@ -5088,11 +5111,11 @@ export default function CrmTab({
                       <div className="grid grid-cols-3 gap-2">
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
                           <div className="text-[10px] text-slate-500">총채무</div>
-                          <div className="text-sm font-black text-slate-900">{fp.debtTotal.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-sm font-black text-slate-900">{(fp.debtTotal || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
                           <div className="text-[10px] text-slate-500">월소득</div>
-                          <div className="text-sm font-black text-slate-900">{fp.income.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-sm font-black text-slate-900">{(fp.income || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
                           <div className="text-[10px] text-slate-500">자산</div>
@@ -5119,7 +5142,7 @@ export default function CrmTab({
                             ⚡ 특례: {fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'single_parent' ? '한부모' : fp.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                           </span>
                         )}
-                        {fp.riskFlags.map(rf => (
+                        {(fp.riskFlags || []).map(rf => (
                           <span key={rf} className="bg-rose-50 text-rose-600 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
                         ))}
                       </div>
@@ -5156,20 +5179,7 @@ export default function CrmTab({
               })}
 
             {/* 빈 상태 */}
-            {requests
-              .filter(r => {
-                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
-                                    r.selectedLawyerId === activeLawyer.id ||
-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
-                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-                  const targetLawyer = lawyers.find(l => l.id === id);
-                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-                });
-                const openMatch = r.requestType === 'open';
-                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
-              })
-              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
-              .length === 0 && (
+            {newLeadRequests.length === 0 && (
               <div className="col-span-full bg-white p-10 text-center rounded-2xl border border-slate-200 space-y-2">
                 <Users className="w-10 h-10 text-slate-300 mx-auto" />
                 <p className="text-sm text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>

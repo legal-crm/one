@@ -15,7 +15,9 @@ import {
   parseRawBankStatementText,
   exportAuditStatementToExcel
 } from '../../services/bankAuditService';
-import { analyzePreFilingRisks, getRiskBadgeSummary } from '../../services/riskDetectionService';
+import { analyzePreFilingRisks, getRiskBadgeSummary, buildMoneyTrailReport } from '../../services/riskDetectionService';
+import type { MoneyTrailReport } from '../../services/riskDetectionService';
+import MoneyTrailTimeline from './MoneyTrailTimeline';
 import ModalPortal from './ModalPortal';
 
 interface BankStatementAuditModalProps {
@@ -73,6 +75,8 @@ function BankStatementAuditModalInner({
   // 사전 리스크 탐지 리포트
   const [riskReport, setRiskReport] = useState<PreFilingRiskReport | null>(null);
   const [showRiskPanel, setShowRiskPanel] = useState(true);
+  // v2.0: Money Trail 대출금 역추적 리포트
+  const [moneyTrailReport, setMoneyTrailReport] = useState<MoneyTrailReport | null>(null);
 
   // 통계 계산
   const stats = useMemo(() => calculateAuditStats(items, thresholdAmount), [items, thresholdAmount]);
@@ -187,6 +191,8 @@ function BankStatementAuditModalInner({
         // 사전 리스크 탐지 자동 실행
         const report = analyzePreFilingRisks(parsed, 'upload', clientName);
         setRiskReport(report);
+        // v2.0: Money Trail 대출금 역추적 자동 생성
+        setMoneyTrailReport(buildMoneyTrailReport(report, parsed));
         const badge = getRiskBadgeSummary(report);
         if (badge.color === 'red') {
           toast.warning(`${badge.label} — 접수 전 소명 자료 준비가 필요합니다.`);
@@ -213,6 +219,7 @@ function BankStatementAuditModalInner({
       setIsSampleData(false);
       // 이전(예시 등) 목록으로 만든 리스크 분석이 새 내역의 결과처럼 남지 않도록 비운다
       setRiskReport(null);
+      setMoneyTrailReport(null);
       setShowPasteArea(false);
       setPasteText('');
       toast.success(`총 ${parsed.length}건의 거래내역이 입력되었습니다.`);
@@ -229,6 +236,8 @@ function BankStatementAuditModalInner({
     // 샘플 데이터에도 리스크 분석 실행
     const report = analyzePreFilingRisks(sample, 'sample', clientName);
     setRiskReport(report);
+    // v2.0: Money Trail
+    setMoneyTrailReport(buildMoneyTrailReport(report, sample));
     toast.success(`예시 데이터 ${sample.length}건을 불러왔습니다. 실제 거래내역이 아닙니다.`);
   };
 
@@ -560,6 +569,15 @@ function BankStatementAuditModalInner({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ═══ v2.0: Money Trail 대출금 역추적 시각화 ═══ */}
+        {moneyTrailReport && moneyTrailReport.chains.length > 0 && (
+          <div className="border-b border-slate-200 dark:border-slate-800 print:hidden">
+            <div className="p-4">
+              <MoneyTrailTimeline report={moneyTrailReport} />
+            </div>
           </div>
         )}
 

@@ -13,6 +13,11 @@ interface ChatComposerProps {
   reserveCornerSpace?: boolean;
   /** false면 입력·전송 비활성 (자격 심사 대기 계정) */
   canSend: boolean;
+  /**
+   * 값이 있으면 이 대화의 입력·전송을 잠그고 이유를 보여 준다.
+   * (의뢰인이 제안서의 '상담 시작'을 누르기 전 — 의뢰인 화면 consultFlow 규칙과 같게)
+   */
+  lockedReason?: string;
   /** 전송 — 받아들였으면 true (입력창을 비운다) */
   onSend: (text: string) => boolean;
   /** 스레드별 임시 저장된 입력값 */
@@ -22,7 +27,9 @@ interface ChatComposerProps {
 }
 
 /** 스레드마다 key로 새로 마운트한다 (입력값은 스레드별로 따로 보관) */
-export default function ChatComposer({ reserveCornerSpace = false, canSend, onSend, initialValue = '', onDraftChange, templates }: ChatComposerProps) {
+export default function ChatComposer({ reserveCornerSpace = false, canSend: accountCanSend, lockedReason, onSend, initialValue = '', onDraftChange, templates }: ChatComposerProps) {
+  // 계정 승인(체험 모드)과 대화 잠금을 함께 반영한 전송 가능 여부
+  const canSend = accountCanSend && !lockedReason;
   const [value, setValue] = useState(initialValue);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -132,7 +139,13 @@ export default function ChatComposer({ reserveCornerSpace = false, canSend, onSe
           onChange={e => updateValue(e.target.value)}
           onKeyDown={handleKeyDown}
           aria-describedby={!coarse && canSend ? hintId : undefined}
-          placeholder={canSend ? '의뢰인에게 보낼 메시지를 입력하세요' : '관리자 승인 후 메시지를 보낼 수 있습니다'}
+          placeholder={
+            canSend
+              ? '의뢰인에게 보낼 메시지를 입력하세요'
+              : !accountCanSend
+                ? '관리자 승인 후 메시지를 보낼 수 있습니다'
+                : '의뢰인이 상담을 시작하면 메시지를 보낼 수 있습니다'
+          }
           className="flex-1 min-h-[44px] resize-none rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-[15px] leading-6 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 disabled:bg-slate-50 disabled:cursor-not-allowed"
         />
         <button
@@ -151,12 +164,17 @@ export default function ChatComposer({ reserveCornerSpace = false, canSend, onSe
         <p id={hintId} className="mt-2 text-[12px] text-slate-500">Enter 전송 · Shift+Enter 줄바꿈</p>
       )}
 
-      {!canSend && (
+      {!accountCanSend ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
           <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           자격 심사 대기(체험 모드) 중에는 메시지를 보낼 수 없습니다. 관리자 승인 후 이용해 주세요.
         </p>
-      )}
+      ) : lockedReason ? (
+        <p role="status" className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-600">
+          <Lock className="w-3.5 h-3.5 mt-[3px] shrink-0" aria-hidden="true" />
+          {lockedReason}
+        </p>
+      ) : null}
     </div>
   );
 }

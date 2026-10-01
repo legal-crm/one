@@ -28,6 +28,13 @@ export default function Stage5CorrectionCenterView({
 
   const clientName = clientRequest.clientName || '신청인';
 
+  // v2.0: 사건 유형 자동 감지
+  const caseType: 'rehabilitation' | 'bankruptcy' = (() => {
+    const ct = (crmExt as any)?.caseType || (clientRequest as any).caseType || '';
+    if (ct.includes('파산') || ct.includes('bankruptcy') || ct === 'bankruptcy') return 'bankruptcy';
+    return 'rehabilitation';
+  })();
+
   const activeCorrection = (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0)
     ? crmExt.correctionOrders[0]
     : (crmExt?.corrections && crmExt.corrections.length > 0)
@@ -35,7 +42,6 @@ export default function Stage5CorrectionCenterView({
     : null;
 
   // 마감일까지 남은 날짜 (로컬 자정 기준)
-  // 이전: new Date('YYYY-MM-DD')(UTC 자정)와 현재 시각을 ceil로 비교해 한국 00~09시에 하루씩 어긋났고, 화면에 표시되지도 않았음
   const deadlineStr: string = (activeCorrection as any)?.deadline || (activeCorrection as any)?.dueDate || '';
   const deadlineDate = parseLocalYmd(deadlineStr);
   const dDayInfo = deadlineDate ? (() => {
@@ -46,8 +52,17 @@ export default function Stage5CorrectionCenterView({
     return { text: `기한 경과 (D+${Math.abs(diff)})`, isUrgent: true };
   })() : { text: '현재 진행 중인 보정권고 없음', isUrgent: false };
 
-  // 7대 소명서 표 목록 — 작성 여부는 종합 보정센터에서 관리 (이전: 6/7 '작성 완료'가 고정값으로 표시)
-  const sevenTables = [
+  // 파산 사건 소명서 목록
+  const bankruptcyTables = [
+    { id: 1, title: '재산 상태 소명서', desc: '파산관재인 요구: 현재 보유 재산의 상세 소명' },
+    { id: 2, title: '채무 발생 경위 소명서', desc: '각 채무별 발생 원인과 자금 사용처 소명' },
+    { id: 3, title: '면책 불허가 사유 부존재 소명', desc: '도박·사치·편파변제 부존재 입증' },
+    { id: 4, title: '최근 재산 처분 소명서', desc: '파산 전 2년간 재산 처분 내역 및 대금 사용처' },
+    { id: 5, title: '가족 재산 형성 경위 소명', desc: '배우자·직계존비속 명의 재산의 자금 출처 소명' },
+  ];
+
+  // 7대 소명서 표 목록 — 작성 여부는 종합 보정센터에서 관리
+  const sevenTables = caseType === 'bankruptcy' ? bankruptcyTables : [
     { id: 1, title: '표 1. 총 채무 및 채권자별 채무액 내역표', desc: '채권자목록 원금 및 이자 소명' },
     { id: 2, title: '표 2. 채무 발생 원인 및 변제 경위 소명서', desc: '차입 목적, 생활비·병원비 지출 증빙' },
     { id: 3, title: '표 3. 최근 1년 이내 차입금 사용처 소명표', desc: '대출금 인출 후 사용처 소명' },
@@ -73,11 +88,15 @@ export default function Stage5CorrectionCenterView({
                   Stage 05 핵심 작업
                 </span>
                 <span className="text-sm font-black tracking-tight">
-                  회생위원 보정권고 기한을 준수하여 7대 표 소명서를 법원에 제출하세요.
+                  {caseType === 'bankruptcy'
+                    ? '파산관재인 보정권고에 대한 소명서를 작성하여 법원에 제출하세요.'
+                    : '회생위원 보정권고 기한을 준수하여 7대 표 소명서를 법원에 제출하세요.'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                나의사건 진행내역을 조회하고, 보정기한 내에 대출금 사용처 및 통장 거래내역 소명서를 완비합니다.
+                {caseType === 'bankruptcy'
+                  ? '파산·면책 심문 전에 파산관재인 보정권고 항목을 모두 소명해야 합니다.'
+                  : '나의사건 진행내역을 조회하고, 보정기한 내에 대출금 사용처 및 통장 거래내역 소명서를 완비합니다.'}
               </p>
               <p className={`text-xs mt-1.5 font-bold ${dDayInfo.isUrgent ? 'text-rose-600' : 'text-slate-600'}`}>
                 <Clock className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden="true" />{dDayInfo.text}
@@ -140,7 +159,7 @@ export default function Stage5CorrectionCenterView({
               <Table className="w-3.5 h-3.5" />
             </span>
             <span className="font-black text-xs text-slate-900">
-              회생위원 7대 법원 표준 소명서
+              {caseType === 'bankruptcy' ? '파산관재인 보정 소명서' : '회생위원 7대 법원 표준 소명서'}
             </span>
             <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
               {hasDraft ? '보정서 초안 저장됨' : '보정서 초안 없음'}

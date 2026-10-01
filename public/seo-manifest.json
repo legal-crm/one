@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T13:55:43.893Z",
+  "generatedAt": "2026-10-01T03:04:08.440Z",
   "origin": "https://mykim.kr",
   "counts": {
     "pages": 30,
@@ -41,9 +41,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "home",
-      "hash": "5dfa6b5595db0f2a",
+      "hash": "f6af84b88f3223ae",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-01"
     },
     {
       "file": "about.html",
@@ -69,11 +69,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "8d23be6f31e4926b",
+      "hash": "fb562ded4229a59c",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-01"
     },
     {
       "file": "faq.html",

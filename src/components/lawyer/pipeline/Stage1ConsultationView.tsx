@@ -12,6 +12,9 @@ import { addClientNotification } from '../../../services/clientNotificationServi
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 
+/** 수임 계약 이후 상담 요청 상태 */
+const RETAINED_REQUEST_STATUSES: ReadonlyArray<ConsultRequest['status']> = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
+
 interface Stage1ConsultationViewProps {
   clientRequest: ConsultRequest;
   crmExt?: CrmClientExtension;
@@ -78,9 +81,12 @@ export default function Stage1ConsultationView({
 
   // 제안서 발송 상태 및 계약 상태 확인
   const proposals = clientRequest.proposals || [];
-  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
+  // 내 제안서만 본다 — 비교 상담(최대 3명)에서는 다른 변호사의 제안서가 함께 들어 있다
+  // (이전: 내 제안서가 없으면 첫 제안서를 대신 써서, 제안서를 보내지 않은 변호사에게도 '발송 완료'와 남의 조건이 보였다)
+  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id);
   const hasProposalSent = Boolean(myProposal);
-  const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
+  // 수임 계약 이후 단계 전체 (이전: 'contracted'만 봐서 서류 준비·접수 이후 고객이 상담 단계로 보였다)
+  const isContracted = RETAINED_REQUEST_STATUSES.includes(clientRequest.status) || crmExt?.thirteenStage === 'contract_done';
 
   // ── 고객 연락처 공개 및 제안서 소통 게이팅 상태 판별 ──
   const [isSimulatedShared, setIsSimulatedShared] = useState(false);

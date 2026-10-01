@@ -551,7 +551,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           onOpenVerify={() => setShowVerifyModal(true)}
           headingRef={doneHeadingRef}
         />
-        <ContractPublicVerifierModal isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)} contract={contract} />
+        {/* 서명 링크로 들어온 위임인 본인 화면이라 본인 이름을 가리지 않는다 (공개 검증 링크만 이름 일부를 가린다) */}
+        <ContractPublicVerifierModal isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)} contract={contract} revealFullName />
       </>
     );
   }

@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ConsultRequest, ConsultMessage } from '../types';
 import { isLegacyEncryptedField, isLegacyEncryptedString, LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER } from '../utils/cryptoField';
+import { getTargetLawyerColumnState, setTargetLawyerColumnState } from './consultMessageSchema';
 
 // [PART 4] 브라우저 "암호화"(번들 키) 제거 — 평문 저장 + RLS. 이관 전 레거시 암호문은 덮어쓰지 않도록 추적한다.
 const legacyEncryptedProfileIds = new Set<string>();
@@ -490,6 +491,12 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
       if (error) {
         logSupabaseError('loadConsultMessages', error);
       } else if (data) {
+        // 대상 변호사 칸(target_lawyer_id, 마이그레이션 030)이 있는지: select('*') 응답 행에 키가 있는지로 판단한다
+        // (변호사 화면 필터가 'present'일 때만 대상 정보 없는 의뢰인 메시지를 비교 상담 중에 숨긴다)
+        if (data.length > 0) {
+          const hasTargetColumn = data.some((row: any) => row && Object.prototype.hasOwnProperty.call(row, 'target_lawyer_id'));
+          setTargetLawyerColumnState(hasTargetColumn ? 'present' : 'missing');
+        }
         return data.map((row: any) => ({
           id: row.id,
           consultRequestId: row.consult_request_id,
@@ -498,6 +505,7 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
           senderName: row.sender_name,
           message: readStoredMessage(row.id, row.message),
           createdAt: row.created_at,
+          targetLawyerId: row.target_lawyer_id ?? undefined,
         }));
       }
     } catch (e) {
@@ -518,12 +526,60 @@ function readStoredMessage(id: string, stored: string): string {
   return stored;
 }
 
+// ── 메시지 서버 저장 (대상 변호사 칸 target_lawyer_id, 마이그레이션 030) ──
+// 메시지는 수정하지 않는 데이터라 같은 id가 이미 있으면 그대로 둔다(ON CONFLICT DO NOTHING).
+// 030 적용 전 서버에도 저장되도록, 칸이 없다는 오류를 받으면 그 칸 없이 한 번 다시 보낸다.
+
+/** 대상 변호사 칸이 없다는 오류인지 (PostgREST 스키마 캐시에 없음 PGRST204 · Postgres 칸 없음 42703 · 메시지에 칸 이름) */
+function isMissingTargetColumnError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error.code || '');
+  const text = [error.message, error.details, error.hint].filter(Boolean).join(' ');
+  return code === 'PGRST204' || code === '42703' || text.includes('target_lawyer_id');
+}
+
+/** ConsultMessage → 서버 행 (전송 상태 같은 이 기기 전용 값은 넣지 않는다) */
+function messageToRow(msg: ConsultMessage, withTarget: boolean): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    id: msg.id,
+    consult_request_id: msg.consultRequestId,
+    sender_type: msg.senderType,
+    sender_id: msg.senderId,
+    sender_name: msg.senderName,
+    message: msg.message,
+    created_at: msg.createdAt,
+  };
+  // 여러 행을 한 번에 보낼 때 칸 구성이 같아야 하므로 대상이 없으면 null로 채운다
+  if (withTarget) row.target_lawyer_id = msg.targetLawyerId ?? null;
+  return row;
+}
+
+/**
+ * 메시지 행 저장 (같은 id는 건너뜀).
+ * 칸이 없다고 확인된 서버('missing')에는 대상 칸을 빼고 보내고, 칸이 없다는 오류를 받으면 'missing'으로 표시한 뒤
+ * 그 칸 없이 한 번 다시 보낸다. (이전: 대상 칸을 보내지 않아 다른 기기의 변호사 화면이 문구로 받는 사람을 추정했다)
+ */
+async function insertConsultMessageRows(messages: ConsultMessage[]): Promise<{ error: any }> {
+  const withTarget = getTargetLawyerColumnState() !== 'missing';
+  const first = await supabase
+    .from('consult_messages')
+    .upsert(messages.map(m => messageToRow(m, withTarget)), { onConflict: 'id', ignoreDuplicates: true });
+  if (!first.error || !withTarget || !isMissingTargetColumnError(first.error)) return { error: first.error };
+
+  setTargetLawyerColumnState('missing');
+  const retry = await supabase
+    .from('consult_messages')
+    .upsert(messages.map(m => messageToRow(m, false)), { onConflict: 'id', ignoreDuplicates: true });
+  return { error: retry.error };
+}
+
 /**
  * 새 메시지 1건 저장.
  * @returns 서버 저장까지 끝났으면 true (서버 미연동 환경은 기기 저장만으로 true), 서버 저장에 실패하면 false
  *
  * 같은 id가 이미 서버에 있으면 그대로 둔다(ON CONFLICT DO NOTHING). 전체 동기화(saveAllConsultMessages)가
  * 먼저 넣은 경우나 '다시 보내기'로 같은 메시지를 재전송한 경우에도 UPDATE 권한 없이 성공으로 처리된다.
+ * 대상 변호사(targetLawyerId)도 함께 저장한다 (서버에 칸이 없으면 빼고 저장).
  */
 export async function saveConsultMessage(message: ConsultMessage): Promise<boolean> {
   // 전송 상태는 이 기기 화면용 값이라 저장하지 않는다
@@ -539,15 +595,7 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<boole
     // 레거시 암호문 메시지는 안내 문구로 덮어쓰지 않는다
     if (legacyEncryptedMessageIds.has(stored.id)) return true;
 
-    const { error } = await supabase.from('consult_messages').upsert({
-      id: stored.id,
-      consult_request_id: stored.consultRequestId,
-      sender_type: stored.senderType,
-      sender_id: stored.senderId,
-      sender_name: stored.senderName,
-      message: stored.message,
-      created_at: stored.createdAt,
-    }, { onConflict: 'id', ignoreDuplicates: true });
+    const { error } = await insertConsultMessageRows([stored]);
     if (error) {
       logSupabaseError('saveConsultMessage', error);
       return false;
@@ -559,21 +607,20 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<boole
   }
 }
 
+/**
+ * 기기의 메시지 전체 저장. 서버에 없는 메시지만 넣는다(ON CONFLICT DO NOTHING).
+ * 이전: ON CONFLICT DO UPDATE(onConflict만 지정)라 UPDATE 권한이 필요했다(012 RLS에는 UPDATE 정책이 없어,
+ * 이미 서버에 있는 메시지가 하나라도 섞이면 전체가 거부됨). 대상 칸(030)이 생긴 뒤에도 그대로 두면
+ * 대상 정보가 없는 기기의 전체 저장이 서버의 대상 변호사 값을 null로 덮는다.
+ */
 export async function saveAllConsultMessages(messages: ConsultMessage[]): Promise<void> {
   setLocalData(MESSAGES_STORAGE_KEY, messages);
   
   if (isSupabaseConfigured && messages.length > 0) {
     try {
-      const payload = messages.filter(msg => !legacyEncryptedMessageIds.has(msg.id)).map(msg => ({
-        id: msg.id,
-        consult_request_id: msg.consultRequestId,
-        sender_type: msg.senderType,
-        sender_id: msg.senderId,
-        sender_name: msg.senderName,
-        message: msg.message,
-        created_at: msg.createdAt,
-      }));
-      const { error } = await supabase.from('consult_messages').upsert(payload, { onConflict: 'id' });
+      const payload = messages.filter(msg => !legacyEncryptedMessageIds.has(msg.id));
+      if (payload.length === 0) return;
+      const { error } = await insertConsultMessageRows(payload);
       if (error) {
         logSupabaseError('saveAllConsultMessages', error);
       }

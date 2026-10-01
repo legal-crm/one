@@ -50,11 +50,17 @@ function PostCommencementManagementModalInner({
 
   const courtThreshold = getCourtRepealStandard(courtName);
   // 실제 미납 의심 회차 (의뢰인 회생동행 납부기록 기준). 기록이 없으면 0 — 아래 선택기는 '가정' 시뮬레이션용
-  const recordedOverdue = (() => {
+  // 회생동행 기록은 의뢰인 기기에만 저장된다. 이 기기에 있는 사본이 CRM에서 만든 것(mykim_lawyer)이고
+  // 납부 기록이 하나도 없으면, 의뢰인 기록을 모르는 것이지 미납이 아니다.
+  // (이전: 이런 사본은 납부일이 지난 모든 회차가 '미납'으로 집계되어 폐지 위험 경보가 잘못 떴다)
+  const { recordedOverdue, hasPaymentRecords } = (() => {
     try {
       const cs = loadRehabCompanionCase(clientRequest.id);
-      return cs ? evaluateOverdueRisk(cs).overdueCount : 0;
-    } catch { return 0; }
+      if (!cs) return { recordedOverdue: 0, hasPaymentRecords: false };
+      const hasRecords = (cs.schedules || []).some(s => s.status !== 'pending');
+      if (cs.sourceType === 'mykim_lawyer' && !hasRecords) return { recordedOverdue: 0, hasPaymentRecords: false };
+      return { recordedOverdue: evaluateOverdueRisk(cs).overdueCount, hasPaymentRecords: true };
+    } catch { return { recordedOverdue: 0, hasPaymentRecords: false }; }
   })();
   const [overdueRoundsCount, setOverdueRoundsCount] = useState(recordedOverdue);
   const totalOverdueAmount = overdueRoundsCount * monthlyRepayment;
@@ -577,8 +583,15 @@ function PostCommencementManagementModalInner({
                         </span>
                       </div>
                       <h4 className="font-extrabold text-sm text-white mt-0.5">
-                        변제금 미납 폐지 위험 참고 판정 (기록된 미납 {recordedOverdue}회)
+                        {hasPaymentRecords
+                          ? `변제금 미납 폐지 위험 참고 판정 (기록된 미납 ${recordedOverdue}회)`
+                          : '변제금 미납 폐지 위험 참고 판정 (납부 기록 없음)'}
                       </h4>
+                      {!hasPaymentRecords && (
+                        <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                          의뢰인의 회생동행 납부 기록이 이 기기에 없어 실제 미납 회차를 알 수 없습니다. 오른쪽 미납 회차는 가정값이니, 법원 가상계좌 입금 내역이나 회생위원 안내로 확인해 주세요.
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -590,7 +603,7 @@ function PostCommencementManagementModalInner({
                       className="bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-red-500"
                     >
                       {[0, 1, 2, 3, 4, 5, 6].map(n => (
-                        <option key={n} value={n}>{n}회차 미납{n === recordedOverdue ? ' (기록 기준)' : ''}</option>
+                        <option key={n} value={n}>{n}회차 미납{hasPaymentRecords && n === recordedOverdue ? ' (기록 기준)' : ''}</option>
                       ))}
                     </select>
                   </div>

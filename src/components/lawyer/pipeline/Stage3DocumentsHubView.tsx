@@ -27,6 +27,7 @@ import type { DebtCertificateOrder } from '../../../services/repayment/repayment
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { localYmd } from '../../../utils/localDate';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
+import SmartDocumentDropzone from './SmartDocumentDropzone';
 
 interface Stage3DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -454,6 +455,12 @@ export default function Stage3DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* ── v2.0: 스마트 서류 자동 분류 투입함 ── */}
+      <SmartDocumentDropzone
+        clientId={clientRequest.id}
+        clientName={clientRequest.clientName || '의뢰인'}
+      />
+
       {/* ── 1. [실무 타임라인] 릴레이 파이프라인 리본 (Relay Progress Ribbon) ── */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2 mb-3">

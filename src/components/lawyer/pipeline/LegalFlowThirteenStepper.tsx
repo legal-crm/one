@@ -14,7 +14,8 @@ interface LegalFlowThirteenStepperProps {
   currentStageId?: string;
   isBankruptcy?: boolean;
   isDismissedRevoked?: boolean;
-  onSelectStage: (stageId: string) => void;
+  /** false(또는 false로 끝나는 Promise)를 돌려주면 저장 실패로 보고 '변경되었습니다' 안내를 띄우지 않는다 */
+  onSelectStage: (stageId: string) => void | boolean | Promise<void | boolean>;
   onToggleDismissedRevoked?: (val: boolean) => void;
   readOnly?: boolean;
 }
@@ -39,7 +40,7 @@ export default function LegalFlowThirteenStepper({
   const SUBMISSION_INDEX = stages.findIndex(s => s.id === 'petition_submitted');
   const isAfterSubmission = safeCurrentIndex >= SUBMISSION_INDEX;
 
-  const handleStageClick = (targetStage: LegalFlowStageConfig, targetIndex: number) => {
+  const handleStageClick = async (targetStage: LegalFlowStageConfig, targetIndex: number) => {
     if (readOnly) return;
 
     // 기각 및 폐지 단계는 전용 토글로 분기 처리
@@ -59,7 +60,9 @@ export default function LegalFlowThirteenStepper({
       return;
     }
 
-    onSelectStage(targetStage.id);
+    // 저장 결과를 기다린 뒤 안내 (이전: 저장 전에 성공 안내 → 서버 저장 실패여도 '변경되었습니다')
+    const result = await onSelectStage(targetStage.id);
+    if (result === false) return;
     toast.success(`사건 단계가 [${targetStage.label}] 단계로 변경되었습니다.`);
   };
 

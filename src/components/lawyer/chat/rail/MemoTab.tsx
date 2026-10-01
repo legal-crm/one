@@ -5,11 +5,18 @@ import type { CrmNote } from '../../../../types';
 import { CRM_NOTE_CATEGORIES } from '../../../../types';
 import { formatFullDateTime, formatListTime } from '../chatFormat';
 
+/**
+ * 메모 저장 결과
+ * - saved: 서버까지 저장
+ * - local: 서버 저장 실패, 이 기기에만 남음
+ * - failed: 저장하지 않음 (서버의 최신 데이터를 읽지 못해 덮어쓰기를 막았다)
+ */
+export type MemoSaveResult = 'saved' | 'local' | 'failed';
+
 interface MemoTabProps {
   /** null이면 불러오는 중 */
   notes: CrmNote[] | null;
-  /** 저장 — 서버까지 저장됐으면 true (실패해도 이 기기에는 남는다) */
-  onSave: (content: string) => Promise<boolean>;
+  onSave: (content: string) => Promise<MemoSaveResult>;
   onOpenCrmNotes: () => void;
   now: Date;
 }
@@ -45,9 +52,14 @@ export default function MemoTab({ notes, onSave, onOpenCrmNotes, now }: MemoTabP
     if (!text || saving) return;
     setSaving(true);
     try {
-      const ok = await onSave(text);
+      const result = await onSave(text);
+      if (result === 'failed') {
+        // 입력한 내용은 지우지 않는다 — 다시 저장할 수 있게
+        toast.error('고객관리 데이터를 불러오지 못해 메모를 저장하지 않았습니다. 입력한 내용은 그대로 두었으니 인터넷 연결을 확인한 뒤 다시 저장해 주세요.');
+        return;
+      }
       setDraft('');
-      if (ok) toast.success('메모를 저장했습니다.');
+      if (result === 'saved') toast.success('메모를 저장했습니다.');
       else toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
     } catch {
       toast.error('메모를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');

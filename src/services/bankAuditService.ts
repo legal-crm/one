@@ -376,10 +376,11 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
 
   if (!jsonData || jsonData.length === 0) return [];
 
-  // 은행 엑셀 컬럼 헤더 자동 탐색
+  // 은행 엑셀 컬럼 헤더 자동 탐색 (v2.0: 입금열 추가)
   let headerRowIndex = -1;
   let dateCol = -1;
   let withdrawCol = -1;
+  let depositCol = -1;  // v2.0: 입금열 — 대출금 입금, 미신고 소득 탐지에 필수
   let counterpartyCol = -1;
   let balanceCol = -1;
 
@@ -388,17 +389,20 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
     if (!row || !Array.isArray(row)) continue;
     const strRow = row.map(c => String(c || '').trim());
     // 헤더는 한 행 안에서 찾는다 (제목 행의 '조회일자' 등과 섞이지 않도록 행마다 초기화)
-    dateCol = -1; withdrawCol = -1; counterpartyCol = -1; balanceCol = -1;
+    dateCol = -1; withdrawCol = -1; depositCol = -1; counterpartyCol = -1; balanceCol = -1;
 
     for (let c = 0; c < strRow.length; c++) {
       const val = strRow[c];
       if (/거래일|일자|거래일시|날짜/i.test(val) && dateCol === -1) dateCol = c;
       if (/^(출금|지급|출금액|지급액|찾으신금액|출금금액|이용금액|결제금액)(\(원\))?$/.test(val.replace(/\s/g, '')) && withdrawCol === -1) withdrawCol = c;
+      // v2.0: 입금열 헤더 패턴 (은행별 다양한 표기 대응)
+      if (/^(입금|수입|입금액|받으신금액|입금금액|맡기신금액)(\(원\))?$/.test(val.replace(/\s/g, '')) && depositCol === -1) depositCol = c;
       if (/적요|내용|기재내용|상대방|가맹점|거래내용|수취인/i.test(val) && counterpartyCol === -1) counterpartyCol = c;
       if (/잔액|거래후잔액/i.test(val) && balanceCol === -1) balanceCol = c;
     }
 
-    if (dateCol !== -1 && withdrawCol !== -1) {
+    // 날짜열 + (출금열 또는 입금열) 중 하나라도 있으면 헤더 인식 성공
+    if (dateCol !== -1 && (withdrawCol !== -1 || depositCol !== -1)) {
       headerRowIndex = r;
       break;
     }
@@ -406,47 +410,80 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
 
   const results: AuditTransactionItem[] = [];
 
-  // 구조 파악 성공한 경우 컬럼 매핑 파싱
-  if (headerRowIndex !== -1 && withdrawCol !== -1) {
+  // 구조 파악 성공한 경우 컬럼 매핑 파싱 (v2.0: 입금+출금 양방향)
+  if (headerRowIndex !== -1 && (withdrawCol !== -1 || depositCol !== -1)) {
     for (let r = headerRowIndex + 1; r < jsonData.length; r++) {
       const row = jsonData[r];
       if (!row || row.length === 0) continue;
 
       const rawDate = String(row[dateCol] || '').trim();
-      const rawWithdraw = String(row[withdrawCol] || '').replace(/[,\s원]/g, '').replace(/^-/, '').split('.')[0];
       const rawCounterparty = counterpartyCol !== -1 ? String(row[counterpartyCol] || '').trim() : '불명 거래';
       const rawBalance = balanceCol !== -1 ? String(row[balanceCol] || '').replace(/[^0-9]/g, '') : undefined;
 
-      const amount = parseInt(rawWithdraw, 10);
-      if (!isNaN(amount) && amount > 0) {
-        if (filterThreshold > 0 && amount < filterThreshold) continue;
+      // 날짜 정규화
+      let date = rawDate;
+      if (rawDate.length === 8 && !rawDate.includes('-') && !rawDate.includes('.')) {
+        date = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+      } else {
+        const dm = rawDate.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+        date = dm ? `${dm[1]}-${dm[2].padStart(2, '0')}-${dm[3].padStart(2, '0')}` : '';
+      }
+      if (!date) continue; // 날짜 없는 합계·안내 행은 제외
 
-        let date = rawDate;
-        if (rawDate.length === 8 && !rawDate.includes('-') && !rawDate.includes('.')) {
-          date = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
-        } else {
-          const dm = rawDate.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
-          date = dm ? `${dm[1]}-${dm[2].padStart(2, '0')}-${dm[3].padStart(2, '0')}` : '';
+      const bankLabel = file.name.replace(/\.[^/.]+$/, '').slice(0, 20) || '금융기관';
+
+      // v2.0: 출금 거래 파싱
+      if (withdrawCol !== -1) {
+        const rawWithdraw = String(row[withdrawCol] || '').replace(/[,\s원]/g, '').replace(/^-/, '').split('.')[0];
+        const wAmount = parseInt(rawWithdraw, 10);
+        if (!isNaN(wAmount) && wAmount > 0) {
+          if (filterThreshold > 0 && wAmount < filterThreshold) { /* skip */ } else {
+            const classification = classifyTransactionRisk(rawCounterparty, 'WITHDRAWAL', wAmount);
+            results.push({
+              id: `excel-${Date.now()}-${r}-w`,
+              date,
+              bankOrCard: bankLabel,
+              transactionType: 'WITHDRAWAL',
+              counterparty: rawCounterparty || '거래처 불명',
+              amount: wAmount,
+              balance: rawBalance ? parseInt(rawBalance, 10) : undefined,
+              riskCategory: classification.category,
+              riskBadgeText: classification.badgeText,
+              riskAdvice: classification.advice,
+              explanation: '',
+              evidenceType: classification.defaultEvidence,
+              isResolved: false,
+              status: 'draft'
+            });
+          }
         }
+      }
 
-        if (!date) continue; // 날짜 없는 합계·안내 행은 제외 (오늘 날짜로 대체하지 않음)
-        const classification = classifyTransactionRisk(rawCounterparty, 'WITHDRAWAL', amount);
-        results.push({
-          id: `excel-${Date.now()}-${r}`,
-          date,
-          bankOrCard: file.name.replace(/\.[^/.]+$/, '').slice(0, 20) || '금융기관',
-          transactionType: 'WITHDRAWAL',
-          counterparty: rawCounterparty || '거래처 불명',
-          amount,
-          balance: rawBalance ? parseInt(rawBalance, 10) : undefined,
-          riskCategory: classification.category,
-          riskBadgeText: classification.badgeText,
-          riskAdvice: classification.advice,
-          explanation: '',
-          evidenceType: classification.defaultEvidence,
-          isResolved: false,
-          status: 'draft'
-        });
+      // v2.0: 입금 거래 파싱 — 대출금 입금, 미신고 소득 탐지의 핵심 데이터
+      if (depositCol !== -1) {
+        const rawDeposit = String(row[depositCol] || '').replace(/[,\s원]/g, '').replace(/^-/, '').split('.')[0];
+        const dAmount = parseInt(rawDeposit, 10);
+        if (!isNaN(dAmount) && dAmount > 0) {
+          if (filterThreshold > 0 && dAmount < filterThreshold) { /* skip */ } else {
+            const classification = classifyTransactionRisk(rawCounterparty, 'DEPOSIT', dAmount);
+            results.push({
+              id: `excel-${Date.now()}-${r}-d`,
+              date,
+              bankOrCard: bankLabel,
+              transactionType: 'DEPOSIT',
+              counterparty: rawCounterparty || '거래처 불명',
+              amount: dAmount,
+              balance: rawBalance ? parseInt(rawBalance, 10) : undefined,
+              riskCategory: classification.category,
+              riskBadgeText: classification.badgeText,
+              riskAdvice: classification.advice,
+              explanation: '',
+              evidenceType: classification.defaultEvidence,
+              isResolved: false,
+              status: 'draft'
+            });
+          }
+        }
       }
     }
   } else {
@@ -463,6 +500,106 @@ export async function parseExcelBankStatement(file: File, filterThreshold: numbe
   }
 
   return results;
+}
+
+// ═══════════════════════════════════════════════
+// 6-2. PDF 통장거래내역서 파싱 (v2.0 — Gemini Vision OCR)
+// ═══════════════════════════════════════════════
+
+/**
+ * PDF 통장거래내역서를 Gemini Vision OCR로 파싱
+ * 은행 발급 PDF를 base64 이미지로 변환하여 AI가 거래 테이블을 추출
+ * @param fileBase64 Data URL 형식의 PDF/이미지 base64
+ * @param fileName 파일명 (은행명 추출용)
+ * @param filterThreshold 최소 금액 필터 (기본 0)
+ * @returns AuditTransactionItem[] — 실패 시 빈 배열 (수동 입력 폴백)
+ */
+export async function parsePdfBankStatement(
+  fileBase64: string,
+  fileName: string = '',
+  filterThreshold: number = 0
+): Promise<AuditTransactionItem[]> {
+  try {
+    const res = await fetch('/api/ocr?kind=case', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageBase64: fileBase64,
+        fileName,
+        mode: 'bank_statement',
+      }),
+    });
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    if (!data.ok || !data.transactions || !Array.isArray(data.transactions)) return [];
+
+    const bankLabel = fileName.replace(/\.[^/.]+$/, '').slice(0, 20) || '금융기관(PDF)';
+    const results: AuditTransactionItem[] = [];
+
+    for (let i = 0; i < data.transactions.length; i++) {
+      const tx = data.transactions[i];
+      const amount = Math.abs(Number(tx.amount) || 0);
+      if (amount <= 0) continue;
+      if (filterThreshold > 0 && amount < filterThreshold) continue;
+
+      const txType = (tx.type || '').toUpperCase().includes('DEPOSIT') ? 'DEPOSIT' : 'WITHDRAWAL';
+      const counterparty = tx.counterparty || tx.description || '거래처 불명';
+      const classification = classifyTransactionRisk(counterparty, txType as AuditTransactionType, amount);
+
+      results.push({
+        id: `pdf-${Date.now()}-${i}`,
+        date: tx.date || '',
+        bankOrCard: bankLabel,
+        transactionType: txType as AuditTransactionType,
+        counterparty,
+        amount,
+        balance: tx.balance ? Number(tx.balance) : undefined,
+        riskCategory: classification.category,
+        riskBadgeText: classification.badgeText,
+        riskAdvice: classification.advice,
+        explanation: '',
+        evidenceType: classification.defaultEvidence,
+        isResolved: false,
+        status: 'draft',
+      });
+    }
+
+    return results;
+  } catch (err) {
+    console.warn('[PDF bank statement parse failed]', err);
+    return []; // 수동 입력 폴백
+  }
+}
+
+/**
+ * 파일 확장자에 따라 적절한 파서를 자동 선택하여 실행
+ * v2.0: PDF 지원 추가
+ */
+export async function parseAnyBankStatement(
+  file: File,
+  filterThreshold: number = 0
+): Promise<AuditTransactionItem[]> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+  // 엑셀/CSV → 기존 parseExcelBankStatement
+  if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    return parseExcelBankStatement(file, filterThreshold);
+  }
+
+  // PDF/이미지 → Gemini Vision OCR
+  if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+    const reader = new FileReader();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    return parsePdfBankStatement(base64, file.name, filterThreshold);
+  }
+
+  return [];
 }
 
 // ═══════════════════════════════════════════════

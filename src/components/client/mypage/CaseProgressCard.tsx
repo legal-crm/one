@@ -109,7 +109,17 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
                     {thirteenStage === 'commencement' && '법원이 개인회생 개시결정을 내렸습니다. 인가 전까지 법원 계좌로 변제금 적립을 시작합니다.'}
                     {thirteenStage === 'creditor_meeting' && '채권자집회 기일이 정해졌습니다. 아래 채권자집회 가이드를 확인해 주세요.'}
                     {thirteenStage === 'confirmation' && '변제계획 인가결정이 내려졌습니다. 계획대로 변제금을 내면 변제를 마친 뒤 면책을 신청할 수 있습니다.'}
-                    {thirteenStage === 'completed' && '변제계획에 따른 변제를 마쳤습니다. 법원에 면책신청서를 제출해 면책 결정을 받으세요.'}
+                    {/* 변호사 화면(CrmTab 단계 알림)과 같은 뜻으로 안내 — 이전: 이 단계들은 안내 문구가 비어 있었다 */}
+                    {thirteenStage === 'dismissed_revoked' && '법원이 신청을 기각하거나 절차를 폐지했습니다. 결정 내용은 결정문으로 확인하고, 이후 절차는 담당 변호사와 상의해 주세요.'}
+                    {thirteenStage === 'bankruptcy_declared' && '법원이 파산선고를 했습니다. 이후 의견청취기일과 면책 심리가 이어집니다.'}
+                    {thirteenStage === 'hearing_date' && '의견청취기일이 정해졌습니다. 기일과 장소는 법원 통지서로 확인해 주세요.'}
+                    {thirteenStage === 'asset_liquidation' && '파산관재인이 재산을 환가해 채권자에게 배당하는 단계입니다. 요청받은 자료가 있으면 담당 변호사에게 전달해 주세요.'}
+                    {thirteenStage === 'bankruptcy_closed' && '파산 절차가 폐지되었습니다. 면책 절차 진행 여부는 담당 변호사에게 확인해 주세요.'}
+                    {thirteenStage === 'discharge_granted' && '법원이 면책결정을 했습니다. 면책의 효력과 범위는 결정문으로 확인해 주세요.'}
+                    {thirteenStage === 'discharge_denied' && '법원이 면책을 허가하지 않았습니다. 불복 절차와 기한은 담당 변호사와 바로 상의해 주세요.'}
+                    {thirteenStage === 'completed' && (isBk
+                      ? '사건이 종료 단계로 변경되었습니다. 면책 여부와 효력은 법원 결정문으로 확인해 주세요.'
+                      : '변제계획에 따른 변제를 마쳤습니다. 법원에 면책신청서를 제출해 면책 결정을 받으세요.')}
                     {!thirteenStage && (
                       currentStatus === 'requested' ? (
                         allProposals.length > 0
@@ -122,7 +132,10 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
                       currentStatus === 'filed' ? '법원에 신청서가 접수되었습니다. 보정 요청이 있을 수 있습니다.' :
                       currentStatus === 'commenced' ? '법원의 개시결정이 내려졌습니다. 변제 계획에 따라 진행됩니다.' :
                       currentStatus === 'repaying' ? '변제금을 매월 법원에 납부하는 단계입니다.' :
-                      '면책 결정이 확정되었습니다. 비면책채권을 제외한 남은 채무의 책임이 면제됩니다.'
+                      currentStatus === 'discharged' ? '면책 결정이 내려졌습니다. 비면책채권을 제외한 남은 채무의 책임이 면제됩니다. 효력과 범위는 결정문으로 확인해 주세요.' :
+                      // 이전: 그 밖의 상태(상담 취소 등)도 모두 '면책 결정이 확정되었습니다'로 안내됐다
+                      currentStatus === 'cancelled' ? '상담이 종료되었습니다. 다시 상담이 필요하면 변호사 찾기에서 새로 요청할 수 있어요.' :
+                      ''
                     )}
                   </p>
                 </div>

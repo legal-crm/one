@@ -23,6 +23,30 @@ import AuditTrailCertificate from './AuditTrailCertificate';
 import ContractReminderModal from './ContractReminderModal';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
+import { feeTotalWon } from '../../utils/feeUnits';
+
+/** 서명 진행 중 상태 */
+const SIGNING_STATUSES: ReadonlyArray<ContractStatus> = ['pending_sign', 'client_review', 'signing'];
+
+/** 체결 완료로 보는 상태 ('signed'는 예전 저장값 — 고객 화면 ContractCard와 같은 기준) */
+function isSignedContract(c: ElectronicContract): boolean {
+  return c.status === 'completed' || c.status === 'signed';
+}
+
+/**
+ * 의뢰인은 서명을 마쳤고 변호사 서명(체결 봉인)만 남은 계약
+ * 의뢰인 원격 서명(ClientRemoteSignView)은 변호사 서명이 없으면 상태를 바꾸지 않고 의뢰인 서명만 저장한다.
+ * 이런 계약은 의뢰인에게 재촉할 대상이 아니다.
+ */
+function isAwaitingLawyerSign(c: ElectronicContract): boolean {
+  if (!SIGNING_STATUSES.includes(c.status)) return false;
+  return (c.documents || []).some(d => d.included && d.clientSignature);
+}
+
+/** 총 수임료(원) — 원·만원이 섞여 저장된 값을 공용 규칙으로 맞춘다 (이전: 무조건 ×10,000 → 원 단위 값이 1만 배로 표시) */
+function contractFeeWon(c: ElectronicContract): number {
+  return feeTotalWon(c.totalFee);
+}
 
 interface Props {
   lawyerName: string;
@@ -58,19 +82,21 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     refreshContracts();
   }, [refreshContracts]);
 
-  // ── 골든타임 지체 계약 판별 (서명 대기 중 24시간 이상 경과) ──
+  // ── 골든타임 지체 계약 판별 (의뢰인 서명 대기 중 24시간 이상 경과) ──
+  // 의뢰인이 이미 서명했고 변호사 서명만 남은 계약은 제외한다 (이전: 의뢰인에게 재촉 대상으로 떴다)
   const isOverdue = useCallback((c: ElectronicContract) => {
-    if (!['pending_sign', 'client_review', 'signing'].includes(c.status)) return false;
+    if (!SIGNING_STATUSES.includes(c.status)) return false;
+    if (isAwaitingLawyerSign(c)) return false;
     const createdAtTime = new Date(c.updatedAt || c.createdAt).getTime();
     const elapsedHours = (Date.now() - createdAtTime) / (1000 * 60 * 60);
     return elapsedHours >= 24;
   }, []);
 
-  // ── 통계 및 경영 KPI 지표 산출 ──
+  // ── 통계 및 경영 KPI 지표 산출 (금액은 원 단위) ──
   const stats = useMemo(() => {
     const list = Array.isArray(contracts) ? contracts : [];
-    const completedList = list.filter(c => c.status === 'completed');
-    const totalFeeSum = completedList.reduce((sum, c) => sum + (c.totalFee || 0), 0);
+    const completedList = list.filter(isSignedContract);
+    const totalFeeSum = completedList.reduce((sum, c) => sum + contractFeeWon(c), 0);
     const avgFee = completedList.length > 0 ? Math.round(totalFeeSum / completedList.length) : 0;
     const conversionRate = list.length > 0 ? Math.round((completedList.length / list.length) * 100) : 0;
 
@@ -79,7 +105,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     return {
       total: list.length,
       drafting: list.filter(c => c.status === 'drafting').length,
-      signing: list.filter(c => ['pending_sign', 'client_review', 'signing'].includes(c.status)).length,
+      signing: list.filter(c => SIGNING_STATUSES.includes(c.status)).length,
+      awaitingLawyer: list.filter(isAwaitingLawyerSign).length,
       completed: completedList.length,
       cancelled: list.filter(c => c.status === 'cancelled').length,
       overdueCount: overdueList.length,
@@ -97,7 +124,9 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     if (statusFilter === 'overdue') {
       list = list.filter(isOverdue);
     } else if (statusFilter === 'signing') {
-      list = list.filter(c => ['pending_sign', 'client_review', 'signing'].includes(c.status));
+      list = list.filter(c => SIGNING_STATUSES.includes(c.status));
+    } else if (statusFilter === 'completed') {
+      list = list.filter(isSignedContract);
     } else if (statusFilter !== 'all') {
       list = list.filter(c => c.status === statusFilter);
     }
@@ -191,8 +220,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       `"${c.clientPhone || '-'}"`,
       `"${c.lawyerName || '-'}"`,
       `"${c.lawFirmName || '-'}"`,
-      (c.totalFee || 0) * 10000,
-      CONTRACT_STATUS_CONFIG[c.status]?.label || c.status,
+      contractFeeWon(c),
+      isAwaitingLawyerSign(c) ? '변호사 서명 대기' : (CONTRACT_STATUS_CONFIG[c.status]?.label || c.status),
       c.contractDate || '-',
       (c.documents || []).filter(d => d.included).length,
       c.timestampToken ? '해시·시점토큰 생성' : '대기'
@@ -311,10 +340,10 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-slate-300 block">총 체결 수임료 (확정 매출)</span>
             <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-emerald-400">
-              {((stats.totalFeeSum || 0) * 10000).toLocaleString()}원
+              {(stats.totalFeeSum || 0).toLocaleString()}원
             </div>
             <p className="text-[11px] text-slate-400">
-              체결 완료 {stats.completed}건 기준 (평균 {((stats.avgFee || 0) * 10000).toLocaleString()}원)
+              체결 완료 {stats.completed}건 기준 (평균 {(stats.avgFee || 0).toLocaleString()}원)
             </p>
           </div>
 
@@ -338,6 +367,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
             </div>
             <p className="text-[11px] text-slate-400">
               작성중 {stats.drafting}건 / 서명 진행중 {stats.signing}건
+              {stats.awaitingLawyer > 0 && ` (변호사 서명 대기 ${stats.awaitingLawyer}건)`}
             </p>
           </div>
 
@@ -484,7 +514,11 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 </tr>
               ) : (
                 filtered.map(c => {
-                  const cfg = CONTRACT_STATUS_CONFIG[c.status] || { label: c.status, color: 'text-slate-600', bgColor: 'bg-slate-100', emoji: '📄' };
+                  const awaitingLawyer = isAwaitingLawyerSign(c);
+                  // 의뢰인 서명을 마친 계약은 '변호사 서명 대기'로 표시한다 (이전: '서명진행'으로만 보여 누구 차례인지 알 수 없었다)
+                  const cfg = awaitingLawyer
+                    ? { label: '변호사 서명 대기', color: 'text-blue-700', bgColor: 'bg-blue-50', emoji: '🖊️' }
+                    : (CONTRACT_STATUS_CONFIG[c.status] || { label: c.status, color: 'text-slate-600', bgColor: 'bg-slate-100', emoji: '📄' });
                   const overdue = isOverdue(c);
                   const includedDocsCount = (c.documents || []).filter(d => d.included).length;
                   const signedDocsCount = (c.documents || []).filter(d => d.included && d.clientSignature).length;
@@ -519,7 +553,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                       {/* 수임료 */}
                       <td className="p-3.5 text-right">
                         <span className="font-black text-slate-900 block">
-                          {((c.totalFee || 0) * 10000).toLocaleString()}원
+                          {contractFeeWon(c).toLocaleString()}원
                         </span>
                         <span className="text-[11px] text-slate-400">
                           {c.feeSchedule && c.feeSchedule.length > 0 ? `${c.feeSchedule.length}회차 분납` : '일시납'}
@@ -592,7 +626,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
 
                           {/* 2. 상태별 핵심 액션 */}
                           {/* (1) 서명 완료: 법원 제출용 일체형 PDF 다운로드 */}
-                          {c.status === 'completed' && (
+                          {isSignedContract(c) && (
                             <button
                               onClick={() => generateCourtSubmissionPdf(c)}
                               className="h-7.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
@@ -604,7 +638,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                           )}
 
                           {/* (2) 서명 완료: 블록체인 원본 검증기 */}
-                          {c.status === 'completed' && (
+                          {isSignedContract(c) && (
                             <button
                               onClick={() => setVerifyModalContract(c)}
                               className="h-7.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
@@ -615,8 +649,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 */}
-                          {(c.status === 'signing' || overdue) && (
+                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 — 의뢰인이 이미 서명했으면 재촉하지 않는다 */}
+                          {!awaitingLawyer && (c.status === 'signing' || overdue) && (
                             <button
                               onClick={() => handleSendReminder(c)}
                               className="h-7.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
@@ -705,13 +739,13 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                     <span className="text-xs font-normal text-slate-400 font-mono">({viewingContract.id})</span>
                   </h3>
                   <p className="text-xs text-slate-500">
-                    위임인: {viewingContract.clientName} ({viewingContract.clientPhone}) | 체결 상태: {CONTRACT_STATUS_CONFIG[viewingContract.status]?.label}
+                    위임인: {viewingContract.clientName} ({viewingContract.clientPhone}) | 체결 상태: {isAwaitingLawyerSign(viewingContract) ? '변호사 서명 대기' : CONTRACT_STATUS_CONFIG[viewingContract.status]?.label}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {viewingContract.status === 'completed' && (
+                {isSignedContract(viewingContract) && (
                   <>
                     <button
                       onClick={() => generateCourtSubmissionPdf(viewingContract)}
@@ -753,7 +787,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
               <div className="grid grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
                   <span className="text-slate-400 block mb-0.5">총 수임료</span>
-                  <span className="text-sm font-black text-slate-900">{((viewingContract.totalFee || 0) * 10000).toLocaleString()}원</span>
+                  <span className="text-sm font-black text-slate-900">{contractFeeWon(viewingContract).toLocaleString()}원</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">분납 조건</span>
@@ -822,7 +856,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {viewingContract.status === 'completed' && (
+                {isSignedContract(viewingContract) && (
                   <button
                     onClick={() => generateCourtSubmissionPdf(viewingContract)}
                     className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"

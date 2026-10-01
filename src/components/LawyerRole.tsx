@@ -15,6 +15,7 @@ import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
 import ProposalWorkspace from './lawyer/ProposalWorkspace';
+import { getProposalBlockReason, hasProposalFrom, isChatOpenWithLawyer, isNewRequestForLawyer, isOpenForProposals, requestTypeLabel } from './lawyer/requestScope';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
@@ -156,7 +157,10 @@ interface LawyerRoleProps {
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: User[];
   setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void;
+  /** 서버 저장까지 끝나면 true (App.handleAddMessage) — 변호사 대화 메시지는 말풍선에 전송 상태를 표시한다 */
+  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void | Promise<boolean>;
+  /** 전송 실패한 메시지를 같은 id로 다시 보낸다 */
+  onRetryMessage?: (messageId: string) => Promise<boolean>;
   cases: Case[];
   setCases: React.Dispatch<React.SetStateAction<Case[]>>;
   members: Member[];
@@ -179,6 +183,7 @@ export default function LawyerRole({
   lawyers,
   setLawyers,
   onAddMessage,
+  onRetryMessage,
   cases,
   setCases,
   members,
@@ -1349,11 +1354,33 @@ export default function LawyerRole({
     }
   }, [activeTab]);
 
+  // ── 제안서 발송 가드 (requestScope.getProposalBlockReason 공용 규칙) ──
+  // 변호사는 본인 기준, 직원은 컨펌 뒤 담당(감독) 변호사 이름으로 발송되므로 그 변호사 기준으로 판정한다.
+  // 이전: 요청받지 않은 변호사·이미 제안서를 보낸 변호사·종료된 요청에도 제안서가 발송됐다.
+  const getProposalSendBlockReason = (reqId: string | null | undefined, opts: { ignoreApproval?: boolean } = {}): string | null => {
+    const req = reqId ? requests.find(r => r.id === reqId) : undefined;
+    if (!req) return '상담 요청을 찾을 수 없습니다.';
+    if (isLawyerOrOwner) {
+      return getProposalBlockReason(req, activeLawyer, { approved: opts.ignoreApproval ? undefined : activeLawyer.approved });
+    }
+    const supervisingId = activeStaffMember?.supervisingLawyerId;
+    if (!supervisingId) return null; // 담당 변호사 미지정 — 컨펌 승인(최종 발송) 단계에서 판정
+    const supervisor = lawyers.find(l => l.id === supervisingId);
+    return getProposalBlockReason(req, supervisor || { id: supervisingId }, { approved: opts.ignoreApproval ? undefined : supervisor?.approved });
+  };
+
   // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 워크스페이스 열기
   const [previousTab, setPreviousTab] = useState<string>('client-crm');
   const handleOpenProposalDraft = (reqId: string) => {
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
+    // 보낼 수 없는 요청이면 작성 화면을 열지 않는다 (이전: 다 작성한 뒤에야 막히거나 그대로 발송됨)
+    // 자격 심사 대기(체험 모드)만은 작성·미리보기를 허용하고 발송 버튼에서 사유를 보여 준다
+    const blockReason = getProposalSendBlockReason(reqId, { ignoreApproval: true });
+    if (blockReason) {
+      toast.error(blockReason);
+      return;
+    }
 
     const rehabInput = mapToRehabUserInput(req);
     const rehabResult = calculateRepayment(rehabInput);
@@ -1367,17 +1394,44 @@ export default function LawyerRole({
     setActiveTab('proposal-workspace' as any);
   };
 
-  // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지 + 채팅 연동
-  const handleSubmitProposalFromDraft = (reqId: string, proposalData: any) => {
+  // 제안서 발송 (워크스페이스·모달·AI 사건 분석·직원 컨펌 승인 공용)
+  // - 제안서만 추가한다. 대화는 의뢰인이 제안서의 '상담 시작'을 눌러야 열린다 (client/consultFlow.ts getConsultRoomStage)
+  // - 이전: 발송과 동시에 status 'comparing'·acceptedLawyerIds에 변호사를 넣어 의뢰인 화면의 '제안서 도착' 단계가 건너뛰어졌다
+  // @returns 실제로 발송했으면 true — 막히면 작성 중인 초안·컨펌 대기 건을 그대로 둔다
+  const handleSubmitProposalFromDraft = (reqId: string, proposalData: any): boolean => {
     const req = requests.find(r => r.id === reqId);
-    if (!req) return;
+    if (!req) {
+      toast.error('상담 요청을 찾을 수 없습니다.');
+      return false;
+    }
     // 변호사법: 직원 계정은 의뢰인에게 직접 발송 불가 → 변호사 컨펌 요청 경로만 허용
     if (!isLawyerOrOwner) {
       toast.error('직원 계정은 제안서를 직접 발송할 수 없습니다. 변호사 컨펌을 요청해 주세요.');
-      return;
+      return false;
+    }
+    // 요청받지 않았거나 이미 보냈거나 종료된 요청, 자격 심사 대기 계정은 발송하지 않는다
+    const blockReason = getProposalBlockReason(req, activeLawyer, { approved: activeLawyer.approved });
+    if (blockReason) {
+      toast.error(blockReason);
+      return false;
     }
 
     const isAIPremium = !!proposalData.aiInsights;
+
+    // 의뢰인 비교표(client/room/ProposalCompareTable)가 읽는 값만 담은 요약 — 초안에 실제로 있는 값만 넣는다
+    // (이전: AI 프리미엄이 아니면 proposalData를 저장하지 않아 착수금·예납금·수임료 메모가 '제안서 참고'로만 보였다)
+    const draftFees = proposalData.fees || {};
+    const compareFees: Record<string, number | string> = {};
+    for (const key of ['totalFee', 'downPayment', 'installments', 'monthlyInstallment', 'courtDeposit']) {
+      const value = draftFees[key];
+      if (value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value))) compareFees[key] = Number(value);
+    }
+    if (typeof draftFees.feeMemo === 'string' && draftFees.feeMemo.trim()) compareFees.feeMemo = draftFees.feeMemo.trim();
+    const draftMonths = Number(proposalData.diagnosis?.repaymentMonths);
+    const compareSummary = {
+      fees: compareFees,
+      ...(draftMonths > 0 ? { diagnosis: { repaymentMonths: draftMonths } } : {}),
+    };
 
     const newProposal = {
       id: `prop-${Date.now()}`,
@@ -1392,36 +1446,35 @@ export default function LawyerRole({
       totalReduction: Math.round(proposalData.diagnosis.estimatedReduction / 10000),
       fee: Math.round(proposalData.fees.totalFee / 10000),
       installment: `착수금 ${Math.round(proposalData.fees.downPayment / 10000)}만원, ${proposalData.fees.installments}회 분납`,
+      // '제안서 발송'은 소견 없이 보낼 때의 자리표시 문구 — 의뢰인 화면(client/proposalText.ts PLACEHOLDER_REMARKS)이
+      // 이 문자열로 비교해 변호사 소견처럼 보이지 않게 하므로, 바꾸려면 그쪽과 함께 바꾼다
       remark: proposalData.lawyerOpinion || '제안서 발송',
       specialNotes: proposalData.specialNotes,
       clientQnA: proposalData.clientQnA,
       createdAt: new Date().toISOString(),
-      proposalData: isAIPremium ? proposalData : undefined,
+      // AI 프리미엄은 보고서 전체, 그 외에는 비교표용 요약
+      proposalData: isAIPremium ? proposalData : compareSummary,
     };
 
-    // 1) 상태를 'comparing'으로 변경 + acceptedLawyerIds에 변호사 추가 → 채팅탭에 노출
+    // 1) 제안서만 추가 — 상태는 'requested'일 때만 'responding'으로, 그 외(비교 상담 중 등)는 그대로 둔다
     setRequests(prev => prev.map(r => {
-      if (r.id === reqId) {
-        const currentAccepted = r.acceptedLawyerIds || [];
-        return {
-          ...r,
-          status: 'comparing' as const,
-          acceptedLawyerIds: currentAccepted.includes(activeLawyer.id) 
-            ? currentAccepted 
-            : [...currentAccepted, activeLawyer.id],
-          proposals: [...(r.proposals || []), newProposal]
-        };
-      }
-      return r;
+      if (r.id !== reqId) return r;
+      return {
+        ...r,
+        status: r.status === 'requested' ? ('responding' as const) : r.status,
+        proposals: [...(r.proposals || []), newProposal],
+      };
     }));
 
-    // 2) 채팅 메시지 생성: 시스템 알림 + 제안서 요약 메시지
+    // 2) 채팅 메시지: 시스템 안내 + 제안서 요약 메시지
+    //    안내는 이 변호사 대상으로만 남긴다 (의뢰인 화면의 다른 변호사 탭에 섞이지 않게)
     onAddMessage(
       reqId,
-      `[System] ${activeLawyer.name} 변호사가 상담에 참여하였습니다.`,
+      `[System] ${activeLawyer.name} 변호사가 제안서를 보냈습니다.`,
       'lawyer',
       'system',
-      'System'
+      'System',
+      activeLawyer.id
     );
 
     const feeText = `${Math.round(proposalData.fees.totalFee / 10000)}만원`;
@@ -1451,16 +1504,23 @@ export default function LawyerRole({
       `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%${isAIPremium ? ', AI 정밀 분석' : ''})`
     );
 
-    // 3) 채팅탭으로 자동 전환 + 해당 스레드 활성화
-    setActiveChatReqId(reqId);
-    setActiveTab('chat');
-    toast.success('제안서가 발송되었습니다. 상담 채팅이 시작됩니다.');
+    // 3) 대화는 의뢰인이 '상담 시작'을 누른 뒤 열리므로 채팅 탭으로 옮기지 않고, 작성 화면을 열기 전 탭으로 돌아간다
+    //    (이전: 곧바로 채팅 탭으로 이동하며 '상담 채팅이 시작됩니다'라고 안내)
+    if ((activeTab as string) === 'proposal-workspace') {
+      if (previousTab === 'client-crm') {
+        setCrmTargetClientId(reqId);
+        setCrmTargetDetailTab('info');
+      }
+      setActiveTab(previousTab as any);
+    }
+    toast.success('제안서를 보냈습니다. 의뢰인이 상담을 시작하면 대화할 수 있습니다.');
 
     // 모달 닫기 및 상태 초기화
     setProposalModalReqId(null);
     setProposalRehabResult(null);
     setProposalRehabInput(null);
     setProposalConsultRequest(null);
+    return true;
   };
 
   // ── 직원용: 변호사 컨펌 요청 (변호사법 준수) ──
@@ -1490,9 +1550,19 @@ export default function LawyerRole({
   const staffRole = activeStaffMember?.role || 'OWNER';
   const isLawyerOrOwner = staffRole === 'OWNER' || staffRole === 'LAWYER';
 
-  const handleRequestProposalConfirm = (reqId: string, proposalData: any, memo: string) => {
+  // @returns 컨펌 요청을 보냈으면 true — 막히면 작성 중인 초안을 그대로 둔다
+  const handleRequestProposalConfirm = (reqId: string, proposalData: any, memo: string): boolean => {
     const req = requests.find(r => r.id === reqId);
-    if (!req) return;
+    if (!req) {
+      toast.error('상담 요청을 찾을 수 없습니다.');
+      return false;
+    }
+    // 컨펌 뒤 담당 변호사 이름으로 발송되므로 그 변호사가 보낼 수 있는 요청인지 먼저 확인한다 (승인 시 한 번 더 확인)
+    const blockReason = getProposalSendBlockReason(reqId);
+    if (blockReason) {
+      toast.error(blockReason);
+      return false;
+    }
 
     // 담당 변호사 결정
     const supervisingId = activeStaffMember?.supervisingLawyerId || activeLawyer.id;
@@ -1533,14 +1603,40 @@ export default function LawyerRole({
     setProposalRehabResult(null);
     setProposalRehabInput(null);
     setProposalConsultRequest(null);
+    return true;
   };
 
-  const handleApproveProposal = (pendingId: string, proposalData: any) => {
+  const handleApproveProposal = async (pendingId: string, proposalData: any) => {
     const pending = pendingProposals.find(p => p.id === pendingId);
     if (!pending) return;
 
-    // 제안서를 승인 → 고객에게 실제 발송
-    handleSubmitProposalFromDraft(pending.reqId, proposalData);
+    // 승인하는 변호사 기준으로 발송 가능 여부를 먼저 확인한다
+    // (이전: 발송이 막혀도 컨펌 대기 건을 지우고 직원에게 '승인하고 발송' 알림을 보냈다)
+    const pendingReq = requests.find(r => r.id === pending.reqId);
+    const blockReason = pendingReq
+      ? getProposalBlockReason(pendingReq, activeLawyer, { approved: activeLawyer.approved })
+      : '상담 요청을 찾을 수 없습니다.';
+    if (blockReason) {
+      // 자격 심사 대기는 승인 후 다시 보낼 수 있으므로 안내만 하고, 그 밖의 사유는 반려로 정리할 수 있게 한다
+      // (검토 모달에는 반려 버튼이 없어, 보낼 수 없는 컨펌 요청이 목록에 계속 남았다)
+      const onlyApproval = pendingReq && !getProposalBlockReason(pendingReq, activeLawyer);
+      if (onlyApproval) {
+        toast.error(blockReason);
+        return;
+      }
+      const reject = await dialog.confirm({
+        title: '제안서를 보낼 수 없습니다',
+        message: `${blockReason}\n\n이 컨펌 요청을 반려하고 작성한 직원에게 알릴까요?`,
+        confirmText: '반려하기',
+        cancelText: '그대로 두기',
+        variant: 'warning',
+      });
+      if (reject) handleRejectProposal(pendingId, blockReason);
+      return;
+    }
+
+    // 제안서를 승인 → 고객에게 실제 발송 (막히면 컨펌 대기 건을 그대로 둔다)
+    if (!handleSubmitProposalFromDraft(pending.reqId, proposalData)) return;
 
     // pending에서 제거
     setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
@@ -1591,7 +1687,9 @@ export default function LawyerRole({
 
   // Open contract conversion modal for formal case intake
   const handleConvertToCase = (req: ConsultRequest) => {
-    const isAlreadyCase = cases.some(c => c.clientId === req.clientId);
+    // 사건(Case)의 clientId에는 상담 요청 ID가 저장된다(ContractConversionModal) — 요청 ID로 비교한다
+    // (이전: req.clientId로 비교해 clientId가 빈 요청·익명('client-temp') 요청끼리 이미 수임된 것으로 잘못 판정됐다)
+    const isAlreadyCase = cases.some(c => c.clientId === req.id);
     if (isAlreadyCase) {
       toast.error('이미 정식 수임 사건으로 등록된 고객입니다.');
       return;
@@ -1677,7 +1775,20 @@ export default function LawyerRole({
     }
     const trimmed = text.trim();
     if (!trimmed || !reqId) return false;
-    onAddMessage(reqId, trimmed, 'lawyer', activeLawyer.id, activeLawyer.name);
+    // 의뢰인이 제안서의 '상담 시작'을 누르기 전에는 대화가 열리지 않는다 (의뢰인 화면 consultFlow 규칙과 같게)
+    // (이전: 제안서 발송 시 자동 수락되어 의뢰인이 고르기 전부터 메시지를 보낼 수 있었다)
+    const targetReq = requests.find(r => r.id === reqId);
+    if (targetReq && !isChatOpenWithLawyer(targetReq, activeLawyer.id)) {
+      toast.warning(hasProposalFrom(targetReq, activeLawyer.id)
+        ? '의뢰인이 제안서를 확인하고 상담 시작을 누르면 대화가 열립니다.'
+        : '먼저 제안서를 보내 주세요. 의뢰인이 상담 시작을 누르면 대화가 열립니다.');
+      return false;
+    }
+    // 입력창은 바로 비우고(ChatComposer 계약), 서버 저장 결과는 말풍선(보내는 중·다시 보내기)과 안내로 알린다
+    // (이전: 저장 결과를 받지 않아 전송이 실패해도 입력창만 비워지고 아무 표시가 없었다)
+    void Promise.resolve(onAddMessage(reqId, trimmed, 'lawyer', activeLawyer.id, activeLawyer.name)).then(ok => {
+      if (ok === false) toast.error('메시지를 보내지 못했습니다. 말풍선의 다시 보내기를 눌러 주세요.');
+    });
     
     // Log message sent (본문은 platformActivityService에서 제거됨)
     onLogActivity(
@@ -1701,8 +1812,9 @@ export default function LawyerRole({
       const targetLawyer = lawyers.find(l => l.id === id);
       return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
     });
-    // 오픈 요청은 '신규 상담(매칭 대기)'에만 포함 — 진행 중 건은 담당 변호사 본인 것만
-    const openMatch = r.requestType === 'open' && r.status === 'requested';
+    // 공개 요청은 제안서 자리가 남아 있는 동안만 포함 — 진행 중 건은 담당 변호사 본인 것만
+    // (이전: status === 'requested'일 때만 포함해, 첫 제안서가 도착해 'responding'이 되면 다른 변호사에게서 사라졌다)
+    const openMatch = isOpenForProposals(r);
     return directMatch || sameFirmMatch || openMatch;
   };
   /** 본인(또는 같은 사무소)이 담당·참여 중인 요청만 (오픈 매칭 대기 제외) */
@@ -1721,14 +1833,19 @@ export default function LawyerRole({
   // 영업 리드 저장소를 로그인 사무소(변호사) 단위로 분리 — 아래 사이드바 배지·영업관리 탭이 이 범위를 사용
   setSalesLeadScope(activeLawyer.lawFirmId || activeLawyer.id);
   const ownRequestIds = new Set(ownRequests.map(r => r.id));
-  const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
+  // '신규 상담' — 내가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (requestScope 공용 판정, 상태와 무관)
+  // 이전: status === 'requested'만 신규로 세어, 비교 상담 중 첫 제안서 뒤 나머지 변호사에게서 요청이 사라지고
+  //       비교 상담 중 추가로 요청받은 변호사는 대시보드·알림에서 요청을 볼 수 없었다
+  const newRequestsForMe = requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers));
+  const totalOpenRequestsCount = newRequestsForMe.length;
   const activeChatsCount = ownRequests.filter(r => r.status === 'counseling').length;
   const ownCases = cases.filter(c => !c.assignedLawyerId || c.assignedLawyerId === activeLawyer.id || ownRequestIds.has(c.clientId));
   const totalCasesCount = ownCases.length;
   const directCounselingCount = ownRequests.filter(r => r.status === 'responding').length;
 
   // ── 신규 상담 접수 알림 (설정 탭의 텔레그램·이메일·브라우저 알림 채널) ──
-  // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 들어온 '매칭 대기' 요청만 1회 발송.
+  // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 '신규 상담'이 된 요청만 1회 발송.
+  // 비교 상담 중 의뢰인이 나를 추가로 요청한 경우도 포함한다 (isNewRequestForLawyer, 이전: status 'requested'만).
   // CRM이 열려 있는 브라우저에서만 동작한다 (서버 푸시 아님).
   const notifiedRequestIdsRef = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -1736,7 +1853,7 @@ export default function LawyerRole({
       notifiedRequestIdsRef.current = null;
       return;
     }
-    const candidates = requests.filter(r => r.status === 'requested' && isRelevantRequest(r));
+    const candidates = requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers));
     if (notifiedRequestIdsRef.current === null) {
       notifiedRequestIdsRef.current = new Set(candidates.map(r => r.id));
       return;
@@ -2531,7 +2648,13 @@ export default function LawyerRole({
                 <MessageSquare className="w-5 h-5 shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">상담 채팅</span>}
                 {(() => { 
-                  const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; 
+                  // 대화가 열린 상담: 비교·상담 단계에서 수락/선택된 요청 + 의뢰인이 상담 변호사 확정을 취소해
+                  // 다시 비교 중인 요청(status 'responding', 수락 목록에 내가 있음 — 이전에는 배지에서 빠졌다)
+                  const c = requests.filter(r => {
+                    const acceptedMe = (r.acceptedLawyerIds || []).includes(activeLawyer.id);
+                    if (r.status === 'comparing' || r.status === 'counseling') return acceptedMe || r.selectedLawyerId === activeLawyer.id;
+                    return r.status === 'responding' && acceptedMe;
+                  }).length; 
                   if (c === 0) return null;
                   return sidebarCollapsed ? (
                     <span className="absolute top-1.5 right-1.5 bg-brand text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-black ring-2 ring-[#111827]">
@@ -2687,7 +2810,8 @@ export default function LawyerRole({
                     !sidebarCollapsed && <span className="ml-auto bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-md px-1.5 py-0.5 text-[10px] font-bold">유료</span>
                   ) : (
                     (() => { 
-                      const n = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && isRelevantRequest(r)).length; 
+                      // 신규 상담 수 (isNewRequestForLawyer — 이전: requested|responding이면 이미 제안서를 보낸 요청까지 셌다)
+                      const n = newRequestsForMe.length; 
                       if (n === 0) return null;
                       return sidebarCollapsed ? (
                         <span className="absolute top-1.5 right-1.5 bg-brand text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
@@ -2917,10 +3041,11 @@ export default function LawyerRole({
 
             {/* ═══ 섹션 0: 리걸플로형 법원 사건 지휘 본부 (Command Center) 4열 브리핑 & 원형 게이지 ═══ */}
             {(() => {
-              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
-              // 본인 담당 의뢰인의 CRM 확장 데이터만 집계 (다른 변호사 사건 합산 금지)
+              // CRM 확장 데이터는 secureStorage(sessionStorage)에 있다 — crmService로 읽는다 (이전: localStorage 직접 읽기라 항상 빈 값)
+              const crmStore = loadCrmExtMap();
+              // 본인 담당 의뢰인 + CRM에서 직접 등록한 외부 의뢰인(ext-, CrmTab isMine과 같은 기준)만 집계 (다른 변호사 사건 합산 금지)
               const allExts = Object.entries(crmStore)
-                .filter(([reqId]) => ownRequestIds.has(reqId))
+                .filter(([reqId]) => ownRequestIds.has(reqId) || reqId.startsWith('ext-'))
                 .map(([, ext]) => ext) as any[];
 
               // 1. 금지·중지명령 심리 중 (CRM 상태 '신청 접수' 기준)
@@ -3236,8 +3361,8 @@ export default function LawyerRole({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {requests
-                  .filter(r => r.status === 'requested' && isRelevantRequest(r))
+                {/* 신규 상담 = isNewRequestForLawyer (이전: status 'requested'만 — 비교 상담 중 요청이 빠졌다) */}
+                {newRequestsForMe
                   .slice(0, 3)
                   .map((r, idx) => {
                     const assets = r.financialProfile.assetsTotal ?? r.financialProfile.myAssets ?? 0;
@@ -3251,12 +3376,13 @@ export default function LawyerRole({
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
-                            r.requestType === 'direct'
-                              ? 'bg-[#1E3A5F] text-white'
-                              : 'bg-slate-200 text-slate-700'
+                          {/* 요청 유형 (이전: 'direct'가 아니면 모두 '오픈' — 의뢰인이 고른 요청(direct_multi)도 '오픈'으로 보였다) */}
+                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
+                            r.requestType === 'open'
+                              ? 'bg-slate-200 text-slate-700'
+                              : 'bg-[#1E3A5F] text-white'
                           }`}>
-                            {r.requestType === 'direct' ? '지명' : '오픈'}
+                            {requestTypeLabel(r.requestType)}
                           </span>
                           {r.entryCategory && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap truncate max-w-[80px] bg-white text-slate-700 border border-slate-200">
@@ -3615,8 +3741,12 @@ export default function LawyerRole({
 
             {/* ═══ Row 6: 유입 채널 + 수임료 + 보정명령 ═══ */}
             {(() => {
-              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
-              const allExts = Object.values(crmStore) as any[];
+              // secureStorage(sessionStorage) 사본을 crmService로 읽는다 (이전: localStorage 직접 읽기라 항상 빈 값),
+              // 본인 담당 의뢰인 + 직접 등록한 외부 의뢰인만 집계 (다른 변호사 사건 합산 금지 — 위 Command Center와 같은 기준)
+              const crmStore = loadCrmExtMap();
+              const allExts = Object.entries(crmStore)
+                .filter(([reqId]) => ownRequestIds.has(reqId) || reqId.startsWith('ext-'))
+                .map(([, ext]) => ext) as any[];
               const channelCounts: Record<string, number> = {};
               allExts.forEach((ext: any) => { const ch = ext.intakeChannel || 'mykim'; channelCounts[ch] = (channelCounts[ch] || 0) + 1; });
               const totalClients = allExts.length || 1;
@@ -3677,11 +3807,28 @@ export default function LawyerRole({
             activeChatReqId={activeChatReqId}
             onSelectThread={setActiveChatReqId}
             onSendMessage={handleSendChat}
+            onRetryMessage={async (messageId) => {
+              // 다시 보내기도 전송과 같은 승인 확인을 거친다
+              if (activeLawyer?.approved === false) {
+                toast.warning('현재 자격 심사 대기(체험 모드) 상태입니다. 관리자 정식 승인 완료 후 메시지를 보낼 수 있습니다.');
+                return false;
+              }
+              if (!onRetryMessage) return false;
+              const ok = await onRetryMessage(messageId);
+              if (!ok) toast.error('다시 보내지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+              return ok;
+            }}
             onConvertToCase={handleConvertToCase}
+            // 사건(Case)의 clientId에는 상담 요청 ID가 저장된다 — 이미 수임된 요청이면 '정식 수임 전환' 대신 '사건 열기'
+            hasCaseForRequest={(reqId) => !!reqId && cases.some(c => c.clientId === reqId)}
             onOpenCrm={(reqId, detailTab) => {
               if (reqId) {
                 setCrmTargetClientId(reqId);
                 setCrmTargetDetailTab(detailTab || 'info');
+              } else {
+                // 대상 없이 열면 목록으로 (이전: 지난번 대상 값이 남아 마지막 고객·탭이 다시 열림)
+                setCrmTargetClientId('');
+                setCrmTargetDetailTab('info');
               }
               setActiveTab('client-crm');
             }}
@@ -4302,12 +4449,9 @@ export default function LawyerRole({
               setActiveTab(previousTab as any);
             }}
             viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
-            onSendProposal={(proposalData) => {
-              handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
-            }}
-            onRequestConfirm={(proposalData, memo) => {
-              handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
-            }}
+            // 발송·컨펌 요청이 막히면 false — 워크스페이스가 작성 중인 초안을 지우지 않는다
+            onSendProposal={(proposalData) => handleSubmitProposalFromDraft(proposalModalReqId, proposalData)}
+            onRequestConfirm={(proposalData, memo) => handleRequestProposalConfirm(proposalModalReqId, proposalData, memo)}
             aiAnalysis={undefined}
             isAIPremiumEnabled={!!activeLawyer.aiCaseAnalysisEnabled}
             lawyerInfo={{
@@ -4328,9 +4472,7 @@ export default function LawyerRole({
               actorRole={activeStaffMember?.role || 'OWNER'}
               actorName={activeStaffMember?.name || activeLawyer.name}
               preselectedRequestId={copilotPreselectedReqId}
-              onProposalSent={(reqId: string, proposalData: any) => {
-                handleSubmitProposalFromDraft(reqId, proposalData);
-              }}
+              onProposalSent={(reqId: string, proposalData: any) => handleSubmitProposalFromDraft(reqId, proposalData)}
             />
           ) : (
             <AICaseAnalysisLocked
@@ -5500,12 +5642,8 @@ export default function LawyerRole({
           }}
           mode="modal"
           viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
-          onSendProposal={(proposalData) => {
-            handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
-          }}
-          onRequestConfirm={(proposalData, memo) => {
-            handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
-          }}
+          onSendProposal={(proposalData) => handleSubmitProposalFromDraft(proposalModalReqId, proposalData)}
+          onRequestConfirm={(proposalData, memo) => handleRequestProposalConfirm(proposalModalReqId, proposalData, memo)}
         />
       )}
 

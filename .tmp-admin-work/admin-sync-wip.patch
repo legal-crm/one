@@ -1,0 +1,2928 @@
+﻿diff --git a/src/App.tsx b/src/App.tsx
+index 3700179..85c303f 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -372,8 +372,10 @@ export default function App() {
+     existingList.forEach(m => map.set(m.id, m));
+     incomingList.forEach(m => {
+       const prev = map.get(m.id);
+-      // 서버 행에는 대상 변호사(targetLawyerId) 칸이 없다. 이 기기에서 만든 메시지의 대상 정보를 유지해야
+-      // 비교 상담 중 보낸 메시지가 5초 동기화 뒤 사라지거나 다른 변호사 탭에 섞이지 않는다.
++      // 대상 변호사(targetLawyerId): 서버 값이 있으면 서버 값, 없으면 이 기기 값을 유지한다.
++      // 서버 대상 칸(target_lawyer_id, 마이그레이션 030)이 없거나 칸이 생기기 전에 저장된 행은 대상 없이 오므로,
++      // 이 기기에서 만든 메시지의 대상 정보를 지우면 비교 상담 중 보낸 메시지가 5초 동기화 뒤 사라지거나
++      // 다른 변호사 탭에 섞인다. 칸이 생긴 뒤 저장된 행은 서버 값이 그대로 쓰인다.
+       // 서버에서 온 행이 들어오면 전송 상태(deliveryStatus)는 자연히 지워진다(= 전송 완료).
+       map.set(m.id, prev?.targetLawyerId && !m.targetLawyerId ? { ...m, targetLawyerId: prev.targetLawyerId } : m);
+     });
+@@ -735,7 +737,7 @@ export default function App() {
+   }, []);
+ 
+   // Method to add customized chat messages
+-  // @returns 서버 저장까지 끝났으면 true. 의뢰인 대화 메시지는 전송 상태(보내는 중/실패)를 말풍선에 표시한다.
++  // @returns 서버 저장까지 끝났으면 true. 의뢰인·변호사 대화 메시지는 전송 상태(보내는 중/실패)를 말풍선에 표시한다.
+   const handleAddMessage = (
+     reqId: string, 
+     text: string, 
+@@ -744,7 +746,8 @@ export default function App() {
+     name: string,
+     targetLawyerId?: string
+   ): Promise<boolean> => {
+-    const tracksDelivery = sender === 'client' && senderId !== 'system';
++    // 시스템 안내(senderId 'system')는 표시하지 않는다. 이전: 의뢰인 메시지만 추적해 변호사 메시지는 실패해도 알 수 없었다.
++    const tracksDelivery = senderId !== 'system' && (sender === 'client' || sender === 'lawyer');
+     const newMessage: ConsultMessage = {
+       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+       consultRequestId: reqId,
+@@ -764,21 +767,18 @@ export default function App() {
+         return ok;
+       });
+ 
+-    // Update the corresponding request status to active 'counseling' & preserve acceptedLawyerIds
+-    const isActualChat = (sender === 'client' && senderId !== 'system') || (sender === 'lawyer' && senderId !== 'system');
+-    setRequests(prev => prev.map(req => {
+-      if (req.id === reqId) {
+-        const accepted = req.acceptedLawyerIds || [];
+-        const isLawyerSender = sender === 'lawyer' && senderId && senderId !== 'system';
+-        const updatedAccepted = isLawyerSender && !accepted.includes(senderId) ? [...accepted, senderId] : accepted;
+-        return {
+-          ...req,
+-          acceptedLawyerIds: updatedAccepted,
+-          status: (isActualChat && (req.status === 'requested' || req.status === 'responding')) ? 'counseling' : req.status
+-        };
+-      }
+-      return req;
+-    }));
++    // 의뢰인 대화 메시지만 요청 상태를 바꾼다 (requested/responding → counseling, 기존 동작 유지).
++    // 이전: 변호사가 보낸 대화 메시지가 acceptedLawyerIds에 그 변호사를 넣고 상태를 counseling으로 바꿔,
++    // 의뢰인이 제안서의 '상담 시작'을 누르기 전(consultFlow getConsultRoomStage)인데도 대화가 열린 것처럼 처리됐다.
++    // 대화를 여는 것은 의뢰인 화면의 '상담 시작'(ChatView startConsultWithProposal)뿐이다.
++    const isClientChat = sender === 'client' && senderId !== 'system';
++    if (isClientChat) {
++      setRequests(prev => prev.map(req => (
++        req.id === reqId && (req.status === 'requested' || req.status === 'responding')
++          ? { ...req, status: 'counseling' as const }
++          : req
++      )));
++    }
+     return delivery;
+   };
+ 
+@@ -1027,6 +1027,7 @@ export default function App() {
+                 lawyers={lawyers}
+                 setLawyers={setLawyers}
+                 onAddMessage={handleAddMessage}
++                onRetryMessage={handleRetryMessage}
+                 cases={cases}
+                 setCases={setCases}
+                 members={members}
+diff --git a/src/components/LawyerRole.tsx b/src/components/LawyerRole.tsx
+index a304438..677b99b 100644
+--- a/src/components/LawyerRole.tsx
++++ b/src/components/LawyerRole.tsx
+@@ -15,6 +15,7 @@ import { ChatDisclaimer } from './Disclaimers';
+ import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
+ import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
+ import ProposalWorkspace from './lawyer/ProposalWorkspace';
++import { getProposalBlockReason, hasProposalFrom, isChatOpenWithLawyer, isNewRequestForLawyer, isOpenForProposals, requestTypeLabel } from './lawyer/requestScope';
+ import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
+ import CrmTab from './lawyer/CrmTab';
+ import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
+@@ -156,7 +157,10 @@ interface LawyerRoleProps {
+   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
+   lawyers: User[];
+   setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
+-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void;
++  /** 서버 저장까지 끝나면 true (App.handleAddMessage) — 변호사 대화 메시지는 말풍선에 전송 상태를 표시한다 */
++  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void | Promise<boolean>;
++  /** 전송 실패한 메시지를 같은 id로 다시 보낸다 */
++  onRetryMessage?: (messageId: string) => Promise<boolean>;
+   cases: Case[];
+   setCases: React.Dispatch<React.SetStateAction<Case[]>>;
+   members: Member[];
+@@ -179,6 +183,7 @@ export default function LawyerRole({
+   lawyers,
+   setLawyers,
+   onAddMessage,
++  onRetryMessage,
+   cases,
+   setCases,
+   members,
+@@ -1349,11 +1354,33 @@ export default function LawyerRole({
+     }
+   }, [activeTab]);
+ 
++  // ── 제안서 발송 가드 (requestScope.getProposalBlockReason 공용 규칙) ──
++  // 변호사는 본인 기준, 직원은 컨펌 뒤 담당(감독) 변호사 이름으로 발송되므로 그 변호사 기준으로 판정한다.
++  // 이전: 요청받지 않은 변호사·이미 제안서를 보낸 변호사·종료된 요청에도 제안서가 발송됐다.
++  const getProposalSendBlockReason = (reqId: string | null | undefined, opts: { ignoreApproval?: boolean } = {}): string | null => {
++    const req = reqId ? requests.find(r => r.id === reqId) : undefined;
++    if (!req) return '상담 요청을 찾을 수 없습니다.';
++    if (isLawyerOrOwner) {
++      return getProposalBlockReason(req, activeLawyer, { approved: opts.ignoreApproval ? undefined : activeLawyer.approved });
++    }
++    const supervisingId = activeStaffMember?.supervisingLawyerId;
++    if (!supervisingId) return null; // 담당 변호사 미지정 — 컨펌 승인(최종 발송) 단계에서 판정
++    const supervisor = lawyers.find(l => l.id === supervisingId);
++    return getProposalBlockReason(req, supervisor || { id: supervisingId }, { approved: opts.ignoreApproval ? undefined : supervisor?.approved });
++  };
++
+   // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 워크스페이스 열기
+   const [previousTab, setPreviousTab] = useState<string>('client-crm');
+   const handleOpenProposalDraft = (reqId: string) => {
+     const req = requests.find(r => r.id === reqId);
+     if (!req) return;
++    // 보낼 수 없는 요청이면 작성 화면을 열지 않는다 (이전: 다 작성한 뒤에야 막히거나 그대로 발송됨)
++    // 자격 심사 대기(체험 모드)만은 작성·미리보기를 허용하고 발송 버튼에서 사유를 보여 준다
++    const blockReason = getProposalSendBlockReason(reqId, { ignoreApproval: true });
++    if (blockReason) {
++      toast.error(blockReason);
++      return;
++    }
+ 
+     const rehabInput = mapToRehabUserInput(req);
+     const rehabResult = calculateRepayment(rehabInput);
+@@ -1367,18 +1394,45 @@ export default function LawyerRole({
+     setActiveTab('proposal-workspace' as any);
+   };
+ 
+-  // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지 + 채팅 연동
+-  const handleSubmitProposalFromDraft = (reqId: string, proposalData: any) => {
++  // 제안서 발송 (워크스페이스·모달·AI 사건 분석·직원 컨펌 승인 공용)
++  // - 제안서만 추가한다. 대화는 의뢰인이 제안서의 '상담 시작'을 눌러야 열린다 (client/consultFlow.ts getConsultRoomStage)
++  // - 이전: 발송과 동시에 status 'comparing'·acceptedLawyerIds에 변호사를 넣어 의뢰인 화면의 '제안서 도착' 단계가 건너뛰어졌다
++  // @returns 실제로 발송했으면 true — 막히면 작성 중인 초안·컨펌 대기 건을 그대로 둔다
++  const handleSubmitProposalFromDraft = (reqId: string, proposalData: any): boolean => {
+     const req = requests.find(r => r.id === reqId);
+-    if (!req) return;
++    if (!req) {
++      toast.error('상담 요청을 찾을 수 없습니다.');
++      return false;
++    }
+     // 변호사법: 직원 계정은 의뢰인에게 직접 발송 불가 → 변호사 컨펌 요청 경로만 허용
+     if (!isLawyerOrOwner) {
+       toast.error('직원 계정은 제안서를 직접 발송할 수 없습니다. 변호사 컨펌을 요청해 주세요.');
+-      return;
++      return false;
++    }
++    // 요청받지 않았거나 이미 보냈거나 종료된 요청, 자격 심사 대기 계정은 발송하지 않는다
++    const blockReason = getProposalBlockReason(req, activeLawyer, { approved: activeLawyer.approved });
++    if (blockReason) {
++      toast.error(blockReason);
++      return false;
+     }
+ 
+     const isAIPremium = !!proposalData.aiInsights;
+ 
++    // 의뢰인 비교표(client/room/ProposalCompareTable)가 읽는 값만 담은 요약 — 초안에 실제로 있는 값만 넣는다
++    // (이전: AI 프리미엄이 아니면 proposalData를 저장하지 않아 착수금·예납금·수임료 메모가 '제안서 참고'로만 보였다)
++    const draftFees = proposalData.fees || {};
++    const compareFees: Record<string, number | string> = {};
++    for (const key of ['totalFee', 'downPayment', 'installments', 'monthlyInstallment', 'courtDeposit']) {
++      const value = draftFees[key];
++      if (value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value))) compareFees[key] = Number(value);
++    }
++    if (typeof draftFees.feeMemo === 'string' && draftFees.feeMemo.trim()) compareFees.feeMemo = draftFees.feeMemo.trim();
++    const draftMonths = Number(proposalData.diagnosis?.repaymentMonths);
++    const compareSummary = {
++      fees: compareFees,
++      ...(draftMonths > 0 ? { diagnosis: { repaymentMonths: draftMonths } } : {}),
++    };
++
+     const newProposal = {
+       id: `prop-${Date.now()}`,
+       lawyerId: activeLawyer.id,
+@@ -1392,36 +1446,35 @@ export default function LawyerRole({
+       totalReduction: Math.round(proposalData.diagnosis.estimatedReduction / 10000),
+       fee: Math.round(proposalData.fees.totalFee / 10000),
+       installment: `착수금 ${Math.round(proposalData.fees.downPayment / 10000)}만원, ${proposalData.fees.installments}회 분납`,
++      // '제안서 발송'은 소견 없이 보낼 때의 자리표시 문구 — 의뢰인 화면(client/proposalText.ts PLACEHOLDER_REMARKS)이
++      // 이 문자열로 비교해 변호사 소견처럼 보이지 않게 하므로, 바꾸려면 그쪽과 함께 바꾼다
+       remark: proposalData.lawyerOpinion || '제안서 발송',
+       specialNotes: proposalData.specialNotes,
+       clientQnA: proposalData.clientQnA,
+       createdAt: new Date().toISOString(),
+-      proposalData: isAIPremium ? proposalData : undefined,
++      // AI 프리미엄은 보고서 전체, 그 외에는 비교표용 요약
++      proposalData: isAIPremium ? proposalData : compareSummary,
+     };
+ 
+-    // 1) 상태를 'comparing'으로 변경 + acceptedLawyerIds에 변호사 추가 → 채팅탭에 노출
++    // 1) 제안서만 추가 — 상태는 'requested'일 때만 'responding'으로, 그 외(비교 상담 중 등)는 그대로 둔다
+     setRequests(prev => prev.map(r => {
+-      if (r.id === reqId) {
+-        const currentAccepted = r.acceptedLawyerIds || [];
+-        return {
+-          ...r,
+-          status: 'comparing' as const,
+-          acceptedLawyerIds: currentAccepted.includes(activeLawyer.id) 
+-            ? currentAccepted 
+-            : [...currentAccepted, activeLawyer.id],
+-          proposals: [...(r.proposals || []), newProposal]
+-        };
+-      }
+-      return r;
++      if (r.id !== reqId) return r;
++      return {
++        ...r,
++        status: r.status === 'requested' ? ('responding' as const) : r.status,
++        proposals: [...(r.proposals || []), newProposal],
++      };
+     }));
+ 
+-    // 2) 채팅 메시지 생성: 시스템 알림 + 제안서 요약 메시지
++    // 2) 채팅 메시지: 시스템 안내 + 제안서 요약 메시지
++    //    안내는 이 변호사 대상으로만 남긴다 (의뢰인 화면의 다른 변호사 탭에 섞이지 않게)
+     onAddMessage(
+       reqId,
+-      `[System] ${activeLawyer.name} 변호사가 상담에 참여하였습니다.`,
++      `[System] ${activeLawyer.name} 변호사가 제안서를 보냈습니다.`,
+       'lawyer',
+       'system',
+-      'System'
++      'System',
++      activeLawyer.id
+     );
+ 
+     const feeText = `${Math.round(proposalData.fees.totalFee / 10000)}만원`;
+@@ -1451,16 +1504,23 @@ export default function LawyerRole({
+       `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%${isAIPremium ? ', AI 정밀 분석' : ''})`
+     );
+ 
+-    // 3) 채팅탭으로 자동 전환 + 해당 스레드 활성화
+-    setActiveChatReqId(reqId);
+-    setActiveTab('chat');
+-    toast.success('제안서가 발송되었습니다. 상담 채팅이 시작됩니다.');
++    // 3) 대화는 의뢰인이 '상담 시작'을 누른 뒤 열리므로 채팅 탭으로 옮기지 않고, 작성 화면을 열기 전 탭으로 돌아간다
++    //    (이전: 곧바로 채팅 탭으로 이동하며 '상담 채팅이 시작됩니다'라고 안내)
++    if ((activeTab as string) === 'proposal-workspace') {
++      if (previousTab === 'client-crm') {
++        setCrmTargetClientId(reqId);
++        setCrmTargetDetailTab('info');
++      }
++      setActiveTab(previousTab as any);
++    }
++    toast.success('제안서를 보냈습니다. 의뢰인이 상담을 시작하면 대화할 수 있습니다.');
+ 
+     // 모달 닫기 및 상태 초기화
+     setProposalModalReqId(null);
+     setProposalRehabResult(null);
+     setProposalRehabInput(null);
+     setProposalConsultRequest(null);
++    return true;
+   };
+ 
+   // ── 직원용: 변호사 컨펌 요청 (변호사법 준수) ──
+@@ -1490,9 +1550,19 @@ export default function LawyerRole({
+   const staffRole = activeStaffMember?.role || 'OWNER';
+   const isLawyerOrOwner = staffRole === 'OWNER' || staffRole === 'LAWYER';
+ 
+-  const handleRequestProposalConfirm = (reqId: string, proposalData: any, memo: string) => {
++  // @returns 컨펌 요청을 보냈으면 true — 막히면 작성 중인 초안을 그대로 둔다
++  const handleRequestProposalConfirm = (reqId: string, proposalData: any, memo: string): boolean => {
+     const req = requests.find(r => r.id === reqId);
+-    if (!req) return;
++    if (!req) {
++      toast.error('상담 요청을 찾을 수 없습니다.');
++      return false;
++    }
++    // 컨펌 뒤 담당 변호사 이름으로 발송되므로 그 변호사가 보낼 수 있는 요청인지 먼저 확인한다 (승인 시 한 번 더 확인)
++    const blockReason = getProposalSendBlockReason(reqId);
++    if (blockReason) {
++      toast.error(blockReason);
++      return false;
++    }
+ 
+     // 담당 변호사 결정
+     const supervisingId = activeStaffMember?.supervisingLawyerId || activeLawyer.id;
+@@ -1533,14 +1603,40 @@ export default function LawyerRole({
+     setProposalRehabResult(null);
+     setProposalRehabInput(null);
+     setProposalConsultRequest(null);
++    return true;
+   };
+ 
+-  const handleApproveProposal = (pendingId: string, proposalData: any) => {
++  const handleApproveProposal = async (pendingId: string, proposalData: any) => {
+     const pending = pendingProposals.find(p => p.id === pendingId);
+     if (!pending) return;
+ 
+-    // 제안서를 승인 → 고객에게 실제 발송
+-    handleSubmitProposalFromDraft(pending.reqId, proposalData);
++    // 승인하는 변호사 기준으로 발송 가능 여부를 먼저 확인한다
++    // (이전: 발송이 막혀도 컨펌 대기 건을 지우고 직원에게 '승인하고 발송' 알림을 보냈다)
++    const pendingReq = requests.find(r => r.id === pending.reqId);
++    const blockReason = pendingReq
++      ? getProposalBlockReason(pendingReq, activeLawyer, { approved: activeLawyer.approved })
++      : '상담 요청을 찾을 수 없습니다.';
++    if (blockReason) {
++      // 자격 심사 대기는 승인 후 다시 보낼 수 있으므로 안내만 하고, 그 밖의 사유는 반려로 정리할 수 있게 한다
++      // (검토 모달에는 반려 버튼이 없어, 보낼 수 없는 컨펌 요청이 목록에 계속 남았다)
++      const onlyApproval = pendingReq && !getProposalBlockReason(pendingReq, activeLawyer);
++      if (onlyApproval) {
++        toast.error(blockReason);
++        return;
++      }
++      const reject = await dialog.confirm({
++        title: '제안서를 보낼 수 없습니다',
++        message: `${blockReason}\n\n이 컨펌 요청을 반려하고 작성한 직원에게 알릴까요?`,
++        confirmText: '반려하기',
++        cancelText: '그대로 두기',
++        variant: 'warning',
++      });
++      if (reject) handleRejectProposal(pendingId, blockReason);
++      return;
++    }
++
++    // 제안서를 승인 → 고객에게 실제 발송 (막히면 컨펌 대기 건을 그대로 둔다)
++    if (!handleSubmitProposalFromDraft(pending.reqId, proposalData)) return;
+ 
+     // pending에서 제거
+     setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
+@@ -1591,7 +1687,9 @@ export default function LawyerRole({
+ 
+   // Open contract conversion modal for formal case intake
+   const handleConvertToCase = (req: ConsultRequest) => {
+-    const isAlreadyCase = cases.some(c => c.clientId === req.clientId);
++    // 사건(Case)의 clientId에는 상담 요청 ID가 저장된다(ContractConversionModal) — 요청 ID로 비교한다
++    // (이전: req.clientId로 비교해 clientId가 빈 요청·익명('client-temp') 요청끼리 이미 수임된 것으로 잘못 판정됐다)
++    const isAlreadyCase = cases.some(c => c.clientId === req.id);
+     if (isAlreadyCase) {
+       toast.error('이미 정식 수임 사건으로 등록된 고객입니다.');
+       return;
+@@ -1677,7 +1775,20 @@ export default function LawyerRole({
+     }
+     const trimmed = text.trim();
+     if (!trimmed || !reqId) return false;
+-    onAddMessage(reqId, trimmed, 'lawyer', activeLawyer.id, activeLawyer.name);
++    // 의뢰인이 제안서의 '상담 시작'을 누르기 전에는 대화가 열리지 않는다 (의뢰인 화면 consultFlow 규칙과 같게)
++    // (이전: 제안서 발송 시 자동 수락되어 의뢰인이 고르기 전부터 메시지를 보낼 수 있었다)
++    const targetReq = requests.find(r => r.id === reqId);
++    if (targetReq && !isChatOpenWithLawyer(targetReq, activeLawyer.id)) {
++      toast.warning(hasProposalFrom(targetReq, activeLawyer.id)
++        ? '의뢰인이 제안서를 확인하고 상담 시작을 누르면 대화가 열립니다.'
++        : '먼저 제안서를 보내 주세요. 의뢰인이 상담 시작을 누르면 대화가 열립니다.');
++      return false;
++    }
++    // 입력창은 바로 비우고(ChatComposer 계약), 서버 저장 결과는 말풍선(보내는 중·다시 보내기)과 안내로 알린다
++    // (이전: 저장 결과를 받지 않아 전송이 실패해도 입력창만 비워지고 아무 표시가 없었다)
++    void Promise.resolve(onAddMessage(reqId, trimmed, 'lawyer', activeLawyer.id, activeLawyer.name)).then(ok => {
++      if (ok === false) toast.error('메시지를 보내지 못했습니다. 말풍선의 다시 보내기를 눌러 주세요.');
++    });
+     
+     // Log message sent (본문은 platformActivityService에서 제거됨)
+     onLogActivity(
+@@ -1701,8 +1812,9 @@ export default function LawyerRole({
+       const targetLawyer = lawyers.find(l => l.id === id);
+       return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+     });
+-    // 오픈 요청은 '신규 상담(매칭 대기)'에만 포함 — 진행 중 건은 담당 변호사 본인 것만
+-    const openMatch = r.requestType === 'open' && r.status === 'requested';
++    // 공개 요청은 제안서 자리가 남아 있는 동안만 포함 — 진행 중 건은 담당 변호사 본인 것만
++    // (이전: status === 'requested'일 때만 포함해, 첫 제안서가 도착해 'responding'이 되면 다른 변호사에게서 사라졌다)
++    const openMatch = isOpenForProposals(r);
+     return directMatch || sameFirmMatch || openMatch;
+   };
+   /** 본인(또는 같은 사무소)이 담당·참여 중인 요청만 (오픈 매칭 대기 제외) */
+@@ -1721,14 +1833,19 @@ export default function LawyerRole({
+   // 영업 리드 저장소를 로그인 사무소(변호사) 단위로 분리 — 아래 사이드바 배지·영업관리 탭이 이 범위를 사용
+   setSalesLeadScope(activeLawyer.lawFirmId || activeLawyer.id);
+   const ownRequestIds = new Set(ownRequests.map(r => r.id));
+-  const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
++  // '신규 상담' — 내가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (requestScope 공용 판정, 상태와 무관)
++  // 이전: status === 'requested'만 신규로 세어, 비교 상담 중 첫 제안서 뒤 나머지 변호사에게서 요청이 사라지고
++  //       비교 상담 중 추가로 요청받은 변호사는 대시보드·알림에서 요청을 볼 수 없었다
++  const newRequestsForMe = requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers));
++  const totalOpenRequestsCount = newRequestsForMe.length;
+   const activeChatsCount = ownRequests.filter(r => r.status === 'counseling').length;
+   const ownCases = cases.filter(c => !c.assignedLawyerId || c.assignedLawyerId === activeLawyer.id || ownRequestIds.has(c.clientId));
+   const totalCasesCount = ownCases.length;
+   const directCounselingCount = ownRequests.filter(r => r.status === 'responding').length;
+ 
+   // ── 신규 상담 접수 알림 (설정 탭의 텔레그램·이메일·브라우저 알림 채널) ──
+-  // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 들어온 '매칭 대기' 요청만 1회 발송.
++  // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 '신규 상담'이 된 요청만 1회 발송.
++  // 비교 상담 중 의뢰인이 나를 추가로 요청한 경우도 포함한다 (isNewRequestForLawyer, 이전: status 'requested'만).
+   // CRM이 열려 있는 브라우저에서만 동작한다 (서버 푸시 아님).
+   const notifiedRequestIdsRef = useRef<Set<string> | null>(null);
+   useEffect(() => {
+@@ -1736,7 +1853,7 @@ export default function LawyerRole({
+       notifiedRequestIdsRef.current = null;
+       return;
+     }
+-    const candidates = requests.filter(r => r.status === 'requested' && isRelevantRequest(r));
++    const candidates = requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers));
+     if (notifiedRequestIdsRef.current === null) {
+       notifiedRequestIdsRef.current = new Set(candidates.map(r => r.id));
+       return;
+@@ -2531,7 +2648,13 @@ export default function LawyerRole({
+                 <MessageSquare className="w-5 h-5 shrink-0" />
+                 {!sidebarCollapsed && <span className="truncate">상담 채팅</span>}
+                 {(() => { 
+-                  const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; 
++                  // 대화가 열린 상담: 비교·상담 단계에서 수락/선택된 요청 + 의뢰인이 상담 변호사 확정을 취소해
++                  // 다시 비교 중인 요청(status 'responding', 수락 목록에 내가 있음 — 이전에는 배지에서 빠졌다)
++                  const c = requests.filter(r => {
++                    const acceptedMe = (r.acceptedLawyerIds || []).includes(activeLawyer.id);
++                    if (r.status === 'comparing' || r.status === 'counseling') return acceptedMe || r.selectedLawyerId === activeLawyer.id;
++                    return r.status === 'responding' && acceptedMe;
++                  }).length; 
+                   if (c === 0) return null;
+                   return sidebarCollapsed ? (
+                     <span className="absolute top-1.5 right-1.5 bg-brand text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-black ring-2 ring-[#111827]">
+@@ -2687,7 +2810,8 @@ export default function LawyerRole({
+                     !sidebarCollapsed && <span className="ml-auto bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-md px-1.5 py-0.5 text-[10px] font-bold">유료</span>
+                   ) : (
+                     (() => { 
+-                      const n = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && isRelevantRequest(r)).length; 
++                      // 신규 상담 수 (isNewRequestForLawyer — 이전: requested|responding이면 이미 제안서를 보낸 요청까지 셌다)
++                      const n = newRequestsForMe.length; 
+                       if (n === 0) return null;
+                       return sidebarCollapsed ? (
+                         <span className="absolute top-1.5 right-1.5 bg-brand text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
+@@ -2917,10 +3041,11 @@ export default function LawyerRole({
+ 
+             {/* ═══ 섹션 0: 리걸플로형 법원 사건 지휘 본부 (Command Center) 4열 브리핑 & 원형 게이지 ═══ */}
+             {(() => {
+-              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+-              // 본인 담당 의뢰인의 CRM 확장 데이터만 집계 (다른 변호사 사건 합산 금지)
++              // CRM 확장 데이터는 secureStorage(sessionStorage)에 있다 — crmService로 읽는다 (이전: localStorage 직접 읽기라 항상 빈 값)
++              const crmStore = loadCrmExtMap();
++              // 본인 담당 의뢰인 + CRM에서 직접 등록한 외부 의뢰인(ext-, CrmTab isMine과 같은 기준)만 집계 (다른 변호사 사건 합산 금지)
+               const allExts = Object.entries(crmStore)
+-                .filter(([reqId]) => ownRequestIds.has(reqId))
++                .filter(([reqId]) => ownRequestIds.has(reqId) || reqId.startsWith('ext-'))
+                 .map(([, ext]) => ext) as any[];
+ 
+               // 1. 금지·중지명령 심리 중 (CRM 상태 '신청 접수' 기준)
+@@ -3236,8 +3361,8 @@ export default function LawyerRole({
+               </div>
+ 
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+-                {requests
+-                  .filter(r => r.status === 'requested' && isRelevantRequest(r))
++                {/* 신규 상담 = isNewRequestForLawyer (이전: status 'requested'만 — 비교 상담 중 요청이 빠졌다) */}
++                {newRequestsForMe
+                   .slice(0, 3)
+                   .map((r, idx) => {
+                     const assets = r.financialProfile.assetsTotal ?? r.financialProfile.myAssets ?? 0;
+@@ -3251,12 +3376,13 @@ export default function LawyerRole({
+                       <div className="flex items-center justify-between gap-2">
+                         <div className="flex items-center gap-1.5 min-w-0">
+                           <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
+-                            r.requestType === 'direct'
+-                              ? 'bg-[#1E3A5F] text-white'
+-                              : 'bg-slate-200 text-slate-700'
++                          {/* 요청 유형 (이전: 'direct'가 아니면 모두 '오픈' — 의뢰인이 고른 요청(direct_multi)도 '오픈'으로 보였다) */}
++                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
++                            r.requestType === 'open'
++                              ? 'bg-slate-200 text-slate-700'
++                              : 'bg-[#1E3A5F] text-white'
+                           }`}>
+-                            {r.requestType === 'direct' ? '지명' : '오픈'}
++                            {requestTypeLabel(r.requestType)}
+                           </span>
+                           {r.entryCategory && (
+                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap truncate max-w-[80px] bg-white text-slate-700 border border-slate-200">
+@@ -3615,8 +3741,12 @@ export default function LawyerRole({
+ 
+             {/* ═══ Row 6: 유입 채널 + 수임료 + 보정명령 ═══ */}
+             {(() => {
+-              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+-              const allExts = Object.values(crmStore) as any[];
++              // secureStorage(sessionStorage) 사본을 crmService로 읽는다 (이전: localStorage 직접 읽기라 항상 빈 값),
++              // 본인 담당 의뢰인 + 직접 등록한 외부 의뢰인만 집계 (다른 변호사 사건 합산 금지 — 위 Command Center와 같은 기준)
++              const crmStore = loadCrmExtMap();
++              const allExts = Object.entries(crmStore)
++                .filter(([reqId]) => ownRequestIds.has(reqId) || reqId.startsWith('ext-'))
++                .map(([, ext]) => ext) as any[];
+               const channelCounts: Record<string, number> = {};
+               allExts.forEach((ext: any) => { const ch = ext.intakeChannel || 'mykim'; channelCounts[ch] = (channelCounts[ch] || 0) + 1; });
+               const totalClients = allExts.length || 1;
+@@ -3677,11 +3807,28 @@ export default function LawyerRole({
+             activeChatReqId={activeChatReqId}
+             onSelectThread={setActiveChatReqId}
+             onSendMessage={handleSendChat}
++            onRetryMessage={async (messageId) => {
++              // 다시 보내기도 전송과 같은 승인 확인을 거친다
++              if (activeLawyer?.approved === false) {
++                toast.warning('현재 자격 심사 대기(체험 모드) 상태입니다. 관리자 정식 승인 완료 후 메시지를 보낼 수 있습니다.');
++                return false;
++              }
++              if (!onRetryMessage) return false;
++              const ok = await onRetryMessage(messageId);
++              if (!ok) toast.error('다시 보내지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
++              return ok;
++            }}
+             onConvertToCase={handleConvertToCase}
++            // 사건(Case)의 clientId에는 상담 요청 ID가 저장된다 — 이미 수임된 요청이면 '정식 수임 전환' 대신 '사건 열기'
++            hasCaseForRequest={(reqId) => !!reqId && cases.some(c => c.clientId === reqId)}
+             onOpenCrm={(reqId, detailTab) => {
+               if (reqId) {
+                 setCrmTargetClientId(reqId);
+                 setCrmTargetDetailTab(detailTab || 'info');
++              } else {
++                // 대상 없이 열면 목록으로 (이전: 지난번 대상 값이 남아 마지막 고객·탭이 다시 열림)
++                setCrmTargetClientId('');
++                setCrmTargetDetailTab('info');
+               }
+               setActiveTab('client-crm');
+             }}
+@@ -4302,12 +4449,9 @@ export default function LawyerRole({
+               setActiveTab(previousTab as any);
+             }}
+             viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
+-            onSendProposal={(proposalData) => {
+-              handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
+-            }}
+-            onRequestConfirm={(proposalData, memo) => {
+-              handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
+-            }}
++            // 발송·컨펌 요청이 막히면 false — 워크스페이스가 작성 중인 초안을 지우지 않는다
++            onSendProposal={(proposalData) => handleSubmitProposalFromDraft(proposalModalReqId, proposalData)}
++            onRequestConfirm={(proposalData, memo) => handleRequestProposalConfirm(proposalModalReqId, proposalData, memo)}
+             aiAnalysis={undefined}
+             isAIPremiumEnabled={!!activeLawyer.aiCaseAnalysisEnabled}
+             lawyerInfo={{
+@@ -4328,9 +4472,7 @@ export default function LawyerRole({
+               actorRole={activeStaffMember?.role || 'OWNER'}
+               actorName={activeStaffMember?.name || activeLawyer.name}
+               preselectedRequestId={copilotPreselectedReqId}
+-              onProposalSent={(reqId: string, proposalData: any) => {
+-                handleSubmitProposalFromDraft(reqId, proposalData);
+-              }}
++              onProposalSent={(reqId: string, proposalData: any) => handleSubmitProposalFromDraft(reqId, proposalData)}
+             />
+           ) : (
+             <AICaseAnalysisLocked
+@@ -5500,12 +5642,8 @@ export default function LawyerRole({
+           }}
+           mode="modal"
+           viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
+-          onSendProposal={(proposalData) => {
+-            handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
+-          }}
+-          onRequestConfirm={(proposalData, memo) => {
+-            handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
+-          }}
++          onSendProposal={(proposalData) => handleSubmitProposalFromDraft(proposalModalReqId, proposalData)}
++          onRequestConfirm={(proposalData, memo) => handleRequestProposalConfirm(proposalModalReqId, proposalData, memo)}
+         />
+       )}
+ 
+diff --git a/src/components/client/ClientRemoteSignView.tsx b/src/components/client/ClientRemoteSignView.tsx
+index f28ea6e..b758ed8 100644
+--- a/src/components/client/ClientRemoteSignView.tsx
++++ b/src/components/client/ClientRemoteSignView.tsx
+@@ -551,7 +551,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
+           onOpenVerify={() => setShowVerifyModal(true)}
+           headingRef={doneHeadingRef}
+         />
+-        <ContractPublicVerifierModal isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)} contract={contract} />
++        {/* 서명 링크로 들어온 위임인 본인 화면이라 본인 이름을 가리지 않는다 (공개 검증 링크만 이름 일부를 가린다) */}
++        <ContractPublicVerifierModal isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)} contract={contract} revealFullName />
+       </>
+     );
+   }
+diff --git a/src/components/client/mypage/CaseProgressCard.tsx b/src/components/client/mypage/CaseProgressCard.tsx
+index 1d415e1..af4d4a5 100644
+--- a/src/components/client/mypage/CaseProgressCard.tsx
++++ b/src/components/client/mypage/CaseProgressCard.tsx
+@@ -109,7 +109,17 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
+                     {thirteenStage === 'commencement' && '법원이 개인회생 개시결정을 내렸습니다. 인가 전까지 법원 계좌로 변제금 적립을 시작합니다.'}
+                     {thirteenStage === 'creditor_meeting' && '채권자집회 기일이 정해졌습니다. 아래 채권자집회 가이드를 확인해 주세요.'}
+                     {thirteenStage === 'confirmation' && '변제계획 인가결정이 내려졌습니다. 계획대로 변제금을 내면 변제를 마친 뒤 면책을 신청할 수 있습니다.'}
+-                    {thirteenStage === 'completed' && '변제계획에 따른 변제를 마쳤습니다. 법원에 면책신청서를 제출해 면책 결정을 받으세요.'}
++                    {/* 변호사 화면(CrmTab 단계 알림)과 같은 뜻으로 안내 — 이전: 이 단계들은 안내 문구가 비어 있었다 */}
++                    {thirteenStage === 'dismissed_revoked' && '법원이 신청을 기각하거나 절차를 폐지했습니다. 결정 내용은 결정문으로 확인하고, 이후 절차는 담당 변호사와 상의해 주세요.'}
++                    {thirteenStage === 'bankruptcy_declared' && '법원이 파산선고를 했습니다. 이후 의견청취기일과 면책 심리가 이어집니다.'}
++                    {thirteenStage === 'hearing_date' && '의견청취기일이 정해졌습니다. 기일과 장소는 법원 통지서로 확인해 주세요.'}
++                    {thirteenStage === 'asset_liquidation' && '파산관재인이 재산을 환가해 채권자에게 배당하는 단계입니다. 요청받은 자료가 있으면 담당 변호사에게 전달해 주세요.'}
++                    {thirteenStage === 'bankruptcy_closed' && '파산 절차가 폐지되었습니다. 면책 절차 진행 여부는 담당 변호사에게 확인해 주세요.'}
++                    {thirteenStage === 'discharge_granted' && '법원이 면책결정을 했습니다. 면책의 효력과 범위는 결정문으로 확인해 주세요.'}
++                    {thirteenStage === 'discharge_denied' && '법원이 면책을 허가하지 않았습니다. 불복 절차와 기한은 담당 변호사와 바로 상의해 주세요.'}
++                    {thirteenStage === 'completed' && (isBk
++                      ? '사건이 종료 단계로 변경되었습니다. 면책 여부와 효력은 법원 결정문으로 확인해 주세요.'
++                      : '변제계획에 따른 변제를 마쳤습니다. 법원에 면책신청서를 제출해 면책 결정을 받으세요.')}
+                     {!thirteenStage && (
+                       currentStatus === 'requested' ? (
+                         allProposals.length > 0
+@@ -122,7 +132,10 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
+                       currentStatus === 'filed' ? '법원에 신청서가 접수되었습니다. 보정 요청이 있을 수 있습니다.' :
+                       currentStatus === 'commenced' ? '법원의 개시결정이 내려졌습니다. 변제 계획에 따라 진행됩니다.' :
+                       currentStatus === 'repaying' ? '변제금을 매월 법원에 납부하는 단계입니다.' :
+-                      '면책 결정이 확정되었습니다. 비면책채권을 제외한 남은 채무의 책임이 면제됩니다.'
++                      currentStatus === 'discharged' ? '면책 결정이 내려졌습니다. 비면책채권을 제외한 남은 채무의 책임이 면제됩니다. 효력과 범위는 결정문으로 확인해 주세요.' :
++                      // 이전: 그 밖의 상태(상담 취소 등)도 모두 '면책 결정이 확정되었습니다'로 안내됐다
++                      currentStatus === 'cancelled' ? '상담이 종료되었습니다. 다시 상담이 필요하면 변호사 찾기에서 새로 요청할 수 있어요.' :
++                      ''
+                     )}
+                   </p>
+                 </div>
+diff --git a/src/components/lawyer/CaseReviewCopilot.tsx b/src/components/lawyer/CaseReviewCopilot.tsx
+index f55abe7..1d97707 100644
+--- a/src/components/lawyer/CaseReviewCopilot.tsx
++++ b/src/components/lawyer/CaseReviewCopilot.tsx
+@@ -24,6 +24,7 @@ const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/c
+ import LawyerProposalDraft from './LawyerProposalDraft';
+ import ProposalWorkspace from './ProposalWorkspace';
+ import { mapToRehabUserInput } from './mapToRehabUserInput';
++import { requestTypeLabel } from './requestScope';
+ import CourtStatsRadar from './copilot/CourtStatsRadar';
+ import LegalQualificationChart from './copilot/LegalQualificationChart';
+ import AIRepaymentMatrix, { type RepaymentScenario } from './copilot/AIRepaymentMatrix';
+@@ -47,7 +48,8 @@ interface CaseReviewCopilotProps {
+   actorName: string;
+   preselectedRequestId?: string;
+   onClose?: () => void;
+-  onProposalSent?: (reqId: string, proposalData: any) => void;
++  /** false를 돌려주면 발송이 막힌 것 (작성 화면을 닫지 않는다) */
++  onProposalSent?: (reqId: string, proposalData: any) => void | boolean;
+ }
+ 
+ // Sample test clients for demo
+@@ -1258,7 +1260,11 @@ export default function CaseReviewCopilot({
+                       <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
+                         {[
+                           { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
+-                          { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
++                          // 원문 코드('direct_multi' 등) 대신 대시보드·고객관리와 같은 이름으로 표시
++                          { label: '상담 유형', value: (() => {
++                            const type = consultRequest.requestType || consultRequest.request_type || consultRequest.consultType;
++                            return type ? requestTypeLabel(type) : '-';
++                          })() },
+                           { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
+                         ].map((item, i) => (
+                           <div key={i} className="px-3.5 py-2.5 text-left">
+@@ -1339,11 +1345,14 @@ export default function CaseReviewCopilot({
+           }}
+           onSendProposal={(proposalData) => {
+             // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
++            // 발송이 막히면(false) 작성 화면·초안을 그대로 두고 감사 로그도 남기지 않는다
+             if (onProposalSent && consultRequest?.id) {
+-              onProposalSent(consultRequest.id, proposalData);
++              const sent = onProposalSent(consultRequest.id, proposalData);
++              if (sent === false) return false;
+             }
+             setShowRehabReport(false);
+-            addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${proposalData.lawyerOpinion.substring(0, 50)}...`);
++            addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${(proposalData.lawyerOpinion || '').substring(0, 50)}...`);
++            return true;
+           }}
+           onRequestConfirm={(proposalData, memo) => {
+             setShowRehabReport(false);
+diff --git a/src/components/lawyer/ClientSignShareModal.tsx b/src/components/lawyer/ClientSignShareModal.tsx
+index 61e8171..e5a77a5 100644
+--- a/src/components/lawyer/ClientSignShareModal.tsx
++++ b/src/components/lawyer/ClientSignShareModal.tsx
+@@ -3,6 +3,7 @@ import { X, Copy, Check, Share2, Smartphone, ShieldCheck, Clock, Send, MessageCi
+ import { toast } from 'sonner';
+ import type { ElectronicContract } from '../../types';
+ import ModalPortal from '../common/ModalPortal';
++import { feeTotalWon } from '../../utils/feeUnits';
+ 
+ interface Props {
+   contract: ElectronicContract;
+@@ -21,7 +22,9 @@ export default function ClientSignShareModal({ contract, isOpen, onClose }: Prop
+   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
+   const signUrl = signToken ? `${origin}?view=sign&token=${signToken}&cid=${contract.id}` : '';
+ 
+-  const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
++  // 원·만원이 섞여 저장된 값을 공용 규칙으로 맞춘다 — 의뢰인 서명 화면(signFormat.contractFeeWon)과 같은 금액
++  // (이전: 무조건 ×10,000 → 원 단위로 저장된 계약은 안내 문자에 1만 배 금액이 적혔다)
++  const feeFormatted = feeTotalWon(contract.totalFee).toLocaleString();
+ 
+   // 안내 문자/알림톡 템플릿 문안
+   const messageTemplate = `[${contract.lawFirmName}] 전자계약서 서명 요청 안내
+diff --git a/src/components/lawyer/ContractManagementTab.tsx b/src/components/lawyer/ContractManagementTab.tsx
+index e7385d1..9c06f66 100644
+--- a/src/components/lawyer/ContractManagementTab.tsx
++++ b/src/components/lawyer/ContractManagementTab.tsx
+@@ -23,6 +23,30 @@ import AuditTrailCertificate from './AuditTrailCertificate';
+ import ContractReminderModal from './ContractReminderModal';
+ import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+ import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
++import { feeTotalWon } from '../../utils/feeUnits';
++
++/** 서명 진행 중 상태 */
++const SIGNING_STATUSES: ReadonlyArray<ContractStatus> = ['pending_sign', 'client_review', 'signing'];
++
++/** 체결 완료로 보는 상태 ('signed'는 예전 저장값 — 고객 화면 ContractCard와 같은 기준) */
++function isSignedContract(c: ElectronicContract): boolean {
++  return c.status === 'completed' || c.status === 'signed';
++}
++
++/**
++ * 의뢰인은 서명을 마쳤고 변호사 서명(체결 봉인)만 남은 계약
++ * 의뢰인 원격 서명(ClientRemoteSignView)은 변호사 서명이 없으면 상태를 바꾸지 않고 의뢰인 서명만 저장한다.
++ * 이런 계약은 의뢰인에게 재촉할 대상이 아니다.
++ */
++function isAwaitingLawyerSign(c: ElectronicContract): boolean {
++  if (!SIGNING_STATUSES.includes(c.status)) return false;
++  return (c.documents || []).some(d => d.included && d.clientSignature);
++}
++
++/** 총 수임료(원) — 원·만원이 섞여 저장된 값을 공용 규칙으로 맞춘다 (이전: 무조건 ×10,000 → 원 단위 값이 1만 배로 표시) */
++function contractFeeWon(c: ElectronicContract): number {
++  return feeTotalWon(c.totalFee);
++}
+ 
+ interface Props {
+   lawyerName: string;
+@@ -58,19 +82,21 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+     refreshContracts();
+   }, [refreshContracts]);
+ 
+-  // ── 골든타임 지체 계약 판별 (서명 대기 중 24시간 이상 경과) ──
++  // ── 골든타임 지체 계약 판별 (의뢰인 서명 대기 중 24시간 이상 경과) ──
++  // 의뢰인이 이미 서명했고 변호사 서명만 남은 계약은 제외한다 (이전: 의뢰인에게 재촉 대상으로 떴다)
+   const isOverdue = useCallback((c: ElectronicContract) => {
+-    if (!['pending_sign', 'client_review', 'signing'].includes(c.status)) return false;
++    if (!SIGNING_STATUSES.includes(c.status)) return false;
++    if (isAwaitingLawyerSign(c)) return false;
+     const createdAtTime = new Date(c.updatedAt || c.createdAt).getTime();
+     const elapsedHours = (Date.now() - createdAtTime) / (1000 * 60 * 60);
+     return elapsedHours >= 24;
+   }, []);
+ 
+-  // ── 통계 및 경영 KPI 지표 산출 ──
++  // ── 통계 및 경영 KPI 지표 산출 (금액은 원 단위) ──
+   const stats = useMemo(() => {
+     const list = Array.isArray(contracts) ? contracts : [];
+-    const completedList = list.filter(c => c.status === 'completed');
+-    const totalFeeSum = completedList.reduce((sum, c) => sum + (c.totalFee || 0), 0);
++    const completedList = list.filter(isSignedContract);
++    const totalFeeSum = completedList.reduce((sum, c) => sum + contractFeeWon(c), 0);
+     const avgFee = completedList.length > 0 ? Math.round(totalFeeSum / completedList.length) : 0;
+     const conversionRate = list.length > 0 ? Math.round((completedList.length / list.length) * 100) : 0;
+ 
+@@ -79,7 +105,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+     return {
+       total: list.length,
+       drafting: list.filter(c => c.status === 'drafting').length,
+-      signing: list.filter(c => ['pending_sign', 'client_review', 'signing'].includes(c.status)).length,
++      signing: list.filter(c => SIGNING_STATUSES.includes(c.status)).length,
++      awaitingLawyer: list.filter(isAwaitingLawyerSign).length,
+       completed: completedList.length,
+       cancelled: list.filter(c => c.status === 'cancelled').length,
+       overdueCount: overdueList.length,
+@@ -97,7 +124,9 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+     if (statusFilter === 'overdue') {
+       list = list.filter(isOverdue);
+     } else if (statusFilter === 'signing') {
+-      list = list.filter(c => ['pending_sign', 'client_review', 'signing'].includes(c.status));
++      list = list.filter(c => SIGNING_STATUSES.includes(c.status));
++    } else if (statusFilter === 'completed') {
++      list = list.filter(isSignedContract);
+     } else if (statusFilter !== 'all') {
+       list = list.filter(c => c.status === statusFilter);
+     }
+@@ -191,8 +220,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+       `"${c.clientPhone || '-'}"`,
+       `"${c.lawyerName || '-'}"`,
+       `"${c.lawFirmName || '-'}"`,
+-      (c.totalFee || 0) * 10000,
+-      CONTRACT_STATUS_CONFIG[c.status]?.label || c.status,
++      contractFeeWon(c),
++      isAwaitingLawyerSign(c) ? '변호사 서명 대기' : (CONTRACT_STATUS_CONFIG[c.status]?.label || c.status),
+       c.contractDate || '-',
+       (c.documents || []).filter(d => d.included).length,
+       c.timestampToken ? '해시·시점토큰 생성' : '대기'
+@@ -311,10 +340,10 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+           <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-sm space-y-1">
+             <span className="text-[11px] font-bold text-slate-300 block">총 체결 수임료 (확정 매출)</span>
+             <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-emerald-400">
+-              {((stats.totalFeeSum || 0) * 10000).toLocaleString()}원
++              {(stats.totalFeeSum || 0).toLocaleString()}원
+             </div>
+             <p className="text-[11px] text-slate-400">
+-              체결 완료 {stats.completed}건 기준 (평균 {((stats.avgFee || 0) * 10000).toLocaleString()}원)
++              체결 완료 {stats.completed}건 기준 (평균 {(stats.avgFee || 0).toLocaleString()}원)
+             </p>
+           </div>
+ 
+@@ -338,6 +367,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+             </div>
+             <p className="text-[11px] text-slate-400">
+               작성중 {stats.drafting}건 / 서명 진행중 {stats.signing}건
++              {stats.awaitingLawyer > 0 && ` (변호사 서명 대기 ${stats.awaitingLawyer}건)`}
+             </p>
+           </div>
+ 
+@@ -484,7 +514,11 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                 </tr>
+               ) : (
+                 filtered.map(c => {
+-                  const cfg = CONTRACT_STATUS_CONFIG[c.status] || { label: c.status, color: 'text-slate-600', bgColor: 'bg-slate-100', emoji: '📄' };
++                  const awaitingLawyer = isAwaitingLawyerSign(c);
++                  // 의뢰인 서명을 마친 계약은 '변호사 서명 대기'로 표시한다 (이전: '서명진행'으로만 보여 누구 차례인지 알 수 없었다)
++                  const cfg = awaitingLawyer
++                    ? { label: '변호사 서명 대기', color: 'text-blue-700', bgColor: 'bg-blue-50', emoji: '🖊️' }
++                    : (CONTRACT_STATUS_CONFIG[c.status] || { label: c.status, color: 'text-slate-600', bgColor: 'bg-slate-100', emoji: '📄' });
+                   const overdue = isOverdue(c);
+                   const includedDocsCount = (c.documents || []).filter(d => d.included).length;
+                   const signedDocsCount = (c.documents || []).filter(d => d.included && d.clientSignature).length;
+@@ -519,7 +553,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                       {/* 수임료 */}
+                       <td className="p-3.5 text-right">
+                         <span className="font-black text-slate-900 block">
+-                          {((c.totalFee || 0) * 10000).toLocaleString()}원
++                          {contractFeeWon(c).toLocaleString()}원
+                         </span>
+                         <span className="text-[11px] text-slate-400">
+                           {c.feeSchedule && c.feeSchedule.length > 0 ? `${c.feeSchedule.length}회차 분납` : '일시납'}
+@@ -592,7 +626,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+ 
+                           {/* 2. 상태별 핵심 액션 */}
+                           {/* (1) 서명 완료: 법원 제출용 일체형 PDF 다운로드 */}
+-                          {c.status === 'completed' && (
++                          {isSignedContract(c) && (
+                             <button
+                               onClick={() => generateCourtSubmissionPdf(c)}
+                               className="h-7.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
+@@ -604,7 +638,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                           )}
+ 
+                           {/* (2) 서명 완료: 블록체인 원본 검증기 */}
+-                          {c.status === 'completed' && (
++                          {isSignedContract(c) && (
+                             <button
+                               onClick={() => setVerifyModalContract(c)}
+                               className="h-7.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
+@@ -615,8 +649,8 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                             </button>
+                           )}
+ 
+-                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 */}
+-                          {(c.status === 'signing' || overdue) && (
++                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 — 의뢰인이 이미 서명했으면 재촉하지 않는다 */}
++                          {!awaitingLawyer && (c.status === 'signing' || overdue) && (
+                             <button
+                               onClick={() => handleSendReminder(c)}
+                               className="h-7.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
+@@ -705,13 +739,13 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                     <span className="text-xs font-normal text-slate-400 font-mono">({viewingContract.id})</span>
+                   </h3>
+                   <p className="text-xs text-slate-500">
+-                    위임인: {viewingContract.clientName} ({viewingContract.clientPhone}) | 체결 상태: {CONTRACT_STATUS_CONFIG[viewingContract.status]?.label}
++                    위임인: {viewingContract.clientName} ({viewingContract.clientPhone}) | 체결 상태: {isAwaitingLawyerSign(viewingContract) ? '변호사 서명 대기' : CONTRACT_STATUS_CONFIG[viewingContract.status]?.label}
+                   </p>
+                 </div>
+               </div>
+ 
+               <div className="flex items-center gap-2">
+-                {viewingContract.status === 'completed' && (
++                {isSignedContract(viewingContract) && (
+                   <>
+                     <button
+                       onClick={() => generateCourtSubmissionPdf(viewingContract)}
+@@ -753,7 +787,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+               <div className="grid grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                 <div>
+                   <span className="text-slate-400 block mb-0.5">총 수임료</span>
+-                  <span className="text-sm font-black text-slate-900">{((viewingContract.totalFee || 0) * 10000).toLocaleString()}원</span>
++                  <span className="text-sm font-black text-slate-900">{contractFeeWon(viewingContract).toLocaleString()}원</span>
+                 </div>
+                 <div>
+                   <span className="text-slate-400 block mb-0.5">분납 조건</span>
+@@ -822,7 +856,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
+                 )}
+               </div>
+               <div className="flex items-center gap-2">
+-                {viewingContract.status === 'completed' && (
++                {isSignedContract(viewingContract) && (
+                   <button
+                     onClick={() => generateCourtSubmissionPdf(viewingContract)}
+                     className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
+diff --git a/src/components/lawyer/CrmTab.tsx b/src/components/lawyer/CrmTab.tsx
+index 5ed1303..5da9a79 100644
+--- a/src/components/lawyer/CrmTab.tsx
++++ b/src/components/lawyer/CrmTab.tsx
+@@ -61,6 +61,8 @@ import { getOfficeProfile } from '../../services/lawyer/officeProfile';
+ import CertificateVaultCard from './vault/CertificateVaultCard';
+ import { formatVaultDday } from '../../services/vault/certificateVaultService';
+ import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
++import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
++import { isNewRequestForLawyer, requestTypeLabel } from './requestScope';
+ import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
+ import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
+ import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
+@@ -124,6 +126,7 @@ interface CrmTabProps {
+   firmTenantId?: string;
+ }
+ 
++type CrmDetailTab = NonNullable<CrmTabProps['initialDetailTab']>;
+ type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
+ type SortDir = 'asc' | 'desc';
+ type ViewMode = 'list' | 'kanban' | 'leads';
+@@ -169,6 +172,18 @@ function getCaseTypeBadge(r: ConsultRequest) {
+   );
+ }
+ 
++/**
++ * crmStatus만 바꾸는 저장에 13단계 동기화를 더한다 (13단계를 직접 지정한 저장은 그대로)
++ * 이전: 13단계는 스테퍼에서만 바뀌어, 상태 드롭다운·칸반·일괄 변경 뒤에도 의뢰인 마이페이지 단계가 예전 값으로 남음
++ */
++function withThirteenStageSync(current: CrmClientExtension, updates: Partial<CrmClientExtension>): Partial<CrmClientExtension> {
++  const nextStatus = updates.crmStatus;
++  if (!nextStatus || nextStatus === current.crmStatus || 'thirteenStage' in updates) return updates;
++  const isBk = current.caseType === 'bankruptcy' || current.caseType === 'individual_bankruptcy';
++  const nextStage = thirteenStageAfterStatusChange(current.thirteenStage, nextStatus, isBk);
++  return nextStage === current.thirteenStage ? updates : { ...updates, thirteenStage: nextStage };
++}
++
+ export default function CrmTab({ 
+   requests, 
+   lawyers, 
+@@ -188,6 +203,8 @@ export default function CrmTab({
+   const dialog = useDialog();
+   // ── 기본 State ──
+   const [crmData, setCrmData] = useState<CrmDataStore>({});
++  /** 첫 CRM 데이터 불러오기가 끝났는지 (끝나기 전 자동 저장 금지) */
++  const [crmLoaded, setCrmLoaded] = useState(false);
+   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+   const [activeStaff, setActiveStaff] = useState<StaffMember | null>(null);
+   const [viewMode, setViewMode] = useState<ViewMode>(initialView || 'list');
+@@ -249,7 +266,13 @@ export default function CrmTab({
+   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
+   // ── 5단계 실무 파이프라인 상태 ──
+   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
+-  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>('pipeline');
++  // 부모가 고객과 서브탭을 지정해 열면 서브탭이 보이는 'subtabs' 모드로 시작 (이전: 항상 'pipeline'이라 지정 탭이 보이지 않음)
++  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>(() => (initialClientId && initialDetailTab ? 'subtabs' : 'pipeline'));
++  // 부모가 지정한 서브탭 — [selectedId] 효과가 고객을 고른 뒤 이 값을 적용하고 비운다
++  // (이전: 그 효과가 고객 선택 때마다 'info'로 덮어 '메모'·'전자계약' 링크도 종합 정보 탭으로 열림)
++  const pendingDetailTabRef = React.useRef<{ clientId: string; tab: CrmDetailTab } | null>(
++    initialClientId && initialDetailTab ? { clientId: initialClientId, tab: initialDetailTab } : null
++  );
+ 
+   // ── 리걸플로 벤치마킹 실무 모달 상태 ──
+   const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
+@@ -279,13 +302,16 @@ export default function CrmTab({
+   const [showMetaAccordion, setShowMetaAccordion] = useState(false);
+   const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
+ 
+-  // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
++  // 외부(채팅 '고객관리에서 열기'·메모 링크·계약 체결 뒤 이동 등)에서 지정한 고객 ID 및 탭 동기화
++  // 고객 없이 탭만 온 경우는 무시한다 (부모의 기본 탭 값 'info'로 모드가 바뀌지 않게)
+   useEffect(() => {
+-    if (initialClientId) {
+-      setSelectedId(initialClientId);
+-    }
++    if (!initialClientId) return;
++    setSelectedId(initialClientId);
++    setViewMode('list'); // 상세 화면은 리스트 보기에서만 열린다
+     if (initialDetailTab) {
++      pendingDetailTabRef.current = { clientId: initialClientId, tab: initialDetailTab };
+       setDetailTab(initialDetailTab);
++      setPipelineViewMode('subtabs');
+     }
+   }, [initialClientId, initialDetailTab]);
+ 
+@@ -385,6 +411,7 @@ export default function CrmTab({
+   useEffect(() => {
+     loadCrmData().then(data => {
+       setCrmData(data);
++      setCrmLoaded(true);
+       // 보관 기간(30일) 지난 휴지통 정리 — 이 브라우저 + 서버(본인 권한 범위)
+       cleanupRecycleBin().then(r => {
+         const total = Math.max(r.localDeleted, r.serverDeleted);
+@@ -426,7 +453,9 @@ export default function CrmTab({
+   const myRequests = useMemo(() => requests.filter(isMine), [requests, isMine]);
+ 
+   // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 (현재 변호사 관련 요청만) ──
++  // CRM 데이터를 불러온 뒤에만 실행 (이전: 첫 렌더의 빈 crmData로 기본값 행을 만들어 서버 행의 메모·서류·활동을 덮어씀)
+   useEffect(() => {
++    if (!crmLoaded) return;
+     requests.forEach(r => {
+       if (!isMine(r)) return;
+ 
+@@ -435,7 +464,8 @@ export default function CrmTab({
+         if (ext.crmStatus !== 'cancelled') {
+           const updated = { 
+             ...ext, 
+-            crmStatus: 'cancelled' as CrmStatus,
++            // 13단계도 함께 맞춘다 (접수 전이면 비워 의뢰인 화면에 '법원 기각·폐지' 안내가 나가지 않게)
++            ...withThirteenStageSync(ext, { crmStatus: 'cancelled' as CrmStatus }),
+             lastActivityAt: new Date().toISOString(),
+             activities: [
+               ...(ext.activities || []),
+@@ -456,17 +486,26 @@ export default function CrmTab({
+         }
+       }
+     });
+-  }, [requests, crmData]);
++  }, [requests, crmData, crmLoaded]);
+ 
+   // ── CRM 확장 데이터 가져오기/생성 ──
+   const getCrmExt = useCallback((clientId: string): CrmClientExtension => {
+     return crmData[clientId] || createDefaultCrmExtension(clientId);
+   }, [crmData]);
+ 
++  // ── 신규 리드: 이 변호사가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (대시보드·사이드바 배지와 같은 기준) ──
++  // (이전: 상태가 requested/responding일 때만 포함해 비교 상담 중 추가로 요청받은 건이 빠졌고,
++  //  공개 요청은 제안서 자리가 찼거나 다른 변호사와 상담을 이어가기로 한 뒤에도 계속 보였다)
++  const newLeadRequests = useMemo(
++    () => requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers)),
++    [requests, activeLawyer, lawyers]
++  );
++
+   /** @returns 서버 저장 성공 여부 (실패 시 이 기기에만 저장된 상태) */
+   const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> => {
+     const current = getCrmExt(clientId);
+-    const updated = { ...current, ...updates, lastActivityAt: new Date().toISOString() };
++    // 상태만 바꾸는 저장이면 13단계도 새 상태에 맞춘다 (상태 변경 핸들러·칸반·일괄 변경·배정·이탈 처리 공통)
++    const updated = { ...current, ...withThirteenStageSync(current, updates), lastActivityAt: new Date().toISOString() };
+     setCrmData(prev => ({ ...prev, [clientId]: updated }));
+     return saveCrmClient(clientId, updated);
+   }, [getCrmExt]);
+@@ -629,6 +668,9 @@ export default function CrmTab({
+   }, [selectedId, selectedClient, selectedExt]);
+ 
+   useEffect(() => {
++    // 부모가 지정한 탭은 그 고객을 고른 이번 한 번만 쓴다 (다른 고객으로 바꾸면 'info')
++    const pending = pendingDetailTabRef.current;
++    pendingDetailTabRef.current = null;
+     if (selectedClient && selectedExt) {
+       setEditName(selectedClient.clientName);
+       setEditPhone(selectedClient.phone);
+@@ -637,7 +679,7 @@ export default function CrmTab({
+       setEditLawyerId(selectedExt.assignedLawyerId || '');
+       setEditConsultantId(selectedExt.assignedConsultantId || '');
+       setEditStaffId(selectedExt.assignedStaffId || '');
+-      setDetailTab('info');
++      setDetailTab(pending && pending.clientId === selectedId ? pending.tab : 'info');
+       // 상태 기반 6단계 파이프라인 단계 자동 동기화 (고객 전환 시)
+       setPipelineStage(stageForStatus(selectedExt.crmStatus));
+     }
+@@ -1738,7 +1780,8 @@ export default function CrmTab({
+           {/* 신규 리드 & 뷰 토글 */}
+           <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+             {handleOpenProposalDraft && (() => {
+-              const newLeadsCount = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id)).length;
++              // 이전: 이 변호사에게 온 요청인지 보지 않고 모든 요청을 세어, 목록(아래 신규 리드 뷰)과 건수가 달랐다
++              const newLeadsCount = newLeadRequests.length;
+               return (
+                 <button
+                   onClick={() => setViewMode('leads')}
+@@ -2063,7 +2106,7 @@ export default function CrmTab({
+                                       onClick={() => {
+                                         const updated: CrmClientExtension = {
+                                           ...ext,
+-                                          crmStatus: st,
++                                          ...withThirteenStageSync(ext, { crmStatus: st }), // 13단계도 새 상태에 맞춤
+                                           lastActivityAt: new Date().toISOString(),
+                                           activities: [
+                                             ...(ext.activities || []),
+@@ -3096,7 +3139,8 @@ export default function CrmTab({
+                           onNavigateToChat={() => {
+                             if (setActiveTab) setActiveTab('chat');
+                           }}
+-                          onSimulateContactShare={() => {
++                          // 시연용 — 개발 환경에서만 연결한다 (운영에서는 의뢰인 동의 없이 연락처 공개 상태로 바꾸게 됨)
++                          onSimulateContactShare={!import.meta.env.DEV ? undefined : () => {
+                             setRequests(prev => prev.map(r => {
+                               if (r.id === selectedId) {
+                                 return {
+@@ -3388,20 +3432,8 @@ export default function CrmTab({
+                       {(() => {
+                         const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+                         
+-                        // crmStatus를 기반으로 기본 13단계 매핑 (지정되지 않았을 때 fallback)
+-                        const defaultStageMap: Record<string, string> = {
+-                          requested: 'consult_waiting',
+-                          consulting: 'consult_completed',
+-                          contracted: 'contract_done',
+-                          document: 'doc_prep',
+-                          filed: 'petition_submitted',
+-                          commenced: isBk ? 'bankruptcy_declared' : 'commencement',
+-                          repaying: isBk ? 'hearing_date' : 'confirmation',
+-                          discharged: 'completed',
+-                          cancelled: isBk ? 'bankruptcy_closed' : 'dismissed_revoked',
+-                        };
+-
+-                        const currentStage = selectedExt.thirteenStage || defaultStageMap[selectedExt.crmStatus] || 'consult_waiting';
++                        // crmStatus 기반 기본 13단계 (지정되지 않았을 때 fallback) — 매핑은 pipeline/journeyStage.ts 공용 산식
++                        const currentStage = selectedExt.thirteenStage || defaultThirteenStageFor(selectedExt.crmStatus, isBk);
+                         const showDecisionCard = ['commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus) || 
+                           selectedExt.thirteenStage === 'commencement' || 
+                           selectedExt.thirteenStage === 'confirmation' || 
+@@ -3414,34 +3446,11 @@ export default function CrmTab({
+                               currentStageId={currentStage}
+                               isBankruptcy={isBk}
+                               isDismissedRevoked={!!selectedExt.isDismissedRevoked}
+-                              onSelectStage={(newStageId) => {
+-                                if (!selectedClient) return;
++                              onSelectStage={async (newStageId) => {
++                                if (!selectedClient) return false;
+ 
+-                                // 13단계를 CrmStatus 8단계로 상호 호환 매핑
+-                                const stageToCrmStatus: Record<string, CrmStatus> = {
+-                                  consult_waiting: 'requested',
+-                                  consult_completed: 'consulting',
+-                                  contract_done: 'contracted',
+-                                  doc_prep: 'document',
+-                                  petition_drafting: 'document',
+-                                  petition_submitted: 'filed',
+-                                  prohibition_order: 'filed',
+-                                  correction_period: 'filed',
+-                                  commencement: 'commenced',
+-                                  creditor_meeting: 'commenced',
+-                                  confirmation: 'repaying',
+-                                  dismissed_revoked: 'cancelled',
+-                                  completed: 'discharged',
+-                                  // 파산 단계 매핑
+-                                  bankruptcy_declared: 'commenced',
+-                                  hearing_date: 'commenced',
+-                                  asset_liquidation: 'repaying',
+-                                  bankruptcy_closed: 'cancelled',
+-                                  discharge_granted: 'discharged',
+-                                  discharge_denied: 'cancelled',
+-                                };
+-
+-                                const mappedStatus = stageToCrmStatus[newStageId] || selectedExt.crmStatus;
++                                // 13단계 → CrmStatus 매핑 (pipeline/journeyStage.ts 공용 산식)
++                                const mappedStatus = crmStatusForThirteenStage(newStageId) || selectedExt.crmStatus;
+ 
+                                 const updatedExt: CrmClientExtension = {
+                                   ...selectedExt,
+@@ -3450,24 +3459,30 @@ export default function CrmTab({
+                                   lastActivityAt: new Date().toISOString(),
+                                 };
+ 
+-                                saveCrmClient(selectedClient.id, updatedExt);
+                                 setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
++                                // 저장 결과를 기다린 뒤 안내 (이전: 기다리지 않아 서버 저장이 실패해도 '변경되었습니다'와 의뢰인 알림이 나감)
++                                const ok = await saveCrmClient(selectedClient.id, updatedExt);
++                                if (!ok) {
++                                  toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
++                                  return false;
++                                }
+ 
+-                                // 의뢰인 인앱 알림 실시간 발송
++                                // 의뢰인 인앱 알림 — 사실만 안내하고 법적 효과는 결정문으로 확인하게 한다
++                                // (이전: '압류가 전면 금지', '관공서 15종', '연체정보가 완전히 해제', '전액 면책' 등 단정 문구)
+                                 const NOTIF_MAP: Record<string, { title: string; body: string; emoji: string; linkTab?: 'companion' | 'diagnosis' | 'settings' }> = {
+-                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 도산전문 변호사가 배정되어 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
+-                                  consult_completed: { title: '[상담 완료] 초기 법률 상담이 완료되었습니다', body: '맞춤형 채무조정 방향과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
+-                                  contract_done: { title: '[수임계약 체결] 정식 수임계약이 체결되었습니다', body: '변호사 사무소와 함께 법원 제출용 필수 서류 수합을 시작합니다.', emoji: '📝', linkTab: 'diagnosis' },
+-                                  doc_prep: { title: '[서류 준비] 법원 필수 서류를 수집 중입니다', body: '관공서 15종 서류 및 AI 음성 진술서 작성을 진행해 주세요.', emoji: '📂', linkTab: 'diagnosis' },
+-                                  petition_drafting: { title: '[신청서 작성] 법원 제출용 개시신청서를 작성 중입니다', body: '변호사팀이 8대 서식과 변제계획안을 정밀하게 검토하고 있습니다.', emoji: '✍️', linkTab: 'diagnosis' },
+-                                  petition_submitted: { title: '[법원 접수 완료] 회생법원에 정식 접수되었습니다', body: '법원 사건번호가 부여되었습니다. 나의사건검색에서 심리 진행을 확인하세요.', emoji: '⚖️', linkTab: 'diagnosis' },
+-                                  prohibition_order: { title: '[금지명령 인용 🎉] 채권추심 및 압류가 전면 금지되었습니다!', body: '법원에서 금지명령이 발령되었습니다. 채권자 독촉 전화 시 1초 독촉방어 문자를 활용하세요.', emoji: '🛡️', linkTab: 'diagnosis' },
+-                                  correction_period: { title: '[보정권고 송달 ⚠️] 법원 회생위원의 보정사항이 도착했습니다', body: '기한(14일) 내에 변호사가 요청한 소명자료(통장/최근대출 등)를 업로드해 주세요.', emoji: '⚠️', linkTab: 'diagnosis' },
+-                                  commencement: { title: '[개시결정 확정 🔍] 법원의 개인회생 개시결정이 내려졌습니다!', body: '법원 가상계좌가 발급되었습니다. 회생완주동행 대시보드에서 36개월 변제 스케줄을 확인하세요.', emoji: '🏛️', linkTab: 'companion' },
+-                                  creditor_meeting: { title: '[채권자집회 기일 안내 🏛️] 법원 출석 기일이 지정되었습니다', body: '신분증을 지참하여 법정에 출석하셔야 합니다. 채권자집회 출석 가이드를 확인하세요.', emoji: '👥', linkTab: 'companion' },
+-                                  confirmation: { title: '[인가결정 확정 🎉] 변제계획 인가결정이 최종 확정되었습니다!', body: '법원의 모든 심리가 통과되었습니다. 성실히 변제금을 납부하시면 면책을 받으실 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
+-                                  dismissed_revoked: { title: '[사건 종결 안내] 사건이 기각 또는 폐지되었습니다', body: '즉시항고 또는 재신청 가능 여부를 담당 변호사와 상담하세요.', emoji: '🚫', linkTab: 'diagnosis' },
+-                                  completed: { title: '[최종 면책 완료 🕊️] 잔여 채무가 전액 면책되었습니다!', body: '36개월 완주를 축하드립니다! 한국신용정보원의 연체정보가 완전히 해제됩니다.', emoji: '🎉', linkTab: 'companion' },
++                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 변호사가 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
++                                  consult_completed: { title: '[상담 완료] 초기 상담이 완료되었습니다', body: '상담 내용과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
++                                  contract_done: { title: '[수임계약] 수임계약이 체결되었습니다', body: '법원 제출 서류 준비를 시작합니다. 필요한 서류는 서류함에서 확인해 주세요.', emoji: '📝', linkTab: 'diagnosis' },
++                                  doc_prep: { title: '[서류 준비] 법원 제출 서류를 준비하고 있습니다', body: '서류함에서 요청된 서류를 확인하고 올려 주세요.', emoji: '📂', linkTab: 'diagnosis' },
++                                  petition_drafting: { title: '[신청서 작성] 담당 변호사가 신청서를 작성하고 있습니다', body: '신청서와 첨부 서류를 작성하는 단계입니다.', emoji: '✍️', linkTab: 'diagnosis' },
++                                  petition_submitted: { title: '[법원 접수] 신청서가 법원에 접수되었습니다', body: '사건번호와 이후 진행은 담당 변호사가 안내해 드립니다. 대법원 나의 사건검색에서도 확인할 수 있습니다.', emoji: '⚖️', linkTab: 'diagnosis' },
++                                  prohibition_order: { title: '[금지명령] 법원이 금지명령을 내렸습니다', body: '금지명령의 범위에서 강제집행과 변제 독촉이 제한됩니다. 적용 범위는 결정문으로 확인해 주세요.', emoji: '🛡️', linkTab: 'diagnosis' },
++                                  correction_period: { title: '[보정권고] 법원의 보정권고가 도착했습니다', body: '담당 변호사가 요청한 소명자료를 제출 기한 안에 올려 주세요. 기한은 보정권고서에 적힌 날짜를 따릅니다.', emoji: '⚠️', linkTab: 'diagnosis' },
++                                  commencement: { title: '[개시결정] 법원이 개인회생 개시결정을 내렸습니다', body: '변제금 납부 계좌와 일정은 결정문과 담당 변호사 안내로 확인해 주세요.', emoji: '🏛️', linkTab: 'companion' },
++                                  creditor_meeting: { title: '[채권자집회] 채권자집회 기일이 지정되었습니다', body: '기일과 장소는 법원 통지서로 확인하고, 신분증을 지참해 출석해 주세요.', emoji: '👥', linkTab: 'companion' },
++                                  confirmation: { title: '[인가결정] 법원이 변제계획 인가결정을 내렸습니다', body: '인가된 변제계획에 따라 변제금을 납부해 주세요. 변제를 마친 뒤 면책을 신청할 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
++                                  dismissed_revoked: { title: '[기각·폐지] 법원이 신청을 기각하거나 절차를 폐지했습니다', body: '결정 내용은 결정문으로 확인해 주세요. 이후 절차는 담당 변호사와 상의해 주세요.', emoji: '🚫', linkTab: 'diagnosis' },
++                                  completed: { title: '[종료] 사건이 종료 단계로 변경되었습니다', body: '면책 여부와 효력은 법원 결정문으로 확인해 주세요. 궁금한 점은 담당 변호사에게 문의해 주세요.', emoji: '🎉', linkTab: 'companion' },
+                                 };
+ 
+                                 const notif = NOTIF_MAP[newStageId];
+@@ -3487,6 +3502,7 @@ export default function CrmTab({
+                                 try {
+                                   syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
+                                 } catch { /* ignore */ }
++                                return true;
+                               }}
+                               onToggleDismissedRevoked={(val) => {
+                                 if (!selectedClient) return;
+@@ -3523,10 +3539,16 @@ export default function CrmTab({
+                                     syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
+                                     const accountChanged = !!newSummary.virtualAccountNumber &&
+                                       (newSummary.virtualAccountNumber !== prevSummary?.virtualAccountNumber || newSummary.virtualAccountBank !== prevSummary?.virtualAccountBank);
++                                    // 월 변제금은 만원 또는 원으로 입력된다 — 1만 미만이면 만원 단위로 보고 원으로 바꿔 표시 (companionService와 같은 규칙)
++                                    // (이전: 만원 단위 값 '45'를 그대로 '45원'으로 안내)
++                                    const monthlyRaw = Number(newSummary.monthlyPayment || 0);
++                                    const monthlyWon = monthlyRaw > 0 && monthlyRaw < 10000 ? monthlyRaw * 10000 : monthlyRaw;
+                                     if (accountChanged) addClientNotification({
+                                       type: 'status_change',
+                                       title: '[법원 가상계좌 발급 안내]',
+-                                      body: `법원 가상계좌(${newSummary.virtualAccountBank} ${newSummary.virtualAccountNumber}) 및 월 변제금(${newSummary.monthlyPayment.toLocaleString()}원)이 등록되었습니다.`,
++                                      body: monthlyWon > 0
++                                        ? `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')}) 및 월 변제금(${monthlyWon.toLocaleString()}원)이 등록되었습니다.`
++                                        : `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')})가 등록되었습니다.`,
+                                       emoji: '🏛️',
+                                       linkTab: 'companion',
+                                     });
+@@ -4586,8 +4608,15 @@ export default function CrmTab({
+                               <button onClick={async () => {
+                                 if (!newDocRequestLabel.trim()) return toast.error('서류명을 입력해주세요');
+                                 const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+-                                await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true });
+-                                const savedReq = await loadCrmData().then(d => d[selectedId]).catch(() => undefined);
++                                // 화면에 있는 최신 고객 데이터의 사본을 기준으로 저장한다 (함수가 이 사본을 저장한 값으로 바꾼다)
++                                // (이전: 이 기기 사본에 고객 행이 없으면 아무것도 저장하지 않았는데도 '등록되었습니다'가 떴다)
++                                const target = { ...getCrmExt(selectedId) };
++                                const saved = await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true }, target);
++                                if (!saved) {
++                                  // 입력값과 화면 상태는 그대로 둔다 — 다시 보내도 요청이 두 번 쌓이지 않게
++                                  toast.error('서류 요청을 서버에 저장하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 보내 주세요.');
++                                  return;
++                                }
+                                 addClientNotification({
+                                   type: 'document_request',
+                                   title: '추가 서류 제출 요청',
+@@ -4598,7 +4627,7 @@ export default function CrmTab({
+                                 setShowDocRequest(false);
+                                 setNewDocRequestLabel('');
+                                 setNewDocRequestDesc('');
+-                                if (savedReq) setCrmData(prev => ({ ...prev, [selectedId]: savedReq }));
++                                setCrmData(prev => ({ ...prev, [selectedId]: target }));
+                                 toast.success('서류 요청이 등록되었습니다. 의뢰인 마이페이지 서류함에 표시됩니다.');
+                               }} className="px-3 py-1.5 text-xs font-bold text-white bg-brand hover:bg-brand-hover rounded-xl press-scale transition-colors shadow-sm">요청 보내기</button>
+                             </div>
+@@ -4690,9 +4719,12 @@ export default function CrmTab({
+                                           onClick={async (e) => {
+                                             e.stopPropagation();
+                                             const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+-                                            await approveDocument(selectedId, doc.id, actor.name);
+-                                            toast.success('서류를 승인했습니다.');
+-                                            setCrmData({ ...crmData });
++                                            // 화면의 최신 데이터 사본 기준으로 저장하고, 저장한 값을 화면에 반영한다
++                                            // (이전: 이 기기 사본만 고쳐 화면·서버에 반영되지 않았는데도 '승인했습니다'가 떴다)
++                                            const target = { ...getCrmExt(selectedId) };
++                                            const ok = await approveDocument(selectedId, doc.id, actor.name, target);
++                                            setCrmData(prev => ({ ...prev, [selectedId]: target }));
++                                            notifySaved(ok, '서류를 승인했습니다.');
+                                           }} 
+                                           className="px-2 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap press-scale transition-colors"
+                                           title="서류 승인"
+@@ -4733,11 +4765,12 @@ export default function CrmTab({
+                                         onClick={async () => {
+                                           if (!rejectReason.trim()) return toast.error('반려 사유를 입력해주세요');
+                                           const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+-                                          await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim());
++                                          const target = { ...getCrmExt(selectedId) };
++                                          const ok = await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim(), target);
+                                           setRejectingDocId(null);
+                                           setRejectReason('');
+-                                          toast.success('서류를 반려했습니다.');
+-                                          setCrmData({ ...crmData });
++                                          setCrmData(prev => ({ ...prev, [selectedId]: target }));
++                                          notifySaved(ok, '서류를 반려했습니다.');
+                                         }} 
+                                         className="px-2 py-1 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg press-scale shrink-0"
+                                       >
+@@ -5042,21 +5075,10 @@ export default function CrmTab({
+           </div>
+ 
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+-            {requests
+-              .filter(r => {
+-                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
+-                                    r.selectedLawyerId === activeLawyer.id ||
+-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
+-                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+-                  const targetLawyer = lawyers.find(l => l.id === id);
+-                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+-                });
+-                const openMatch = r.requestType === 'open';
+-                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+-              })
+-              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
++            {newLeadRequests
+               .map((r, idx) => {
+-                const fp = r.financialProfile;
++                // 자가진단 전에 요청한 의뢰인도 있어 재무 정보가 비어 있을 수 있다
++                const fp = r.financialProfile || ({} as ConsultRequest['financialProfile']);
+                 const assets = fp.assetsTotal ?? fp.myAssets ?? 0;
+                 return (
+                   <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col">
+@@ -5069,7 +5091,8 @@ export default function CrmTab({
+                           r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
+                           'bg-slate-200 text-slate-700'
+                         }`}>
+-                          {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
++                          {/* 대시보드·AI 사건 분석과 같은 이름 */}
++                          {requestTypeLabel(r.requestType)}
+                         </span>
+                         <span className="text-sm font-bold text-slate-900">{getDisplayClientName(r)}</span>
+                         {isNewCase(r.createdAt) && <NewBadge />}
+@@ -5088,11 +5111,11 @@ export default function CrmTab({
+                       <div className="grid grid-cols-3 gap-2">
+                         <div className="bg-slate-50 rounded-lg p-2 text-center">
+                           <div className="text-[10px] text-slate-500">총채무</div>
+-                          <div className="text-sm font-black text-slate-900">{fp.debtTotal.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
++                          <div className="text-sm font-black text-slate-900">{(fp.debtTotal || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                         </div>
+                         <div className="bg-slate-50 rounded-lg p-2 text-center">
+                           <div className="text-[10px] text-slate-500">월소득</div>
+-                          <div className="text-sm font-black text-slate-900">{fp.income.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
++                          <div className="text-sm font-black text-slate-900">{(fp.income || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                         </div>
+                         <div className="bg-slate-50 rounded-lg p-2 text-center">
+                           <div className="text-[10px] text-slate-500">자산</div>
+@@ -5119,7 +5142,7 @@ export default function CrmTab({
+                             ⚡ 특례: {fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'single_parent' ? '한부모' : fp.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
+                           </span>
+                         )}
+-                        {fp.riskFlags.map(rf => (
++                        {(fp.riskFlags || []).map(rf => (
+                           <span key={rf} className="bg-rose-50 text-rose-600 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
+                         ))}
+                       </div>
+@@ -5156,20 +5179,7 @@ export default function CrmTab({
+               })}
+ 
+             {/* 빈 상태 */}
+-            {requests
+-              .filter(r => {
+-                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
+-                                    r.selectedLawyerId === activeLawyer.id ||
+-                                    (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email)));
+-                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+-                  const targetLawyer = lawyers.find(l => l.id === id);
+-                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+-                });
+-                const openMatch = r.requestType === 'open';
+-                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+-              })
+-              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
+-              .length === 0 && (
++            {newLeadRequests.length === 0 && (
+               <div className="col-span-full bg-white p-10 text-center rounded-2xl border border-slate-200 space-y-2">
+                 <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                 <p className="text-sm text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
+diff --git a/src/components/lawyer/LawyerProposalDraft.tsx b/src/components/lawyer/LawyerProposalDraft.tsx
+index 2a2c7b5..a82ea57 100644
+--- a/src/components/lawyer/LawyerProposalDraft.tsx
++++ b/src/components/lawyer/LawyerProposalDraft.tsx
+@@ -114,9 +114,11 @@ interface LawyerProposalDraftProps {
+   rehabUserInput: RehabUserInput;
+   consultRequest?: any;
+   onClose: () => void;
+-  onSendProposal: (proposalData: ProposalData) => void;
++  /** false를 돌려주면 발송이 막힌 것 (작성 중인 초안을 지우지 않는다) */
++  onSendProposal: (proposalData: ProposalData) => void | boolean;
+   viewerRole?: 'lawyer' | 'staff' | 'reviewer';
+-  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void;
++  /** false를 돌려주면 컨펌 요청이 막힌 것 */
++  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void | boolean;
+   onApproveProposal?: (proposalData: ProposalData) => void;
+   onRejectProposal?: (reason: string) => void;
+   pendingStaffName?: string;
+diff --git a/src/components/lawyer/LegalQuickDock.tsx b/src/components/lawyer/LegalQuickDock.tsx
+index 78f00b1..2d5c52e 100644
+--- a/src/components/lawyer/LegalQuickDock.tsx
++++ b/src/components/lawyer/LegalQuickDock.tsx
+@@ -39,7 +39,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+   const {
+     position,
+     isDragging,
+-    hasMoved,
++    wasDragged,
+     onPointerDown,
+     onPointerMove,
+     onPointerUp,
+@@ -50,6 +50,11 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+   const [isMenuOpen, setIsMenuOpen] = useState(false);
+   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+   const [activeToolId, setActiveToolId] = useState<QuickToolId | null>(null);
++  /**
++   * 메뉴에서 도구를 고를 때마다 1씩 증가 → 접혀 있던 도구 창을 다시 펼친다.
++   * Esc가 창을 닫지 않고 접게 바뀌어, 접힌 창에서 같은 도구를 다시 골라도 펼쳐져야 한다.
++   */
++  const [windowOpenSignal, setWindowOpenSignal] = useState(0);
+   const [enabledToolIds, setEnabledToolIds] = useState<QuickToolId[]>(DEFAULT_ENABLED_TOOL_IDS);
+   const [visibilityMode, setVisibilityMode] = useState<DockVisibilityMode>('normal');
+   const [query, setQuery] = useState('');
+@@ -213,19 +218,25 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+       return;
+     }
+ 
+-    // 작업형 툴은 Non-modal 플로팅 창으로 열기
++    // 작업형 툴은 Non-modal 플로팅 창으로 열기 (접혀 있으면 펼침)
+     setActiveToolId(id);
++    setWindowOpenSignal(n => n + 1);
+     setIsMenuOpen(false);
+   };
+ 
+   // 도크 버튼 클릭 (드래그가 아닐 때만 토글)
+-  const handleButtonClick = () => {
+-    if (hasMoved) return;
++  // 키보드(Enter/Space)로 생긴 click은 detail이 0 → 직전 드래그 여부와 무관하게 연다.
++  // 마우스·터치 click은 클릭 시점의 드래그 여부를 훅의 ref에서 직접 읽는다.
++  const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
++    if (e.detail !== 0 && wasDragged()) return;
+     setIsMenuOpen(prev => !prev);
+   };
+ 
+   // 현재 활성화된 도구 메타 목록
+   const activeTools = ALL_QUICK_TOOLS.filter(t => enabledToolIds.includes(t.id));
++  // 독 배지에 쓰는 도구 수 — 알림톡 같은 바로가기 동작(isActionOnly)은 도구가 아니므로 뺀다
++  // (이전: enabledToolIds.length를 그대로 써서 바로가기까지 세었음)
++  const enabledToolCount = activeTools.filter(t => !t.isActionOnly).length;
+   const trimmedQuery = query.trim();
+   // 검색 시 꺼진 도구까지 찾고, 켜진 도구를 먼저 보여준다 (정렬은 안정 정렬 → 분류 순서 유지)
+   const searchResults: QuickToolMeta[] = trimmedQuery
+@@ -323,12 +334,14 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+ 
+   return (
+     <>
+-      {/* ── 1. 완전 숨김(hidden) 상태일 때: 우측 하단 미니 복원 트리거 ── */}
++      {/* ── 1. 완전 숨김(hidden) 상태일 때: 우측 하단 미니 복원 트리거 ──
++          z-40: 어드민 모달(z-50) 아래. 모바일(lg 미만)은 하단 탭바(--mobile-gnb-height) 위로 올린다
++          (이전: bottom-4라 모바일 하단 탭의 '더보기' 버튼을 덮어 누르기 어려웠음) */}
+       {visibilityMode === 'hidden' && (
+         <button
+           type="button"
+           onClick={() => handleSetVisibility('normal')}
+-          className="fixed bottom-4 right-4 z-40 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
++          className="fixed bottom-[calc(0.75rem+var(--mobile-gnb-height))] lg:bottom-4 right-4 z-40 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold select-none group"
+           title="실무 퀵툴 다시 켜기"
+         >
+           <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" aria-hidden="true" />
+@@ -344,7 +357,8 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+             top: `${position ? Math.min(position.y, window.innerHeight - 60) : window.innerHeight - 80}px`,
+             [isDockOnLeft ? 'left' : 'right']: 0,
+           }}
+-          className="z-50 select-none animate-in fade-in slide-in-from-right-2 duration-200"
++          // z-40: 어드민 인라인 모달(z-50)이 항상 위에 오도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
++          className="z-40 select-none animate-in fade-in slide-in-from-right-2 duration-200"
+         >
+           <button
+             type="button"
+@@ -362,7 +376,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+             </div>
+             <span className="text-xs font-extrabold tracking-tight">실무 퀵툴</span>
+             <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-bold">
+-              {enabledToolIds.length}
++              {enabledToolCount}
+             </span>
+           </button>
+         </div>
+@@ -378,7 +392,8 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+             top: `${position.y}px`,
+             touchAction: 'none',
+           }}
+-          className="z-50 select-none"
++          // z-40: 독 버튼·메뉴가 어드민 인라인 모달(z-50) 아래로 가도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
++          className="z-40 select-none"
+         >
+           {/* ── 퀵툴 메뉴 팝오버 ── */}
+           {isMenuOpen && (
+@@ -545,7 +560,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+             onPointerUp={onPointerUp}
+             onPointerCancel={onPointerUp}
+             onClick={handleButtonClick}
+-            aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolIds.length}개)`}
++            aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolCount}개)`}
+             aria-expanded={isMenuOpen}
+             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold shadow-2xl transition-all press-scale cursor-grab active:cursor-grabbing ${
+               isDragging
+@@ -565,7 +580,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+             </div>
+             <span className="text-xs tracking-tight font-black hidden sm:inline">실무 퀵툴</span>
+             <span className="text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-extrabold text-white">
+-              {enabledToolIds.length}
++              {enabledToolCount}
+             </span>
+           </button>
+         </div>
+@@ -578,6 +593,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+         onSelectTool={setActiveToolId}
+         onClose={() => setActiveToolId(null)}
+         dockPosition={position}
++        openSignal={windowOpenSignal}
+       />
+ 
+       {/* ── 퀵툴 기능 추가 / 삭제 커스텀 관리 모달 ── */}
+diff --git a/src/components/lawyer/ProposalWorkspace.tsx b/src/components/lawyer/ProposalWorkspace.tsx
+index 971854f..eafd64d 100644
+--- a/src/components/lawyer/ProposalWorkspace.tsx
++++ b/src/components/lawyer/ProposalWorkspace.tsx
+@@ -20,9 +20,11 @@ interface ProposalWorkspaceProps {
+   rehabUserInput: RehabUserInput;
+   consultRequest: any;
+   onClose: () => void;
+-  onSendProposal: (proposalData: ProposalData) => void;
++  /** false를 돌려주면 발송이 막힌 것 (작성 중인 초안을 지우지 않는다) */
++  onSendProposal: (proposalData: ProposalData) => void | boolean;
+   viewerRole?: 'lawyer' | 'staff' | 'reviewer';
+-  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void;
++  /** false를 돌려주면 컨펌 요청이 막힌 것 (작성 중인 초안을 지우지 않는다) */
++  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void | boolean;
+   onApproveProposal?: (proposalData: ProposalData) => void;
+   onRejectProposal?: (reason: string) => void;
+   pendingStaffName?: string;
+@@ -163,16 +165,19 @@ export default function ProposalWorkspace({
+     toast.success('AI 보고서 수정 사항이 제안서 에디터에 즉시 반영되었습니다.');
+   };
+ 
++  // 발송·컨펌 요청이 막히면(false) 초안을 지우지 않는다
++  // (이전: 요청받지 않은 요청·이미 보낸 요청 등으로 발송이 막혀도 초안이 지워져 다시 작성해야 했다)
+   const handleSendProposal = useCallback((data: ProposalData) => {
+-    onSendProposal(data);
+-    clearDraft();
++    const result = onSendProposal(data);
++    if (result !== false) clearDraft();
++    return result;
+   }, [onSendProposal, clearDraft]);
+ 
+   const handleRequestConfirm = useCallback((data: ProposalData, memo: string) => {
+-    if (onRequestConfirm) {
+-      onRequestConfirm(data, memo);
+-      clearDraft();
+-    }
++    if (!onRequestConfirm) return false;
++    const result = onRequestConfirm(data, memo);
++    if (result !== false) clearDraft();
++    return result;
+   }, [onRequestConfirm, clearDraft]);
+ 
+   const handleQuoteQuestion = useCallback((question: string, defaultAnswer?: string) => {
+diff --git a/src/components/lawyer/chat/ChatComposer.tsx b/src/components/lawyer/chat/ChatComposer.tsx
+index 0d82ba7..68bd79e 100644
+--- a/src/components/lawyer/chat/ChatComposer.tsx
++++ b/src/components/lawyer/chat/ChatComposer.tsx
+@@ -13,6 +13,11 @@ interface ChatComposerProps {
+   reserveCornerSpace?: boolean;
+   /** false면 입력·전송 비활성 (자격 심사 대기 계정) */
+   canSend: boolean;
++  /**
++   * 값이 있으면 이 대화의 입력·전송을 잠그고 이유를 보여 준다.
++   * (의뢰인이 제안서의 '상담 시작'을 누르기 전 — 의뢰인 화면 consultFlow 규칙과 같게)
++   */
++  lockedReason?: string;
+   /** 전송 — 받아들였으면 true (입력창을 비운다) */
+   onSend: (text: string) => boolean;
+   /** 스레드별 임시 저장된 입력값 */
+@@ -22,7 +27,9 @@ interface ChatComposerProps {
+ }
+ 
+ /** 스레드마다 key로 새로 마운트한다 (입력값은 스레드별로 따로 보관) */
+-export default function ChatComposer({ reserveCornerSpace = false, canSend, onSend, initialValue = '', onDraftChange, templates }: ChatComposerProps) {
++export default function ChatComposer({ reserveCornerSpace = false, canSend: accountCanSend, lockedReason, onSend, initialValue = '', onDraftChange, templates }: ChatComposerProps) {
++  // 계정 승인(체험 모드)과 대화 잠금을 함께 반영한 전송 가능 여부
++  const canSend = accountCanSend && !lockedReason;
+   const [value, setValue] = useState(initialValue);
+   const [templatesOpen, setTemplatesOpen] = useState(false);
+   const textareaRef = useRef<HTMLTextAreaElement>(null);
+@@ -132,7 +139,13 @@ export default function ChatComposer({ reserveCornerSpace = false, canSend, onSe
+           onChange={e => updateValue(e.target.value)}
+           onKeyDown={handleKeyDown}
+           aria-describedby={!coarse && canSend ? hintId : undefined}
+-          placeholder={canSend ? '의뢰인에게 보낼 메시지를 입력하세요' : '관리자 승인 후 메시지를 보낼 수 있습니다'}
++          placeholder={
++            canSend
++              ? '의뢰인에게 보낼 메시지를 입력하세요'
++              : !accountCanSend
++                ? '관리자 승인 후 메시지를 보낼 수 있습니다'
++                : '의뢰인이 상담을 시작하면 메시지를 보낼 수 있습니다'
++          }
+           className="flex-1 min-h-[44px] resize-none rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-[15px] leading-6 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+         />
+         <button
+@@ -151,12 +164,17 @@ export default function ChatComposer({ reserveCornerSpace = false, canSend, onSe
+         <p id={hintId} className="mt-2 text-[12px] text-slate-500">Enter 전송 · Shift+Enter 줄바꿈</p>
+       )}
+ 
+-      {!canSend && (
++      {!accountCanSend ? (
+         <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+           <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+           자격 심사 대기(체험 모드) 중에는 메시지를 보낼 수 없습니다. 관리자 승인 후 이용해 주세요.
+         </p>
+-      )}
++      ) : lockedReason ? (
++        <p role="status" className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-600">
++          <Lock className="w-3.5 h-3.5 mt-[3px] shrink-0" aria-hidden="true" />
++          {lockedReason}
++        </p>
++      ) : null}
+     </div>
+   );
+ }
+diff --git a/src/components/lawyer/chat/ChatConversation.tsx b/src/components/lawyer/chat/ChatConversation.tsx
+index 90cd6ec..7c3fab0 100644
+--- a/src/components/lawyer/chat/ChatConversation.tsx
++++ b/src/components/lawyer/chat/ChatConversation.tsx
+@@ -32,11 +32,24 @@ interface ChatConversationProps {
+   onOpenQuickDock?: (anchor: DOMRect) => void;
+   canSend: boolean;
+   onSend: (text: string) => boolean;
++  /** 전송 실패한 내 메시지 다시 보내기 */
++  onRetry?: (messageId: string) => void;
+   draft: string;
+   onDraftChange: (text: string) => void;
+   templates: ChatReplyTemplate[];
+ }
+ 
++/**
++ * 대화 잠금 이유 — 의뢰인이 제안서의 '상담 시작'을 누르기 전에는 메시지를 보낼 수 없다
++ * (의뢰인 화면 consultFlow: 제안서 발송만으로는 상담이 열리지 않는다)
++ */
++function lockedReasonFor(thread: LawyerChatThread): string | undefined {
++  if (thread.chatOpen) return undefined;
++  return thread.hasMyProposal
++    ? '의뢰인이 제안서를 확인하고 ‘상담 시작’을 누르면 대화가 열립니다. 그 전에는 메시지를 보낼 수 없습니다.'
++    : '먼저 제안서를 보내 주세요. 의뢰인이 제안서의 ‘상담 시작’을 누르면 대화가 열립니다.';
++}
++
+ function formatReceivedDate(iso: string): string {
+   const d = new Date(iso);
+   if (Number.isNaN(d.getTime())) return '';
+@@ -81,7 +94,7 @@ function SummaryStrip({ request, onOpenRail }: { request: ConsultRequest; onOpen
+ 
+ export default function ChatConversation({
+   thread, lawyerId, now, layout, displayName, isPseudonymous, railInline, onCloseRail, onOpenRail, onBack,
+-  onOpenCrm, onOpenQuickDock, canSend, onSend, draft, onDraftChange, templates,
++  onOpenCrm, onOpenQuickDock, canSend, onSend, onRetry, draft, onDraftChange, templates,
+ }: ChatConversationProps) {
+   const [menuOpen, setMenuOpen] = useState(false);
+   const [revealSignal, setRevealSignal] = useState(0);
+@@ -220,12 +233,15 @@ export default function ChatConversation({
+         clientName={displayName}
+         now={now}
+         revealIntakeSignal={revealSignal}
++        onRetry={onRetry}
++        chatLocked={!thread.chatOpen}
+       />
+ 
+       <ChatComposer
+         key={`composer-${thread.id}`}
+         reserveCornerSpace={layout === 'drawer'}
+         canSend={canSend}
++        lockedReason={lockedReasonFor(thread)}
+         onSend={onSend}
+         initialValue={draft}
+         onDraftChange={onDraftChange}
+diff --git a/src/components/lawyer/chat/ChatInbox.tsx b/src/components/lawyer/chat/ChatInbox.tsx
+index 827e282..380cc00 100644
+--- a/src/components/lawyer/chat/ChatInbox.tsx
++++ b/src/components/lawyer/chat/ChatInbox.tsx
+@@ -224,6 +224,12 @@ export default function ChatInbox({ threads, activeThreadId, lawyerId, now, onSe
+                     </span>
+                     <span className="mt-1.5 flex items-center gap-2 min-w-0">
+                       <ConsultStatusChip status={t.request.status} />
++                      {/* 제안서만 보냈고 의뢰인이 아직 '상담 시작'을 누르지 않은 대화 — 메시지를 보낼 수 없다 */}
++                      {!t.chatOpen && (
++                        <span className="inline-flex items-center h-5 px-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[12px] font-semibold text-slate-600 whitespace-nowrap shrink-0">
++                          {t.hasMyProposal ? '의뢰인 확인 대기' : '제안서 발송 전'}
++                        </span>
++                      )}
+                       {debt > 0 && (
+                         <span className="text-[12px] text-slate-600 tabular-nums truncate">채무 {formatManwon(debt, { unit: false })}</span>
+                       )}
+diff --git a/src/components/lawyer/chat/ChatTimeline.tsx b/src/components/lawyer/chat/ChatTimeline.tsx
+index 10e43e4..a001847 100644
+--- a/src/components/lawyer/chat/ChatTimeline.tsx
++++ b/src/components/lawyer/chat/ChatTimeline.tsx
+@@ -1,5 +1,5 @@
+ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+-import { AlertCircle, ArrowDown, CheckCircle2, FileText, Info, MessageSquareDashed, PhoneCall } from 'lucide-react';
++import { AlertCircle, AlertTriangle, ArrowDown, CheckCircle2, FileText, Info, MessageSquareDashed, PhoneCall } from 'lucide-react';
+ import type { ConsultMessage, ConsultRequest } from '../../../types';
+ import { buildChatTimeline, type ChatTimelineItem } from './chatSelectors';
+ import { formatChatTime, formatDayDivider, formatFullDateTime, localDayKey } from './chatFormat';
+@@ -91,29 +91,63 @@ function SystemEvent({ item }: { item: Extract<ChatTimelineItem, { kind: 'system
+   );
+ }
+ 
+-function MessageGroup({ group, clientName }: { group: Extract<ChatTimelineItem, { kind: 'group' }>; clientName: string }) {
++function MessageGroup({
++  group,
++  clientName,
++  onRetry,
++}: {
++  group: Extract<ChatTimelineItem, { kind: 'group' }>;
++  clientName: string;
++  onRetry?: (messageId: string) => void;
++}) {
+   const { mine, messages } = group;
+   return (
+     <div className={`flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}>
+       {!mine && <span className="px-1 text-[12px] font-bold text-slate-700">{clientName}</span>}
+       {messages.map((m, i) => {
+         const isLast = i === messages.length - 1;
+-        const time = isLast ? (
++        // 이 기기에서 보낸 메시지의 전송 상태 (App.handleAddMessage가 기록 — 없으면 전송 완료)
++        // (이전: 변호사 메시지는 전송 상태를 추적하지 않아 저장에 실패해도 보낸 것처럼 보였다)
++        const delivery = mine ? m.deliveryStatus : undefined;
++        const time = isLast && !delivery ? (
+           <span className="shrink-0 pb-0.5 text-[12px] text-slate-500 tabular-nums">{formatChatTime(m.createdAt)}</span>
+         ) : null;
+         return (
+-          <div key={m.id} className={`flex items-end gap-2 w-full ${mine ? 'justify-end' : 'justify-start'}`}>
+-            {mine && time}
+-            <div
+-              title={formatFullDateTime(m.createdAt)}
+-              className={`max-w-[min(75%,560px)] rounded-2xl border px-3.5 py-2.5 text-base text-slate-900 whitespace-pre-wrap [overflow-wrap:anywhere] ${
+-                mine ? 'bg-brand-light border-brand/15' : 'bg-white border-slate-200'
+-              }`}
+-            >
+-              <span className="sr-only">{mine ? '보낸 메시지' : `${clientName} 메시지`}, {formatChatTime(m.createdAt)}: </span>
+-              <MessageBody text={m.message} />
++          <div key={m.id} className={`flex flex-col gap-1 w-full ${mine ? 'items-end' : 'items-start'}`}>
++            <div className={`flex items-end gap-2 w-full ${mine ? 'justify-end' : 'justify-start'}`}>
++              {mine && time}
++              <div
++                title={formatFullDateTime(m.createdAt)}
++                className={`max-w-[min(75%,560px)] rounded-2xl border px-3.5 py-2.5 text-base text-slate-900 whitespace-pre-wrap [overflow-wrap:anywhere] ${
++                  mine ? 'bg-brand-light border-brand/15' : 'bg-white border-slate-200'
++                } ${delivery === 'sending' ? 'opacity-70' : ''} ${delivery === 'failed' ? 'ring-2 ring-red-300' : ''}`}
++              >
++                <span className="sr-only">
++                  {mine ? '보낸 메시지' : `${clientName} 메시지`}, {formatChatTime(m.createdAt)}
++                  {delivery === 'sending' ? ', 보내는 중' : delivery === 'failed' ? ', 전송되지 않음' : ''}:{' '}
++                </span>
++                <MessageBody text={m.message} />
++              </div>
++              {!mine && time}
+             </div>
+-            {!mine && time}
++            {delivery === 'sending' && (
++              <span className="px-1 text-[12px] font-medium text-slate-500">보내는 중…</span>
++            )}
++            {delivery === 'failed' && (
++              <div className="flex items-center gap-1 px-1 text-[12px] font-semibold text-red-700">
++                <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
++                <span>전송되지 않았습니다</span>
++                {onRetry && (
++                  <button
++                    type="button"
++                    onClick={() => onRetry(m.id)}
++                    className="min-h-11 px-2.5 -my-2 rounded-lg font-bold text-brand hover:bg-brand-light whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
++                  >
++                    다시 보내기
++                  </button>
++                )}
++              </div>
++            )}
+           </div>
+         );
+       })}
+@@ -191,10 +225,14 @@ interface ChatTimelineProps {
+   now: Date;
+   /** 값이 바뀌면 신청서 사연을 펼치고 그 위치로 이동 */
+   revealIntakeSignal?: number;
++  /** 전송 실패한 내 메시지의 '다시 보내기' (넘기지 않으면 버튼을 그리지 않는다) */
++  onRetry?: (messageId: string) => void;
++  /** 의뢰인이 아직 대화를 열지 않았는지 (빈 대화 안내 문구용) */
++  chatLocked?: boolean;
+ }
+ 
+ /** 스레드마다 key로 새로 마운트한다 — 열면 맨 아래(최신 메시지)부터 보인다 */
+-export default function ChatTimeline({ request, messages, lawyerId, clientName, now, revealIntakeSignal = 0 }: ChatTimelineProps) {
++export default function ChatTimeline({ request, messages, lawyerId, clientName, now, revealIntakeSignal = 0, onRetry, chatLocked = false }: ChatTimelineProps) {
+   const scrollRef = useRef<HTMLDivElement>(null);
+   const intakeRef = useRef<HTMLElement>(null);
+   const nearBottomRef = useRef(true);
+@@ -264,14 +302,18 @@ export default function ChatTimeline({ request, messages, lawyerId, clientName,
+           {items.map(item => {
+             if (item.kind === 'day') return <DayDivider key={item.key} at={item.at} now={now} />;
+             if (item.kind === 'system') return <SystemEvent key={item.key} item={item} />;
+-            return <MessageGroup key={item.key} group={item} clientName={clientName} />;
++            return <MessageGroup key={item.key} group={item} clientName={clientName} onRetry={onRetry} />;
+           })}
+ 
+           {messages.length === 0 && (
+             <div className="flex flex-col items-center text-center gap-2 py-6">
+               <MessageSquareDashed className="w-8 h-8 text-slate-300" aria-hidden="true" />
+               <p className="text-sm font-semibold text-slate-700">아직 주고받은 메시지가 없습니다</p>
+-              <p className="text-xs text-slate-600">아래 입력창이나 ‘자주 쓰는 답변’으로 첫 메시지를 보내 상담을 시작하세요.</p>
++              <p className="text-xs text-slate-600">
++                {chatLocked
++                  ? '의뢰인이 제안서의 ‘상담 시작’을 누르면 대화가 열립니다.'
++                  : '아래 입력창이나 ‘자주 쓰는 답변’으로 첫 메시지를 보내 상담을 시작하세요.'}
++              </p>
+             </div>
+           )}
+         </div>
+diff --git a/src/components/lawyer/chat/ClientContextRail.tsx b/src/components/lawyer/chat/ClientContextRail.tsx
+index c57bcfd..624717f 100644
+--- a/src/components/lawyer/chat/ClientContextRail.tsx
++++ b/src/components/lawyer/chat/ClientContextRail.tsx
+@@ -5,7 +5,7 @@ import { isClosedConsultStatus, isRetainedConsultStatus } from '../../../constan
+ import { IconButton } from './ChatPrimitives';
+ import SummaryTab from './rail/SummaryTab';
+ import FinanceTab from './rail/FinanceTab';
+-import MemoTab from './rail/MemoTab';
++import MemoTab, { type MemoSaveResult } from './rail/MemoTab';
+ import { useRepaymentSimulation } from './rail/useRepaymentSimulation';
+ 
+ export type RailTab = 'summary' | 'finance' | 'memo';
+@@ -29,17 +29,20 @@ interface ClientContextRailProps {
+   getDisplayPhoneNumber: (req: ConsultRequest) => string;
+   memoNotes: CrmNote[] | null;
+   memoCount: number;
+-  onSaveMemo: (content: string) => Promise<boolean>;
++  onSaveMemo: (content: string) => Promise<MemoSaveResult>;
+   now: Date;
++  /** 이미 정식 수임 사건이 있는 요청인지 (Case.clientId = 요청 ID) */
++  hasCase?: boolean;
+ }
+ 
+ export default function ClientContextRail({
+   request, variant, tab, onTabChange, onClose, onConvertToCase, onOpenCrm, getDisplayPhoneNumber,
+-  memoNotes, memoCount, onSaveMemo, now,
++  memoNotes, memoCount, onSaveMemo, now, hasCase = false,
+ }: ClientContextRailProps) {
+   const simulation = useRepaymentSimulation(request);
+   const tabRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ summary: null, finance: null, memo: null });
+-  const canConvert = Boolean(request && !isRetainedConsultStatus(request.status) && !isClosedConsultStatus(request.status));
++  // 사건이 이미 있으면 전환 대신 '사건 열기' (이전: 상태 동기화가 늦으면 전환 버튼이 남아 '이미 등록된 고객' 오류만 떴다)
++  const canConvert = Boolean(request && !hasCase && !isRetainedConsultStatus(request.status) && !isClosedConsultStatus(request.status));
+ 
+   const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+@@ -73,11 +76,11 @@ export default function ClientContextRail({
+           ) : (
+             <button
+               type="button"
+-              onClick={() => onOpenCrm(request.id, 'info')}
++              onClick={() => onOpenCrm(request.id, hasCase ? 'contracts' : 'info')}
+               className="ml-auto shrink-0 inline-flex items-center gap-1.5 h-8 pointer-coarse:h-11 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold whitespace-nowrap transition-colors press-scale cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1"
+             >
+               <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+-              고객관리에서 열기
++              {hasCase ? '사건 열기' : '고객관리에서 열기'}
+             </button>
+           )
+         )}
+diff --git a/src/components/lawyer/chat/LawyerChatWorkspace.tsx b/src/components/lawyer/chat/LawyerChatWorkspace.tsx
+index 27e244e..dee9922 100644
+--- a/src/components/lawyer/chat/LawyerChatWorkspace.tsx
++++ b/src/components/lawyer/chat/LawyerChatWorkspace.tsx
+@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+ import type { ConsultRequest, ConsultMessage, CrmClientExtension, StaffMember, StaffRole, User } from '../../../types';
+ import { CRM_NOTE_CATEGORIES } from '../../../types';
+ import {
+-  createActivityLog, createCrmNote, createDefaultCrmExtension, getCrmExt, loadCrmData, saveCrmClient,
++  createActivityLog, createCrmNote, createDefaultCrmExtension, getCrmExt, loadCrmData, loadCrmDataResult, saveCrmClient,
+   type CrmDataStore,
+ } from '../../../services/crmService';
+ import { buildLawyerChatThread, buildLawyerChatThreads } from './chatSelectors';
+@@ -11,6 +11,7 @@ import { useElementWidth, useNow } from './chatHooks';
+ import ChatInbox from './ChatInbox';
+ import ChatConversation, { type ChatLayout } from './ChatConversation';
+ import ClientContextRail, { type CrmDetailTab, type RailTab } from './ClientContextRail';
++import type { MemoSaveResult } from './rail/MemoTab';
+ 
+ const RAIL_PREF_KEY = 'lawyer_chat_rail_open_v1';
+ 
+@@ -31,7 +32,11 @@ export interface LawyerChatWorkspaceProps {
+   onSelectThread: (reqId: string) => void;
+   /** 메시지 전송 (승인 확인·활동 로그 포함). 받아들였으면 true */
+   onSendMessage: (reqId: string, text: string) => boolean;
++  /** 전송 실패한 메시지를 같은 id로 다시 보낸다 (승인 확인·실패 안내 포함) */
++  onRetryMessage?: (messageId: string) => Promise<boolean>;
+   onConvertToCase: (req: ConsultRequest) => void;
++  /** 이미 정식 수임 사건이 있는 요청인지 — 있으면 '정식 수임 전환' 대신 '사건 열기'를 보여 준다 */
++  hasCaseForRequest?: (reqId: string) => boolean;
+   /** 고객관리 탭으로 이동 (reqId가 없으면 목록) */
+   onOpenCrm: (reqId?: string, detailTab?: CrmDetailTab) => void;
+   /**
+@@ -45,7 +50,7 @@ export interface LawyerChatWorkspaceProps {
+ 
+ export default function LawyerChatWorkspace({
+   requests, messages, activeLawyer, currentStaff = null, activeChatReqId, onSelectThread, onSendMessage,
+-  onConvertToCase, onOpenCrm, onOpenQuickDock, getDisplayClientName, getDisplayPhoneNumber,
++  onRetryMessage, onConvertToCase, hasCaseForRequest, onOpenCrm, onOpenQuickDock, getDisplayClientName, getDisplayPhoneNumber,
+ }: LawyerChatWorkspaceProps) {
+   const containerRef = useRef<HTMLDivElement>(null);
+   const width = useElementWidth(containerRef, typeof window !== 'undefined' ? window.innerWidth : 1440);
+@@ -112,6 +117,10 @@ export default function LawyerChatWorkspace({
+     (text: string) => (selectedId ? onSendMessage(selectedId, text) : false),
+     [selectedId, onSendMessage]
+   );
++  const handleRetry = useMemo(
++    () => (onRetryMessage ? (messageId: string) => { void onRetryMessage(messageId); } : undefined),
++    [onRetryMessage]
++  );
+ 
+   // ── 내부 메모 (고객관리 상담 메모와 같은 저장소) ──
+   const [crmStore, setCrmStore] = useState<CrmDataStore | null>(null);
+@@ -135,10 +144,14 @@ export default function LawyerChatWorkspace({
+   const memoNotes = crmStore ? (crmStore[selectedId]?.notes || []) : null;
+   const memoCount = crmStore ? (crmStore[selectedId]?.notes?.length || 0) : localMemoCount;
+ 
+-  const saveMemo = useCallback(async (content: string): Promise<boolean> => {
+-    if (!selectedId) return false;
++  const saveMemo = useCallback(async (content: string): Promise<MemoSaveResult> => {
++    if (!selectedId) return 'failed';
+     // 저장 직전 최신 데이터를 기준으로 합친다 (다른 화면에서 바뀐 서류·수임료 등을 덮어쓰지 않도록)
+-    const store = await loadCrmData();
++    // 서버를 읽지 못하면 저장하지 않는다 — 이 기기의 오래된 사본이나 빈 기본값으로 서버 행 전체를 덮어쓰지 않기 위해
++    // (이전: loadCrmData가 서버 오류 시 이 기기 사본으로 대체해, 그 사본을 기준으로 서버 행을 덮어쓸 수 있었다)
++    const loaded = await loadCrmDataResult();
++    if (!loaded.ok) return 'failed';
++    const store = loaded.data;
+     const base: CrmClientExtension = store[selectedId] || createDefaultCrmExtension(selectedId);
+     const actor: { id: string; name: string; role: StaffRole } = currentStaff
+       ? { id: currentStaff.id, name: currentStaff.name, role: currentStaff.role }
+@@ -156,7 +169,7 @@ export default function LawyerChatWorkspace({
+     };
+     const ok = await saveCrmClient(selectedId, updated);
+     setCrmStore({ ...store, [selectedId]: updated });
+-    return ok;
++    return ok ? 'saved' : 'local';
+   }, [selectedId, currentStaff, activeLawyer]);
+ 
+   // ── 렌더 ──
+@@ -185,6 +198,7 @@ export default function LawyerChatWorkspace({
+       memoCount={memoCount}
+       onSaveMemo={saveMemo}
+       now={now}
++      hasCase={selectedThread ? Boolean(hasCaseForRequest?.(selectedThread.request.id)) : false}
+     />
+   );
+ 
+@@ -221,6 +235,7 @@ export default function LawyerChatWorkspace({
+             onOpenQuickDock={onOpenQuickDock}
+             canSend={canSend}
+             onSend={handleSend}
++            onRetry={handleRetry}
+             draft={draftsRef.current[selectedId] || ''}
+             onDraftChange={text => { if (selectedId) draftsRef.current[selectedId] = text; }}
+             templates={DEFAULT_CHAT_REPLY_TEMPLATES}
+diff --git a/src/components/lawyer/chat/chatSelectors.ts b/src/components/lawyer/chat/chatSelectors.ts
+index e4a60d2..0131d58 100644
+--- a/src/components/lawyer/chat/chatSelectors.ts
++++ b/src/components/lawyer/chat/chatSelectors.ts
+@@ -1,13 +1,79 @@
+ /**
+  * 상담 채팅 데이터 가공 (화면과 분리한 순수 함수)
+  *
+- * `filterAndSanitizeMessagesForLawyer`는 LawyerRole.tsx 채팅 탭에 있던 함수를 동작 변경 없이 옮긴 것이다.
++ * `filterAndSanitizeMessagesForLawyer`는 LawyerRole.tsx 채팅 탭에 있던 함수를 옮긴 것이다.
+  * 다른 변호사의 메시지·이름을 가리는 로직이므로 수정할 때는 비교 상담 데이터로 전후 결과를 확인한다.
++ * (문구 규칙 확인 스크립트: .tmp-admin-work/verify-chat-filter.ts)
+  */
+ import type { ConsultMessage, ConsultRequest, User } from '../../../types';
+ import { isClosedConsultStatus } from '../../../constants/consultStatus';
++// consultFlow는 type-only import만 있어 변호사 화면 번들에 의뢰인 화면 코드가 딸려 오지 않는다
++import { LAWYER_REQUEST_RECEIVED_NOTICE, OPEN_REQUEST_CLIENT_NOTICE } from '../../client/consultFlow';
++import { getTargetLawyerColumnState } from '../../../services/consultMessageSchema';
++import { hasProposalFrom, isChatOpenWithLawyer } from '../requestScope';
+ import { localDayKey } from './chatFormat';
+ 
++// ── 대상 정보(targetLawyerId) 없이 온 시스템 안내의 문구 판정 ──
++// 서버 consult_messages에 대상 변호사 칸이 없던 동안 저장된 메시지는 다른 기기에 대상 정보 없이 온다.
++// 그때는 저장 문구로 받는 사람을 추정하므로, 의뢰인 화면(consultFlow·ChatView)의 저장 문구를 바꾸면 여기도 확인한다.
++
++/**
++ * buildClientRequestNotice(consultFlow) 문장 꼬리 — 요청한 변호사 이름·인원과 관계없이 이 부분은 같다.
++ * (예: 'A, B 변호사님에게 상담 요청을 보냈습니다. 변호사가 채무 현황을 검토한 뒤 …')
++ */
++export const CLIENT_REQUEST_NOTICE_TAIL = '에게 상담 요청을 보냈습니다. 변호사가 채무 현황을 검토한 뒤';
++
++/** 문장의 첫 문장 ('. ' 앞까지). 뒤 문장이 나중에 바뀌어도 과거 저장분을 같은 안내로 알아보기 위해 쓴다 */
++function leadingSentence(text: string): string {
++  const end = text.indexOf('. ');
++  return end > 0 ? text.slice(0, end + 1) : text;
++}
++
++const OPEN_REQUEST_NOTICE_HEAD = leadingSentence(OPEN_REQUEST_CLIENT_NOTICE);
++const LAWYER_REQUEST_NOTICE_HEAD = leadingSentence(LAWYER_REQUEST_RECEIVED_NOTICE);
++
++/** 앞머리 '[System]' 표시를 뗀 본문 */
++function stripSystemPrefix(text: string): string {
++  return text.replace(/^\[System\]\s*/i, '').trim();
++}
++
++/** 의뢰인 화면 전용 안내인지 (변호사 화면에는 대상 정보가 없어도 보이지 않아야 한다) */
++export function isClientOnlyNoticeText(raw: string | undefined): boolean {
++  const text = stripSystemPrefix(String(raw || ''));
++  if (!text) return false;
++  if (OPEN_REQUEST_NOTICE_HEAD && text.startsWith(OPEN_REQUEST_NOTICE_HEAD)) return true;
++  if (text.includes(CLIENT_REQUEST_NOTICE_TAIL)) return true;
++  // 개편(b7ed0c6) 전 의뢰인 안내 문구
++  return text.includes('상담 요청이 선택하신') || text.includes('변호사가 고객님의 채무 현황을 검토한 뒤');
++}
++
++/** 변호사에게 온 '상담 요청 접수' 안내인지 (LAWYER_REQUEST_RECEIVED_NOTICE로 시작) */
++export function isLawyerRequestReceivedText(raw: string | undefined): boolean {
++  const text = stripSystemPrefix(String(raw || ''));
++  return Boolean(LAWYER_REQUEST_NOTICE_HEAD) && text.startsWith(LAWYER_REQUEST_NOTICE_HEAD);
++}
++
++/**
++ * 대상 정보 없는 전화상담 요청을 받을 변호사: 상담 변호사(selectedLawyerId),
++ * 없으면 대화 중인 변호사(acceptedLawyerIds)가 정확히 한 명일 때 그 변호사. 판단할 수 없으면 undefined
++ */
++function soleCounselingLawyerId(request?: ConsultRequest | null): string | undefined {
++  if (!request) return undefined;
++  if (request.selectedLawyerId) return request.selectedLawyerId;
++  const accepted = Array.from(new Set((request.acceptedLawyerIds || []).filter(Boolean)));
++  return accepted.length === 1 ? accepted[0] : undefined;
++}
++
++export interface LawyerMessageFilterOptions {
++  /**
++   * 대상 정보(targetLawyerId) 없는 의뢰인 대화 메시지를, 이 요청의 acceptedLawyerIds가 2명 이상이면 숨긴다
++   * (누구에게 한 말인지 알 수 없어서 — 의뢰인 화면 ChatView와 같은 규칙).
++   * 기본값: 서버에 target_lawyer_id 칸이 있다고 확인됐을 때만(consultMessageSchema 'present') 켠다.
++   * 칸이 없으면 모든 메시지가 대상 없이 오므로, 켜면 비교 상담 대화가 통째로 사라진다.
++   */
++  hideUntargetedClientMessagesWhenMultiple?: boolean;
++}
++
+ /** 시스템(플랫폼) 메시지 판정 — 기존 채팅 탭과 같은 기준 */
+ export function isSystemChatMessage(m: ConsultMessage): boolean {
+   return (
+@@ -24,12 +90,21 @@ export function isSystemChatMessage(m: ConsultMessage): boolean {
+ export const filterAndSanitizeMessagesForLawyer = (
+   rawMessages: ConsultMessage[],
+   lawyer: User,
+-  request?: ConsultRequest | null
++  request?: ConsultRequest | null,
++  options?: LawyerMessageFilterOptions
+ ): ConsultMessage[] => {
+   if (!rawMessages || rawMessages.length === 0) return [];
+ 
+   const result: ConsultMessage[] = [];
+   const seenSystemTexts = new Set<string>();
++  const hideUntargetedClient = options?.hideUntargetedClientMessagesWhenMultiple ?? (getTargetLawyerColumnState() === 'present');
++  const acceptedCount = new Set((request?.acceptedLawyerIds || []).filter(Boolean)).size;
++  /** 대상 정보 없는 안내를 문장 기준으로 한 번만 보인다 (요청받은 변호사 수만큼 같은 안내가 복사돼 저장된다) */
++  const pushOnce = (m: ConsultMessage, key: string) => {
++    if (seenSystemTexts.has(key)) return;
++    seenSystemTexts.add(key);
++    result.push(m);
++  };
+ 
+   for (const m of rawMessages) {
+     const isSystem = 
+@@ -55,6 +130,11 @@ export const filterAndSanitizeMessagesForLawyer = (
+       if (m.targetLawyerId && m.targetLawyerId !== lawyer.id) {
+         continue;
+       }
++      // 대상 정보 없는 의뢰인 메시지: 대화 중인 변호사가 2명 이상이면 누구에게 한 말인지 알 수 없어 숨긴다
++      // (의뢰인 화면 ChatView와 같은 규칙). 서버에 대상 칸이 있다고 확인된 경우에만 켠다(옵션 설명 참고).
++      if (!m.targetLawyerId && hideUntargetedClient && acceptedCount >= 2) {
++        continue;
++      }
+       result.push(m);
+       continue;
+     }
+@@ -74,10 +154,54 @@ export const filterAndSanitizeMessagesForLawyer = (
+       }
+ 
+       // 3-2. targetLawyerId가 없는 레거시/공통 브로드캐스트 시스템 메시지
++      // 서버에 대상 칸이 없던 동안 저장된 안내는 다른 기기(변호사)에 대상 정보 없이 온다 → 문구와 요청 정보로 받는 사람을 추정
+       const text = m.message || (m as any).content || '';
++      const plain = stripSystemPrefix(text);
+ 
+-      // 의뢰인용 안내 문구 차단
+-      if (text.includes('상담 요청이 선택하신') || text.includes('변호사가 고객님의 채무 현황을 검토한 뒤')) {
++      // (1) 의뢰인 화면 전용 안내 차단 — 맨 앞에서 거른다.
++      //     이전: 고객 페이지 개편(b7ed0c6)으로 문구가 바뀌어 기존 규칙에 걸리지 않았고, 이름형 문장
++      //     ('A, B 변호사님에게 상담 요청을 보냈습니다…')은 아래 '변호사님' 규칙에서 이름이 든 변호사에게
++      //     함께 요청받은 다른 변호사 이름까지 원문 그대로 보였다.
++      if (isClientOnlyNoticeText(plain)) {
++        continue;
++      }
++
++      // (2) 전화상담 요청 — '상담을 요청했습니다' 규칙보다 먼저 본다.
++      //     이전: 그 규칙이 일반 '상담 요청 접수' 안내로 바꿔 '답변 필요'가 켜지지 않았고, 대화 중인 모든 변호사에게 보였다.
++      //     상담 변호사(selectedLawyerId)에게만, 없으면 대화 중인 변호사가 나 한 명일 때만 원문 그대로 보인다
++      //     (원문을 유지해야 classifySystemText가 attention → needsReply로 분류한다).
++      if (plain.includes('의뢰인이 전화상담을 요청')) {
++        if (!lawyer.id || soleCounselingLawyerId(request) !== lawyer.id) continue;
++        // 연달아 저장된 같은 요청(여러 번 누름)은 하나로 줄인다. 답변 뒤 다시 요청하면 새 요청으로 보여 '답변 필요'가 다시 켜진다.
++        const prev = result[result.length - 1];
++        if (prev && isSystemChatMessage(prev) && stripSystemPrefix(prev.message || '') === plain) continue;
++        result.push(m);
++        continue;
++      }
++
++      // (3) 전담 선임 안내 — 선임된 변호사에게만 (이전: '변호사님' 규칙에 걸리지 않아 대화 중인 모든 변호사에게 보였다)
++      if (plain.includes('의뢰인이 귀하를 전담 변호사로 선임')) {
++        if (!lawyer.id || request?.selectedLawyerId !== lawyer.id) continue;
++        pushOnce(m, plain);
++        continue;
++      }
++
++      // (4) 타 변호사 전담 선임 알림 — 선임되지 않은 변호사에게 한 번만 (나머지 변호사 수만큼 복사돼 저장된다)
++      if (plain.includes('다른 변호사를 전담으로 선임하였습니다')) {
++        if (request?.selectedLawyerId === lawyer.id) continue;
++        pushOnce(m, plain);
++        continue;
++      }
++
++      // (5) 상담 요청 접수 안내(LAWYER_REQUEST_RECEIVED_NOTICE) — 의뢰인이 나를 골라 요청한 경우에만 한 번
++      //     (이전: 공개 요청에 제안한 변호사 등 요청받지 않은 변호사에게도 보였다)
++      if (isLawyerRequestReceivedText(plain)) {
++        const requestedMe = Boolean(lawyer.id) && (
++          request?.selectedLawyerId === lawyer.id ||
++          (request?.selectedLawyerIds || []).includes(lawyer.id)
++        );
++        if (!requestedMe) continue;
++        pushOnce(m, LAWYER_REQUEST_NOTICE_HEAD);
+         continue;
+       }
+ 
+@@ -169,15 +293,6 @@ export const filterAndSanitizeMessagesForLawyer = (
+         continue;
+       }
+ 
+-      // 타 변호사 전담 선임 알림
+-      if (text.includes('다른 변호사를 전담으로 선임하였습니다')) {
+-        if (request?.selectedLawyerId === lawyer.id) {
+-          continue;
+-        }
+-        result.push(m);
+-        continue;
+-      }
+-
+       // 기타 시스템 메시지 중 타 변호사 이름이 포함된 경우 차단
+       if (text.includes('변호사님') || text.includes('변호사가')) {
+         const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+@@ -214,6 +329,13 @@ export interface LawyerChatThread {
+   needsReply: boolean;
+   /** 답변 대기 시작 시각 (내 마지막 답변 이후 첫 의뢰인 메시지) */
+   waitingSince?: string;
++  /**
++   * 이 변호사와 의뢰인의 대화가 열렸는지 (requestScope.isChatOpenWithLawyer).
++   * 제안서만 보냈고 의뢰인이 아직 '상담 시작'을 누르지 않았으면 false — 작성창을 잠근다.
++   */
++  chatOpen: boolean;
++  /** 이 변호사가 제안서를 보냈는지 (대화가 잠겼을 때 안내 문구를 고르는 데 쓴다) */
++  hasMyProposal: boolean;
+ }
+ 
+ function groupMessagesByRequest(messages: ConsultMessage[]): Map<string, ConsultMessage[]> {
+@@ -267,6 +389,8 @@ export function summarizeThread(request: ConsultRequest, visible: ConsultMessage
+     lastActivityAt: lastTime,
+     needsReply,
+     waitingSince,
++    chatOpen: isChatOpenWithLawyer(request, lawyerId),
++    hasMyProposal: hasProposalFrom(request, lawyerId),
+   };
+ }
+ 
+diff --git a/src/components/lawyer/chat/rail/MemoTab.tsx b/src/components/lawyer/chat/rail/MemoTab.tsx
+index f5736a8..6b49a43 100644
+--- a/src/components/lawyer/chat/rail/MemoTab.tsx
++++ b/src/components/lawyer/chat/rail/MemoTab.tsx
+@@ -5,11 +5,18 @@ import type { CrmNote } from '../../../../types';
+ import { CRM_NOTE_CATEGORIES } from '../../../../types';
+ import { formatFullDateTime, formatListTime } from '../chatFormat';
+ 
++/**
++ * 메모 저장 결과
++ * - saved: 서버까지 저장
++ * - local: 서버 저장 실패, 이 기기에만 남음
++ * - failed: 저장하지 않음 (서버의 최신 데이터를 읽지 못해 덮어쓰기를 막았다)
++ */
++export type MemoSaveResult = 'saved' | 'local' | 'failed';
++
+ interface MemoTabProps {
+   /** null이면 불러오는 중 */
+   notes: CrmNote[] | null;
+-  /** 저장 — 서버까지 저장됐으면 true (실패해도 이 기기에는 남는다) */
+-  onSave: (content: string) => Promise<boolean>;
++  onSave: (content: string) => Promise<MemoSaveResult>;
+   onOpenCrmNotes: () => void;
+   now: Date;
+ }
+@@ -45,9 +52,14 @@ export default function MemoTab({ notes, onSave, onOpenCrmNotes, now }: MemoTabP
+     if (!text || saving) return;
+     setSaving(true);
+     try {
+-      const ok = await onSave(text);
++      const result = await onSave(text);
++      if (result === 'failed') {
++        // 입력한 내용은 지우지 않는다 — 다시 저장할 수 있게
++        toast.error('고객관리 데이터를 불러오지 못해 메모를 저장하지 않았습니다. 입력한 내용은 그대로 두었으니 인터넷 연결을 확인한 뒤 다시 저장해 주세요.');
++        return;
++      }
+       setDraft('');
+-      if (ok) toast.success('메모를 저장했습니다.');
++      if (result === 'saved') toast.success('메모를 저장했습니다.');
+       else toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+     } catch {
+       toast.error('메모를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+diff --git a/src/components/lawyer/pipeline/LegalFlowThirteenStepper.tsx b/src/components/lawyer/pipeline/LegalFlowThirteenStepper.tsx
+index 4a5702f..fd19aa5 100644
+--- a/src/components/lawyer/pipeline/LegalFlowThirteenStepper.tsx
++++ b/src/components/lawyer/pipeline/LegalFlowThirteenStepper.tsx
+@@ -14,7 +14,8 @@ interface LegalFlowThirteenStepperProps {
+   currentStageId?: string;
+   isBankruptcy?: boolean;
+   isDismissedRevoked?: boolean;
+-  onSelectStage: (stageId: string) => void;
++  /** false(또는 false로 끝나는 Promise)를 돌려주면 저장 실패로 보고 '변경되었습니다' 안내를 띄우지 않는다 */
++  onSelectStage: (stageId: string) => void | boolean | Promise<void | boolean>;
+   onToggleDismissedRevoked?: (val: boolean) => void;
+   readOnly?: boolean;
+ }
+@@ -39,7 +40,7 @@ export default function LegalFlowThirteenStepper({
+   const SUBMISSION_INDEX = stages.findIndex(s => s.id === 'petition_submitted');
+   const isAfterSubmission = safeCurrentIndex >= SUBMISSION_INDEX;
+ 
+-  const handleStageClick = (targetStage: LegalFlowStageConfig, targetIndex: number) => {
++  const handleStageClick = async (targetStage: LegalFlowStageConfig, targetIndex: number) => {
+     if (readOnly) return;
+ 
+     // 기각 및 폐지 단계는 전용 토글로 분기 처리
+@@ -59,7 +60,9 @@ export default function LegalFlowThirteenStepper({
+       return;
+     }
+ 
+-    onSelectStage(targetStage.id);
++    // 저장 결과를 기다린 뒤 안내 (이전: 저장 전에 성공 안내 → 서버 저장 실패여도 '변경되었습니다')
++    const result = await onSelectStage(targetStage.id);
++    if (result === false) return;
+     toast.success(`사건 단계가 [${targetStage.label}] 단계로 변경되었습니다.`);
+   };
+ 
+diff --git a/src/components/lawyer/pipeline/Stage1ConsultationView.tsx b/src/components/lawyer/pipeline/Stage1ConsultationView.tsx
+index 133f283..ffda8df 100644
+--- a/src/components/lawyer/pipeline/Stage1ConsultationView.tsx
++++ b/src/components/lawyer/pipeline/Stage1ConsultationView.tsx
+@@ -12,6 +12,9 @@ import { addClientNotification } from '../../../services/clientNotificationServi
+ import { useDialog } from '../../common/DialogProvider';
+ import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
+ 
++/** 수임 계약 이후 상담 요청 상태 */
++const RETAINED_REQUEST_STATUSES: ReadonlyArray<ConsultRequest['status']> = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
++
+ interface Stage1ConsultationViewProps {
+   clientRequest: ConsultRequest;
+   crmExt?: CrmClientExtension;
+@@ -78,9 +81,12 @@ export default function Stage1ConsultationView({
+ 
+   // 제안서 발송 상태 및 계약 상태 확인
+   const proposals = clientRequest.proposals || [];
+-  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
++  // 내 제안서만 본다 — 비교 상담(최대 3명)에서는 다른 변호사의 제안서가 함께 들어 있다
++  // (이전: 내 제안서가 없으면 첫 제안서를 대신 써서, 제안서를 보내지 않은 변호사에게도 '발송 완료'와 남의 조건이 보였다)
++  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id);
+   const hasProposalSent = Boolean(myProposal);
+-  const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
++  // 수임 계약 이후 단계 전체 (이전: 'contracted'만 봐서 서류 준비·접수 이후 고객이 상담 단계로 보였다)
++  const isContracted = RETAINED_REQUEST_STATUSES.includes(clientRequest.status) || crmExt?.thirteenStage === 'contract_done';
+ 
+   // ── 고객 연락처 공개 및 제안서 소통 게이팅 상태 판별 ──
+   const [isSimulatedShared, setIsSimulatedShared] = useState(false);
+diff --git a/src/components/lawyer/pipeline/Stage4FilingBundleView.tsx b/src/components/lawyer/pipeline/Stage4FilingBundleView.tsx
+index 71a975e..93137b7 100644
+--- a/src/components/lawyer/pipeline/Stage4FilingBundleView.tsx
++++ b/src/components/lawyer/pipeline/Stage4FilingBundleView.tsx
+@@ -68,7 +68,8 @@ export default function Stage4FilingBundleView({
+   const [isClientConsented, setIsClientConsented] = useState(false);
+ 
+   // 선행 충족 조건 산출
+-  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
++  // (이전: 없는 상태값 'documents_pending'을 넣어, 실제 '서류 준비(document)' 단계 고객이 미계약으로 판정됐다)
++  const isContracted = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+     crmExt?.crmStatus || clientRequest.status || ''
+   );
+   const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
+diff --git a/src/components/lawyer/postcare/PostCommencementManagementModal.tsx b/src/components/lawyer/postcare/PostCommencementManagementModal.tsx
+index 1bf5916..96300b4 100644
+--- a/src/components/lawyer/postcare/PostCommencementManagementModal.tsx
++++ b/src/components/lawyer/postcare/PostCommencementManagementModal.tsx
+@@ -50,11 +50,17 @@ function PostCommencementManagementModalInner({
+ 
+   const courtThreshold = getCourtRepealStandard(courtName);
+   // 실제 미납 의심 회차 (의뢰인 회생동행 납부기록 기준). 기록이 없으면 0 — 아래 선택기는 '가정' 시뮬레이션용
+-  const recordedOverdue = (() => {
++  // 회생동행 기록은 의뢰인 기기에만 저장된다. 이 기기에 있는 사본이 CRM에서 만든 것(mykim_lawyer)이고
++  // 납부 기록이 하나도 없으면, 의뢰인 기록을 모르는 것이지 미납이 아니다.
++  // (이전: 이런 사본은 납부일이 지난 모든 회차가 '미납'으로 집계되어 폐지 위험 경보가 잘못 떴다)
++  const { recordedOverdue, hasPaymentRecords } = (() => {
+     try {
+       const cs = loadRehabCompanionCase(clientRequest.id);
+-      return cs ? evaluateOverdueRisk(cs).overdueCount : 0;
+-    } catch { return 0; }
++      if (!cs) return { recordedOverdue: 0, hasPaymentRecords: false };
++      const hasRecords = (cs.schedules || []).some(s => s.status !== 'pending');
++      if (cs.sourceType === 'mykim_lawyer' && !hasRecords) return { recordedOverdue: 0, hasPaymentRecords: false };
++      return { recordedOverdue: evaluateOverdueRisk(cs).overdueCount, hasPaymentRecords: true };
++    } catch { return { recordedOverdue: 0, hasPaymentRecords: false }; }
+   })();
+   const [overdueRoundsCount, setOverdueRoundsCount] = useState(recordedOverdue);
+   const totalOverdueAmount = overdueRoundsCount * monthlyRepayment;
+@@ -577,8 +583,15 @@ function PostCommencementManagementModalInner({
+                         </span>
+                       </div>
+                       <h4 className="font-extrabold text-sm text-white mt-0.5">
+-                        변제금 미납 폐지 위험 참고 판정 (기록된 미납 {recordedOverdue}회)
++                        {hasPaymentRecords
++                          ? `변제금 미납 폐지 위험 참고 판정 (기록된 미납 ${recordedOverdue}회)`
++                          : '변제금 미납 폐지 위험 참고 판정 (납부 기록 없음)'}
+                       </h4>
++                      {!hasPaymentRecords && (
++                        <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
++                          의뢰인의 회생동행 납부 기록이 이 기기에 없어 실제 미납 회차를 알 수 없습니다. 오른쪽 미납 회차는 가정값이니, 법원 가상계좌 입금 내역이나 회생위원 안내로 확인해 주세요.
++                        </p>
++                      )}
+                     </div>
+                   </div>
+ 
+@@ -590,7 +603,7 @@ function PostCommencementManagementModalInner({
+                       className="bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-red-500"
+                     >
+                       {[0, 1, 2, 3, 4, 5, 6].map(n => (
+-                        <option key={n} value={n}>{n}회차 미납{n === recordedOverdue ? ' (기록 기준)' : ''}</option>
++                        <option key={n} value={n}>{n}회차 미납{hasPaymentRecords && n === recordedOverdue ? ' (기록 기준)' : ''}</option>
+                       ))}
+                     </select>
+                   </div>
+diff --git a/src/components/lawyer/quickdock/FloatingToolWindow.tsx b/src/components/lawyer/quickdock/FloatingToolWindow.tsx
+index 3efe890..b84421a 100644
+--- a/src/components/lawyer/quickdock/FloatingToolWindow.tsx
++++ b/src/components/lawyer/quickdock/FloatingToolWindow.tsx
+@@ -32,6 +32,8 @@ interface FloatingToolWindowProps {
+   onSelectTool: (id: QuickToolId) => void;
+   onClose: () => void;
+   dockPosition: Position | null;
++  /** 독 메뉴에서 도구를 고를 때마다 바뀌는 값 → 접힌 창을 다시 펼친다 (같은 도구를 다시 골라도) */
++  openSignal?: number;
+ }
+ 
+ const WINDOW_STORAGE_KEY = 'legal_quick_window_pos_v2';
+@@ -80,6 +82,7 @@ export default function FloatingToolWindow({
+   onSelectTool,
+   onClose,
+   dockPosition,
++  openSignal = 0,
+ }: FloatingToolWindowProps) {
+   const dialog = useDialog();
+   const [isMinimized, setIsMinimized] = useState(false);
+@@ -94,6 +97,8 @@ export default function FloatingToolWindow({
+   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+   const windowRef = useRef<HTMLDivElement>(null);
+   const bodyRef = useRef<HTMLDivElement>(null);
++  /** 접기/펼치기 버튼 — Esc로 접은 뒤 포커스를 옮길 곳 */
++  const minimizeBtnRef = useRef<HTMLButtonElement>(null);
+ 
+   const width = windowWidthFor(viewport.w);
+   const bodyMaxHeight = Math.max(
+@@ -159,6 +164,12 @@ export default function FloatingToolWindow({
+     if (bodyRef.current) bodyRef.current.scrollTop = 0;
+   }, [activeToolId]);
+ 
++  // 독 메뉴에서 도구를 고르면(같은 도구 포함) 접힌 창을 다시 펼친다
++  // (Esc가 창을 접게 바뀌어, 접힌 창에 메뉴로 도구를 열면 제목만 바뀌고 본문이 안 보이는 문제 방지)
++  useEffect(() => {
++    if (openSignal > 0) setIsMinimized(false);
++  }, [openSignal]);
++
+   // 드래그 핸들 이벤트 (타이틀 바)
+   const handleHeaderPointerDown = (e: React.PointerEvent) => {
+     if (e.button !== 0) return;
+@@ -209,12 +220,18 @@ export default function FloatingToolWindow({
+     }
+   };
+ 
+-  // 창 안에서 Esc → 창 닫기
++  // 창 안에서 Esc → 창 접기 (도구는 마운트된 채 숨김 → 입력값 유지). 닫기는 닫기 버튼으로만.
++  // 이전: Esc가 창을 닫아(onClose) 유지 중인 도구 목록(mountedIds)이 비워지며 모든 도구 입력이 사라졌음.
++  // 도구가 자체적으로 Esc를 처리한 경우(preventDefault)와 한글 조합 중 Esc는 건드리지 않는다.
+   const handleKeyDown = (e: React.KeyboardEvent) => {
+-    if (e.key === 'Escape' && !e.defaultPrevented) {
+-      e.stopPropagation();
+-      onClose();
+-    }
++    if (e.key !== 'Escape' || e.defaultPrevented || e.nativeEvent.isComposing) return;
++    // 창 안의 Esc는 뒤쪽 어드민 화면의 Esc 처리로 넘기지 않는다 (이전과 같음 — 접힌 상태에서 Esc를 또 눌러도)
++    e.preventDefault();
++    e.stopPropagation();
++    if (isMinimized) return; // 이미 접힌 상태면 그대로 둔다
++    setIsMinimized(true);
++    // 포커스가 있던 입력칸이 숨겨지므로 '창 펼치기' 버튼으로 옮겨 키보드로 바로 다시 펼 수 있게 한다
++    minimizeBtnRef.current?.focus();
+   };
+ 
+   // 새 상담: 모든 계산기 공유값 초기화 (메모는 유지)
+@@ -258,7 +275,8 @@ export default function FloatingToolWindow({
+         top: `${winPos.y}px`,
+         width: `${width}px`,
+       }}
+-      className={`z-50 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 ${
++      // z-40: 어드민 인라인 모달(z-50)이 항상 위에 오도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
++      className={`z-40 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 ${
+         isDragging ? 'shadow-blue-500/20 ring-2 ring-blue-500/50' : 'shadow-2xl'
+       }`}
+     >
+@@ -294,12 +312,13 @@ export default function FloatingToolWindow({
+             <RotateCcw className="w-3.5 h-3.5" />
+           </button>
+           <button
++            ref={minimizeBtnRef}
+             type="button"
+             onClick={() => setIsMinimized(prev => !prev)}
+             aria-label={isMinimized ? '창 펼치기' : '창 접기'}
+             aria-expanded={!isMinimized}
+             className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
+-            title={isMinimized ? '창 펼치기' : '창 접기 (입력값 유지)'}
++            title={isMinimized ? '창 펼치기' : '창 접기 (Esc, 입력값 유지)'}
+           >
+             {isMinimized ? <Square className="w-3 h-3" /> : <Minus className="w-3.5 h-3.5" />}
+           </button>
+@@ -308,7 +327,7 @@ export default function FloatingToolWindow({
+             onClick={onClose}
+             aria-label="창 닫기"
+             className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+-            title="창 닫기 (Esc)"
++            title="창 닫기"
+           >
+             <X className="w-3.5 h-3.5" />
+           </button>
+diff --git a/src/components/lawyer/quickdock/tools/FloatingPinMemoTool.tsx b/src/components/lawyer/quickdock/tools/FloatingPinMemoTool.tsx
+index 02bcf2f..251e1fc 100644
+--- a/src/components/lawyer/quickdock/tools/FloatingPinMemoTool.tsx
++++ b/src/components/lawyer/quickdock/tools/FloatingPinMemoTool.tsx
+@@ -25,6 +25,12 @@ function persistSlots(slots: MemoSlot[]) {
+     if (s.imageDataUrl) pinImageCache.set(s.id, s.imageDataUrl);
+     else pinImageCache.delete(s.id);
+   });
++  // 지운 칸의 이미지(신분증 등 민감 이미지)도 캐시에서 바로 지운다
++  // (이전: 현재 칸 목록만 갱신해, 삭제한 칸의 이미지가 새로고침·로그아웃 전까지 메모리에 남았음)
++  const liveIds = new Set(slots.map(s => s.id));
++  pinImageCache.forEach((_img, id) => {
++    if (!liveIds.has(id)) pinImageCache.delete(id);
++  });
+   try {
+     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(slots.map(({ imageDataUrl: _img, ...rest }) => rest)));
+   } catch {
+diff --git a/src/components/lawyer/quickdock/tools/SeizureLimitsTool.tsx b/src/components/lawyer/quickdock/tools/SeizureLimitsTool.tsx
+index f29c126..4c083ab 100644
+--- a/src/components/lawyer/quickdock/tools/SeizureLimitsTool.tsx
++++ b/src/components/lawyer/quickdock/tools/SeizureLimitsTool.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ import { ArrowDownToLine } from 'lucide-react';
+ import { toast } from 'sonner';
+ import {
+@@ -27,11 +27,23 @@ const WAGE_CAP_FROM = WAGE_EXEMPTION_CAP_BASE_KRW * 2; // 600만
+ 
+ export default function SeizureLimitsTool() {
+   const shared = useDockShared();
++  const sharedLease = shared.liquidation.leaseDeposit;
+   const [tab, setTab] = useState<'deposit' | 'housing'>('deposit');
+   const [wage, setWage] = useState<number>(0);
+-  const [leaseDeposit, setLeaseDeposit] = useState<number>(() => shared.liquidation.leaseDeposit);
++  /**
++   * 이 도구에서 입력했지만 아직 청산가치 점검기에 반영하지 않은 임차보증금.
++   * undefined면 공유값(청산가치 점검기 등 다른 도구에서 넣은 값)을 그대로 보여 준다.
++   * 이전: 처음 열 때만 공유값을 복사해, 다른 도구에서 바꾼 값이 보이지 않고 '반영'이 옛 값으로 덮어썼음
++   */
++  const [leaseDraft, setLeaseDraft] = useState<number | undefined>(undefined);
++  const leaseDeposit = leaseDraft ?? sharedLease;
+   const { copied, copy } = useCopyFeedback();
+ 
++  // 공유값이 바뀌면(다른 도구에서 입력·새 상담) 이 도구의 미반영 입력을 버리고 최신 공유값을 보여 준다
++  useEffect(() => {
++    setLeaseDraft(undefined);
++  }, [sharedLease]);
++
+   const wageExempt = wageExemptAmount(wage);
+   const lease = HOUSING_EXEMPT_DEPOSIT_LIMITS[shared.region];
+   const isSmallTenant = leaseDeposit > 0 && leaseDeposit <= lease.maxDeposit;
+@@ -39,6 +51,7 @@ export default function SeizureLimitsTool() {
+ 
+   const handleApplyLease = () => {
+     setDockLiquidation({ leaseDeposit });
++    setLeaseDraft(undefined); // 반영 후에는 공유값을 그대로 표시
+     toast.success(`임차보증금 ${formatWonKorean(leaseDeposit)}을 청산가치 점검기에 반영했습니다.`);
+   };
+ 
+@@ -164,7 +177,7 @@ ${housingLines}
+               </div>
+               <div>
+                 <label htmlFor="seizure-lease" className="text-[10px] text-slate-600 font-semibold block mb-0.5">임차보증금</label>
+-                <MoneyInput id="seizure-lease" value={leaseDeposit} onChange={setLeaseDeposit} placeholder="예: 5000만" />
++                <MoneyInput id="seizure-lease" value={leaseDeposit} onChange={setLeaseDraft} placeholder="예: 5000만" />
+               </div>
+             </div>
+             {leaseDeposit > 0 && (
+diff --git a/src/components/lawyer/quickdock/useDraggableDock.ts b/src/components/lawyer/quickdock/useDraggableDock.ts
+index 10460d2..8198c98 100644
+--- a/src/components/lawyer/quickdock/useDraggableDock.ts
++++ b/src/components/lawyer/quickdock/useDraggableDock.ts
+@@ -130,11 +130,16 @@ export function useDraggableDock() {
+     }
+   }, []);
+ 
++  // 직전 포인터 입력이 드래그였는지 — 클릭 처리 시점에 ref를 직접 읽는다
++  // (이전: 렌더 시점 값 hasMovedRef.current를 넘겨, 한 번 드래그하면 다음 포인터 입력 전까지
++  //  키보드 Enter/Space로 독 버튼이 열리지 않았음)
++  const wasDragged = useCallback(() => hasMovedRef.current, []);
++
+   return {
+     position,
+     setPosition,
+     isDragging,
+-    hasMoved: hasMovedRef.current,
++    wasDragged,
+     onPointerDown,
+     onPointerMove,
+     onPointerUp,
+diff --git a/src/constants/consultStatus.ts b/src/constants/consultStatus.ts
+index 7a75962..cda9a8c 100644
+--- a/src/constants/consultStatus.ts
++++ b/src/constants/consultStatus.ts
+@@ -23,7 +23,8 @@ export const CONSULT_STATUS_META: Record<ConsultStatus, ConsultStatusMeta> = {
+   filed:      { label: '접수 완료', group: 'retained' },
+   commenced:  { label: '개시 결정', group: 'retained' },
+   repaying:   { label: '변제 중', group: 'retained' },
+-  discharged: { label: '면책 확정', group: 'discharged' },
++  // 의뢰인 화면(client/consultFlow.ts)과 같은 이름 — 같은 상담을 두 화면이 다르게 부르지 않도록 (이전: '면책 확정')
++  discharged: { label: '면책 결정', group: 'discharged' },
+   closed:     { label: '상담 종료', group: 'closed' },
+   cancelled:  { label: '요청 취소', group: 'closed' },
+ };
+diff --git a/src/services/companionService.ts b/src/services/companionService.ts
+index c8a3157..d4cc0e3 100644
+--- a/src/services/companionService.ts
++++ b/src/services/companionService.ts
+@@ -186,27 +186,37 @@ export function syncCompanionWithCrmCase(
+ 
+   const assignedLawyerName = ds.assignedLawyerName || crmExt.assignedLawyerName || existing?.assignedLawyerName || '';
+ 
++  // CRM에 아직 없는 값은 기존 동행 사건 값을 유지한다
++  // (이전: CRM에 사건번호·가상계좌·월 변제금이 비어 있으면 의뢰인이 입력해 둔 값까지 빈 값·0으로 덮어썼다)
++  const keptCaseNumber = realCaseNumber || existing?.caseNumber || '';
++  const keptCaseNumberMasked = realCaseNumber ? caseNumberMasked : (existing?.caseNumberMasked || caseNumberMasked);
++  const keptMonthly = monthlyRepayment || existing?.monthlyRepaymentAmount || 0;
++  const keptAccount = courtAccount || existing?.courtVirtualAccount || '';
++  // 의뢰인이 다른 사무소·나홀로 사건으로 등록한 동행 사건은 출처·별칭·사무소명을 바꾸지 않는다
++  const keepsOwnSource = existing?.sourceType === 'external_office' || existing?.sourceType === 'self_litigant';
++
+   const syncedCase: RehabCompanionCase = {
+     id: existing?.id || `case-crm-${clientId}`,
+     clientId,
+-    alias: clientName,
+-    sourceType: 'mykim_lawyer',
++    alias: keepsOwnSource ? (existing?.alias || clientName) : clientName,
++    sourceType: keepsOwnSource && existing ? existing.sourceType : 'mykim_lawyer',
++    ...(keepsOwnSource && existing?.externalOfficeName ? { externalOfficeName: existing.externalOfficeName } : {}),
+     caseType: 'individual_rehab',
+     caseStage: companionStage,
+     courtName,
+-    caseNumber: realCaseNumber,
+-    caseNumberMasked,
+-    monthlyRepaymentAmount: monthlyRepayment,
++    caseNumber: keptCaseNumber,
++    caseNumberMasked: keptCaseNumberMasked,
++    monthlyRepaymentAmount: keptMonthly,
+     repaymentDay: repaymentDay || existing?.repaymentDay || 0,
+     totalRounds: totalRounds || schedules.length,
+     completedRounds,
+     startRepaymentDate: startYearMonth || existing?.startRepaymentDate || '',
+-    courtVirtualAccount: courtAccount,
++    courtVirtualAccount: keptAccount,
+     assignedLawyerName,
+     cashflow: {
+       monthlyIncome: existing?.cashflow?.monthlyIncome || Number(ds.monthlyIncome || 0),
+       essentialLivingCost: existing?.cashflow?.essentialLivingCost || Number(ds.essentialLivingCost || 0),
+-      repaymentAmount: monthlyRepayment,
++      repaymentAmount: keptMonthly,
+       otherFixedExpenses: existing?.cashflow?.otherFixedExpenses || 0,
+     },
+     schedules,
+diff --git a/src/services/consultService.ts b/src/services/consultService.ts
+index 4eff0f7..0d43655 100644
+--- a/src/services/consultService.ts
++++ b/src/services/consultService.ts
+@@ -1,6 +1,7 @@
+ import { supabase, isSupabaseConfigured } from '../supabaseClient';
+ import type { ConsultRequest, ConsultMessage } from '../types';
+ import { isLegacyEncryptedField, isLegacyEncryptedString, LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER } from '../utils/cryptoField';
++import { getTargetLawyerColumnState, setTargetLawyerColumnState } from './consultMessageSchema';
+ 
+ // [PART 4] 브라우저 "암호화"(번들 키) 제거 — 평문 저장 + RLS. 이관 전 레거시 암호문은 덮어쓰지 않도록 추적한다.
+ const legacyEncryptedProfileIds = new Set<string>();
+@@ -490,6 +491,12 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
+       if (error) {
+         logSupabaseError('loadConsultMessages', error);
+       } else if (data) {
++        // 대상 변호사 칸(target_lawyer_id, 마이그레이션 030)이 있는지: select('*') 응답 행에 키가 있는지로 판단한다
++        // (변호사 화면 필터가 'present'일 때만 대상 정보 없는 의뢰인 메시지를 비교 상담 중에 숨긴다)
++        if (data.length > 0) {
++          const hasTargetColumn = data.some((row: any) => row && Object.prototype.hasOwnProperty.call(row, 'target_lawyer_id'));
++          setTargetLawyerColumnState(hasTargetColumn ? 'present' : 'missing');
++        }
+         return data.map((row: any) => ({
+           id: row.id,
+           consultRequestId: row.consult_request_id,
+@@ -498,6 +505,7 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
+           senderName: row.sender_name,
+           message: readStoredMessage(row.id, row.message),
+           createdAt: row.created_at,
++          targetLawyerId: row.target_lawyer_id ?? undefined,
+         }));
+       }
+     } catch (e) {
+@@ -518,12 +526,60 @@ function readStoredMessage(id: string, stored: string): string {
+   return stored;
+ }
+ 
++// ── 메시지 서버 저장 (대상 변호사 칸 target_lawyer_id, 마이그레이션 030) ──
++// 메시지는 수정하지 않는 데이터라 같은 id가 이미 있으면 그대로 둔다(ON CONFLICT DO NOTHING).
++// 030 적용 전 서버에도 저장되도록, 칸이 없다는 오류를 받으면 그 칸 없이 한 번 다시 보낸다.
++
++/** 대상 변호사 칸이 없다는 오류인지 (PostgREST 스키마 캐시에 없음 PGRST204 · Postgres 칸 없음 42703 · 메시지에 칸 이름) */
++function isMissingTargetColumnError(error: any): boolean {
++  if (!error) return false;
++  const code = String(error.code || '');
++  const text = [error.message, error.details, error.hint].filter(Boolean).join(' ');
++  return code === 'PGRST204' || code === '42703' || text.includes('target_lawyer_id');
++}
++
++/** ConsultMessage → 서버 행 (전송 상태 같은 이 기기 전용 값은 넣지 않는다) */
++function messageToRow(msg: ConsultMessage, withTarget: boolean): Record<string, unknown> {
++  const row: Record<string, unknown> = {
++    id: msg.id,
++    consult_request_id: msg.consultRequestId,
++    sender_type: msg.senderType,
++    sender_id: msg.senderId,
++    sender_name: msg.senderName,
++    message: msg.message,
++    created_at: msg.createdAt,
++  };
++  // 여러 행을 한 번에 보낼 때 칸 구성이 같아야 하므로 대상이 없으면 null로 채운다
++  if (withTarget) row.target_lawyer_id = msg.targetLawyerId ?? null;
++  return row;
++}
++
++/**
++ * 메시지 행 저장 (같은 id는 건너뜀).
++ * 칸이 없다고 확인된 서버('missing')에는 대상 칸을 빼고 보내고, 칸이 없다는 오류를 받으면 'missing'으로 표시한 뒤
++ * 그 칸 없이 한 번 다시 보낸다. (이전: 대상 칸을 보내지 않아 다른 기기의 변호사 화면이 문구로 받는 사람을 추정했다)
++ */
++async function insertConsultMessageRows(messages: ConsultMessage[]): Promise<{ error: any }> {
++  const withTarget = getTargetLawyerColumnState() !== 'missing';
++  const first = await supabase
++    .from('consult_messages')
++    .upsert(messages.map(m => messageToRow(m, withTarget)), { onConflict: 'id', ignoreDuplicates: true });
++  if (!first.error || !withTarget || !isMissingTargetColumnError(first.error)) return { error: first.error };
++
++  setTargetLawyerColumnState('missing');
++  const retry = await supabase
++    .from('consult_messages')
++    .upsert(messages.map(m => messageToRow(m, false)), { onConflict: 'id', ignoreDuplicates: true });
++  return { error: retry.error };
++}
++
+ /**
+  * 새 메시지 1건 저장.
+  * @returns 서버 저장까지 끝났으면 true (서버 미연동 환경은 기기 저장만으로 true), 서버 저장에 실패하면 false
+  *
+  * 같은 id가 이미 서버에 있으면 그대로 둔다(ON CONFLICT DO NOTHING). 전체 동기화(saveAllConsultMessages)가
+  * 먼저 넣은 경우나 '다시 보내기'로 같은 메시지를 재전송한 경우에도 UPDATE 권한 없이 성공으로 처리된다.
++ * 대상 변호사(targetLawyerId)도 함께 저장한다 (서버에 칸이 없으면 빼고 저장).
+  */
+ export async function saveConsultMessage(message: ConsultMessage): Promise<boolean> {
+   // 전송 상태는 이 기기 화면용 값이라 저장하지 않는다
+@@ -539,15 +595,7 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<boole
+     // 레거시 암호문 메시지는 안내 문구로 덮어쓰지 않는다
+     if (legacyEncryptedMessageIds.has(stored.id)) return true;
+ 
+-    const { error } = await supabase.from('consult_messages').upsert({
+-      id: stored.id,
+-      consult_request_id: stored.consultRequestId,
+-      sender_type: stored.senderType,
+-      sender_id: stored.senderId,
+-      sender_name: stored.senderName,
+-      message: stored.message,
+-      created_at: stored.createdAt,
+-    }, { onConflict: 'id', ignoreDuplicates: true });
++    const { error } = await insertConsultMessageRows([stored]);
+     if (error) {
+       logSupabaseError('saveConsultMessage', error);
+       return false;
+@@ -559,21 +607,20 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<boole
+   }
+ }
+ 
++/**
++ * 기기의 메시지 전체 저장. 서버에 없는 메시지만 넣는다(ON CONFLICT DO NOTHING).
++ * 이전: ON CONFLICT DO UPDATE(onConflict만 지정)라 UPDATE 권한이 필요했다(012 RLS에는 UPDATE 정책이 없어,
++ * 이미 서버에 있는 메시지가 하나라도 섞이면 전체가 거부됨). 대상 칸(030)이 생긴 뒤에도 그대로 두면
++ * 대상 정보가 없는 기기의 전체 저장이 서버의 대상 변호사 값을 null로 덮는다.
++ */
+ export async function saveAllConsultMessages(messages: ConsultMessage[]): Promise<void> {
+   setLocalData(MESSAGES_STORAGE_KEY, messages);
+   
+   if (isSupabaseConfigured && messages.length > 0) {
+     try {
+-      const payload = messages.filter(msg => !legacyEncryptedMessageIds.has(msg.id)).map(msg => ({
+-        id: msg.id,
+-        consult_request_id: msg.consultRequestId,
+-        sender_type: msg.senderType,
+-        sender_id: msg.senderId,
+-        sender_name: msg.senderName,
+-        message: msg.message,
+-        created_at: msg.createdAt,
+-      }));
+-      const { error } = await supabase.from('consult_messages').upsert(payload, { onConflict: 'id' });
++      const payload = messages.filter(msg => !legacyEncryptedMessageIds.has(msg.id));
++      if (payload.length === 0) return;
++      const { error } = await insertConsultMessageRows(payload);
+       if (error) {
+         logSupabaseError('saveAllConsultMessages', error);
+       }
+diff --git a/src/services/crmService.ts b/src/services/crmService.ts
+index 075f910..4757fa6 100644
+--- a/src/services/crmService.ts
++++ b/src/services/crmService.ts
+@@ -71,6 +71,38 @@ export type CrmDataStore = Record<string, CrmClientExtension>;
+ 
+ export async function loadCrmData(): Promise<CrmDataStore> {
+   if (isSupabaseConfigured) {
++    const server = await fetchServerCrmData();
++    if (server) return server;
++  }
++  return loadLocalCrmData();
++}
++
++/**
++ * 서버 불러오기 결과와 성공 여부를 함께 돌려준다.
++ * 저장 직전에 최신 데이터를 다시 읽는 곳(채팅 메모 등)은 이 함수를 써서, 서버를 읽지 못했을 때
++ * 이 기기의 오래된 사본이나 빈 기본값으로 서버 행 전체를 덮어쓰지 않게 한다.
++ * (loadCrmData는 서버 오류 시 알림 없이 이 기기 사본으로 대체한다)
++ */
++export async function loadCrmDataResult(): Promise<{ ok: boolean; data: CrmDataStore; source: 'server' | 'local' }> {
++  if (!isSupabaseConfigured) return { ok: true, data: loadLocalCrmData(), source: 'local' };
++  const server = await fetchServerCrmData();
++  return server ? { ok: true, data: server, source: 'server' } : { ok: false, data: {}, source: 'local' };
++}
++
++function loadLocalCrmData(): CrmDataStore {
++  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
++  // 마이그레이션: 기존 3개 필드 → assigneeId 통합
++  for (const id of Object.keys(store)) {
++    const ext = store[id];
++    if (!ext.assigneeId && (ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId)) {
++      ext.assigneeId = ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
++    }
++  }
++  return store;
++}
++
++/** 서버(crm_clients) 조회. 오류·예외면 null */
++async function fetchServerCrmData(): Promise<CrmDataStore | null> {
+     try {
+       const { data, error } = await supabase
+         .from('crm_clients')
+@@ -107,19 +139,11 @@ export async function loadCrmData(): Promise<CrmDataStore> {
+         });
+         return store;
+       }
++      if (error) console.warn('[CRM] Supabase load failed, falling back to this device copy', error.message);
+     } catch (e) {
+-      console.warn('[CRM] Supabase load failed, falling back to localStorage', e);
+-    }
+-  }
+-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+-  // 마이그레이션: 기존 3개 필드 → assigneeId 통합
+-  for (const id of Object.keys(store)) {
+-    const ext = store[id];
+-    if (!ext.assigneeId && (ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId)) {
+-      ext.assigneeId = ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
++      console.warn('[CRM] Supabase load failed, falling back to this device copy', e);
+     }
+-  }
+-  return store;
++  return null;
+ }
+ 
+ /** @returns 서버(Supabase) 저장 성공 여부 — 미설정 환경에서는 로컬 저장만 하고 true */
+@@ -370,15 +394,16 @@ export function createCrmNote(
+   };
+ }
+ 
+-/** CRM 고객 데이터 삭제 */
++/**
++ * CRM 고객 데이터 삭제 (이 기기 사본에서만)
++ * 이전: localStorage를 직접 읽고 써서, 실제 사본(sessionStorage)은 지워지지 않고
++ *       예전 localStorage 사본이 남아 있으면 민감 데이터 전체를 다시 localStorage에 기록했다
++ */
+ export function deleteCrmClient(clientId: string): void {
+-  const raw = localStorage.getItem('legal_crm_data');
+-  if (!raw) return;
+-  try {
+-    const data = JSON.parse(raw);
+-    delete data[clientId];
+-    localStorage.setItem('legal_crm_data', JSON.stringify(data));
+-  } catch { /* ignore */ }
++  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
++  if (!(clientId in store)) return;
++  delete store[clientId];
++  setLocalData(CRM_STORAGE_KEY, store);
+ }
+ 
+ // ── amjone8@gmail.com 전용 가상 상담 5선 사전 설정 CRM 프로필 ──
+@@ -642,17 +667,30 @@ export function createDefaultCrmExtension(
+ 
+ // ── 문서 양방향 동기화 헬퍼 함수 ──
+ 
++// approve/reject/requestDocument 공통
++// - current: 호출부가 가진 최신 고객 데이터의 '사본'. 넘기면 이 기기 사본 대신 이 값을 기준으로 고쳐 저장한다.
++//   함수는 이 객체의 최상위 필드(documents·uploadedFiles·documentRequests·lastActivityAt)를 새 값으로 바꾸므로
++//   호출 뒤 이 객체가 곧 저장한 값이다 (React state 객체를 그대로 넘기지 말 것).
++// - 이전: 이 기기 사본(sessionStorage, 탭 단위)에만 의존해 고객 행이 없으면(새 탭·다른 기기에서는 항상 없음)
++//   아무것도 저장하지 않고 끝났는데, 호출부는 성공 안내를 띄웠다.
++// - @returns saveCrmClient 결과 (고객 행도 current도 없으면 false)
++function resolveDocTarget(clientId: string, current?: CrmClientExtension): CrmClientExtension | null {
++  if (current) return current;
++  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
++  return store[clientId] || null;
++}
++
+ /** 서류 승인 처리 */
+ export async function approveDocument(
+   clientId: string,
+   docId: string,
+-  reviewerName: string
+-): Promise<void> {
+-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+-  const ext = store[clientId];
+-  if (!ext) return;
++  reviewerName: string,
++  current?: CrmClientExtension
++): Promise<boolean> {
++  const ext = resolveDocTarget(clientId, current);
++  if (!ext) return false;
+ 
+-  ext.documents = ext.documents.map(d =>
++  ext.documents = (ext.documents || []).map(d =>
+     d.id === docId ? {
+       ...d,
+       checked: true,
+@@ -673,21 +711,21 @@ export async function approveDocument(
+   }
+ 
+   ext.lastActivityAt = new Date().toISOString();
+-  await saveCrmClient(clientId, ext);
++  return saveCrmClient(clientId, ext);
+ }
+ 
+-/** 서류 반려 처리 */
++/** 서류 반려 처리 (current·반환값은 approveDocument와 같음) */
+ export async function rejectDocument(
+   clientId: string,
+   docId: string,
+   reviewerName: string,
+-  reason: string
+-): Promise<void> {
+-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+-  const ext = store[clientId];
+-  if (!ext) return;
++  reason: string,
++  current?: CrmClientExtension
++): Promise<boolean> {
++  const ext = resolveDocTarget(clientId, current);
++  if (!ext) return false;
+ 
+-  ext.documents = ext.documents.map(d =>
++  ext.documents = (ext.documents || []).map(d =>
+     d.id === docId ? {
+       ...d,
+       checked: false,
+@@ -707,17 +745,17 @@ export async function rejectDocument(
+   }
+ 
+   ext.lastActivityAt = new Date().toISOString();
+-  await saveCrmClient(clientId, ext);
++  return saveCrmClient(clientId, ext);
+ }
+ 
+-/** 변호사 → 고객 추가 서류 요청 */
++/** 변호사 → 고객 추가 서류 요청 (current·반환값은 approveDocument와 같음) */
+ export async function requestDocument(
+   clientId: string,
+-  request: Omit<DocumentRequest, 'id' | 'requestedAt' | 'fulfilled'>
+-): Promise<void> {
+-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+-  const ext = store[clientId];
+-  if (!ext) return;
++  request: Omit<DocumentRequest, 'id' | 'requestedAt' | 'fulfilled'>,
++  current?: CrmClientExtension
++): Promise<boolean> {
++  const ext = resolveDocTarget(clientId, current);
++  if (!ext) return false;
+ 
+   const newRequest: DocumentRequest = {
+     ...request,
+@@ -728,7 +766,7 @@ export async function requestDocument(
+ 
+   ext.documentRequests = [...(ext.documentRequests || []), newRequest];
+   ext.lastActivityAt = new Date().toISOString();
+-  await saveCrmClient(clientId, ext);
++  return saveCrmClient(clientId, ext);
+ }
+ 
+ /** 고객 서류 제출 (uploadedFiles에 저장 + 체크리스트 자동 매핑) */

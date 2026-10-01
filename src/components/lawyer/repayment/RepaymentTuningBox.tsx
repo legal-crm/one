@@ -64,6 +64,9 @@ interface RepaymentTuningBoxProps {
   onUpdateOverrideMonthlyRepayment?: (amt: number | undefined) => void;
   adjusterMemo?: string;
   onUpdateAdjusterMemo?: (memo: string) => void;
+  // v2.0: 외부회생위원 보수 선택
+  trusteeType?: 'INTERNAL' | 'EXTERNAL';
+  onUpdateTrusteeType?: (type: 'INTERNAL' | 'EXTERNAL') => void;
 }
 
 export default function RepaymentTuningBox({
@@ -95,9 +98,11 @@ export default function RepaymentTuningBox({
   onUpdateOverrideMonthlyRepayment,
   adjusterMemo = '',
   onUpdateAdjusterMemo,
+  trusteeType = 'INTERNAL',
+  onUpdateTrusteeType,
 }: RepaymentTuningBoxProps) {
   const [activeTab, setActiveTab] = useState<
-    'priority' | 'secured' | 'garnishment' | 'disposal' | 'interest' | 'child_support' | 'adult_child' | 'seoul_principal' | 'correction'
+    'priority' | 'secured' | 'garnishment' | 'disposal' | 'interest' | 'child_support' | 'adult_child' | 'seoul_principal' | 'correction' | 'trustee'
   >('priority');
 
   const priorityCreditors = creditors.filter(c => c.isPriority && !c.isSecured);
@@ -125,7 +130,7 @@ export default function RepaymentTuningBox({
             <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
               실무 튜닝박스 (Tuning Box)
               <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
-                9개 실무 옵션
+                10개 실무 옵션
               </span>
             </h4>
             <p className="text-[11px] text-slate-400">
@@ -190,6 +195,21 @@ export default function RepaymentTuningBox({
           {(overrideMonthlyRepayment !== undefined || garnishmentDepositFirstRound > 0) && (
             <span className="w-2 h-2 rounded-full bg-indigo-400" />
           )}
+        </button>
+
+        {/* v2.0: 외부회생위원 보수 탭 */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('trustee')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'trustee'
+              ? 'bg-cyan-600 text-white shadow-sm'
+              : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 text-cyan-300" />
+          <span>회생위원 보수</span>
+          {trusteeType === 'EXTERNAL' && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />}
         </button>
 
         <button
@@ -508,6 +528,77 @@ export default function RepaymentTuningBox({
                 rows={2}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
               />
+            </div>
+          </div>
+        )}
+
+        {/* v2.0: [10] 외부회생위원 보수 */}
+        {activeTab === 'trustee' && (
+          <div className="space-y-3.5 animate-fadeIn text-xs">
+            <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60">
+              <span className="text-slate-200 font-bold block mb-2">회생위원 선임 유형</span>
+              <p className="text-[11px] text-slate-400 mb-3">
+                법원이 외부 회생위원(변호사·회계사)을 선임한 경우, 가용소득의 1%가 회생위원 보수로 공제되어 
+                실제 월 변제금이 줄어듭니다. 대부분의 서울회생법원 사건은 내부위원이 선임됩니다.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-xl border transition-all flex-1 text-center justify-center
+                  ${trusteeType === 'INTERNAL' ? 'bg-emerald-900/50 border-emerald-500/60 text-emerald-300' : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200'}
+                `}>
+                  <input
+                    type="radio"
+                    name="trusteeType"
+                    value="INTERNAL"
+                    checked={trusteeType === 'INTERNAL'}
+                    onChange={() => onUpdateTrusteeType?.('INTERNAL')}
+                    className="w-3.5 h-3.5 text-emerald-500 border-slate-600"
+                  />
+                  <div>
+                    <span className="font-bold block">내부 회생위원</span>
+                    <span className="text-[10px] text-slate-500">보수 공제 없음</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-xl border transition-all flex-1 text-center justify-center
+                  ${trusteeType === 'EXTERNAL' ? 'bg-cyan-900/50 border-cyan-500/60 text-cyan-300' : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200'}
+                `}>
+                  <input
+                    type="radio"
+                    name="trusteeType"
+                    value="EXTERNAL"
+                    checked={trusteeType === 'EXTERNAL'}
+                    onChange={() => onUpdateTrusteeType?.('EXTERNAL')}
+                    className="w-3.5 h-3.5 text-cyan-500 border-slate-600"
+                  />
+                  <div>
+                    <span className="font-bold block">외부 회생위원</span>
+                    <span className="text-[10px] text-slate-500">가용소득 1% 공제</span>
+                  </div>
+                </label>
+              </div>
+
+              {trusteeType === 'EXTERNAL' && plan.monthlyRepaymentTotal > 0 && (
+                <div className="mt-3 p-2.5 rounded-lg bg-cyan-900/30 border border-cyan-700/40 text-cyan-200">
+                  <div className="flex items-center justify-between">
+                    <span>월 변제금</span>
+                    <span className="font-mono font-bold">{plan.monthlyRepaymentTotal.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>외부위원 보수 (가용소득 1% 추정)</span>
+                    <span className="font-mono font-bold text-amber-300">별도 공제</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-cyan-700/40">
+                    <span className="font-bold">안내</span>
+                    <span className="text-[10px] text-cyan-300">엔진이 가용소득에서 자동 공제 후 월 변제금을 산출합니다</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-800/30 border border-slate-700/40 text-[11px] text-slate-400">
+              <strong className="text-slate-300">참고:</strong> 채무자회생법 제83조, 외부회생위원 보수는 변제계획안 D5110 상단에 별도 표기됩니다. 
+              관할 법원에 따라 보수 비율이 다를 수 있으니 사전에 확인하세요.
             </div>
           </div>
         )}

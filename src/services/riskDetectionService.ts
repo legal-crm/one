@@ -437,3 +437,123 @@ export function getRiskBadgeSummary(report: PreFilingRiskReport): {
     count: 0,
   };
 }
+
+// ═══════════════════════════════════════════════
+// 6. Money Trail 타임라인 어댑터 (v2.0 신규)
+// ═══════════════════════════════════════════════
+
+/**
+ * 대출금 입금 → D+7일 출금 체인을 시각화용 타임라인 구조체로 변환
+ * 기존 detectLoanFlow 결과를 래핑하여 UI에서 즉시 렌더링 가능한 형태로 제공
+ */
+
+export interface MoneyTrailEvent {
+  id: string;
+  date: string;
+  type: 'LOAN_DEPOSIT' | 'OUTFLOW_SAFE' | 'OUTFLOW_CAUTION' | 'OUTFLOW_DANGER';
+  label: string;               // "카카오뱅크 대출 2,000만원 입금" 또는 "업비트 1,000만원 이체"
+  amount: number;
+  counterparty: string;
+  riskCategory: string;        // bankAuditService의 AuditRiskCategory
+  transaction: AuditTransactionItem;
+}
+
+export interface MoneyTrailChain {
+  id: string;
+  loanDeposit: MoneyTrailEvent;              // 대출 입금 이벤트
+  outflows: MoneyTrailEvent[];               // D+7일 이내 출금 이벤트들 (시간순)
+  totalLoanAmount: number;                   // 대출 입금 총액
+  totalOutflowAmount: number;                // 추적된 출금 총액
+  coverageRate: number;                      // 출금/입금 비율 (%) — 100% 미만이면 잔여 자금 미추적
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  trackingDays: number;                      // 추적 기간 (일)
+  dangerOutflowCount: number;                // 고위험 출금 건수 (투자/사치)
+}
+
+export interface MoneyTrailReport {
+  chains: MoneyTrailChain[];
+  totalLoanDeposits: number;                 // 총 대출 입금 건수
+  totalLoanAmount: number;                   // 총 대출 입금액
+  totalTrackedOutflows: number;              // 추적된 출금 건수
+  hasHighRisk: boolean;                      // 고위험 체인 존재 여부
+}
+
+/**
+ * 기존 PreFilingRiskReport에서 LOAN_FLOW 항목을 추출하여
+ * Money Trail 타임라인 시각화용 데이터로 변환
+ */
+export function buildMoneyTrailReport(
+  riskReport: PreFilingRiskReport,
+  allItems: AuditTransactionItem[],
+  trackingDays: number = 7
+): MoneyTrailReport {
+  const loanFlowRisks = riskReport.risks.filter(r => r.type === 'LOAN_FLOW');
+
+  const chains: MoneyTrailChain[] = loanFlowRisks.map((risk, idx) => {
+    const sourceLoan = risk.sourceLoanTransaction;
+    if (!sourceLoan) {
+      return null;
+    }
+
+    // 대출 입금 이벤트
+    const loanEvent: MoneyTrailEvent = {
+      id: `mt-loan-${idx}`,
+      date: sourceLoan.date,
+      type: 'LOAN_DEPOSIT',
+      label: `${sourceLoan.counterparty} ${sourceLoan.amount.toLocaleString()}원 입금`,
+      amount: sourceLoan.amount,
+      counterparty: sourceLoan.counterparty,
+      riskCategory: 'SAFE_DEBT',
+      transaction: sourceLoan,
+    };
+
+    // 연계 출금 이벤트들 (시간순 정렬)
+    const outflows: MoneyTrailEvent[] = risk.transactions
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((t, tIdx) => {
+        let eventType: MoneyTrailEvent['type'] = 'OUTFLOW_SAFE';
+        if (t.riskCategory === 'DANGER_SPECULATION' || t.riskCategory === 'DANGER_LUXURY') {
+          eventType = 'OUTFLOW_DANGER';
+        } else if (t.riskCategory === 'CAUTION_CASH' || t.riskCategory === 'CAUTION_TRANSFER') {
+          eventType = 'OUTFLOW_CAUTION';
+        }
+
+        return {
+          id: `mt-out-${idx}-${tIdx}`,
+          date: t.date,
+          type: eventType,
+          label: `${t.counterparty} ${t.amount.toLocaleString()}원`,
+          amount: t.amount,
+          counterparty: t.counterparty,
+          riskCategory: t.riskCategory,
+          transaction: t,
+        };
+      });
+
+    const totalOutflow = outflows.reduce((sum, e) => sum + e.amount, 0);
+    const dangerCount = outflows.filter(e => e.type === 'OUTFLOW_DANGER').length;
+    const coverageRate = sourceLoan.amount > 0
+      ? Math.round((totalOutflow / sourceLoan.amount) * 100)
+      : 0;
+
+    return {
+      id: `mt-chain-${idx}`,
+      loanDeposit: loanEvent,
+      outflows,
+      totalLoanAmount: sourceLoan.amount,
+      totalOutflowAmount: totalOutflow,
+      coverageRate,
+      riskLevel: dangerCount > 0 ? 'HIGH' : (coverageRate >= 80 ? 'MEDIUM' : 'LOW'),
+      trackingDays,
+      dangerOutflowCount: dangerCount,
+    } as MoneyTrailChain;
+  }).filter((c): c is MoneyTrailChain => c !== null);
+
+  return {
+    chains,
+    totalLoanDeposits: chains.length,
+    totalLoanAmount: chains.reduce((s, c) => s + c.totalLoanAmount, 0),
+    totalTrackedOutflows: chains.reduce((s, c) => s + c.outflows.length, 0),
+    hasHighRisk: chains.some(c => c.riskLevel === 'HIGH'),
+  };
+}

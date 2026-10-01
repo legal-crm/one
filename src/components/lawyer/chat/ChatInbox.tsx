@@ -224,6 +224,12 @@ export default function ChatInbox({ threads, activeThreadId, lawyerId, now, onSe
                     </span>
                     <span className="mt-1.5 flex items-center gap-2 min-w-0">
                       <ConsultStatusChip status={t.request.status} />
+                      {/* 제안서만 보냈고 의뢰인이 아직 '상담 시작'을 누르지 않은 대화 — 메시지를 보낼 수 없다 */}
+                      {!t.chatOpen && (
+                        <span className="inline-flex items-center h-5 px-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[12px] font-semibold text-slate-600 whitespace-nowrap shrink-0">
+                          {t.hasMyProposal ? '의뢰인 확인 대기' : '제안서 발송 전'}
+                        </span>
+                      )}
                       {debt > 0 && (
                         <span className="text-[12px] text-slate-600 tabular-nums truncate">채무 {formatManwon(debt, { unit: false })}</span>
                       )}

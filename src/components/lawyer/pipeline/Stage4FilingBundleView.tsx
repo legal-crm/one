@@ -68,7 +68,8 @@ export default function Stage4FilingBundleView({
   const [isClientConsented, setIsClientConsented] = useState(false);
 
   // 선행 충족 조건 산출
-  const isContracted = ['contracted', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(
+  // (이전: 없는 상태값 'documents_pending'을 넣어, 실제 '서류 준비(document)' 단계 고객이 미계약으로 판정됐다)
+  const isContracted = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'].includes(
     crmExt?.crmStatus || clientRequest.status || ''
   );
   const hasProposalSent = Boolean(clientRequest.hasProposalSent || crmExt?.hasProposalSent);
@@ -86,8 +87,68 @@ export default function Stage4FilingBundleView({
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '관할 법원 미입력';
 
-  // 8대 필수 서식 목록 (실시간 데이터 연동 요약 및 상태)
-  const standardForms = [
+  // v2.0: 사건 유형 자동 감지 (회생/파산 분기)
+  const caseType: 'rehabilitation' | 'bankruptcy' = (() => {
+    const ct = (crmExt as any)?.caseType || clientRequest.caseType || '';
+    if (ct.includes('파산') || ct.includes('bankruptcy') || ct === 'bankruptcy') return 'bankruptcy';
+    return 'rehabilitation';
+  })();
+
+  // 파산 7대 필수 서식 목록
+  const bankruptcyForms = [
+    {
+      code: 'B01',
+      name: '파산 및 면책 신청서',
+      isReady: !!crmExt?.petitionInfo,
+      badge: 'D7101',
+      note: `${courtName} 접수 · 신청인 ${clientName} · 파산 및 면책 동시 신청`
+    },
+    {
+      code: 'B02',
+      name: '진술서 (채무경위 및 파산원인)',
+      isReady: !!crmExt?.courtStatement,
+      badge: '진술서',
+      note: crmExt?.courtStatement ? '과거 경력·채무 발생·지급불능 시점·소송 경험' : '진술서 미작성'
+    },
+    {
+      code: 'B03',
+      name: '채권자목록',
+      isReady: (crmExt?.repaymentPlan?.creditors || []).length > 0,
+      badge: 'PDF+CSV',
+      note: `파산 채권자 ${(crmExt?.repaymentPlan?.creditors || []).length}개소`
+    },
+    {
+      code: 'B04',
+      name: '재산목록 (현금·예금·보험·부동산·자동차)',
+      isReady: !!(crmExt as any)?.propertyListD5102,
+      badge: '재산',
+      note: '현금·예금·보험·임차보증금·부동산·자동차·퇴직금·처분재산'
+    },
+    {
+      code: 'B05',
+      name: '현재의 생활상황',
+      isReady: (crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 0) > 0,
+      badge: '생활',
+      note: '직업·수입·동거가족·주거상황·세금 체납'
+    },
+    {
+      code: 'B06',
+      name: '수입 및 지출에 관한 목록',
+      isReady: (crmExt?.repaymentPlan?.incomeExpense?.monthlyNetIncome || 0) > 0,
+      badge: 'D7103',
+      note: `신청인·배우자·가족 수입 및 월 지출`
+    },
+    {
+      code: 'B07',
+      name: '자료제출목록',
+      isReady: (crmExt?.uploadedFiles || []).length > 0,
+      badge: '첨부',
+      note: `법원 양식 기준 제출 여부·해당 없음 정리`
+    },
+  ];
+
+  // 8대 필수 서식 목록 (실시간 데이터 연동 요약 및 상태) — 개인회생
+  const standardForms = caseType === 'bankruptcy' ? bankruptcyForms : [
     { 
       code: 'R01', 
       name: '개인회생절차 개시신청서 본안', 
@@ -147,8 +208,19 @@ export default function Stage4FilingBundleView({
     },
   ];
 
-  // 대법원 13종 통합 서식 탭 정의 (에디터 내비게이션 퀵점프용)
-  const all13DocTabs: { code: string; label: string }[] = [
+  // 대법원 통합 서식 탭 정의 (에디터 내비게이션 퀵점프용) — 사건유형별 분기
+  const all13DocTabs: { code: string; label: string }[] = caseType === 'bankruptcy' ? [
+    { code: 'COVER', label: '표지' },
+    { code: 'B01', label: '파산신청서' },
+    { code: 'B02', label: '진술서' },
+    { code: 'B03', label: '채권자목록' },
+    { code: 'B04', label: '재산목록' },
+    { code: 'B05', label: '생활상황' },
+    { code: 'B06', label: '수입및지출' },
+    { code: 'B07', label: '자료제출' },
+    { code: 'R03', label: '소송위임장' },
+    { code: 'ALL', label: '전체문서' },
+  ] : [
     { code: 'COVER', label: '표지' },
     { code: 'R01', label: '개시신청서' },
     { code: 'R10', label: '진술서' },

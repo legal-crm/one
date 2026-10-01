@@ -130,11 +130,16 @@ export function useDraggableDock() {
     }
   }, []);
 
+  // 직전 포인터 입력이 드래그였는지 — 클릭 처리 시점에 ref를 직접 읽는다
+  // (이전: 렌더 시점 값 hasMovedRef.current를 넘겨, 한 번 드래그하면 다음 포인터 입력 전까지
+  //  키보드 Enter/Space로 독 버튼이 열리지 않았음)
+  const wasDragged = useCallback(() => hasMovedRef.current, []);
+
   return {
     position,
     setPosition,
     isDragging,
-    hasMoved: hasMovedRef.current,
+    wasDragged,
     onPointerDown,
     onPointerMove,
     onPointerUp,

@@ -1,0 +1,241 @@
+﻿scripts/test_actual_filing_kim.ts(23,3): error TS2322: Type '"documents_pending"' is not assignable to type 'ConsultStatus'.
+scripts/test_actual_filing_kim.ts(29,3): error TS2322: Type '"documents_pending"' is not assignable to type 'CrmStatus'.
+scripts/test_actual_filing_kim.ts(30,3): error TS2739: Type '{ courtName: string; caseNumber: string; }' is missing the following properties from type 'CourtCaseLink': caseType, events
+scripts/test_actual_filing_kim.ts(37,5): error TS2322: Type '"salaried"' is not assignable to type '"business" | "salary"'.
+scripts/test_actual_filing_kim.ts(51,7): error TS2353: Object literal may only specify known properties, and 'monthlyGrossIncome' does not exist in type 'IncomeAndExpenseInput'.
+scripts/test_actual_filing_kim.ts(58,7): error TS2353: Object literal may only specify known properties, and 'additionalLivingExpense' does not exist in type 'CalculatedLivingExpense'.
+scripts/test_actual_filing_kim.ts(63,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(64,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(65,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(66,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(67,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(68,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(69,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(70,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(71,19): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(72,20): error TS2561: Object literal may only specify known properties, but 'creditorName' does not exist in type 'RepaymentCreditor'. Did you mean to write 'creditorNumber'?
+scripts/test_actual_filing_kim.ts(76,37): error TS2322: Type '"gov"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(77,45): error TS2322: Type '"gov"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(78,42): error TS2322: Type '"gov"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(79,42): error TS2322: Type '"gov"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(80,48): error TS2322: Type '"tax"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(81,39): error TS2322: Type '"finance"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(82,46): error TS2322: Type '"finance"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(83,46): error TS2322: Type '"finance"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(84,43): error TS2322: Type '"property"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(85,40): error TS2322: Type '"property"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(86,46): error TS2322: Type '"work"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(87,43): error TS2322: Type '"work"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(88,47): error TS2322: Type '"finance"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(89,47): error TS2322: Type '"property"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(90,43): error TS2322: Type '"work"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(91,44): error TS2322: Type '"work"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+scripts/test_actual_filing_kim.ts(92,48): error TS2322: Type '"finance"' is not assignable to type '"other" | "correction" | "income" | "id_doc" | "asset" | "debt_cert" | "bank_statement" | "court_filing"'.
+src/components/lawyer/assets/PropertyValuationModal.tsx(321,116): error TS2339: Property 'address' does not exist on type 'ConsultRequest'.
+src/components/lawyer/assets/PropertyValuationModal.tsx(328,115): error TS2339: Property 'address' does not exist on type 'ConsultRequest'.
+src/components/lawyer/assets/PropertyValuationModal.tsx(335,111): error TS2339: Property 'address' does not exist on type 'ConsultRequest'.
+src/components/lawyer/assets/PropertyValuationModal.tsx(342,119): error TS2339: Property 'address' does not exist on type 'ConsultRequest'.
+src/components/lawyer/bankruptcy/BankruptcyManagementTab.tsx(97,37): error TS2339: Property 'memo' does not exist on type 'ConsultRequest'.
+src/components/lawyer/bankruptcy/BankruptcyManagementTab.tsx(319,39): error TS2339: Property 'memo' does not exist on type 'ConsultRequest'.
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(173,13): error TS2353: Object literal may only specify known properties, and 'applicantName' does not exist in type 'CourtCaseLink'.
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(178,48): error TS2339: Property 'refundDepositor' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(183,13): error TS2353: Object literal may only specify known properties, and 'monthlyIncome' does not exist in type 'RepaymentPlanData'.
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(183,56): error TS2551: Property 'monthlyIncome' does not exist on type '{ monthlyNetIncome: number; householdSize: number; medianIncomeAmount: number; medianIncomeRatio: number; monthlyLivingCost: number; additionalLivingCost: number; monthlyDisposableIncome: number; ... 9 more ...; statutoryWarningMessage: string; }'. Did you mean 'monthlyNetIncome'?
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(185,65): error TS2551: Property 'monthlyRepaymentAmount' does not exist on type '{ monthlyNetIncome: number; householdSize: number; medianIncomeAmount: number; medianIncomeRatio: number; monthlyLivingCost: number; additionalLivingCost: number; monthlyDisposableIncome: number; ... 9 more ...; statutoryWarningMessage: string; }'. Did you mean 'totalRepaymentAmount'?
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(186,58): error TS2551: Property 'repaymentPeriodMonths' does not exist on type '{ monthlyNetIncome: number; householdSize: number; medianIncomeAmount: number; medianIncomeRatio: number; monthlyLivingCost: number; additionalLivingCost: number; monthlyDisposableIncome: number; ... 9 more ...; statutoryWarningMessage: string; }'. Did you mean 'repaymentMonths'?
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(187,57): error TS2339: Property 'totalPrincipal' does not exist on type '{ monthlyNetIncome: number; householdSize: number; medianIncomeAmount: number; medianIncomeRatio: number; monthlyLivingCost: number; additionalLivingCost: number; monthlyDisposableIncome: number; ... 9 more ...; statutoryWarningMessage: string; }'.
+src/components/lawyer/courtDocs/CourtDocSuiteViewerModal.tsx(190,56): error TS2339: Property 'clearingValue' does not exist on type '{ monthlyNetIncome: number; householdSize: number; medianIncomeAmount: number; medianIncomeRatio: number; monthlyLivingCost: number; additionalLivingCost: number; monthlyDisposableIncome: number; ... 9 more ...; statutoryWarningMessage: string; }'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(322,64): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(323,63): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(385,51): error TS2339: Property 'debtType' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(386,48): error TS2339: Property 'creditorAddress' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(386,73): error TS2339: Property 'creditorPhone' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(387,54): error TS2551: Property 'interestRate' does not exist on type 'RepaymentCreditor'. Did you mean 'interest'?
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(391,22): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(394,52): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(395,30): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/CourtFilingDocTemplates.tsx(396,59): error TS2339: Property 'principalCalculationBasis' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/forms/EvidenceListForm.tsx(104,23): error TS2339: Property 'lawyerFirm' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/EvidenceListForm.tsx(104,49): error TS2339: Property 'lawyerName' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(165,103): error TS2339: Property 'baseIncome' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(179,111): error TS2339: Property 'baseIncome' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(214,105): error TS2339: Property 'healthIns' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(216,113): error TS2339: Property 'healthIns' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(228,105): error TS2339: Property 'employmentIns' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(230,113): error TS2339: Property 'employmentIns' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(235,105): error TS2551: Property 'longTermCareIns' does not exist on type 'MonthlyIncomeLedgerRow'. Did you mean 'longTermCare'?
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(237,113): error TS2551: Property 'longTermCareIns' does not exist on type 'MonthlyIncomeLedgerRow'. Did you mean 'longTermCare'?
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(242,111): error TS2339: Property 'totalDeduction' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/IncomeExpenseFormD5103.tsx(249,116): error TS2339: Property 'netIncome' does not exist on type 'MonthlyIncomeLedgerRow'.
+src/components/lawyer/courtDocs/forms/PetitionCoverPage.tsx(22,27): error TS2339: Property 'stampFee' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/PetitionCoverPage.tsx(30,54): error TS2339: Property 'lawyerName' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/PetitionCoverPage.tsx(58,88): error TS2339: Property 'lawyerFirm' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/PowerOfAttorneyForm.tsx(32,72): error TS2339: Property 'address' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/forms/PowerOfAttorneyForm.tsx(56,20): error TS2339: Property 'lawyerFirm' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/PowerOfAttorneyForm.tsx(56,46): error TS2339: Property 'lawyerName' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/PowerOfAttorneyForm.tsx(76,76): error TS2339: Property 'address' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/forms/ProhibitionOrderFormD5114.tsx(16,32): error TS2339: Property 'employerName' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/forms/ProhibitionOrderFormD5114.tsx(16,56): error TS2551: Property 'workplace' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'. Did you mean 'workplaceCeo'?
+src/components/lawyer/courtDocs/forms/ProhibitionOrderFormD5114.tsx(39,67): error TS2339: Property 'address' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/forms/ServiceReportForm.tsx(52,49): error TS2339: Property 'lawyerFirm' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/ServiceReportForm.tsx(58,51): error TS2339: Property 'lawyerName' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/ServiceReportForm.tsx(70,24): error TS2339: Property 'fax' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/forms/ServiceReportForm.tsx(88,23): error TS2339: Property 'lawyerFirm' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/ServiceReportForm.tsx(88,49): error TS2339: Property 'lawyerName' does not exist on type '{ courtName: string; caseYear: string; caseType: string; caseNumber: string; applicationDate: string; firstRepaymentDate: string; }'.
+src/components/lawyer/courtDocs/forms/StayOrderFormD5113.tsx(44,73): error TS2339: Property 'address' does not exist on type '{ name: string; residentNumber: string; residentAddress: string; currentAddress: string; serviceAddress: string; serviceRecipient: string; phone: string; homePhone: string; refundBank: string; ... 10 more ...; sealImageUrl?: string; }'.
+src/components/lawyer/courtDocs/LawPassCourtFilingSidebar.tsx(538,76): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/LawPassCourtFilingSidebar.tsx(538,144): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/LawPassCourtFilingSidebar.tsx(568,27): error TS2322: Type 'RepaymentCreditor | { id: string; name: string; debtType: string; originalAmount: number; currentPrincipal: number; currentInterest: number; totalDebt: number; principalCalculationBasis: string; interestCalculationBasis: string; }' is not assignable to type 'RepaymentCreditor'.
+  Object literal may only specify known properties, and 'debtType' does not exist in type 'RepaymentCreditor'.
+src/components/lawyer/courtDocs/LawPassCourtFilingSidebar.tsx(568,27): error TS2353: Object literal may only specify known properties, and 'debtType' does not exist in type 'RepaymentCreditor'.
+src/components/lawyer/documents/ApplicationDocSettingsModal.tsx(88,47): error TS2345: Argument of type '{ name: string; category: DocCategoryKey; phase: 1 | 2; agency: string; agencyUrl: string; tips: string; isRequired: boolean; isThirdPartyMasking: boolean; }' is not assignable to parameter of type 'Omit<ApplicationDocMasterItem, "id" | "order">'.
+  Property 'submissionMethod' is missing in type '{ name: string; category: DocCategoryKey; phase: 1 | 2; agency: string; agencyUrl: string; tips: string; isRequired: boolean; isThirdPartyMasking: boolean; }' but required in type 'Omit<ApplicationDocMasterItem, "id" | "order">'.
+src/components/lawyer/FeeSettlementTab.tsx(179,56): error TS2339: Property 'bankruptcyReason' does not exist on type 'ConsultRequest'.
+src/components/lawyer/leads/LeadConversionModal.tsx(40,19): error TS2345: Argument of type '"개인회생" | "개인파산"' is not assignable to parameter of type 'SetStateAction<CaseType>'.
+  Type '"개인파산"' is not assignable to type 'SetStateAction<CaseType>'.
+src/components/lawyer/leads/LeadConversionModal.tsx(156,46): error TS2345: Argument of type '"개인파산"' is not assignable to parameter of type 'SetStateAction<CaseType>'.
+src/components/lawyer/leads/LeadConversionModal.tsx(158,21): error TS2367: This comparison appears to be unintentional because the types 'CaseType' and '"개인파산"' have no overlap.
+src/components/lawyer/leads/LeadDetailModal.tsx(150,7): error TS2322: Type '"callback"' is not assignable to type 'ReminderType'.
+src/components/lawyer/pipeline/AlimtalkSendConfirmModal.tsx(201,11): error TS2322: Type '{ name: string; type: string; urlMobile?: string; urlPc?: string; }[]' is not assignable to type '{ name: string; url: string; urlPc?: string; urlMobile?: string; }[]'.
+  Property 'url' is missing in type '{ name: string; type: string; urlMobile?: string; urlPc?: string; }' but required in type '{ name: string; url: string; urlPc?: string; urlMobile?: string; }'.
+src/components/lawyer/pipeline/ClientCommunicationSidePanel.tsx(721,54): error TS2339: Property 'text' does not exist on type 'CrmNote'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(39,24): error TS2339: Property 'debtTotal' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(40,21): error TS2339: Property 'income' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(41,26): error TS2339: Property 'assetsTotal' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(41,46): error TS2339: Property 'myAssets' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(41,67): error TS2339: Property 'spouseAsset' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(41,95): error TS2339: Property 'spouseAsset' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(42,25): error TS2339: Property 'dependents' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(42,43): error TS2339: Property 'minorChildren' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(58,27): error TS2339: Property 'debts' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(63,29): error TS2339: Property 'debtTypes' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(63,57): error TS2339: Property 'speculativeLoss' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(64,26): error TS2339: Property 'debtTypes' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(66,30): error TS2339: Property 'harassmentLevel' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(67,98): error TS2339: Property 'legalActions' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage1ConsultationView.tsx(67,117): error TS2339: Property 'legalActions' does not exist on type '{}'.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(179,50): error TS2367: This comparison appears to be unintentional because the types '"cancelled" | "document" | "consulting" | "repaying" | "commenced" | "requested" | "discharged" | "filed"' and '"preparing"' have no overlap.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(179,87): error TS2367: This comparison appears to be unintentional because the types '"cancelled" | "document" | "consulting" | "repaying" | "commenced" | "requested" | "discharged" | "filed"' and '"completed"' have no overlap.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(321,9): error TS2353: Object literal may only specify known properties, and 'label' does not exist in type 'FeeInstallment'.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(335,7): error TS2353: Object literal may only specify known properties, and 'label' does not exist in type 'FeeInstallment'.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(350,11): error TS2353: Object literal may only specify known properties, and 'label' does not exist in type 'FeeInstallment'.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(375,11): error TS2353: Object literal may only specify known properties, and 'label' does not exist in type 'FeeInstallment'.
+src/components/lawyer/pipeline/Stage2ContractRetainerView.tsx(557,9): error TS2322: Type 'CustomInstallmentItem[]' is not assignable to type '{ round: number; amount: number; dueDate: string; label: string; }[]'.
+  Type 'CustomInstallmentItem' is not assignable to type '{ round: number; amount: number; dueDate: string; label: string; }'.
+    Property 'label' is optional in type 'CustomInstallmentItem' but required in type '{ round: number; amount: number; dueDate: string; label: string; }'.
+src/components/lawyer/pipeline/Stage3DocumentsHubView.tsx(101,46): error TS2339: Property 'creditorCount' does not exist on type 'ConsultRequest'.
+src/components/lawyer/pipeline/Stage3DocumentsHubView.tsx(101,71): error TS2339: Property 'creditorCount' does not exist on type 'CrmClientExtension'.
+src/components/lawyer/pipeline/Stage3DocumentsHubView.tsx(1454,43): error TS2551: Property 'assignedLawyerName' does not exist on type 'ConsultRequest'. Did you mean 'assignedLawyerId'?
+src/components/lawyer/pipeline/Stage4FilingBundleView.tsx(74,49): error TS2339: Property 'hasProposalSent' does not exist on type 'ConsultRequest'.
+src/components/lawyer/pipeline/Stage4FilingBundleView.tsx(74,76): error TS2339: Property 'hasProposalSent' does not exist on type 'CrmClientExtension'.
+src/components/lawyer/pipeline/Stage4FilingBundleView.tsx(77,19): error TS2551: Property 'isContactShared' does not exist on type 'ConsultRequest'. Did you mean 'contactSharedAt'?
+src/components/lawyer/pipeline/Stage4FilingBundleView.tsx(78,13): error TS2339: Property 'isContactShared' does not exist on type 'CrmClientExtension'.
+src/components/lawyer/pipeline/Stage5CorrectionCenterView.tsx(25,95): error TS2551: Property 'caseNumber' does not exist on type 'ConsultRequest'. Did you mean 'safeNumber'?
+src/components/lawyer/pipeline/Stage5CorrectionCenterView.tsx(27,51): error TS2339: Property 'prohibitionStatus' does not exist on type 'CourtCaseLink'.
+src/components/lawyer/pipeline/Stage5CorrectionCenterView.tsx(27,107): error TS2339: Property 'prohibitionGrantedDate' does not exist on type 'CourtCaseLink'.
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(1350,55): error TS2551: Property 'stage1MonthlyPayment' does not exist on type 'PresentValueBreakdown'. Did you mean 'stage1MonthlyAmount'?
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(1364,57): error TS2551: Property 'stage2MonthlyPayment' does not exist on type 'PresentValueBreakdown'. Did you mean 'stage2MonthlyAmount'?
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(2575,25): error TS2339: Property 'reasons' does not exist on type 'CourtStatementData'.
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(2575,46): error TS2339: Property 'reasons' does not exist on type 'CourtStatementData'.
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(2576,44): error TS2339: Property 'reasons' does not exist on type 'CourtStatementData'.
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(2578,25): error TS2339: Property 'detailedNarrative' does not exist on type 'CourtStatementData'.
+src/components/lawyer/repayment/RepaymentPlanEditor.tsx(2579,46): error TS2339: Property 'detailedNarrative' does not exist on type 'CourtStatementData'.
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(44,23): error TS2367: This comparison appears to be unintentional because the types '"draft" | "client_completed" | "lawyer_reviewed" | "filed_to_court"' and '"submitted"' have no overlap.
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(166,27): error TS2551: Property 'pastCourtHistory' does not exist on type 'CourtStatementData'. Did you mean 'pastHistory'?
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(170,38): error TS2551: Property 'pastCourtHistory' does not exist on type 'CourtStatementData'. Did you mean 'pastHistory'?
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(170,91): error TS2551: Property 'pastCourtHistory' does not exist on type 'CourtStatementData'. Did you mean 'pastHistory'?
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(199,27): error TS2339: Property 'debtGrowthStory' does not exist on type 'CourtStatementData'.
+src/components/lawyer/statement/ClientStatementSyncModal.tsx(200,28): error TS2339: Property 'debtGrowthStory' does not exist on type 'CourtStatementData'.
+src/data.ts(1030,7): error TS2322: Type '"family"' is not assignable to type '"spouse" | "others" | "self"'.
+src/data.ts(1180,7): error TS2820: Type '"other"' is not assignable to type '"spouse" | "others" | "self"'. Did you mean '"others"'?
+src/services/contractPdfService.ts(281,68): error TS2339: Property 'label' does not exist on type 'FeeInstallment'.
+src/services/contractPdfService.ts(284,75): error TS2339: Property 'label' does not exist on type 'FeeInstallment'.
+src/services/court/hwpxFieldMapper.ts(56,77): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(56,105): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(179,69): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(180,68): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(189,45): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(190,45): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(191,46): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(191,74): error TS2339: Property 'currentInterest' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(192,30): error TS2339: Property 'debtType' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(193,35): error TS2551: Property 'interestRate' does not exist on type 'RepaymentCreditor'. Did you mean 'interest'?
+src/services/court/hwpxFieldMapper.ts(194,30): error TS2339: Property 'creditorAddress' does not exist on type 'RepaymentCreditor'.
+src/services/court/hwpxFieldMapper.ts(195,30): error TS2339: Property 'creditorPhone' does not exist on type 'RepaymentCreditor'.
+src/services/crmService.ts(405,7): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'CourtCaseLink'.
+src/services/crmService.ts(416,9): error TS2322: Type '"consultation"' is not assignable to type 'CrmNoteCategory'.
+src/services/crmService.ts(453,7): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'CourtCaseLink'.
+src/services/crmService.ts(464,9): error TS2322: Type '"general"' is not assignable to type 'CrmNoteCategory'.
+src/services/crmService.ts(497,7): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'CourtCaseLink'.
+src/services/crmService.ts(508,9): error TS2322: Type '"contract"' is not assignable to type 'CrmNoteCategory'.
+src/services/crmService.ts(518,9): error TS2322: Type '"contract"' is not assignable to type 'CrmActivityType'.
+src/services/crmService.ts(543,7): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'CourtCaseLink'.
+src/services/crmService.ts(548,9): error TS2353: Object literal may only specify known properties, and 'clientId' does not exist in type 'CrmNote'.
+src/services/crmService.ts(564,9): error TS2322: Type '"court_case"' is not assignable to type 'CrmActivityType'.
+src/services/crmService.ts(588,7): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'CourtCaseLink'.
+src/services/documents/courtFilingEngine.ts(428,70): error TS2339: Property 'totalDebt' does not exist on type 'RepaymentCreditor'.
+src/services/documents/courtFilingEngine.ts(428,85): error TS2339: Property 'currentPrincipal' does not exist on type 'RepaymentCreditor'.
+src/services/documents/courtFilingEngine.ts(484,29): error TS2339: Property 'clientInfo' does not exist on type 'CrmClientExtension'.
+src/services/documents/courtFilingEngine.ts(515,34): error TS2339: Property 'dependents' does not exist on type '{}'.
+src/services/documents/courtFilingEngine.ts(588,34): error TS2339: Property 'assetsTotal' does not exist on type '{}'.
+src/services/documents/courtFilingEngine.ts(605,41): error TS2339: Property 'debtType' does not exist on type 'RepaymentCreditor'.
+src/services/documents/courtFilingEngine.ts(606,42): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/courtFilingEngine.ts(607,44): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/courtFilingEngine.ts(608,42): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/courtFilingEngine.ts(610,48): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/courtFilingEngine.ts(611,50): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/courtFilingEngine.ts(612,48): error TS2551: Property 'annexDocTypes' does not exist on type 'RepaymentCreditor'. Did you mean 'annexDocType'?
+src/services/documents/filingAutoDraftEngine.ts(143,66): error TS2339: Property 'creditorCount' does not exist on type 'ConsultRequest'.
+src/services/documents/propertyValuationService.ts(270,30): error TS2339: Property 'userName' does not exist on type 'ConsultRequest'.
+src/services/documents/propertyValuationService.ts(273,35): error TS2339: Property 'region' does not exist on type 'FinancialProfile'.
+src/services/leadService.ts(487,5): error TS2322: Type '{ installmentNo: number; dueDate: string; amount: number; status: "pending" | "paid"; paidAt: string; }[]' is not assignable to type 'FeeInstallment[]'.
+  Type '{ installmentNo: number; dueDate: string; amount: number; status: "pending" | "paid"; paidAt: string; }' is missing the following properties from type 'FeeInstallment': id, round
+src/services/leadService.ts(743,18): error TS2367: This comparison appears to be unintentional because the types '"free" | "rent" | "jeonse" | "owned" | "dormitory"' and '"월세"' have no overlap.
+src/services/leadService.ts(744,19): error TS2339: Property 'housingDeposit' does not exist on type 'FinancialProfile'.
+src/services/leadService.ts(744,50): error TS2339: Property 'housingMonthlyRent' does not exist on type 'FinancialProfile'.
+src/services/leadService.ts(745,9): error TS2367: This comparison appears to be unintentional because the types '"free" | "rent" | "jeonse" | "owned" | "dormitory"' and '"자가"' have no overlap.
+src/services/leadService.ts(753,23): error TS2339: Property 'specialMemo' does not exist on type 'CrmClientExtension'.
+src/services/leadService.ts(1008,10): error TS2339: Property 'maritalStatus' does not exist on type '{}'.
+src/services/leadService.ts(1008,39): error TS2339: Property 'maritalStatus' does not exist on type '{}'.
+src/services/leadService.ts(1017,10): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1017,37): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1019,17): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1019,44): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1020,12): error TS2339: Property 'housingDeposit' does not exist on type '{}'.
+src/services/leadService.ts(1020,81): error TS2339: Property 'housingDeposit' does not exist on type '{}'.
+src/services/leadService.ts(1021,12): error TS2339: Property 'housingMonthlyRent' does not exist on type '{}'.
+src/services/leadService.ts(1021,84): error TS2339: Property 'housingMonthlyRent' does not exist on type '{}'.
+src/services/leadService.ts(1022,17): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1022,44): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1023,12): error TS2339: Property 'housingDeposit' does not exist on type '{}'.
+src/services/leadService.ts(1023,84): error TS2339: Property 'housingDeposit' does not exist on type '{}'.
+src/services/leadService.ts(1024,17): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1024,44): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/leadService.ts(1029,24): error TS2339: Property 'assetsTotal' does not exist on type '{}'.
+src/services/leadService.ts(1029,62): error TS2339: Property 'assetsTotal' does not exist on type '{}'.
+src/services/leadService.ts(1030,28): error TS2339: Property 'debtTotal' does not exist on type '{}'.
+src/services/leadService.ts(1030,64): error TS2339: Property 'debtTotal' does not exist on type '{}'.
+src/services/leadService.ts(1032,47): error TS2339: Property 'debtCause' does not exist on type '{}'.
+src/services/leadService.ts(1042,18): error TS2339: Property 'age' does not exist on type '{}'.
+src/services/leadService.ts(1044,24): error TS2339: Property 'gender' does not exist on type '{}'.
+src/services/leadService.ts(1044,53): error TS2339: Property 'gender' does not exist on type '{}'.
+src/services/leadService.ts(1052,16): error TS2339: Property 'residenceRegion' does not exist on type '{}'.
+src/services/leadService.ts(1053,18): error TS2339: Property 'employmentType' does not exist on type '{}'.
+src/services/leadService.ts(1055,23): error TS2339: Property 'maritalStatus' does not exist on type '{}'.
+src/services/leadService.ts(1055,62): error TS2339: Property 'maritalStatus' does not exist on type '{}'.
+src/services/leadService.ts(1055,102): error TS2339: Property 'maritalStatus' does not exist on type '{}'.
+src/services/leadService.ts(1056,23): error TS2339: Property 'dependents' does not exist on type '{}'.
+src/services/leadService.ts(1056,56): error TS2339: Property 'dependents' does not exist on type '{}'.
+src/services/leadService.ts(1057,41): error TS2339: Property 'income' does not exist on type '{}'.
+src/services/leadService.ts(1059,21): error TS2339: Property 'housingType' does not exist on type '{}'.
+src/services/statementService.ts(173,9): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type 'CrmActivityLog'.
+src/services/taskTicketService.ts(167,7): error TS2322: Type 'MessageTargetType' is not assignable to type 'NotificationLinkType'.
+  Type '"sales_lead"' is not assignable to type 'NotificationLinkType'.
+src/services/taskTicketService.ts(303,7): error TS2322: Type 'MessageTargetType' is not assignable to type 'NotificationLinkType'.
+  Type '"sales_lead"' is not assignable to type 'NotificationLinkType'.
+src/services/taskTicketService.ts(325,5): error TS2322: Type 'MessageTargetType' is not assignable to type 'NotificationLinkType'.
+  Type '"sales_lead"' is not assignable to type 'NotificationLinkType'.
+src/services/taskTicketService.ts(350,5): error TS2322: Type 'MessageTargetType' is not assignable to type 'NotificationLinkType'.
+  Type '"sales_lead"' is not assignable to type 'NotificationLinkType'.
+src/services/taskTicketService.ts(374,5): error TS2322: Type 'MessageTargetType' is not assignable to type 'NotificationLinkType'.
+  Type '"sales_lead"' is not assignable to type 'NotificationLinkType'.

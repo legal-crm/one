@@ -5,7 +5,7 @@ import { isClosedConsultStatus, isRetainedConsultStatus } from '../../../constan
 import { IconButton } from './ChatPrimitives';
 import SummaryTab from './rail/SummaryTab';
 import FinanceTab from './rail/FinanceTab';
-import MemoTab from './rail/MemoTab';
+import MemoTab, { type MemoSaveResult } from './rail/MemoTab';
 import { useRepaymentSimulation } from './rail/useRepaymentSimulation';
 
 export type RailTab = 'summary' | 'finance' | 'memo';
@@ -29,17 +29,20 @@ interface ClientContextRailProps {
   getDisplayPhoneNumber: (req: ConsultRequest) => string;
   memoNotes: CrmNote[] | null;
   memoCount: number;
-  onSaveMemo: (content: string) => Promise<boolean>;
+  onSaveMemo: (content: string) => Promise<MemoSaveResult>;
   now: Date;
+  /** 이미 정식 수임 사건이 있는 요청인지 (Case.clientId = 요청 ID) */
+  hasCase?: boolean;
 }
 
 export default function ClientContextRail({
   request, variant, tab, onTabChange, onClose, onConvertToCase, onOpenCrm, getDisplayPhoneNumber,
-  memoNotes, memoCount, onSaveMemo, now,
+  memoNotes, memoCount, onSaveMemo, now, hasCase = false,
 }: ClientContextRailProps) {
   const simulation = useRepaymentSimulation(request);
   const tabRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ summary: null, finance: null, memo: null });
-  const canConvert = Boolean(request && !isRetainedConsultStatus(request.status) && !isClosedConsultStatus(request.status));
+  // 사건이 이미 있으면 전환 대신 '사건 열기' (이전: 상태 동기화가 늦으면 전환 버튼이 남아 '이미 등록된 고객' 오류만 떴다)
+  const canConvert = Boolean(request && !hasCase && !isRetainedConsultStatus(request.status) && !isClosedConsultStatus(request.status));
 
   const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
@@ -73,11 +76,11 @@ export default function ClientContextRail({
           ) : (
             <button
               type="button"
-              onClick={() => onOpenCrm(request.id, 'info')}
+              onClick={() => onOpenCrm(request.id, hasCase ? 'contracts' : 'info')}
               className="ml-auto shrink-0 inline-flex items-center gap-1.5 h-8 pointer-coarse:h-11 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold whitespace-nowrap transition-colors press-scale cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1"
             >
               <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-              고객관리에서 열기
+              {hasCase ? '사건 열기' : '고객관리에서 열기'}
             </button>
           )
         )}

@@ -114,9 +114,11 @@ interface LawyerProposalDraftProps {
   rehabUserInput: RehabUserInput;
   consultRequest?: any;
   onClose: () => void;
-  onSendProposal: (proposalData: ProposalData) => void;
+  /** false를 돌려주면 발송이 막힌 것 (작성 중인 초안을 지우지 않는다) */
+  onSendProposal: (proposalData: ProposalData) => void | boolean;
   viewerRole?: 'lawyer' | 'staff' | 'reviewer';
-  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void;
+  /** false를 돌려주면 컨펌 요청이 막힌 것 */
+  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void | boolean;
   onApproveProposal?: (proposalData: ProposalData) => void;
   onRejectProposal?: (reason: string) => void;
   pendingStaffName?: string;

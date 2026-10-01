@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConsultRequest, ConsultMessage, CrmClientExtension, StaffMember, StaffRole, User } from '../../../types';
 import { CRM_NOTE_CATEGORIES } from '../../../types';
 import {
-  createActivityLog, createCrmNote, createDefaultCrmExtension, getCrmExt, loadCrmData, saveCrmClient,
+  createActivityLog, createCrmNote, createDefaultCrmExtension, getCrmExt, loadCrmData, loadCrmDataResult, saveCrmClient,
   type CrmDataStore,
 } from '../../../services/crmService';
 import { buildLawyerChatThread, buildLawyerChatThreads } from './chatSelectors';
@@ -11,6 +11,7 @@ import { useElementWidth, useNow } from './chatHooks';
 import ChatInbox from './ChatInbox';
 import ChatConversation, { type ChatLayout } from './ChatConversation';
 import ClientContextRail, { type CrmDetailTab, type RailTab } from './ClientContextRail';
+import type { MemoSaveResult } from './rail/MemoTab';
 
 const RAIL_PREF_KEY = 'lawyer_chat_rail_open_v1';
 
@@ -31,7 +32,11 @@ export interface LawyerChatWorkspaceProps {
   onSelectThread: (reqId: string) => void;
   /** 메시지 전송 (승인 확인·활동 로그 포함). 받아들였으면 true */
   onSendMessage: (reqId: string, text: string) => boolean;
+  /** 전송 실패한 메시지를 같은 id로 다시 보낸다 (승인 확인·실패 안내 포함) */
+  onRetryMessage?: (messageId: string) => Promise<boolean>;
   onConvertToCase: (req: ConsultRequest) => void;
+  /** 이미 정식 수임 사건이 있는 요청인지 — 있으면 '정식 수임 전환' 대신 '사건 열기'를 보여 준다 */
+  hasCaseForRequest?: (reqId: string) => boolean;
   /** 고객관리 탭으로 이동 (reqId가 없으면 목록) */
   onOpenCrm: (reqId?: string, detailTab?: CrmDetailTab) => void;
   /**
@@ -45,7 +50,7 @@ export interface LawyerChatWorkspaceProps {
 
 export default function LawyerChatWorkspace({
   requests, messages, activeLawyer, currentStaff = null, activeChatReqId, onSelectThread, onSendMessage,
-  onConvertToCase, onOpenCrm, onOpenQuickDock, getDisplayClientName, getDisplayPhoneNumber,
+  onRetryMessage, onConvertToCase, hasCaseForRequest, onOpenCrm, onOpenQuickDock, getDisplayClientName, getDisplayPhoneNumber,
 }: LawyerChatWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(containerRef, typeof window !== 'undefined' ? window.innerWidth : 1440);
@@ -112,6 +117,10 @@ export default function LawyerChatWorkspace({
     (text: string) => (selectedId ? onSendMessage(selectedId, text) : false),
     [selectedId, onSendMessage]
   );
+  const handleRetry = useMemo(
+    () => (onRetryMessage ? (messageId: string) => { void onRetryMessage(messageId); } : undefined),
+    [onRetryMessage]
+  );
 
   // ── 내부 메모 (고객관리 상담 메모와 같은 저장소) ──
   const [crmStore, setCrmStore] = useState<CrmDataStore | null>(null);
@@ -135,10 +144,14 @@ export default function LawyerChatWorkspace({
   const memoNotes = crmStore ? (crmStore[selectedId]?.notes || []) : null;
   const memoCount = crmStore ? (crmStore[selectedId]?.notes?.length || 0) : localMemoCount;
 
-  const saveMemo = useCallback(async (content: string): Promise<boolean> => {
-    if (!selectedId) return false;
+  const saveMemo = useCallback(async (content: string): Promise<MemoSaveResult> => {
+    if (!selectedId) return 'failed';
     // 저장 직전 최신 데이터를 기준으로 합친다 (다른 화면에서 바뀐 서류·수임료 등을 덮어쓰지 않도록)
-    const store = await loadCrmData();
+    // 서버를 읽지 못하면 저장하지 않는다 — 이 기기의 오래된 사본이나 빈 기본값으로 서버 행 전체를 덮어쓰지 않기 위해
+    // (이전: loadCrmData가 서버 오류 시 이 기기 사본으로 대체해, 그 사본을 기준으로 서버 행을 덮어쓸 수 있었다)
+    const loaded = await loadCrmDataResult();
+    if (!loaded.ok) return 'failed';
+    const store = loaded.data;
     const base: CrmClientExtension = store[selectedId] || createDefaultCrmExtension(selectedId);
     const actor: { id: string; name: string; role: StaffRole } = currentStaff
       ? { id: currentStaff.id, name: currentStaff.name, role: currentStaff.role }
@@ -156,7 +169,7 @@ export default function LawyerChatWorkspace({
     };
     const ok = await saveCrmClient(selectedId, updated);
     setCrmStore({ ...store, [selectedId]: updated });
-    return ok;
+    return ok ? 'saved' : 'local';
   }, [selectedId, currentStaff, activeLawyer]);
 
   // ── 렌더 ──
@@ -185,6 +198,7 @@ export default function LawyerChatWorkspace({
       memoCount={memoCount}
       onSaveMemo={saveMemo}
       now={now}
+      hasCase={selectedThread ? Boolean(hasCaseForRequest?.(selectedThread.request.id)) : false}
     />
   );
 
@@ -221,6 +235,7 @@ export default function LawyerChatWorkspace({
             onOpenQuickDock={onOpenQuickDock}
             canSend={canSend}
             onSend={handleSend}
+            onRetry={handleRetry}
             draft={draftsRef.current[selectedId] || ''}
             onDraftChange={text => { if (selectedId) draftsRef.current[selectedId] = text; }}
             templates={DEFAULT_CHAT_REPLY_TEMPLATES}

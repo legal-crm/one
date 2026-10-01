@@ -24,6 +24,7 @@ const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/c
 import LawyerProposalDraft from './LawyerProposalDraft';
 import ProposalWorkspace from './ProposalWorkspace';
 import { mapToRehabUserInput } from './mapToRehabUserInput';
+import { requestTypeLabel } from './requestScope';
 import CourtStatsRadar from './copilot/CourtStatsRadar';
 import LegalQualificationChart from './copilot/LegalQualificationChart';
 import AIRepaymentMatrix, { type RepaymentScenario } from './copilot/AIRepaymentMatrix';
@@ -47,7 +48,8 @@ interface CaseReviewCopilotProps {
   actorName: string;
   preselectedRequestId?: string;
   onClose?: () => void;
-  onProposalSent?: (reqId: string, proposalData: any) => void;
+  /** false를 돌려주면 발송이 막힌 것 (작성 화면을 닫지 않는다) */
+  onProposalSent?: (reqId: string, proposalData: any) => void | boolean;
 }
 
 // Sample test clients for demo
@@ -1258,7 +1260,11 @@ export default function CaseReviewCopilot({
                       <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                         {[
                           { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
-                          { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
+                          // 원문 코드('direct_multi' 등) 대신 대시보드·고객관리와 같은 이름으로 표시
+                          { label: '상담 유형', value: (() => {
+                            const type = consultRequest.requestType || consultRequest.request_type || consultRequest.consultType;
+                            return type ? requestTypeLabel(type) : '-';
+                          })() },
                           { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
                         ].map((item, i) => (
                           <div key={i} className="px-3.5 py-2.5 text-left">
@@ -1339,11 +1345,14 @@ export default function CaseReviewCopilot({
           }}
           onSendProposal={(proposalData) => {
             // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
+            // 발송이 막히면(false) 작성 화면·초안을 그대로 두고 감사 로그도 남기지 않는다
             if (onProposalSent && consultRequest?.id) {
-              onProposalSent(consultRequest.id, proposalData);
+              const sent = onProposalSent(consultRequest.id, proposalData);
+              if (sent === false) return false;
             }
             setShowRehabReport(false);
-            addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${proposalData.lawyerOpinion.substring(0, 50)}...`);
+            addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${(proposalData.lawyerOpinion || '').substring(0, 50)}...`);
+            return true;
           }}
           onRequestConfirm={(proposalData, memo) => {
             setShowRehabReport(false);

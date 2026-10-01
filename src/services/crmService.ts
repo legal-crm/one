@@ -71,6 +71,38 @@ export type CrmDataStore = Record<string, CrmClientExtension>;
 
 export async function loadCrmData(): Promise<CrmDataStore> {
   if (isSupabaseConfigured) {
+    const server = await fetchServerCrmData();
+    if (server) return server;
+  }
+  return loadLocalCrmData();
+}
+
+/**
+ * 서버 불러오기 결과와 성공 여부를 함께 돌려준다.
+ * 저장 직전에 최신 데이터를 다시 읽는 곳(채팅 메모 등)은 이 함수를 써서, 서버를 읽지 못했을 때
+ * 이 기기의 오래된 사본이나 빈 기본값으로 서버 행 전체를 덮어쓰지 않게 한다.
+ * (loadCrmData는 서버 오류 시 알림 없이 이 기기 사본으로 대체한다)
+ */
+export async function loadCrmDataResult(): Promise<{ ok: boolean; data: CrmDataStore; source: 'server' | 'local' }> {
+  if (!isSupabaseConfigured) return { ok: true, data: loadLocalCrmData(), source: 'local' };
+  const server = await fetchServerCrmData();
+  return server ? { ok: true, data: server, source: 'server' } : { ok: false, data: {}, source: 'local' };
+}
+
+function loadLocalCrmData(): CrmDataStore {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  // 마이그레이션: 기존 3개 필드 → assigneeId 통합
+  for (const id of Object.keys(store)) {
+    const ext = store[id];
+    if (!ext.assigneeId && (ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId)) {
+      ext.assigneeId = ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+    }
+  }
+  return store;
+}
+
+/** 서버(crm_clients) 조회. 오류·예외면 null */
+async function fetchServerCrmData(): Promise<CrmDataStore | null> {
     try {
       const { data, error } = await supabase
         .from('crm_clients')
@@ -107,19 +139,11 @@ export async function loadCrmData(): Promise<CrmDataStore> {
         });
         return store;
       }
+      if (error) console.warn('[CRM] Supabase load failed, falling back to this device copy', error.message);
     } catch (e) {
-      console.warn('[CRM] Supabase load failed, falling back to localStorage', e);
+      console.warn('[CRM] Supabase load failed, falling back to this device copy', e);
     }
-  }
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  // 마이그레이션: 기존 3개 필드 → assigneeId 통합
-  for (const id of Object.keys(store)) {
-    const ext = store[id];
-    if (!ext.assigneeId && (ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId)) {
-      ext.assigneeId = ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
-    }
-  }
-  return store;
+  return null;
 }
 
 /** @returns 서버(Supabase) 저장 성공 여부 — 미설정 환경에서는 로컬 저장만 하고 true */
@@ -370,15 +394,16 @@ export function createCrmNote(
   };
 }
 
-/** CRM 고객 데이터 삭제 */
+/**
+ * CRM 고객 데이터 삭제 (이 기기 사본에서만)
+ * 이전: localStorage를 직접 읽고 써서, 실제 사본(sessionStorage)은 지워지지 않고
+ *       예전 localStorage 사본이 남아 있으면 민감 데이터 전체를 다시 localStorage에 기록했다
+ */
 export function deleteCrmClient(clientId: string): void {
-  const raw = localStorage.getItem('legal_crm_data');
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    delete data[clientId];
-    localStorage.setItem('legal_crm_data', JSON.stringify(data));
-  } catch { /* ignore */ }
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  if (!(clientId in store)) return;
+  delete store[clientId];
+  setLocalData(CRM_STORAGE_KEY, store);
 }
 
 // ── amjone8@gmail.com 전용 가상 상담 5선 사전 설정 CRM 프로필 ──
@@ -642,17 +667,30 @@ export function createDefaultCrmExtension(
 
 // ── 문서 양방향 동기화 헬퍼 함수 ──
 
+// approve/reject/requestDocument 공통
+// - current: 호출부가 가진 최신 고객 데이터의 '사본'. 넘기면 이 기기 사본 대신 이 값을 기준으로 고쳐 저장한다.
+//   함수는 이 객체의 최상위 필드(documents·uploadedFiles·documentRequests·lastActivityAt)를 새 값으로 바꾸므로
+//   호출 뒤 이 객체가 곧 저장한 값이다 (React state 객체를 그대로 넘기지 말 것).
+// - 이전: 이 기기 사본(sessionStorage, 탭 단위)에만 의존해 고객 행이 없으면(새 탭·다른 기기에서는 항상 없음)
+//   아무것도 저장하지 않고 끝났는데, 호출부는 성공 안내를 띄웠다.
+// - @returns saveCrmClient 결과 (고객 행도 current도 없으면 false)
+function resolveDocTarget(clientId: string, current?: CrmClientExtension): CrmClientExtension | null {
+  if (current) return current;
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  return store[clientId] || null;
+}
+
 /** 서류 승인 처리 */
 export async function approveDocument(
   clientId: string,
   docId: string,
-  reviewerName: string
-): Promise<void> {
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const ext = store[clientId];
-  if (!ext) return;
+  reviewerName: string,
+  current?: CrmClientExtension
+): Promise<boolean> {
+  const ext = resolveDocTarget(clientId, current);
+  if (!ext) return false;
 
-  ext.documents = ext.documents.map(d =>
+  ext.documents = (ext.documents || []).map(d =>
     d.id === docId ? {
       ...d,
       checked: true,
@@ -673,21 +711,21 @@ export async function approveDocument(
   }
 
   ext.lastActivityAt = new Date().toISOString();
-  await saveCrmClient(clientId, ext);
+  return saveCrmClient(clientId, ext);
 }
 
-/** 서류 반려 처리 */
+/** 서류 반려 처리 (current·반환값은 approveDocument와 같음) */
 export async function rejectDocument(
   clientId: string,
   docId: string,
   reviewerName: string,
-  reason: string
-): Promise<void> {
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const ext = store[clientId];
-  if (!ext) return;
+  reason: string,
+  current?: CrmClientExtension
+): Promise<boolean> {
+  const ext = resolveDocTarget(clientId, current);
+  if (!ext) return false;
 
-  ext.documents = ext.documents.map(d =>
+  ext.documents = (ext.documents || []).map(d =>
     d.id === docId ? {
       ...d,
       checked: false,
@@ -707,17 +745,17 @@ export async function rejectDocument(
   }
 
   ext.lastActivityAt = new Date().toISOString();
-  await saveCrmClient(clientId, ext);
+  return saveCrmClient(clientId, ext);
 }
 
-/** 변호사 → 고객 추가 서류 요청 */
+/** 변호사 → 고객 추가 서류 요청 (current·반환값은 approveDocument와 같음) */
 export async function requestDocument(
   clientId: string,
-  request: Omit<DocumentRequest, 'id' | 'requestedAt' | 'fulfilled'>
-): Promise<void> {
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const ext = store[clientId];
-  if (!ext) return;
+  request: Omit<DocumentRequest, 'id' | 'requestedAt' | 'fulfilled'>,
+  current?: CrmClientExtension
+): Promise<boolean> {
+  const ext = resolveDocTarget(clientId, current);
+  if (!ext) return false;
 
   const newRequest: DocumentRequest = {
     ...request,
@@ -728,7 +766,7 @@ export async function requestDocument(
 
   ext.documentRequests = [...(ext.documentRequests || []), newRequest];
   ext.lastActivityAt = new Date().toISOString();
-  await saveCrmClient(clientId, ext);
+  return saveCrmClient(clientId, ext);
 }
 
 /** 고객 서류 제출 (uploadedFiles에 저장 + 체크리스트 자동 매핑) */

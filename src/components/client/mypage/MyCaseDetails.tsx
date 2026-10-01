@@ -6,6 +6,7 @@ import DocumentSubmissionCard from './DocumentSubmissionCard';
 import ContractCard from './ContractCard';
 import FeePaymentCard from './FeePaymentCard';
 import CertificateVaultCard from './CertificateVaultCard';
+import CaseActivityTimeline from './CaseActivityTimeline';
 
 /**
  * 마이페이지 내 사건 탭 상세 (재정 요약 · 사건 진행 · 서류 제출 · 계약·수임료 · 인증서 금고)
@@ -25,6 +26,9 @@ export default function MyCaseDetails({ vm }: { vm: MyPageModel }) {
 
         {/* 2. 필수 서류 제출 */}
         <DocumentSubmissionCard vm={vm} cd={cd} />
+
+        {/* v2.0: 3. 사건 활동 타임라인 */}
+        <CaseActivityTimeline vm={vm} />
       </div>
 
       {/* ── Pillar 3: 정식 수임계약서 및 수임료 보관함 (Contract & Fee Vault) ── */}

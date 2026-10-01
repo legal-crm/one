@@ -3,7 +3,7 @@ import {
   AlertTriangle, Calendar, Clock, Plus, Trash2, CheckCircle2, 
   FileText, Send, RefreshCw, Printer, Download, Sparkles, 
   ChevronRight, ArrowRight, ShieldAlert, Check, X, Building2, HelpCircle,
-  FileSpreadsheet
+  FileSpreadsheet, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -162,6 +162,71 @@ function CorrectionRoundEditor({
     title: '',
     type: 'LOAN'
   });
+
+  // ═══ v2.0: 보정권고서 OCR 업로드 ═══
+  const [isOcrParsing, setIsOcrParsing] = useState(false);
+  const correctionFileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleCorrectionOrderUpload = async (file: File) => {
+    if (!file) return;
+    setIsOcrParsing(true);
+    try {
+      // 파일 → base64 변환
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('/api/ocr?kind=correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, fileName: file.name }),
+      });
+      const data = await res.json();
+
+      if (data.ok && data.isValidCorrectionOrder && data.items?.length > 0) {
+        // 송달일이 비어 있으면 오늘로 설정
+        if (!servedDate) {
+          setServedDate(localYmd(new Date()));
+        }
+        // 기한 설정 (OCR에서 추출된 경우)
+        if (data.dueDate) {
+          // dueDate에서 역산하여 periodDays 계산
+          const due = parseLocalYmd(data.dueDate);
+          const served = parseLocalYmd(servedDate || localYmd(new Date()));
+          if (due && served) {
+            const diff = Math.round((due.getTime() - served.getTime()) / 86400000);
+            if (diff > 0) setPeriodDays(diff);
+          }
+        }
+
+        // 기존 answers에 OCR 결과 항번별 추가
+        const newAnswers = data.items.map((item: any) => ({
+          pointNumber: item.itemNumber,
+          courtInstruction: item.instruction || '',
+          debtorResponse: item.autoDraftResponse || '',
+          attachedEvidence: item.requiredEvidence || '',
+        }));
+        setAnswers(prev => [...prev, ...newAnswers]);
+
+        toast.success(`보정권고서에서 ${data.items.length}개 항목을 자동 인식했습니다.`, {
+          description: data.courtName ? `${data.courtName} ${data.caseNumber || ''}` : undefined,
+        });
+      } else {
+        toast.error('보정권고서를 인식하지 못했습니다.', {
+          description: data.failureReason || '선명한 사진을 다시 올려 주세요.',
+        });
+      }
+    } catch (err) {
+      console.error('Correction OCR error:', err);
+      toast.error('보정권고서 분석 중 오류가 발생했습니다.');
+    } finally {
+      setIsOcrParsing(false);
+      if (correctionFileRef.current) correctionFileRef.current.value = '';
+    }
+  };
   
   // 의뢰인 작성 100만 원 이상 출금 소명표 실시간 동기화 상태
   const [clientAuditData, setClientAuditData] = useState<BankStatementAuditData>(() => 
@@ -422,6 +487,40 @@ ${new Date().getFullYear()}.  .  .
                 </button>
               ))}
             </div>
+
+            {/* v2.0: 보정권고서 AI 자동 인식 업로드 */}
+            <input
+              ref={correctionFileRef}
+              type="file"
+              accept="image/*,.pdf"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleCorrectionOrderUpload(file);
+              }}
+            />
+            <button
+              onClick={() => correctionFileRef.current?.click()}
+              disabled={isOcrParsing}
+              className={`px-3 py-1.5 border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs transition-colors ${
+                isOcrParsing
+                  ? 'bg-violet-100 text-violet-400 border-violet-200 cursor-wait'
+                  : 'bg-violet-50 hover:bg-violet-100 text-violet-900 border-violet-200'
+              }`}
+              title="법원 보정권고서/보정명령서 스캔본 또는 사진을 업로드하면 AI가 질문 항목을 자동 분할하고 7대 표준 템플릿에 매핑합니다"
+            >
+              {isOcrParsing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />
+                  <span>분석 중...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-violet-700" />
+                  <span>📄 보정권고서 AI 인식</span>
+                </>
+              )}
+            </button>
 
             {/* 통장·카드 거래내역 소명 자동화 허브 */}
             <button

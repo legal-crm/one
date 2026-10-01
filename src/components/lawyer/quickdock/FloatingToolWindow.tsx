@@ -32,6 +32,8 @@ interface FloatingToolWindowProps {
   onSelectTool: (id: QuickToolId) => void;
   onClose: () => void;
   dockPosition: Position | null;
+  /** 독 메뉴에서 도구를 고를 때마다 바뀌는 값 → 접힌 창을 다시 펼친다 (같은 도구를 다시 골라도) */
+  openSignal?: number;
 }
 
 const WINDOW_STORAGE_KEY = 'legal_quick_window_pos_v2';
@@ -80,6 +82,7 @@ export default function FloatingToolWindow({
   onSelectTool,
   onClose,
   dockPosition,
+  openSignal = 0,
 }: FloatingToolWindowProps) {
   const dialog = useDialog();
   const [isMinimized, setIsMinimized] = useState(false);
@@ -94,6 +97,8 @@ export default function FloatingToolWindow({
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  /** 접기/펼치기 버튼 — Esc로 접은 뒤 포커스를 옮길 곳 */
+  const minimizeBtnRef = useRef<HTMLButtonElement>(null);
 
   const width = windowWidthFor(viewport.w);
   const bodyMaxHeight = Math.max(
@@ -159,6 +164,12 @@ export default function FloatingToolWindow({
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
   }, [activeToolId]);
 
+  // 독 메뉴에서 도구를 고르면(같은 도구 포함) 접힌 창을 다시 펼친다
+  // (Esc가 창을 접게 바뀌어, 접힌 창에 메뉴로 도구를 열면 제목만 바뀌고 본문이 안 보이는 문제 방지)
+  useEffect(() => {
+    if (openSignal > 0) setIsMinimized(false);
+  }, [openSignal]);
+
   // 드래그 핸들 이벤트 (타이틀 바)
   const handleHeaderPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -209,12 +220,18 @@ export default function FloatingToolWindow({
     }
   };
 
-  // 창 안에서 Esc → 창 닫기
+  // 창 안에서 Esc → 창 접기 (도구는 마운트된 채 숨김 → 입력값 유지). 닫기는 닫기 버튼으로만.
+  // 이전: Esc가 창을 닫아(onClose) 유지 중인 도구 목록(mountedIds)이 비워지며 모든 도구 입력이 사라졌음.
+  // 도구가 자체적으로 Esc를 처리한 경우(preventDefault)와 한글 조합 중 Esc는 건드리지 않는다.
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && !e.defaultPrevented) {
-      e.stopPropagation();
-      onClose();
-    }
+    if (e.key !== 'Escape' || e.defaultPrevented || e.nativeEvent.isComposing) return;
+    // 창 안의 Esc는 뒤쪽 어드민 화면의 Esc 처리로 넘기지 않는다 (이전과 같음 — 접힌 상태에서 Esc를 또 눌러도)
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMinimized) return; // 이미 접힌 상태면 그대로 둔다
+    setIsMinimized(true);
+    // 포커스가 있던 입력칸이 숨겨지므로 '창 펼치기' 버튼으로 옮겨 키보드로 바로 다시 펼 수 있게 한다
+    minimizeBtnRef.current?.focus();
   };
 
   // 새 상담: 모든 계산기 공유값 초기화 (메모는 유지)
@@ -258,7 +275,8 @@ export default function FloatingToolWindow({
         top: `${winPos.y}px`,
         width: `${width}px`,
       }}
-      className={`z-50 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 ${
+      // z-40: 어드민 인라인 모달(z-50)이 항상 위에 오도록 (이전: 같은 z-50에 DOM 뒤쪽이라 모달 위에 떠서 눌림)
+      className={`z-40 flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-300/90 overflow-hidden transition-shadow duration-200 ${
         isDragging ? 'shadow-blue-500/20 ring-2 ring-blue-500/50' : 'shadow-2xl'
       }`}
     >
@@ -294,12 +312,13 @@ export default function FloatingToolWindow({
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button
+            ref={minimizeBtnRef}
             type="button"
             onClick={() => setIsMinimized(prev => !prev)}
             aria-label={isMinimized ? '창 펼치기' : '창 접기'}
             aria-expanded={!isMinimized}
             className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
-            title={isMinimized ? '창 펼치기' : '창 접기 (입력값 유지)'}
+            title={isMinimized ? '창 펼치기' : '창 접기 (Esc, 입력값 유지)'}
           >
             {isMinimized ? <Square className="w-3 h-3" /> : <Minus className="w-3.5 h-3.5" />}
           </button>
@@ -308,7 +327,7 @@ export default function FloatingToolWindow({
             onClick={onClose}
             aria-label="창 닫기"
             className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
-            title="창 닫기 (Esc)"
+            title="창 닫기"
           >
             <X className="w-3.5 h-3.5" />
           </button>

@@ -32,9 +32,22 @@ interface ChatConversationProps {
   onOpenQuickDock?: (anchor: DOMRect) => void;
   canSend: boolean;
   onSend: (text: string) => boolean;
+  /** 전송 실패한 내 메시지 다시 보내기 */
+  onRetry?: (messageId: string) => void;
   draft: string;
   onDraftChange: (text: string) => void;
   templates: ChatReplyTemplate[];
+}
+
+/**
+ * 대화 잠금 이유 — 의뢰인이 제안서의 '상담 시작'을 누르기 전에는 메시지를 보낼 수 없다
+ * (의뢰인 화면 consultFlow: 제안서 발송만으로는 상담이 열리지 않는다)
+ */
+function lockedReasonFor(thread: LawyerChatThread): string | undefined {
+  if (thread.chatOpen) return undefined;
+  return thread.hasMyProposal
+    ? '의뢰인이 제안서를 확인하고 ‘상담 시작’을 누르면 대화가 열립니다. 그 전에는 메시지를 보낼 수 없습니다.'
+    : '먼저 제안서를 보내 주세요. 의뢰인이 제안서의 ‘상담 시작’을 누르면 대화가 열립니다.';
 }
 
 function formatReceivedDate(iso: string): string {
@@ -81,7 +94,7 @@ function SummaryStrip({ request, onOpenRail }: { request: ConsultRequest; onOpen
 
 export default function ChatConversation({
   thread, lawyerId, now, layout, displayName, isPseudonymous, railInline, onCloseRail, onOpenRail, onBack,
-  onOpenCrm, onOpenQuickDock, canSend, onSend, draft, onDraftChange, templates,
+  onOpenCrm, onOpenQuickDock, canSend, onSend, onRetry, draft, onDraftChange, templates,
 }: ChatConversationProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [revealSignal, setRevealSignal] = useState(0);
@@ -220,12 +233,15 @@ export default function ChatConversation({
         clientName={displayName}
         now={now}
         revealIntakeSignal={revealSignal}
+        onRetry={onRetry}
+        chatLocked={!thread.chatOpen}
       />
 
       <ChatComposer
         key={`composer-${thread.id}`}
         reserveCornerSpace={layout === 'drawer'}
         canSend={canSend}
+        lockedReason={lockedReasonFor(thread)}
         onSend={onSend}
         initialValue={draft}
         onDraftChange={onDraftChange}
