@@ -3773,7 +3773,7 @@ export default function LawyerRole({
             )}
 
             {/* 프로필 편집 뷰 */}
-            {(settingsCategory === 'profile' || settingsSub === 'profile-edit') && (
+            {settingsSub === 'profile-edit' && (
               <div>
                 <LawyerProfileEditor
                   lawyer={activeLawyer}
@@ -3798,7 +3798,7 @@ export default function LawyerRole({
             )}
 
             {/* AI 상담 스타일 프로필 */}
-            {(settingsCategory === 'consult-style' || settingsSub === 'consult-style') && (
+            {settingsSub === 'consult-style' && (
               <div>
                 <ConsultStyleProfile
                   tenantId={firmTenantId}
@@ -3809,7 +3809,7 @@ export default function LawyerRole({
             )}
 
             {/* 직인·도장 & 브랜딩 스튜디오 */}
-            {(settingsCategory === 'branding' || settingsSub === 'seals') && (
+            {settingsSub === 'seals' && (
               <div>
                 <SealStudioModal
                   isInline={true}
@@ -3825,7 +3825,7 @@ export default function LawyerRole({
             )}
 
             {/* 공지 사항 탭 */}
-            {(settingsCategory === 'notices' || settingsSub === 'notices') && (() => {
+            {settingsSub === 'notices' && (() => {
               const filteredNotices = (notices || []).filter(n => {
                 if (!noticeSearchTerm.trim()) return true;
                 const q = noticeSearchTerm.toLowerCase();
