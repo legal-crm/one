@@ -128,6 +128,15 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   // 오프라인/서면 체결 전환 요청 상태
   const [offlineReqType, setOfflineReqType] = useState<'in_person' | 'postal' | null>(null);
   const [offlinePostalAddr, setOfflinePostalAddr] = useState('');
+  const [offlinePostalDetailAddr, setOfflinePostalDetailAddr] = useState('');
+  const [offlinePostcode, setOfflinePostcode] = useState('');
+  const [offlineVisitDate, setOfflineVisitDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [offlineVisitTime, setOfflineVisitTime] = useState('14:00');
+  const [offlineNotes, setOfflineNotes] = useState('');
   const [offlineReqDone, setOfflineReqDone] = useState<string | null>(null);
   const [submittingOfflineReq, setSubmittingOfflineReq] = useState(false);
 
@@ -310,21 +319,31 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       toast.error('우편물을 수령하실 배송지 주소를 입력해 주세요.');
       return;
     }
+    if (offlineReqType === 'in_person' && !offlineVisitDate) {
+      toast.error('방문 희망 날짜를 선택해 주세요.');
+      return;
+    }
     setSubmittingOfflineReq(true);
     try {
-      const modeLabel = offlineReqType === 'in_person' ? '방문 대면 체결' : '우편 등기 계약';
-      const detailInfo = offlineReqType === 'postal' ? ` [수령주소: ${offlinePostalAddr.trim()}]` : '';
-      const auditMsg = `의뢰인이 휴대폰 본인인증 곤란으로 [${modeLabel}] 전환을 요청함${detailInfo}`;
+      const modeLabel = offlineReqType === 'in_person' ? '방문 체결' : '우편 등기 계약';
+      const detailInfo = offlineReqType === 'in_person'
+        ? `방문 희망: ${offlineVisitDate} ${offlineVisitTime}${offlineNotes.trim() ? ` (메모: ${offlineNotes.trim()})` : ''}`
+        : `수령 주소: ${offlinePostalAddr.trim()} ${offlinePostalDetailAddr.trim()}${offlinePostcode ? ` (${offlinePostcode})` : ''}${offlineNotes.trim() ? ` (메모: ${offlineNotes.trim()})` : ''}`;
+      
+      const auditMsg = `의뢰인이 휴대폰 본인인증 곤란으로 [${modeLabel}] 전환을 요청함 - ${detailInfo}`;
       
       let updated = addAuditLog(contract, auditMsg, 'client');
       updated = {
         ...updated,
+        contractMethod: offlineReqType,
         paperContractInfo: {
           method: offlineReqType,
           signedDate: '',
-          notes: `의뢰인 원격서명 페이지에서 오프라인 전환 요청 접수${detailInfo}`,
+          notes: `의뢰인 원격서명 페이지에서 오프라인 전환 요청 접수: ${detailInfo}`,
           postalInfo: offlineReqType === 'postal' ? {
             recipientAddress: offlinePostalAddr.trim(),
+            recipientDetailAddress: offlinePostalDetailAddr.trim() || undefined,
+            postcode: offlinePostcode.trim() || undefined,
           } : undefined,
         },
       };
@@ -1216,6 +1235,143 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       </SignPage>
 
       <SignDocReader doc={readerDoc} onClose={() => setReader(null)} footer={readerFooter} />
+
+      {/* ── 오프라인 서면 체결(방문/우편) 전환 요청 모달 ── */}
+      {offlineReqType && (
+        <Modal
+          open={!!offlineReqType}
+          onClose={() => setOfflineReqType(null)}
+          title={offlineReqType === 'in_person' ? '사무소 내방(방문) 체결 요청' : '우편(등기) 계약 요청'}
+          description={
+            offlineReqType === 'in_person'
+              ? '채무 연체나 본인인증 곤란 시 법률사무소에 직접 내방하여 종이 계약서에 서명하실 수 있습니다.'
+              : '법률사무소에서 계약서 2부를 등기우편으로 발송해 드리며, 날인 후 1부를 반송합니다.'
+          }
+          size="md"
+          mobile="sheet"
+          dismissible={!submittingOfflineReq}
+          hideCloseButton={submittingOfflineReq}
+          footer={
+            <>
+              <Button 
+                variant="secondary" 
+                className="flex-1 sm:flex-none cursor-pointer" 
+                onClick={() => setOfflineReqType(null)} 
+                disabled={submittingOfflineReq}
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1 sm:flex-none cursor-pointer"
+                onClick={handleSubmitOfflineRequest}
+                disabled={submittingOfflineReq}
+              >
+                {submittingOfflineReq ? '접수 중...' : '요청 접수하기'}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4 text-xs text-slate-700">
+            {offlineReqType === 'in_person' ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      방문 희망 날짜 <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={offlineVisitDate}
+                      onChange={(e) => setOfflineVisitDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      방문 희망 시간
+                    </label>
+                    <select
+                      value={offlineVisitTime}
+                      onChange={(e) => setOfflineVisitTime(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="10:00">오전 10:00</option>
+                      <option value="11:00">오전 11:00</option>
+                      <option value="14:00">오후 02:00</option>
+                      <option value="15:30">오후 03:30</option>
+                      <option value="17:00">오후 05:00</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    사무소 전달사항 / 특이사항 (선택)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 신분증 지참 예정, 배우자 동행 상담 희망 등"
+                    value={offlineNotes}
+                    onChange={(e) => setOfflineNotes(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <p className="text-[11px] text-indigo-700 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+                  ※ 접수하시면 담당 직원이 유선 전화로 사무소 위치 안내 및 일정을 확정해 드립니다.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    계약서 수령 배송지 주소 <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="기본 주소 (예: 서울특별시 서초구 서초대로 123)"
+                    value={offlinePostalAddr}
+                    onChange={(e) => setOfflinePostalAddr(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 mb-1.5"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      placeholder="상세 주소 (동/호수)"
+                      value={offlinePostalDetailAddr}
+                      onChange={(e) => setOfflinePostalDetailAddr(e.target.value)}
+                      className="col-span-2 px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="우편번호"
+                      value={offlinePostcode}
+                      onChange={(e) => setOfflinePostcode(e.target.value)}
+                      className="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    배송 시 요청사항 (선택)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 부재 시 문 앞 보관, 경비실 보관 등"
+                    value={offlineNotes}
+                    onChange={(e) => setOfflineNotes(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <p className="text-[11px] text-indigo-700 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+                  ※ 등기우편 발송 시 우체국 등기번호(배송추적)를 카카오톡 또는 문자로 안내해 드립니다.
+                </p>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       <SignaturePadModal
         open={padOpen}
