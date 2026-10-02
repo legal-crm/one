@@ -467,12 +467,12 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                             >
-                                {tab === 'overview' && '종합 분석'}
-                                {tab === 'assets' && '재산·가구'}
-                                {tab === 'debts' && '소득·채무'}
+                                {tab === 'overview' && '한눈에 보기'}
+                                {tab === 'assets' && '재산·가족'}
+                                {tab === 'debts' && '소득·빚'}
                                 {tab === 'statistics' && '나의 위치'}
-                                {tab === 'simulation' && '시뮬레이션'}
-                                {tab === 'checklist' && '변호사 가이드'}
+                                {tab === 'simulation' && '전후 비교'}
+                                {tab === 'checklist' && '궁금한 것들'}
                             </button>
                         ))}
                     </div>
@@ -495,7 +495,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     {viewerRole === 'client' && (
                                         <section aria-labelledby="rehab-summary-title" className="rounded-2xl border border-brand/15 bg-white p-4 sm:p-5 shadow-sm space-y-4">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <h2 id="rehab-summary-title" className="text-sm font-bold text-slate-900">결과 요약</h2>
+                                                <h2 id="rehab-summary-title" className="text-sm font-bold text-slate-900">내 상황 요약</h2>
                                                 <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-xs font-bold ${
                                                     result.status === 'POSSIBLE'
                                                         ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -508,15 +508,15 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
                                                 <div className="col-span-2 sm:col-span-1 rounded-xl bg-brand-light px-2 py-3">
-                                                    <div className="text-xs font-semibold text-slate-600">예상 월 변제금</div>
+                                                    <div className="text-xs font-semibold text-slate-600">매달 갚을 금액</div>
                                                     <div className="mt-1 text-lg font-extrabold text-brand whitespace-nowrap">{Math.round(result.monthlyPayment).toLocaleString()}원</div>
                                                 </div>
                                                 <div className="rounded-xl bg-slate-50 px-2 py-3">
-                                                    <div className="text-xs font-semibold text-slate-600">변제 기간</div>
+                                                    <div className="text-xs font-semibold text-slate-600">갚는 기간</div>
                                                     <div className="mt-1 text-base sm:text-lg font-extrabold text-slate-900 whitespace-nowrap">{result.repaymentMonths}개월</div>
                                                 </div>
                                                 <div className="rounded-xl bg-slate-50 px-2 py-3">
-                                                    <div className="text-xs font-semibold text-slate-600">예상 감면율</div>
+                                                    <div className="text-xs font-semibold text-slate-600">빚 줄어드는 비율</div>
                                                     <div className="mt-1 text-base sm:text-lg font-extrabold text-slate-900 whitespace-nowrap">{result.debtReductionRate}%</div>
                                                 </div>
                                             </div>
@@ -561,21 +561,21 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         </div>
                                         <div className="flex flex-col justify-center space-y-2.5 pl-0 md:pl-2">
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-slate-500 dark:text-slate-400 font-medium">총 채무액</span>
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">지금 갚아야 할 빚</span>
                                                 <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(userInput.totalDebt)}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-slate-500 dark:text-slate-400 font-medium">예상 실상환액</span>
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">실제로 갚을 금액</span>
                                                 <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(result.totalRepayment)}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs border-t border-slate-100 dark:border-slate-800 pt-2.5">
-                                                <span className="text-slate-500 dark:text-slate-400 font-medium">예상 월 변제금</span>
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">매달 갚을 금액</span>
                                                 <span className="font-extrabold text-brand text-sm">
                                                     <CountUp end={result.monthlyPayment} delay={0.2} formatter={currencyFormatter} suffix="원" />
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-slate-500 dark:text-slate-400 font-medium">변제 기간</span>
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">갚는 기간</span>
                                                 <span className="font-bold text-slate-900 dark:text-white">{result.repaymentMonths}개월</span>
                                             </div>
                                         </div>
@@ -693,12 +693,12 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-3">
                                         <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
                                             <BarChart3 className="w-3.5 h-3.5 text-brand" />
-                                            회생 전/후 비교
+                                            지금 vs 회생 후 비교
                                         </h3>
                                         <div className="space-y-3">
                                             <div>
                                                 <div className="flex justify-between text-xs font-medium mb-1">
-                                                    <span className="text-slate-500 dark:text-slate-400">현재 월 부담 (36개월·이자 포함)</span>
+                                                    <span className="text-slate-500 dark:text-slate-400">😣 지금 매달 갚아야 할 돈 (이자 포함)</span>
                                                     <span className="text-red-600 dark:text-red-400 font-extrabold">{formatCurrency(result.currentMonthlyBurden)}</span>
                                                 </div>
                                                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
@@ -712,7 +712,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div>
                                                 <div className="flex justify-between text-xs font-medium mb-1">
-                                                    <span className="text-slate-500 dark:text-slate-400">회생 후 월 변제금 ({result.repaymentMonths}개월)</span>
+                                                    <span className="text-slate-500 dark:text-slate-400">😊 회생 후 매달 갚을 돈 ({result.repaymentMonths}개월)</span>
                                                     <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{formatCurrency(result.monthlyPayment)}</span>
                                                 </div>
                                                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
@@ -726,17 +726,17 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div className="grid grid-cols-3 gap-2 mt-2">
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg text-center">
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">월 절약액</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">매달 아끼는 돈</div>
                                                     <div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
                                                         {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))}
                                                     </div>
                                                 </div>
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg text-center">
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">예상 감면액</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">갚지 않아도 되는 돈</div>
                                                     <div className="text-sm font-extrabold text-brand mt-0.5">{formatCurrency(result.totalDebtReduction)}</div>
                                                 </div>
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg text-center">
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">감소율</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">줄어드는 비율</div>
                                                     <div className="text-sm font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">{result.debtReductionRate}%</div>
                                                 </div>
                                             </div>
@@ -750,16 +750,16 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="p-4 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 border-b border-slate-200 dark:border-slate-800">
                                             <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
                                                 <Users className="w-3.5 h-3.5 text-brand" />
-                                                부양가족 & 생계비 산정 근거
+                                                내 가족 구성 & 생활비 계산
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                                법원이 인정하는 가구원 수에 따라 생계비가 결정되고, 소득에서 생계비를 뺀 나머지가 월 변제금이 됩니다.
+                                                가족이 몇 명인지에 따라 법원이 보장하는 생활비가 정해져요. 월급에서 이 생활비를 빼고 남은 돈이 매달 갚을 변제금이에요.
                                             </p>
                                         </div>
                                         <div className="p-4 space-y-3">
                                             {/* 가구원 수 산정 */}
                                             <div className="space-y-2">
-                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">📋 법원 인정 가구원 수: <span className="text-brand">{userInput.familySize}명</span></div>
+                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">👨‍👩‍👧 법원이 인정하는 우리 가족 수: <span className="text-brand">{userInput.familySize}명</span></div>
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 space-y-1.5">
                                                     <div className="flex justify-between text-xs">
                                                         <span className="text-slate-500 dark:text-slate-400">본인</span>
@@ -802,13 +802,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                             {/* 생계비 계산 흐름 */}
                                             <div className="space-y-2">
-                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">📊 생계비 → 가용소득 계산 흐름</div>
+                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">📊 월급에서 변제금이 나오는 과정</div>
                                                 <div className="space-y-0">
                                                     {/* Step 1 */}
                                                     <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 rounded-t-lg p-2.5 border border-slate-200 dark:border-slate-700">
                                                         <div className="w-5 h-5 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</div>
                                                         <div className="flex-1 text-xs">
-                                                            <span className="text-slate-500 dark:text-slate-400">기본 생계비 ({userInput.familySize}인 가구 기준)</span>
+                                                            <span className="text-slate-500 dark:text-slate-400">법원이 보장하는 최소 생활비 ({userInput.familySize}인 가구)</span>
                                                         </div>
                                                         <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(result.baseLivingCost)}</div>
                                                     </div>
@@ -817,7 +817,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         <div className="flex items-center gap-2 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 border-x border-slate-200 dark:border-slate-700">
                                                             <div className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">2</div>
                                                             <div className="flex-1 text-xs">
-                                                                <span className="text-slate-500 dark:text-slate-400">추가 생계비 (주거/의료/교육)</span>
+                                                                <span className="text-slate-500 dark:text-slate-400">추가로 인정받는 비용 (월세/병원/교육)</span>
                                                             </div>
                                                             <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(result.additionalLivingCost)}</div>
                                                         </div>
@@ -826,7 +826,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                     <div className="flex items-center gap-2 bg-blue-50/50 dark:bg-blue-950/20 p-2.5 border-x border-slate-200 dark:border-slate-700">
                                                         <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{result.additionalLivingCost > 0 ? '3' : '2'}</div>
                                                         <div className="flex-1 text-xs">
-                                                            <span className="text-slate-500 dark:text-slate-400">총 인정 생계비</span>
+                                                            <span className="text-slate-500 dark:text-slate-400">법원이 보장하는 총 생활비</span>
                                                         </div>
                                                         <div className="text-xs font-bold text-blue-600 dark:text-blue-400">{formatCurrency(result.recognizedLivingCost)}</div>
                                                     </div>
@@ -853,10 +853,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-b border-slate-200 dark:border-slate-800">
                                             <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
                                                 <Home className="w-3.5 h-3.5 text-emerald-600" />
-                                                청산가치 산정 근거
+                                                내 재산은 얼마로 잡히나?
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                                만약 파산한다면 채권자가 받을 수 있는 금액입니다. 회생에서는 이 금액 이상을 갚아야 법원이 승인합니다.
+                                                내가 가진 재산을 전부 팔면 얼마인지 계산한 거예요. 회생에서는 이 금액보다 더 많이 갚아야 법원이 인정해줘요.
                                             </p>
                                         </div>
                                         <div className="p-4 space-y-3">
@@ -865,7 +865,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 {/* 본인 재산 */}
                                                 {(userInput.myAssets || 0) > 0 && (
                                                     <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-t-lg border border-slate-200 dark:border-slate-700">
-                                                        <div className="text-xs text-slate-600 dark:text-slate-300">💰 본인 재산 (예금·보험·차량 등)</div>
+                                                        <div className="text-xs text-slate-600 dark:text-slate-300">💰 내 재산 (예금·보험·차량 등)</div>
                                                         <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(userInput.myAssets)}</div>
                                                     </div>
                                                 )}
@@ -878,7 +878,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         </div>
                                                         {result.exemptDeposit > 0 && (
                                                             <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400">
-                                                                <span>　└ 면제 보증금 (주거 보호)</span>
+                                                                <span>　└ 보호되는 보증금 (법으로 지켜줘요!)</span>
                                                                 <span className="font-bold">−{formatCurrency(result.exemptDeposit)}</span>
                                                             </div>
                                                         )}
@@ -914,13 +914,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 )}
                                                 {/* 합계 */}
                                                 <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-b-lg border border-emerald-200 dark:border-emerald-800/50">
-                                                    <div className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">📊 총 청산가치</div>
+                                                    <div className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">📊 법원이 계산한 내 재산 합계</div>
                                                     <div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(result.liquidationValue)}</div>
                                                 </div>
                                             </div>
                                             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg p-2.5">
                                                 <div className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
-                                                    ⚖️ <strong>청산가치 보장 원칙</strong>: 회생에서 갚는 총액({formatCurrency(result.totalRepayment)})이 청산가치({formatCurrency(result.liquidationValue)})보다 {result.totalRepayment >= result.liquidationValue ? <span className="text-emerald-600 font-bold">많아 조건을 충족</span> : <span className="text-red-600 font-bold">적어 기간 연장 필요</span>}합니다.
+                                                    ⚖️ <strong>쉽게 말하면</strong>: 내 재산({formatCurrency(result.liquidationValue)})보다 3년간 갚을 총액({formatCurrency(result.totalRepayment)})이 더 {result.totalRepayment >= result.liquidationValue ? <span className="text-emerald-600 font-bold">많아서 OK</span> : <span className="text-red-600 font-bold">적어서 기간 연장이 필요</span>}해요.
                                                 </div>
                                             </div>
                                         </div>
@@ -931,10 +931,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-b border-slate-200 dark:border-slate-800">
                                             <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
                                                 <Calculator className="w-3.5 h-3.5 text-amber-600" />
-                                                변제기간 결정 근거
+                                                갚는 기간은 어떻게 정해지나?
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                                변제기간은 기본 36개월이며, 청산가치에 따라 48~60개월까지 연장될 수 있습니다.
+                                                기본은 3년(36개월)이에요. 재산이 많으면 기간이 4~5년으로 늘어날 수 있어요.
                                             </p>
                                         </div>
                                         <div className="p-4 space-y-3">
@@ -1450,10 +1450,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-2">
                                         <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                                             <Shield className="w-4 h-4 text-brand" />
-                                            금지명령/중지명령 인용 가능성
+                                            독촉 전화가 멈추나요?
                                         </h4>
                                         <div className="flex justify-between items-center py-2.5">
-                                            <span className="text-sm font-semibold text-slate-900">금지명령 신청 시 참고</span>
+                                            <span className="text-sm font-semibold text-slate-900">신청하면 보통 3~7일 안에 결정돼요</span>
                                             <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
                                                 userInput.riskFactor === 'recent_loan' ? 'bg-amber-500/10 text-amber-700' : 'bg-slate-100 text-slate-700'
                                             }`}>
@@ -1461,7 +1461,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </span>
                                         </div>
                                         <p className="text-[13px] text-slate-500 leading-relaxed">
-                                            ※ 개인회생 신청과 함께 금지명령을 신청할 수 있으며, 법원이 인용하면 개시결정 전까지 강제집행·추심 행위가 금지됩니다. 인용 여부와 소요 기간은 사건과 법원에 따라 다릅니다.
+                                            신청과 동시에 금지명령을 신청하면, 법원이 허가할 경우 모든 독촉 전화·문자·방문이 법적으로 금지됩니다. 금지명령이 나오기 전까지는 독촉이 올 수 있으니 당황하지 마세요.
                                         </p>
                                     </div>
 
@@ -1469,12 +1469,12 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                             <FileText className="w-4 h-4 text-emerald-500" />
-                                            변호사용 실무 쟁점 체크리스트
+                                            상담 시 확인하면 좋은 것들
                                         </h4>
                                         <ul className="space-y-2.5 text-xs text-slate-600">
                                             <li className="flex gap-2 items-start">
                                                 <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                                <span>청산가치 보장 원칙 충족 여부 확인 필요: 가용소득 기반 변제액이 청산가치 {formatCurrency(result.liquidationValue)}보다 많은지 계산 검토</span>
+                                                <span>내 재산보다 3년간 갚을 금액이 더 큰지 변호사와 확인해 보세요 (청산가치 {formatCurrency(result.liquidationValue)})</span>
                                             </li>
                                             {userInput.spouseAssets !== undefined && userInput.spouseAssets > 0 && (
                                                 <li className="flex gap-2 items-start">
@@ -1485,24 +1485,24 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             {userInput.riskFactor === 'recent_loan' && (
                                                 <li className="flex gap-2 items-start">
                                                     <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                                    <span>최근 채무 소명 대책: 신규 대출금의 기존 채무 상환(대환) 사용 내역 및 실질 생활비 소요 내역 증빙 준비</span>
+                                                    <span>최근에 받은 대출이 있다면 그 돈을 어디에 썼는지 통장 거래내역으로 보여줄 수 있도록 준비하세요</span>
                                                 </li>
                                             )}
                                             {userInput.riskFactor === 'investment' && (
                                                 <li className="flex gap-2 items-start">
                                                     <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                                    <span>투자 손실 준칙 적용: 관할 법원({result.courtName})의 서울/수원/부산 준칙 적용 및 투자 손실금의 청산가치 제외 법리 구성 검토</span>
+                                                    <span>주식·코인 손실이 있다면, 관할 법원({result.courtName})에서 이걸 어떻게 보는지 변호사와 꼭 확인하세요. 법원마다 다르게 판단해요.</span>
                                                 </li>
                                             )}
                                             {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
                                                 <li className="flex gap-2 items-start">
                                                     <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                                    <span>세금 체납 체납 조정: 우선권 채무액({formatCurrency(userInput.priorityDebt)})에 대한 변제 개월 수(최대 18개월 이내 우선 변제) 및 가용 소득 배정 밸런스 점검</span>
+                                                    <span>세금 체납({formatCurrency(userInput.priorityDebt)})이 있어요. 세금은 먼저 갚아야 하므로 변호사와 납부 계획을 상의하세요.</span>
                                                 </li>
                                             )}
                                             <li className="flex gap-2 items-start">
                                                 <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                                <span>추가 생계비 소명: {userInput.rentCost && userInput.rentCost > 0 ? '추가 주거비' : ''} {userInput.medicalCost && userInput.medicalCost > 0 ? '정기 의료비' : ''} {userInput.educationCost && userInput.educationCost > 0 ? '추가 교육비' : ''} 증빙(임대차 계약서, 의료 처방전, 학비 영수증) 제출 대기</span>
+                                                <span>추가 생활비를 인정받으려면 증빙서류를 준비하세요: {userInput.rentCost && userInput.rentCost > 0 ? '임대차 계약서 ' : ''}{userInput.medicalCost && userInput.medicalCost > 0 ? '병원 영수증 ' : ''}{userInput.educationCost && userInput.educationCost > 0 ? '학비 영수증 ' : ''}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -1529,7 +1529,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        2025년 서울회생법원 통계 기준 나의 위치 (참고용)
+                                        다른 분들과 비교하면 나는 어디쯤? (2025년 서울회생법원 통계 참고)
                                     </h3>
 
                                     {/* 소득 비교 */}
@@ -1643,7 +1643,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        회생 전/후 월 가계 시뮬레이션
+                                        매달 생활비, 어떻게 달라지나?
                                     </h3>
 
                                     {/* 회생 전 */}
@@ -1775,10 +1775,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                                     {/* 요약 절약 카드 */}
                                     <div className="bg-brand/10 border border-brand/20 p-4 rounded-xl text-center">
-                                        <div className="text-[12px] text-slate-600 mb-1">{result.repaymentMonths}개월 변제계획 이행 후</div>
-                                        <div className="text-lg font-bold text-brand">변제 완료 시 면책 신청 가능</div>
+                                        <div className="text-[12px] text-slate-600 mb-1">{result.repaymentMonths}개월 동안 꾸준히 갚으면</div>
+                                        <div className="text-lg font-bold text-brand">남은 빚, 법적으로 갚지 않아도 됩니다</div>
                                         <div className="text-[13px] text-slate-500 mt-1">
-                                            예상 감면 {formatCurrency(result.totalDebtReduction)} · 월 부담 {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))} 감소 예상
+                                            약 {formatCurrency(result.totalDebtReduction)} 감면 · 매달 {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))} 절약 예상
                                         </div>
                                     </div>
 
