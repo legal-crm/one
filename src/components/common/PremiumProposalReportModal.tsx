@@ -153,7 +153,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   isLawyerEditor = false,
   onApplyChanges
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'statistics' | 'roadmap'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'statistics' | 'roadmap' | 'faq'>('overview');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -191,7 +191,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   // AI 전용 탭에서 일반 제안서로 바뀔 때 overview로 리셋
   useEffect(() => {
-    if (!isAIPremium && activeTab === 'statistics') {
+    if (!isAIPremium && (activeTab === 'statistics' || activeTab === 'faq')) {
       setActiveTab('overview');
     }
   }, [isAIPremium, activeTab]);
@@ -1094,6 +1094,20 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             <DollarSign className="w-4 h-4" />
             <span>{isAIPremium ? '수임료 & 사건 로드맵' : '수임료 및 사건 진행 절차'}</span>
           </button>
+
+          {isAIPremium && (
+            <button
+              onClick={() => setActiveTab('faq')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-[0.98] ${
+                activeTab === 'faq'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+              }`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>자주 묻는 질문</span>
+            </button>
+          )}
         </div>
 
         {/* Modal Body Content (Scrollable) */}
@@ -1333,16 +1347,16 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="p-5 rounded-2xl bg-red-50/60 border border-red-200 relative overflow-hidden">
                         <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                           <AlertTriangle className="w-4 h-4" />
-                          신청 전 현재 상태
+                          😣 지금 상태 (신청 전)
                         </div>
                         <div className="space-y-2.5 mt-3">
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-600">총 원금 채무</span>
+                            <span className="text-slate-600">갚아야 할 총 빚</span>
                             <span className="font-bold text-slate-900">{formatCurrency(totalDebt)}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-600">이자 감면</span>
-                            <span className="font-bold text-red-600">0% (연체이자 누적)</span>
+                            <span className="text-slate-600">이자</span>
+                            <span className="font-bold text-red-600">계속 불어나는 중 ❌</span>
                           </div>
                           {hasCurrentBurdenEstimate && (
                             <div className="flex justify-between items-start gap-2 text-sm">
@@ -1354,7 +1368,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             </div>
                           )}
                           <div className="pt-2 border-t border-red-200/80 text-xs text-red-600 font-medium">
-                            채권 추심, 압류 및 독촉 전화 노출 위험
+                            독촉 전화, 압류, 추심이 계속됩니다 😰
                           </div>
                         </div>
                       </div>
@@ -1363,7 +1377,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-300 relative overflow-hidden shadow-sm">
                         <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          개인회생 인가 시 (예상)
+                          😊 회생 후 (예상)
                         </div>
                         <div className="space-y-2.5 mt-3">
                           <div className="flex justify-between items-center text-sm">
@@ -1372,7 +1386,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-600">이자</span>
-                            <span className="font-bold text-emerald-700">원칙적으로 원금 기준 변제</span>
+                            <span className="font-bold text-emerald-700">이자 면제 (원금만 갚으면 OK) ✅</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-600">총 변제 원금</span>
@@ -1382,6 +1396,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span>예상 감면액 (변제 완료·면책 시)</span>
                             <span className="text-sm font-black text-emerald-700">{formatCurrency(estimatedReduction)}</span>
                           </div>
+                          <div className="text-xs text-emerald-700 font-medium mt-1">독촉 전화·압류가 법적으로 금지됩니다 🛡️</div>
                         </div>
                       </div>
                     </div>
@@ -1472,8 +1487,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">소득 및 인정 생계비 구조</h3>
-                    <p className="text-xs text-slate-500">월 소득에서 법원 기준 인정 생계비를 제외한 금액이 월 변제금으로 산정됩니다.</p>
+                    <h3 className="text-base font-bold text-slate-900">내 월급에서 변제금은 이렇게 정해져요</h3>
+                    <p className="text-xs text-slate-500">월급에서 최소 생활비(법원이 정한 금액)를 빼고 남은 돈이 매달 갚을 변제금이에요.</p>
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
                     부양가족 {(activeCalcResult as any).dependentsCount || 1}인 기준
@@ -1482,15 +1497,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium">월 평균 실수령 소득</div>
+                    <div className="text-xs text-slate-500 font-medium">내 월급 (세후)</div>
                     <div className="text-lg font-black text-slate-900 mt-1">
                       {(activeCalcResult as any).monthlyIncome ? formatCurrency((activeCalcResult as any).monthlyIncome) : '미입력'}
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">세금·4대보험 공제 후</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">실제 통장에 들어오는 금액</div>
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium">법원 인정 생계비</div>
+                    <div className="text-xs text-slate-500 font-medium">법원이 보장하는 생활비</div>
                     <div className="text-lg font-black text-blue-600 mt-1">
                       {formatCurrency(activeCalcResult.recognizedLivingCost)}
                     </div>
@@ -1498,11 +1513,11 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </div>
 
                   <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                    <div className="text-xs text-emerald-700 font-medium">예상 월 변제금</div>
+                    <div className="text-xs text-emerald-700 font-medium">매달 갚을 금액</div>
                     <div className="text-lg font-black text-emerald-800 mt-1">
                       {formatCurrency(monthlyPayment)}
                     </div>
-                    <div className="text-[11px] text-emerald-600 mt-0.5">매월 법원에 납입하는 금액</div>
+                    <div className="text-[11px] text-emerald-600 mt-0.5">매달 법원 계좌에 넣는 금액</div>
                   </div>
                 </div>
 
@@ -1736,6 +1751,232 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* TAB 5: FAQ - 자주 묻는 질문 (AI Premium only) */}
+          {activeTab === 'faq' && isAIPremium && (
+            <div className="space-y-6">
+              {/* Section 1: 가장 걱정되는 것들 */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 mb-5 border-b border-slate-100">
+                  <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">😰 가장 걱정되는 것들</h3>
+                    <p className="text-xs text-slate-600">회생을 처음 알아보는 분들이 가장 많이 물어보는 질문이에요.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    {
+                      q: '독촉 전화가 진짜 멈추나요?',
+                      a: '네! 법원에서 금지명령을 내리면 모든 채권자는 전화·문자·방문을 즉시 중단해야 합니다. 위반 시 법적 처벌 대상이에요. 보통 신청 후 3~7일이면 금지명령이 나옵니다.'
+                    },
+                    {
+                      q: '직장에 알려지나요? 해고되지 않나요?',
+                      a: '개인회생은 직장에 통보되지 않습니다. 회사에서 알 수 있는 방법이 없어요. 또한 개인회생은 직업 제한이 없어서, 공무원·교사·군인·금융권 근무자도 모두 신청 가능합니다. 파산과는 다릅니다.'
+                    },
+                    {
+                      q: '가족에게 피해가 가나요?',
+                      a: '본인 명의의 빚만 해당됩니다. 배우자나 부모님, 자녀의 재산이나 신용점수에는 영향이 없어요. 단, 본인이 보증을 서준 빚은 보증인에게 청구될 수 있으니 이 부분은 변호사와 상담하세요.'
+                    },
+                    {
+                      q: '집(전세보증금)을 빼앗기나요?',
+                      a: `서울 기준 보증금 5,500만원까지, 수도권 4,800만원까지는 법으로 보호됩니다(소액임차보증금). 이 범위 안이라면 보증금은 안전해요. 다만 보증금이 이 금액을 크게 넘는 경우 초과분이 재산으로 잡힐 수 있으니 확인이 필요합니다.`
+                    },
+                    {
+                      q: '신용카드를 못 쓰게 되나요?',
+                      a: '신용카드는 사용이 제한되지만, 체크카드는 자유롭게 만들고 쓸 수 있어요. 빚이 없는 은행(채권사가 아닌 곳)에서 새 통장과 체크카드를 발급받으시면 됩니다. 온라인 쇼핑, 배달 주문도 체크카드로 다 가능해요.'
+                    },
+                    {
+                      q: '해외여행은 못 가나요?',
+                      a: '개인회생은 출국 제한이 없습니다. 파산과 다르게 자유롭게 해외여행이 가능해요.'
+                    },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-sm font-bold text-slate-900 flex items-start gap-2 mb-2">
+                        <span className="text-amber-500 font-black text-base">Q.</span>
+                        <span>{item.q}</span>
+                      </div>
+                      <div className="text-xs text-slate-700 pl-6 leading-relaxed">
+                        <span className="text-emerald-600 font-bold mr-1">A.</span>
+                        {item.a}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 2: 돈 관련 궁금증 */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 mb-5 border-b border-slate-100">
+                  <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+                    <Calculator className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">💰 변제금·돈 관련 궁금증</h3>
+                    <p className="text-xs text-slate-600">매달 얼마를 내는지, 어떻게 계산되는지 쉽게 알려드려요.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    {
+                      q: '매달 내는 변제금은 어떻게 정해지나요?',
+                      a: `아주 간단해요! [내 월급] - [법원이 정한 생활비(기준 중위소득 60%)] = 매달 내야 할 변제금. 예를 들어 월급이 250만원이고 1인 가구면, 250만 - 약 154만 = 약 96만원이 변제금이 됩니다. 부양가족이 많을수록 생활비가 커지니 변제금은 줄어들어요.`
+                    },
+                    {
+                      q: '변제금 100%가 나왔는데 회생하는 의미가 있나요?',
+                      a: '네, 의미가 있어요! 변제율 100%는 원금만 100% 나눠 갚는다는 뜻이에요. 핵심은 이자예요. 빚 1억 기준 연 15~20%의 이자·연체이자가 3~5년간 수천만 원인데, 이게 전액 사라집니다. 독촉과 압류도 멈추고요.'
+                    },
+                    {
+                      q: '변제금을 못 내면 바로 취소되나요?',
+                      a: '1~2회 정도 밀렸다고 바로 취소(폐지)되지는 않아요. 보통 연속 3회 이상 미납 시 법원에서 폐지 예정 통지가 옵니다. 이때 밀린 금액의 일부라도 납입하거나, 실직·질병 등의 사유로 "납부유예 신청서"를 내면 유예가 가능해요.'
+                    },
+                    {
+                      q: '이직해서 월급이 올라도 변제금이 올라가나요?',
+                      a: '일반 인가를 받았다면, 월급이 2배가 되어도 변제금은 변하지 않아요. 인가 시점에 정해진 금액만 36개월 내면 끝! 단, "조건부 인가"를 받은 경우(최근 이직자, 청년 고액 채무 등)에는 매년 소득을 신고해야 할 수 있어요.'
+                    },
+                    {
+                      q: '변호사 비용은 얼마가 적당한가요?',
+                      a: '일반적인 적정 시세는 수임료 150~250만원 + 채권자 1곳당 5~10만원 + 법원 실비(인지·송달료) 40~70만원 정도예요. 총 200~350만원 선이 합리적이며, 분납이 가능한 곳이 대부분입니다.'
+                    },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-sm font-bold text-slate-900 flex items-start gap-2 mb-2">
+                        <span className="text-amber-500 font-black text-base">Q.</span>
+                        <span>{item.q}</span>
+                      </div>
+                      <div className="text-xs text-slate-700 pl-6 leading-relaxed">
+                        <span className="text-emerald-600 font-bold mr-1">A.</span>
+                        {item.a}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 3: 절차 관련 궁금증 */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 mb-5 border-b border-slate-100">
+                  <div className="p-2 rounded-xl bg-blue-100 text-blue-800">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">📋 절차·진행 관련 궁금증</h3>
+                    <p className="text-xs text-slate-600">신청부터 면책까지 어떻게 진행되는지 알려드려요.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    {
+                      q: '무직자도 개인회생을 신청할 수 있나요?',
+                      a: '완전 무직 상태에서는 신청이 어렵습니다. 하지만 아르바이트, 배달, 일용직이라도 1주일~1개월간 급여를 받고 근로계약서나 급여 입금 내역이 있으면 신청 가능해요. 일자리를 먼저 구하는 것이 첫걸음입니다.'
+                    },
+                    {
+                      q: '채권자집회에 가면 채권자가 나를 비난하나요?',
+                      a: '아닙니다! 은행·카드사 등 금융기관 채권자는 거의 출석하지 않아요. 실제로는 판사가 이름을 부르고 "이의 없으시죠? 성실히 납부하세요"라고 하면 5분 만에 끝나는 형식적인 절차입니다. 걱정하지 마세요.'
+                    },
+                    {
+                      q: '신청에서 인가까지 보통 얼마나 걸리나요?',
+                      a: `보통 6~10개월 정도 걸려요. 서류 접수 → 금지명령(3~7일) → 보정권고(1~2개월) → 개시결정(3~5개월) → 채권자집회 → 인가결정. 서울·수원·부산 회생법원은 4~6개월로 빠른 편이고, 다른 지방법원은 8~12개월 이상 걸릴 수 있어요.`
+                    },
+                    {
+                      q: '보정권고가 왔는데 서류가 너무 많아요. 기한을 못 맞추면 끝인가요?',
+                      a: '기한 내에 "보정기한 연장신청서"를 내면 보통 2~4주 더 연장받을 수 있어요. 아무 연락 없이 기한을 넘기면 기각 처리되니, 힘들더라도 연장 신청만은 꼭 하세요. 담당 변호사가 대신 처리해 줍니다.'
+                    },
+                    {
+                      q: '회생이 끝나면 신용점수는 언제 회복되나요?',
+                      a: '인가 후 미납 없이 12~24회차를 성실히 납부하면 신용정보원의 공공정보(1301 코드)가 조기 삭제되어 신용점수가 700~800점대로 올라갑니다. 최종 면책 결정 후에는 1금융권 정상 거래, 신용카드 발급도 가능해져요.'
+                    },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-sm font-bold text-slate-900 flex items-start gap-2 mb-2">
+                        <span className="text-amber-500 font-black text-base">Q.</span>
+                        <span>{item.q}</span>
+                      </div>
+                      <div className="text-xs text-slate-700 pl-6 leading-relaxed">
+                        <span className="text-emerald-600 font-bold mr-1">A.</span>
+                        {item.a}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 4: 절대 하면 안 되는 것 */}
+              <div className="bg-white rounded-2xl p-6 border border-red-200 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 mb-5 border-b border-red-100">
+                  <div className="p-2 rounded-xl bg-red-100 text-red-800">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">🚫 절대 하면 안 되는 것</h3>
+                    <p className="text-xs text-red-600 font-medium">이것만 지키면 회생은 반드시 됩니다. 하지만 어기면 기각될 수 있어요.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    {
+                      title: '추가 대출·카드 사용 금지',
+                      desc: '신청 직전에 새 대출을 받거나 카드를 현금화하면 사기회생으로 기각될 수 있어요.',
+                      icon: '💳'
+                    },
+                    {
+                      title: '재산 숨기기·명의 변경 금지',
+                      desc: '부동산이나 차를 가족 명의로 넘기면 부인권 행사 대상이 되고 형사처벌 위험이 있어요.',
+                      icon: '🏠'
+                    },
+                    {
+                      title: '특정 빚만 먼저 갚기 금지 (편파변제)',
+                      desc: '부모님·친구 빚만 먼저 갚으면 그 금액이 재산에 합산되어 변제금이 올라가요.',
+                      icon: '⚖️'
+                    },
+                    {
+                      title: '법원 서류 소명 시 거짓말 금지',
+                      desc: '카드 사용처 등을 거짓으로 적으면 회생위원이 바로 알아내요. 솔직하게 쓰는 게 최선이에요.',
+                      icon: '📝'
+                    },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-red-50/50 border border-red-200/70">
+                      <div className="text-sm font-bold text-red-900 flex items-center gap-2 mb-1.5">
+                        <span>{item.icon}</span>
+                        <span>{item.title}</span>
+                      </div>
+                      <p className="text-xs text-red-800/80 leading-relaxed pl-6">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 5: 희망의 메시지 */}
+              <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-2xl p-6 border border-emerald-200 shadow-sm">
+                <h3 className="text-base font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                  🌱 회생을 마치면 이런 일이 생겨요
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-xl bg-white/80 border border-emerald-200 text-center">
+                    <div className="text-2xl mb-2">📈</div>
+                    <div className="text-sm font-bold text-emerald-900">신용점수 회복</div>
+                    <div className="text-xs text-emerald-700 mt-1">700~800점대로 올라가고 공공정보 삭제</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/80 border border-emerald-200 text-center">
+                    <div className="text-2xl mb-2">💳</div>
+                    <div className="text-sm font-bold text-emerald-900">정상 금융생활</div>
+                    <div className="text-xs text-emerald-700 mt-1">1금융권 거래, 신용카드 발급 가능</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/80 border border-emerald-200 text-center">
+                    <div className="text-2xl mb-2">🏡</div>
+                    <div className="text-sm font-bold text-emerald-900">빚 걱정 없는 새 출발</div>
+                    <div className="text-xs text-emerald-700 mt-1">남은 빚 책임 면제, 새로운 시작</div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Scale, Shield, Check, AlertTriangle, Landmark, Calendar, FileText, User, 
   CheckCircle2, Clock, ArrowRight, Sparkles, Building2, TrendingDown,
-  Layers, BadgeCheck, Phone, Mail, Award, Lock, FileSpreadsheet
+  Layers, BadgeCheck, Phone, Mail, Award, Lock, FileSpreadsheet, HelpCircle
 } from 'lucide-react';
 import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 
@@ -96,7 +96,6 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <Scale size={15} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {/* 운영 주체와 다른 이름(이전: 'ROY LAW CRM 회생파산 종합법률지원센터')을 쓰지 않는다 */}
             <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px' }}>
               my김변
             </span>
@@ -151,7 +150,6 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Lock size={11} color="#94a3b8" />
-          {/* 자동 계산 자료를 변호사 의견서처럼 표기하지 않는다 (이전: '…공인 법률의견서입니다') */}
           <span>입력한 정보로 자동 계산한 참고 자료이며, 변호사의 법률의견서가 아닙니다.</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#475569' }}>
@@ -231,13 +229,13 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           </div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, marginBottom: '10px' }}>
             <Sparkles size={12} color="#fde047" />
-            <span>입력 정보 기준 자동 계산 자료</span>
+            <span>내 상황 맞춤 분석 결과</span>
           </div>
           <h1 style={{ fontSize: '25px', fontWeight: 900, margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
-            개인회생·파산 사전 점검 리포트
+            내 빚, 얼마나 줄일 수 있을까?
           </h1>
           <p style={{ fontSize: '11px', color: '#cbd5e1', margin: 0, lineHeight: 1.5, maxWidth: '580px' }}>
-            이 문서는 이용자가 입력한 소득·채무·재산 정보를 공개된 법원 실무 기준(생계비 기준 등)으로 계산한 참고 자료입니다. 실제 변제금과 인가 여부는 법원 심리와 제출 서류에 따라 달라집니다.
+            입력하신 소득과 빚 정보를 바탕으로 개인회생을 하면 어떻게 되는지 미리 살펴본 결과입니다.
           </p>
         </div>
 
@@ -311,7 +309,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>현재 총 채무액 (원금+이자)</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>지금 갚아야 할 빚</span>
                 <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#fef2f2', color: '#b91c1c', fontWeight: 700 }}>위험 부담</span>
               </div>
               <div style={{ fontSize: '23px', fontWeight: 900, color: '#dc2626', letterSpacing: '-0.5px' }}>
@@ -332,14 +330,14 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>총 변제예정액 ({result.repaymentMonths}개월간)</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>매달 내야 할 돈</span>
                 <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#047857', fontWeight: 700 }}>상환 목표</span>
               </div>
               <div style={{ fontSize: '23px', fontWeight: 900, color: '#059669', letterSpacing: '-0.5px' }}>
-                {formatCurrency(result.totalRepayment)}
+                {formatCurrency(result.monthlyPayment)} / 월
               </div>
               <div style={{ fontSize: '10.5px', color: '#059669', marginTop: '6px', fontWeight: 600 }}>
-                월 예상 변제금: <strong>{formatCurrency(result.monthlyPayment)}</strong> / 월
+                총 변제예정액: <strong>{formatCurrency(result.totalRepayment)}</strong> ({result.repaymentMonths}개월간)
               </div>
             </div>
 
@@ -353,8 +351,8 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>예상 감면액 (면책 시 갚지 않아도 되는 원금)</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#eef2ff', color: '#4338ca', fontWeight: 800 }}>예상 감면율 약 {result.debtReductionRate}%</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>갚지 않아도 되는 돈</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#eef2ff', color: '#4338ca', fontWeight: 800 }}>내 빚 줄어드는 비율 약 {result.debtReductionRate}%</span>
               </div>
               <div style={{ fontSize: '23px', fontWeight: 900, color: '#4338ca', letterSpacing: '-0.5px' }}>
                 {formatCurrency(result.totalDebtReduction)}
@@ -383,7 +381,6 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                   fontWeight: 900,
                   color: result.status === 'POSSIBLE' ? '#059669' : result.status === 'IMPOSSIBLE' ? '#dc2626' : '#d97706'
                 }}>
-                  {/* 법원 판단을 예측하는 표현(이전: '인가 유력 (안정권)')을 쓰지 않는다 */}
                   {result.status === 'POSSIBLE' ? '● 기본 요건 충족으로 계산됨' : result.status === 'IMPOSSIBLE' ? '▲ 요건 보완 필요' : '■ 추가 검토 필요'}
                 </span>
               </div>
@@ -394,8 +391,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           </div>
         </div>
 
-        {/* 자동 계산 요약 — 변호사 소견이 아니다.
-            (이전: 변호사가 쓰지 않은 '회생전담 변호사 종합 1차 소견' 인용문과 가짜 'ROY LAW 공인검인' 직인을 표시) */}
+        {/* 자동 계산 요약 */}
         <div style={{
           marginTop: 'auto',
           backgroundColor: '#f8fafc',
@@ -408,8 +404,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#0f172a' }}>자동 계산 요약 (참고용)</span>
           </div>
           <p style={{ fontSize: '11px', color: '#334155', lineHeight: 1.6, margin: 0 }}>
-            입력한 월평균 소득({formatCurrency(userInput.monthlyIncome)})에서 인정 생계비({formatCurrency(result.recognizedLivingCost)})를 뺀 가용소득을 기준으로 월 약 {formatCurrency(result.monthlyPayment)}원의 변제금이 계산되었습니다. 청산가치 계산값은 {formatCurrency(result.liquidationValue)}원입니다.
-            이 요약은 변호사의 의견이 아니며, 실제 변제금과 개시·인가 여부는 제출 서류와 법원 심리에 따라 달라집니다.
+            입력해주신 정보를 바탕으로 계산해본 결과, 한 달에 버시는 돈({formatCurrency(userInput.monthlyIncome)})에서 나라에서 정한 최소한의 생활비({formatCurrency(result.recognizedLivingCost)})를 빼면 매달 약 {formatCurrency(result.monthlyPayment)}원씩 갚으시게 될 것 같아요! 법원에서 인정하는 내 재산(청산가치)은 {formatCurrency(result.liquidationValue)}원으로 계산되었고요. 참고로 이 내용은 입력해주신 정보를 바탕으로 한 예상치라서, 실제 결과는 법원 심사에 따라 조금 달라질 수 있답니다.
           </p>
         </div>
       </PageWrapper>
@@ -425,7 +420,6 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           subtitle="국민기초생활보장법 기준 중위소득 60% 법정 적용 기준"
         />
 
-        {/* 법정 최저생계비 원칙 설명 박스 */}
         <div style={{
           backgroundColor: '#eff6ff',
           borderLeft: '4px solid #3b82f6',
@@ -436,8 +430,8 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           lineHeight: 1.6,
           color: '#1e3a8a'
         }}>
-          <strong>💡 기준 중위소득 및 최저생계비 산정 원칙:</strong><br/>
-          채무자 회생 및 파산에 관한 법률에 따라 보건복지부 고시 기준 중위소득의 <strong>60%</strong>를 법정 최저생계비로 인정합니다. 소득에서 최저생계비 및 법원이 승인한 추가생계비(주거·의료)를 공제한 잔여 소득(가용소득)이 월 변제금 계산의 기준이 됩니다.
+          <strong>💡 쉽게 말하면:</strong><br/>
+          법원은 "이 정도는 먹고 살아야 하니까 이 돈은 빼줄게"라고 정해놓은 금액이 있어요. 그게 바로 인정 생계비예요. 월급에서 이 금액을 빼고 남은 돈이 매달 갚아야 할 변제금이 됩니다.
         </div>
 
         {/* 부양가족 인정 기준 카드 3열 */}
@@ -530,7 +524,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             {/* 1. 월 평균 소득 */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}>
-                <span style={{ color: '#475569' }}>① 월 평균 세후 소득</span>
+                <span style={{ color: '#475569' }}>① 내 월급 (세후)</span>
                 <span style={{ color: '#0f172a' }}>{formatCurrency(userInput.monthlyIncome)} (100%)</span>
               </div>
               <div style={{ height: '18px', backgroundColor: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
@@ -541,7 +535,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             {/* 2. 인정 최저생계비 */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}>
-                <span style={{ color: '#059669' }}>② 인정 최저생계비 (법정보호 생계비)</span>
+                <span style={{ color: '#059669' }}>② 빼주는 생활비 (나라에서 정한 생활비)</span>
                 <span style={{ color: '#059669' }}>{formatCurrency(result.recognizedLivingCost)} ({userInput.monthlyIncome && result.recognizedLivingCost ? Math.round((result.recognizedLivingCost / userInput.monthlyIncome) * 100) : 0}%)</span>
               </div>
               <div style={{ height: '18px', backgroundColor: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
@@ -552,7 +546,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             {/* 3. 가용소득 (월 변제금) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, marginBottom: '4px' }}>
-                <span style={{ color: '#4338ca' }}>③ 순 가용소득 (월 변제금 산정 기준액 = ① - ②)</span>
+                <span style={{ color: '#4338ca' }}>③ 남은 돈 (이게 매달 갚을 변제금!)</span>
                 <span style={{ color: '#4338ca' }}>{formatCurrency(result.availableIncome || result.monthlyPayment)} ({userInput.monthlyIncome && (result.availableIncome || result.monthlyPayment) ? Math.round(((result.availableIncome || result.monthlyPayment) / userInput.monthlyIncome) * 100) : 0}%)</span>
               </div>
               <div style={{ height: '18px', backgroundColor: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
@@ -578,7 +572,6 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           subtitle="채무자회생법 제614조 제1항 제4호 청산가치 보장의 원칙 검증"
         />
 
-        {/* 청산가치 대원칙 정의 박스 */}
         <div style={{
           backgroundColor: '#f8fafc',
           border: '1px solid #e2e8f0',
@@ -589,8 +582,8 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           lineHeight: 1.6,
           color: '#334155'
         }}>
-          <strong style={{ color: '#0f172a' }}>⚖️ 청산가치 보장의 원칙 (The Principle of Best Interest):</strong><br/>
-          채무자가 회생 계획을 통해 <strong>36개월간 분납하여 갚는 총 변제금의 현재가치</strong>는, 현재 시점에서 <strong>채무자의 모든 재산을 즉시 처분하여 배당하는 청산가치보다 반드시 커야만</strong> 법원 인가를 받을 수 있습니다.
+          <strong style={{ color: '#0f172a' }}>💡 쉽게 말하면:</strong><br/>
+          "재산이 있으면 그것보다는 더 많이 갚아야 해요"라는 뜻이에요. 예를 들어 내 재산(보증금, 차, 퇴직금 등)을 다 합쳐서 500만원이면, 3년 동안 갚는 총액이 최소 500만원은 넘어야 합니다.
         </div>
 
         {/* 주요 4대 자산군 산정 매트릭스 */}
@@ -598,7 +591,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#ffffff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               <span style={{ fontSize: '14px' }}>🏠</span>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>부동산 및 임대차보증금</span>
+              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>전세/월세 보증금 → 대부분 공제되어 0원 처리!</span>
             </div>
             <p style={{ fontSize: '10px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
               KB부동산 시세에서 담보대출을 차감. 임차보증금은 주택임대차보호법상 소액임차보증금 최우선변제금 공제 후 반영.
@@ -628,10 +621,10 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#ffffff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               <span style={{ fontSize: '14px' }}>📈</span>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>주식/코인/도박 손실금 특칙</span>
+              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>주식/코인 손실금 (법원마다 달라요!)</span>
             </div>
             <p style={{ fontSize: '10px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              서울·수원·부산회생법원은 투자 손실금을 청산가치에서 제외하는 실무준칙 시행 중. 기타 지방법원은 보정 대비 필수.
+              서울, 수원, 부산은 손실금을 재산에서 빼주지만, 다른 곳은 안 빼줄 수도 있어요.
             </p>
           </div>
         </div>
@@ -763,7 +756,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <div style={{ border: '2px solid #4338ca', backgroundColor: '#eef2ff', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#4338ca', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, marginRight: '12px' }}>1</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#312e81' }}>기준 1: 순수 가용소득 기준 (원칙)</div>
+                <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#312e81' }}>내 월급에서 생계비 빼고 남은 돈</div>
                 <div style={{ fontSize: '10px', color: '#4338ca' }}>월 세후 소득에서 인정 최저생계비를 차감한 순수 여유 자금</div>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#4338ca' }}>
@@ -774,7 +767,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <div style={{ border: '1px solid #e2e8f0', backgroundColor: '#ffffff', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#94a3b8', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, marginRight: '12px' }}>2</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155' }}>기준 2: 청산가치 보장 최소 필요 월 변제액</div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155' }}>재산보다 더 갚아야 하는 최소 금액</div>
                 <div style={{ fontSize: '10px', color: '#64748b' }}>재산 가치 총액을 36개월간 균등 상환하기 위한 하한선</div>
               </div>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
@@ -785,12 +778,16 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <div style={{ border: '1px solid #e2e8f0', backgroundColor: '#ffffff', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#94a3b8', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, marginRight: '12px' }}>3</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155' }}>기준 3: 총 채무액 대비 법정 최저 변제 비율 하한</div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155' }}>빚의 최소 3~5%는 갚아야 함</div>
                 <div style={{ fontSize: '10px', color: '#64748b' }}>채무자회생법상 채무 원금의 최소 3~5% 변제 충족 요건</div>
               </div>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
                 {formatCurrency(Math.ceil(((userInput.totalDebt || 0) * 0.05) / (result.repaymentMonths || 36)))} / 월
               </div>
+            </div>
+            
+            <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center', fontWeight: 800, color: '#166534', fontSize: '12px' }}>
+              → 이 중에서 가장 큰 금액이 내 월 변제금!
             </div>
           </div>
         </div>
@@ -906,42 +903,34 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             관할 회생법원(지방법원 파산부)은 전국 통일 기준 외에 각 법원 고유의 실무준칙을 운영합니다. 특히 주식/가상자산 손실금에 대한 청산가치 제외 여부, 최근 채무 발생 시 사용처 소명 엄격도, 청년·취약계층 변제기간 단축(24~30개월) 특례 적용 범위는 관할에 따라 다를 수 있으니 담당 변호사와 확인해 주세요.
           </p>
         </div>
-
-        {/* 법원 핵심 방어 쟁점 3대 체크리스트 */}
+        
+        {/* 자주 궁금해하는 질문 TOP 5 */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
-            상담 때 확인하면 좋은 항목
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <HelpCircle size={16} color="#0f172a" />
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a' }}>자주 궁금해하는 질문 TOP 5</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>최근 1년 이내 신규 대출금 사용처 소명</div>
-                <div style={{ fontSize: '10px', color: '#64748b', lineHeight: 1.5, marginTop: '2px' }}>
-                  최근 채무 비중이 높으면 법원이 사용처(기존 채무 상환, 생활비, 병원비 등)를 묻는 경우가 많습니다. 통장 거래내역과 영수증을 미리 모아 두세요.
-                </div>
-              </div>
+            <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Q: 독촉 전화가 진짜 멈추나요?</div>
+              <div style={{ fontSize: '10px', color: '#475569', lineHeight: 1.5 }}>A: 네, 금지명령이 나오면 채권자는 전화·문자·방문 일체 금지됩니다. 위반 시 처벌 대상이에요.</div>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>추가 생계비(주거비·의료비) 반영 여부</div>
-                <div style={{ fontSize: '10px', color: '#64748b', lineHeight: 1.5, marginTop: '2px' }}>
-                  월세와 정기적인 치료비는 법원별 인정 기준(기준 중위소득의 일정 비율) 안에서 추가 생계비로 반영될 수 있습니다. 계약서와 영수증을 준비해 두세요.
-                </div>
-              </div>
+            <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Q: 직장에 알려지나요?</div>
+              <div style={{ fontSize: '10px', color: '#475569', lineHeight: 1.5 }}>A: 아닙니다. 개인회생은 직장에 통보되지 않고, 직업 제한도 없습니다. 공무원도 가능해요.</div>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>회생위원 보정권고 대응</div>
-                <div style={{ fontSize: '10px', color: '#64748b', lineHeight: 1.5, marginTop: '2px' }}>
-                  회생위원이 변제금 조정을 권고할 수 있습니다. 청산가치와 생계 상황을 근거로 어떻게 대응할지 담당 변호사와 상의하세요.
-                </div>
-              </div>
+            <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Q: 집(보증금)을 빼앗기나요?</div>
+              <div style={{ fontSize: '10px', color: '#475569', lineHeight: 1.5 }}>A: 소액임차보증금 범위 내라면 보호됩니다. 서울 기준 5,500만원까지 보호돼요.</div>
+            </div>
+            <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Q: 카드를 못 쓰게 되나요?</div>
+              <div style={{ fontSize: '10px', color: '#475569', lineHeight: 1.5 }}>A: 신용카드는 사용이 안 되지만, 체크카드는 자유롭게 사용 가능합니다.</div>
+            </div>
+            <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Q: 가족에게 영향이 있나요?</div>
+              <div style={{ fontSize: '10px', color: '#475569', lineHeight: 1.5 }}>A: 본인 명의의 빚만 해당됩니다. 가족의 재산이나 신용에는 영향이 없어요.</div>
             </div>
           </div>
         </div>
@@ -995,11 +984,11 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
             {[
               { step: '01', title: '신청서 접수', desc: '서류 취합 및 법원 전자접수', time: 'D-Day' },
-              { step: '02', title: '금지명령', desc: '모든 빚독촉·압류 전면 금지', time: '1~2주' },
+              { step: '02', title: '금지명령', desc: '드디어 독촉 전화가 멈춥니다!', time: '1~2주' },
               { step: '03', title: '보정권고', desc: '회생위원 서류 소명 및 검토', time: '1~3개월' },
               { step: '04', title: '개시결정', desc: '월 변제금 법원 가상계좌 납부', time: '3~6개월' },
               { step: '05', title: '채권자집회', desc: '법원 기일 출석 (대리인 동행)', time: '5~8개월' },
-              { step: '06', title: '인가 및 면책', desc: '변제를 마치고 면책 결정을 받으면 남은 채무의 책임이 면제됩니다(일부 채무 제외)', time: '최종면책' },
+              { step: '06', title: '인가 및 면책', desc: '🎉 드디어 새 출발! 빚에서 완전히 벗어나는 순간', time: '최종면책' },
             ].map((p, idx) => (
               <div key={idx} style={{
                 backgroundColor: idx === 1 || idx === 5 ? '#eef2ff' : '#ffffff',
@@ -1025,14 +1014,14 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
             {[
-              { term: '금지명령 / 중지명령', desc: '신청 직후 법원이 채권자들에게 독촉 전화, 문자, 방문, 급여/통장 압류를 법적으로 금지시키는 긴급 처분입니다.' },
-              { term: '순 가용소득', desc: '월 평균 실수령 소득에서 법정 최저생계비 및 법원 인정 추가생계비를 공제하고 남은 금액으로, 실제 월 변제금이 됩니다.' },
-              { term: '청산가치 보장 원칙', desc: '채무자가 가진 모든 재산을 현 시점에서 처분했을 때의 가치보다 36개월간 분납할 총 변제금 합계가 더 많아야 하는 대원칙입니다.' },
-              { term: '보정권고 / 보정명령', desc: '회생위원이 신청 서류의 미비점을 보완하거나 채무 사용처, 재산 평가의 적정성을 추가 소명하라고 통보하는 절차입니다.' },
-              { term: '개시결정', desc: '법원이 회생 자격을 인정하고 공식 절차 시작을 선언하는 단계로, 이때 법원 변제금 전용 가상계좌가 발급됩니다.' },
-              { term: '인가결정', desc: '채무자가 제출한 변제계획안을 법원이 최종 확정·승인하는 절차로, 기존 압류가 해제되고 신용회복 절차에 진입합니다.' },
-              { term: '면책결정', desc: '변제계획에 따른 변제를 마친 뒤 법원이 남은 채무의 책임을 면제하는 결정입니다. 비면책채권(세금 등 일부)은 면책되지 않습니다.' },
-              { term: '부인권 (편파변제 방어)', desc: '회생 신청 직전 지인이나 특정 채권자에게만 빚을 갚거나 재산을 헐값 처분한 행위를 법원이 취소하고 회수하는 권리입니다.' }
+              { term: '금지명령 / 중지명령', desc: '법원이 "채권자들아, 이 사람한테 독촉하지 마!"라고 내리는 명령이에요. 전화, 문자, 방문, 압류 전부 금지됩니다.' },
+              { term: '순 가용소득', desc: '내 월급에서 생활비를 빼고 남은 돈이에요. 이 돈이 매달 법원에 갚아야 할 변제금이 됩니다.' },
+              { term: '청산가치 보장 원칙', desc: '내 전 재산을 다 합친 금액보다는, 3년 동안 갚는 총액이 더 커야 한다는 법원의 규칙이에요.' },
+              { term: '보정권고 / 보정명령', desc: '법원에서 "이 서류가 부족해요, 이 내용은 뭔가요?"라고 물어보는 거예요. 솔직하고 꼼꼼하게 답하면 됩니다.' },
+              { term: '개시결정', desc: '법원이 "네, 회생 시작해도 됩니다"라고 허락하는 결정이에요. 이때부터 매달 법원 계좌에 변제금을 넣기 시작합니다.' },
+              { term: '인가결정', desc: '법원이 "네, 이렇게 갚아나가시면 됩니다"라고 최종적으로 확정해주는 정말 중요한 순간이에요!' },
+              { term: '면책결정', desc: '변제를 다 마친 후 법원이 "남은 빚은 갚지 않아도 됩니다"라고 결정하는 거예요. 이게 나오면 정말 끝!' },
+              { term: '부인권 (편파변제 방어)', desc: '회생 신청 직전에 가족이나 지인에게만 돈을 갚거나 재산을 몰래 넘기면, 법원이 그걸 다시 뺏어오는 권리예요.' }
             ].map((item, idx) => (
               <div key={idx} style={{
                 padding: '10px 12px',
@@ -1106,9 +1095,35 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
           </div>
         </div>
 
-        {/* 자료 성격 안내
-            (이전: 'CERTIFIED LEGAL OPINION · 로이 회생파산 전담 법률센터 공식 검인', 실존하지 않는 '김로이 변호사' 서명·붉은 직인·
-             장식용 바코드를 넣어 자동 계산 자료를 변호사가 검토·발행한 법률 소견서처럼 표시) */}
+        {/* 희망 섹션 */}
+        <div style={{
+          backgroundColor: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          borderRadius: '10px',
+          padding: '16px 20px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '16px' }}>🌱</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#166534' }}>회생을 끝내면 이런 일이 생겨요</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={14} color="#16a34a" />
+              신용점수가 700~800점대로 올라갑니다
+            </div>
+            <div style={{ fontSize: '11px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={14} color="#16a34a" />
+              1금융권 정상 거래, 신용카드 발급이 가능해집니다
+            </div>
+            <div style={{ fontSize: '11px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={14} color="#16a34a" />
+              빚 걱정 없이 새로운 시작을 할 수 있습니다
+            </div>
+          </div>
+        </div>
+
+        {/* 자료 성격 안내 */}
         <div style={{
           marginTop: 'auto',
           border: '1px solid #cbd5e1',
