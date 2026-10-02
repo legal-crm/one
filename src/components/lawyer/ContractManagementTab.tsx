@@ -449,11 +449,32 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* 1. 의뢰인 (연락처 한 줄) */}
                       <td className="p-3.5">
-                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
                           <span>{c.clientName || '성명 미지정'}</span>
                           {c.isBusiness && (
                             <span className="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded font-bold">
                               사업자
+                            </span>
+                          )}
+                          {c.contractMethod === 'in_person' ? (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
+                              <span>🏢</span>
+                              <span>방문서면</span>
+                            </span>
+                          ) : c.contractMethod === 'postal' ? (
+                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
+                              <span>📮</span>
+                              <span>우편등기</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
+                              <span>💻</span>
+                              <span>전자서명</span>
+                            </span>
+                          )}
+                          {c.paperContractInfo && c.status !== 'completed' && (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md animate-pulse">
+                              서면전환요청
                             </span>
                           )}
                         </div>
@@ -670,6 +691,87 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
 
             {/* 뷰어 본문 */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              {/* 서면(방문/우편) 계약 체결 정보 카드 */}
+              {viewingContract.paperContractInfo && (
+                <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      {viewingContract.contractMethod === 'postal' ? (
+                        <>
+                          <PackageCheck className="w-4 h-4 text-purple-600" />
+                          우편(등기) 수임계약 체결 내역
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="w-4 h-4 text-amber-600" />
+                          사무소 내방(방문) 서면 수임계약 체결 내역
+                        </>
+                      )}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600">
+                      날인일자: {viewingContract.paperContractInfo.signedDate || viewingContract.contractDate || '확인 필요'}
+                    </span>
+                  </div>
+
+                  {viewingContract.paperContractInfo.postalInfo && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-indigo-100/70">
+                      <div>
+                        <span className="text-slate-400">수령지 주소: </span>
+                        <span className="font-semibold text-slate-700">
+                          {viewingContract.paperContractInfo.postalInfo.recipientAddress} {viewingContract.paperContractInfo.postalInfo.recipientDetailAddress || ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">우체국 등기번호: </span>
+                        <span className="font-mono font-bold text-indigo-700">
+                          {viewingContract.paperContractInfo.postalInfo.trackingNumber || '미등록'}
+                        </span>
+                        {viewingContract.paperContractInfo.postalInfo.trackingNumber && (
+                          <a
+                            href={`https://service.epost.go.kr/trace.RetrieveDomRcvTraceList.comm?sid1=${viewingContract.paperContractInfo.postalInfo.trackingNumber.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] flex items-center gap-0.5"
+                          >
+                            <span>배송추적</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {viewingContract.paperContractInfo.scannedFiles && viewingContract.paperContractInfo.scannedFiles.length > 0 && (
+                    <div>
+                      <span className="text-xs font-semibold text-slate-600 block mb-1.5">
+                        실물 계약서 스캔본 / 사진 증빙 ({viewingContract.paperContractInfo.scannedFiles.length}건):
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {viewingContract.paperContractInfo.scannedFiles.map((sf) => (
+                          <button
+                            key={sf.id}
+                            type="button"
+                            onClick={() => window.open(sf.url, '_blank')}
+                            className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 rounded-lg text-xs font-medium text-slate-700 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                            <span className="max-w-[140px] truncate">{sf.name}</span>
+                            <ExternalLink className="w-3 h-3 text-slate-400" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {viewingContract.paperContractInfo.notes && (
+                    <p className="text-xs text-slate-600">
+                      <span className="text-slate-400">비고/특이사항: </span>
+                      {viewingContract.paperContractInfo.notes}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <HighlightedDocumentViewer 
                 contract={viewingContract} 
                 lawyerName={lawyerName} 

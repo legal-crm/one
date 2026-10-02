@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BadgeCheck, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Circle, Copy, FileText, Lock, PenLine, Smartphone, User,
+  BadgeCheck, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Circle, Copy, FileText, Lock, Mail, PenLine, PhoneCall, Smartphone, User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BankAccountInfo, ElectronicContract } from '../../types';
@@ -124,6 +124,12 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  // 오프라인/서면 체결 전환 요청 상태
+  const [offlineReqType, setOfflineReqType] = useState<'in_person' | 'postal' | null>(null);
+  const [offlinePostalAddr, setOfflinePostalAddr] = useState('');
+  const [offlineReqDone, setOfflineReqDone] = useState<string | null>(null);
+  const [submittingOfflineReq, setSubmittingOfflineReq] = useState(false);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const doneHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -295,6 +301,43 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       return;
     }
     setStepIdx(Math.min(steps.length - 1, safeIdx + 1));
+  };
+
+  // ── 오프라인 서면(방문/우편) 계약 전환 요청 ──
+  const handleSubmitOfflineRequest = async () => {
+    if (!contract || !offlineReqType) return;
+    if (offlineReqType === 'postal' && !offlinePostalAddr.trim()) {
+      toast.error('우편물을 수령하실 배송지 주소를 입력해 주세요.');
+      return;
+    }
+    setSubmittingOfflineReq(true);
+    try {
+      const modeLabel = offlineReqType === 'in_person' ? '방문 대면 체결' : '우편 등기 계약';
+      const detailInfo = offlineReqType === 'postal' ? ` [수령주소: ${offlinePostalAddr.trim()}]` : '';
+      const auditMsg = `의뢰인이 휴대폰 본인인증 곤란으로 [${modeLabel}] 전환을 요청함${detailInfo}`;
+      
+      let updated = addAuditLog(contract, auditMsg, 'client');
+      updated = {
+        ...updated,
+        paperContractInfo: {
+          method: offlineReqType,
+          signedDate: '',
+          notes: `의뢰인 원격서명 페이지에서 오프라인 전환 요청 접수${detailInfo}`,
+          postalInfo: offlineReqType === 'postal' ? {
+            recipientAddress: offlinePostalAddr.trim(),
+          } : undefined,
+        },
+      };
+      await saveContract(updated);
+      setContract(updated);
+      setOfflineReqDone(modeLabel);
+      setOfflineReqType(null);
+      toast.success(`${modeLabel} 전환 요청이 법률사무소로 전달되었습니다.`);
+    } catch (e: any) {
+      toast.error('전환 요청 처리 중 오류가 발생했습니다. 담당 사무소로 직접 문의해 주세요.');
+    } finally {
+      setSubmittingOfflineReq(false);
+    }
   };
 
   // ── 본인인증 (포트원) ──
@@ -844,6 +887,58 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 <p className="mt-1 break-keep">이름이나 휴대폰 번호가 바뀌었다면 담당 변호사 사무실에 계약서 정보 수정을 요청해 주세요.</p>
               )}
             </Callout>
+          </div>
+        )}
+
+        {/* 본인인증 곤란 시 방문/우편 서면계약 전환 안내 (회생·파산 의뢰인 배려) */}
+        {!verified && (
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700 shrink-0">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900">본인 명의 휴대폰 인증이 어려우신가요?</h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed break-keep">
+                  채무 연체, 통신사 일시정지, 타인명의 폰 사용 등으로 전자 인증이 어려우신 경우, <span className="font-semibold text-slate-800">사무소 내방(방문)</span> 또는 <span className="font-semibold text-slate-800">우편(등기)</span>으로 종이 계약서에 서명하실 수 있습니다.
+                </p>
+              </div>
+            </div>
+
+            {offlineReqDone ? (
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span><strong>{offlineReqDone}</strong> 전환 요청이 정상 접수되었습니다. 담당 사무소에서 확인 후 연락드립니다.</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setOfflineReqType('in_person')}
+                  className="px-3 py-2 text-xs font-semibold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer press-scale"
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span>방문 체결 요청</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOfflineReqType('postal')}
+                  className="px-3 py-2 text-xs font-semibold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer press-scale"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  <span>우편 등기 요청</span>
+                </button>
+                {(contract?.lawyerPhone || contract?.lawFirmPhone) && (
+                  <a
+                    href={`tel:${contract.lawyerPhone || contract.lawFirmPhone}`}
+                    className="col-span-2 sm:col-span-1 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                  >
+                    <PhoneCall className="h-3.5 w-3.5 text-slate-500" />
+                    <span>사무소 전화</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

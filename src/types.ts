@@ -940,6 +940,7 @@ export interface CrmClientExtension {
   activities: CrmActivityLog[];
   contractDate?: string;
   contractAmount?: number;
+  contractMethod?: 'electronic' | 'in_person' | 'postal';
   lastActivityAt: string;
   // ── 다채널 CRM 확장 ──
   intakeChannel?: IntakeChannel;
@@ -2403,6 +2404,30 @@ export interface ElectronicContract {
   title?: string;
   signedAt?: string;
   contractUrl?: string;
+
+  // ── 온·오프라인 하이브리드 체결 방식 (전자계약 / 방문 서면 / 우편 등기) ──
+  contractMethod?: 'electronic' | 'in_person' | 'postal';
+  paperContractInfo?: {
+    method: 'in_person' | 'postal';
+    signedDate: string;
+    scannedFiles?: Array<{
+      id: string;
+      name: string;
+      url: string; // base64 또는 스토리지 URL
+      size?: number;
+      uploadedAt: string;
+    }>;
+    postalInfo?: {
+      recipientAddress: string;
+      recipientDetailAddress?: string;
+      postcode?: string;
+      carrier?: string; // 예: '우체국 등기'
+      trackingNumber?: string;
+      sentDate?: string;
+      returnedSignedDate?: string;
+    };
+    notes?: string;
+  };
 
   // ── 실무 비용 및 계좌/성공보수 확장 ──
   vatIncluded?: boolean;

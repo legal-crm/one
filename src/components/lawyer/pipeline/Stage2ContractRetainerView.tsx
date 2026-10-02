@@ -38,6 +38,8 @@ import {
 } from '../../../services/feePresetService';
 import ContractWizard from '../ContractWizard';
 import { ContractDocEditModal } from '../ContractDocEditModal';
+import PaperContractModal, { type PaperContractSubmitData } from './PaperContractModal';
+import type { DocumentFile } from '../../../types';
 import { ContractDocLibraryModal } from '../ContractDocLibraryModal';
 import ClientSignShareModal from '../ClientSignShareModal';
 import { HighlightedDocumentViewer } from '../../common/HighlightedDocumentViewer';
@@ -202,6 +204,7 @@ export default function Stage2ContractRetainerView({
   const [customSpecialTerm, setCustomSpecialTerm] = useState('');
   const [showAddCustomTerm, setShowAddCustomTerm] = useState(false);
   const [showOfflineMenu, setShowOfflineMenu] = useState(false);
+  const [isPaperModalOpen, setIsPaperModalOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)
@@ -697,6 +700,102 @@ ${d.content}
     printWindow.document.close();
   };
 
+  // ── 5-1. 온·오프라인 하이브리드 서면/우편 계약 등록 핸들러 ──
+  const handleConfirmPaperContract = async (data: PaperContractSubmitData) => {
+    if (!hasProposalSent || !isContactShared) {
+      await dialog.alert({
+        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    const statusOk = await onUpdateStatus('contracted');
+    if (statusOk === false) return;
+    setIsContractSigned(true);
+
+    const current = syncContractState() || contract;
+    if (current) {
+      const completedContract: ElectronicContract = {
+        ...current,
+        status: 'completed',
+        contractDate: data.signedDate,
+        signedAt: new Date(data.signedDate).toISOString(),
+        contractMethod: data.method,
+        paperContractInfo: {
+          method: data.method,
+          signedDate: data.signedDate,
+          scannedFiles: data.scannedFiles,
+          postalInfo: data.postalInfo,
+          notes: data.notes,
+        },
+      };
+      const serverOk = await saveContract(completedContract);
+      setContract(completedContract);
+
+      const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+      const currentExt = crmExt || createDefaultCrmExtension(clientRequest.id);
+      const patch = buildContractSyncPatch(currentExt, completedContract, actor);
+
+      const newDocFiles: DocumentFile[] = (data.scannedFiles || []).map(sf => ({
+        id: sf.id,
+        name: `[서면계약서] ${sf.name}`,
+        category: 'other' as const,
+        uploadedAt: sf.uploadedAt,
+        uploadedBy: actor.name,
+        fileSize: sf.size,
+        dataUrl: sf.url,
+        uploadSource: 'lawyer' as const,
+        reviewStatus: 'approved' as const,
+        notes: `${data.method === 'in_person' ? '방문 체결' : '우편 등기 체결'} 실물 날인본 스캔 (${data.signedDate})`,
+      }));
+
+      const existingFiles = currentExt.uploadedFiles || [];
+      const mergedFiles = [...existingFiles, ...newDocFiles];
+
+      const methodLabel = data.method === 'in_person' ? '방문 대면' : '우편 등기';
+      const noteText = data.notes ? ` (비고: ${data.notes})` : '';
+      const postalTracking = data.postalInfo?.trackingNumber ? ` [등기번호: ${data.postalInfo.trackingNumber}]` : '';
+
+      const newActivity = {
+        id: `act-paper-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        actorName: actor.name,
+        actorRole: actor.role,
+        type: 'contract' as const,
+        title: `[서면 계약 체결 완료] ${methodLabel} 방식으로 수임계약 체결 등록${postalTracking}${noteText}`,
+        content: `체결일자: ${data.signedDate}, 증빙 파일: ${data.scannedFiles?.length || 0}건 첨부`,
+      };
+
+      if (onUpdateCrmExt) {
+        await onUpdateCrmExt({
+          ...patch,
+          crmStatus: 'contracted',
+          contractMethod: data.method,
+          totalFee: Math.round(totalLawyerFee / 10000),
+          contractDate: data.signedDate,
+          uploadedFiles: mergedFiles,
+          activities: [newActivity, ...(currentExt.activities || [])],
+        });
+      } else {
+        await syncContractToCrm(clientRequest.id, completedContract, actor);
+      }
+
+      if (!serverOk) {
+        toast.warning('전자계약서가 서버에 반영되지 않고 로컬에 임시 저장되었습니다.');
+      }
+    }
+
+    addClientNotification({
+      type: 'status_change',
+      title: `[수임계약 체결 완료] ${data.method === 'in_person' ? '방문(대면)' : '우편(등기)'} 방식으로 정식 사건 위임계약이 체결되었습니다.`,
+      emoji: data.method === 'in_person' ? '🏢' : '📮',
+      linkTab: 'diagnosis',
+    });
+    toast.success(`${data.method === 'in_person' ? '방문 대면' : '우편 등기'} 서면 계약 체결이 완료 처리되었습니다!`);
+  };
+
   // ── 6. 서면계약 수동 완료 처리 (2단계 확인 팝업 적용) ──
   const handleConfirmInPersonContract = async () => {
     if (!hasProposalSent || !isContactShared) {
@@ -910,22 +1009,30 @@ ${d.content}
                         className="fixed inset-0 z-20" 
                         onClick={() => setShowOfflineMenu(false)} 
                       />
-                      <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-30 space-y-1 text-xs animate-fadeIn">
+                      <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-30 space-y-1 text-xs animate-fadeIn">
+                        <button
+                          type="button"
+                          onClick={() => { setShowOfflineMenu(false); setIsPaperModalOpen(true); }}
+                          className="w-full px-3 py-2 text-left hover:bg-indigo-50 text-indigo-700 rounded-lg flex items-center gap-2 font-bold cursor-pointer"
+                        >
+                          <FileSignature className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>서면계약 등록 (방문/우편)</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => { setShowOfflineMenu(false); handlePrintContract(); }}
                           className="w-full px-3 py-2 text-left hover:bg-slate-50 rounded-lg flex items-center gap-2 text-slate-700 font-bold cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5 text-slate-500" />
-                          <span>종이 계약서 인쇄</span>
+                          <span>종이 계약서 서식 인쇄</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => { setShowOfflineMenu(false); handleConfirmInPersonContract(); }}
-                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-emerald-700 rounded-lg flex items-center gap-2 font-bold cursor-pointer"
+                          className="w-full px-3 py-2 text-left hover:bg-slate-100 text-slate-600 rounded-lg flex items-center gap-2 font-medium cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>서면계약 완료 처리</span>
+                          <span>간편 서면 체결 (스킵)</span>
                         </button>
                       </div>
                     </>
@@ -2249,6 +2356,17 @@ ${d.content}
             </div>
           </div>
         </ModalPortal>
+      )}
+
+      {/* ── 온·오프라인 하이브리드 서면(방문/우편) 계약 체결 모달 ── */}
+      {isPaperModalOpen && (contract || syncContractState()) && (
+        <PaperContractModal
+          isOpen={isPaperModalOpen}
+          onClose={() => setIsPaperModalOpen(false)}
+          contract={(syncContractState() || contract)!}
+          onConfirm={handleConfirmPaperContract}
+          onPrint={handlePrintContract}
+        />
       )}
 
       {/* ── 11대 법률 표준 위임계약서 및 서식 보관함 모달 ── */}
