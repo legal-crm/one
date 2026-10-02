@@ -257,7 +257,7 @@ ${courtLabel} 귀중`;
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
+                <span className="text-xs font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
                   초안 · 빈칸 작성 필요
                 </span>
                 <span className="text-xs text-slate-300 font-medium">

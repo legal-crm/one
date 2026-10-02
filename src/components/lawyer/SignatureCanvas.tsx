@@ -103,7 +103,7 @@ export default function SignatureCanvas({ onComplete, width = 500, height = 200,
           onPointerLeave={handlePointerUp}
         />
       </div>
-      <p id="signature-canvas-help" className="text-[11px] text-slate-600">
+      <p id="signature-canvas-help" className="text-xs text-slate-600">
         {strokeLength > 0 && !hasDrawn ? '서명을 조금 더 길게 써 주세요.' : '손가락이나 펜으로 네모 안에 이름을 써 주세요.'}
       </p>
       <div className="flex items-center gap-2">

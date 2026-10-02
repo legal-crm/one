@@ -101,7 +101,7 @@ ${housingLines}
               <span>통장 예금 잔액</span>
               <span className="text-amber-800 font-extrabold">{formatWonKorean(DEPOSIT_EXEMPTION_KRW)} 보호</span>
             </span>
-            <p className="text-[11px] text-slate-600">
+            <p className="text-xs text-slate-600">
               개인별 전 금융기관 예금 잔액 합계 {formatWonKorean(DEPOSIT_EXEMPTION_KRW)}까지 압류 금지 (민사집행법 시행령 제7조). 금융기관이 지급을 막으면 압류금지채권 범위변경 신청을 검토하세요.
             </p>
           </div>
@@ -111,18 +111,18 @@ ${housingLines}
               <span>근로소득 (월급)</span>
               <span className="text-amber-800 font-extrabold">1/2 보호 (최저 {formatWonKorean(WAGE_MIN)})</span>
             </span>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               • 월 {formatWonKorean(WAGE_MIN)} 이하: 전액 압류 금지<br />
               • 월 {formatWonKorean(WAGE_MIN)} ~ {formatWonKorean(WAGE_HALF_FROM)}: {formatWonKorean(WAGE_MIN)} 보호<br />
               • 월 {formatWonKorean(WAGE_HALF_FROM)} ~ {formatWonKorean(WAGE_CAP_FROM)}: 급여의 1/2 보호<br />
               • 월 {formatWonKorean(WAGE_CAP_FROM)} 초과: {formatWonKorean(WAGE_EXEMPTION_CAP_BASE_KRW)} + (급여/2 − {formatWonKorean(WAGE_EXEMPTION_CAP_BASE_KRW)})/2 보호
             </p>
             <div>
-              <label htmlFor="seizure-wage" className="text-[10px] text-slate-600 font-semibold block mb-0.5">세후 월급</label>
+              <label htmlFor="seizure-wage" className="text-xs text-slate-600 font-semibold block mb-0.5">세후 월급</label>
               <MoneyInput id="seizure-wage" value={wage} onChange={setWage} placeholder="예: 420만" />
             </div>
             {wage > 0 && (
-              <p className="text-[11px] font-bold text-amber-900 tabular-nums" aria-live="polite">
+              <p className="text-xs font-bold text-amber-900 tabular-nums" aria-live="polite">
                 압류금지 {won(wageExempt)} · 압류 가능 {won(Math.max(0, wage - wageExempt))}
               </p>
             )}
@@ -133,7 +133,7 @@ ${housingLines}
               <span>보험금 및 퇴직금</span>
               <span className="text-amber-800 font-extrabold">법정 보호</span>
             </span>
-            <p className="text-[11px] text-slate-600">
+            <p className="text-xs text-slate-600">
               • 사망보험금 1,000만 원 이하 / 보장성보험 해약환급금 {formatWonKorean(EXEMPT_INSURANCE_REFUND_LIMIT)} 이하<br />
               • 퇴직금: 1/2 압류 금지 / 퇴직연금 수급권: 원칙적으로 압류 금지 (근로자퇴직급여보장법 제7조)
             </p>
@@ -142,7 +142,7 @@ ${housingLines}
       ) : (
         <div className="space-y-2.5">
           <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-            <table className="w-full text-[11px] text-left">
+            <table className="w-full text-xs text-left">
               <caption className="sr-only">지역별 소액임차보증금 최우선변제 기준</caption>
               <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                 <tr>
@@ -172,16 +172,16 @@ ${housingLines}
             <span className="font-bold text-amber-950 block">내 보증금 확인</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label htmlFor="seizure-region" className="text-[10px] text-slate-600 font-semibold block mb-0.5">거주 지역</label>
+                <label htmlFor="seizure-region" className="text-xs text-slate-600 font-semibold block mb-0.5">거주 지역</label>
                 <RegionSelect id="seizure-region" value={shared.region} onChange={region => setDockShared({ region })} />
               </div>
               <div>
-                <label htmlFor="seizure-lease" className="text-[10px] text-slate-600 font-semibold block mb-0.5">임차보증금</label>
+                <label htmlFor="seizure-lease" className="text-xs text-slate-600 font-semibold block mb-0.5">임차보증금</label>
                 <MoneyInput id="seizure-lease" value={leaseDeposit} onChange={setLeaseDraft} placeholder="예: 5000만" />
               </div>
             </div>
             {leaseDeposit > 0 && (
-              <div className="text-[11px] space-y-0.5" aria-live="polite">
+              <div className="text-xs space-y-0.5" aria-live="polite">
                 {isSmallTenant ? (
                   <>
                     <p className="font-bold text-amber-900">소액임차인 기준 해당 → 최대 {formatWonKorean(protectedAmount)} 보호</p>
@@ -204,7 +204,7 @@ ${housingLines}
               청산가치 점검기에 반영
             </button>
           </div>
-          <p className="text-[10px] text-slate-600">
+          <p className="text-xs text-slate-600">
             * 담보물권(근저당) 설정일자 기준 규정이 적용될 수 있으므로 등기사항증명서 확인이 필요합니다.
           </p>
         </div>

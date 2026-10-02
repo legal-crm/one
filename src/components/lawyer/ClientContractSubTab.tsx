@@ -16,8 +16,9 @@ import {
   getContractsByClientId, createContract, saveContract, 
   deleteContract, calculateCourtCosts 
 } from '../../services/contractService';
-import { syncContractToCrm } from '../../services/crmService';
+import { syncContractToCrm, buildContractSyncPatch } from '../../services/crmService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+import { feeTotalWon } from '../../utils/feeUnits';
 import ContractWizard from './ContractWizard';
 import ClientSignShareModal from './ClientSignShareModal';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
@@ -67,11 +68,18 @@ export default function ClientContractSubTab({
     const lawyerName = activeLawyer.name || '담당 변호사';
     const lawFirmName = (activeLawyer as any).firmName || activeLawyer.lawFirmName || '';
 
-    // 이 변호사의 제안서 금액 → CRM 약정액 순. 없으면 0 (이전: 임의 200만원·채권자 5곳 가정)
+    // 이 변호사의 제안서 금액 → CRM 약정액 순. 없으면 0. 만원 단위로 정규화 (이전: 임의 200만원·채권자 5곳 가정)
     const myProposalFee = Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0;
-    const initialFee = crmExt.totalFee || myProposalFee || 0;
+    const rawFee = crmExt.totalFee || myProposalFee || 0;
+    const won = feeTotalWon(rawFee);
+    const initialFeeManwon = won > 0 ? Math.round(won / 10000) : 0;
     const creditorCount = client.financialProfile?.creditorCount || 0;
-    const costs = calculateCourtCosts(creditorCount);
+    const isBk = crmExt.caseType === 'bankruptcy' || crmExt.caseType === 'individual_bankruptcy';
+    const costs = calculateCourtCosts(creditorCount, 15000, DELIVERY_UNIT_FEE_KRW, undefined, {
+      caseType: isBk ? 'bankruptcy' : 'rehab',
+      withProhibition: !isBk,
+      electronic: true,
+    });
 
     const newContract = createContract({
       clientId: client.id,
@@ -81,7 +89,7 @@ export default function ClientContractSubTab({
       lawyerName,
       lawFirmName,
       assignedLawyerId: crmExt.assigneeId || activeLawyer.id,
-      totalFee: initialFee,
+      totalFee: initialFeeManwon,
       courtCosts: {
         creditorCount,
         deliveryFee: costs.deliveryFee,
@@ -107,7 +115,8 @@ export default function ClientContractSubTab({
     const serverOk = await saveContract(saved);
     
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    await syncContractToCrm(client.id, saved, actor);
+    const patch = buildContractSyncPatch(crmExt, saved, actor);
+    await onUpdateCrmExt(patch);
 
     loadClientContracts();
     setActiveContractId(saved.id);
@@ -119,11 +128,6 @@ export default function ClientContractSubTab({
       return;
     }
     if (saved.status === 'completed') {
-      await onUpdateCrmExt({
-        crmStatus: 'contracted',
-        totalFee: saved.totalFee,
-        contractDate: saved.contractDate,
-      });
       toast.success('전자계약 체결이 완료되어 CRM 수임료와 사건상태가 동기화되었습니다.');
     } else {
       toast.success('전자계약서가 저장되었습니다.');
@@ -227,19 +231,25 @@ ${esc(d.content)}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                <span className="text-[10px] text-slate-400 block font-medium">의뢰인 인적사항</span>
+                <span className="text-xs text-slate-400 block font-medium">의뢰인 인적사항</span>
                 <span className="font-bold text-slate-800">{client.clientName} ({client.phone})</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                <span className="text-[10px] text-slate-400 block font-medium">상담 약정 수임료</span>
-                <span className="font-bold text-brand font-mono">{(crmExt.totalFee || Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0) ? `${(crmExt.totalFee || Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee)).toLocaleString()}만원` : '미입력 (작성 시 입력)'}</span>
+                <span className="text-xs text-slate-400 block font-medium">상담 약정 수임료</span>
+                <span className="font-bold text-brand font-mono">
+                  {(() => {
+                    const raw = crmExt.totalFee || Number(client.proposals?.find((p: any) => p.lawyerId === activeLawyer.id)?.fee) || 0;
+                    const won = feeTotalWon(raw);
+                    return won > 0 ? `${won.toLocaleString()}원 (${Math.round(won / 10000)}만원)` : '미입력 (작성 시 입력)';
+                  })()}
+                </span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                <span className="text-[10px] text-slate-400 block font-medium">담당 변호사</span>
+                <span className="text-xs text-slate-400 block font-medium">담당 변호사</span>
                 <span className="font-bold text-slate-800">{(activeLawyer as any).firmName || activeLawyer.lawFirmName || ''} {activeLawyer.name}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                <span className="text-[10px] text-slate-400 block font-medium">채권자 수 / 예상법원비용</span>
+                <span className="text-xs text-slate-400 block font-medium">채권자 수 / 예상법원비용</span>
                 <span className="font-bold text-slate-800">{client.financialProfile?.creditorCount ? `${client.financialProfile.creditorCount}개소 (자동산출)` : '미입력 (작성 시 입력)'}</span>
               </div>
             </div>
@@ -275,7 +285,7 @@ ${esc(d.content)}
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-black text-sm text-slate-900">전자계약 관리</h4>
-              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${statusCfg.bgColor} ${statusCfg.color} ${statusCfg.borderColor} flex items-center gap-1`}>
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg border ${statusCfg.bgColor} ${statusCfg.color} ${statusCfg.borderColor} flex items-center gap-1`}>
                 <span>{statusCfg.emoji}</span>
                 <span>{statusCfg.label}</span>
               </span>
@@ -347,23 +357,23 @@ ${esc(d.content)}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <span className="text-[11px] font-bold text-slate-400 block">약정 수임료</span>
+          <span className="text-xs font-bold text-slate-400 block">약정 수임료</span>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900 font-mono tracking-tight">
-              {contract.totalFee.toLocaleString()} <span className="text-xs font-bold text-slate-500 font-sans">만원</span>
+              {feeTotalWon(contract.totalFee).toLocaleString()} <span className="text-xs font-bold text-slate-500 font-sans">원</span>
             </span>
             <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
               {contract.feeSchedule?.length || 0}회 분납
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             법원비용 합계: <strong className="font-mono text-slate-700">{((contract.courtCosts.deliveryFee || 0) + (contract.courtCosts.stampFee || 0) + (contract.courtCosts.miscFee || 0) + (contract.courtCosts.debtCertFee || 0) + (contract.courtCosts.provisionalDeposit || 0)).toLocaleString()}원</strong>
             <span className="text-slate-400"> (송달료·인지대·부채증명·예납금 포함)</span>
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <span className="text-[11px] font-bold text-slate-400 block">문서 서명 진행률</span>
+          <span className="text-xs font-bold text-slate-400 block">문서 서명 진행률</span>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900 font-mono tracking-tight">
               {signedDocsCount} / {totalIncludedDocs} <span className="text-xs font-bold text-slate-500 font-sans">문서</span>
@@ -381,7 +391,7 @@ ${esc(d.content)}
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <span className="text-[11px] font-bold text-slate-400 block">본인인증 및 무결성</span>
+          <span className="text-xs font-bold text-slate-400 block">본인인증 및 무결성</span>
           <div className="flex items-center gap-2">
             {contract.identityVerification ? (
               <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
@@ -395,7 +405,7 @@ ${esc(d.content)}
               </div>
             )}
           </div>
-          <p className="text-[10px] text-slate-400 font-mono truncate">
+          <p className="text-xs text-slate-400 font-mono truncate">
             {contract.identityVerification?.verifiedAt ? `인증일시: ${contract.identityVerification.verifiedAt}` : '위임 계약 효력 보장'}
           </p>
         </div>
@@ -436,10 +446,10 @@ ${esc(d.content)}
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-800 truncate">{doc.title}</span>
                         {docCfg.required && (
-                          <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">필수</span>
+                          <span className="text-xs font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">필수</span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-400 font-medium">
+                      <span className="text-xs text-slate-400 font-medium">
                         서명 대상: {doc.signatureRequired === 'both' ? '의뢰인 + 변호사' : doc.signatureRequired === 'client' ? '의뢰인' : '변호사'}
                       </span>
                     </div>
@@ -447,12 +457,12 @@ ${esc(d.content)}
 
                   <div className="flex items-center gap-3 shrink-0">
                     {isFullySigned ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
                         <Check className="w-3 h-3" />
                         <span>서명 완료</span>
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                      <span className="flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
                         <Clock className="w-3 h-3" />
                         <span>서명 대기</span>
                       </span>
@@ -469,11 +479,11 @@ ${esc(d.content)}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                        <span className="text-[11px] font-bold text-slate-600 block">의뢰인 서명</span>
+                        <span className="text-xs font-bold text-slate-600 block">의뢰인 서명</span>
                         {doc.clientSignature ? (
                           <div className="flex items-center gap-3">
                             <img src={doc.clientSignature} alt="의뢰인 서명" className="h-10 border border-slate-200 bg-slate-50 rounded-lg p-1" />
-                            <span className="text-[10px] text-slate-400 font-mono">{doc.clientSignedAt || '서명완료'}</span>
+                            <span className="text-xs text-slate-400 font-mono">{doc.clientSignedAt || '서명완료'}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400 italic">아직 서명되지 않았습니다.</span>
@@ -481,11 +491,11 @@ ${esc(d.content)}
                       </div>
 
                       <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                        <span className="text-[11px] font-bold text-slate-600 block">변호사 날인</span>
+                        <span className="text-xs font-bold text-slate-600 block">변호사 날인</span>
                         {doc.lawyerSignature ? (
                           <div className="flex items-center gap-3">
                             <img src={doc.lawyerSignature} alt="변호사 날인" className="h-10 border border-slate-200 bg-slate-50 rounded-lg p-1" />
-                            <span className="text-[10px] text-slate-400 font-mono">{doc.lawyerSignedAt || '날인완료'}</span>
+                            <span className="text-xs text-slate-400 font-mono">{doc.lawyerSignedAt || '날인완료'}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400 italic">변호사 날인 대기 중</span>
@@ -508,7 +518,7 @@ ${esc(d.content)}
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-brand" />
             <h5 className="font-bold text-sm text-slate-900">감사 추적 기록 (Audit Trail)</h5>
-            <span className="text-[10px] text-slate-400 font-mono">총 {contract.auditTrail?.length || 0}건</span>
+            <span className="text-xs text-slate-400 font-mono">총 {contract.auditTrail?.length || 0}건</span>
           </div>
           <span className="text-xs text-brand font-bold flex items-center gap-0.5">
             {showAuditTrail ? '접기' : '상세보기'}
@@ -520,17 +530,17 @@ ${esc(d.content)}
           <div className="space-y-2 pt-2 border-t border-slate-100 animate-fadeIn">
             {contract.auditTrail?.map((log, i) => (
               <div key={i} className="flex items-start gap-2.5 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200/50">
-                <span className="text-[10px] font-mono text-slate-400 shrink-0 mt-0.5">
+                <span className="text-xs font-mono text-slate-400 shrink-0 mt-0.5">
                   {new Date(log.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded shrink-0 ${
+                <span className={`text-xs font-bold px-1.5 py-0.2 rounded shrink-0 ${
                   log.actor === 'lawyer' ? 'bg-blue-50 text-blue-700' :
                   log.actor === 'client' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-700'
                 }`}>
                   {log.actor === 'lawyer' ? '변호사' : log.actor === 'client' ? '의뢰인' : '시스템'}
                 </span>
                 <span className="font-medium text-slate-800 flex-1">{log.action}</span>
-                {log.ip && <span className="text-[10px] text-slate-400 font-mono shrink-0">IP: {log.ip}</span>}
+                {log.ip && <span className="text-xs text-slate-400 font-mono shrink-0">IP: {log.ip}</span>}
               </div>
             ))}
           </div>

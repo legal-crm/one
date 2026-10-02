@@ -65,7 +65,7 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[11px] font-bold text-indigo-300 tracking-wide uppercase">Legal Compliance Gate</span>
+              <span className="text-xs font-bold text-indigo-300 tracking-wide uppercase">Legal Compliance Gate</span>
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
                 AI 정밀분석 변호사 직접 검수 및 승인
               </h2>
@@ -110,9 +110,9 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
             <div className="space-y-1 text-xs">
               <div className="font-bold text-slate-900 flex items-center gap-1">
                 <span>1. 월 변제금 및 청산가치 계산 결과 직접 검토</span>
-                <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
+                <span className="text-xs text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
               </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
+              <p className="text-slate-600 leading-relaxed text-xs">
                 AI가 산출한 월 변제금({monthlyPayment.toLocaleString()}원)과 재산 평가액이 의뢰인의 실제 소득·재산 및 법정 최저생계비 기준에 부합함을 검토 완료했습니다.
               </p>
             </div>
@@ -133,9 +133,9 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
             <div className="space-y-1 text-xs">
               <div className="font-bold text-slate-900 flex items-center gap-1">
                 <span>2. 관할 법원 실무준칙 및 보정 리스크 검증</span>
-                <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
+                <span className="text-xs text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
               </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
+              <p className="text-slate-600 leading-relaxed text-xs">
                 {courtName} 실무준칙(주식·코인 손실금 처리, 생계비 추가 인정 기준 등) 및 향후 예상되는 보정권고 사항을 법률 전문가의 시각에서 직접 검증 및 보완했습니다.
               </p>
             </div>
@@ -156,9 +156,9 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
             <div className="space-y-1 text-xs">
               <div className="font-bold text-slate-900 flex items-center gap-1">
                 <span>3. 담당 변호사 명의의 공인 의견서 발행 및 책임 승인</span>
-                <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
+                <span className="text-xs text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">필수</span>
               </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
+              <p className="text-slate-600 leading-relaxed text-xs">
                 본 제안서는 <strong>{firmName} {lawyerName}</strong>의 명의와 책임으로 발행되며, 의뢰인 열람 보고서에 검수 변호사 실명과 검토 완료 직인이 표기됨에 동의합니다.
               </p>
             </div>
@@ -167,15 +167,15 @@ export const LawyerAttestationModal: React.FC<LawyerAttestationModalProps> = ({
           {/* 검수자 서명 메타데이터 표시 */}
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center justify-between text-xs text-slate-600">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-700">
+              <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
                 변
               </div>
               <div>
                 <span className="font-bold text-slate-900">{hasReviewer ? `${firmName} ${lawyerName}`.trim() : '검수 변호사 정보 없음 — 로그인 변호사 정보를 확인하세요'}</span>
-                <span className="text-[11px] text-slate-500 ml-1.5">(대한변협 등록 변호사)</span>
+                <span className="text-xs text-slate-500 ml-1.5">(대한변협 등록 변호사)</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500">
+            <div className="flex items-center gap-1 text-xs text-slate-500">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>{new Date().toLocaleDateString('ko-KR')}</span>
             </div>

@@ -55,7 +55,7 @@ export default function ClientOriginalInfo({ fp, clientName, phone, consultType,
   const special = fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '';
 
   return (
-    <div className="border border-slate-200/80 rounded-xl overflow-hidden text-[11px] leading-relaxed">
+    <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs leading-relaxed">
       {/* 기본 정보 */}
       <div className="px-3 py-2 flex flex-wrap items-center gap-x-1 gap-y-0.5">
         <span className="text-slate-500 font-bold mr-0.5">👤</span>
@@ -101,9 +101,9 @@ export default function ClientOriginalInfo({ fp, clientName, phone, consultType,
       {/* 개별 자산 목록 (있을 경우) */}
       {fp.assets && fp.assets.length > 0 && (
         <div className="px-3 py-1.5 border-t border-slate-100 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="text-slate-400 text-[10px] font-bold">자산목록</span>
+          <span className="text-slate-400 text-xs font-bold">자산목록</span>
           {fp.assets.map((a: any, i: number) => (
-            <span key={i} className="inline-flex items-baseline gap-0.5 bg-slate-50 rounded px-1.5 py-0.5 text-[10px]">
+            <span key={i} className="inline-flex items-baseline gap-0.5 bg-slate-50 rounded px-1.5 py-0.5 text-xs">
               <span className="text-slate-600">{a.label || a.description || `자산${i+1}`}</span>
               <span className="font-extrabold text-slate-900">{fmt(a.marketValue || a.value || 0)}</span>
               {a.type && <span className="text-slate-400">({a.type})</span>}

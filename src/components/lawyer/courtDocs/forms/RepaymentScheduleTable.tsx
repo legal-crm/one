@@ -82,7 +82,7 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
 
       {/* 월별 분할 변제 스케줄 (1~6회차 예시) */}
       <h2 className="text-[16px] font-bold mb-3">월별 변제 스케줄</h2>
-      <table className="w-full border-collapse border border-black text-[10px]">
+      <table className="w-full border-collapse border border-black text-xs">
         <thead>
           <tr>
             <th className="border border-black p-1 font-semibold text-center" rowSpan={2}>회차</th>

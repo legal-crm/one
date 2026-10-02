@@ -56,12 +56,59 @@ import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan, rebuildPlanWithAssets } from '../../services/repayment/repaymentCalculationEngine';
 import { checkSpecial24Eligibility, special24FromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
-import { computePipelineGates, pipelineLockReason, stageForStatus } from './pipeline/pipelineGates';
+import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
+import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
 import { formatVaultDday } from '../../services/vault/certificateVaultService';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
+import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
+import { createTask } from '../../services/taskTicketService';
+
+/**
+ * 16개 구형 서브탭을 6단계 수임 여정 파이프라인 단계 및 세부 섹션으로 변환
+ * 기획서 4.3 서브탭 16개 재배치 매핑 규칙 준수
+ */
+function mapSubtabToPipeline(tab: string): {
+  stage: PipelineStage;
+  section: string;
+  openContext?: boolean;
+} {
+  switch (tab) {
+    case 'info':
+    case 'summary':
+      return { stage: 1, section: 'summary', openContext: true };
+    case 'notes':
+    case 'calls':
+    case 'tasks':
+    case 'thread':
+      return { stage: 1, section: 'summary', openContext: true };
+    case 'timeline':
+      return { stage: 1, section: 'summary' };
+    case 'fees':
+      return { stage: 2, section: 'fees' };
+    case 'contracts':
+      return { stage: 2, section: 'contract' };
+    case 'documents':
+    case 'vault':
+      return { stage: 3, section: 'docs' };
+    case 'debt-certs':
+      return { stage: 3, section: 'debt-cert' };
+    case 'statement':
+      return { stage: 3, section: 'statement' };
+    case 'repayment':
+    case 'bankruptcy':
+      return { stage: 4, section: 'petition' };
+    case 'corrections':
+      return { stage: 5, section: 'corrections' };
+    case 'court':
+      return { stage: 5, section: 'court-progress' };
+    default:
+      return { stage: 1, section: 'summary' };
+  }
+}
+
 import { isNewRequestForLawyer, requestTypeLabel } from './requestScope';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
@@ -90,7 +137,8 @@ import type {
 import { 
   CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
   DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG,
-  DIRECTIVE_PRIORITY_CONFIG, DOC_REVIEW_STATUS_CONFIG
+  DIRECTIVE_PRIORITY_CONFIG, DOC_REVIEW_STATUS_CONFIG,
+  LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES
 } from '../../types';
 import { 
   loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
@@ -120,6 +168,8 @@ interface CrmTabProps {
   initialView?: 'leads';
   initialClientId?: string;
   initialDetailTab?: 'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault';
+  /** 딥링크 1회 적용 후 부모 상태 초기화 콜백 (기획서 0-8) */
+  onClearInitialTarget?: () => void;
   /** 로그인한 직원 (대표 변호사 본인이면 null) — 권한·작업자 기록에 사용 */
   currentStaff?: StaffMember | null;
   /** 업무·일정 공유 단위 (직원이면 초대한 대표의 ID) */
@@ -141,7 +191,7 @@ function isNewCase(createdAt: string): boolean {
 /** 재사용 가능한 NEW 뱃지 */
 function NewBadge({ className = '' }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap ${className}`}>
+    <span className={`inline-flex items-center gap-0.5 text-xs font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap ${className}`}>
       NEW
     </span>
   );
@@ -158,15 +208,16 @@ function formatWonShort(amountManWon: number | undefined): string {
   return `${amountManWon.toLocaleString()}만`;
 }
 
-/** 사건 구분 뱃지 (개인회생 / 개인파산) */
-function getCaseTypeBadge(r: ConsultRequest) {
-  const isBankruptcy = (r.financialProfile.income || 0) === 0 || (r.financialProfile.debtTotal || 0) > 50000;
+/** 사건 구분 뱃지 (개인회생 / 개인파산) — 저장된 유형 기반 (임의 추정 금지) */
+function getCaseTypeBadge(r: ConsultRequest, ext?: CrmClientExtension) {
+  const caseType = ext?.caseType || (r as any).caseType || (r as any).category;
+  const isBankruptcy = caseType === 'bankruptcy' || caseType === 'individual_bankruptcy' || caseType === '개인파산';
   return !isBankruptcy ? (
-    <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
+    <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
       개인회생
     </span>
   ) : (
-    <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 whitespace-nowrap">
+    <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 whitespace-nowrap">
       개인파산
     </span>
   );
@@ -197,6 +248,7 @@ export default function CrmTab({
   initialView,
   initialClientId,
   initialDetailTab,
+  onClearInitialTarget,
   currentStaff = null,
   firmTenantId
 }: CrmTabProps) {
@@ -264,12 +316,10 @@ export default function CrmTab({
   // ── 활동 탭 ──
   const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
-  // ── 5단계 실무 파이프라인 상태 ──
+  // ── 6단계 수임 여정 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
-  // 부모가 고객과 서브탭을 지정해 열면 서브탭이 보이는 'subtabs' 모드로 시작 (이전: 항상 'pipeline'이라 지정 탭이 보이지 않음)
-  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>(() => (initialClientId && initialDetailTab ? 'subtabs' : 'pipeline'));
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
   // 부모가 지정한 서브탭 — [selectedId] 효과가 고객을 고른 뒤 이 값을 적용하고 비운다
-  // (이전: 그 효과가 고객 선택 때마다 'info'로 덮어 '메모'·'전자계약' 링크도 종합 정보 탭으로 열림)
   const pendingDetailTabRef = React.useRef<{ clientId: string; tab: CrmDetailTab } | null>(
     initialClientId && initialDetailTab ? { clientId: initialClientId, tab: initialDetailTab } : null
   );
@@ -295,6 +345,7 @@ export default function CrmTab({
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   // ── 서류 작업 집중 모드 (Wide Workbench): 팩트시트와 소통창 기본 닫힘 ──
   const [isFactSheetOpen, setIsFactSheetOpen] = useState(false);
+  const [isContextPanelOpen, setIsContextPanelOpen] = useState(true);
   const [showCommPanel, setShowCommPanel] = useState(false);
   const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
   const [showFeeAccordion, setShowFeeAccordion] = useState(false);
@@ -303,17 +354,28 @@ export default function CrmTab({
   const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
 
   // 외부(채팅 '고객관리에서 열기'·메모 링크·계약 체결 뒤 이동 등)에서 지정한 고객 ID 및 탭 동기화
-  // 고객 없이 탭만 온 경우는 무시한다 (부모의 기본 탭 값 'info'로 모드가 바뀌지 않게)
+  // 16개 서브탭 매핑 규칙에 따라 6단계 파이프라인의 해당 Stage 및 세부 섹션으로 자동 라우팅
   useEffect(() => {
     if (!initialClientId) return;
     setSelectedId(initialClientId);
     setViewMode('list'); // 상세 화면은 리스트 보기에서만 열린다
     if (initialDetailTab) {
       pendingDetailTabRef.current = { clientId: initialClientId, tab: initialDetailTab };
-      setDetailTab(initialDetailTab);
-      setPipelineViewMode('subtabs');
+      const { stage, section, openContext } = mapSubtabToPipeline(initialDetailTab);
+      setPipelineStage(stage);
+      setDetailTab(section as any);
+      if (openContext) {
+        setIsContextPanelOpen(true);
+      }
+      if (initialDetailTab === 'timeline') {
+        setShowTimelineModal(true);
+      }
     }
-  }, [initialClientId, initialDetailTab]);
+    // 딥링크 1회 적용 후 부모 상태 초기화 (기획서 0-8)
+    if (onClearInitialTarget) {
+      onClearInitialTarget();
+    }
+  }, [initialClientId, initialDetailTab, onClearInitialTarget]);
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
@@ -694,15 +756,187 @@ export default function CrmTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedExt?.crmStatus]);
 
-  /** Stage 뷰의 '다음 단계' 버튼 — 스텝바와 같은 게이트를 적용 (이전: 조건 없이 이동) */
+  // ── 퀵툴 사건 연결: 사건 선택/변경 시 퀵독 프리필 및 액션 핸들러 등록 (Task 2-9) ──
+  useEffect(() => {
+    if (selectedClient && selectedExt) {
+      const clientName = getDisplayClientName ? getDisplayClientName(selectedClient) : selectedClient.clientName;
+      // 1. 사건 데이터로 퀵독 공유값 프리필
+      syncDockFromCase(
+        {
+          caseId: selectedClient.id,
+          clientName,
+          phone: selectedClient.phone,
+          caseNumber: selectedExt.courtCase?.caseNumber,
+          courtName: selectedExt.courtCase?.courtName,
+          tenantId: firmTenantId,
+          actorId: activeLawyer.id,
+          actorName: activeLawyer.name,
+          caseType: selectedExt.caseType,
+        },
+        selectedClient.financialProfile,
+        selectedExt
+      );
+
+      // 2. 퀵툴 액션 핸들러 등록
+      const unregister = registerDockCaseHandlers({
+        onApplyToCase: async (data: DockApplyData) => {
+          const currentExt = getCrmExt(selectedClient.id);
+          const prevPlan = currentExt.repaymentPlan;
+          const updatedPlan: any = {
+            ...prevPlan,
+            monthlyRepaymentTotal: data.monthlyPay ?? prevPlan?.monthlyRepaymentTotal ?? 0,
+            months: data.periodMonths ?? prevPlan?.months ?? 36,
+            totalDebt: data.totalDebt ?? prevPlan?.totalDebt ?? (selectedClient.financialProfile?.debtTotal || 0) * 10000,
+            totalLiquidationValue: data.liquidationValue ?? prevPlan?.totalLiquidationValue ?? 0,
+            totalRepaymentRate: data.repaymentRate ?? prevPlan?.totalRepaymentRate ?? 0,
+            totalForgivenAmount: (data.totalDebt && data.monthlyPay && data.periodMonths)
+              ? Math.max(0, data.totalDebt - (data.monthlyPay * data.periodMonths))
+              : prevPlan?.totalForgivenAmount,
+          };
+          updateCrmExt(selectedClient.id, {
+            ...currentExt,
+            repaymentPlan: updatedPlan,
+          });
+          return true;
+        },
+        onAddTaskTicket: async (task) => {
+          await createTask(firmTenantId || 'default-firm', {
+            targetType: 'case',
+            targetId: selectedClient.id,
+            assignerId: activeLawyer.id,
+            assignerName: activeLawyer.name,
+            assigneeId: activeLawyer.id,
+            assigneeName: activeLawyer.name,
+            title: task.title,
+            description: task.description,
+            priority: (task.priority as any) || 'NORMAL',
+            dueDate: task.dueDate || undefined,
+          });
+          return true;
+        },
+        onAddMemo: async (text, category = 'consult') => {
+          const currentExt = getCrmExt(selectedClient.id);
+          const note = createCrmNote(
+            category as any,
+            text.trim(),
+            activeLawyer.id,
+            activeLawyer.name
+          );
+          const updatedNotes = [note, ...(currentExt.notes || [])];
+          updateCrmExt(selectedClient.id, {
+            ...currentExt,
+            notes: updatedNotes,
+          });
+          return true;
+        },
+        onOpenAlimtok: () => {
+          if (selectedExt.feeSchedule && selectedExt.feeSchedule.length > 0) {
+            const firstPending = selectedExt.feeSchedule.find(f => f.status !== 'paid') || selectedExt.feeSchedule[0];
+            setFeeAlimtokModalConfig({
+              isOpen: true,
+              installment: firstPending,
+            });
+          } else {
+            setFeeAlimtokModalConfig({
+              isOpen: true,
+              installment: {
+                id: 'inst-initial',
+                round: 1,
+                amount: 500000,
+                dueDate: localYmd(),
+                status: 'pending',
+                memo: '착수금 안내',
+              },
+            });
+          }
+        },
+      });
+
+      return () => {
+        unregister();
+      };
+    } else {
+      clearDockCaseContext();
+    }
+  }, [selectedId, selectedClient, selectedExt, firmTenantId, activeLawyer.id, activeLawyer.name, getDisplayClientName]);
+
+  // CRM 탭 언마운트 시 퀵툴 컨텍스트 해제
+  useEffect(() => {
+    return () => {
+      clearDockCaseContext();
+    };
+  }, []);
+
+  // ── 단계 전환 확인 시트 및 잠금 안내 시트 상태 (Task 2-3) ──
+  const [transitionSheetState, setTransitionSheetState] = useState<{
+    isOpen: boolean;
+    fromStage: PipelineStage;
+    toStage: PipelineStage;
+  }>({ isOpen: false, fromStage: 1, toStage: 2 });
+
+  const [lockSheetState, setLockSheetState] = useState<{
+    isOpen: boolean;
+    targetStage: PipelineStage;
+  }>({ isOpen: false, targetStage: 2 });
+
+  const executeStageTransition = (target: PipelineStage) => {
+    const prevStage = pipelineStage;
+    setPipelineStage(target);
+    const defaultSections: Record<PipelineStage, string> = {
+      1: 'summary',
+      2: 'contract',
+      3: 'docs',
+      4: 'petition',
+      5: 'court-progress',
+      6: 'decision-summary',
+    };
+    setDetailTab((defaultSections[target] || 'summary') as any);
+
+    const STAGE_NAMES: Record<PipelineStage, string> = {
+      1: '상담·제안',
+      2: '수임 계약',
+      3: '서류 준비',
+      4: '신청·접수',
+      5: '보정·개시',
+      6: '변제·면책',
+    };
+
+    toast.success(`${target}단계(${STAGE_NAMES[target]})로 이동했습니다.`, {
+      duration: 5000,
+      action: {
+        label: '되돌리기',
+        onClick: () => {
+          setPipelineStage(prevStage as PipelineStage);
+          setDetailTab((defaultSections[prevStage as PipelineStage] || 'summary') as any);
+          toast.info(`${prevStage}단계(${STAGE_NAMES[prevStage as PipelineStage]})로 되돌렸습니다.`);
+        },
+      },
+    });
+  };
+
+  /** Stage 뷰의 '다음 단계' 버튼 및 레일 클릭 핸들러 (Task 2-3: 확인 시트 및 잠금 안내 시트 연동) */
   const advancePipelineStage = async (target: PipelineStage) => {
     if (!selectedClient) return;
     const gates = computePipelineGates(selectedClient, selectedExt);
+
+    // 1. 잠긴 단계를 열려고 할 때: window.alert 대신 잠금 안내 시트 오픈 (기획서 3.4-4)
     if (gates.locked[target]) {
-      await dialog.alert({ title: `🔒 Stage 0${target} 잠김 안내`, message: pipelineLockReason(target, gates), variant: 'warning' });
+      setLockSheetState({ isOpen: true, targetStage: target });
       return;
     }
-    setPipelineStage(target);
+
+    // 2. 현재 단계보다 전진할 때: 확인 시트(ConfirmSheet) 오픈 (기획서 3.4-3)
+    if (target > pipelineStage) {
+      setTransitionSheetState({
+        isOpen: true,
+        fromStage: pipelineStage as PipelineStage,
+        toStage: target,
+      });
+      return;
+    }
+
+    // 3. 이전 단계 또는 현재 단계로 이동할 때: 즉시 열람 (기획서 3.4-5)
+    executeStageTransition(target);
   };
 
   // ── 핸들러 ──
@@ -1271,10 +1505,10 @@ export default function CrmTab({
     const staff = staffMembers.find(s => s.id === id);
     if (staff) {
       const cfg = STAFF_ROLE_CONFIG[staff.role];
-      return <span className={`text-[10px] px-1 py-0.5 rounded ${cfg.bgColor} ${cfg.color} font-bold`}>{cfg.label}</span>;
+      return <span className={`text-xs px-1 py-0.5 rounded ${cfg.bgColor} ${cfg.color} font-bold`}>{cfg.label}</span>;
     }
     const lawyer = lawyers.find(l => l.id === id);
-    if (lawyer) return <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">변호사</span>;
+    if (lawyer) return <span className="text-xs px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">변호사</span>;
     return null;
   };
 
@@ -1407,6 +1641,26 @@ export default function CrmTab({
     await updateCrmExt(clientId, { isStarred: !ext.isStarred });
   }, [getCrmExt, updateCrmExt]);
 
+  /** 단일 사건 담당자 변경 */
+  const handleChangeAssignee = useCallback(async (clientId: string, staffId: string) => {
+    const staff = staffMembers.find(s => s.id === staffId);
+    if (!staff) return;
+    const ext = getCrmExt(clientId);
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const activities = [...(ext.activities || []), createActivityLog(
+      clientId, actor.id, actor.name, actor.role, 'status_change',
+      `담당자 변경: ${staff.name} (${STAFF_ROLE_CONFIG[staff.role]?.label || staff.role})`
+    )];
+    const saved = await updateCrmExt(clientId, {
+      assigneeId: staffId,
+      assignedLawyerId: staff.role === 'OWNER' || staff.role === 'LAWYER' ? staffId : ext.assignedLawyerId,
+      assignedConsultantId: staff.role === 'CONSULTANT' ? staffId : ext.assignedConsultantId,
+      assignedStaffId: staff.role === 'PARALEGAL' ? staffId : ext.assignedStaffId,
+      activities,
+    });
+    notifySaved(saved, `${staff.name} 님으로 담당자가 변경되었습니다.`);
+  }, [staffMembers, getCrmExt, activeStaff, activeLawyer, updateCrmExt, notifySaved]);
+
   /** 휴지통 이동 (소프트 삭제) */
   const handleSoftDelete = useCallback(async (clientId: string): Promise<boolean> => {
     const confirmed = await dialog.confirm({
@@ -1489,698 +1743,28 @@ export default function CrmTab({
   return (
     <div className="space-y-5 animate-fadeIn">
 
-      {/* ── 헤더 통계 ── (리스트에서만 표시) */}
-      {!selectedId && (<>
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-          <div>
-            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
-              <Users className="w-6 h-6 text-brand" />
-              <span>상담 신청 고객 통합 관리 CRM</span>
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">상담이 접수된 전체 의뢰인의 진단 결과, 담당자 지정 및 진행 단계를 상세 관리합니다.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* 현재 작업자 표시 — 이전: 대표가 다른 직원으로 '전환'해 그 직원 이름으로 기록을 남길 수 있었음 */}
-            <span className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium whitespace-nowrap">
-              {activeStaff ? `${STAFF_ROLE_CONFIG[activeStaff.role].label}: ${activeStaff.name}` : `${STAFF_ROLE_CONFIG.OWNER.label}: ${activeLawyer.name}`}
-            </span>
-          </div>
-        </div>
-
-        {/* 통계 카드 (모노크롬 리디자인) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.total}</div>
-            <div className="text-xs text-slate-500 font-bold mt-1">전체 고객</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.consulting}</div>
-            <div className="text-xs text-slate-500 font-bold mt-1">상담/수임 중</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.active}</div>
-            <div className="text-xs text-slate-500 font-bold mt-1">진행 사건</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">+{stats.thisMonth}</div>
-            <div className="text-xs text-slate-500 font-bold mt-1">이번달 신규</div>
-          </div>
-          {(() => {
-            const pendingReminders = requests.reduce((count, r) => {
-              const ext = getCrmExt(r.id);
-              return count + ext.notes.filter(n => n.reminder && !n.reminder.completed && new Date(n.reminder.date + 'T23:59:59') <= new Date(Date.now() + 86400000)).length;
-            }, 0);
-            const docIncomplete = requests.filter(r => {
-              const ext = getCrmExt(r.id);
-              return ext.crmStatus === 'document' && ext.documents.filter(d => d.checked).length < ext.documents.length * 0.5;
-            }).length;
-            return (<>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${pendingReminders > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{pendingReminders}</div>
-                <div className="text-xs text-slate-500 font-bold mt-1">🔔 미완료 리마인더</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
-                <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${docIncomplete > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{docIncomplete}</div>
-                <div className="text-xs text-slate-500 font-bold mt-1">📁 서류 미비</div>
-              </div>
-            </>);
-          })()}
-        </div>
-      </div>
-
-      {/* ═══ [1단] 스마트 상태 파이프라인 탭 바 & 퀵 칩 ═══ */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-2.5 md:p-3 rounded-2xl border border-slate-200 shadow-xs">
-
-        {/* 좌측 4대 파이프라인 탭 */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
-          {([
-            { key: 'all', label: '전체 고객', emoji: '👥', count: requests.length },
-            { key: 'consulting', label: '상담 접수/대기', emoji: '📞', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
-            { key: 'contracted', label: '수임·사건진행', emoji: '📁', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
-            { key: 'discharged', label: '종결', emoji: '✅', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
-          ] as const).map(f => (
-            <button
-              key={f.key}
-              onClick={() => {
-                setStatusFilter(f.key);
-                setPage(1);
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
-                statusFilter === f.key
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <span>{f.emoji}</span>
-              <span>{f.label}</span>
-              <span className={`text-[11px] px-1.5 py-0.2 rounded-md font-black ${
-                statusFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-              }`}>{f.count}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 우측 퀵 필터 칩 */}
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap w-full md:w-auto justify-end">
-          {/* 미배정 퀵 필터 칩 */}
-          {(() => {
-            const unassignedCount = requests.filter(r => {
-              const ext = getCrmExt(r.id);
-              const a = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId;
-              return !a;
-            }).length;
-            return (
-              <button
-                onClick={() => {
-                  setAssigneeFilter(prev => prev === 'unassigned' ? 'all' : 'unassigned');
-                  setPage(1);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
-                  assigneeFilter === 'unassigned'
-                    ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
-                    : unassignedCount > 0 
-                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                      : 'bg-slate-50 text-slate-400 border-slate-200'
-                }`}
-              >
-                <span>⚠️ 미배정</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  assigneeFilter === 'unassigned' ? 'bg-white text-rose-600' : 'bg-rose-200/80 text-rose-800'
-                }`}>{unassignedCount}</span>
-              </button>
-            );
-          })()}
-
-          {/* 중요(즐겨찾기) 칩 */}
-          <button
-            onClick={() => { setStarFilter(s => !s); setPage(1); }}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
-              starFilter ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-xs' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <Star className={`w-3.5 h-3.5 ${starFilter ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
-            <span>중요</span>
-          </button>
-
-          {/* 완료건 숨김 칩 */}
-          <button
-            onClick={() => setHideCompleted(h => !h)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
-              hideCompleted ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white text-slate-400 border-slate-200'
-            }`}
-          >
-            <span>{hideCompleted ? '✓ 종결 숨김' : '종결 표시'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ═══ [2단] 통합 검색 & 스마트 툴바 ═══ */}
-      <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
-        {/* 좌측: 통합 검색창 + 핵심 드롭다운 3종 + 상세필터 토글 */}
-        <div className="flex flex-1 items-center gap-2 flex-wrap">
-          {/* 검색창 */}
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
-            <input
-              type="text"
-              placeholder="고객명, 연락처, 메모 검색..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-7 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
-            />
-            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* 담당자 드롭다운 */}
-          <select
-            value={assigneeFilter}
-            onChange={e => { setAssigneeFilter(e.target.value); setPage(1); }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
-          >
-            <option value="all">담당자: 전체</option>
-            <option value="unassigned">⚠️ 미배정만</option>
-            {staffMembers.filter(m => m.isActive).map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-
-          {/* 정렬 드롭다운 */}
-          <select
-            value={`${sortField}_${sortDir}`}
-            onChange={e => {
-              const [f, d] = e.target.value.split('_') as [SortField, SortDir];
-              setSortField(f); setSortDir(d); setPage(1);
-            }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
-          >
-            <option value="createdAt_desc">최신 등록순</option>
-            <option value="createdAt_asc">오래된 순</option>
-            <option value="lastActivity_desc">최근 활동순</option>
-            <option value="debtTotal_desc">총 채무 높은순</option>
-            <option value="debtTotal_asc">총 채무 낮은순</option>
-            <option value="income_desc">월 소득 높은순</option>
-            <option value="clientName_asc">고객명 (ㄱ-ㅎ)</option>
-          </select>
-
-          {/* 기간 빠른 선택 드롭다운 */}
-          <select
-            value={periodFilter}
-            onChange={e => handlePeriodChange(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
-          >
-            <option value="all">📅 기간: 전체</option>
-            <option value="today">오늘 접수</option>
-            <option value="week">이번 주</option>
-            <option value="month">이번 달</option>
-            <option value="3month">최근 3개월</option>
-          </select>
-
-          {/* 상세 필터 토글 버튼 */}
-          <button
-            onClick={() => setIsDetailFilterOpen(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-              isDetailFilterOpen || channelFilter !== 'all'
-                ? 'bg-brand/10 border-brand/30 text-brand'
-                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            <span>상세 필터</span>
-            {channelFilter !== 'all' && <span className="w-1.5 h-1.5 rounded-full bg-brand" />}
-          </button>
-        </div>
-
-        {/* 우측: 신규 고객 등록 (Primary) + 도구 모음 드롭다운 + 뷰 토글 */}
-        <div className="flex items-center gap-2 shrink-0 justify-end">
-          {/* + 신규 고객 등록 */}
-          <button
-            onClick={() => setIsNewCaseModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-extrabold bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>신규 고객 등록</span>
-          </button>
-
-          {/* 📥 도구 모음 드롭다운 메뉴 */}
-          <div className="relative" ref={toolsMenuRef}>
-            <button
-              onClick={() => setIsToolsDropdownOpen(v => !v)}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <span>도구 모음</span>
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isToolsDropdownOpen ? 'rotate-90' : ''}`} />
-            </button>
-
-            {isToolsDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 p-1.5 space-y-1 animate-fadeIn">
-                <button
-                  onClick={() => { setShowBulkMessage(true); setIsToolsDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
-                >
-                  <span>📢 대량 알림톡 발송</span>
-                </button>
-                <button
-                  onClick={() => { setIsExportModalOpen(true); setIsToolsDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-slate-500" />
-                  <span>엑셀로 내보내기</span>
-                </button>
-                <button
-                  onClick={() => { setIsImportModalOpen(true); setIsToolsDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5 text-slate-500" />
-                  <span>엑셀 대량 업로드</span>
-                </button>
-                <button
-                  onClick={() => { setIsMasterSettingsModalOpen(true); setIsToolsDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5 text-slate-500" />
-                  <span>CRM & 영업 마스터 설정</span>
-                </button>
-                <div className="border-t border-slate-100 my-1" />
-                <button
-                  onClick={() => { setShowTrash(true); setIsToolsDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                  <span>휴지통 (삭제 건)</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 신규 리드 & 뷰 토글 */}
-          <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-            {handleOpenProposalDraft && (() => {
-              // 이전: 이 변호사에게 온 요청인지 보지 않고 모든 요청을 세어, 목록(아래 신규 리드 뷰)과 건수가 달랐다
-              const newLeadsCount = newLeadRequests.length;
-              return (
-                <button
-                  onClick={() => setViewMode('leads')}
-                  className={`px-3 py-2 cursor-pointer text-xs font-bold flex items-center gap-1 ${
-                    viewMode === 'leads' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>신규 리드</span>
-                  {newLeadsCount > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                      viewMode === 'leads' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-600'
-                    }`}>{newLeadsCount}</span>
-                  )}
-                </button>
-              );
-            })()}
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-              title="리스트 뷰"
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`p-2 cursor-pointer ${viewMode === 'kanban' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-              title="칸반 뷰"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 상세 필터 접이식 패널 ── */}
-      {isDetailFilterOpen && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-wrap items-center gap-3 text-xs animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-600">유입 채널:</span>
-            <select
-              value={channelFilter}
-              onChange={e => { setChannelFilter(e.target.value); setPage(1); }}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium"
-            >
-              <option value="all">유입 채널: 전체</option>
-              {Object.entries(INTAKE_CHANNEL_CONFIG).map(([k, v]) => (
-                <option key={k} value={k}>{v.emoji} {v.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-600">페이지당 건수:</span>
-            <select
-              value={perPage}
-              onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium"
-            >
-              <option value={10}>10건씩 보기</option>
-              <option value={20}>20건씩 보기</option>
-              <option value={50}>50건씩 보기</option>
-            </select>
-          </div>
-
-          {/* 직접 기간 지정 */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className="font-bold text-slate-600">기간 직접 지정:</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => { setDateFrom(e.target.value); setPeriodFilter('custom'); setPage(1); }}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs"
-            />
-            <span className="text-slate-400">~</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => { setDateTo(e.target.value); setPeriodFilter('custom'); setPage(1); }}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs"
-            />
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(''); setDateTo(''); setPeriodFilter('all'); setPage(1); }}
-                className="text-brand hover:underline font-bold ml-1"
-              >
-                초기화
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── 휴지통 모드 배너 ── */}
-      {showTrash && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm animate-fadeIn">
-          <Trash2 className="w-5 h-5 text-red-500" />
-          <span className="font-bold text-red-700">🗑️ 휴지통 보기</span>
-          <span className="text-red-700 text-xs">삭제된 건이 표시됩니다. {RECYCLE_BIN_RETENTION_DAYS}일이 지나면 CRM 화면을 열 때 영구 삭제됩니다.</span>
-          <button onClick={() => setShowTrash(false)} className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 whitespace-nowrap">닫기</button>
-        </div>
-      )}
-
-      {/* ── 일괄 선택 액션 바 ── */}
-      {selectedIds.size > 0 && currentPermissions.assignCases && (
-        <div className="bg-brand/5 border border-brand/20 p-4 rounded-xl flex flex-wrap items-center gap-3 text-sm animate-fadeIn">
-          <span className="font-bold text-brand">☑ {selectedIds.size}건 선택됨</span>
-          <div className="flex items-center gap-2">
-            <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value as CrmStatus)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm">
-              {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].label}</option>)}
-            </select>
-            <button onClick={handleBulkStatusChange} className="bg-brand hover:bg-brand-hover text-white px-4 py-1.5 rounded-xl text-sm font-bold cursor-pointer">
-              상태 일괄 변경
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={bulkAssignee} onChange={e => setBulkAssignee(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm">
-              <option value="">담당자 선택</option>
-              {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <button onClick={handleBulkAssign} disabled={!bulkAssignee}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-1.5 rounded-xl text-sm font-bold cursor-pointer">
-              담당 일괄 배정
-            </button>
-          </div>
-          <button onClick={() => setSelectedIds(new Set())} className="text-slate-500 hover:text-slate-700 ml-auto text-sm font-medium cursor-pointer">선택 해제</button>
-        </div>
-      )}
-      </>)}
-
-      {/* ══════════ 리스트 뷰 (고도화 테이블) ══════════ */}
-      {viewMode === 'list' && !selectedId && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse table-fixed">
-                <thead>
-                  <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
-                    <th className="p-3 w-[36px] text-center">
-                      <input type="checkbox" checked={selectedIds.size === pagedRequests.length && pagedRequests.length > 0} onChange={handleSelectAll}
-                        className="rounded border-slate-300" />
-                    </th>
-                    <th className="p-1 w-[26px]"></th>
-                    <th className="p-3.5 w-[20%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('clientName')}>
-                      의뢰인 정보 {sortField === 'clientName' && (sortDir === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th className="p-3.5 w-[10%] text-center">
-                      사건 구분
-                    </th>
-                    <th className="p-3.5 w-[18%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('crmStatus')}>
-                      진행 상태 & 일정 {sortField === 'crmStatus' && (sortDir === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th className="p-3.5 w-[16%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('debtTotal')}>
-                      채무 & 소득 {sortField === 'debtTotal' && (sortDir === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th className="p-3.5 w-[13%] text-center">
-                      담당자 / 채널
-                    </th>
-                    <th className="p-3.5 w-[10%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('createdAt')}>
-                      등록일 {sortField === 'createdAt' && (sortDir === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th className="p-3.5 w-[13%] text-center">
-                      빠른 실행
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {pagedRequests.map(r => {
-                    const ext = getCrmExt(r.id);
-                    const sc = CRM_STATUS_CONFIG[ext.crmStatus];
-                    const isSelected = r.id === selectedId;
-                    
-                    // 다음 미완료 리마인더
-                    const nextReminder = ext.notes?.find(n => n.reminder && !n.reminder.completed);
-                    
-                    // 서류 미비 건수
-                    const docChecked = ext.documents?.filter(d => d.checked).length || 0;
-                    const docTotal = ext.documents?.length || 15;
-                    
-                    return (
-                      <tr key={r.id}
-                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-brand/5' : 'hover:bg-slate-50/80'}`}
-                        onClick={() => setSelectedId(r.id)}>
-                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleToggleSelect(r.id)} className="rounded border-slate-300" />
-                        </td>
-                        <td className="p-1" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleToggleStar(r.id)} className="p-1 hover:bg-amber-50 rounded-lg transition-colors">
-                            <Star className={`w-3.5 h-3.5 ${ext.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-300 hover:text-amber-400'}`} />
-                          </button>
-                        </td>
-                        
-                        {/* 1. 의뢰인 정보 */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-slate-900 text-sm md:text-base truncate">{getDisplayClientName(r)}</span>
-                            {isNewCase(r.createdAt) && <NewBadge />}
-                          </div>
-                          <div 
-                            onClick={e => {
-                              e.stopPropagation();
-                              const phone = getDisplayPhoneNumber(r);
-                              if (phone) {
-                                navigator.clipboard.writeText(phone);
-                                toast.success('연락처가 복사되었습니다.');
-                              }
-                            }}
-                            className="text-xs text-slate-400 font-medium truncate hover:text-brand hover:underline cursor-pointer flex items-center gap-1 mt-0.5"
-                            title="연락처 복사"
-                          >
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            <span>{getDisplayPhoneNumber(r)}</span>
-                          </div>
-                        </td>
-
-                        {/* 2. 사건 구분 */}
-                        <td className="p-3.5 text-center">
-                          {getCaseTypeBadge(r)}
-                        </td>
-
-                        {/* 3. 진행 상태 & 일정 */}
-                        <td className="p-3.5">
-                          <div className="space-y-1">
-                            <span className={`inline-flex items-center text-xs px-2.5 py-0.5 rounded-md border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold whitespace-nowrap`}>
-                              {sc.emoji} {sc.label}
-                            </span>
-                            {nextReminder ? (
-                              <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1 truncate">
-                                <span>⏰</span>
-                                <span>{nextReminder.reminder?.date} {nextReminder.reminder?.action || '상담'}</span>
-                              </p>
-                            ) : ext.crmStatus === 'document' ? (
-                              <p className="text-[11px] text-purple-600 font-bold flex items-center gap-1 truncate">
-                                <span>📁</span>
-                                <span>서류 {docChecked}/{docTotal} ({docChecked < docTotal ? '미비' : '완료'})</span>
-                              </p>
-                            ) : null}
-                          </div>
-                        </td>
-
-                        {/* 4. 채무 & 소득 (DTI 및 가용소득 배제) */}
-                        <td className="p-3.5 text-right">
-                          <div className="font-black text-rose-600 text-sm md:text-base whitespace-nowrap">
-                            {formatWonShort(r.financialProfile.debtTotal)}
-                          </div>
-                          <div className="text-xs text-slate-500 font-medium whitespace-nowrap mt-0.5">
-                            {r.financialProfile.income && r.financialProfile.income > 0 
-                              ? `월 ${formatWonShort(r.financialProfile.income)}`
-                              : '무소득'}
-                          </div>
-                        </td>
-
-                        {/* 5. 담당자 & 유입 채널 */}
-                        <td className="p-3.5 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            {(() => {
-                              const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId;
-                              return effectiveAssignee ? (
-                                <div className="flex items-center gap-1">
-                                  {getStaffRoleBadge(effectiveAssignee)}
-                                  <span className="text-xs text-slate-700 font-bold truncate max-w-[80px]">
-                                    {getStaffName(effectiveAssignee)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">
-                                  ⚠️ 미배정
-                                </span>
-                              );
-                            })()}
-                            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-0.5" title={INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label}>
-                              <span>{INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.emoji || '🏠'}</span>
-                              <span>{INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label || '마이김변'}</span>
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* 6. 등록일 */}
-                        <td className="p-3.5 text-right text-xs text-slate-500 font-medium">
-                          <div className={isNewCase(r.createdAt) ? 'text-rose-500 font-bold' : ''}>
-                            {new Date(r.createdAt).toLocaleDateString()}
-                          </div>
-                          <div className="text-slate-400 text-[11px] mt-0.5">
-                            {timeAgo(ext.lastActivityAt)}
-                          </div>
-                        </td>
-
-                        {/* 7. 빠른 실행 액션 */}
-                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
-                            {setActiveTab && (
-                              <button
-                                onClick={() => {
-                                  setActiveTab('chat');
-                                }}
-                                className="px-2.5 py-1.5 bg-brand/10 hover:bg-brand text-brand hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                                title="1:1 상담 채팅방으로 이동"
-                              >
-                                <span>💬</span>
-                                <span>상담</span>
-                              </button>
-                            )}
-
-                            {/* 빠른 상태 변경 드롭다운 토글 */}
-                            <div className="relative">
-                              <button
-                                onClick={() => setQuickStatusMenuId(prev => prev === r.id ? null : r.id)}
-                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                                title="빠른 상태 변경"
-                              >
-                                <span>⚡</span>
-                              </button>
-
-                              {quickStatusMenuId === r.id && (
-                                <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-1 space-y-0.5 animate-fadeIn text-left">
-                                  <div className="text-[10px] text-slate-400 font-bold px-2 py-1 uppercase tracking-wider border-b border-slate-100">
-                                    상태 즉시 변경
-                                  </div>
-                                  {CRM_STATUSES.map(st => (
-                                    <button
-                                      key={st}
-                                      onClick={() => {
-                                        const updated: CrmClientExtension = {
-                                          ...ext,
-                                          ...withThirteenStageSync(ext, { crmStatus: st }), // 13단계도 새 상태에 맞춤
-                                          lastActivityAt: new Date().toISOString(),
-                                          activities: [
-                                            ...(ext.activities || []),
-                                            {
-                                              id: `act-quick-${Date.now()}`,
-                                              clientId: r.id,
-                                              actorId: activeStaff?.id || activeLawyer.id,
-                                              actorName: activeStaff?.name || activeLawyer.name,
-                                              actorRole: activeStaff?.role || 'OWNER',
-                                              type: 'status_change',
-                                              description: `빠른 상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[st].label}`,
-                                              createdAt: new Date().toISOString(),
-                                            },
-                                          ],
-                                        };
-                                        setCrmData(prev => ({ ...prev, [r.id]: updated }));
-                                        setQuickStatusMenuId(null);
-                                        saveCrmClient(r.id, updated).then(ok => notifySaved(ok, `[${getDisplayClientName(r)}] 상태가 [${CRM_STATUS_CONFIG[st].label}]로 변경되었습니다.`));
-                                      }}
-                                      className={`w-full text-left px-2 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
-                                        ext.crmStatus === st ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50'
-                                      }`}
-                                    >
-                                      <span>{CRM_STATUS_CONFIG[st].emoji}</span>
-                                      <span>{CRM_STATUS_CONFIG[st].label}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {showTrash && (
-                              <button onClick={() => handleRestore(r.id)} className="p-1.5 bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 rounded-lg" title="복원">
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {pagedRequests.length === 0 && (
-                    <tr><td colSpan={9} className="p-12 text-center text-slate-500 text-sm font-medium">검색 조건에 부합하는 고객이 없습니다.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (() => {
-              const pages: (number | '...')[] = [];
-              if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i); }
-              else {
-                pages.push(1);
-                if (page > 3) pages.push('...');
-                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-                if (page < totalPages - 2) pages.push('...');
-                pages.push(totalPages);
-              }
-              return (
-                <div className="p-4 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500 font-medium">{'\uC804\uCCB4'} {filteredRequests.length}{'\uBA85 \xB7'} {totalPages}{'\uD398\uC774\uC9C0'}</span>
-                  <div className="flex items-center gap-1">
-                    <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer active:scale-[0.98]">{'\uC774\uC804'}</button>
-                    {pages.map((p, idx) => p === '...' ? <span key={'d' + idx} className="px-1.5 text-xs text-slate-400">...</span> : (
-                      <button key={p} onClick={() => setPage(p as number)} className={`w-8 h-8 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.98] transition-all ${page === p ? 'bg-brand text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
-                    ))}
-                    <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer active:scale-[0.98]">{'\uB2E4\uC74C'}</button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+      {/* ── 사건 관리 목록 (개편된 CaseListView: 7열 테이블, 저장된 보기 8단계, 빠른 필터 칩, 1줄 툴바, 6단계 칸반 보드 내장) ── */}
+      {!selectedId && (
+        <CaseListView
+          requests={requests}
+          getCrmExt={getCrmExt}
+          selectedId={selectedId}
+          onSelectCase={(id) => setSelectedId(id)}
+          onNewCase={() => setIsNewCaseModalOpen(true)}
+          onOpenChat={(client) => {
+            if (setActiveTab) setActiveTab('chat');
+          }}
+          onToggleStar={handleToggleStar}
+          onDeleteCase={handleSoftDelete}
+          onChangeAssignee={handleChangeAssignee}
+          staffMembers={staffMembers}
+          currentStaffId={activeStaff?.id || activeLawyer.id}
+          onOpenBulkMessage={() => setShowBulkMessage(true)}
+          onOpenExport={() => setIsExportModalOpen(true)}
+          onOpenImport={() => setIsImportModalOpen(true)}
+          onOpenTrash={() => setShowTrash(true)}
+          onOpenSettings={() => setIsMasterSettingsModalOpen(true)}
+        />
       )}
 
       {/* ══════════ 상세 뷰 (풀사이즈) ══════════ */}
@@ -2264,2800 +1848,420 @@ export default function CrmTab({
           }
         }
 
+        // 이전/다음 사건 탐색기
+        const currentReqIndex = pagedRequests.findIndex(r => r.id === selectedId);
+        const prevCaseId = currentReqIndex > 0 ? pagedRequests[currentReqIndex - 1]?.id : undefined;
+        const nextCaseId = currentReqIndex >= 0 && currentReqIndex < pagedRequests.length - 1 ? pagedRequests[currentReqIndex + 1]?.id : undefined;
+
+        const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+        const gates = computePipelineGates(selectedClient, selectedExt);
+        const journey = getJourneyState(selectedClient, selectedExt, activeLawyer.id);
+        const currentStageDetail = journey.stages[pipelineStage as 1 | 2 | 3 | 4 | 5 | 6] || journey.currentStageDetail;
+
+        const assignedLawyerName = lawyers.find(l => l.id === (selectedExt.assigneeId || selectedExt.assignedLawyerId))?.name || 
+          staffMembers.find(m => m.id === (selectedExt.assigneeId || selectedExt.assignedStaffId))?.name || 
+          '담당 미배정';
+
+        // 단일 주 버튼 (Primary CTA)
+        const primaryActionConfig = (() => {
+          if (pipelineStage === 1) {
+            const hasProposal = (selectedClient.proposals || []).length > 0;
+            return {
+              label: hasProposal ? '다음: 수임 계약 (2단계)' : '다음: 제안서 작성',
+              onClick: () => {
+                if (!hasProposal && handleOpenProposalDraft) {
+                  handleOpenProposalDraft(selectedClient.id);
+                } else {
+                  advancePipelineStage(2);
+                }
+              },
+            };
+          }
+          if (pipelineStage === 2) {
+            return {
+              label: '다음: 서류 준비 (3단계)',
+              onClick: () => advancePipelineStage(3),
+            };
+          }
+          if (pipelineStage === 3) {
+            return {
+              label: '다음: 신청·접수 (4단계)',
+              onClick: () => advancePipelineStage(4),
+            };
+          }
+          if (pipelineStage === 4) {
+            return {
+              label: '다음: 보정·개시 (5단계)',
+              onClick: () => advancePipelineStage(5),
+            };
+          }
+          if (pipelineStage === 5) {
+            return {
+              label: '다음: 변제·면책 (6단계)',
+              onClick: () => advancePipelineStage(6),
+            };
+          }
+          return {
+            label: '사건 완료 및 종결',
+            onClick: () => handleStatusChangeWithDropOff(selectedId, 'discharged'),
+          };
+        })();
+
+        // 완료 조건 체크리스트 3~5개
+        const stageConditions = (() => {
+          switch (pipelineStage) {
+            case 1:
+              return [
+                { id: 'c1', label: '기본 재무 정보 수집', isMet: Boolean(fp.income && fp.debtTotal) },
+                { id: 'c2', label: '회생·파산 적격 검토', isMet: gates.isConsultCompleted },
+                { id: 'c3', label: '솔루션 제안서 발송', isMet: (selectedClient.proposals || []).length > 0 },
+              ];
+            case 2:
+              return [
+                { id: 'c1', label: '전자 사건위임계약 체결', isMet: gates.isContractCompleted },
+                { id: 'c2', label: '착수금 / 1회차 수납', isMet: totalPaidWon > 0 },
+                { id: 'c3', label: '소송위임장 날인 및 보관', isMet: Boolean(selectedExt.isSealKeptInSafe || selectedExt.contractDate) },
+              ];
+            case 3:
+              return [
+                { id: 'c1', label: '기본 관공서 서류 수합', isMet: (selectedExt.documents || []).length > 0 },
+                { id: 'c2', label: '채권기관별 부채증명서 발급', isMet: (selectedExt.debtCertificateOrders || []).every(o => o.orderStatus === 'completed') },
+                { id: 'c3', label: '필수 서류 승인 80% 이상', isMet: gates.isDocCompleted },
+              ];
+            case 4:
+              return [
+                { id: 'c1', label: '개시신청서 및 재산·수지표 검토', isMet: Boolean(selectedExt.propertyListD5102 || selectedExt.incomeExpenseD5103) },
+                { id: 'c2', label: '의뢰인 최종 제출 동의', isMet: Boolean(selectedExt.courtStatement) },
+                { id: 'c3', label: '법원 접수 및 사건번호 채번', isMet: gates.isFilingCompleted },
+              ];
+            case 5:
+              return [
+                { id: 'c1', label: '금지·중지명령 인용 확인', isMet: Boolean(selectedExt.courtCase?.caseNumber) },
+                { id: 'c2', label: '법원 보정권고/명령 소명서 제출', isMet: !(selectedExt.correctionOrders || []).some(c => c.status === 'pending') },
+                { id: 'c3', label: '개시결정 등록 및 가상계좌 확인', isMet: gates.isCommenced },
+              ];
+            case 6:
+              return [
+                { id: 'c1', label: '회생위원 가상계좌 1회차 적립', isMet: Boolean(selectedExt.decisionSummary?.virtualAccountNumber) },
+                { id: 'c2', label: '채권자집회 참석 및 인가결정', isMet: gates.isCommenced },
+                { id: 'c3', label: '변제 완료 및 면책 확정', isMet: gates.isDischarged },
+              ];
+            default:
+              return [];
+          }
+        })();
+
+        // 단계별 세부 섹션 탭
+        const stageSectionTabs = (() => {
+          switch (pipelineStage) {
+            case 1:
+              return [
+                { id: 'summary', label: '상담 요약' },
+                { id: 'eligibility', label: '적격 검토' },
+                { id: 'ai-review', label: 'AI 사건 분석' },
+                { id: 'proposal', label: '제안서' },
+              ];
+            case 2:
+              return [
+                { id: 'contract', label: '위임계약서' },
+                { id: 'fees', label: '수임료·분납' },
+                { id: 'court-fees', label: '법원 비용' },
+              ];
+            case 3:
+              return [
+                { id: 'docs', label: '발급 서류' },
+                { id: 'debt-cert', label: '부채증명서' },
+                { id: 'statement', label: '진술서·수지표' },
+              ];
+            case 4:
+              return [
+                { id: 'petition', label: '신청 서식' },
+                { id: 'ancillary', label: '부수 신청' },
+                { id: 'filing', label: '검토·제출' },
+              ];
+            case 5:
+              return [
+                { id: 'court-progress', label: '법원 진행' },
+                { id: 'corrections', label: '보정 센터' },
+                { id: 'decision', label: '결정 등록' },
+              ];
+            case 6:
+              return [
+                { id: 'decision-summary', label: '개시결정 요약' },
+                { id: 'creditors-meeting', label: '채권자집회·인가' },
+                { id: 'repayment', label: '변제 관리' },
+                { id: 'discharge', label: '면책' },
+              ];
+            default:
+              return [];
+          }
+        })();
+
         return (
-          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm animate-fadeIn">
-            {/* ── 1. Smart Case Profile Banner (환자 차트형 헤더) ── */}
-            <div className="bg-gradient-to-r from-slate-900 via-[#1E293B] to-[#0F172A] p-5 text-white border-b border-slate-800">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                {/* 좌측: 목록 버튼 + 고객 프로필 메타 */}
-                <div className="flex items-center gap-4 min-w-0">
-                  <button 
-                    onClick={() => { setSelectedId(''); setIsEditingName(false); }} 
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl transition-all cursor-pointer press-scale shrink-0 whitespace-nowrap"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>목록으로</span>
-                  </button>
+          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm animate-fadeIn pb-16 lg:pb-0">
+            {/* ── 1. 사건 워크스페이스 상단 라이트 헤더 ── */}
+            <CaseWorkspaceHeader
+              clientRequest={selectedClient}
+              crmExt={selectedExt}
+              assignedLawyerName={assignedLawyerName}
+              onBackToList={() => { setSelectedId(''); setIsEditingName(false); }}
+              onPrevCase={prevCaseId ? () => setSelectedId(prevCaseId) : undefined}
+              onNextCase={nextCaseId ? () => setSelectedId(nextCaseId) : undefined}
+              hasPrevCase={Boolean(prevCaseId)}
+              hasNextCase={Boolean(nextCaseId)}
+              onOpenChat={() => { if (setActiveTab) setActiveTab('chat'); }}
+              primaryAction={primaryActionConfig}
+              onSwitchCaseType={handleSwitchCaseType}
+              onOpenFormsHub={() => setShowDocHubModal(true)}
+              onOpenIntakeDetail={() => setShowIntakeDetailModal(true)}
+              onToggleContextPanel={() => setIsContextPanelOpen(!isContextPanelOpen)}
+              isContextPanelOpen={isContextPanelOpen}
+              onDeleteCase={currentPermissions.deleteClients ? () => handleSoftDelete(selectedId) : undefined}
+            />
 
-                  <div className="h-8 w-px bg-slate-700/80 shrink-0" />
+            {/* ── 2. 6단계 수임 여정 레일 ── */}
+            <JourneyRail
+              currentStage={pipelineStage as PipelineStage}
+              onSelectStage={(stage) => advancePipelineStage(stage)}
+              gates={gates}
+              isBankruptcy={isBankruptcyCase}
+              onOpenDocuments={() => advancePipelineStage(3)}
+              onOpenTimeline={() => setShowTimelineModal(true)}
+            />
 
-                  <div className="space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      {isEditingName ? (
-                        <div className="flex items-center gap-1.5">
-                          <input 
-                            type="text" 
-                            value={editName} 
-                            onChange={e => setEditName(e.target.value)}
-                            className="bg-slate-800 text-white text-base font-bold px-2.5 py-1 rounded-lg border border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand"
-                            autoFocus
-                          />
-                          <button 
-                            onClick={() => { handleSaveClientInfo(); setIsEditingName(false); }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded-lg text-xs cursor-pointer"
-                            title="저장"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => { setEditName(selectedClient.clientName); setIsEditingName(false); }}
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-300 p-1.5 rounded-lg text-xs cursor-pointer"
-                            title="취소"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-black text-white tracking-tight truncate">
-                            {getDisplayClientName ? getDisplayClientName(selectedClient) : selectedClient.clientName}
-                          </h3>
-                          {!(Boolean(
-                            selectedClient.phoneConsultationRequested || 
-                            selectedClient.contactDisclosureStatus === 'contact_shared' ||
-                            (selectedClient.proposals || []).some((p: any) => p.phoneConsultRequestedAt) ||
-                            selectedClient.status === 'contracted' ||
-                            selectedExt.thirteenStage === 'contract_done'
-                          )) && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-bold flex items-center gap-1 shrink-0">
-                              <Lock className="w-2.5 h-2.5" />
-                              스텔스 익명 보호
-                            </span>
-                          )}
-                          {currentPermissions.editClientInfo && (
-                            <button 
-                              onClick={() => setIsEditingName(true)}
-                              className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1 rounded-md hover:bg-white/10"
-                              title="가명/이름 수정"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      )}
+            {/* ── 3. 단계 헤더 (완료 조건 체크리스트 & 섹션 탭) ── */}
+            <StageHeader
+              stageNumber={pipelineStage}
+              stageTitle={currentStageDetail.title}
+              stageDescription={currentStageDetail.nextAction}
+              conditions={stageConditions}
+              progressText={currentStageDetail.progressText}
+              progressPercent={currentStageDetail.progressPercent}
+              sectionTabs={stageSectionTabs}
+              activeSection={detailTab}
+              onSelectSection={(secId) => setDetailTab(secId as any)}
+            />
 
-                      {/* 인적/사건 핵심 태그 뱃지 */}
-                      {fp.age && (
-                        <span className="text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-md">
-                          {fp.age}세 · {fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '미기재'}
-                        </span>
-                      )}
-                      {fp.residenceRegion && (
-                        <span className="text-[11px] font-medium bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
-                          📍 {fp.residenceRegion}
-                        </span>
-                      )}
-                      {/* 💼 소득 유형 뱃지 (헤더 상시 노출) */}
-                      <span 
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${incomeTypeInfo.badgeClass}`}
-                        title={`[소득 구분] ${incomeTypeInfo.label}\n• 준비 서류: ${incomeTypeInfo.documentSummary}`}
-                      >
-                        {incomeTypeInfo.badgeLabel}
-                      </span>
-                      {(fp.age && fp.age < 30) || (fp.specialCondition && fp.specialCondition !== 'none') ? (
-                        <span className="text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-300" />
-                          24개월 청년특례 유력
-                        </span>
-                      ) : null}
-                      {selectedExt.isStarred && (
-                        <span className="text-[11px] font-bold bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 px-2 py-0.5 rounded-md">
-                          ★ 중요 고객
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 연락처 & 안심번호 복사 바 */}
-                    <div className="flex items-center gap-3 text-xs text-slate-300">
-                      <div className="flex items-center gap-1.5 font-mono">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="font-semibold">{getDisplayPhoneNumber(selectedClient)}</span>
-                        {(() => {
-                          const isShared = Boolean(
-                            selectedClient.phoneConsultationRequested || 
-                            selectedClient.contactDisclosureStatus === 'contact_shared' ||
-                            (selectedClient.proposals || []).some((p: any) => p.phoneConsultRequestedAt) ||
-                            selectedClient.status === 'contracted' ||
-                            selectedExt.thirteenStage === 'contract_done'
-                          );
-                          return (
-                            <button 
-                              onClick={() => {
-                                if (isShared && selectedClient.phone) {
-                                  navigator.clipboard.writeText(selectedClient.phone);
-                                  toast.success('전화번호가 클립보드에 복사되었습니다.');
-                                } else {
-                                  toast.info('고객이 제안서를 확인하고 전화 상담을 요청한 후 복사할 수 있습니다.');
-                                }
-                              }}
-                              className="text-slate-400 hover:text-white transition-colors cursor-pointer ml-1 p-0.5 rounded hover:bg-white/10"
-                              title={isShared ? "전화번호 복사" : "연락처 미공개"}
-                            >
-                              {isShared ? <Copy className="w-3 h-3" /> : <Lock className="w-3 h-3 text-slate-500" />}
-                            </button>
-                          );
-                        })()}
-                      </div>
-                      <span className="text-slate-600">|</span>
-                      <span className="text-slate-400 text-[11px]">
-                        접수일: <span className="text-slate-300 font-mono">{new Date(selectedClient.createdAt).toLocaleDateString()}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 우측: 상태 뱃지 & 빠른 액션 CTA 버튼 그룹 */}
-                <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                  <span className={`text-xs px-3 py-1.5 rounded-xl border font-black shrink-0 shadow-xs ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
-                    {CRM_STATUS_CONFIG[selectedExt.crmStatus].emoji} {CRM_STATUS_CONFIG[selectedExt.crmStatus].label}
-                  </span>
-
-                  {handleOpenProposalDraft && (selectedClient.status === 'requested' || selectedClient.status === 'responding') && 
-                   !(selectedClient.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id) && (
-                    <button
-                      onClick={() => handleOpenProposalDraft(selectedClient.id)}
-                      className="bg-brand hover:bg-brand-hover text-white font-bold py-2 px-4 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap press-scale cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      제안서 작성
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setShowIntakeDetailModal(true)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700 whitespace-nowrap press-scale cursor-pointer"
-                    title="고객이 '내 상황 체크하기'에서 남긴 전체 채무 및 개인 현황 상세 팝업 열기"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-blue-400" />
-                    <span>고객 상세보기</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ── 2단 레이아웃: 좌측 보조 인스펙터(토글) + 우측 메인 서류 작업 캔버스 ── */}
-            <div className="flex flex-col lg:flex-row">
-              
-              {/* ══════════ 좌측 컬럼: 사건 팩트시트 (접이식 서브 인스펙터) ══════════ */}
-              {isFactSheetOpen && (
-                <div className="w-full lg:w-[280px] shrink-0 border-r border-slate-200/90 bg-slate-50/70 p-4 space-y-3.5 animate-fadeIn">
-                  
-                  {/* 📌 상시 표시 핵심 팩트 카드 */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                      <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                        <span>📌 사건 팩트시트</span>
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                          {selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy' ? '개인파산' : '개인회생'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setIsFactSheetOpen(false)}
-                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="팩트시트 접기 (서류 작업 공간 극대화)"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">현재 단계</span>
-                      <span className="font-bold text-[#1E3A5F]">Stage 0{pipelineStage}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">소득 구분</span>
-                      <span 
-                        className={`font-bold text-[11px] px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${incomeTypeInfo.badgeClass}`}
-                        title={`${incomeTypeInfo.label} • ${incomeTypeInfo.documentSummary}`}
-                      >
-                        {incomeTypeInfo.badgeLabel}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">담당자</span>
-                      <span className="font-bold text-slate-800">
-                        {lawyers.find(l => l.id === (selectedExt.assigneeId || selectedExt.assignedLawyerId))?.name || 
-                         staffMembers.find(m => m.id === (selectedExt.assigneeId || selectedExt.assignedStaffId))?.name || 
-                         '김사무장'}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">관할 법원</span>
-                      <span className="font-bold text-slate-700 font-mono">
-                        {selectedExt.courtCase?.courtName || selectedClient.court || '서울회생법원'}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">수임료</span>
-                      <span className="font-bold text-slate-800 font-mono flex items-center gap-1.5">
-                        {totalFeeWon > 0 ? (
-                          <>
-                            <span>{(totalFeeWon / 10000).toLocaleString()}만원</span>
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-sans font-bold border ${feeBadgeClass}`}>
-                              {feeBadgeLabel}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 font-sans font-normal">미약정</span>
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">고객 반응</span>
-                      <span className="text-slate-600 font-mono text-[11px]">
-                        {timeAgo(selectedExt.lastActivityAt || selectedClient.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 📂 아코디언 1: 재무 스펙 요약 (기본 축소형 2줄) */}
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShowFinanceAccordion(!showFinanceAccordion)}
-                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-[#1E3A5F]" />
-                      <span>재무 스펙 요약</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-emerald-600 font-mono">
-                        약 {estimatedDischargeRate}% 탕감
-                      </span>
-                      <span className="text-slate-400 text-xs">{showFinanceAccordion ? '▴' : '▾'}</span>
-                    </div>
-                  </button>
-
-                  {/* 항상 보이는 콤팩트 2행 요약 */}
-                  <div className="px-3.5 pb-3 pt-0 grid grid-cols-2 gap-2 text-xs border-b border-slate-100">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-[10px] text-slate-500 block">총 채무</span>
-                      <span className="font-mono font-bold text-slate-900">{formatWonShort(debtTotal)}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
-                        <span>월 소득 (세후)</span>
-                        <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-slate-200/80 text-slate-700">
-                          {incomeTypeInfo.shortTag}
-                        </span>
-                      </div>
-                      <span className="font-mono font-bold text-slate-900">{income.toLocaleString()}만원</span>
-                    </div>
-                  </div>
-
-                  {/* 펼침 시 상세 분석 지표 */}
-                  {showFinanceAccordion && (
-                    <div className="p-3.5 bg-slate-50/70 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
-                      <div className="flex justify-between text-slate-600">
-                        <span>법정 인정 생계비</span>
-                        <span className="font-mono font-bold text-slate-800">{minLivingCost}만원</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>월 예상 가용소득</span>
-                        <span className="font-mono font-bold text-blue-600">{monthlyDisposable.toLocaleString()}만원</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>수지표(D5103)</span>
-                        <span className={`font-bold text-[11px] ${incomeTypeInfo.requiresD5103 ? 'text-amber-600' : 'text-slate-500'}`}>
-                          {incomeTypeInfo.requiresD5103 ? '필수 (영업소득)' : '면제 (급여소득)'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>채무 배율 (DTI)</span>
-                        <span className="font-mono font-bold text-slate-800">{dtiRatio}배</span>
-                      </div>
-                      <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
-                        <span>{termMonths}개월 총 변제예정</span>
-                        <span className="font-mono text-emerald-600">{estimatedTotalRepay.toLocaleString()}만원</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 📂 아코디언: 수임료 납부 현황 */}
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShowFeeAccordion(!showFeeAccordion)}
-                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>수임료 납부 현황</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${feeBadgeClass}`}>
-                        {feeBadgeLabel}
-                      </span>
-                      <span className="text-slate-400 text-xs">{showFeeAccordion ? '▴' : '▾'}</span>
-                    </div>
-                  </button>
-
-                  {/* 항상 보이는 콤팩트 2행 요약 & 미니 프로그레스 바 */}
-                  <div className="px-3.5 pb-3 pt-0 space-y-2.5 border-b border-slate-100">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">총 수임료</span>
-                        <span className="font-mono font-bold text-slate-900">
-                          {totalFeeWon > 0 ? `${(totalFeeWon / 10000).toLocaleString()}만원` : '미약정'}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
-                          <span>수납 완료</span>
-                          <span className={`text-[9px] font-bold px-1 py-0.2 rounded font-mono ${
-                            isFullyPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {paymentRate}%
-                          </span>
-                        </div>
-                        <span className="font-mono font-bold text-slate-900">
-                          {totalPaidWon > 0 ? `${(totalPaidWon / 10000).toLocaleString()}만원` : '0원'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 수납 진행률 게이지 바 */}
-                    {totalFeeWon > 0 && (
-                      <div className="space-y-1">
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              isFullyPaid 
-                                ? 'bg-emerald-500' 
-                                : isOverdue 
-                                ? 'bg-rose-500' 
-                                : 'bg-blue-600'
-                            }`}
-                            style={{ width: `${Math.min(100, paymentRate)}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium">
-                          <span>
-                            {isFullyPaid ? (
-                              <span className="text-emerald-600 font-bold">전액 완납 완료</span>
-                            ) : (
-                              <span>미납 잔액 <strong className="font-mono text-rose-600 font-bold">{(unpaidWon / 10000).toLocaleString()}만원</strong></span>
-                            )}
-                          </span>
-                          <span className="font-mono text-slate-600">
-                            {feeSchedule.length > 0 ? `${paidSchedule.length}/${feeSchedule.length}회차` : '일시납'}
-                          </span>
-                        </div>
-                      </div>
+            {/* ── 4. 메인 워크스페이스 캔버스 + 우측 컨텍스트 패널 ── */}
+            <div className="flex flex-col xl:flex-row min-h-[650px] bg-slate-50/40 relative">
+              {/* 중앙 6단계 실무 캔버스 */}
+              <div className="flex-1 min-w-0">
+                    {pipelineStage === 1 && (
+                      <Stage1ConsultationView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        activeLawyer={activeLawyer}
+                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                        onAdvanceToNextStage={() => advancePipelineStage(2)}
+                        onSwitchCaseType={handleSwitchCaseType}
+                        onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
+                        onNavigateToChat={() => {
+                          if (setActiveTab) setActiveTab('chat');
+                        }}
+                        activeSection={detailTab}
+                        onSelectSection={(sec) => setDetailTab(sec as any)}
+                        // 시연용 — 개발 환경에서만 연결한다 (운영에서는 의뢰인 동의 없이 연락처 공개 상태로 바꾸게 됨)
+                        onSimulateContactShare={!import.meta.env.DEV ? undefined : () => {
+                          setRequests(prev => prev.map(r => {
+                            if (r.id === selectedId) {
+                              return {
+                                ...r,
+                                contactDisclosureStatus: 'contact_shared',
+                                phoneConsultationRequested: true,
+                                contactSharedAt: new Date().toISOString(),
+                              };
+                            }
+                            return r;
+                          }));
+                        }}
+                      />
                     )}
-                  </div>
-
-                  {/* 펼침 시 상세 분납 내역 및 수임료 탭 바로가기 */}
-                  {showFeeAccordion && (
-                    <div className="p-3.5 bg-slate-50/70 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
-                      {nextInst && (
-                        <div className="flex justify-between text-slate-600">
-                          <span>다음 분납 예정</span>
-                          <span className="font-mono font-bold text-slate-800">
-                            {nextInst.dueDate} ({(nextInst.amount >= 100000 ? nextInst.amount / 10000 : nextInst.amount)}만원)
-                          </span>
-                        </div>
-                      )}
-                      {isOverdue && (
-                        <div className="flex justify-between text-rose-600 font-bold">
-                          <span>⚠️ 연체 분납금</span>
-                          <span className="font-mono">{overdueSchedule.length}건 연체 중</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-slate-600">
-                        <span>분납 회차 구성</span>
-                        <span className="font-bold text-slate-700">
-                          {feeSchedule.length > 1 ? `총 ${feeSchedule.length}회 분납 약정` : '일시납 / 단건'}
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-slate-200">
-                        <button
-                          type="button"
-                          onClick={() => setDetailTab('fees')}
-                          className="w-full py-2 px-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 font-bold text-xs shadow-2xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-98"
-                        >
-                          <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>수임료 상세 관리 탭 열기 →</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 📂 아코디언 2: 사건 상태 & 배정 관리 */}
-                {currentPermissions.changeStatus && (
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                    <button
-                      type="button"
-                      onClick={() => setShowStatusAccordion(!showStatusAccordion)}
-                      className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
-                        <span>상태 및 담당자 설정</span>
-                      </span>
-                      <span className="text-slate-400 text-xs">{showStatusAccordion ? '▴' : '▾'}</span>
-                    </button>
-
-                    {showStatusAccordion && (
-                      <div className="p-3.5 pt-0 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 font-bold">진행 상태</label>
-                          <select 
-                            value={editStatus} 
-                            onChange={e => setEditStatus(e.target.value as CrmStatus)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:bg-white cursor-pointer"
-                          >
-                            {CRM_STATUSES.map(s => (
-                              <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 font-bold">담당자 배정</label>
-                          <select 
-                            value={editAssigneeId} 
-                            onChange={e => setEditAssigneeId(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-medium text-slate-800 focus:bg-white cursor-pointer"
-                          >
-                            <option value="">미배정</option>
-                            {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
-                              <option key={l.id} value={l.id}>
-                                {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button 
-                          onClick={handleSaveAssignment}
-                          className="w-full bg-[#1E3A5F] hover:bg-slate-800 text-white py-2 rounded-xl text-xs font-bold cursor-pointer transition-all press-scale shadow-xs"
-                        >
-                          저장
-                        </button>
-                      </div>
+                    {pipelineStage === 2 && (
+                      <Stage2ContractRetainerView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        activeLawyer={activeLawyer}
+                        activeStaff={activeStaff}
+                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                        onAdvanceToNextStage={() => advancePipelineStage(3)}
+                        onOpenContractSubTab={() => {
+                          setDetailTab('contracts');
+                        }}
+                        onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
+                        onUpdateCrmExt={async (patch) => {
+                          await saveOrThrow(selectedId, patch);
+                        }}
+                        activeSection={detailTab}
+                        onSelectSection={(sec) => setDetailTab(sec as any)}
+                      />
                     )}
-                  </div>
-                )}
-
-                {/* 📂 아코디언 3: 유입 채널 및 관리 도구 */}
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShowMetaAccordion(!showMetaAccordion)}
-                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <span>⚙️ 유입 정보 & 관리</span>
-                    </span>
-                    <span className="text-slate-400 text-xs">{showMetaAccordion ? '▴' : '▾'}</span>
-                  </button>
-
-                  {showMetaAccordion && (
-                    <div className="p-3.5 pt-0 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
-                      <div className="flex justify-between items-center text-slate-500">
-                        <span>유입 채널</span>
-                        <span className="font-bold text-slate-800">
-                          {INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이김변'}
-                        </span>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                        {currentPermissions.assignCases && (
-                          <button 
-                            type="button"
-                            onClick={() => setShowTransferModal(true)}
-                            className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 py-1.5 rounded-lg font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1 cursor-pointer press-scale"
-                          >
-                            <ArrowRightLeft className="w-3 h-3 text-amber-600" />
-                            이관
-                          </button>
-                        )}
-                        <button 
-                          type="button"
-                          onClick={async () => {
-                            // 이전: '휴지통 이동'이라 안내하고 실제로는 이 브라우저에서 즉시 영구 삭제(deleteCrmClient)
-                            //       → 휴지통에 나타나지 않고 복원 불가, 서버 행은 그대로 남음
-                            const moved = await handleSoftDelete(selectedId);
-                            if (moved) setSelectedId('');
-                          }}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
-                          title="아카이브 / 휴지통 이동"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-              )}
-
-              {/* ══════════ 우측 메인 영역: Deep Analysis & Workspace Canvas ══════════ */}
-              <div className="flex-1 min-w-0 bg-white">
-                
-                {/* ══════════ 리걸플로 벤치마킹: 정제된 실무 가이드 툴바 & 서식 보관함 ══════════ */}
-                {selectedClient && (() => {
-                  const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                  
-                  // 실시간 선후행 및 진행 상태 산출
-                  const metaGates = computePipelineGates(selectedClient, selectedExt);
-                  const { isContracted, hasProposalSent, isContactShared } = metaGates;
-                  const docCount = (selectedExt.uploadedFiles || []).length;
-
-                  const stageMeta: Record<number, { title: string; progressText: string; badgeCls: string; progressPercent: number }> = {
-                    1: {
-                      title: '맞춤 제안서 발송 및 의뢰인 상담·수임 결정',
-                      progressText: isContracted ? '4/4 (수임계약 완료)' : isContactShared ? '3/4 (전화상담 요청 완료)' : hasProposalSent ? '2/4 (고객 검토 대기)' : '1/4 (제안서 작성 필요)',
-                      badgeCls: isContracted ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : hasProposalSent ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-                      progressPercent: isContracted ? 100 : isContactShared ? 75 : hasProposalSent ? 50 : 25
-                    },
-                    2: {
-                      title: '법원 실비·수임료 산출 및 모바일 전자계약 체결',
-                      progressText: isContracted ? '수임계약 체결 완료' : '전자서명 대기중',
-                      badgeCls: isContracted ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-                      progressPercent: isContracted ? 100 : 40
-                    },
-                    3: {
-                      title: '4대 발급처 서류 일괄 수합 및 진술서 동기화',
-                      progressText: `${docCount}건 서류 수합중`,
-                      badgeCls: docCount >= 3 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-                      progressPercent: Math.min(100, Math.round((docCount / 12) * 100))
-                    },
-                    4: {
-                      title: '8대 법원 서식 검증 및 대법원 전자소송 정식 접수',
-                      progressText: ['filed', 'commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus || '') ? '전자소송 접수 완료' : '8대 서식 완비 (100%)',
-                      badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-                      progressPercent: ['filed', 'commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus || '') ? 100 : 80
-                    },
-                    5: {
-                      title: '회생위원 보정권고 7대 표 소명서 작성 및 전자소송 제출',
-                      progressText: '소명서 6/7종 완성',
-                      badgeCls: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-                      progressPercent: 85
-                    },
-                    6: {
-                      title: '법원 가상계좌 적립금 납부 지도 및 채권자집회·면책 관리',
-                      progressText: selectedExt.crmStatus === 'discharged' ? '면책 확정' : '변제 적립금 관리',
-                      badgeCls: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-                      progressPercent: selectedExt.crmStatus === 'discharged' ? 100 : 45
-                    }
-                  };
-
-                  const currentMeta = stageMeta[pipelineStage] || stageMeta[1];
-
-                  return (
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800 relative z-30">
-                      {/* 좌측: 팩트시트 토글 + 현재 단계 칩 & 통합 실무 목표 + 진행도 */}
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {/* 📋 사건 팩트시트 인스펙터 토글 */}
-                        <button
-                          type="button"
-                          onClick={() => setIsFactSheetOpen(!isFactSheetOpen)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs border shrink-0 ${
-                            isFactSheetOpen
-                              ? 'bg-blue-600 border-blue-500 text-white shadow-blue-500/20'
-                              : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300 hover:text-white'
-                          }`}
-                          title={isFactSheetOpen ? "사건 팩트시트 접기 (서류 작업 공간 극대화)" : "사건 팩트시트 열기 (상세 재무/수임료/상태 확인)"}
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>사건 팩트시트</span>
-                          <span className="text-[10px] opacity-75">{isFactSheetOpen ? '접기' : '열기'}</span>
-                        </button>
-
-                        <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-black shrink-0 tracking-tight shadow-2xs">
-                          Stage 0{pipelineStage} 목표
-                        </span>
-                        <span className="text-xs text-white font-bold truncate">
-                          {currentMeta.title}
-                        </span>
-
-                        {/* 팩트시트가 닫혀 있을 때 표시되는 콤팩트 필수 메타 바 (문맥 보존) */}
-                        {!isFactSheetOpen && (
-                          <div className="hidden xl:flex items-center gap-1.5 pl-2 border-l border-slate-700/80 shrink-0 text-[11px]">
-                            <span className="font-bold text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">
-                              🏛️ {selectedExt.courtCase?.courtName || selectedClient.court || '서울회생법원'}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded font-bold border ${incomeTypeInfo.badgeClass}`}>
-                              {incomeTypeInfo.badgeLabel}
-                            </span>
-                            {totalFeeWon > 0 && (
-                              <span className="text-emerald-400 font-mono font-bold bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">
-                                💰 {(totalFeeWon / 10000).toLocaleString()}만원 ({feeBadgeLabel})
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="hidden 2xl:flex items-center gap-2 pl-2 border-l border-slate-700/80 shrink-0">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-md font-mono font-bold border ${currentMeta.badgeCls}`}>
-                            실무 진행: {currentMeta.progressText}
-                          </span>
-                          <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-400 rounded-full transition-all duration-300" 
-                              style={{ width: `${currentMeta.progressPercent}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* 서류 집중 모드 인디케이터 */}
-                        {!isFactSheetOpen && !showCommPanel && (
-                          <span className="hidden 2xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold shrink-0">
-                            <Sparkles className="w-3 h-3 text-indigo-400" />
-                            서류 집중 모드 (Wide)
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 우측: 사건 유형 스위처 + 실무 서식 보관함 드롭다운 + 소통창 토글 */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* 사건 유형 전환 스위처 */}
-                        <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-xl p-0.5 shadow-inner">
-                          <button
-                            type="button"
-                            onClick={() => handleSwitchCaseType('individual_rehab')}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                              !isBankruptcyCase
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-slate-400 hover:text-white'
-                            }`}
-                            title="개인회생 사건으로 전환"
-                          >
-                            <span>⚖️ 개인회생</span>
-                            {!isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-blue-200 animate-pulse" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSwitchCaseType('bankruptcy')}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                              isBankruptcyCase
-                                ? 'bg-purple-600 text-white shadow-xs'
-                                : 'text-slate-400 hover:text-white'
-                            }`}
-                            title="개인파산·면책 사건으로 전환"
-                          >
-                            <span>🏛️ 개인파산</span>
-                            {isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-purple-200 animate-pulse" />}
-                          </button>
-                        </div>
-
-                        {/* 📁 실무 서식 보관함 드롭다운 (상단 산발적 버튼 8종을 깔끔한 단일 드롭다운으로 통합) */}
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setShowFormsDropdown(!showFormsDropdown)}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
-                            title="자주 쓰는 실무 법원 서식 및 패키징 도구 전체보기"
-                          >
-                            <span>📁 실무 서식 보관함</span>
-                            <span className="text-[10px] text-slate-400">▾</span>
-                          </button>
-
-                          {showFormsDropdown && (
-                            <div className="absolute right-0 top-full mt-1.5 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-xl py-2 z-50 text-xs animate-fadeIn">
-                              <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 border-b border-slate-800">
-                                신속 실행 서식 및 패키징 도구
-                              </div>
-                              <div className="py-1">
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowDocHubModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-amber-300 hover:text-white bg-amber-950/60 hover:bg-amber-900/60 flex items-center gap-2 cursor-pointer transition-colors font-extrabold border-b border-slate-800"
-                                >
-                                  <span>⚡</span>
-                                  <span>스마트 법원 서식 허브 (80여 종 & 발급안내)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowContractDocLibraryModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-blue-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/60 flex items-center gap-2 cursor-pointer transition-colors font-bold border-b border-slate-800"
-                                >
-                                  <span>📝</span>
-                                  <span>사건 위임계약서 서식함 (11대 양식)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowBatchFilingModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>⚖️</span>
-                                  <span>전자소송 일괄 패키징 & CSV</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowCourtDocExportModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>📜</span>
-                                  <span>법원문서 8종 출력 (모바일 동의)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowPropertyValuationModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>🏛️</span>
-                                  <span>재산목록 산정 (D5102)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowIncomeExpenseModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>💰</span>
-                                  <span>수입·지출목록 (D5103)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowAncillaryModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>📋</span>
-                                  <span>부수신청서 (중지·면제·압류)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowPowerOfAttorneyModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>⚖️</span>
-                                  <span>소송위임장·지정서 발급</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowStatementSyncModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>✍️</span>
-                                  <span>고객 진술서 동기화</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setShowFormsDropdown(false); setShowPostCareModal(true); }}
-                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
-                                >
-                                  <span>🏦</span>
-                                  <span>개시·사후관리 (가상계좌)</span>
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 🔐 의뢰인 인증서 안전 금고 바로가기 */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPipelineViewMode('subtabs');
-                            setDetailTab('vault');
-                          }}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs bg-emerald-600 hover:bg-emerald-500 text-white"
-                          title="의뢰인 공동인증서·금융인증서 안전 금고 열람"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span>인증서 금고</span>
-                          {selectedExt.certificateVault?.npki && (
-                            <span className="text-[10px] bg-emerald-700/80 px-1.5 py-0.2 rounded font-mono">
-                              {formatVaultDday(selectedExt.certificateVault.npki.validTo)}
-                            </span>
-                          )}
-                        </button>
-
-                        {/* ☁️ 구글 드라이브 연동 설정 */}
-                        <button
-                          type="button"
-                          onClick={() => setIsDriveModalOpen(true)}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700"
-                          title="통화 녹취 자동 업로드용 구글 드라이브 계정 및 폴더 설정"
-                        >
-                          <Cloud className="w-3.5 h-3.5 text-blue-400" />
-                          <span>구글 드라이브</span>
-                        </button>
-
-                        {/* 💬 우측 원스톱 고객 소통 패널 토글 버튼 */}
-                        <button
-                          type="button"
-                          onClick={() => setShowCommPanel(!showCommPanel)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs ${
-                            showCommPanel 
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                              : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                          }`}
-                          title="서류 수합과 고객 알림톡/메모를 동시에 처리하는 우측 패널 토글"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>고객 소통창</span>
-                          <span className="text-[10px] opacity-75">{showCommPanel ? 'ON' : 'OFF'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* 5단계 워크플로우 파이프라인 스테퍼 */}
-                <WorkflowPipelineStepper
-                  currentStage={pipelineStage}
-                  onSelectStage={(stage) => setPipelineStage(stage)}
-                  clientRequest={selectedClient}
-                  crmExt={selectedExt}
-                  isBankruptcy={selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy'}
-                  viewMode={pipelineViewMode}
-                  onToggleViewMode={(mode) => setPipelineViewMode(mode)}
-                />
-
-                {/* 5단계 파이프라인 중심 뷰 또는 기존 상세 서브탭 뷰 조건부 렌더링 */}
-                {pipelineViewMode === 'pipeline' ? (
-                  <div className="flex flex-col xl:flex-row min-h-[650px] bg-slate-50/40">
-                    {/* 중앙 5단계 실무 캔버스 */}
-                    <div className="flex-1 min-w-0">
-                      {pipelineStage === 1 && (
-                        <Stage1ConsultationView
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          activeLawyer={activeLawyer}
-                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => advancePipelineStage(2)}
-                          onSwitchCaseType={handleSwitchCaseType}
-                          onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
-                          onNavigateToChat={() => {
-                            if (setActiveTab) setActiveTab('chat');
-                          }}
-                          // 시연용 — 개발 환경에서만 연결한다 (운영에서는 의뢰인 동의 없이 연락처 공개 상태로 바꾸게 됨)
-                          onSimulateContactShare={!import.meta.env.DEV ? undefined : () => {
-                            setRequests(prev => prev.map(r => {
-                              if (r.id === selectedId) {
-                                return {
-                                  ...r,
-                                  contactDisclosureStatus: 'contact_shared',
-                                  phoneConsultationRequested: true,
-                                  contactSharedAt: new Date().toISOString(),
-                                };
-                              }
-                              return r;
-                            }));
-                          }}
-                        />
-                      )}
-                      {pipelineStage === 2 && (
-                        <Stage2ContractRetainerView
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          activeLawyer={activeLawyer}
-                          activeStaff={activeStaff}
-                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => advancePipelineStage(3)}
-                          onOpenContractSubTab={() => {
-                            setPipelineViewMode('subtabs');
-                            setDetailTab('contracts');
-                          }}
-                          onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
-                          onUpdateCrmExt={async (patch) => {
-                            await saveOrThrow(selectedId, patch);
-                          }}
-                        />
-                      )}
-                      {pipelineStage === 3 && (
-                        <Stage3DocumentsHubView
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          onAdvanceToNextStage={() => advancePipelineStage(4)}
-                          onOpenDocScanner={() => setShowDocScanner(true)}
-                          onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
-                          onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
-                        />
-                      )}
-                      {pipelineStage === 4 && (
-                        <Stage4FilingBundleView
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                          onAdvanceToNextStage={() => advancePipelineStage(5)}
-                          onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
-                          onOpenAncillaryModal={() => setShowAncillaryModal(true)}
-                          onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
-                          onOpenCourtDocSuite={(formCode) => {
-                            setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenPropertyValuationModal={() => {
-                            setCourtDocSuiteInitialTab('ASSET_LIST');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenIncomeExpenseModal={() => {
-                            setCourtDocSuiteInitialTab('INCOME_EXPENSE');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenPetitionEditModal={() => {
-                            setCourtDocSuiteInitialTab('PETITION_BODY');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenCreditorEditModal={() => {
-                            setCourtDocSuiteInitialTab('CREDITOR_LIST');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenStatementSyncModal={() => {
-                            setCourtDocSuiteInitialTab('STATEMENT');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenRepaymentPlanEditor={() => {
-                            setCourtDocSuiteInitialTab('REPAYMENT_PLAN');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenPowerOfAttorneyModal={() => {
-                            setCourtDocSuiteInitialTab('POWER_OF_ATTORNEY');
-                            setShowCourtDocSuite(true);
-                          }}
-                          onOpenDocScannerModal={() => setShowDocScanner(true)}
-                          onOpenCourtFormPreviewModal={(formCode) => {
-                            setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
-                            setShowCourtDocSuite(true);
-                          }}
-                        />
-                      )}
-                      {pipelineStage === 5 && (
-                        <Stage5CorrectionCenterView
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
-                          onAdvanceToNextStage={() => advancePipelineStage(6)}
-                          onOpenComprehensiveCorrectionModal={() => {
-                            setPipelineViewMode('subtabs');
-                            setDetailTab('corrections');
-                          }}
-                        />
-                      )}
+                    {pipelineStage === 3 && (
+                      <Stage3DocumentsHubView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onUpdateCrmExt={async (patch) => {
+                          await saveOrThrow(selectedId, patch);
+                        }}
+                        onAdvanceToNextStage={() => advancePipelineStage(4)}
+                        onOpenDocScanner={() => setShowDocScanner(true)}
+                        onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
+                        onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
+                        activeSection={detailTab}
+                        onSelectSection={(sec) => setDetailTab(sec as any)}
+                      />
+                    )}
+                    {pipelineStage === 4 && (
+                      <Stage4FilingBundleView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                        onUpdateCrmExt={async (patch) => {
+                          await saveOrThrow(selectedId, patch);
+                        }}
+                        onAdvanceToNextStage={() => advancePipelineStage(5)}
+                        onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
+                        onOpenAncillaryModal={() => setShowAncillaryModal(true)}
+                        onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
+                        onOpenCourtDocSuite={(formCode) => {
+                          setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenPropertyValuationModal={() => {
+                          setCourtDocSuiteInitialTab('ASSET_LIST');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenIncomeExpenseModal={() => {
+                          setCourtDocSuiteInitialTab('INCOME_EXPENSE');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenPetitionEditModal={() => {
+                          setCourtDocSuiteInitialTab('PETITION_BODY');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenCreditorEditModal={() => {
+                          setCourtDocSuiteInitialTab('CREDITOR_LIST');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenStatementSyncModal={() => {
+                          setCourtDocSuiteInitialTab('STATEMENT');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenRepaymentPlanEditor={() => {
+                          setCourtDocSuiteInitialTab('REPAYMENT_PLAN');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenPowerOfAttorneyModal={() => {
+                          setCourtDocSuiteInitialTab('POWER_OF_ATTORNEY');
+                          setShowCourtDocSuite(true);
+                        }}
+                        onOpenDocScannerModal={() => setShowDocScanner(true)}
+                        onOpenCourtFormPreviewModal={(formCode) => {
+                          setCourtDocSuiteInitialTab(formCode ? formCodeToDocTabId(formCode) : 'PETITION_BODY');
+                          setShowCourtDocSuite(true);
+                        }}
+                        activeSection={detailTab}
+                        onSelectSection={(sec) => setDetailTab(sec as any)}
+                      />
+                    )}
+                    {pipelineStage === 5 && (
+                      <Stage5CorrectionCenterView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                        onUpdateCrmExt={async (patch) => {
+                          await saveOrThrow(selectedId, patch);
+                        }}
+                        onAdvanceToNextStage={() => advancePipelineStage(6)}
+                        onOpenComprehensiveCorrectionModal={() => {
+                          setDetailTab('corrections');
+                        }}
+                        activeSection={detailTab as any}
+                        onSelectSection={(sec) => setDetailTab(sec as any)}
+                        activeLawyerName={assignedLawyerName}
+                      />
+                    )}
                       {pipelineStage === 6 && (
                         <Stage6PostCareDischargeView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onOpenPostCareModal={() => setShowPostCareModal(true)}
-                        />
-                      )}
-                    </div>
-
-                    {/* 💬 우측 원스톱 고객 소통 패널 (슬라이드오버 Drawer - 서류 작업 가로폭 100% 보장) */}
-                    {showCommPanel && (
-                      <div className="fixed inset-0 z-50 overflow-hidden">
-                        {/* 반투명 백드롭 (클릭 시 닫기) */}
-                        <div 
-                          className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity animate-fadeIn"
-                          onClick={() => setShowCommPanel(false)}
-                        />
-                        
-                        {/* 우측 슬라이드오버 컨테이너 */}
-                        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-none">
-                          <div className="w-screen max-w-md bg-white shadow-2xl border-l border-slate-200 pointer-events-auto flex flex-col animate-slideLeft">
-                            <ClientCommunicationSidePanel
-                              clientRequest={selectedClient}
-                              crmExt={selectedExt}
-                              activeLawyer={activeLawyer}
-                              pipelineStage={pipelineStage}
-                              onAddNote={(text) => handleAddQuickNote(text, 'consult')}
-                              onClose={() => setShowCommPanel(false)}
-                              onUpdateExt={(updated) => {
-                                setCrmData(prev => ({ ...prev, [selectedId]: updated }));
-                                saveCrmClient(selectedId, updated);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
-                    <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
-                      {(() => {
-                        const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                    return [
-                      { key: 'info', label: '종합 정보', icon: '👤', count: null },
-                      { key: 'summary', label: '사건 요약문', icon: '📄', count: null },
-                      { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
-                      { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
-                      { key: 'calls', label: '통화 및 문자', icon: '💬', count: (selectedExt.communicationLogs || []).length > 0 ? (selectedExt.communicationLogs || []).length : null },
-                      { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
-                      { key: 'thread', label: '내부 스레드', icon: '🗨️', count: null },
-                      { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
-                      { 
-                        key: 'contracts', 
-                        label: '전자계약', 
-                        icon: '📝', 
-                        count: (() => {
-                          try {
-                            const cleanPhone = selectedClient?.phone ? selectedClient.phone.replace(/[^0-9]/g, '') : '';
-                            const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => {
-                              if (c.clientId === selectedId) return true;
-                              if (selectedClient?.clientId && (c.clientId === selectedClient.clientId || c.clientRefId === selectedClient.clientId)) return true;
-                              if (selectedClient?.id && c.clientRefId === selectedClient.id) return true;
-                              if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
-                              return false;
-                            });
-                            if (!cList.length) return null;
-                            return cList[0].status === 'completed' ? '체결' : '서명대기';
-                          } catch { return null; }
-                        })() 
-                      },
-                      { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
-                      { 
-                        key: 'vault', 
-                        label: '인증서 금고', 
-                        icon: '🔐', 
-                        count: selectedExt.certificateVault?.npki ? formatVaultDday(selectedExt.certificateVault.npki.validTo) : null 
-                      },
-                      { 
-                        key: 'debt-certs', 
-                        label: '부채증명서', 
-                        icon: '📜', 
-                        count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
-                      },
-                      { 
-                        key: 'statement', 
-                        label: '진술서', 
-                        icon: '🎙️', 
-                        count: selectedExt.courtStatement?.status === 'client_completed' ? '제출' : selectedExt.courtStatement ? '작성중' : null 
-                      },
-                      ...(isBankruptcyCase ? [
-                        { key: 'bankruptcy', label: '개인파산·면책', icon: '🏛️', count: selectedExt.bankruptcyData?.isSimultaneousDismissalEligible ? '동시폐지' : '파산' }
-                      ] : [
-                        { key: 'repayment', label: '변제계획안', icon: '⚖️', count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null }
-                      ]),
-                      // 배지는 필터·파이프라인과 같은 correctionOrders 기준 (이전: 다른 필드 corrections를 세서 수가 어긋남)
-                      { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.correctionOrders || []).filter((o) => o.status !== 'submitted').length || null },
-                      { key: 'court', label: '법원', icon: '🏛️', count: null },
-                    ];
-                  })().map(tab => (
-                    <button 
-                      key={tab.key} 
-                      onClick={() => setDetailTab(tab.key as typeof detailTab)}
-                      className={`py-3 px-4 text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border-b-2 ${
-                        detailTab === tab.key 
-                          ? 'text-brand border-brand bg-brand/5' 
-                          : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-100/50'
-                      }`}
-                    >
-                      <span>{tab.icon}</span>
-                      <span>{tab.label}</span>
-                      {tab.count !== null && tab.count !== 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                          detailTab === tab.key ? 'bg-brand text-white' : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {tab.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* 배정 지시사항(Directive) 배너 */}
-                {selectedExt && (() => {
-                  const latestDirective = (selectedExt.assignmentDirectives || [])
-                    .filter(d => !d.acknowledgedAt)
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-                  if (!latestDirective) return null;
-                  const pc = DIRECTIVE_PRIORITY_CONFIG[latestDirective.priority];
-                  // 기한 당일까지는 유효 (이전: 'YYYY-MM-DD'를 UTC 자정으로 해석해 당일 09시부터 기한 초과)
-                  const isOverdue = !!latestDirective.deadline && !latestDirective.acknowledgedAt && latestDirective.deadline.slice(0, 10) < localYmd();
-                  return (
-                    <div className={`mx-5 mt-4 p-4 rounded-2xl border-l-4 shadow-xs ${isOverdue ? 'bg-rose-50 border-rose-500 text-rose-950' : `${pc.bgColor} ${pc.borderColor}`} animate-fadeIn`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-slate-900">⚡ 대표/관리자 배정 지시사항</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${pc.bgColor} ${pc.color} border ${pc.borderColor}`}>
-                              {pc.emoji} {pc.label}
-                            </span>
-                            {isOverdue && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500 text-white animate-pulse">
-                                ⏰ 기한 초과
-                              </span>
-                            )}
-                            {latestDirective.deadline && (
-                              <span className="text-[11px] text-slate-500 font-medium">
-                                📅 회신 기한: {latestDirective.deadline.slice(0, 10)}
-                              </span>
-                            )}
-                          </div>
-                          {latestDirective.memo && (
-                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line font-medium">
-                              "{latestDirective.memo}"
-                            </p>
-                          )}
-                          <p className="text-[11px] text-slate-400 font-medium">
-                            — {latestDirective.assignedByName} · {new Date(latestDirective.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleAcknowledgeDirective(latestDirective.id)}
-                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer press-scale transition-all flex items-center gap-1 shadow-xs whitespace-nowrap"
-                        >
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          확인 완료
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* ── 콘텐츠 메인 패딩 영역 ── */}
-                <div className="p-5 space-y-5">
-                  
-                  {/* ══════════ [1] 종합 정보 탭 ══════════ */}
-                  {detailTab === 'info' && (
-                    <div className="space-y-5">
-                      
-                      {/* ═══ LeadMaster형 사건 종합 브리핑 배너 (1클릭 카톡/메신저 복사) ═══ */}
-                      <CaseBriefingBanner 
-                        data={extractBriefingFromClient(selectedClient, selectedExt)} 
-                        defaultExpanded={true} 
-                      />
-
-                      {/* ═══ 리걸플로 벤치마킹: 표준 13단계 파이프라인 네비게이터 ═══ */}
-                      {(() => {
-                        const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                        
-                        // crmStatus 기반 기본 13단계 (지정되지 않았을 때 fallback) — 매핑은 pipeline/journeyStage.ts 공용 산식
-                        const currentStage = selectedExt.thirteenStage || defaultThirteenStageFor(selectedExt.crmStatus, isBk);
-                        const showDecisionCard = ['commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus) || 
-                          selectedExt.thirteenStage === 'commencement' || 
-                          selectedExt.thirteenStage === 'confirmation' || 
-                          selectedExt.thirteenStage === 'bankruptcy_declared' ||
-                          Boolean(selectedExt.decisionSummary);
-
-                        return (
-                          <div className="space-y-4">
-                            <LegalFlowThirteenStepper
-                              currentStageId={currentStage}
-                              isBankruptcy={isBk}
-                              isDismissedRevoked={!!selectedExt.isDismissedRevoked}
-                              onSelectStage={async (newStageId) => {
-                                if (!selectedClient) return false;
-
-                                // 13단계 → CrmStatus 매핑 (pipeline/journeyStage.ts 공용 산식)
-                                const mappedStatus = crmStatusForThirteenStage(newStageId) || selectedExt.crmStatus;
-
-                                const updatedExt: CrmClientExtension = {
-                                  ...selectedExt,
-                                  thirteenStage: newStageId,
-                                  crmStatus: mappedStatus,
-                                  lastActivityAt: new Date().toISOString(),
-                                };
-
-                                setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
-                                // 저장 결과를 기다린 뒤 안내 (이전: 기다리지 않아 서버 저장이 실패해도 '변경되었습니다'와 의뢰인 알림이 나감)
-                                const ok = await saveCrmClient(selectedClient.id, updatedExt);
-                                if (!ok) {
-                                  toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
-                                  return false;
-                                }
-
-                                // 의뢰인 인앱 알림 — 사실만 안내하고 법적 효과는 결정문으로 확인하게 한다
-                                // (이전: '압류가 전면 금지', '관공서 15종', '연체정보가 완전히 해제', '전액 면책' 등 단정 문구)
-                                const NOTIF_MAP: Record<string, { title: string; body: string; emoji: string; linkTab?: 'companion' | 'diagnosis' | 'settings' }> = {
-                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 변호사가 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
-                                  consult_completed: { title: '[상담 완료] 초기 상담이 완료되었습니다', body: '상담 내용과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
-                                  contract_done: { title: '[수임계약] 수임계약이 체결되었습니다', body: '법원 제출 서류 준비를 시작합니다. 필요한 서류는 서류함에서 확인해 주세요.', emoji: '📝', linkTab: 'diagnosis' },
-                                  doc_prep: { title: '[서류 준비] 법원 제출 서류를 준비하고 있습니다', body: '서류함에서 요청된 서류를 확인하고 올려 주세요.', emoji: '📂', linkTab: 'diagnosis' },
-                                  petition_drafting: { title: '[신청서 작성] 담당 변호사가 신청서를 작성하고 있습니다', body: '신청서와 첨부 서류를 작성하는 단계입니다.', emoji: '✍️', linkTab: 'diagnosis' },
-                                  petition_submitted: { title: '[법원 접수] 신청서가 법원에 접수되었습니다', body: '사건번호와 이후 진행은 담당 변호사가 안내해 드립니다. 대법원 나의 사건검색에서도 확인할 수 있습니다.', emoji: '⚖️', linkTab: 'diagnosis' },
-                                  prohibition_order: { title: '[금지명령] 법원이 금지명령을 내렸습니다', body: '금지명령의 범위에서 강제집행과 변제 독촉이 제한됩니다. 적용 범위는 결정문으로 확인해 주세요.', emoji: '🛡️', linkTab: 'diagnosis' },
-                                  correction_period: { title: '[보정권고] 법원의 보정권고가 도착했습니다', body: '담당 변호사가 요청한 소명자료를 제출 기한 안에 올려 주세요. 기한은 보정권고서에 적힌 날짜를 따릅니다.', emoji: '⚠️', linkTab: 'diagnosis' },
-                                  commencement: { title: '[개시결정] 법원이 개인회생 개시결정을 내렸습니다', body: '변제금 납부 계좌와 일정은 결정문과 담당 변호사 안내로 확인해 주세요.', emoji: '🏛️', linkTab: 'companion' },
-                                  creditor_meeting: { title: '[채권자집회] 채권자집회 기일이 지정되었습니다', body: '기일과 장소는 법원 통지서로 확인하고, 신분증을 지참해 출석해 주세요.', emoji: '👥', linkTab: 'companion' },
-                                  confirmation: { title: '[인가결정] 법원이 변제계획 인가결정을 내렸습니다', body: '인가된 변제계획에 따라 변제금을 납부해 주세요. 변제를 마친 뒤 면책을 신청할 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
-                                  dismissed_revoked: { title: '[기각·폐지] 법원이 신청을 기각하거나 절차를 폐지했습니다', body: '결정 내용은 결정문으로 확인해 주세요. 이후 절차는 담당 변호사와 상의해 주세요.', emoji: '🚫', linkTab: 'diagnosis' },
-                                  completed: { title: '[종료] 사건이 종료 단계로 변경되었습니다', body: '면책 여부와 효력은 법원 결정문으로 확인해 주세요. 궁금한 점은 담당 변호사에게 문의해 주세요.', emoji: '🎉', linkTab: 'companion' },
-                                };
-
-                                const notif = NOTIF_MAP[newStageId];
-                                if (notif) {
-                                  try {
-                                    addClientNotification({
-                                      type: 'status_change',
-                                      title: notif.title,
-                                      body: notif.body,
-                                      emoji: notif.emoji,
-                                      linkTab: notif.linkTab,
-                                    });
-                                  } catch { /* ignore */ }
-                                }
-
-                                // 동행 서비스 실데이터 동기화
-                                try {
-                                  syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
-                                } catch { /* ignore */ }
-                                return true;
-                              }}
-                              onToggleDismissedRevoked={(val) => {
-                                if (!selectedClient) return;
-                                const updatedExt: CrmClientExtension = {
-                                  ...selectedExt,
-                                  isDismissedRevoked: val,
-                                  lastActivityAt: new Date().toISOString(),
-                                };
-                                saveCrmClient(selectedClient.id, updatedExt);
-                                setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
-                              }}
-                            />
-
-                            {/* 개시결정 이후 단계: 리걸플로형 개시결정 요약본 & 원형 게이지 브리핑 카드 */}
-                            {showDecisionCard && (
-                              <DecisionSummaryCard
-                                key={selectedClient.id}
-                                clientName={selectedClient.clientName || '의뢰인'}
-                                data={selectedExt.decisionSummary}
-                                onSave={async (newSummary) => {
-                                  if (!selectedClient) return false;
-                                  const prevSummary = selectedExt.decisionSummary;
-                                  const updatedExt: CrmClientExtension = {
-                                    ...selectedExt,
-                                    decisionSummary: newSummary,
-                                    lastActivityAt: new Date().toISOString(),
-                                  };
-                                  setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
-                                  const ok = await saveCrmClient(selectedClient.id, updatedExt);
-
-                                  // 동행 대시보드 동기화 + 가상계좌가 새로 등록·변경된 경우에만 의뢰인 알림
-                                  // (이전: 메모만 고쳐도, 계좌가 비어 있어도 '가상계좌 발급 안내'를 발송)
-                                  try {
-                                    syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
-                                    const accountChanged = !!newSummary.virtualAccountNumber &&
-                                      (newSummary.virtualAccountNumber !== prevSummary?.virtualAccountNumber || newSummary.virtualAccountBank !== prevSummary?.virtualAccountBank);
-                                    // 월 변제금은 만원 또는 원으로 입력된다 — 1만 미만이면 만원 단위로 보고 원으로 바꿔 표시 (companionService와 같은 규칙)
-                                    // (이전: 만원 단위 값 '45'를 그대로 '45원'으로 안내)
-                                    const monthlyRaw = Number(newSummary.monthlyPayment || 0);
-                                    const monthlyWon = monthlyRaw > 0 && monthlyRaw < 10000 ? monthlyRaw * 10000 : monthlyRaw;
-                                    if (accountChanged) addClientNotification({
-                                      type: 'status_change',
-                                      title: '[법원 가상계좌 발급 안내]',
-                                      body: monthlyWon > 0
-                                        ? `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')}) 및 월 변제금(${monthlyWon.toLocaleString()}원)이 등록되었습니다.`
-                                        : `법원 가상계좌(${[newSummary.virtualAccountBank, newSummary.virtualAccountNumber].filter(Boolean).join(' ')})가 등록되었습니다.`,
-                                      emoji: '🏛️',
-                                      linkTab: 'companion',
-                                    });
-                                  } catch { /* ignore */ }
-                                  return ok;
-                                }}
-                              />
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* 고객 상담 요청 & 사연 카드 (Quote Card) */}
-                      {selectedClient && (selectedClient.title || selectedClient.content || selectedClient.financialProfile?.clientNote || (selectedClient.financialProfile?.clientNotes && selectedClient.financialProfile.clientNotes.length > 0)) && (
-                        <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-5 space-y-3.5 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-                              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                                의뢰인 상담 요청 및 핵심 쟁점
-                              </span>
-                            </div>
-                            {selectedClient.createdAt && (
-                              <span className="text-[11px] text-slate-400 font-mono">
-                                {new Date(selectedClient.createdAt).toLocaleDateString()} 접수
-                              </span>
-                            )}
-                          </div>
-
-                          {/* AI 추출 키워드 칩 태그 바 */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {fp.debtCause === 'INVESTMENT' && (
-                              <span className="text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full">
-                                #코인·주식 투자손실 8천만
-                              </span>
-                            )}
-                            {fp.debtTypes?.recentLoans > 0 || (selectedClient.content && selectedClient.content.includes('3,000만')) ? (
-                              <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                                #최근 6개월 신규대출 3,000만 (소명 필요)
-                              </span>
-                            ) : null}
-                            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                              #서울회생법원 24개월 청년특례
-                            </span>
-                            <span className="text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full">
-                              #손실금 청산가치 제외 실무준칙
-                            </span>
-                          </div>
-
-                          {selectedClient.title && (
-                            <h4 className="text-sm font-black text-slate-900 leading-snug">
-                              {selectedClient.title}
-                            </h4>
-                          )}
-
-                          {selectedClient.content && (
-                            <div className="bg-white rounded-xl p-4 border border-slate-200/80 text-sm text-slate-700 leading-relaxed whitespace-pre-line shadow-xs">
-                              {selectedClient.content}
-                            </div>
-                          )}
-
-                          {/* 의뢰인이 변호사에게 남긴 말 (Amber Tint Box) */}
-                          {((fp?.clientNotes && fp.clientNotes.length > 0) || fp?.clientNote) && (
-                            <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3.5 space-y-1.5">
-                              <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
-                                <span>📌 변호사에게 남긴 핵심 문의사항</span>
-                              </div>
-                              {fp.clientNotes && fp.clientNotes.length > 0 ? (
-                                <ul className="space-y-1 text-xs text-amber-950 font-medium">
-                                  {fp.clientNotes.map((note: string, i: number) => (
-                                    <li key={i} className="flex items-start gap-1.5 leading-relaxed">
-                                      <span className="text-amber-600 font-bold">•</span>
-                                      <span>{note}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-xs text-amber-950 font-medium leading-relaxed">{fp.clientNote}</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ══════════ 회생/파산 2×2 Balanced Diagnosis Matrix ══════════ */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-
-                        {/* ── Block 1: 🔴 채무 & 리스크 구조 (Debt Matrix) ── */}
-                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                              <span className="text-xs font-black text-rose-600 flex items-center gap-1.5">
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                                1. 채무 & 리스크 구조
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                채권자 {fp.creditorCount || 9}곳
-                              </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">주요 채무 원인</span>
-                                <span className="font-bold text-slate-800">
-                                  {fp.debtCause === 'INVESTMENT' ? '가상자산 / 주식 투자 손실' :
-                                   fp.debtCause === 'BUSINESS' ? '사업 실패' :
-                                   fp.debtCause === 'GAMBLING' ? '도박 / 사행성' :
-                                   fp.debtCause === 'GUARANTEE' ? '보증 채무' : '생활비 부족'}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">최근 1년내 투자 손실액</span>
-                                <span className="font-mono font-bold text-rose-600">
-                                  {fp.speculativeLoss ? `${fp.speculativeLoss.toLocaleString()}만` : '8,000만 원'}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">최근 6개월 고위험 대출</span>
-                                <span className="font-mono font-bold text-rose-600 flex items-center gap-1">
-                                  <span>3,000만 원</span>
-                                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1 py-0.2 rounded font-sans">소명주의</span>
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">현재 추심 / 독촉 단계</span>
-                                <span className="font-bold text-amber-700">
-                                  {fp.harassmentLevel === 'CALL' ? '독촉 전화/문자' :
-                                   fp.harassmentLevel === 'LETTER' ? '독촉장 및 최고서' :
-                                   fp.harassmentLevel === 'LAWSUIT' ? '소송 제기' : '압류/가압류 단계'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 채무 구성비 미니 바 */}
-                          <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                            <span className="text-[11px] font-bold text-slate-500 block">채무 유형별 구성</span>
-                            <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
-                              <div className="bg-blue-500" style={{ width: '32%' }} title="1금융권 (4,000만)" />
-                              <div className="bg-amber-500" style={{ width: '28%' }} title="카드/캐피탈 (3,500만)" />
-                              <div className="bg-rose-500" style={{ width: '40%' }} title="저축은행/신규대출 (5,000만)" />
-                            </div>
-                            <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                              <span>1금융 32%</span>
-                              <span>카드/캐피탈 28%</span>
-                              <span className="text-rose-600 font-bold">저축/신규대출 40%</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ── Block 2: 💼 직업 & 소득 구성 (Income Matrix) ── */}
-                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                              <span className="text-xs font-black text-blue-600 flex items-center gap-1.5">
-                                <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                                2. 직업 & 소득 구성
-                              </span>
-                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
-                                {fp.jobType === 'SALARIED' ? '급여소득 (정규직)' : fp.jobType === 'BUSINESS' ? '개인사업자' : '프리랜서'}
-                              </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">직장명 / 입사일</span>
-                                <span className="font-bold text-slate-800">
-                                  {fp.companyName || '(주)넥스트소프트'} (2023.01~)
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">월 평균 소득 (세후)</span>
-                                <span className="font-mono font-extrabold text-blue-600 text-sm">
-                                  {income.toLocaleString()}만 원
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">가구원 / 부양가족</span>
-                                <span className="font-bold text-slate-800">
-                                  {depCount}명 ({depCount + 1}인 가구) · 미성년 0명
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">인정 법정 최저생계비</span>
-                                <span className="font-mono font-bold text-slate-800">{minLivingCost}만 원</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 월 추가 생계비 인정 항목 */}
-                          <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                            <span className="text-[11px] font-bold text-slate-500 block">월 추가 생계비 소명 항목</span>
-                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex justify-between items-center text-xs">
-                              <span className="text-slate-600 font-medium">주거 월세 (본인명의)</span>
-                              <span className="font-mono font-bold text-slate-800">65만 원</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ── Block 3: 🏦 자산 & 청산가치 (Asset Matrix) ── */}
-                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                              <span className="text-xs font-black text-emerald-600 flex items-center gap-1.5">
-                                <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                                3. 자산 & 청산가치
-                              </span>
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                청산가치 350만
-                              </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">임차보증금 (부천시)</span>
-                                <span className="font-mono font-bold text-slate-800">
-                                  3,000만 (대출 2,000만)
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">소액임차 최우선변제 공제</span>
-                                <span className="text-emerald-600 font-bold font-mono">
-                                  -2,800만 (압류금지)
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">예상 퇴직금 (퇴직연금형)</span>
-                                <span className="font-bold text-slate-800">
-                                  600만 <span className="text-emerald-600 font-normal">(연금 0% 반영)</span>
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">차량 / 보험 / 예금</span>
-                                <span className="font-bold text-slate-800">50만 원 미만</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 청산가치 보장의 원칙 점검 */}
-                          <div className="pt-2 border-t border-slate-100">
-                            <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-900 font-medium flex items-center justify-between">
-                              <span>✓ 청산가치 보장의 원칙</span>
-                              <span className="font-bold text-emerald-700">총변제(4,488만) {'>'} 자산(350만) 충족</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ── Block 4: 🏠 주거 & 법적 특례 (Relief Matrix) ── */}
-                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                              <span className="text-xs font-black text-indigo-600 flex items-center gap-1.5">
-                                <Home className="w-3.5 h-3.5 text-indigo-600" />
-                                4. 주거 & 법적 특례 쟁점
-                              </span>
-                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
-                                24개월 특례 대상
-                              </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">거주 형태 / 관할</span>
-                                <span className="font-bold text-slate-800">
-                                  월세 (본인명의) · 서울회생법원
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center py-1">
-                                <span className="text-slate-500 font-medium">청년 단축 변제 특례</span>
-                                <span className="font-bold text-indigo-600">
-                                  만 30세 미만 청년 (24개월 인가)
-                                </span>
-                              </div>
-
-                              <div className="py-1">
-                                <span className="text-slate-500 font-medium block mb-1">핵심 방어 쟁점</span>
-                                <ul className="space-y-0.5 text-[11px] text-slate-700 font-medium">
-                                  <li className="flex items-center gap-1">
-                                    <span className="text-brand">▪</span>
-                                    <span>주식/코인 손실금 청산가치 제외 실무준칙 적용</span>
-                                  </li>
-                                  <li className="flex items-center gap-1">
-                                    <span className="text-rose-500">▪</span>
-                                    <span>최근 6개월 대출 3천만 원 용처 소명 및 편파변제 방어</span>
-                                  </li>
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 특례 권고사항 배지 */}
-                          <div className="pt-2 border-t border-slate-100">
-                            <div className="bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-200/80 text-[11px] text-indigo-900 font-bold flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                              <span>서울회생법원 실무준칙 제424호 준용 신청 권장</span>
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>{/* end 2x2 grid */}
-
-                    </div>
-                  )}
-
-                  {/* ══════════ [신설] 사건 요약문 탭 ══════════ */}
-                  {detailTab === 'summary' && selectedClient && (
-                    <ClientCaseSummarySubTab
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      activeLawyer={activeLawyer}
-                      onUpdateExt={(updated) => {
-                        setCrmData(prev => ({ ...prev, [selectedId]: updated }));
-                        saveCrmClient(selectedId, updated);
-                      }}
-                    />
-                  )}
-
-                  {/* ══════════ [2] 메모 탭 ══════════ */}
-                  {detailTab === 'notes' && currentPermissions.writeNotes && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                          📝 CRM 상담 및 사건 메모
-                        </span>
-                        <span className="text-xs text-slate-400 font-mono">총 {selectedExt.notes.length}건</span>
-                      </div>
-
-                      {/* 카테고리 선택 */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {(Object.entries(CRM_NOTE_CATEGORIES) as [CrmNoteCategory, typeof CRM_NOTE_CATEGORIES[CrmNoteCategory]][]).map(([key, cfg]) => (
-                          <button 
-                            key={key} 
-                            onClick={() => setNewNoteCategory(key)}
-                            className={`text-xs px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                              newNoteCategory === key 
-                                ? `${cfg.color} bg-white border-current font-bold shadow-xs ring-1 ring-current/20` 
-                                : 'text-slate-600 border-slate-200 hover:border-slate-300 bg-slate-50/50'
-                            }`}
-                          >
-                            {cfg.emoji} {cfg.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* 메모 입력창 */}
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="상담 메모를 입력하세요 (예: 1차 전화상담 완료, 청년특례 신청 의사 확인)..." 
-                          value={newNoteContent} 
-                          onChange={e => setNewNoteContent(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter' && !showReminder) handleAddNote(); }}
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30" 
-                        />
-                        <button 
-                          onClick={handleAddNote} 
-                          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer press-scale whitespace-nowrap shadow-xs flex items-center gap-1.5"
-                        >
-                          <span>{showReminder ? '메모 & 일정 저장' : '추가'}</span>
-                        </button>
-                      </div>
-
-                      {/* 상담 결과 선택 */}
-                      <div className="flex items-center gap-2 flex-wrap pt-1">
-                        <span className="text-xs font-bold text-slate-500 shrink-0">상담 결과:</span>
-                        {(Object.entries(OUTCOME_CONFIG) as [ConsultOutcome, typeof OUTCOME_CONFIG[ConsultOutcome]][]).map(([key, cfg]) => (
-                          <button 
-                            key={key} 
-                            onClick={() => setNewNoteOutcome(newNoteOutcome === key ? '' : key)}
-                            className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer press-scale transition-all ${
-                              newNoteOutcome === key 
-                                ? `${cfg.bgColor} ${cfg.color} border-current font-bold ring-1 ring-current/20` 
-                                : 'text-slate-500 border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            {cfg.emoji} {cfg.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* 리마인더 설정 토글 */}
-                      <div className="space-y-2 pt-1">
-                        <button 
-                          onClick={() => setShowReminder(!showReminder)}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border cursor-pointer press-scale transition-all flex items-center gap-1.5 ${
-                            showReminder ? 'bg-amber-50 text-amber-800 border-amber-300 font-bold shadow-xs' : 'text-slate-600 border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          <Clock className="w-3.5 h-3.5 text-amber-600" />
-                          <span>{showReminder ? '차기 일정 / 리마인더 설정 중' : '차기 일정 / 리마인더 설정'}</span>
-                        </button>
-
-                        {showReminder && (
-                          <div className="bg-amber-50/80 rounded-2xl border border-amber-200 p-4 space-y-3.5 animate-fadeIn shadow-xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                <span>⏰ 차기 리마인더 등록</span>
-                              </span>
-                              <span className="text-[11px] text-amber-800 font-medium">일정/할일 캘린더에 자동 동기화</span>
-                            </div>
-
-                            <div className="flex flex-wrap gap-1.5">
-                              {[
-                                { label: '📞 통화', value: '통화' },
-                                { label: '💬 문자', value: '문자' },
-                                { label: '🤝 방문미팅', value: '방문미팅' },
-                                { label: '💰 입금확인', value: '입금확인' },
-                                { label: '📄 서류요청', value: '서류요청' },
-                              ].map(qa => (
-                                <button 
-                                  key={qa.value} 
-                                  onClick={() => setReminderAction(qa.value)}
-                                  className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer press-scale transition-all ${
-                                    reminderAction === qa.value 
-                                      ? 'bg-amber-200 text-amber-950 border-amber-400 font-bold shadow-xs' 
-                                      : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
-                                  }`}
-                                >
-                                  {qa.label}
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                              <div>
-                                <label className="text-[11px] font-bold text-slate-700 block mb-1">날짜 <span className="text-rose-500">*</span></label>
-                                <input 
-                                  type="date" 
-                                  value={reminderDate} 
-                                  onChange={e => setReminderDate(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] font-bold text-slate-700 block mb-1">시간 (선택)</label>
-                                <input 
-                                  type="time" 
-                                  value={reminderTime} 
-                                  onChange={e => setReminderTime(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] font-bold text-slate-700 block mb-1">액션 <span className="text-rose-500">*</span></label>
-                                <input 
-                                  type="text" 
-                                  value={reminderAction} 
-                                  onChange={e => setReminderAction(e.target.value)}
-                                  placeholder="예: 2차 유선상담" 
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-[11px] font-bold text-slate-700 block mb-1">메모 (선택)</label>
-                              <textarea 
-                                value={reminderMemo} 
-                                onChange={e => setReminderMemo(e.target.value)}
-                                placeholder="예: 24개월 청년특례 신청 서류 안내 필요"
-                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs resize-none h-14 focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
-                              />
-                            </div>
-
-                            {/* 리마인더 전용 저장 / 닫기 버튼 바 */}
-                            <div className="flex items-center justify-between pt-1 border-t border-amber-200/60">
-                              <p className="text-[11px] text-amber-800">
-                                💡 날짜와 액션을 지정한 후 저장 버튼을 누르세요.
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setShowReminder(false);
-                                    setReminderDate('');
-                                    setReminderAction('');
-                                    setReminderTime('');
-                                    setReminderMemo('');
-                                  }}
-                                  className="px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer press-scale whitespace-nowrap"
-                                >
-                                  취소
-                                </button>
-                                <button
-                                  onClick={handleAddNote}
-                                  className="px-4 py-2 text-xs font-bold text-amber-950 bg-amber-300 hover:bg-amber-400 border border-amber-400 rounded-xl transition-all cursor-pointer press-scale shadow-xs flex items-center gap-1.5 whitespace-nowrap"
-                                >
-                                  <Clock className="w-3.5 h-3.5 text-amber-900" />
-                                  <span>리마인더 일정 저장</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 메모 목록 */}
-                      <div className="space-y-2.5 max-h-[420px] overflow-y-auto">
-                        {[...selectedExt.notes].reverse().map(note => {
-                          const catCfg = CRM_NOTE_CATEGORIES[note.category];
-                          const outCfg = note.outcome ? OUTCOME_CONFIG[note.outcome] : null;
-                          const rem = note.reminder;
-                          const remDday = rem && !rem.completed ? Math.ceil((new Date(rem.date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / 86400000) : null;
-                          return (
-                            <div key={note.id} className={`p-4 rounded-2xl border text-sm transition-all shadow-xs ${outCfg ? `${outCfg.bgColor} ${outCfg.borderColor} border-l-4` : 'bg-slate-50/70 border-slate-200'}`}>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-xs px-2 py-0.5 rounded-md ${catCfg.color} bg-white border font-bold shadow-xs`}>
-                                    {catCfg.emoji} {catCfg.label}
-                                  </span>
-                                  {outCfg && (
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-md ${outCfg.color} font-bold`}>
-                                      {outCfg.emoji} {outCfg.label}
-                                    </span>
-                                  )}
-                                  <span className="text-xs text-slate-600 font-bold">{note.authorName}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-slate-400 font-mono">{timeAgo(note.createdAt)}</span>
-                                  <button onClick={() => handleDeleteNote(note.id)} className="text-slate-400 hover:text-rose-500 cursor-pointer p-1">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                              <p className="text-slate-800 leading-relaxed font-normal whitespace-pre-line">{note.content}</p>
-                              {rem && (
-                                <div className={`mt-2.5 p-2.5 rounded-xl ${rem.completed ? 'bg-slate-100 text-slate-400' : remDday !== null && remDday <= 0 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100/70 text-amber-900'}`}>
-                                  <div className="flex items-center gap-2 text-xs font-bold">
-                                    <span>{rem.completed ? '✅' : '🔔'}</span>
-                                    <span className={rem.completed ? 'line-through' : ''}>{rem.action}{rem.time ? ` ${rem.time}` : ''} ({rem.date})</span>
-                                    {!rem.completed && remDday !== null && (
-                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">
-                                        {remDday === 0 ? 'D-Day' : remDday > 0 ? `D-${remDday}` : `D+${Math.abs(remDday)}`}
-                                      </span>
-                                    )}
-                                    <div className="flex items-center gap-1.5 ml-auto">
-                                      {!rem.completed && (
-                                        <button 
-                                          type="button"
-                                          onClick={() => handleCompleteReminder(note.id)} 
-                                          className="text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md font-bold cursor-pointer transition-colors"
-                                        >
-                                          ✓ 완료
-                                        </button>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteReminderOnly(note.id)}
-                                        className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
-                                        title="리마인더 일정만 삭제"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {selectedExt.notes.length === 0 && (
-                          <div className="text-center py-8 text-slate-400 text-sm">기록된 메모가 없습니다. 위 입력창에서 메모를 추가하세요.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ══════════ [3] 타임라인 탭 ══════════ */}
-                  {detailTab === 'timeline' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                          📅 사건 활동 타임라인
-                        </span>
-                        <span className="text-xs text-slate-400 font-mono">총 {selectedExt.activities.length}건</span>
-                      </div>
-                      <div className="space-y-0 max-h-[500px] overflow-y-auto pl-2">
-                        {[...selectedExt.activities].reverse().map((act, idx) => (
-                          <div key={act.id} className="flex gap-4 pb-5">
-                            <div className="flex flex-col items-center">
-                              <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
-                                act.type === 'status_change' ? 'bg-blue-500 ring-4 ring-blue-100' :
-                                act.type === 'assigned' ? 'bg-emerald-500 ring-4 ring-emerald-100' :
-                                act.type === 'transferred' ? 'bg-amber-500 ring-4 ring-amber-100' :
-                                act.type === 'document_checked' ? 'bg-purple-500 ring-4 ring-purple-100' :
-                                'bg-slate-400 ring-4 ring-slate-100'
-                              }`} />
-                              {idx < selectedExt.activities.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-2" />}
-                            </div>
-                            <div className="flex-1 pb-1">
-                              <p className="text-sm text-slate-800 font-medium">{act.description}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-slate-600 font-bold">{act.actorName}</span>
-                                <span className="text-xs text-slate-400 font-mono">{new Date(act.createdAt).toLocaleString()}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        {selectedExt.activities.length === 0 && (
-                          <div className="text-center py-8 text-slate-400 text-sm">활동 기록이 없습니다.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ══════════ [신설] 통화 및 문자 탭 ══════════ */}
-                  {detailTab === 'calls' && selectedClient && (
-                    <ClientCallsSmsSubTab
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      activeLawyer={activeLawyer}
-                      onUpdateExt={(updated) => {
-                        setCrmData(prev => ({ ...prev, [selectedId]: updated }));
-                        saveCrmClient(selectedId, updated);
-                      }}
-                    />
-                  )}
-
-                  {/* ══════════ [4] 업무 지시 탭 ══════════ */}
-                  {detailTab === 'tasks' && (
-                    <div className="space-y-4">
-                      <TaskTicketTab
-                        tenantId={firmTenantId || activeLawyer.lawFirmId || activeLawyer.id}
-                        targetType={(selectedClient as any)?.category === 'case' ? 'case' : 'consult_request'}
-                        targetId={selectedId}
-                        actorId={activeStaff?.id || activeLawyer.id}
-                        actorName={activeStaff?.name || activeLawyer.name}
-                        actorRole={activeStaff?.role || 'OWNER'}
-                        staffMembers={staffMembers}
-                        canAssignTasks={!activeStaff || activeStaff.role === 'OWNER' || activeStaff.role === 'LAWYER' || !!currentPermissions.canAssignTasks}
-                      />
-                    </div>
-                  )}
-
-                  {/* ══════════ [4-1] 사무소 내부 스레드 (이전: 컴포넌트만 있고 화면에 연결되지 않음) ══════════ */}
-                  {detailTab === 'thread' && (
-                    <InternalThreadTab
-                      tenantId={firmTenantId || activeLawyer.lawFirmId || activeLawyer.id}
-                      targetType={(selectedClient as any)?.category === 'case' ? 'case' : 'consult_request'}
-                      targetId={selectedId}
-                      actorId={activeStaff?.id || activeLawyer.id}
-                      actorName={activeStaff?.name || activeLawyer.name}
-                      actorRole={String(activeStaff?.role || 'OWNER')}
-                      staffMembers={staffMembers}
-                    />
-                  )}
-
-                  {/* ══════════ [5] 수임료 탭 ══════════ */}
-                  {detailTab === 'fees' && (() => {
-                    const ext = getCrmExt(selectedId);
-                    const schedule = ext.feeSchedule || [];
-                    const totalFee = ext.totalFee || 0;
-                    const feeSettings = loadFeeNotificationSettings();
-                    const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + feeAmountWon(f), 0);
-                    return (
-                      <div className="space-y-4">
-                        {/* 🌟 수임료 안내 스마트 배너 */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md">🏦 입금 계좌</span>
-                              <span className="text-xs text-slate-700 font-medium">
-                                {feeSettings.bankInfo.bankName} {feeSettings.bankInfo.accountNumber} ({feeSettings.bankInfo.accountHolder})
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                              <span className="font-bold text-slate-600">자동 발송 규칙 (예약 발송 미지원 — 저장만 됨):</span>
-                              {feeSettings.autoTriggerEnabled ? (
-                                <span>
-                                  {feeSettings.rules.filter(r => r.enabled).map(r => 
-                                    `${r.daysOffset === 0 ? '당일' : r.daysOffset < 0 ? `D${r.daysOffset}` : `D+${r.daysOffset}`}(${r.sendTime})`
-                                  ).join(' · ')}
-                                </span>
-                              ) : (
-                                <span className="text-rose-500">꺼짐</span>
-                              )}
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => setIsFeeSettingsModalOpen(true)}
-                            className="shrink-0 bg-white border border-blue-200 text-blue-700 text-[11px] font-bold px-3 py-1.5 rounded-xl hover:bg-blue-50 transition-colors shadow-xs"
-                          >
-                            ⚙️ 발송 규칙 설정
-                          </button>
-                        </div>
-
-                        {/* 총 수임료 설정 & 게이지 */}
-                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                              💰 총 약정 수임료
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="number"
-                                defaultValue={totalFee || ''}
-                                placeholder="금액 입력"
-                                onBlur={async (e) => {
-                                  const val = Number(e.target.value);
-                                  if (val > 0 && val !== totalFee) await updateCrmExt(selectedId, { ...getCrmExt(selectedId), totalFee: val });
-                                }}
-                                className="w-28 text-right bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"
-                              />
-                              <span className="text-xs text-slate-600 font-bold">만원</span>
-                            </div>
-                          </div>
-                          {totalFee > 0 && (
-                            <>
-                              <div className="flex justify-between text-xs font-medium">
-                                <span className="text-slate-500">납부 완료</span>
-                                <span className="font-bold text-emerald-600 font-mono">{totalPaid.toLocaleString()}만원</span>
-                              </div>
-                              <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(100, (totalPaid / totalFee) * 100)}%` }} />
-                              </div>
-                              <div className="flex justify-between text-xs font-medium">
-                                <span className="text-slate-500">잔여 미수금</span>
-                                <span className={`font-bold font-mono ${totalFee - totalPaid > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                  {(totalFee - totalPaid).toLocaleString()}만원
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        {/* 분납 스케줄 추가 */}
-                        <div className="bg-blue-50/50 border border-blue-200/60 p-4 rounded-2xl space-y-3">
-                          <p className="text-xs font-bold text-blue-950">➕ 분납 스케줄 추가</p>
-                          <div className="grid grid-cols-3 gap-2.5">
-                            <div>
-                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">구분</label>
-                              <select id="fee-label-select" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs">
-                                <option value="계약금(착수금)">계약금(착수금)</option>
-                                <option value="1차 분납">1차 분납</option>
-                                <option value="2차 분납">2차 분납</option>
-                                <option value="3차 분납">3차 분납</option>
-                                <option value="4차 분납">4차 분납</option>
-                                <option value="잔금">잔금</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">금액 (만원)</label>
-                              <input id="fee-amount-input" type="number" placeholder="예: 50" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs" />
-                            </div>
-                            <div>
-                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">납부 예정일</label>
-                              <input id="fee-date-input" type="date" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs" />
-                            </div>
-                          </div>
-                          <button onClick={async () => {
-                            const labelEl = document.getElementById('fee-label-select') as HTMLSelectElement;
-                            const amtEl = document.getElementById('fee-amount-input') as HTMLInputElement;
-                            const dateEl = document.getElementById('fee-date-input') as HTMLInputElement;
-                            if (!amtEl?.value || !dateEl?.value) { toast.error('금액과 납부일을 입력해주세요.'); return; }
-                            const latestExt = getCrmExt(selectedId);
-                            const latestSchedule = latestExt.feeSchedule || [];
-                            const newInst: FeeInstallment = {
-                              id: `fee-${Date.now()}`, round: latestSchedule.length + 1,
-                              amount: Number(amtEl.value), dueDate: dateEl.value, status: 'pending',
-                              memo: labelEl.value,
-                            };
-                            if (!(Number(amtEl.value) > 0)) { toast.error('금액은 0보다 커야 합니다.'); return; }
-                            const ok = await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
-                            amtEl.value = ''; dateEl.value = '';
-                            notifySaved(ok, `${labelEl.value} ${newInst.amount.toLocaleString()}만원 추가`);
-                          }} className="w-full py-2.5 text-xs font-bold text-white bg-brand rounded-xl hover:bg-brand/90 transition-all press-scale whitespace-nowrap shadow-xs">스케줄 추가</button>
-                        </div>
-
-                        {/* 분납 리스트 */}
-                        {schedule.length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-xs font-bold text-slate-700">📋 분납 스케줄 ({schedule.length}건)</p>
-                            {schedule.map(inst => {
-                              // 납부일 당일은 연체가 아님 (로컬 날짜 문자열 비교 — UTC 변환 시 당일 09시부터 연체로 표시되던 문제)
-                              const todayYmd = localYmd(new Date());
-                              const isPast = inst.status === 'pending' && inst.dueDate < todayYmd;
-                              return (
-                                <div key={inst.id} className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all shadow-xs ${inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-black text-slate-600">{inst.memo || `${inst.round}차`}</span>
-                                      <span className="text-sm font-bold text-slate-900 font-mono">{inst.amount.toLocaleString()}만원</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono flex items-center gap-1.5 flex-wrap">
-                                      <span>📅 {inst.dueDate}</span>
-                                      {inst.paidDate && <span className="text-emerald-600 font-medium font-sans"> → {inst.paidDate} 납부완료</span>}
-                                      {isPast && inst.status === 'pending' && <span className="text-rose-600 font-bold font-sans"> (기한 경과)</span>}
-                                      
-                                      {inst.lastNotifiedAt && (
-                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-yellow-50 text-yellow-800 rounded text-[10px] border border-yellow-200">
-                                          💬 {ALIMTOK_MILESTONE_CONFIG[inst.lastNotifiedType as AlimtokMilestone]?.label || '안내'} 발송됨 ({new Date(inst.lastNotifiedAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })})
-                                        </span>
-                                      )}
-                                    </p>
-                                  </div>
-                                  
-                                  {inst.status === 'pending' && (
-                                    <>
-                                      <button 
-                                        onClick={() => setFeeAlimtokModalConfig({ isOpen: true, installment: inst, initialMilestone: isPast ? 'fee_overdue' : (inst.dueDate === todayYmd ? 'fee_due' : 'fee_upcoming') })} 
-                                        className="text-[11px] font-bold text-yellow-800 bg-yellow-100 px-2.5 py-1.5 rounded-xl border border-yellow-200 hover:bg-yellow-200 press-scale whitespace-nowrap"
-                                      >
-                                        💬 안내 발송
-                                      </button>
-                                      <button onClick={async () => {
-                                        const latestExt = getCrmExt(selectedId);
-                                        const paidYmd = localYmd(new Date());
-                                        const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: paidYmd } : f) };
-                                        const ok = await updateCrmExt(selectedId, updated);
-                                        notifySaved(ok, `${inst.memo || inst.round + '차'} 납부 확인`);
-                                        if (ok && feeSettings.sendReceiptOnPaid) {
-                                          setFeeAlimtokModalConfig({ isOpen: true, installment: { ...inst, status: 'paid', paidDate: paidYmd }, initialMilestone: 'fee_receipt' });
-                                        }
-                                      }} className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-200 press-scale whitespace-nowrap">💳 납부 확인</button>
-                                    </>
-                                  )}
-                                  <button onClick={async () => {
-                                    const latestExt = getCrmExt(selectedId);
-                                    const confirmed = await dialog.confirm({ title: '분납 항목 삭제', message: `${inst.memo || inst.round + '차'} 항목을 삭제하시겠습니까?`, confirmText: '삭제', variant: 'danger' });
-                                    if (!confirmed) return;
-                                    const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).filter(f => f.id !== inst.id) };
-                                    const ok = await updateCrmExt(selectedId, updated);
-                                    notifySaved(ok, '분납 항목이 삭제되었습니다.');
-                                  }} className="text-slate-300 hover:text-rose-500 transition-colors p-1" title="삭제"><Trash2 className="w-3.5 h-3.5" /></button>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-                                    {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 연체' : '⏳ 대기'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-slate-400 text-xs">등록된 분납 스케줄이 없습니다.</div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* ══════════ [5-2] 전자계약 탭 ══════════ */}
-                  {detailTab === 'contracts' && selectedClient && (
-                    <ClientContractSubTab
-                      client={selectedClient}
-                      crmExt={selectedExt}
-                      activeLawyer={activeLawyer}
-                      activeStaff={activeStaff}
-                      onUpdateCrmExt={async (patch) => {
-                        await saveOrThrow(selectedId, patch);
-                      }}
-                    />
-                  )}
-
-                  {/* ══════════ [6] 문서 탭 ══════════ */}
-                  {detailTab === 'documents' && (() => {
-                    const ext = getCrmExt(selectedId);
-                    const files = ext.uploadedFiles || [];
-                    const docs = ext.documents || [];
-                    
-                    // Progress calculations
-                    const totalDocs = docs.length;
-                    const approvedCount = docs.filter(d => d.reviewStatus === 'approved').length;
-                    const underReviewCount = docs.filter(d => d.reviewStatus === 'submitted' || d.reviewStatus === 'under_review' || d.reviewStatus === 'resubmitted').length;
-                    const rejectedCount = docs.filter(d => d.reviewStatus === 'rejected').length;
-                    const notSubmittedCount = docs.filter(d => !d.reviewStatus || d.reviewStatus === 'not_submitted').length;
-                    
-                    const progressPercent = totalDocs === 0 ? 0 : Math.round((approvedCount / totalDocs) * 100);
-
-                    const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-
-                    return (
-                      <div className="space-y-4">
-                        {isBankruptcyCase && (
-                          <div className="bg-purple-50/80 border border-purple-200 rounded-2xl p-4 flex items-start justify-between gap-3 text-xs shadow-xs animate-fadeIn">
-                            <div className="space-y-1">
-                              <div className="font-bold text-purple-900 flex items-center gap-1.5">
-                                <span>🏛️ 개인파산 사건 안내: 파산관재인 15대 필수자료 제출 규격</span>
-                              </div>
-                              <p className="text-purple-700 leading-relaxed">
-                                본 사건은 <strong>개인파산·면책 사건</strong>으로 지정되어 있습니다. 회생과 달리 파산관재인의 과거 5~10년 재산처분 추적(지적전산, 과세증명, 전 계좌내역) 및 8대 불허가사유 소명이 핵심입니다.
-                                [개인파산·면책] 탭의 <strong>15대 필수서류함</strong> 및 <strong>1,110만 원 면제재산 계산기</strong>에서 통합 관리하실 수 있습니다.
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setDetailTab('bankruptcy')}
-                              className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold cursor-pointer press-scale shrink-0 whitespace-nowrap shadow-xs"
-                            >
-                              파산 관리 센터 바로가기 →
-                            </button>
-                          </div>
-                        )}
-
-                        {/* ── 의뢰인 인증서 안전 금고 위젯 (문서 탭 상단) ── */}
-                        <CertificateVaultCard
-                          key={selectedId}
-                          clientId={selectedId}
-                          clientRequest={selectedClient}
-                          crmExt={selectedExt}
+                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                           onUpdateCrmExt={async (patch) => {
                             await saveOrThrow(selectedId, patch);
                           }}
-                          actorName={activeStaff?.name || activeLawyer.name || undefined}
-                          actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
+                          onOpenPostCareModal={() => setShowPostCareModal(true)}
+                          activeSection={detailTab as any}
+                          onSelectSection={(sec) => setDetailTab(sec as any)}
+                          activeLawyerName={assignedLawyerName}
                         />
-
-                        {/* Progress Dashboard */}
-                        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-bold text-slate-800">서류 준비 현황</span>
-                            <span className="text-xs font-bold text-brand">{progressPercent}% 완료</span>
-                          </div>
-                          <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
-                            <div style={{ width: `${(approvedCount/totalDocs)*100}%` }} className="h-full bg-emerald-500 transition-all"></div>
-                            <div style={{ width: `${(underReviewCount/totalDocs)*100}%` }} className="h-full bg-amber-400 transition-all"></div>
-                            <div style={{ width: `${(rejectedCount/totalDocs)*100}%` }} className="h-full bg-rose-500 transition-all"></div>
-                          </div>
-                          <div className="mt-3 text-xs text-slate-600 flex items-center justify-between">
-                            <span>{totalDocs}종 중 <strong className="text-emerald-600">{approvedCount}종 승인</strong> · <strong className="text-amber-600">{underReviewCount}종 대기</strong> · <strong className="text-rose-600">{rejectedCount}종 반려</strong> · <strong className="text-slate-500">{notSubmittedCount}종 미제출</strong></span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                            📁 의뢰인 제출 서류 관리
-                          </h4>
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => setShowCourtDocSuite(true)} 
-                              className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
-                              title="13종 법원 표준 서식(35p)을 브라우저에서 직접 수기 수정(WYSIWYG)하고 인쇄 및 PDF로 내보냅니다."
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                              13종 법원서식 에디터
-                            </button>
-                            <button 
-                              onClick={() => setShowDocHubModal(true)} 
-                              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                              스마트 서식 허브 (80종)
-                            </button>
-                            <button 
-                              onClick={() => setShowFormLibrary(true)} 
-                              className="text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
-                              title="개인회생·파산 법원 양식 60종을 브라우저에서 바로 편집하고 인쇄/PDF 저장합니다."
-                            >
-                              <Scale className="w-3.5 h-3.5" />
-                              법원 양식 (60종)
-                            </button>
-                            <button onClick={() => setShowDocScanner(true)} className="text-xs font-bold text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-xs">
-                              <Camera className="w-3.5 h-3.5 text-slate-500" />
-                              서류 스캔
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setPreprocessorTargetDoc(undefined);
-                                setShowPdfPreprocessor(true);
-                              }} 
-                              className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-100 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
-                              title="가로 스캔 서류 세로 회전 및 빈 페이지 일괄 정리"
-                            >
-                              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
-                              PDF 회전·정리
-                            </button>
-                            <button onClick={() => setShowDocRequest(!showDocRequest)} className="text-xs font-bold text-brand bg-white px-3 py-2 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1">
-                              📩 서류 요청
-                            </button>
-                            <label className="text-xs font-bold text-white bg-slate-800 px-3 py-2 rounded-xl hover:bg-slate-700 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-sm">
-                              <Upload className="w-3.5 h-3.5" />
-                              직접 업로드
-                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.hwp,.hwpx" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const validation = validateUploadFile(file);
-                                if (!validation.isValid) {
-                                  toast.error(validation.error);
-                                  return;
-                                }
-
-                                // PDF 파일인 경우 법원 제출 품질 자동 검수
-                                if (file.name.toLowerCase().endsWith('.pdf')) {
-                                  try {
-                                    const inspection = await inspectPdfFile(file);
-                                    const errors = inspection.items.filter(i => i.severity === 'error');
-                                    const warnings = inspection.items.filter(i => i.severity === 'warning');
-                                    
-                                    if (errors.length > 0) {
-                                      toast.error(`⛔ PDF 검수 실패: ${errors[0].message}`);
-                                      return; // 에러가 있으면 업로드 차단
-                                    }
-                                    if (warnings.length > 0) {
-                                      warnings.forEach(w => toast.warning(`📋 ${w.label}: ${w.message}`, { duration: 6000 }));
-                                    }
-                                    if (inspection.isDigitalPdf) {
-                                      toast.info('✅ 디지털 PDF 감지 — 텍스트 검색 가능, OCR 불필요', { duration: 3000 });
-                                    }
-                                  } catch (inspErr) {
-                                    console.warn('[PDF Inspection Error]', inspErr);
-                                  }
-                                }
-
-                                const reader = new FileReader();
-                                reader.onload = async () => {
-                                  let dataUrl = reader.result as string;
-                                  let fileSize = file.size;
-                                  let mimeType = file.type;
-
-                                  // 이미지 서류인 경우 법원 제출용 비가역 반투명 워터마크 자동 합성 (주민번호 13자리 온전 보존)
-                                  if (file.type.startsWith('image/')) {
-                                    try {
-                                      const watermarked = await applyCourtSubmissionWatermark(dataUrl, {
-                                        clientName: selectedClient?.clientName || '신청인',
-                                        requestId: selectedId,
-                                        isIdCardOrSeal: true
-                                      });
-                                      dataUrl = watermarked.dataUrl;
-                                      fileSize = watermarked.fileSize;
-                                      mimeType = watermarked.mimeType;
-                                    } catch (wmErr) {
-                                      console.warn('[Watermark Synthesis Error]', wmErr);
-                                    }
-                                  }
-
-                                  const newDoc: DocumentFile = {
-                                    id: `doc-${Date.now()}`, name: file.name,
-                                    category: 'other', uploadedAt: new Date().toISOString(),
-                                    uploadedBy: activeLawyer.name, fileSize,
-                                    mimeType, dataUrl,
-                                    uploadSource: 'lawyer'
-                                  };
-                                  // 비동기 처리 동안 바뀐 내용을 덮어쓰지 않도록 저장 직전 최신 데이터를 사용
-                                  const latest = getCrmExt(selectedId);
-                                  const ok = await updateCrmExt(selectedId, { ...latest, uploadedFiles: [...(latest.uploadedFiles || []), newDoc] });
-                                  notifySaved(ok, file.type.startsWith('image/') && dataUrl !== reader.result ? `${file.name} 워터마크 합성 후 업로드 완료` : `${file.name} 업로드 완료`);
-                                };
-                                reader.readAsDataURL(file);
-                              }} />
-                            </label>
-                          </div>
-                        </div>
-
-                        {showDocRequest && (
-                          <div className="bg-brand/5 p-4 rounded-2xl border border-brand/10 space-y-3">
-                            <h5 className="text-xs font-bold text-brand flex items-center gap-1"><Plus className="w-3.5 h-3.5"/> 새 서류 요청</h5>
-                            <input type="text" value={newDocRequestLabel} onChange={e => setNewDocRequestLabel(e.target.value)} placeholder="요청할 서류명 (예: 2023년도 근로소득원천징수영수증)" className="w-full text-sm p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand" />
-                            <textarea value={newDocRequestDesc} onChange={e => setNewDocRequestDesc(e.target.value)} placeholder="상세 설명 (선택)" rows={2} className="w-full text-sm p-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand resize-none" />
-                            <div className="flex justify-end gap-2">
-                              <button onClick={() => setShowDocRequest(false)} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">취소</button>
-                              <button onClick={async () => {
-                                if (!newDocRequestLabel.trim()) return toast.error('서류명을 입력해주세요');
-                                const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                // 화면에 있는 최신 고객 데이터의 사본을 기준으로 저장한다 (함수가 이 사본을 저장한 값으로 바꾼다)
-                                // (이전: 이 기기 사본에 고객 행이 없으면 아무것도 저장하지 않았는데도 '등록되었습니다'가 떴다)
-                                const target = { ...getCrmExt(selectedId) };
-                                const saved = await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true }, target);
-                                if (!saved) {
-                                  // 입력값과 화면 상태는 그대로 둔다 — 다시 보내도 요청이 두 번 쌓이지 않게
-                                  toast.error('서류 요청을 서버에 저장하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 보내 주세요.');
-                                  return;
-                                }
-                                addClientNotification({
-                                  type: 'document_request',
-                                  title: '추가 서류 제출 요청',
-                                  body: `${actor.name} 변호사님이 [${newDocRequestLabel.trim()}] 서류 제출을 요청했습니다.`,
-                                  emoji: '📁',
-                                  linkTab: 'mypage',
-                                });
-                                setShowDocRequest(false);
-                                setNewDocRequestLabel('');
-                                setNewDocRequestDesc('');
-                                setCrmData(prev => ({ ...prev, [selectedId]: target }));
-                                toast.success('서류 요청이 등록되었습니다. 의뢰인 마이페이지 서류함에 표시됩니다.');
-                              }} className="px-3 py-1.5 text-xs font-bold text-white bg-brand hover:bg-brand-hover rounded-xl press-scale transition-colors shadow-sm">요청 보내기</button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 기본 필수 서류 체크리스트 (2단 그리드 배치) */}
-                        <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                              <span>✓</span>
-                              <span>{isBankruptcyCase ? '🏛️ 개인파산 15대 필수 서류 체크 (파산관재인 심문 대비)' : '⚖️ 개인회생 15종 필수 서류 체크 (소득·가용소득 검증)'}</span>
-                              <span className="text-[11px] font-normal text-slate-500">
-                                ({docs.filter(d => d.checked).length}/{docs.length} 완료)
-                              </span>
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const confirmed = await dialog.confirm({ title: '서류 목록 초기화', message: '현재 서류 목록의 제출·검토 상태가 모두 초기화됩니다. 계속하시겠습니까?', confirmText: '초기화', variant: 'warning' });
-                                  if (!confirmed) return;
-                                  const targetDocs = isBankruptcyCase ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
-                                  await updateCrmExt(selectedId, {
-                                    documents: targetDocs.map(d => ({ ...d, reviewStatus: 'not_submitted' as DocumentReviewStatus }))
-                                  });
-                                  toast.success(isBankruptcyCase ? '파산 15대 필수 서류 규격으로 초기화되었습니다.' : '개인회생 표준 서류 규격으로 초기화되었습니다.');
-                                }}
-                                className="text-[11px] font-bold text-slate-500 hover:text-slate-900 underline cursor-pointer"
-                                title="사건 유형에 맞는 표준 서류 목록으로 갱신합니다."
-                              >
-                                🔄 {isBankruptcyCase ? '파산 15대 규격으로 목록 갱신' : '회생 서류 규격으로 목록 갱신'}
-                              </button>
-                              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">| 클릭하여 체크 및 승인/반려</span>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {docs.map(doc => {
-                              const status = doc.reviewStatus || 'not_submitted';
-                              const config = DOC_REVIEW_STATUS_CONFIG[status];
-                              const isReviewable = status === 'submitted' || status === 'resubmitted' || status === 'under_review';
-                              const linkedFile = doc.linkedFileId ? files.find(f => f.id === doc.linkedFileId) : null;
-                              
-                              return (
-                                <div 
-                                  key={doc.id} 
-                                  className={`flex flex-col justify-between gap-2 p-3 rounded-xl border transition-all shadow-xs ${
-                                    doc.checked 
-                                      ? 'bg-slate-50/90 border-slate-200 text-slate-600' 
-                                      : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-sm'
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-2.5">
-                                    <div 
-                                      onClick={() => handleToggleDocument(doc.id)} 
-                                      className="cursor-pointer shrink-0 mt-0.5"
-                                      title="체크 상태 변경"
-                                    >
-                                      <input 
-                                        type="checkbox" 
-                                        checked={doc.checked} 
-                                        readOnly 
-                                        className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand pointer-events-none cursor-pointer" 
-                                      />
-                                    </div>
-                                    <div 
-                                      className="flex-1 min-w-0 cursor-pointer"
-                                      onClick={() => handleToggleDocument(doc.id)}
-                                    >
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className={`text-[13px] font-bold truncate ${doc.checked ? 'text-slate-600 line-through' : 'text-slate-800'}`}>
-                                          {doc.label}
-                                        </span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-bold shrink-0 ${config.color} ${config.bgColor} ${config.borderColor}`}>
-                                          {config.emoji} {config.label}
-                                        </span>
-                                      </div>
-                                      {linkedFile && (
-                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500">
-                                          <FileText className="w-3 h-3 shrink-0 text-slate-400" />
-                                          <span className="truncate">{linkedFile.name}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    
-                                    {isReviewable && (
-                                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                                        <button 
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                            // 화면의 최신 데이터 사본 기준으로 저장하고, 저장한 값을 화면에 반영한다
-                                            // (이전: 이 기기 사본만 고쳐 화면·서버에 반영되지 않았는데도 '승인했습니다'가 떴다)
-                                            const target = { ...getCrmExt(selectedId) };
-                                            const ok = await approveDocument(selectedId, doc.id, actor.name, target);
-                                            setCrmData(prev => ({ ...prev, [selectedId]: target }));
-                                            notifySaved(ok, '서류를 승인했습니다.');
-                                          }} 
-                                          className="px-2 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap press-scale transition-colors"
-                                          title="서류 승인"
-                                        >
-                                          ✅ 승인
-                                        </button>
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setRejectingDocId(doc.id);
-                                          }} 
-                                          className="px-2 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg whitespace-nowrap press-scale transition-colors"
-                                          title="서류 반려"
-                                        >
-                                          ❌ 반려
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  {status === 'rejected' && doc.rejectionReason && (
-                                    <div className="text-xs text-rose-600 bg-rose-50/60 p-2 rounded-lg border border-rose-100 flex items-start gap-1.5 mt-1">
-                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-500" />
-                                      <span className="text-[11px] leading-snug">반려 사유: {doc.rejectionReason}</span>
-                                    </div>
-                                  )}
-
-                                  {rejectingDocId === doc.id && (
-                                    <div className="mt-1.5 flex items-center gap-1.5 pt-1.5 border-t border-rose-100">
-                                      <input 
-                                        type="text" 
-                                        value={rejectReason} 
-                                        onChange={e => setRejectReason(e.target.value)} 
-                                        placeholder="반려 사유를 입력하세요" 
-                                        className="flex-1 text-xs p-1.5 border border-rose-200 rounded-lg focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 bg-rose-50/30 text-rose-900" 
-                                      />
-                                      <button 
-                                        onClick={async () => {
-                                          if (!rejectReason.trim()) return toast.error('반려 사유를 입력해주세요');
-                                          const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                          const target = { ...getCrmExt(selectedId) };
-                                          const ok = await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim(), target);
-                                          setRejectingDocId(null);
-                                          setRejectReason('');
-                                          setCrmData(prev => ({ ...prev, [selectedId]: target }));
-                                          notifySaved(ok, '서류를 반려했습니다.');
-                                        }} 
-                                        className="px-2 py-1 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg press-scale shrink-0"
-                                      >
-                                        확인
-                                      </button>
-                                      <button 
-                                        onClick={() => { setRejectingDocId(null); setRejectReason(''); }} 
-                                        className="px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
-                                      >
-                                        취소
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* 추가 요청 서류 리스트 (2단 그리드) */}
-                        {ext.documentRequests && ext.documentRequests.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-xs font-bold text-slate-700 block">추가 요청 서류 ({ext.documentRequests.length}건)</span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {ext.documentRequests.map(req => (
-                                <div key={req.id} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-bold text-slate-800">{req.documentLabel}</span>
-                                      {req.fulfilled ? (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-lg border font-bold text-emerald-700 bg-emerald-50 border-emerald-200">제출됨</span>
-                                      ) : (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-lg border font-bold text-amber-700 bg-amber-50 border-amber-200">미제출</span>
-                                      )}
-                                    </div>
-                                    <span className="text-[10px] text-slate-400 font-mono">{new Date(req.requestedAt).toLocaleDateString()}</span>
-                                  </div>
-                                  {req.description && <p className="text-xs text-slate-500">{req.description}</p>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 업로드된 파일 리스트 (2단 그리드) */}
-                        {files.length > 0 ? (
-                          <div className="space-y-2">
-                            <span className="text-xs font-bold text-slate-700 block">전체 첨부 파일 ({files.length}건)</span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {files.map(f => {
-                                const isClient = f.uploadSource === 'client';
-                                return (
-                                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <FileText className="w-4 h-4 text-brand shrink-0" />
-                                      <div className="flex flex-col min-w-0">
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-xs font-bold text-slate-800 truncate">{f.name}</span>
-                                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${isClient ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                                            {isClient ? '고객 제출' : '변호사 업로드'}
-                                          </span>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 font-mono mt-0.5">{(f.fileSize ? Math.round(f.fileSize / 1024) : 0)} KB</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                                      {f.name.toLowerCase().endsWith('.pdf') && (
-                                        <button
-                                          onClick={() => {
-                                            setPreprocessorTargetDoc({ name: f.name, dataUrl: f.dataUrl });
-                                            setShowPdfPreprocessor(true);
-                                          }}
-                                          className="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer press-scale"
-                                          title="가로 스캔 세로 회전 및 빈 페이지 일괄 정리"
-                                        >
-                                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                                          <span>회전/정리</span>
-                                        </button>
-                                      )}
-                                      <button 
-                                        onClick={() => setViewingDoc(f)} 
-                                        className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand/5 hover:bg-brand/10 border border-brand/15 transition-colors cursor-pointer press-scale"
-                                        title="화면 도촬 방지 포렌식 워터마크 보안 열람실 실행"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        <span>보안열람</span>
-                                      </button>
-                                      <button onClick={async () => {
-                                        const latestExt = getCrmExt(selectedId);
-                                        const ok = await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
-                                        notifySaved(ok, '파일이 삭제되었습니다.');
-                                      }} className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="삭제">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {/* 초민감 서류(신분증/인감) 포렌식 워터마크 보안 뷰어 모달 */}
-                        <SecureDocumentViewerModal
-                          isOpen={Boolean(viewingDoc)}
-                          onClose={() => setViewingDoc(null)}
-                          documentName={viewingDoc?.name || '서류 열람'}
-                          dataUrl={viewingDoc?.dataUrl || ''}
-                          mimeType={viewingDoc?.mimeType}
-                          viewerName={activeLawyer.name}
-                          viewerRole={activeStaff?.role || 'LAWYER'}
-                          clientId={selectedId}
-                        />
-
-                        {/* 변호사용 MobileScanner 모달 */}
-                        <MobileScanner
-                          isOpen={showDocScanner}
-                          onClose={() => setShowDocScanner(false)}
-                          clientName={selectedClient?.clientName || '신청인'}
-                          requestId={selectedId}
-                          onCapture={async (scanned) => {
-                            const newDoc: DocumentFile = {
-                              id: `doc-${Date.now()}`,
-                              name: scanned.name,
-                              category: 'other',
-                              uploadedAt: new Date().toISOString(),
-                              uploadedBy: activeLawyer.name,
-                              fileSize: scanned.fileSize,
-                              mimeType: scanned.mimeType,
-                              dataUrl: scanned.dataUrl,
-                              uploadSource: 'lawyer',
-                              reviewStatus: 'approved',
-                            };
-                            const latest = getCrmExt(selectedId);
-                            const ok = await updateCrmExt(selectedId, { ...latest, uploadedFiles: [...(latest.uploadedFiles || []), newDoc] });
-                            notifySaved(ok, `${scanned.name} 스캔 완료`);
-                          }}
-                        />
-
-                        {/* PDF 전처리 (회전 보정 / 빈 페이지 삭제) 모달 */}
-                        <PdfPreprocessorModal
-                          isOpen={showPdfPreprocessor}
-                          onClose={() => {
-                            setShowPdfPreprocessor(false);
-                            setPreprocessorTargetDoc(undefined);
-                          }}
-                          initialFile={preprocessorTargetDoc}
-                          clientName={selectedClient?.clientName || '신청인'}
-                          onSaveToCrm={async (preprocessed) => {
-                            const latestExt = getCrmExt(selectedId);
-                            const currentUploaded = latestExt.uploadedFiles || [];
-                            const newDoc: DocumentFile = {
-                              id: `doc-${Date.now()}`,
-                              name: preprocessed.name,
-                              category: 'other',
-                              uploadedAt: new Date().toISOString(),
-                              uploadedBy: activeLawyer.name,
-                              fileSize: preprocessed.fileSize,
-                              mimeType: 'application/pdf',
-                              dataUrl: preprocessed.dataUrl,
-                              uploadSource: 'lawyer',
-                              reviewStatus: 'approved',
-                            };
-                            const ok = await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: [...currentUploaded, newDoc] });
-                            notifySaved(ok, `${preprocessed.name} 서류가 CRM에 추가 저장되었습니다.`);
-                          }}
-                        />
-                      </div>
-                    );
-                  })()}
-
-                  {/* ══════════ [진술서] 법원 진술서 탭 (고객 작성 & AI 정제 & 전자소송 자동 첨부) ══════════ */}
-                  {detailTab === 'statement' && selectedClient && (
-                    <LawyerStatementReviewSection
-                      clientId={selectedId}
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      activeLawyerName={activeLawyer.name}
-                    />
-                  )}
-
-                  {/* ══════════ [7] 보정 탭 (ComprehensiveCorrectionCenter) ══════════ */}
-                  {detailTab === 'corrections' && selectedClient && (
-                    <ComprehensiveCorrectionCenter
-                      key={selectedId}
-                      clientId={selectedId}
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      activeLawyerName={activeLawyer.name}
-                      onNavigateToRepayment={() => {
-                        const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                        setDetailTab(isBk ? 'bankruptcy' : 'repayment');
-                      }}
-                    />
-                  )}
-
-                  {/* ══════════ [8] 법원 탭 ══════════ */}
-                  {detailTab === 'court' && selectedClient && (
-                    <CourtCaseTab
-                      clientId={selectedId}
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                      actorId={activeStaff?.id || activeLawyer.id}
-                      actorRole={activeStaff?.role || 'OWNER'}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      activeLawyerName={activeLawyer.name}
-                    />
-                  )}
-
-                  {/* ══════════ [인증서] 의뢰인 공동인증서·금융인증서 안전 금고 전용 탭 ══════════ */}
-                  {detailTab === 'vault' && selectedClient && (
-                    <div className="space-y-4">
-                      <CertificateVaultCard
-                        key={selectedId}
-                        clientId={selectedId}
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        onUpdateCrmExt={async (updates) => {
-                          await saveOrThrow(selectedId, updates);
-                        }}
-                        actorName={activeStaff?.name || activeLawyer.name || undefined}
-                        actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
-                      />
+                      )}
                     </div>
-                  )}
 
-                  {/* ══════════ [9] 부채증명서 발급 대행 탭 ══════════ */}
-                  {detailTab === 'debt-certs' && selectedClient && (
-                    <DebtCertificateTab
-                      key={selectedId}
-                      clientId={selectedId}
+                    {/* 우측 사건 컨텍스트 패널 (의뢰인 팩트시트 + 고객 소통 + 상담 메모 통합) */}
+                    <ContextPanel
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      onNavigateToRepayment={() => setDetailTab('repayment')}
-                      actorName={activeStaff?.name || activeLawyer.name || undefined}
-                      actorRole={activeStaff ? String(activeStaff.role) : '변호사'}
+                      activeLawyer={activeLawyer}
+                      lawyers={lawyers}
+                      staffMembers={staffMembers}
+                      isOpen={isContextPanelOpen}
+                      mode="docked"
+                      onClose={() => setIsContextPanelOpen(false)}
+                      onOpenChat={() => { if (setActiveTab) setActiveTab('chat'); }}
+                      onOpenFeeTab={() => { advancePipelineStage(2); setDetailTab('fees'); }}
+                      onUpdateExt={async (patch) => { await saveOrThrow(selectedId, patch); }}
                     />
-                  )}
+                  </div>
 
-                  {/* ══════════ [10] 2026 변제계획안 에디터 탭 (개인회생) ══════════ */}
-                  {detailTab === 'repayment' && selectedClient && (
-                    <RepaymentPlanEditor
-                      clientId={selectedId}
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      activeLawyerName={activeLawyer.name}
-                    />
-                  )}
+                  {/* ── 사건 활동 기록 타임라인 모달 ── */}
+                  <CaseTimelineModal
+                    isOpen={showTimelineModal}
+                    onClose={() => setShowTimelineModal(false)}
+                    clientRequest={selectedClient}
+                    crmExt={selectedExt}
+                  />
 
-                  {/* ══════════ [11] 개인파산 및 면책 동시신청 종합 관리 탭 (개인파산) ══════════ */}
-                  {detailTab === 'bankruptcy' && selectedClient && (
-                    <BankruptcyManagementTab
-                      key={selectedId}
-                      clientId={selectedId}
-                      clientRequest={selectedClient}
-                      crmExt={selectedExt}
-                      onUpdateCrmExt={async (updates) => {
-                        await saveOrThrow(selectedId, updates);
-                      }}
-                      activeLawyerName={activeLawyer.name}
-                      onOpenBatchFiling={() => setShowBatchFilingModal(true)}
-                    />
-                  )}
+                  {/* ── 단계 전환 완료 확인 시트 (Task 2-3) ── */}
+                  <StageTransitionModal
+                    isOpen={transitionSheetState.isOpen}
+                    onClose={() => setTransitionSheetState(prev => ({ ...prev, isOpen: false }))}
+                    fromStage={transitionSheetState.fromStage}
+                    toStage={transitionSheetState.toStage}
+                    clientRequest={selectedClient}
+                    crmExt={selectedExt}
+                    activeLawyer={activeLawyer}
+                    onConfirm={() => executeStageTransition(transitionSheetState.toStage)}
+                  />
 
+                  {/* ── 잠긴 단계 선행 조건 안내 시트 (Task 2-3) ── */}
+                  <StageLockSheet
+                    isOpen={lockSheetState.isOpen}
+                    onClose={() => setLockSheetState(prev => ({ ...prev, isOpen: false }))}
+                    targetStage={lockSheetState.targetStage}
+                    gates={gates}
+                    onNavigateToPrerequisite={(stage, sec) => {
+                      setPipelineStage(stage);
+                      if (sec) setDetailTab(sec as any);
+                    }}
+                  />
+
+                  {/* ── 모바일 전용 하단 고정 '다음 할 일' 액션 바 (기획서 4.6 & Task 4-6) ── */}
+                  <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-lg flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-500 font-bold block truncate">다음 할 일</span>
+                      <span className="text-xs font-black text-slate-900 truncate block">{primaryActionConfig.label}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={primaryActionConfig.onClick}
+                      disabled={primaryActionConfig.disabled}
+                      className="shrink-0 bg-[#1E3A5F] hover:bg-[#163152] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                    >
+                      {primaryActionConfig.label}
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+            );
+          })()}
 
       {/* ══════════ 신규 리드 뷰 ══════════ */}
       {viewMode === 'leads' && handleOpenProposalDraft && (
@@ -5085,8 +2289,8 @@ export default function CrmTab({
                     {/* 카드 헤더 */}
                     <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                        <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                           r.requestType === 'direct' ? 'bg-[#1E3A5F] text-white' :
                           r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
                           'bg-slate-200 text-slate-700'
@@ -5097,7 +2301,7 @@ export default function CrmTab({
                         <span className="text-sm font-bold text-slate-900">{getDisplayClientName(r)}</span>
                         {isNewCase(r.createdAt) && <NewBadge />}
                       </div>
-                      <span className="bg-rose-50 text-rose-600 font-bold text-[10px] px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
+                      <span className="bg-rose-50 text-rose-600 font-bold text-xs px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
                     </div>
 
                     {/* 카드 본문 */}
@@ -5110,23 +2314,23 @@ export default function CrmTab({
                       {/* 핵심 재무 요약 (총채무 / 월소득 / 자산) */}
                       <div className="grid grid-cols-3 gap-2">
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-500">총채무</div>
-                          <div className="text-sm font-black text-slate-900">{(fp.debtTotal || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-xs text-slate-500">총채무</div>
+                          <div className="text-sm font-black text-slate-900">{(fp.debtTotal || 0).toLocaleString()}<span className="text-xs font-medium">만</span></div>
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-500">월소득</div>
-                          <div className="text-sm font-black text-slate-900">{(fp.income || 0).toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-xs text-slate-500">월소득</div>
+                          <div className="text-sm font-black text-slate-900">{(fp.income || 0).toLocaleString()}<span className="text-xs font-medium">만</span></div>
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-500">자산</div>
-                          <div className="text-sm font-black text-slate-900">{assets.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-xs text-slate-500">자산</div>
+                          <div className="text-sm font-black text-slate-900">{assets.toLocaleString()}<span className="text-xs font-medium">만</span></div>
                         </div>
                       </div>
 
                       {/* 의뢰인 메모 */}
                       {((fp.clientNotes && fp.clientNotes.length > 0) || fp.clientNote) && (
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs">
-                          <span className="text-[10px] font-bold text-slate-500 block mb-0.5">📝 의뢰인 메모</span>
+                          <span className="text-xs font-bold text-slate-500 block mb-0.5">📝 의뢰인 메모</span>
                           {fp.clientNotes && fp.clientNotes.length > 0 ? (
                             <div className="text-xs text-slate-700 line-clamp-2">{fp.clientNotes.join(' / ')}</div>
                           ) : (
@@ -5138,12 +2342,12 @@ export default function CrmTab({
                       {/* 위험 플래그 */}
                       <div className="flex flex-wrap gap-1 mt-auto pt-1">
                         {fp.specialCondition && fp.specialCondition !== 'none' && (
-                          <span className="bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded-md font-bold border border-slate-200">
+                          <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-md font-bold border border-slate-200">
                             ⚡ 특례: {fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'single_parent' ? '한부모' : fp.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                           </span>
                         )}
                         {(fp.riskFlags || []).map(rf => (
-                          <span key={rf} className="bg-rose-50 text-rose-600 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
+                          <span key={rf} className="bg-rose-50 text-rose-600 text-xs px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
                         ))}
                       </div>
                     </div>
@@ -5193,68 +2397,6 @@ export default function CrmTab({
         </div>
       )}
 
-      {/* ══════════ 칸반 뷰 ══════════ */}
-      {viewMode === 'kanban' && (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-4 min-w-max">
-            {CRM_STATUSES.map(status => {
-              const sc = CRM_STATUS_CONFIG[status];
-              const clients = filteredRequests.filter(r => getCrmExt(r.id).crmStatus === status);
-              return (
-                <div key={status}
-                  className="w-64 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
-                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-blue-50/50', 'ring-2', 'ring-blue-300/30'); }}
-                  onDragLeave={(e) => { e.currentTarget.classList.remove('bg-blue-50/50', 'ring-2', 'ring-blue-300/30'); }}
-                  onDrop={(e) => {
-                    e.preventDefault(); e.currentTarget.classList.remove('bg-blue-50/50', 'ring-2', 'ring-blue-300/30');
-                    const id = e.dataTransfer.getData('text/plain');
-                    if (id) handleKanbanDrop(id, status);
-                  }}>
-                  {/* 컬럼 헤더 */}
-                  <div className={`p-4 border-b border-slate-100 ${sc.bgColor}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm font-black ${sc.color}`}>{sc.emoji} {sc.label}</span>
-                      <span className={`text-xs ${sc.color} font-bold bg-white/70 px-2 py-0.5 rounded-md`}>{clients.length}</span>
-                    </div>
-                  </div>
-                  {/* 카드 */}
-                  <div className="p-3 space-y-2.5 min-h-[120px] max-h-[550px] overflow-y-auto">
-                    {clients.map(r => {
-                      const ext = getCrmExt(r.id);
-                      return (
-                        <div key={r.id}
-                          draggable
-                          onDragStart={(e) => { e.dataTransfer.setData('text/plain', r.id); setDraggedId(r.id); }}
-                          onDragEnd={() => setDraggedId(null)}
-                          onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
-                          className={`bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-brand/40 cursor-pointer transition-all hover:shadow-md group ${draggedId === r.id ? 'opacity-50 scale-95' : ''}`}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-sm font-bold text-slate-900 truncate">{getDisplayClientName(r)}</span>
-                              {isNewCase(r.createdAt) && <NewBadge />}
-                            </div>
-                            <GripVertical className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 shrink-0" />
-                          </div>
-                          <div className="text-sm text-red-500 font-bold">{r.financialProfile.debtTotal.toLocaleString()}만</div>
-                          <div className="flex items-center gap-1.5 mt-2">
-                            {getStaffRoleBadge(ext.assigneeId || ext.assignedLawyerId)}
-                            <span className="text-xs text-slate-600 font-medium truncate">{getStaffName(ext.assigneeId || ext.assignedLawyerId)}</span>
-                          </div>
-                          <div className="text-xs text-slate-400 font-medium mt-1">{timeAgo(ext.lastActivityAt)}</div>
-                        </div>
-                      );
-                    })}
-                    {clients.length === 0 && (
-                      <div className="text-center py-6 text-xs text-slate-400 font-medium">없음</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {showBulkMessage && (
         <div className="bg-white border-t border-slate-200 p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -5295,7 +2437,7 @@ export default function CrmTab({
                   <p className="text-xs text-slate-500">
                     발송 대상 의뢰인: <span className="font-black text-sm text-slate-800">{bulkFilteredClients.length}명</span>
                   </p>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-xs text-slate-400">
                     {bulkFilteredClients.slice(0, 3).map(c => c.clientName).join(', ')}
                     {bulkFilteredClients.length > 3 ? ` 외 ${bulkFilteredClients.length - 3}명` : ''}
                   </span>

@@ -111,9 +111,9 @@ export default function CertificateVaultCard({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-200">인증서 안전 금고</span>
                 {isShredded ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold">사본 삭제됨</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold">사본 삭제됨</span>
                 ) : npki ? (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
                     daysUnknown ? 'bg-slate-800 text-slate-400' :
                     isExpired ? 'bg-rose-500/20 text-rose-300' :
                     isExpiringSoon ? 'bg-amber-500/20 text-amber-300' :
@@ -122,10 +122,10 @@ export default function CertificateVaultCard({
                     공동인증서 {daysLabel}
                   </span>
                 ) : (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">미등록</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">미등록</span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400">부채증명서 발급 및 전자소송용 · 이 브라우저에만 보관</p>
+              <p className="text-xs text-slate-400">부채증명서 발급 및 전자소송용 · 이 브라우저에만 보관</p>
             </div>
           </div>
           <button
@@ -165,19 +165,19 @@ export default function CertificateVaultCard({
               <div className="flex items-center gap-2">
                 <h4 className="text-sm md:text-base font-bold text-white flex items-center gap-1.5">
                   의뢰인 인증서 안전 금고
-                  <span className="text-[11px] font-normal text-slate-400">(브라우저 로컬 보관)</span>
+                  <span className="text-xs font-normal text-slate-400">(브라우저 로컬 보관)</span>
                 </h4>
                 {isShredded ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-semibold">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-semibold">
                     사본 삭제됨
                   </span>
                 ) : hasAnyCert ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     보관중
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-semibold">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-semibold">
                     미등록
                   </span>
                 )}
@@ -219,7 +219,7 @@ export default function CertificateVaultCard({
                   <span className="text-xs font-bold text-slate-200">공동인증서 (NPKI)</span>
                 </div>
                 {npki && !isShredded ? (
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                     daysUnknown ? 'bg-slate-800 text-slate-400' :
                     isExpired ? 'bg-rose-500/20 text-rose-300' :
                     isExpiringSoon ? 'bg-amber-500/20 text-amber-300' :
@@ -228,7 +228,7 @@ export default function CertificateVaultCard({
                     {daysUnknown || isExpired ? daysLabel : `D-${daysRemaining} (${daysRemaining}일 남음)`}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-400">미등록</span>
+                  <span className="text-xs text-slate-400">미등록</span>
                 )}
               </div>
 
@@ -255,7 +255,7 @@ export default function CertificateVaultCard({
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-slate-700/50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">부채증명서 온라인 대리발급 선호</span>
+              <span className="text-xs text-slate-400">부채증명서 온라인 대리발급 선호</span>
               {npki && !isShredded ? (
                 <button
                   onClick={() => setIsModalOpen(true)}
@@ -283,11 +283,11 @@ export default function CertificateVaultCard({
                   <span className="text-xs font-bold text-slate-200">금융인증서 (YESKEY Cloud)</span>
                 </div>
                 {financial?.registered && !isShredded ? (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-300">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-300">
                     등록 정보 있음
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-400">미등록</span>
+                  <span className="text-xs text-slate-400">미등록</span>
                 )}
               </div>
 
@@ -314,7 +314,7 @@ export default function CertificateVaultCard({
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-slate-700/50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">원격 승인 안내 문구 (자동 발송 아님)</span>
+              <span className="text-xs text-slate-400">원격 승인 안내 문구 (자동 발송 아님)</span>
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="text-xs font-semibold text-violet-400 hover:text-violet-300 flex items-center gap-1"
@@ -326,7 +326,7 @@ export default function CertificateVaultCard({
         </div>
 
         {/* 하단 안심 안내 문구 */}
-        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>비밀번호 열람 시 목적 입력 필수 · 복사 30초 후 클립보드 소거 시도</span>

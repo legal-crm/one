@@ -159,7 +159,7 @@ export default function MobileScanner({
             )}
             {/* Guide overlay */}
             <div className="absolute inset-8 border-2 border-white/30 rounded-2xl pointer-events-none">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-white/50 text-[10px] font-medium whitespace-nowrap">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-white/50 text-xs font-medium whitespace-nowrap">
                 서류를 프레임 안에 맞춰주세요
               </div>
             </div>

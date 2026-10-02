@@ -278,7 +278,7 @@ export default function SalesSettingsModal({
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <h4 className="font-extrabold text-slate-900 text-xs mb-3 flex items-center justify-between">
                   <span>1차 메인 진행 상태 ({statuses.length}종)</span>
-                  <span className="text-[11px] text-slate-500 font-normal">삭제 시 기존 고객 대체 상태 이전 지원</span>
+                  <span className="text-xs text-slate-500 font-normal">삭제 시 기존 고객 대체 상태 이전 지원</span>
                 </h4>
                 <div className="flex gap-2 mb-3">
                   <input
@@ -394,7 +394,7 @@ export default function SalesSettingsModal({
                   <div key={p.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between shadow-2xs">
                     <div>
                       <span className="font-bold text-slate-900 text-xs">{p.name}</span>
-                      {p.memo && <span className="text-slate-500 text-[11px] ml-2">({p.memo})</span>}
+                      {p.memo && <span className="text-slate-500 text-xs ml-2">({p.memo})</span>}
                     </div>
                     <button
                       type="button"
@@ -456,7 +456,7 @@ export default function SalesSettingsModal({
             <div className="space-y-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <h4 className="font-extrabold text-slate-900 text-xs mb-2">부재 경과 시간별 알림 티어</h4>
-                <p className="text-[11px] text-slate-500 mb-4">
+                <p className="text-xs text-slate-500 mb-4">
                   통화 시도 후 응답이 없을 때, 다음 재시도까지 경과 시간을 단계별로 관리합니다.
                 </p>
                 <div className="space-y-3">
@@ -523,7 +523,7 @@ export default function SalesSettingsModal({
                     <div key={r.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between shadow-2xs">
                       <div>
                         <span className="font-bold text-slate-900 text-xs">{r.name}</span>
-                        <span className="text-slate-400 text-[11px] block truncate max-w-sm">{r.webhookUrl}</span>
+                        <span className="text-slate-400 text-xs block truncate max-w-sm">{r.webhookUrl}</span>
                       </div>
                       <button
                         type="button"

@@ -344,7 +344,7 @@ export default function LeadDetailModal({
                       기본 인적사항 및 유입 정보
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
                     등록일: {formData.createdAt ? new Date(formData.createdAt).toLocaleDateString() : '-'}
                   </span>
                 </div>
@@ -439,7 +439,7 @@ export default function LeadDetailModal({
                       직업 · 소득 및 부양가족
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
                     월 실수령액: {formData.incomeNet ? `${formData.incomeNet.toLocaleString()}만원` : '0원'}
                   </span>
                 </div>
@@ -522,7 +522,7 @@ export default function LeadDetailModal({
                       주거 형태 및 보증금 / 월세
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
                     {formData.housingType}
                   </span>
                 </div>
@@ -621,7 +621,7 @@ export default function LeadDetailModal({
                       보유 자산 목록 (차량/부동산/예금 등)
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md">
                     {(formData.assets || []).length}개 등록됨
                   </span>
                 </div>
@@ -731,7 +731,7 @@ export default function LeadDetailModal({
                       채무 구조 및 과거 회생/파산/신복위 이력
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">
                     총 채무: {formData.debtTotal ? `${formData.debtTotal.toLocaleString()}만원` : '0원'}
                   </span>
                 </div>
@@ -807,7 +807,7 @@ export default function LeadDetailModal({
                     <PhoneCall size={14} className="text-blue-600" />
                     원클릭 통화 결과 기록
                   </h3>
-                  <span className="text-[10px] text-slate-400 font-bold">
+                  <span className="text-xs text-slate-400 font-bold">
                     통화 시도 {formData.callCount}회
                   </span>
                 </div>
@@ -858,7 +858,7 @@ export default function LeadDetailModal({
                     <FileText size={14} className="text-blue-600" />
                     실시간 통화 상담 메모 작성
                   </h3>
-                  <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
                     통화 중 바로 기록
                   </span>
                 </div>
@@ -940,7 +940,7 @@ export default function LeadDetailModal({
                           <span className="font-bold text-slate-700">
                             {log.callerName || '상담원'} · {log.result === 'connected' ? '💬 통화 성공' : log.result === 'no_answer' ? '📞 부재중' : log.result === 'callback' ? '⏰ 예약' : '🚫 거절'}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-xs text-slate-400 font-mono">
                             {new Date(log.calledAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -950,7 +950,7 @@ export default function LeadDetailModal({
                           </p>
                         )}
                         {log.callbackScheduledAt && (
-                          <p className="text-[11px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded">
+                          <p className="text-xs text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded">
                             약속일: {log.callbackScheduledAt}
                           </p>
                         )}

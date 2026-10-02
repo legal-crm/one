@@ -84,7 +84,7 @@ export default function QuickMemoTool() {
 
   return (
     <div className="space-y-2.5 p-4 text-slate-800 text-xs">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
+      <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
         <span className="flex items-center gap-1 font-bold text-slate-700">
           <FileText className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
           상담 메모
@@ -119,7 +119,7 @@ export default function QuickMemoTool() {
         className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 leading-relaxed placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none font-sans"
       />
 
-      <div className="flex items-center justify-between text-[10px] text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-500">
         <span>글자수: {memo.length}자 · 이 탭에만 임시 저장, 로그아웃 시 삭제</span>
         <button
           type="button"

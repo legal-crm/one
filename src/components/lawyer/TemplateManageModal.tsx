@@ -241,7 +241,7 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                   resetForms();
                 }
               }}
-              className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-1 py-1.5 px-2.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+              className="text-xs text-slate-500 hover:text-rose-600 flex items-center gap-1 py-1.5 px-2.5 rounded-lg hover:bg-slate-200/60 transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               기본값 복원
@@ -336,9 +336,9 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-slate-900">{tpl.title}</span>
                           {tpl.isCustom ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand/10 text-brand">사무실 전용</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand/10 text-brand">사무실 전용</span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">기본 제공</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">기본 제공</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1">
@@ -376,7 +376,7 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                       {tpl.recommendedNotes && tpl.recommendedNotes.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {tpl.recommendedNotes.map((note, i) => (
-                            <span key={i} className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
+                            <span key={i} className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
                               • {note}
                             </span>
                           ))}
@@ -512,7 +512,7 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-slate-900">{fee.label}</span>
                             {fee.isCustom && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand/10 text-brand">전용</span>
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-brand/10 text-brand">전용</span>
                             )}
                           </div>
                           <div className="flex items-center gap-0.5">
@@ -555,7 +555,7 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                         </div>
 
                         {fee.memo && (
-                          <p className="text-[11px] text-slate-500 truncate" title={fee.memo}>
+                          <p className="text-xs text-slate-500 truncate" title={fee.memo}>
                             💬 {fee.memo}
                           </p>
                         )}

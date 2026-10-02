@@ -28,23 +28,40 @@
 | 용어 | discharged = '면책 결정'(고객 화면과 통일), 요청 유형 이름 통일 | `constants/consultStatus.ts` |
 | 계약 | 계약관리 탭 금액 원 환산(`feeTotalWon`), 'signed'도 체결 완료, '변호사 서명 대기' 표시·재촉 제외, 서명 공유 모달 금액, 원격 서명 검증창 본인 이름 표시 | `ContractManagementTab.tsx`, `ClientSignShareModal.tsx`, `ClientRemoteSignView.tsx` |
 | 퀵툴 | Esc 최소화, 드래그 후 클릭 오작동, 모바일 GNB 위 위치 등 | `quickdock/*`, `LegalQuickDock.tsx` |
+| 계약 동기화 | syncContractToCrm 재작성(buildContractSyncPatch 순수 함수 분리, 분납표 상태 보존 매칭, 상태 승격 방어, 원 단위 표기) | `services/crmService.ts` |
+| 금액 단위 통일 | ClientContractSubTab 초기 수임료 만원 정규화 및 표시 원 환산, ContractWizard 분납 스케줄 amountUnit: 'won', ContractConversionModal 원 단위 환산, Stage2 기본값 feeAmountWon/feeTotalWon 호환 | `ClientContractSubTab.tsx`, `ContractWizard.tsx`, `ContractConversionModal.tsx`, `Stage2ContractRetainerView.tsx` |
+| 고객 마이페이지 | ContractCard.tsx completed/signed/signedAt 모두 서명 완료로 판정 | `client/mypage/ContractCard.tsx` |
+| Turnstile | api/_lib/turnstile-validator.js 시크릿 키 구성 시 mock/빈 토큰 엄격 거부 | `api/_lib/turnstile-validator.js` |
+| **Phase 0-1** | 파이프라인 단계 판정 단일화 (`getJourneyState()`, 6단계 동적 산출 연동) | `pipelineGates.ts`, `CrmTab.tsx` |
+| **Phase 0-2** | 상태 변경 경로 정리 (13단계 바 `onSelectStage` 및 번개 버튼에 게이트 검사 & `dialog.confirm` 적용) | `CrmTab.tsx` |
+| **Phase 0-3** | 4·5·6단계 파이프라인 입력 누락 해소 (사건번호/법원/접수일 등록, 개시결정 폼 및 `commenced` 자동 승격, 면책/기각 처리) | `Stage4FilingBundleView.tsx`, `Stage5CorrectionCenterView.tsx`, `Stage6PostCareDischargeView.tsx` |
+| **Phase 0-4** | 서류 상태 서버 저장 (localStorage 단독 탈피 -> `crmExt.stage3DocsState` 양방향 서버 저장 및 송장번호 연동) | `Stage3DocumentsHubView.tsx` |
+| **Phase 0-5** | 의뢰인 표시 규칙 단일화 (`clientDisplay.ts` 신규 생성 및 적용: 이름/전화번호 마스킹 및 실명 단일화) | `clientDisplay.ts`, `LawyerRole.tsx`, `leadService.ts`, `LawyerChatWorkspace.tsx` |
+| **Phase 0-6** | 안내 문구 및 버튼 정돈 (Gate 개발용어 제거, 수임계약 체결됨 안내 교체, 가짜 빨간 점 및 가짜 질문 제거) | `Stage1ConsultationView.tsx`, `Stage2ContractRetainerView.tsx`, `Stage3DocumentsHubView.tsx`, `Stage4FilingBundleView.tsx`, `Stage5CorrectionCenterView.tsx`, `ClientCommunicationSidePanel.tsx` |
+| **Phase 0-7** | CRM 가짜 기본값 제거 (사건유형 추정 제거, 담당자 미정 '미배정', 관할법원 미지정 '미입력', 팩트 매트릭스 동적 바인딩) | `CrmTab.tsx` |
+| **Phase 0-8** | 이동 함수 및 딥링크 단일화 (`openCase`, `openRequest`, `openThread` 통합, 알림벨 직행, 컨텍스트 초기화) | `LawyerRole.tsx`, `NotificationBell.tsx`, `ContractManagementTab.tsx`, `CrmTab.tsx` |
+| **Phase 0-9** | 네이티브 대화상자 전면 교체 & 토스트 한국어화 (모든 window.confirm/prompt -> `useDialog`, 통화결과 한국어 매핑) | `SalesLeadsTab.tsx`, `CaseDetailAiSummary.tsx`, `FeeSettlementTab.tsx`, `LawPassCourtFilingSidebar.tsx`, `ApplicationDocSettingsModal.tsx`, `CreditorManagementModal.tsx`, `LawyerRole.tsx` |
+| **Phase 0-10** | 계약 저장 1회화 & 납부 기록 보존 (`ContractWizard` 중복 저장 방지 `isSaving` 가드, 기납부 완료 회차 매칭 보존, CRM totalPaid 연동) | `ContractWizard.tsx`, `services/crmService.ts` |
+| **Phase 0-11** | 고객관리 저장 충돌 방지 (`loadCrmDataResult` 서버 실패 시 빈 객체 `{}` 덮어쓰기 방지, 배열 안전 병합) | `services/crmService.ts` |
+| **Phase 0-12** | 법원 비용 기본 조합 통일 (`courtFees.ts`, `contractService.ts`, `Stage2` 전자소송 10% 감액 및 금지명령 기본 조합 일치) | `services/contractService.ts`, `ContractWizard.tsx`, `ClientContractSubTab.tsx`, `ContractConversionModal.tsx` |
+| **Phase 1-1** | CSS 토큰 & 어드민 스케일 체계 (.admin-scale 12px 하한, z-index 계층 변수, --dock-safe-area 정의) | `src/index.css` |
+| **Phase 1-2** | 사이드바 메뉴 설정 배열화 (5대 그룹, 배지 2종 규칙, 권한 일관성 검사, 딥 네이비 톤) | `LawyerRole.tsx` |
+| **Phase 1-3** | 헤더 영역 정돈 (역할 라벨 한글화, 모바일 검색 노출, 딥 네이비 단일 시맨틱) | `LawyerRole.tsx` |
+| **Phase 1-4** | 모바일 하단 탭 & 메뉴 시트 (5대 탭, admin-scale 적용) | `LawyerRole.tsx` |
+| **Phase 1-5** | 어드민 공통 부품 1차 구축 (`AdminPageHeader`, `ViewTabs`, `FilterBar`, `DataTable`, `StatusChip`, `MetricTile`, `ConfirmSheet`, `IconButton`, `AdminMoney`) | `src/components/ui/index.ts`, `src/components/ui/admin/*` |
+| **Phase 1-6** | URL 상태 동기화 및 뒤로가기 복원 (`useAdminUrlSync`: `tab`, `caseId`, `stage` 양방향 URL 동기화 및 뒤로가기/새로고침 유지) | `src/hooks/useAdminUrlSync.ts`, `LawyerRole.tsx` |
+| **Phase 1-7** | 용어 사전 1차 (Command Center -> 오늘의 업무 현황, Contract Operations -> 계약 현황, Fee Settlement Hub -> 수임료 수납, 골든타임 -> 서명 지연) | `LawyerRole.tsx`, `ContractManagementTab.tsx`, `FeeSettlementTab.tsx`, `ContractReminderModal.tsx` |
+| **Phase 1-8** | 퀵툴 화면 톤 개선 (라이트 메뉴·창, 기본 접힘 'minimized' 모드 시작, 12px 하한, 무한 pulse 제거, `--dock-safe-area` 연동) | `LegalQuickDock.tsx`, `FloatingToolWindow.tsx` |
+| **검증 완료** | TypeScript 에러 수: **229개 → 190개 (39개 감소)**, 신규 에러 0건, `npm run build` **15.81초 성공** | 전 영역 |
 
-## 남은 작업 (순서대로)
+## 다음 작업 (Phase 2: 수임 여정 연결)
 
-1. **`crmService.syncContractToCrm` 재작성** — 중단된 지점. 아직 원본 그대로(832행 근처).
-   - 순수 함수 `buildContractSyncPatch(clientId, ext, contract, actor)` 추가, `syncContractToCrm`은 `loadCrmDataResult()`로 서버 최신값 기준(읽기 실패+로컬 사본 없음이면 저장 안 함), 저장한 ext 또는 null 반환
-   - 분납표: id/회차로 기존 항목과 맞춰 납부 상태·납부일·연기 정보·알림 이력 유지
-   - 활동 로그: 같은 계약의 마지막 기록 상태와 다를 때만 추가, 금액은 `feeTotalWon(...).toLocaleString()원`
-   - 상태 승격: `client_review` 포함, 현재 상태가 requested/consulting일 때만 'contracted' (지금은 completed면 filed 이후도 contracted로 되돌림)
-   - 승격 시 `thirteenStageAfterStatusChange`로 13단계도 맞춤
-   - 잘못된 주석 "(만원 단위 변환)" 수정
-2. **CRM 안 호출부는 패치 한 번으로 저장** — `ClientContractSubTab.handleWizardSave`, `Stage2ContractRetainerView`(725·752행): `syncContractToCrm` 뒤 오래된 state로 `onUpdateCrmExt`가 덮어쓰는 문제 → `onUpdateCrmExt(buildContractSyncPatch(...))` 한 번으로. Stage2는 `saveContract` await·결과 확인도.
-3. **금액 단위** — `ClientContractSubTab`(초기 수임료를 만원으로 정규화, 235·353행 표시 원 환산), `ContractWizard`(분납액 원 + `amountUnit:'won'`), `ContractConversionModal`(원 + 'won'), `Stage2`(기본값 `feeAmountWon`/`feeTotalWon`).
-4. **고객 `client/mypage/ContractCard.tsx`** — completed/signed·signedAt을 서명 완료로.
-5. **Turnstile** — `api/_lib/turnstile-validator.js`: 시크릿 키가 없을 때만 통과 허용, 키가 있으면 운영에서 mock/빈 토큰 거부.
-6. **검증** — tsc 기준선 비교(아래 명령), `npm run build`, `.tmp-admin-work/verify-chat-filter.ts` 실행, 가능하면 퍼피티어 스모크.
-7. **계획서 갱신** — 고객 동기화 조사·수정 절, 채팅·퀵툴 이미 배포 사실, DB 승인 필요 항목.
-8. `.tmp-admin-work/` 삭제(백업 확인 후).
+1. **Phase 2-1: 사건 워크스페이스 골격 구축**
+   - 라이트 헤더(단일 주 버튼 `다음: ...`), `JourneyRail` (6단계 여정), `StageHeader`, `SectionTabs`, `ContextPanel` (의뢰인·소통·메모 3개 탭 통합)
+2. **Phase 2-2: 서브탭 16개 재배치 & 13단계 바 타임라인화**
+   - 파이프라인/서브탭 2중 모드 제거, 13단계 바는 4~6단계 세부 절차 읽기 전용 타임라인으로 정돈
+3. **Phase 2-3: 단계 완료 시트(ConfirmSheet) 및 자동 준비 연동**
+4. **Phase 2-4 ~ 2-5: 1단계(상담·제안) 및 2단계(수임계약 단일화)**
 
 ## 사용자 승인이 필요한 것 (DB·보안)
 

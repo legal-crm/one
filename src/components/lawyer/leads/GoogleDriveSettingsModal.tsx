@@ -144,11 +144,11 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
                   <span className="font-bold text-slate-900">변호사 로그인 계정</span>
                   {accountType === 'login' && <CheckCircle2 size={15} className="text-purple-600" />}
                 </div>
-                <p className="text-[11px] text-slate-500 truncate" title={activeLawyerEmail || '로그인 계정'}>
+                <p className="text-xs text-slate-500 truncate" title={activeLawyerEmail || '로그인 계정'}>
                   {activeLawyerEmail ? `${activeLawyerName || '변호사'} (${activeLawyerEmail})` : '현재 로그인 정보 사용'}
                 </p>
                 {isGoogleLogin && (
-                  <span className="inline-block mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                  <span className="inline-block mt-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
                     구글 계정 자동 감지
                   </span>
                 )}
@@ -168,10 +168,10 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
                   <span className="font-bold text-slate-900">별도 구글 계정 입력</span>
                   {accountType === 'custom' && <CheckCircle2 size={15} className="text-purple-600" />}
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   카카오 로그인 또는 법무법인 공용 드라이브 사용
                 </p>
-                <span className="inline-block mt-1 text-[10px] font-bold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.5 rounded">
+                <span className="inline-block mt-1 text-xs font-bold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.5 rounded">
                   이메일 직접 지정
                 </span>
               </button>
@@ -192,7 +192,7 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
                 placeholder="예: lawfirm_recording@gmail.com"
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden"
               />
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 * 카카오 간편로그인 회원이시거나 다른 전용 구글 워크스페이스 계정으로 녹취를 모아두고 싶으실 때 입력하세요.
               </p>
             </div>
@@ -222,7 +222,7 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
               <button
                 type="button"
                 onClick={() => setConfig({ ...config, gasWebAppUrl: '' })}
-                className="text-[10px] text-purple-600 hover:underline cursor-pointer"
+                className="text-xs text-purple-600 hover:underline cursor-pointer"
               >
                 지우기
               </button>
@@ -232,15 +232,15 @@ export const GoogleDriveSettingsModal: React.FC<GoogleDriveSettingsModalProps> =
               value={config.gasWebAppUrl || ''}
               onChange={(e) => setConfig({ ...config, gasWebAppUrl: e.target.value })}
               placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-[11px] text-slate-600 focus:ring-2 focus:ring-purple-500 outline-hidden"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs text-slate-600 focus:ring-2 focus:ring-purple-500 outline-hidden"
             />
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-400">
               * 변호사님(사무소) 구글 계정으로 직접 배포한 Web App URL만 입력하세요. 통화 녹음 원본이 이 주소로 전송됩니다.
             </p>
           </div>
 
           {/* 안내 배너 */}
-          <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200/70 text-[11px] text-blue-800 space-y-1 leading-relaxed">
+          <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200/70 text-xs text-blue-800 space-y-1 leading-relaxed">
             <div className="flex items-center gap-1.5 font-bold">
               <AlertCircle size={14} className="text-blue-600 shrink-0" />
               <span>고객과의 분쟁 예방 및 영구 증빙 안내</span>

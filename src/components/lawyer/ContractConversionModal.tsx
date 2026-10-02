@@ -79,32 +79,34 @@ function ContractConversionModalInner({
       const todayYmd = localYmd(now);
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
 
-      // 1. 분납 스케줄 객체 구성 (단위: 만원)
+      // 1. 분납 스케줄 객체 구성 (단위: 원)
       const feeSchedule: FeeInstallment[] = [];
       
-      // 1차 착수금
+      // 1차 착수금 (원 단위로 저장)
       feeSchedule.push({
         id: `fee-${Date.now()}-1`,
         round: 1,
         dueDate: todayYmd,
-        amount: initialFee,
+        amount: initialFee * 10000,
+        amountUnit: 'won',
         // 대면 계약이라도 착수금 수납은 [수임료] 탭에서 확인 처리 (입금 확인 없이 '납부 완료'로 기록하지 않음)
         status: 'pending',
         memo: '계약 착수금'
       });
 
-      // 잔여 분납
+      // 잔여 분납 (원 단위로 저장)
       if (installmentCount > 1 && remainingFee > 0) {
         for (let i = 2; i <= installmentCount; i++) {
           const nextDueDate = addMonthsClamped(now, i - 1); // 1/31 → 2/28 (말일 보정)
-          const amount = i === installmentCount 
+          const amountManwon = i === installmentCount 
             ? (remainingFee - monthlyInstallment * (installmentCount - 2)) 
             : monthlyInstallment;
           feeSchedule.push({
             id: `fee-${Date.now()}-${i}`,
             round: i,
             dueDate: localYmd(nextDueDate),
-            amount,
+            amount: amountManwon * 10000,
+            amountUnit: 'won',
             status: 'pending',
             memo: `${i}회차 분납금`
           });
@@ -114,7 +116,12 @@ function ContractConversionModalInner({
       // 2. ElectronicContract 생성 및 저장 (CRM과 100% 매칭되도록 clientId: request.id)
       // 채권자 수를 모르면 0으로 두고 계약 마법사에서 입력 (이전: 임의로 5곳 가정해 법원비용 산정)
       const creditorCount = knownCreditorCount;
-      const courtCosts = calculateCourtCosts(creditorCount);
+      const isBk = caseType === 'individual_bankruptcy';
+      const courtCosts = calculateCourtCosts(creditorCount, 15000, DELIVERY_UNIT_FEE_KRW, undefined, {
+        caseType: isBk ? 'bankruptcy' : 'rehab',
+        withProhibition: !isBk,
+        electronic: true,
+      });
 
       const newContract = createContract({
         clientId: request.id,
@@ -381,7 +388,7 @@ function ContractConversionModalInner({
                 <div className="flex items-center justify-between mb-2">
                   <Smartphone className={`w-5 h-5 ${contractMethod === 'electronic' ? 'text-brand' : 'text-slate-500'}`} />
                   {contractMethod === 'electronic' && (
-                    <span className="bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full">선택됨</span>
+                    <span className="bg-brand text-white text-xs font-bold px-2 py-0.5 rounded-full">선택됨</span>
                   )}
                 </div>
                 <div className="font-bold text-sm text-slate-900">전자 계약 (비대면)</div>
@@ -402,7 +409,7 @@ function ContractConversionModalInner({
                 <div className="flex items-center justify-between mb-2">
                   <Users className={`w-5 h-5 ${contractMethod === 'in_person' ? 'text-brand' : 'text-slate-500'}`} />
                   {contractMethod === 'in_person' && (
-                    <span className="bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full">선택됨</span>
+                    <span className="bg-brand text-white text-xs font-bold px-2 py-0.5 rounded-full">선택됨</span>
                   )}
                 </div>
                 <div className="font-bold text-sm text-slate-900">대면 계약 (방문/서면)</div>
@@ -493,7 +500,7 @@ function ContractConversionModalInner({
                   <span> + 잔여 {remainingFee}만 원 (월 약 {monthlyInstallment}만 원씩 {installmentCount - 1}회)</span>
                 )}
               </div>
-              <span className="text-[11px] font-semibold text-slate-400">
+              <span className="text-xs font-semibold text-slate-400">
                 {courtCostsSeparate ? '법원 실비 별도' : '실비 포함'}
               </span>
             </div>

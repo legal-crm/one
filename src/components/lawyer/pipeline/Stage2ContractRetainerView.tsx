@@ -22,7 +22,8 @@ import {
   getContractsByClientId, createContract, saveContract, 
   calculateCourtCosts 
 } from '../../../services/contractService';
-import { syncContractToCrm } from '../../../services/crmService';
+import { syncContractToCrm, buildContractSyncPatch, createDefaultCrmExtension } from '../../../services/crmService';
+import { feeAmountWon, feeTotalWon } from '../../../utils/feeUnits';
 import { 
   numberToKoreanAmount, 
   buildSimpleFeeClause, 
@@ -54,6 +55,8 @@ interface Stage2ContractRetainerViewProps {
   onOpenContractSubTab?: () => void;
   onOpenPowerOfAttorneyModal?: () => void;
   onUpdateCrmExt?: (patch: Partial<CrmClientExtension>) => Promise<void>;
+  activeSection?: string;
+  onSelectSection?: (section: string) => void;
 }
 
 // 실무 필수 특약사항 추천 목록
@@ -75,6 +78,8 @@ export default function Stage2ContractRetainerView({
   onOpenContractSubTab,
   onOpenPowerOfAttorneyModal,
   onUpdateCrmExt,
+  activeSection,
+  onSelectSection,
 }: Stage2ContractRetainerViewProps) {
   const dialog = useDialog();
 
@@ -100,7 +105,7 @@ export default function Stage2ContractRetainerView({
   const [depositFee, setDepositFee] = useState<number>(() => {
     const s = crmExt?.feeSchedule;
     if (s && s.length > 2 && (s[0]?.memo?.includes('계약금') || s[0]?.itemType === 'down_payment')) {
-      return s[0].amount || 300000;
+      return s[0] ? feeAmountWon(s[0]) : 300000;
     }
     return 300000;
   });
@@ -109,9 +114,14 @@ export default function Stage2ContractRetainerView({
   const [retainerFee, setRetainerFee] = useState<number>(() => {
     const s = crmExt?.feeSchedule;
     if (s && s.length > 2 && (s[0]?.memo?.includes('계약금') || s[0]?.itemType === 'down_payment')) {
-      return s[1]?.amount || 1000000;
+      return s[1] ? feeAmountWon(s[1]) : 1000000;
     }
-    return crmExt?.feeSchedule?.[0]?.amount || (crmExt?.totalFee ? Math.round(crmExt.totalFee * 0.3) : 1000000);
+    if (s?.[0]) return feeAmountWon(s[0]);
+    if (crmExt?.totalFee) {
+      const totalWon = feeTotalWon(crmExt.totalFee);
+      return Math.round(totalWon * 0.3);
+    }
+    return 1000000;
   });
 
   // 부가세 포함/별도
@@ -122,7 +132,8 @@ export default function Stage2ContractRetainerView({
 
   // 균등 분납 시 파라미터
   const [monthlyFee, setMonthlyFee] = useState<number>(() => {
-    return crmExt?.feeSchedule?.[1]?.amount || 500000;
+    const s1 = crmExt?.feeSchedule?.[1];
+    return s1 ? feeAmountWon(s1) : 500000;
   });
   const [installmentMonths, setInstallmentMonths] = useState<number>(() => {
     return crmExt?.feeSchedule?.length ? Math.max(1, crmExt.feeSchedule.length - 1) : 4;
@@ -699,7 +710,7 @@ ${d.content}
 
     const confirmed = await dialog.confirm({
       title: '📝 수임계약 체결 완료 처리',
-      message: '의뢰인과의 사건 위임계약 및 착수금 약정을 완료 처리하시겠습니까?\n\n※ 체결 완료 시 사건이 [Stage 03 고객정보·서류수집] 단계로 전환됩니다.',
+      message: '의뢰인과의 사건 위임계약 및 착수금 약정을 완료 처리하시겠습니까?\n\n※ 체결 완료 시 사건 계약 상태가 확정되며 서류 준비(Stage 03)로 진행할 수 있습니다.',
       confirmText: '계약 체결 완료',
       cancelText: '취소',
       variant: 'primary'
@@ -718,19 +729,27 @@ ${d.content}
         contractDate: localYmd(),
         signedAt: new Date().toISOString(),
       };
-      saveContract(completedContract);
+      const serverOk = await saveContract(completedContract);
       setContract(completedContract);
 
       const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-      await syncContractToCrm(clientRequest.id, completedContract, actor);
-    }
+      const currentExt = crmExt || createDefaultCrmExtension(clientRequest.id);
+      const patch = buildContractSyncPatch(currentExt, completedContract, actor);
 
-    if (onUpdateCrmExt) {
-      await onUpdateCrmExt({
-        crmStatus: 'contracted',
-        totalFee: Math.round(totalLawyerFee / 10000),
-        contractDate: localYmd(),
-      });
+      if (onUpdateCrmExt) {
+        await onUpdateCrmExt({
+          ...patch,
+          crmStatus: 'contracted',
+          totalFee: Math.round(totalLawyerFee / 10000),
+          contractDate: localYmd(),
+        });
+      } else {
+        await syncContractToCrm(clientRequest.id, completedContract, actor);
+      }
+
+      if (!serverOk) {
+        toast.warning('전자계약서가 서버에 반영되지 않고 로컬에 임시 저장되었습니다.');
+      }
     }
 
     addClientNotification({
@@ -739,23 +758,28 @@ ${d.content}
       emoji: '📝',
       linkTab: 'diagnosis',
     });
-    toast.success('방문/서면 계약 체결이 완료 처리되었습니다. [Gate 2 통과]');
+    toast.success('방문/서면 계약 체결이 완료 처리되었습니다. (계약 체결 완료)');
   };
 
   // ── 7. 위자드 저장 핸들러 ──
   const handleWizardSave = async (saved: ElectronicContract) => {
-    saveContract(saved);
+    const serverOk = await saveContract(saved);
     setContract(saved);
     setIsWizardOpen(false);
 
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    await syncContractToCrm(clientRequest.id, saved, actor);
+    const currentExt = crmExt || createDefaultCrmExtension(clientRequest.id);
+    const patch = buildContractSyncPatch(currentExt, saved, actor);
 
     if (onUpdateCrmExt) {
-      await onUpdateCrmExt({
-        totalFee: saved.totalFee,
-        contractDate: saved.contractDate,
-      });
+      await onUpdateCrmExt(patch);
+    } else {
+      await syncContractToCrm(clientRequest.id, saved, actor);
+    }
+
+    if (!serverOk) {
+      toast.error('전자계약서를 서버에 저장하지 못했습니다. 이 기기에만 임시 저장되었으며, 의뢰인 서명 링크가 열리지 않을 수 있습니다.');
+      return;
     }
 
     if (saved.status === 'completed' || saved.status === 'signed') {
@@ -789,9 +813,16 @@ ${d.content}
     return contract.documents.filter(d => ['main_contract', 'power_of_attorney', 'privacy_consent', 'third_party_consent', 'installment_agreement'].includes(d.type));
   }, [contract]);
 
+  // 섹션 탭 라우팅: 'contract' | 'fees' | 'court-fees' (기본값: 전체 표시)
+  const currentSection = activeSection || 'all';
+  const showCourtFees = currentSection === 'court-fees' || currentSection === 'all';
+  const showFees = currentSection === 'fees' || currentSection === 'all';
+  const showContract = currentSection === 'contract' || currentSection === 'all';
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* ── Next Action Hero Card (슬림 & 컴팩트 레이아웃) ── */}
+      {showContract && (
       <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all shadow-2xs ${
         isContractSigned 
           ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
@@ -807,12 +838,12 @@ ${d.content}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border whitespace-nowrap shrink-0 ${
+                <span className={`text-xs font-black px-2 py-0.5 rounded-md border whitespace-nowrap shrink-0 ${
                   isContractSigned 
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
                     : 'bg-slate-100 text-slate-700 border-slate-200'
                 }`}>
-                  {isContractSigned ? 'Gate 2 통과 완료' : '지금 해야 할 핵심 작업'}
+                  {isContractSigned ? '계약 체결 완료' : '지금 해야 할 핵심 작업'}
                 </span>
                 <span className="text-sm font-black tracking-tight text-slate-900 truncate">
                   {isContractSigned 
@@ -936,10 +967,42 @@ ${d.content}
           </div>
         </div>
       </div>
+      )}
+
+      {/* ── [기획서 4.3 2단계] 의뢰인 총 부담금 요약 한 줄 (하단 다크 바 대체) ── */}
+      <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 sm:px-5 sm:py-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="flex items-center gap-3">
+          <span className="p-1.5 rounded-lg bg-[#1E3A5F] text-white shadow-2xs">
+            <Calculator className="w-3.5 h-3.5" />
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600">의뢰인 총 부담 예정액:</span>
+            <span className="font-mono text-base font-black text-slate-900">{grandTotal.toLocaleString()}원</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-mono flex-wrap">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            법원 실비: <strong className="text-slate-700 font-bold">{totalCourtCost.toLocaleString()}원</strong>
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            변호사 수임료: <strong className="text-slate-700 font-bold">{totalLawyerFee.toLocaleString()}원</strong>
+          </span>
+          {isContractSigned && (
+            <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold font-sans text-xs">
+              ✓ 수임계약 체결 완료
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* ── 3. 실비·수임료 2단 산정 캔버스 (균형감 & 가독성 극대화 리디자인) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {(showCourtFees || showFees) && (
+      <div className={`grid grid-cols-1 ${showCourtFees && showFees ? 'lg:grid-cols-2' : 'max-w-4xl mx-auto'} gap-6 items-start animate-fadeIn`}>
         {/* 좌측: 🏛️ 법원 필수 실비 자동 산출 (공과금 관제) */}
+        {showCourtFees && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -949,10 +1012,10 @@ ${d.content}
                 </div>
                 <div>
                   <h4 className="font-black text-sm text-slate-900">법원 필수 실비 산출</h4>
-                  <span className="text-[10px] text-slate-400 font-medium">채권자 수 기반 2026 전자소송 공과금</span>
+                  <span className="text-xs text-slate-400 font-medium">채권자 수 기반 2026 전자소송 공과금</span>
                 </div>
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                 전자소송 10% 감액
               </span>
             </div>
@@ -983,7 +1046,7 @@ ${d.content}
 
                 {/* 채권자 수 빠른 선택 칩 */}
                 <div className="flex items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-slate-400 font-medium mr-1">빠른 선택:</span>
+                  <span className="text-xs text-slate-400 font-medium mr-1">빠른 선택:</span>
                   {[3, 5, 7, 10, 15, 20].map(cnt => (
                     <button
                       key={cnt}
@@ -992,7 +1055,7 @@ ${d.content}
                         setCreditorCount(cnt);
                         setTimeout(() => syncContractState(), 50);
                       }}
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      className={`px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                         creditorCount === cnt
                           ? 'bg-[#1E3A5F] text-white shadow-2xs'
                           : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -1018,7 +1081,7 @@ ${d.content}
                   />
                   <div>
                     <span className="font-bold text-slate-800 block text-xs">영업소득자 (외부회생위원 대상)</span>
-                    <span className="text-[10px] text-slate-400">서울·수원 등 외부회생위원 선임 예납금 대상</span>
+                    <span className="text-xs text-slate-400">서울·수원 등 외부회생위원 선임 예납금 대상</span>
                   </div>
                 </label>
                 <span className={`font-mono font-bold text-xs px-2.5 py-1 rounded-lg ${isBusinessDebtor ? 'bg-blue-100 text-blue-800' : 'bg-slate-200/70 text-slate-500'}`}>
@@ -1028,7 +1091,7 @@ ${d.content}
 
               {/* 법원 공과금 상세 영수증 명세서 */}
               <div className="bg-slate-50/90 rounded-xl p-4 border border-slate-200 space-y-2 font-mono">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-[11px] font-sans font-bold text-slate-500">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-xs font-sans font-bold text-slate-500">
                   <span>법원 납부 공과금 항목</span>
                   <span>산출 금액</span>
                 </div>
@@ -1055,18 +1118,20 @@ ${d.content}
           </div>
 
           {/* 좌측 하단: 실무 법률 정산 가이드 팁 (여백 밸런스 & 신뢰도 강화) */}
-          <div className="mt-4 p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px] text-blue-900/90 leading-relaxed space-y-1">
+          <div className="mt-4 p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-blue-900/90 leading-relaxed space-y-1">
             <div className="font-bold flex items-center gap-1 text-blue-800">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
               <span>법원 공과금 실비 정산 원칙</span>
             </div>
-            <p className="text-[11px] text-slate-600">
+            <p className="text-xs text-slate-600">
               송달료 및 인지대는 법원 접수 시 전자소송 시스템에 직접 예납되는 법정 실비입니다. 채권자 수 변동이나 송달 추가 발생 시 법원 영수증 기준으로 정산됩니다.
             </p>
           </div>
         </div>
+        )}
 
         {/* 우측: 💼 로펌 수임료 및 분납 일정 확정 (보수 관제) */}
+        {showFees && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
@@ -1075,14 +1140,14 @@ ${d.content}
               </div>
               <div>
                 <h4 className="font-black text-sm text-slate-900">수임료 및 분납 조건 설정</h4>
-                <span className="text-[10px] text-slate-400 font-medium">착수금 + 잔금 맞춤 분납 플랜</span>
+                <span className="text-xs text-slate-400 font-medium">착수금 + 잔금 맞춤 분납 플랜</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(true)}
-                className="px-2.5 py-1 text-[11px] font-black rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all cursor-pointer flex items-center gap-1 press-scale shadow-2xs"
+                className="px-2.5 py-1 text-xs font-black rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all cursor-pointer flex items-center gap-1 press-scale shadow-2xs"
                 title="11대 법률 표준 계약서 및 커스텀 서식 보관함 열기"
               >
                 <FolderKanban className="w-3.5 h-3.5 text-indigo-600" />
@@ -1096,7 +1161,7 @@ ${d.content}
                   syncContractState(selectedSpecialTerms, next);
                   toast.success(next === 'simple_box' ? '실무 간략 박스형 서식이 적용되었습니다.' : '표준형 서식이 적용되었습니다.');
                 }}
-                className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all cursor-pointer flex items-center gap-1 press-scale ${
+                className={`px-2.5 py-1 text-xs font-black rounded-lg border transition-all cursor-pointer flex items-center gap-1 press-scale ${
                   contractStyle === 'simple_box'
                     ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-2xs'
                     : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
@@ -1118,7 +1183,7 @@ ${d.content}
                 </div>
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-black text-slate-800 text-xs whitespace-nowrap">수임료 프리셋 메모리</span>
-                  <span className="text-[10px] text-slate-400 truncate">(원클릭 불러오기)</span>
+                  <span className="text-xs text-slate-400 truncate">(원클릭 불러오기)</span>
                 </div>
               </div>
 
@@ -1129,7 +1194,7 @@ ${d.content}
                     setNewPresetName(`맞춤 플랜 (${Math.round(totalLawyerFee / 10000)}만원)`);
                     setIsSavePresetModalOpen(true);
                   }}
-                  className="px-2.5 py-1 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-all press-scale whitespace-nowrap"
+                  className="px-2.5 py-1 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-all press-scale whitespace-nowrap"
                   title="현재 입력된 수임료 조건을 새 프리셋으로 저장합니다"
                 >
                   <Save className="w-3 h-3 text-blue-600" />
@@ -1199,7 +1264,7 @@ ${d.content}
                   />
                   <span className="font-black text-slate-800 text-xs">계약금(가계약금) 별도 수납</span>
                 </label>
-                <span className="text-[10px] text-slate-400">사무실별 수납 정책에 따라 선택</span>
+                <span className="text-xs text-slate-400">사무실별 수납 정책에 따라 선택</span>
               </div>
 
               <div className={`grid ${hasDeposit ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
@@ -1230,7 +1295,7 @@ ${d.content}
                             setDepositFee(amt);
                             setTimeout(() => syncContractState(), 50);
                           }}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                          className={`px-1.5 py-0.5 rounded text-xs font-bold border transition-colors cursor-pointer ${
                             depositFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
@@ -1267,7 +1332,7 @@ ${d.content}
                           setRetainerFee(amt);
                           setTimeout(() => syncContractState(), 50);
                         }}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                        className={`px-1.5 py-0.5 rounded text-xs font-bold border transition-colors cursor-pointer ${
                           retainerFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
@@ -1290,7 +1355,7 @@ ${d.content}
                       setInstallmentMode('equal');
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-3 py-1 text-[11px] font-black rounded-md transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-black rounded-md transition-all cursor-pointer ${
                       installmentMode === 'equal'
                         ? 'bg-white text-[#1E3A5F] shadow-xs'
                         : 'text-slate-500 hover:text-slate-800'
@@ -1304,7 +1369,7 @@ ${d.content}
                       setInstallmentMode('custom');
                       setTimeout(() => syncContractState(), 50);
                     }}
-                    className={`px-3 py-1 text-[11px] font-black rounded-md transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-black rounded-md transition-all cursor-pointer ${
                       installmentMode === 'custom'
                         ? 'bg-white text-[#1E3A5F] shadow-xs'
                         : 'text-slate-500 hover:text-slate-800'
@@ -1346,7 +1411,7 @@ ${d.content}
                               setCustomInstallments(prev => prev.map(item => ({ ...item, amount: amt })));
                               setTimeout(() => syncContractState(), 50);
                             }}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                            className={`px-1.5 py-0.5 rounded text-xs font-bold border transition-colors cursor-pointer ${
                               monthlyFee === amt ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
@@ -1370,7 +1435,7 @@ ${d.content}
                         <option value="fixed_10th">매월 10일</option>
                         <option value="fixed_25th">매월 25일 (급여일)</option>
                       </select>
-                      <span className="text-[10px] text-slate-400 block pt-0.5">※ 착수금 입금 익월부터 기산</span>
+                      <span className="text-xs text-slate-400 block pt-0.5">※ 착수금 입금 익월부터 기산</span>
                     </div>
                   </div>
 
@@ -1415,7 +1480,7 @@ ${d.content}
                     />
                     {/* 회차 퀵 칩 */}
                     <div className="flex items-center gap-1 pt-0.5">
-                      <span className="text-[10px] text-slate-400 font-medium mr-1">자주 쓰는 회차:</span>
+                      <span className="text-xs text-slate-400 font-medium mr-1">자주 쓰는 회차:</span>
                       {[2, 3, 4, 5, 6, 8, 10].map(m => (
                         <button
                           key={m}
@@ -1424,7 +1489,7 @@ ${d.content}
                             setInstallmentMonths(m);
                             setTimeout(() => syncContractState(), 50);
                           }}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold border transition-colors cursor-pointer ${
                             installmentMonths === m ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
@@ -1438,7 +1503,7 @@ ${d.content}
                 /* 2-B. 월별 수동 맞춤 분납 모드 UI */
                 <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
                   <div className="flex items-center justify-between pb-1">
-                    <span className="text-[11px] text-slate-600 font-medium">
+                    <span className="text-xs text-slate-600 font-medium">
                       💡 회차별 원하는 납부 금액과 약정기일을 직접 지정합니다.
                     </span>
                     <div className="flex items-center gap-1">
@@ -1454,7 +1519,7 @@ ${d.content}
                           setTimeout(() => syncContractState(), 50);
                           toast.success('첫 달 100만 + 이후 50만 프리셋이 적용되었습니다.');
                         }}
-                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold text-slate-700 cursor-pointer shadow-2xs"
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-xs font-bold text-slate-700 cursor-pointer shadow-2xs"
                       >
                         100만+50만
                       </button>
@@ -1467,7 +1532,7 @@ ${d.content}
                           setTimeout(() => syncContractState(), 50);
                           toast.success('균등 분납액으로 재배분되었습니다.');
                         }}
-                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold text-slate-700 cursor-pointer shadow-2xs"
+                        className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-xs font-bold text-slate-700 cursor-pointer shadow-2xs"
                       >
                         균등 분할
                       </button>
@@ -1481,7 +1546,7 @@ ${d.content}
                         key={idx}
                         className="flex items-center gap-2 p-1.5 bg-white rounded-xl border border-slate-200 shadow-2xs"
                       >
-                        <span className="w-14 text-center text-[11px] font-black text-[#1E3A5F] bg-blue-50 py-1.5 rounded-lg border border-blue-100">
+                        <span className="w-14 text-center text-xs font-black text-[#1E3A5F] bg-blue-50 py-1.5 rounded-lg border border-blue-100">
                           {idx + 1}회차
                         </span>
                         <input
@@ -1513,7 +1578,7 @@ ${d.content}
                             }}
                             className="w-full px-2.5 py-1.5 pr-6 rounded-lg border border-slate-200 text-xs font-mono font-black text-right text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F]"
                           />
-                          <span className="absolute right-2.5 top-1.5 text-[11px] text-slate-400 font-bold">원</span>
+                          <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">원</span>
                         </div>
                         {customInstallments.length > 1 && (
                           <button
@@ -1585,7 +1650,7 @@ ${d.content}
                   <span>변호사 보수 정산 영수증</span>
                 </span>
                 {/* VAT 토글 */}
-                <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
+                <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => {
@@ -1636,10 +1701,10 @@ ${d.content}
               {/* 총 수임료 합계 바 */}
               <div className="pt-2.5 border-t border-dashed border-slate-700 flex justify-between items-end">
                 <div>
-                  <div className="text-[11px] text-slate-400 font-bold">
-                    총 수임료 <span className="text-[10px] text-slate-400 font-normal">({vatIncluded ? '부가가치세 포함' : '부가가치세 별도'})</span>
+                  <div className="text-xs text-slate-400 font-bold">
+                    총 수임료 <span className="text-xs text-slate-400 font-normal">({vatIncluded ? '부가가치세 포함' : '부가가치세 별도'})</span>
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                  <div className="text-xs text-emerald-400 font-medium mt-0.5">
                     공식 표기: <strong className="text-white font-bold">금 {numberToKoreanAmount(totalLawyerFee)} 원정</strong>
                   </div>
                 </div>
@@ -1661,7 +1726,7 @@ ${d.content}
                 </button>
 
                 {showClausePreview && (
-                  <div className="mt-2 p-3 bg-slate-950 text-slate-200 rounded-xl font-mono text-[11px] leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-52 overflow-y-auto">
+                  <div className="mt-2 p-3 bg-slate-950 text-slate-200 rounded-xl font-mono text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-52 overflow-y-auto">
                     {buildSimpleFeeClause({
                       totalFeeWon: totalLawyerFee,
                       vatIncluded,
@@ -1681,16 +1746,20 @@ ${d.content}
             </div>
           </div>
         </div>
+        )}
       </div>
+      )}
 
       {/* ── 4. 📜 계약서 4대 서식 구성 및 특약사항 확인·수정 패널 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+      {showContract && (
+      <>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6 animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <FileSignature className="w-5 h-5 text-[#1E3A5F]" />
               <h4 className="font-black text-base text-slate-900">사건위임계약서 및 법적 서식 구성</h4>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                 {coreDocuments.length}종 서식 세트
               </span>
             </div>
@@ -1749,12 +1818,12 @@ ${d.content}
                         제{idx + 1}호: {doc.title}
                       </span>
                       {doc.signatureRequired !== 'none' && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-800">
+                        <span className="text-xs px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-800">
                           {doc.signatureRequired === 'both' ? '양측 서명' : '의뢰인 서명'}
                         </span>
                       )}
                       {isPoa && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-purple-100 text-purple-800">
+                        <span className="text-xs px-1.5 py-0.2 rounded font-bold bg-purple-100 text-purple-800">
                           법원 제출용
                         </span>
                       )}
@@ -1773,7 +1842,7 @@ ${d.content}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span className="text-xs text-slate-400 font-mono">
                     {doc.content.length.toLocaleString()} 글자
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -1810,7 +1879,7 @@ ${d.content}
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span className="text-xs font-black text-slate-900">사건 맞춤 특약사항 (계약서 제1호에 자동 반영)</span>
             </div>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-xs text-slate-500">
               클릭하여 특약을 활성화/비활성화하세요.
             </span>
           </div>
@@ -1840,8 +1909,8 @@ ${d.content}
           {/* 추가된 특약 전문 미리보기 */}
           {selectedSpecialTerms.length > 0 && (
             <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5 text-slate-700">
-              <span className="font-bold text-[11px] text-blue-800 block">현재 적용된 특약 조항 ({selectedSpecialTerms.length}건):</span>
-              <ul className="list-disc list-inside space-y-1 text-slate-600 text-[11px] leading-relaxed">
+              <span className="font-bold text-xs text-blue-800 block">현재 적용된 특약 조항 ({selectedSpecialTerms.length}건):</span>
+              <ul className="list-disc list-inside space-y-1 text-slate-600 text-xs leading-relaxed">
                 {selectedSpecialTerms.map((termId, i) => {
                   const preset = PRESET_SPECIAL_TERMS.find(p => p.id === termId);
                   return (
@@ -1893,39 +1962,9 @@ ${d.content}
         </div>
       </div>
 
-      {/* ── 5. 의뢰인 총 부담금 종합 바 & 완료 이동 버튼 ── */}
-      <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-xs text-xs">
-        <div className="flex items-center gap-4">
-          <div>
-            <span className="text-[10px] text-slate-400 block font-bold">의뢰인 총 부담 예정액 (실비 + 수임료)</span>
-            <span className="font-mono text-lg font-black text-emerald-400">{grandTotal.toLocaleString()}원</span>
-          </div>
-          <div className="h-6 w-px bg-slate-700" />
-          <div className="text-[11px] text-slate-300">
-            <span>법원실비 {totalCourtCost.toLocaleString()}원 + 변호사보수 {totalLawyerFee.toLocaleString()}원</span>
-          </div>
-        </div>
-
-        {isContractSigned ? (
-          <button
-            type="button"
-            onClick={onAdvanceToNextStage}
-            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
-          >
-            <span>Stage 3 (고객정보·서류수집)로 이동</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSendElectronicContract}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale shadow-xs"
-          >
-            <Send className="w-3.5 h-3.5 text-emerald-300" />
-            <span>모바일 전자계약서 발송하기</span>
-          </button>
-        )}
-      </div>
+      {/* ── 5. 하단 다크 총부담금 바 제거됨 (섹션 상단 요약 한 줄로 이동 및 상단 CTA 단일화) ── */}
+      </>
+      )}
 
       {/* ── 6. 모달 렌더링 영역 ── */}
 
@@ -2034,7 +2073,7 @@ ${d.content}
                   <h3 className="font-black text-sm text-slate-900">
                     {clientRequest.clientName} 의뢰인 전자계약서 패키지 전문 미리보기
                   </h3>
-                  <p className="text-[11px] text-slate-500 font-mono">
+                  <p className="text-xs text-slate-500 font-mono">
                     관리번호: {contract.id} · 총 수임료: {totalLawyerFee.toLocaleString()}원 · 법원실비: {totalCourtCost.toLocaleString()}원
                   </p>
                 </div>
@@ -2126,7 +2165,7 @@ ${d.content}
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-900">현재 수임료 조건 프리셋 저장</h3>
-                    <p className="text-[11px] text-slate-500">저장된 세팅은 언제든지 원클릭으로 다시 불러올 수 있습니다.</p>
+                    <p className="text-xs text-slate-500">저장된 세팅은 언제든지 원클릭으로 다시 불러올 수 있습니다.</p>
                   </div>
                 </div>
                 <button
@@ -2144,7 +2183,7 @@ ${d.content}
                   <span>총 수임료</span>
                   <span className="text-blue-700 font-mono font-black">{totalLawyerFee.toLocaleString()}원</span>
                 </div>
-                <div className="text-[11px] text-slate-500 flex justify-between">
+                <div className="text-xs text-slate-500 flex justify-between">
                   <span>구성</span>
                   <span className="font-medium text-slate-700">
                     {hasDeposit ? `계약금 ${depositFee.toLocaleString()}원 + ` : ''}

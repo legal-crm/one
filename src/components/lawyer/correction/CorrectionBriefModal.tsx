@@ -51,7 +51,7 @@ export default function CorrectionBriefModal({
               <h3 className="font-extrabold text-sm text-white">
                 법원 제출용 정규 보정서 서식 인쇄 / PDF 출력
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 사건번호: {caseNo || '(미입력)'} · 제{data.round}차 보정권고에 대한 소명
                 {hasBlanks && <span className="ml-2 text-amber-300 font-bold">· [대괄호] 빈칸이 남아 있습니다</span>}
               </p>

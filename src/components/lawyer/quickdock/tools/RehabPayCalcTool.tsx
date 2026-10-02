@@ -6,6 +6,7 @@ import { useCopyFeedback } from '../clipboard';
 import CopyButton from '../ui/CopyButton';
 import MoneyInput from '../ui/MoneyInput';
 import { formatWonKorean, won } from '../ui/money';
+import DockCaseActionBar from '../DockCaseActionBar';
 
 const PERIOD_OPTIONS: { months: number; note: string }[] = [
   { months: 24, note: '특례' },
@@ -17,7 +18,7 @@ const PERIOD_OPTIONS: { months: number; note: string }[] = [
 function StatusBadge({ ok, okText = '충족', failText = '미달' }: { ok: boolean; okText?: string; failText?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg ${
+      className={`inline-flex items-center gap-0.5 text-xs font-extrabold px-1.5 py-0.5 rounded-lg ${
         ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
       }`}
     >
@@ -31,6 +32,7 @@ function StatusBadge({ ok, okText = '충족', failText = '미달' }: { ok: boole
  * 변제율·탕감률 계산기
  * - 현재가치(라이프니츠)·최저변제액·청산가치 판정은 rehabLegalCore(변제계획안 화면과 같은 산식)를 쓴다.
  * - 총 채무·월 변제금·기간은 퀵독 공유값이라 중위소득·청산가치 도구와 함께 바뀐다.
+ * - 사건 워크스페이스 연동 시 '사건에 반영', '할 일 등록', '메모에 추가' 가능
  */
 export default function RehabPayCalcTool() {
   const shared = useDockShared();
@@ -51,7 +53,8 @@ export default function RehabPayCalcTool() {
 
   const setPeriod = (m: number) => setDockShared({ periodMonths: Math.min(60, Math.max(1, Math.round(m) || 36)) });
 
-  const handleCopy = () => {
+  const briefingText = useMemo(() => {
+    if (!hasInput) return '';
     const lines = [
       '[개인회생 변제율·현재가치 브리핑 (참고)]',
       `• 총 채무 원금: ${formatWonKorean(plan.principal)}`,
@@ -66,8 +69,26 @@ export default function RehabPayCalcTool() {
         : '',
       '* 변제 완료 후 면책결정을 받으면 잔존 채무의 책임이 면제됩니다 (비면책채권 제외). 실제 변제금은 법원 인가 내용에 따릅니다.',
     ].filter(Boolean);
-    copy(lines.join('\n'), '변제율 브리핑 문구가 복사되었습니다.');
+    return lines.join('\n');
+  }, [hasInput, plan, forgivenessRate, liquidation]);
+
+  const handleCopy = () => {
+    if (!briefingText) return;
+    copy(briefingText, '변제율 브리핑 문구가 복사되었습니다.');
   };
+
+  const applyData = hasInput
+    ? {
+        monthlyPay: plan.monthly,
+        periodMonths: plan.months,
+        totalDebt: plan.principal,
+        liquidationValue: liquidation,
+        repaymentRate: plan.repaymentRate,
+        forgivenessRate,
+        sourceTool: '변제율·탕감률 계산기',
+        summaryText: `월 변제금 ${won(plan.monthly)} (${plan.months}개월, 탕감률 ${forgivenessRate.toFixed(1)}%)`,
+      }
+    : undefined;
 
   return (
     <div className="space-y-3.5 p-4 text-slate-800 text-xs">
@@ -82,7 +103,7 @@ export default function RehabPayCalcTool() {
           <label htmlFor="rehab-monthly-pay" className="font-bold text-slate-700 block mb-1">월 변제금</label>
           <MoneyInput id="rehab-monthly-pay" value={shared.monthlyPay} onChange={v => setDockShared({ monthlyPay: v })} placeholder="예: 50만" />
           {shared.monthlyPay === 0 && (
-            <p className="text-[10px] text-slate-500 mt-0.5">중위소득표 도구에서 계산한 가용소득을 바로 적용할 수 있습니다.</p>
+            <p className="text-xs text-slate-500 mt-0.5">중위소득표 도구에서 계산한 가용소득을 바로 적용할 수 있습니다.</p>
           )}
         </div>
 
@@ -103,11 +124,11 @@ export default function RehabPayCalcTool() {
                   }`}
                 >
                   {opt.months}
-                  {opt.note && <span className={`ml-0.5 text-[10px] ${selected ? 'text-indigo-100' : 'text-slate-500'}`}>{opt.note}</span>}
+                  {opt.note && <span className={`ml-0.5 text-xs ${selected ? 'text-indigo-100' : 'text-slate-500'}`}>{opt.note}</span>}
                 </button>
               );
             })}
-            <label className="flex items-center gap-1 shrink-0 text-[11px] text-slate-600">
+            <label className="flex items-center gap-1 shrink-0 text-xs text-slate-600">
               <span className="sr-only">변제 기간 직접 입력</span>
               <input
                 type="number"
@@ -121,7 +142,7 @@ export default function RehabPayCalcTool() {
             </label>
           </div>
           {shared.periodMonths === 24 && (
-            <p className="text-[10px] text-slate-500 mt-1">24개월은 특례 요건과 관할 법원 운영 여부를 확인해야 합니다 (만나이·법원 참고 도구).</p>
+            <p className="text-xs text-slate-500 mt-1">24개월은 특례 요건과 관할 법원 운영 여부를 확인해야 합니다 (만나이·법원 참고 도구).</p>
           )}
         </div>
       </div>
@@ -134,7 +155,7 @@ export default function RehabPayCalcTool() {
             <span className="font-bold text-slate-900 tabular-nums">{formatWonKorean(plan.totalRepayment)}</span>
           </div>
           {plan.fullPayoff && plan.payoffMonths ? (
-            <p className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1">
+            <p className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1">
               월 변제금으로 약 {plan.payoffMonths}개월 안에 원금 전액을 갚을 수 있습니다 (조기 완제).
             </p>
           ) : (
@@ -151,7 +172,7 @@ export default function RehabPayCalcTool() {
             </div>
             <div className="text-right">
               <span className="text-lg font-black text-indigo-700 tabular-nums">{forgivenessRate.toFixed(1)}%</span>
-              <span className="text-[10px] text-slate-600 block">변제율 {plan.repaymentRate.toFixed(1)}%</span>
+              <span className="text-xs text-slate-600 block">변제율 {plan.repaymentRate.toFixed(1)}%</span>
             </div>
           </div>
 
@@ -166,7 +187,7 @@ export default function RehabPayCalcTool() {
               <StatusBadge ok={plan.satisfiesMinimum} />
             </div>
             {!plan.satisfiesMinimum && (
-              <p className="text-[10px] text-rose-700 font-bold">{plan.months}개월이면 월 {won(plan.requiredMonthlyForMinimum)} 이상 필요</p>
+              <p className="text-xs text-rose-700 font-bold">{plan.months}개월이면 월 {won(plan.requiredMonthlyForMinimum)} 이상 필요</p>
             )}
             {liquidation > 0 ? (
               <>
@@ -175,16 +196,16 @@ export default function RehabPayCalcTool() {
                   <StatusBadge ok={plan.satisfiesLiquidation} />
                 </div>
                 {!plan.satisfiesLiquidation && (
-                  <p className="text-[10px] text-rose-700 font-bold">
+                  <p className="text-xs text-rose-700 font-bold">
                     현재가치 기준 {plan.months}개월이면 월 {won(plan.requiredMonthlyForLiquidation)} 이상 필요
                   </p>
                 )}
               </>
             ) : (
-              <p className="text-[10px] text-slate-500">청산가치 점검기에 재산을 입력하면 청산가치 충족 여부도 함께 표시합니다.</p>
+              <p className="text-xs text-slate-500">청산가치 점검기에 재산을 입력하면 청산가치 충족 여부도 함께 표시합니다.</p>
             )}
           </div>
-          <p className="text-[10px] text-slate-500 leading-snug">
+          <p className="text-xs text-slate-500 leading-snug">
             최저변제액: 채무 5천만 원 미만 5%, 이상 3% + 100만 원 (플랫폼 산식). 청산가치는 변제액의 현재가치와 비교합니다.
           </p>
         </div>
@@ -192,11 +213,18 @@ export default function RehabPayCalcTool() {
         <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
           <Percent className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
           <p className="font-bold">총 채무와 월 변제금을 입력하세요.</p>
-          <p className="text-[11px] text-slate-500">탕감률·현재가치·최저변제액 충족 여부를 바로 계산합니다.</p>
+          <p className="text-xs text-slate-500">탕감률·현재가치·최저변제액 충족 여부를 바로 계산합니다.</p>
         </div>
       )}
 
       <CopyButton copied={copied} onClick={handleCopy} disabled={!hasInput} label="변제율 브리핑 문구 복사" />
+      <DockCaseActionBar
+        applyData={applyData}
+        memoText={briefingText}
+        memoCategory="consultation"
+        disabled={!hasInput}
+      />
     </div>
   );
 }
+

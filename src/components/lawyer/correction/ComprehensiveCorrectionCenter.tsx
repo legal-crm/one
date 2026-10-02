@@ -64,17 +64,7 @@ export default function ComprehensiveCorrectionCenter(props: ComprehensiveCorrec
   );
 }
 
-/** 주말이면 다음 월요일로 (민법 제161조: 기간 말일이 토요일·공휴일이면 그 익일 만료). 공휴일은 반영하지 않음 */
-function rollOverWeekend(ymd: string): { date: string; rolled: boolean } {
-  const d = parseLocalYmd(ymd);
-  if (!d) return { date: '', rolled: false };
-  let rolled = false;
-  while (d.getDay() === 0 || d.getDay() === 6) {
-    d.setDate(d.getDate() + 1);
-    rolled = true;
-  }
-  return { date: localYmd(d), rolled };
-}
+import { computeCourtDeadline, daysUntil } from '../../../services/court/deadlineCalculator';
 
 function CorrectionRoundEditor({
   clientId,
@@ -111,23 +101,17 @@ function CorrectionRoundEditor({
   // 보정기간은 법원이 보정권고서에 정한 기간을 입력 (기본 14일 — 법정 고정 기간이 아님)
   const [periodDays, setPeriodDays] = useState<number>(() => Number((savedDraft as any)?.periodDays) || 14);
 
-  // 기한 계산: 송달일 다음날부터 기산(초일 불산입) → 송달일 + N일, 말일이 주말이면 다음 월요일
-  const { dueDate, dueRolled } = useMemo(() => {
-    if (!servedDate) return { dueDate: '', dueRolled: false };
-    const raw = addDaysYmd(servedDate, Math.max(1, Math.floor(periodDays) || 14));
-    const r = rollOverWeekend(raw);
-    return { dueDate: r.date, dueRolled: r.rolled };
+  // 기한 계산: 민법 제157조(초일불산입) 및 제161조(말일 토·공휴일 익일 연장) 단일 엔진 연동
+  const deadlineResult = useMemo(() => {
+    if (!servedDate) return null;
+    return computeCourtDeadline(servedDate, Math.max(1, Math.floor(periodDays) || 14), 'day');
   }, [servedDate, periodDays]);
 
-  // D-Day: 로컬 자정 기준 날짜 차이 (매 렌더 계산 — 날짜가 바뀌어도 갱신됨)
-  // 이전: 'T23:59:59' + Math.ceil로 하루 어긋나고, useMemo([dueDate])라 자정이 지나도 갱신되지 않음
-  const dDay = (() => {
-    const due = parseLocalYmd(dueDate);
-    if (!due) return Number.NaN;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.round((due.getTime() - today.getTime()) / 86400000);
-  })();
+  const dueDate = deadlineResult?.date || '';
+  const dueRolled = (deadlineResult?.extendedOver?.length || 0) > 0;
+
+  // D-Day: 로컬 자정 기준 남은 일수 단일 산출
+  const dDay = dueDate ? (daysUntil(dueDate) ?? Number.NaN) : Number.NaN;
 
   // 7대 소명표 상태값
   const [recentLoans, setRecentLoans] = useState<RecentLoanUsageItem[]>(() => savedDraft?.recentLoans || []);
@@ -457,7 +441,7 @@ ${new Date().getFullYear()}.  .  .
                 <h3 className="font-extrabold text-base text-slate-900">
                   법원 보정권고/명령 통합 관리 센터
                 </h3>
-                <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg border ${
+                <span className={`text-xs font-black px-2 py-0.5 rounded-lg border ${
                   dDay <= 3 
                     ? 'bg-rose-100 text-rose-700 border-rose-300 animate-pulse' 
                     : 'bg-amber-100 text-amber-800 border-amber-300'
@@ -658,7 +642,7 @@ ${new Date().getFullYear()}.  .  .
                   <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
                     회생위원 7대 표준 보정명령 템플릿 라이브러리
                   </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
                     기본 문안 · 빈칸 직접 작성
                   </span>
                 </div>
@@ -701,13 +685,13 @@ ${new Date().getFullYear()}.  .  .
                   title={tpl.courtInstruction}
                 >
                   <div className="flex items-center justify-between w-full mb-1.5">
-                    <span className="text-[10px] font-bold text-amber-300 font-mono">#{i + 1}</span>
+                    <span className="text-xs font-bold text-amber-300 font-mono">#{i + 1}</span>
                     <Plus className="w-3 h-3 text-slate-400 group-hover:text-white transition-colors" />
                   </div>
                   <div className="text-xs font-extrabold text-white leading-tight">
                     {tpl.badge}
                   </div>
-                  <div className="text-[10px] text-slate-300/80 mt-1 truncate">
+                  <div className="text-xs text-slate-300/80 mt-1 truncate">
                     {tpl.category === 'SPECULATION' ? '실무준칙 제408호' : 
                      tpl.category === 'SPOUSE' ? '민법 제830조' : 
                      tpl.category === 'INSURANCE' ? '150만 압류금지' : '표준 소명서식'}
@@ -750,7 +734,7 @@ ${new Date().getFullYear()}.  .  .
                     </button>
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">법원 보정 지시 내용</label>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">법원 보정 지시 내용</label>
                     <input 
                       type="text" 
                       value={ans.courtInstruction}
@@ -763,7 +747,7 @@ ${new Date().getFullYear()}.  .  .
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">채무자 대리인 소명 요지</label>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">채무자 대리인 소명 요지</label>
                     <textarea 
                       value={ans.debtorResponse}
                       onChange={(e) => {
@@ -776,7 +760,7 @@ ${new Date().getFullYear()}.  .  .
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">소명 첨부서류:</span>
+                    <span className="text-xs font-bold text-slate-500 whitespace-nowrap">소명 첨부서류:</span>
                     <input 
                       type="text"
                       value={ans.attachedEvidence || ''}
@@ -961,7 +945,7 @@ ${new Date().getFullYear()}.  .  .
                     <div key={c.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200">
                       <div>
                         <span className="font-bold text-slate-900">{c.cardCompany} · {c.merchantName}</span>
-                        <p className="text-[11px] text-slate-500">{c.purpose} ({c.transactionDate})</p>
+                        <p className="text-xs text-slate-500">{c.purpose} ({c.transactionDate})</p>
                       </div>
                       <span className="font-mono font-bold text-slate-800">{c.amount.toLocaleString()}원</span>
                     </div>
@@ -982,15 +966,15 @@ ${new Date().getFullYear()}.  .  .
                         100만 원 이상 금융거래 출금 사용처 소명서 [별지]
                       </span>
                       {clientAuditData.status === 'lawyer_approved' ? (
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
                           ✓ 변호사 검토 완료
                         </span>
                       ) : clientAuditData.status === 'submitted' ? (
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40 animate-pulse">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40 animate-pulse">
                           ● 의뢰인 작성 제출 완료 (검토 대기)
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/30 text-slate-300 border border-slate-400/40">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-500/30 text-slate-300 border border-slate-400/40">
                           임시작성 중
                         </span>
                       )}
@@ -1077,7 +1061,7 @@ ${new Date().getFullYear()}.  .  .
                                 {item.bankOrCard}
                               </td>
                               <td className="p-2 text-center whitespace-nowrap">
-                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-xs font-bold">
                                   {item.transactionType === 'WITHDRAWAL' ? '계좌출금' : 
                                    item.transactionType === 'CARD_PAYMENT' ? '카드결제' : 
                                    item.transactionType === 'ATM_CASH' ? 'ATM현금' : '입금'}
@@ -1106,7 +1090,7 @@ ${new Date().getFullYear()}.  .  .
                                   className="w-full px-2.5 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-lg text-xs transition-colors"
                                 />
                                 {item.clientNote && (
-                                  <span className="block text-[10px] text-slate-400 mt-0.5">
+                                  <span className="block text-xs text-slate-400 mt-0.5">
                                     고객메모: {item.clientNote}
                                   </span>
                                 )}
@@ -1141,11 +1125,11 @@ ${new Date().getFullYear()}.  .  .
                                     setClientAuditData(newBatch);
                                     saveStoredBankAuditData(newBatch);
                                   }}
-                                  className="w-24 px-1.5 py-1 bg-blue-50/70 border border-blue-200 text-blue-700 font-bold text-center rounded-lg text-[11px]"
+                                  className="w-24 px-1.5 py-1 bg-blue-50/70 border border-blue-200 text-blue-700 font-bold text-center rounded-lg text-xs"
                                 />
                               </td>
                               <td className="p-2 text-center whitespace-nowrap">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                                   isDanger ? 'bg-rose-100 text-rose-700' :
                                   isCaution ? 'bg-amber-100 text-amber-700' :
                                   'bg-slate-100 text-slate-600'
@@ -1169,7 +1153,7 @@ ${new Date().getFullYear()}.  .  .
                             <td className="p-2.5 text-right font-mono text-indigo-900 font-black">
                               {sum.toLocaleString()}원
                             </td>
-                            <td colSpan={4} className="p-2.5 text-slate-500 text-[11px] font-normal">
+                            <td colSpan={4} className="p-2.5 text-slate-500 text-xs font-normal">
                               ※ 변호사 승인 시 소갑호증이 자동 부여되며 [별지: 소명서] 및 엑셀로 출력됩니다.
                             </td>
                           </tr>
@@ -1222,10 +1206,10 @@ ${new Date().getFullYear()}.  .  .
                     <div key={ins.id} className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
                       <div>
                         <span className="font-bold text-slate-900">{ins.insurerName} ({ins.policyNumber})</span>
-                        <p className="text-[11px] text-slate-500">환급금: {ins.surrenderRefund.toLocaleString()}원 - 법정공제: 1,500,000원</p>
+                        <p className="text-xs text-slate-500">환급금: {ins.surrenderRefund.toLocaleString()}원 - 법정공제: 1,500,000원</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-[11px] text-slate-500 block">청산가치 반영액:</span>
+                        <span className="text-xs text-slate-500 block">청산가치 반영액:</span>
                         <span className="font-mono font-bold text-emerald-600">{ins.liquidationInclusion.toLocaleString()}원</span>
                       </div>
                     </div>
@@ -1279,14 +1263,14 @@ ${new Date().getFullYear()}.  .  .
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-xs text-slate-900">{req.docTitle}</span>
-                    <span className="text-[10px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
+                    <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
                       {req.evidenceNumber}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1">{req.description}</p>
+                  <p className="text-xs text-slate-500 mt-1">{req.description}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                     req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
                     req.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
                   }`}>
@@ -1338,12 +1322,12 @@ ${new Date().getFullYear()}.  .  .
                     <span>저장된 변제계획안의 청산가치</span>
                     <span className="font-mono font-bold text-slate-900">{plan ? `${plan.totalLiquidationValue.toLocaleString()}원` : '계획안 없음'}</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">소명표 값은 변제계획안에 자동 반영되지 않습니다. 변제계획안 에디터의 재산 목록에서 직접 수정하세요.</p>
+                  <p className="text-xs text-slate-500">소명표 값은 변제계획안에 자동 반영되지 않습니다. 변제계획안 에디터의 재산 목록에서 직접 수정하세요.</p>
                 </div>
 
                 <div className={`p-4 rounded-2xl border space-y-2 ${!plan ? 'bg-slate-50 border-slate-200' : plan.satisfiesLiquidationGuarantee ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
                   <span className="font-bold text-slate-900 block">청산가치 보장 원칙 (저장된 계획안 기준)</span>
-                  <p className="text-[11px] text-slate-700 leading-relaxed">
+                  <p className="text-xs text-slate-700 leading-relaxed">
                     {!plan
                       ? '저장된 변제계획안이 없어 판단할 수 없습니다.'
                       : `총변제액의 현재가치 ${plan.presentValue.toLocaleString()}원 / 청산가치 ${plan.totalLiquidationValue.toLocaleString()}원 → ${plan.satisfiesLiquidationGuarantee ? '충족' : `${(plan.totalLiquidationValue - plan.presentValue).toLocaleString()}원 부족`}. 보정으로 재산이 바뀌었다면 계획안을 다시 계산한 뒤 확인하세요.`}
@@ -1500,7 +1484,7 @@ ${new Date().getFullYear()}.  .  .
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900">{annexModal.title}</h3>
-                  <p className="text-[11px] text-slate-500 font-mono">
+                  <p className="text-xs text-slate-500 font-mono">
                     사건번호: {caseNumber} · 신청인: {clientName} · 관할: {courtName}
                   </p>
                 </div>

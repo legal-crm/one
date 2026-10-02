@@ -55,7 +55,7 @@ export default function PrintableIncomeExpenseModal({
                 <h3 className="text-base font-black text-white">
                   대법원 표준 [전산양식 D5103] 채무자의 수입 및 지출에 관한 목록
                 </h3>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-600 text-white">
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-blue-600 text-white">
                   법정 필수 서식
                 </span>
               </div>
@@ -107,7 +107,7 @@ export default function PrintableIncomeExpenseModal({
             style={{ minHeight: '297mm' }}
           >
             {/* 전산양식 헤더 */}
-            <div className="flex justify-between items-start text-[11px] text-slate-500 font-mono mb-4 border-b border-slate-200 pb-2">
+            <div className="flex justify-between items-start text-xs text-slate-500 font-mono mb-4 border-b border-slate-200 pb-2">
               <span>[신청서 첨부서류 3]</span>
               <span className="font-bold text-slate-700">[전산양식 D5103]</span>
             </div>
@@ -176,10 +176,10 @@ export default function PrintableIncomeExpenseModal({
                       <tr className="border-b border-slate-200">
                         <td className="p-2 font-bold text-slate-700 bg-slate-50 border-r border-slate-200">
                           법정 공제액 합계<br />
-                          <span className="text-[10px] font-normal text-slate-500">(세금 및 4대보험)</span>
+                          <span className="text-xs font-normal text-slate-500">(세금 및 4대보험)</span>
                         </td>
                         <td colSpan={3} className="p-2">
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 mb-1">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 mb-1">
                             <span>소득세: {sal.incomeTax.toLocaleString()}원</span>
                             <span>주민세: {sal.residentTax.toLocaleString()}원</span>
                             <span>건강보험: {sal.healthInsurance.toLocaleString()}원</span>
@@ -248,14 +248,14 @@ export default function PrintableIncomeExpenseModal({
                   {data.monthlyLedger && data.monthlyLedger.months && data.monthlyLedger.months.length > 0 && (
                     <div className="mt-3 border border-slate-400 rounded overflow-hidden">
                       <div className="bg-[#f0f0f0] px-3 py-1.5 border-b border-slate-400 flex justify-between items-center">
-                        <span className="font-extrabold text-[11px] text-slate-900">
+                        <span className="font-extrabold text-xs text-slate-900">
                           【별지】 12개월 수입 및 지출 명세서 (영업수지표)
                         </span>
-                        <span className="text-[10px] text-slate-600 font-mono">
+                        <span className="text-xs text-slate-600 font-mono">
                           (단위: 원)
                         </span>
                       </div>
-                      <table className="w-full text-[10px] border-collapse">
+                      <table className="w-full text-xs border-collapse">
                         <thead className="bg-[#f5f5f5] text-slate-800 font-bold border-b border-slate-300">
                           <tr>
                             <th className="p-1 border-r border-slate-300 text-center w-14">날짜</th>
@@ -341,7 +341,7 @@ export default function PrintableIncomeExpenseModal({
                   </span>
                 </div>
                 {data.seizure.hasSeizure && (
-                  <span className="font-mono text-rose-700 font-bold text-[11px]">
+                  <span className="font-mono text-rose-700 font-bold text-xs">
                     압류액: {data.seizure.seizedAmount.toLocaleString()}원
                   </span>
                 )}
@@ -374,7 +374,7 @@ export default function PrintableIncomeExpenseModal({
                     {exp.statutoryBaseCost2026.toLocaleString()} 원
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs text-slate-500">
                   신청 구분: {exp.claimedCostOption === 'BELOW_60' 
                     ? '☑ 기준 중위소득의 60% 이하 신청 (표준 법정 생계비)' 
                     : '☑ 기준 중위소득의 60% 초과 신청 (추가 생계비 주장)'}
@@ -440,7 +440,7 @@ export default function PrintableIncomeExpenseModal({
                       <td className="p-2.5 text-right font-mono text-rose-900 text-sm border-r border-slate-300">
                         {exp.totalMonthlyExpense.toLocaleString()} 원
                       </td>
-                      <td className="p-2.5 text-[11px] text-rose-800">
+                      <td className="p-2.5 text-xs text-rose-800">
                         기본생계비({exp.claimedBaseCost.toLocaleString()}원) + 추가생계비({exp.totalAdditionalExpenses.toLocaleString()}원)
                       </td>
                     </tr>
@@ -452,7 +452,7 @@ export default function PrintableIncomeExpenseModal({
               {exp.totalAdditionalExpenses > 0 && (
                 <div className="mt-2 text-xs border border-slate-200 rounded p-2.5 bg-slate-50">
                   <span className="font-bold text-slate-700 block mb-1">📌 추가 생계비 소명 사유 요지:</span>
-                  <p className="text-slate-600 leading-relaxed whitespace-pre-line text-[11px]">
+                  <p className="text-slate-600 leading-relaxed whitespace-pre-line text-xs">
                     {exp.additionalReasonDetail}
                   </p>
                 </div>
@@ -494,9 +494,9 @@ export default function PrintableIncomeExpenseModal({
                         <td className="p-2 border-r border-slate-200 text-slate-600">{m.jobAndIncomeDetail}</td>
                         <td className="p-2 text-center">
                           {m.isEligibleDependent ? (
-                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">인정</span>
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-xs">인정</span>
                           ) : (
-                            <span className="text-slate-400 text-[10px]">제외</span>
+                            <span className="text-slate-400 text-xs">제외</span>
                           )}
                         </td>
                       </tr>
@@ -572,7 +572,7 @@ export default function PrintableIncomeExpenseModal({
             </div>
 
             {/* ══════════ 5. 첨부 서류 체크리스트 안내 ══════════ */}
-            <div className="mt-8 pt-4 border-t border-slate-300 text-[11px] text-slate-500 space-y-1 bg-slate-50/40 p-3 rounded-lg print:border-none">
+            <div className="mt-8 pt-4 border-t border-slate-300 text-xs text-slate-500 space-y-1 bg-slate-50/40 p-3 rounded-lg print:border-none">
               <span className="font-bold text-slate-700 block mb-1">【수입 및 지출에 관한 목록 첨부 서류】</span>
               <p>1. 급여소득자: 근로소득원천징수영수증, 최근 1년 급여명세서 사본, 급여입금통장 사본, 재직증명서, 사업자등록증 사본</p>
               <p>2. 영업소득자: 사업자등록증 사본, 종합소득세 확정신고서, 부가가치세과세표준증명, 매출·매입세금계산서합계표</p>

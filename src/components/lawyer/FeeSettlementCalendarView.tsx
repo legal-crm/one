@@ -279,7 +279,7 @@ export default function FeeSettlementCalendarView({
             )}
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500">
+          <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" /> 완납
             </span>
@@ -357,13 +357,13 @@ export default function FeeSettlementCalendarView({
                           </span>
                         )}
                         {holiday && (
-                          <span className="text-[9px] font-bold text-rose-400 truncate max-w-[50px]">{holiday}</span>
+                          <span className="text-xs font-bold text-rose-400 truncate max-w-[50px]">{holiday}</span>
                         )}
                       </div>
 
                       {/* 날짜별 총 예정액 칩 */}
                       {items.length > 0 && (
-                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                        <span className={`text-xs font-black px-1.5 py-0.2 rounded-md ${
                           hasOverdue 
                             ? 'bg-rose-100 text-rose-700 animate-pulse' 
                             : hasDueToday 
@@ -382,7 +382,7 @@ export default function FeeSettlementCalendarView({
                         return (
                           <div
                             key={idx}
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate flex items-center justify-between ${
+                            className={`text-xs font-bold px-1.5 py-0.5 rounded truncate flex items-center justify-between ${
                               it.isPaid
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                                 : it.isOverdue
@@ -396,7 +396,7 @@ export default function FeeSettlementCalendarView({
                               {it.clientSummary.isHighRiskTarget && '🚨 '}
                               {name}
                             </span>
-                            <span className="shrink-0 text-[9px] opacity-80">
+                            <span className="shrink-0 text-xs opacity-80">
                               {(it.amountWon / 10000).toLocaleString()}만
                             </span>
                           </div>
@@ -404,7 +404,7 @@ export default function FeeSettlementCalendarView({
                       })}
 
                       {items.length > 2 && (
-                        <div className="text-[10px] font-bold text-slate-400 pl-1">
+                        <div className="text-xs font-bold text-slate-400 pl-1">
                           +{items.length - 2}건 더보기
                         </div>
                       )}
@@ -417,7 +417,7 @@ export default function FeeSettlementCalendarView({
                       {items.some(i => i.isOverdue) && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
                       {items.some(i => i.isDueToday) && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                       {items.some(i => i.isPaid) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                      <span className="text-[9px] text-slate-400 font-bold ml-auto">{items.length}건</span>
+                      <span className="text-xs text-slate-400 font-bold ml-auto">{items.length}건</span>
                     </div>
                   )}
                 </button>
@@ -462,9 +462,9 @@ export default function FeeSettlementCalendarView({
                       }`}>
                         {wd.getDate()}
                       </span>
-                      {holiday && <span className="text-[9px] font-bold text-rose-400 mt-0.5">{holiday}</span>}
+                      {holiday && <span className="text-xs font-bold text-rose-400 mt-0.5">{holiday}</span>}
                       {items.length > 0 && (
-                        <span className="text-[10px] font-bold text-slate-500 mt-1">
+                        <span className="text-xs font-bold text-slate-500 mt-1">
                           ₩{(dayTotal / 10000).toLocaleString()}만 ({items.length}건)
                         </span>
                       )}
@@ -488,9 +488,9 @@ export default function FeeSettlementCalendarView({
                           >
                             <div className="flex items-center justify-between">
                               <span className="truncate">{name}</span>
-                              <span className="text-[10px] font-medium">{it.installment.round}차</span>
+                              <span className="text-xs font-medium">{it.installment.round}차</span>
                             </div>
-                            <div className="text-[10px] text-right font-black mt-0.5">
+                            <div className="text-xs text-right font-black mt-0.5">
                               ₩{it.amountWon.toLocaleString()}
                             </div>
                           </div>
@@ -499,7 +499,7 @@ export default function FeeSettlementCalendarView({
                     </div>
                   </div>
 
-                  <div className="text-right text-[10px] text-slate-400 font-bold">
+                  <div className="text-right text-xs text-slate-400 font-bold">
                     총 {items.length}건
                   </div>
                 </button>
@@ -522,7 +522,7 @@ export default function FeeSettlementCalendarView({
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <span>{selectedDateKey.replace(/-/g, '.')} 수납 일정</span>
                   {selectedDateKey === todayStr && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-[10px] font-black rounded-md">
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-black rounded-md">
                       오늘 마감 (D-Day)
                     </span>
                   )}
@@ -579,13 +579,13 @@ export default function FeeSettlementCalendarView({
                             <span>{summary.realClientName || summary.clientName}</span>
                             <ExternalLink className="w-3 h-3 text-slate-400" />
                           </button>
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                             isRehab ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                           }`}>
                             {isRehab ? '개인회생' : '개인파산'}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-xs text-slate-500">
                           {summary.phone} {summary.courtName ? `· ${summary.courtName}` : ''} {summary.caseNumber || ''}
                         </div>
                       </div>
@@ -593,24 +593,24 @@ export default function FeeSettlementCalendarView({
                       {/* 상태 뱃지 */}
                       <div className="flex flex-col items-end gap-1">
                         {summary.isHighRiskTarget && (
-                          <span className="px-2 py-0.5 bg-amber-500 text-white rounded text-[10px] font-black animate-pulse">
+                          <span className="px-2 py-0.5 bg-amber-500 text-white rounded text-xs font-black animate-pulse">
                             🚨 집중관리 (2회+미룸)
                           </span>
                         )}
                         {item.isPaid ? (
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-xs font-bold">
                             수납 완료
                           </span>
                         ) : item.isOverdue ? (
-                          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[10px] font-bold">
+                          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-xs font-bold">
                             연체 미납
                           </span>
                         ) : item.isDueToday ? (
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-[10px] font-bold">
+                          <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs font-bold">
                             당일 마감
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
                             납부 대기
                           </span>
                         )}
@@ -620,14 +620,14 @@ export default function FeeSettlementCalendarView({
                     {/* 중단: 회차 및 금액, 계약/접수일 */}
                     <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-slate-500 text-[11px]">납부 회차 / 금액</span>
+                        <span className="text-slate-500 text-xs">납부 회차 / 금액</span>
                         <div className="font-bold text-slate-900">
                           {inst.round}차 분납 · ₩{item.amountWon.toLocaleString()}
                         </div>
                       </div>
                       <div>
-                        <span className="text-slate-500 text-[11px]">계약일 / 법원접수</span>
-                        <div className="text-[11px] font-medium text-slate-700">
+                        <span className="text-slate-500 text-xs">계약일 / 법원접수</span>
+                        <div className="text-xs font-medium text-slate-700">
                           계약 {summary.contractDate ? summary.contractDate.replace(/-/g, '.') : '-'} / 접수 {summary.filingDate ? summary.filingDate.replace(/-/g, '.') : '준비중'}
                         </div>
                       </div>
@@ -635,7 +635,7 @@ export default function FeeSettlementCalendarView({
 
                     {/* 하단 빠른 액션 버튼 바 */}
                     <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between flex-wrap gap-2">
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-xs text-slate-500">
                         잔금: <strong className="text-slate-800">₩{summary.remainingFee.toLocaleString()}</strong> ({summary.remainingInstallments}회 남음)
                       </div>
 

@@ -8,6 +8,7 @@ import { useCopyFeedback } from '../clipboard';
 import CopyButton from '../ui/CopyButton';
 import MoneyInput from '../ui/MoneyInput';
 import { won } from '../ui/money';
+import DockCaseActionBar from '../DockCaseActionBar';
 
 // 2026년 기준중위소득(100%) 및 60% 생계비 — 단일 출처(repaymentConstants2026)
 const TABLE_ROWS = [1, 2, 3, 4, 5, 6, 7, 8].map(size => ({
@@ -28,21 +29,30 @@ export default function MedianIncomeTool() {
     toast.success(`월 변제금을 ${won(d.disposable)}으로 반영했습니다. (변제율·청산가치 도구)`);
   };
 
-  const handleCopy = () => {
-    const text = `[2026 가용소득 산정 (참고)]
+  const briefingText = `[2026 가용소득 산정 (참고)]
 • 가구원 수: ${formatHousehold(shared.householdSize)}
 • 인정 생계비(기준중위소득 60%): ${won(d.baseLivingExpense)}${shared.extraLivingCost > 0 ? `\n• 추가생계비(인정 예상): ${won(shared.extraLivingCost)}` : ''}
 • 의뢰인 월 소득(실수령): ${won(shared.monthlyIncome)}
 • 예상 월 가용소득: ${won(d.disposable)}
 ※ 추가생계비 인정 여부와 금액은 관할 법원 판단에 따릅니다.`;
-    copy(text, '생계비 및 가용소득 산출 결과가 복사되었습니다.');
+
+  const handleCopy = () => {
+    copy(briefingText, '생계비 및 가용소득 산출 결과가 복사되었습니다.');
   };
+
+  const applyData = d.disposable > 0
+    ? {
+        monthlyPay: d.disposable,
+        sourceTool: '중위소득 및 가용소득 산정',
+        summaryText: `월 가용소득: ${won(d.disposable)} (생계비: ${won(d.baseLivingExpense)}, 가구원: ${shared.householdSize}인)`,
+      }
+    : undefined;
 
   return (
     <div className="space-y-3.5 p-4 text-slate-800">
       {/* 기준표 */}
       <div className="overflow-x-auto border border-slate-200 rounded-2xl max-h-48 overflow-y-auto">
-        <table className="w-full text-[11px] text-left">
+        <table className="w-full text-xs text-left">
           <caption className="sr-only">2026년 가구원 수별 기준중위소득과 인정생계비</caption>
           <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
             <tr>
@@ -94,7 +104,7 @@ export default function MedianIncomeTool() {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor="median-household" className="text-[10px] text-slate-600 font-semibold block mb-0.5">가구원 수 (본인 포함)</label>
+            <label htmlFor="median-household" className="text-xs text-slate-600 font-semibold block mb-0.5">가구원 수 (본인 포함)</label>
             <select
               id="median-household"
               value={shared.householdSize}
@@ -109,27 +119,27 @@ export default function MedianIncomeTool() {
             </select>
           </div>
           <div>
-            <label htmlFor="median-income" className="text-[10px] text-slate-600 font-semibold block mb-0.5">실수령 월 소득</label>
+            <label htmlFor="median-income" className="text-xs text-slate-600 font-semibold block mb-0.5">실수령 월 소득</label>
             <MoneyInput id="median-income" value={shared.monthlyIncome} onChange={v => setDockShared({ monthlyIncome: v })} placeholder="예: 320만" />
           </div>
           <div className="col-span-2">
-            <label htmlFor="median-extra" className="text-[10px] text-slate-600 font-semibold block mb-0.5">
+            <label htmlFor="median-extra" className="text-xs text-slate-600 font-semibold block mb-0.5">
               추가생계비 (인정 예상액, 선택)
             </label>
             <MoneyInput id="median-extra" value={shared.extraLivingCost} onChange={v => setDockShared({ extraLivingCost: v })} placeholder="추가생계비 검토 도구에서 반영 가능" />
           </div>
         </div>
         {!Number.isInteger(shared.householdSize) && (
-          <p className="text-[10px] text-slate-500">0.5인 단위는 앞뒤 가구원 수 생계비의 중간값입니다 (맞벌이 공동부양 등, 관할 법원 기준 확인).</p>
+          <p className="text-xs text-slate-500">0.5인 단위는 앞뒤 가구원 수 생계비의 중간값입니다 (맞벌이 공동부양 등, 관할 법원 기준 확인).</p>
         )}
 
         <div className="p-2.5 bg-white rounded-xl border border-teal-200 space-y-1" aria-live="polite">
-          <div className="flex items-center justify-between text-[11px] text-slate-600">
+          <div className="flex items-center justify-between text-xs text-slate-600">
             <span>인정 생계비 ({formatHousehold(shared.householdSize)})</span>
             <span className="font-bold text-slate-900 tabular-nums">{won(d.baseLivingExpense)}</span>
           </div>
           {shared.extraLivingCost > 0 && (
-            <div className="flex items-center justify-between text-[11px] text-slate-600">
+            <div className="flex items-center justify-between text-xs text-slate-600">
               <span>추가생계비</span>
               <span className="font-bold text-slate-900 tabular-nums">+ {won(shared.extraLivingCost)}</span>
             </div>
@@ -141,7 +151,7 @@ export default function MedianIncomeTool() {
         </div>
 
         {incomeBelowLiving && (
-          <p className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+          <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
             월 소득이 인정 생계비 이하입니다. 개인파산 절차도 함께 검토하세요.
           </p>
         )}
@@ -158,6 +168,13 @@ export default function MedianIncomeTool() {
       </div>
 
       <CopyButton copied={copied} onClick={handleCopy} disabled={shared.monthlyIncome <= 0} label="산출 결과 복사" />
+      <DockCaseActionBar
+        applyData={applyData}
+        memoText={briefingText}
+        memoCategory="consultation"
+        disabled={shared.monthlyIncome <= 0}
+      />
     </div>
   );
 }
+

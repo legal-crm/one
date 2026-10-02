@@ -221,7 +221,7 @@ ${firm} ${lawyer} 변호사`
                 <h3 className="text-base font-black text-slate-900">
                   타겟 대량 메시지 발송 사전 확인
                 </h3>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
                   오발송 방지 검증
                 </span>
               </div>
@@ -258,7 +258,7 @@ ${firm} ${lawyer} 변호사`
                 <button
                   type="button"
                   onClick={() => setShowRecipientList(!showRecipientList)}
-                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline ml-1 cursor-pointer"
+                  className="text-xs font-bold text-slate-500 hover:text-slate-800 underline ml-1 cursor-pointer"
                 >
                   {showRecipientList ? '명단 접기' : '명단 보기'}
                 </button>
@@ -268,10 +268,10 @@ ${firm} ${lawyer} 변호사`
             {/* 수신자 명단 토글 영역 */}
             {showRecipientList && (
               <div className="mt-2 pt-2 border-t border-slate-200 max-h-36 overflow-y-auto space-y-1">
-                <p className="text-[11px] text-slate-400 font-bold mb-1">수신 의뢰인 목록 (전화번호 마스킹):</p>
+                <p className="text-xs text-slate-400 font-bold mb-1">수신 의뢰인 목록 (전화번호 마스킹):</p>
                 <div className="flex flex-wrap gap-1.5">
                   {targetClients.map((tc, idx) => (
-                    <span key={tc.id || idx} className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-[11px] text-slate-700 font-medium">
+                    <span key={tc.id || idx} className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-xs text-slate-700 font-medium">
                       {tc.clientName} ({tc.phone ? tc.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2') : '미등록'})
                     </span>
                   ))}
@@ -317,7 +317,7 @@ ${firm} ${lawyer} 변호사`
               <label className="text-xs font-bold text-slate-800">
                 1. 추천 메시지 템플릿 선택
               </label>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 변수 <code className="bg-slate-100 px-1 py-0.5 rounded text-brand">#&#123;의뢰인명&#125;</code> 자동 치환
               </span>
             </div>
@@ -336,7 +336,7 @@ ${firm} ${lawyer} 변호사`
                   <span className="font-bold text-xs text-slate-900 mb-1">
                     {preset.title}
                   </span>
-                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                     {preset.text}
                   </p>
                 </button>
@@ -356,13 +356,13 @@ ${firm} ${lawyer} 변호사`
                   <button
                     type="button"
                     onClick={handleResetToDefault}
-                    className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>기본 문구 복원</span>
                   </button>
                 )}
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {customMessage.length}자
                 </span>
               </div>
@@ -379,13 +379,13 @@ ${firm} ${lawyer} 변호사`
                   <span className="font-extrabold text-xs">
                     {channel === 'alimtok' ? '💬 카카오 알림톡 실시간 미리보기' : '📱 SMS 실시간 미리보기'}
                   </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${
                     channel === 'alimtok' ? 'bg-yellow-200/60 text-yellow-900' : 'bg-slate-700 text-slate-300'
                   }`}>
                     {firmName || '법무법인'}
                   </span>
                 </div>
-                <span className="text-[10px] opacity-70 font-mono">
+                <span className="text-xs opacity-70 font-mono">
                   예시: {sampleClientName}님 수신 화면
                 </span>
               </div>
@@ -400,12 +400,12 @@ ${firm} ${lawyer} 변호사`
                   placeholder="대량 발송될 메시지 내용을 확인하고 수정하세요."
                 />
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                   <span>실제 전송 시 <code className="bg-slate-100 px-1 py-0.5 rounded text-brand">#&#123;의뢰인명&#125;</code>이 각 의뢰인의 성명으로 자동 치환됩니다.</span>
                 </div>
               </div>
 
-              <div className={`flex items-center justify-between text-[10px] px-1 font-medium ${
+              <div className={`flex items-center justify-between text-xs px-1 font-medium ${
                 channel === 'alimtok' ? 'text-yellow-950' : 'text-slate-300'
               }`}>
                 <span className="flex items-center gap-1">
@@ -436,7 +436,7 @@ ${firm} ${lawyer} 변호사`
                 <span className="font-extrabold text-amber-900 block">
                   총 {targetClients.length}명의 의뢰인에게 {channel === 'alimtok' ? '카카오 알림톡' : 'SMS'}으로 즉시 일괄 발송됨을 확인했습니다.
                 </span>
-                <span className="text-[11px] text-amber-700">
+                <span className="text-xs text-amber-700">
                   체크박스를 선택하셔야 최종 발송 버튼이 활성화됩니다. 발송 내역은 각 의뢰인의 CRM 활동 로그에 영구 기록됩니다.
                 </span>
               </div>

@@ -50,11 +50,11 @@ export default function CollateralPledgeSection({
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
               <span>별제권(담보부 채권) & 공동담보 정밀 분석</span>
-              <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
                 부속서류 연동
               </span>
             </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               담보물 환가예상액을 기준으로 '유담보 회생채권'과 '무담보 예정부족액'을 자동 분할합니다.
             </p>
           </div>
@@ -79,12 +79,12 @@ export default function CollateralPledgeSection({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               유담보 회생채권 (별제권 충당)
             </span>
-            <span className="text-[10px] text-slate-400">담보물 처분 변제</span>
+            <span className="text-xs text-slate-400">담보물 처분 변제</span>
           </div>
           <p className="text-lg font-black text-slate-900 tracking-tight">
             {fmt(securedDebtCovered)}
           </p>
-          <p className="text-[11px] text-slate-500 leading-tight">
+          <p className="text-xs text-slate-500 leading-tight">
             부동산/차량의 경매 환가액 범위 내에서 별제권 행사를 통해 우선 변제됩니다.
           </p>
         </div>
@@ -96,12 +96,12 @@ export default function CollateralPledgeSection({
               <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
               무담보 회생채권 (예정부족액)
             </span>
-            <span className="text-[10px] text-amber-700 font-bold">변제계획안 산입</span>
+            <span className="text-xs text-amber-700 font-bold">변제계획안 산입</span>
           </div>
           <p className={`text-lg font-black tracking-tight ${pledgedAssetsEstimatedDeficit > 0 ? 'text-amber-900' : 'text-slate-900'}`}>
             {fmt(pledgedAssetsEstimatedDeficit)}
           </p>
-          <p className="text-[11px] text-slate-500 leading-tight">
+          <p className="text-xs text-slate-500 leading-tight">
             담보 처분으로 변제되지 못할 것으로 예상되는 잔액(예정부족액)은 일반 회생채권으로 <strong>변제계획에 산입</strong>됩니다.
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function CollateralPledgeSection({
         <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden text-xs animate-fadeIn text-left">
           <div className="bg-slate-100 px-3 py-2 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
             <span>공동담보 목적물별 가액비율 안분 내역서</span>
-            <span className="text-[10px] text-slate-500">가액비율 단순 안분 (참고용)</span>
+            <span className="text-xs text-slate-500">가액비율 단순 안분 (참고용)</span>
           </div>
           <div className="p-3 divide-y divide-slate-100">
             {collateralAssets.map((asset, i) => {
@@ -125,12 +125,12 @@ export default function CollateralPledgeSection({
                     {asset.type.includes('vehicle') ? <Car className="w-4 h-4 text-blue-600" /> : <Home className="w-4 h-4 text-indigo-600" />}
                     <div>
                       <span className="font-bold text-slate-800">{asset.label || asset.name || `목적물 ${i+1}`}</span>
-                      <span className="text-[10px] text-slate-400 block">시가: {fmt(asset.marketValue)} (안분비율: {ratio}%)</span>
+                      <span className="text-xs text-slate-400 block">시가: {fmt(asset.marketValue)} (안분비율: {ratio}%)</span>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className="font-extrabold text-slate-900">{fmt(allocatedDebt)}</span>
-                    <span className="text-[10px] text-slate-500 block">피담보채권 배당액</span>
+                    <span className="text-xs text-slate-500 block">피담보채권 배당액</span>
                   </div>
                 </div>
               );

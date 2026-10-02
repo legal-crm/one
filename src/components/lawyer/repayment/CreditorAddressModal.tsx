@@ -85,7 +85,7 @@ export default function CreditorAddressModal({
             <div>
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 <span>채권자 법원 송달주소 관리</span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                   #{creditor.creditorNumber}
                 </span>
               </h3>
@@ -112,7 +112,7 @@ export default function CreditorAddressModal({
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                   <span>공식 금융기관 DB 일치: {matchedPreset.officialName}</span>
                 </div>
-                <div className="text-[11px] text-slate-600 truncate max-w-md">
+                <div className="text-xs text-slate-600 truncate max-w-md">
                   {matchedPreset.address} (우: {matchedPreset.zipCode}) · {matchedPreset.representative}
                 </div>
               </div>
@@ -158,13 +158,13 @@ export default function CreditorAddressModal({
                     <div>
                       <div className="font-bold text-xs text-slate-900">
                         {item.officialName}{' '}
-                        <span className="text-[10px] text-slate-400 font-normal">({item.categoryLabel})</span>
+                        <span className="text-xs text-slate-400 font-normal">({item.categoryLabel})</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 truncate max-w-sm">
+                      <div className="text-xs text-slate-500 truncate max-w-sm">
                         {item.address} (우: {item.zipCode})
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-indigo-600 px-2 py-0.5 rounded bg-indigo-50">
+                    <span className="text-xs font-bold text-indigo-600 px-2 py-0.5 rounded bg-indigo-50">
                       선택
                     </span>
                   </button>
@@ -273,7 +273,7 @@ export default function CreditorAddressModal({
                 <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                 <span>법원 필수 송달 절차 안내</span>
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 법원은 개시결정문, 채권자목록, 변제계획안을 알고 있는 모든 채권자에게 우편으로 직접 송달합니다.
                 채권양도(NPL)된 채권의 경우 최종 양수인의 정확한 송달 주소를 기재해야 절차 지연(주소보정명령)을 방지할 수 있습니다.
               </p>

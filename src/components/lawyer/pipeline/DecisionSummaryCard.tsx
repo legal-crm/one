@@ -93,7 +93,7 @@ export default function DecisionSummaryCard({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-lg text-white tracking-tight">개시결정 핵심 요약본</h3>
-              <span className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full">
+              <span className="bg-emerald-500 text-slate-950 font-black text-xs px-2 py-0.5 rounded-full">
                 개시결정 완료
               </span>
             </div>
@@ -146,11 +146,11 @@ export default function DecisionSummaryCard({
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">탕감률</span>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">탕감률</span>
               <span className="text-3xl font-black text-emerald-400 tracking-tight tabular-nums">
                 {form.dischargeRate}%
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">변제율 {form.repaymentRate}%</span>
+              <span className="text-xs text-slate-400 font-medium">변제율 {form.repaymentRate}%</span>
             </div>
           </div>
 
@@ -171,7 +171,7 @@ export default function DecisionSummaryCard({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* 총 채무액 */}
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400 font-bold block mb-1">원금 총 채무액</span>
+              <span className="text-xs text-slate-400 font-bold block mb-1">원금 총 채무액</span>
               <span className="text-base sm:text-lg font-black text-white tabular-nums">
                 {form.totalDebt.toLocaleString()}만 원
               </span>
@@ -179,7 +179,7 @@ export default function DecisionSummaryCard({
 
             {/* 총 변제 예정액 */}
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-emerald-400 font-bold block mb-1">총 변제 예정액</span>
+              <span className="text-xs text-emerald-400 font-bold block mb-1">총 변제 예정액</span>
               <span className="text-base sm:text-lg font-black text-emerald-300 tabular-nums">
                 {form.totalRepayment.toLocaleString()}만 원
               </span>
@@ -187,7 +187,7 @@ export default function DecisionSummaryCard({
 
             {/* 변제 기간 */}
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400 font-bold block mb-1">변제 기간</span>
+              <span className="text-xs text-slate-400 font-bold block mb-1">변제 기간</span>
               <span className="text-base sm:text-lg font-black text-white tabular-nums">
                 {form.repaymentMonths > 0
                   ? `${form.repaymentMonths}개월${form.repaymentMonths % 12 === 0 ? ` (${form.repaymentMonths / 12}년)` : ''}`
@@ -197,7 +197,7 @@ export default function DecisionSummaryCard({
 
             {/* 월 변제금 */}
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 sm:col-span-2">
-              <span className="text-[11px] text-amber-400 font-bold block mb-1">확정 월 변제금</span>
+              <span className="text-xs text-amber-400 font-bold block mb-1">확정 월 변제금</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl sm:text-2xl font-black text-amber-300 tabular-nums">
                   월 {Number(form.monthlyPayment).toLocaleString()}원
@@ -208,7 +208,7 @@ export default function DecisionSummaryCard({
 
             {/* 첫 회차 납입일 */}
             <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400 font-bold block mb-1">1회차 납입 개시일</span>
+              <span className="text-xs text-slate-400 font-bold block mb-1">1회차 납입 개시일</span>
               <span className="text-sm font-bold text-slate-200 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 {form.firstPaymentDate || '미입력'}
@@ -221,7 +221,7 @@ export default function DecisionSummaryCard({
             <div className="flex items-center gap-2.5 min-w-0">
               <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
               <div className="min-w-0">
-                <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider block">법원 변제금 전용 가상계좌</span>
+                <span className="text-xs text-amber-300 font-bold uppercase tracking-wider block">법원 변제금 전용 가상계좌</span>
                 <p className="text-xs sm:text-sm font-mono font-bold text-white truncate">
                   {form.virtualAccountNumber ? `${form.virtualAccountBank} ${form.virtualAccountNumber}` : '미등록'}
                 </p>

@@ -124,7 +124,7 @@ function AncillaryPetitionsModalInner({
               <h3 className="font-extrabold text-sm text-white">
                 기타 법원 신청서 및 추심 방어 센터
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 사건: {mainCaseNumber} · 신청인: {clientName} · 법원 제출 정규 서식
               </p>
             </div>
@@ -318,7 +318,7 @@ function AncillaryPetitionsModalInner({
                     </p>
                   </div>
 
-                  <div className="space-y-1 text-slate-600 pt-2 border-t border-slate-200 text-[11px]">
+                  <div className="space-y-1 text-slate-600 pt-2 border-t border-slate-200 text-xs">
                     <div className="font-bold text-rose-700">⚖️ 채권추심법 제8조의2 법적 근거:</div>
                     <p>대리인 선임 통보 후에도 채무자에게 직접 연락하거나 직장/자택에 찾아오는 행위는 <strong>2,000만 원 이하의 과태료 처분</strong> 대상입니다.</p>
                   </div>

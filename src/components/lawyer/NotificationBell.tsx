@@ -88,7 +88,7 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
       >
         <Bell className="w-5 h-5 text-slate-600" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center px-1 animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-extrabold rounded-full flex items-center justify-center px-1 animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -103,7 +103,7 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
             {unreadCount > 0 && (
               <button
                 onClick={handleReadAll}
-                className="text-[11px] text-brand font-bold hover:underline flex items-center gap-1"
+                className="text-xs text-brand font-bold hover:underline flex items-center gap-1"
               >
                 <CheckCheck className="w-3.5 h-3.5" /> 모두 읽음
               </button>
@@ -141,8 +141,8 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
                     {/* 내용 */}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-slate-800 truncate">{notif.title}</p>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{notif.body}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{timeAgo(notif.createdAt)}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{notif.body}</p>
+                      <p className="text-xs text-slate-400 mt-1">{timeAgo(notif.createdAt)}</p>
                     </div>
                   </button>
                 );

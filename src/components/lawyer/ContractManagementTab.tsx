@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
-  FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, 
+  FileSignature, Clock, CheckCircle2, Search, Eye, Trash2, 
   RefreshCw, FolderKanban, Download, AlertTriangle, Send, 
   ExternalLink, ShieldCheck, Printer, ArrowRight, User, Building2, 
-  Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3, Settings2 
+  Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3, Settings2,
+  MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { localYmd } from '../../utils/localDate';
@@ -28,22 +29,20 @@ import { feeTotalWon } from '../../utils/feeUnits';
 /** 서명 진행 중 상태 */
 const SIGNING_STATUSES: ReadonlyArray<ContractStatus> = ['pending_sign', 'client_review', 'signing'];
 
-/** 체결 완료로 보는 상태 ('signed'는 예전 저장값 — 고객 화면 ContractCard와 같은 기준) */
+/** 체결 완료로 보는 상태 */
 function isSignedContract(c: ElectronicContract): boolean {
   return c.status === 'completed' || c.status === 'signed';
 }
 
 /**
  * 의뢰인은 서명을 마쳤고 변호사 서명(체결 봉인)만 남은 계약
- * 의뢰인 원격 서명(ClientRemoteSignView)은 변호사 서명이 없으면 상태를 바꾸지 않고 의뢰인 서명만 저장한다.
- * 이런 계약은 의뢰인에게 재촉할 대상이 아니다.
  */
 function isAwaitingLawyerSign(c: ElectronicContract): boolean {
   if (!SIGNING_STATUSES.includes(c.status)) return false;
   return (c.documents || []).some(d => d.included && d.clientSignature);
 }
 
-/** 총 수임료(원) — 원·만원이 섞여 저장된 값을 공용 규칙으로 맞춘다 (이전: 무조건 ×10,000 → 원 단위 값이 1만 배로 표시) */
+/** 총 수임료(원) */
 function contractFeeWon(c: ElectronicContract): number {
   return feeTotalWon(c.totalFee);
 }
@@ -51,18 +50,19 @@ function contractFeeWon(c: ElectronicContract): number {
 interface Props {
   lawyerName: string;
   lawFirmName: string;
-  onNavigateToCrm?: () => void;
+  onNavigateToCrm?: (clientId?: string, detailTab?: any) => void;
 }
+
+export type ContractTabType = 'all' | 'signing' | 'overdue' | 'drafting' | 'completed' | 'cancelled';
 
 export default function ContractManagementTab({ lawyerName, lawFirmName, onNavigateToCrm }: Props) {
   const dialog = useDialog();
 
   const [contracts, setContracts] = useState<ElectronicContract[]>(() => {
-    // 가짜 계약(완료·블록체인 기록 포함) 시드는 개발 환경에서만 — 운영 계약 목록에 섞이지 않도록
     if (import.meta.env.DEV) seedMockContracts();
     return loadContractsLocal();
   });
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<ContractTabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingContract, setEditingContract] = useState<ElectronicContract | null>(null);
   const [viewingContract, setViewingContract] = useState<ElectronicContract | null>(null);
@@ -70,6 +70,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [docSettingsOpen, setDocSettingsOpen] = useState(false);
   const [verifyModalContract, setVerifyModalContract] = useState<ElectronicContract | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const refreshContracts = useCallback(async () => {
     const list = await loadContracts();
@@ -82,8 +83,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     refreshContracts();
   }, [refreshContracts]);
 
-  // ── 골든타임 지체 계약 판별 (의뢰인 서명 대기 중 24시간 이상 경과) ──
-  // 의뢰인이 이미 서명했고 변호사 서명만 남은 계약은 제외한다 (이전: 의뢰인에게 재촉 대상으로 떴다)
+  // 서명 지연 판별 (의뢰인 서명 대기 중 24시간 이상 경과)
   const isOverdue = useCallback((c: ElectronicContract) => {
     if (!SIGNING_STATUSES.includes(c.status)) return false;
     if (isAwaitingLawyerSign(c)) return false;
@@ -92,43 +92,50 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     return elapsedHours >= 24;
   }, []);
 
-  // ── 통계 및 경영 KPI 지표 산출 (금액은 원 단위) ──
+  // 통계 및 1줄 요약 지표 산출
   const stats = useMemo(() => {
     const list = Array.isArray(contracts) ? contracts : [];
     const completedList = list.filter(isSignedContract);
     const totalFeeSum = completedList.reduce((sum, c) => sum + contractFeeWon(c), 0);
-    const avgFee = completedList.length > 0 ? Math.round(totalFeeSum / completedList.length) : 0;
-    const conversionRate = list.length > 0 ? Math.round((completedList.length / list.length) * 100) : 0;
-
     const overdueList = list.filter(isOverdue);
+    const signingList = list.filter(c => SIGNING_STATUSES.includes(c.status) && !isOverdue(c));
+
+    // 이달 체결 건수
+    const currentMonth = localYmd().slice(0, 7);
+    const thisMonthCompleted = completedList.filter(c => {
+      const d = c.contractDate || c.createdAt.slice(0, 10);
+      return d.startsWith(currentMonth);
+    });
+    const thisMonthFee = thisMonthCompleted.reduce((sum, c) => sum + contractFeeWon(c), 0);
 
     return {
       total: list.length,
-      drafting: list.filter(c => c.status === 'drafting').length,
       signing: list.filter(c => SIGNING_STATUSES.includes(c.status)).length,
-      awaitingLawyer: list.filter(isAwaitingLawyerSign).length,
+      pendingSign: signingList.length,
+      overdueCount: overdueList.length,
+      drafting: list.filter(c => c.status === 'drafting').length,
       completed: completedList.length,
       cancelled: list.filter(c => c.status === 'cancelled').length,
-      overdueCount: overdueList.length,
-      overdueList,
+      thisMonthCompletedCount: thisMonthCompleted.length,
+      thisMonthFee,
       totalFeeSum,
-      avgFee,
-      conversionRate,
     };
   }, [contracts, isOverdue]);
 
-  // ── 필터링된 계약 목록 ──
+  // 필터링된 계약 목록
   const filtered = useMemo(() => {
     let list = Array.isArray(contracts) ? contracts : [];
 
     if (statusFilter === 'overdue') {
       list = list.filter(isOverdue);
     } else if (statusFilter === 'signing') {
-      list = list.filter(c => SIGNING_STATUSES.includes(c.status));
+      list = list.filter(c => SIGNING_STATUSES.includes(c.status) && !isOverdue(c));
     } else if (statusFilter === 'completed') {
       list = list.filter(isSignedContract);
-    } else if (statusFilter !== 'all') {
-      list = list.filter(c => c.status === statusFilter);
+    } else if (statusFilter === 'drafting') {
+      list = list.filter(c => c.status === 'drafting');
+    } else if (statusFilter === 'cancelled') {
+      list = list.filter(c => c.status === 'cancelled');
     }
 
     if (searchQuery.trim()) {
@@ -143,11 +150,11 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     return list;
   }, [contracts, statusFilter, searchQuery, isOverdue]);
 
-  // ── 계약 삭제 ──
+  // 계약 삭제
   const handleDelete = async (id: string) => {
     const confirmed = await dialog.confirm({
       title: '계약서 삭제',
-      message: '이 계약서를 원장에서 완전히 삭제하시겠습니까? 진행 중인 서명이 취소됩니다.',
+      message: '이 계약서를 완전히 삭제하시겠습니까? 진행 중인 서명이 취소됩니다.',
       confirmText: '삭제',
       variant: 'danger'
     });
@@ -155,15 +162,15 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     const deleted = await deleteContract(id);
     await refreshContracts();
     if (deleted) toast.success('계약서가 삭제되었습니다');
-    else toast.error('서버에서 삭제하지 못했습니다. 이 기기 목록에서만 지워졌을 수 있으니 새로고침 후 다시 확인해 주세요.');
+    else toast.error('서버에서 삭제하지 못했습니다.');
   };
 
-  // ── 골든타임 재촉 알림톡 사전 확인 모달 오픈 ──
+  // 재촉 알림톡/문구 복사 모달 오픈
   const handleSendReminder = (contract: ElectronicContract) => {
     setReminderTargetContract(contract);
   };
 
-  // ── 재촉 알림톡 최종 발송 및 감사 추적 기록 ──
+  // 재촉 알림톡 문구 복사 및 감사 추적 기록
   const handleConfirmSendReminder = async (
     templateKey: string,
     message: string,
@@ -174,8 +181,6 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     const now = new Date().toISOString();
     const channelLabel = channel === 'both' ? '카카오 알림톡(SMS 대체포함)' : channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
 
-    // 알림톡/SMS 발송 API가 연결되어 있지 않다 → 문구를 복사해 담당자가 직접 보낸다
-    // (이전: 아무것도 보내지 않고 '정상 발송' 안내 + 감사추적에 '발송' 기록 → 허위 이력)
     let copied = false;
     try { await navigator.clipboard.writeText(message); copied = true; } catch { copied = false; }
     if (!copied) {
@@ -194,7 +199,6 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
           details: `수신 예정: ${target.clientPhone || '의뢰인'}, 채널: ${channelLabel}, 템플릿: ${templateKey}`
         }
       ],
-      // 골든타임(미서명 경과시간) 기준을 초기화하지 않도록 updatedAt은 유지
     };
 
     const saved = await saveContract(updatedContract);
@@ -202,11 +206,11 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       try { await syncContractToCrm(updatedContract.clientId, updatedContract); } catch (e) { console.warn('[Contract] CRM 동기화 실패', e); }
     }
     await refreshContracts();
-    toast.success(`[${target.clientName}] 재촉 문구를 복사했습니다. ${channelLabel}로 직접 보내 주세요. 자동 발송은 되지 않습니다.${saved ? '' : ' (이력은 이 기기에만 저장됨)'}`);
+    toast.success(`[${target.clientName}] 재촉 문구를 복사했습니다. ${channelLabel}로 직접 보내 주세요.${saved ? '' : ' (이력은 로컬에만 저장됨)'}`);
     setReminderTargetContract(null);
   };
 
-  // ── 엑셀/CSV 회계 원장 다운로드 (UTF-8 BOM) ──
+  // 엑셀/CSV 회계 원장 다운로드 (UTF-8 BOM)
   const handleExportCsv = () => {
     if (filtered.length === 0) {
       toast.info('다운로드할 계약 데이터가 없습니다.');
@@ -245,7 +249,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         onClose={() => { setEditingContract(null); refreshContracts(); }} 
         onSave={async (c) => { 
           const ok = await saveContract(c); 
-          if (!ok) toast.error('서버에 저장하지 못했습니다. 이 기기에만 저장되었습니다. 네트워크를 확인하고 다시 저장해 주세요.');
+          if (!ok) toast.error('서버에 저장하지 못했습니다.');
           if (c.clientId) {
             try { await syncContractToCrm(c.clientId, c); } catch (e) { console.warn('[Contract] CRM 동기화 실패', e); }
           }
@@ -256,446 +260,349 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-
-      {/* ── 1. 총괄 어드민 헤더 & 액션 ── */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-5 animate-fadeIn pb-12">
+      {/* ── 1. 헤더: 타이틀 + 액션 버튼 + 요약 한 줄 (기획서 4.7) ── */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-brand mb-1">
-              <span className="text-xs font-black tracking-wider uppercase bg-brand/10 text-brand px-2 py-0.5 rounded-md">
-                Contract Operations & Admin
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold uppercase bg-blue-50 text-[#1E3A5F] px-2.5 py-0.5 rounded-md">
+                계약 작업 큐
               </span>
-              <span className="text-xs text-slate-400">• 로펌 계약 총괄 관리 센터</span>
+              <span className="text-xs text-slate-400">· 수임 계약 작성은 사건 2단계에서 진행합니다</span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-              <FileSignature className="w-7 h-7 text-brand" />
-              <span>전자 계약 총괄 어드민 대시보드</span>
+            <h2 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+              <FileSignature className="w-6 h-6 text-[#1E3A5F]" />
+              <span>계약 현황</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              로펌 전체의 수임 계약 현황, 매출 분석, 미체결 골든타임 리스크 및 감사 원장을 통합 관리합니다.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <button 
               onClick={refreshContracts} 
-              className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200" 
+              className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200 active:scale-[0.98]" 
               title="새로고침"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
 
-            {/* 엑셀/CSV 회계 원장 다운로드 */}
+            {/* 원장 CSV 추출 */}
             <button
               onClick={handleExportCsv}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer whitespace-nowrap border border-slate-200 shadow-2xs min-h-[42px]"
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 active:scale-[0.98]"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>원장 CSV 추출</span>
+              <span>원장 CSV</span>
             </button>
 
-            {/* 문서함 (서식 관리) */}
+            {/* 서식 보관함 */}
             <button
               onClick={() => setLibraryOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[42px] border border-indigo-200 text-xs shadow-2xs press-scale"
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 active:scale-[0.98]"
             >
-              <FolderKanban className="w-4 h-4 text-indigo-600" />
-              <span>📂 문서함 (서식 보관함)</span>
+              <FolderKanban className="w-3.5 h-3.5 text-slate-500" />
+              <span>서식 보관함</span>
             </button>
 
-            {/* 신청서류 마스터 설정 (리걸플로 20p 벤치마킹) */}
-            <button
-              onClick={() => setDocSettingsOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[42px] border border-slate-200 text-xs shadow-2xs press-scale"
-              title="개인회생·파산·보정권고 마스터 신청서류 템플릿 설정"
-            >
-              <Settings2 className="w-4 h-4 text-slate-600" />
-              <span>⚙️ 신청서류 설정</span>
-            </button>
-
-            {/* 고객 CRM에서 새 계약 진행 안내 버튼 */}
+            {/* CRM 이동 안내 주 버튼 (단색 네이비) */}
             <button 
               onClick={() => {
                 if (onNavigateToCrm) {
                   onNavigateToCrm();
-                  toast.info('고객 관리 CRM으로 이동했습니다. 계약을 진행할 고객을 선택해 주세요.');
-                } else {
-                  toast.info('좌측 [고객관리] 메뉴에서 의뢰인을 선택하신 후 [전자계약] 탭에서 계약서를 작성해 주세요.');
+                  toast.info('사건 관리 화면으로 이동합니다. 계약을 체결할 의뢰인을 선택해 주세요.');
                 }
               }} 
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1E3A5F] text-white font-bold rounded-xl hover:bg-[#162d4a] transition-colors cursor-pointer whitespace-nowrap min-h-[42px] shadow-xs text-xs"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E3A5F] hover:bg-[#152a45] text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer active:scale-[0.98]"
             >
               <User className="w-3.5 h-3.5" />
-              <span>+ CRM 고객 선택하여 계약 진행</span>
+              <span>사건 2단계에서 계약 작성</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* ── 2. 계약 경영 KPI 카드 4대 지표 ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-slate-100">
-          
-          {/* KPI 1: 총 약정 수임료 합계 */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-slate-300 block">총 체결 수임료 (확정 매출)</span>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-emerald-400">
-              {(stats.totalFeeSum || 0).toLocaleString()}원
+        {/* ── 요약 한 줄 (기획서 4.7: 이달 체결 n건 · 체결 수임료 · 서명 대기 n건) ── */}
+        <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium">이달 체결:</span>
+              <span className="font-black text-slate-900">{stats.thisMonthCompletedCount}건</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              체결 완료 {stats.completed}건 기준 (평균 {(stats.avgFee || 0).toLocaleString()}원)
-            </p>
+            <span className="text-slate-300">|</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium">체결 확정 수임료:</span>
+              <span className="font-black text-blue-700">{stats.totalFeeSum.toLocaleString()}원</span>
+            </div>
+            <span className="text-slate-300">|</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium">서명 대기:</span>
+              <span className="font-bold text-amber-700">{stats.signing}건</span>
+            </div>
           </div>
 
-          {/* KPI 2: 체결 전환율 */}
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-1">
-            <span className="text-[11px] font-bold text-slate-500 block">수임 계약 체결 전환율</span>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-slate-900 flex items-baseline gap-1">
-              <span>{stats.conversionRate}%</span>
-              <span className="text-xs font-bold text-emerald-600">성공</span>
+          {stats.overdueCount > 0 && (
+            <div className="flex items-center gap-1.5 bg-rose-100 text-rose-800 px-2.5 py-1 rounded-lg font-bold">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>서명 지연 24시간 초과 {stats.overdueCount}건 (골든타임 주의)</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              총 {stats.total}건 중 {stats.completed}건 체결 완료
-            </p>
-          </div>
-
-          {/* KPI 3: 서명 진행 중 파이프라인 */}
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-1">
-            <span className="text-[11px] font-bold text-slate-500 block">고객 스마트폰 서명 대기</span>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-amber-600">
-              {stats.signing}건
-            </div>
-            <p className="text-[11px] text-slate-400">
-              작성중 {stats.drafting}건 / 서명 진행중 {stats.signing}건
-              {stats.awaitingLawyer > 0 && ` (변호사 서명 대기 ${stats.awaitingLawyer}건)`}
-            </p>
-          </div>
-
-          {/* KPI 4: 🚨 미체결 골든타임 리스크 */}
-          <div className={`p-5 rounded-2xl border space-y-1 transition-colors ${
-            stats.overdueCount > 0 ? 'bg-red-50/70 border-red-200 text-red-950' : 'bg-slate-50 border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold block">🚨 골든타임 미체결 리스크</span>
-              {stats.overdueCount > 0 && (
-                <span className="text-[10px] font-black bg-red-200 text-red-900 px-2 py-0.5 rounded-full animate-pulse">
-                  긴급
-                </span>
-              )}
-            </div>
-            <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${
-              stats.overdueCount > 0 ? 'text-red-600' : 'text-slate-400'
-            }`}>
-              {stats.overdueCount}건
-            </div>
-            <p className="text-[11px] text-slate-500">
-              {stats.overdueCount > 0 ? '서명 발송 24시간 초과 (이탈 위험)' : '지체된 계약 없음 (양호)'}
-            </p>
-          </div>
-
+          )}
         </div>
       </div>
 
-      {/* ── 3. 🚨 골든타임 미체결 리스크 스마트 배너 ── */}
-      {stats.overdueCount > 0 && (
-        <div className="bg-amber-50 border border-amber-300/80 rounded-2xl p-5 space-y-3 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-black text-amber-950">
-                  서명 요청 후 24시간이 경과한 미체결 계약이 {stats.overdueCount}건 있습니다.
-                </h4>
-                <p className="text-xs text-amber-800/90 mt-0.5">
-                  회생·파산 의뢰인은 48시간 이상 지체 시 타 로펌 이탈률이 급증합니다. 지금 재촉 알림톡을 발송하여 체결을 완료하세요.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setStatusFilter('overdue')}
-              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs whitespace-nowrap cursor-pointer shadow-xs self-end sm:self-center"
-            >
-              지체 계약 {stats.overdueCount}건 모아보기 →
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2">
-            {stats.overdueList.slice(0, 3).map(c => (
-              <div key={c.id} className="p-3 bg-white rounded-xl border border-amber-200 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-slate-800">{c.clientName}</span>
-                  <span className="text-slate-400 ml-1.5">{c.clientPhone}</span>
-                  <p className="text-[10px] text-amber-700 mt-0.5">발송: {c.contractDate || '최근'}</p>
-                </div>
-                <button
-                  onClick={() => handleSendReminder(c)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg text-[11px] cursor-pointer"
-                >
-                  <Send className="w-3 h-3" />
-                  <span>재촉 발송</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 4. 통합 계약 마스터 원장 테이블 영역 ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5">
-        
-        {/* 필터 및 검색 바 */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          
-          {/* 상태 탭 필터 */}
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold scrollbar-hide">
-            {[
-              { id: 'all', label: '전체', count: stats.total },
-              { id: 'completed', label: '체결완료', count: stats.completed },
-              { id: 'signing', label: '서명진행중', count: stats.signing },
-              { id: 'overdue', label: '🚨 골든타임지체', count: stats.overdueCount, isAlert: true },
-              { id: 'drafting', label: '작성중', count: stats.drafting },
-              { id: 'cancelled', label: '취소/보류', count: stats.cancelled },
-            ].map(tab => (
+      {/* ── 2. 보기 탭 5종 + 검색창 (기획서 4.7) ── */}
+      <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* 보기 탭 5개 + 전체 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold scrollbar-none pb-1 md:pb-0">
+          {[
+            { id: 'all' as const, label: '전체', count: stats.total },
+            { id: 'signing' as const, label: '서명 대기', count: stats.pendingSign },
+            { id: 'overdue' as const, label: '서명 지연 (24h+)', count: stats.overdueCount, isAlert: true },
+            { id: 'drafting' as const, label: '작성 중', count: stats.drafting },
+            { id: 'completed' as const, label: '체결 완료', count: stats.completed },
+            { id: 'cancelled' as const, label: '취소', count: stats.cancelled },
+          ].map(tab => {
+            const isSelected = statusFilter === tab.id;
+            return (
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  statusFilter === tab.id
-                    ? tab.isAlert ? 'bg-red-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
-                    : tab.isAlert && tab.count > 0 ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
+                  isSelected
+                    ? tab.isAlert ? 'bg-rose-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
+                    : tab.isAlert && tab.count > 0 
+                      ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200' 
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  statusFilter === tab.id ? 'bg-white/20 text-white' : 'bg-white text-slate-600'
+                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-600'
                 }`}>
                   {tab.count}
                 </span>
               </button>
-            ))}
-          </div>
-
-          {/* 검색창 */}
-          <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="의뢰인, 연락처, 계약번호..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-brand focus:bg-white transition-all"
-            />
-          </div>
+            );
+          })}
         </div>
 
-        {/* 원장 테이블 */}
+        {/* 검색창 */}
+        <div className="relative w-full md:w-72">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="의뢰인명, 연락처, 계약번호..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 text-slate-900 placeholder-slate-400"
+          />
+        </div>
+      </div>
+
+      {/* ── 3. 원장 테이블 (기획서 4.7 6열 정제) ── */}
+      {/* 6열: 의뢰인(연락처 한 줄) · 사건 단계 · 수임료(분납 회차) · 서명 진행 막대(0/5) · 상태 · ⋯ */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[840px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                <th className="p-3.5">계약번호 / 체결일자</th>
-                <th className="p-3.5">위임인 (의뢰인)</th>
-                <th className="p-3.5">수임인 (담당변호사)</th>
-                <th className="p-3.5 text-right">총 수임료 (분납)</th>
-                <th className="p-3.5 text-center">계약 문서 현황</th>
-                <th className="p-3.5 text-center">무결성·서명 검증</th>
-                <th className="p-3.5 text-center">체결 상태</th>
-                <th className="p-3.5 text-center min-w-[260px]">관리 액션</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-600 uppercase tracking-wider">
+                <th className="p-3.5 w-[22%]">의뢰인 (연락처)</th>
+                <th className="p-3.5 w-[14%] text-center">사건 단계</th>
+                <th className="p-3.5 w-[16%] text-right">수임료 (회차)</th>
+                <th className="p-3.5 w-[18%] text-center">서명 진행 막대</th>
+                <th className="p-3.5 w-[14%] text-center">상태</th>
+                <th className="p-3.5 w-[16%] text-center">작업 액션</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400 space-y-2">
-                    <p className="text-sm font-bold">조건에 맞는 전자 계약 내역이 없습니다.</p>
-                    <p className="text-xs text-slate-400">고객관리에서 새 계약을 생성하거나 필터를 변경해 보세요.</p>
+                  <td colSpan={6} className="py-16 text-center text-slate-400 space-y-2">
+                    <p className="text-sm font-bold text-slate-600">조건에 맞는 전자 계약 내역이 없습니다.</p>
+                    <p className="text-xs text-slate-400">사건 2단계에서 새 계약을 작성하거나 필터를 변경해 보세요.</p>
                   </td>
                 </tr>
               ) : (
                 filtered.map(c => {
                   const awaitingLawyer = isAwaitingLawyerSign(c);
-                  // 의뢰인 서명을 마친 계약은 '변호사 서명 대기'로 표시한다 (이전: '서명진행'으로만 보여 누구 차례인지 알 수 없었다)
-                  const cfg = awaitingLawyer
-                    ? { label: '변호사 서명 대기', color: 'text-blue-700', bgColor: 'bg-blue-50', emoji: '🖊️' }
-                    : (CONTRACT_STATUS_CONFIG[c.status] || { label: c.status, color: 'text-slate-600', bgColor: 'bg-slate-100', emoji: '📄' });
                   const overdue = isOverdue(c);
-                  const includedDocsCount = (c.documents || []).filter(d => d.included).length;
+                  const includedDocsCount = (c.documents || []).filter(d => d.included).length || 5;
                   const signedDocsCount = (c.documents || []).filter(d => d.included && d.clientSignature).length;
+                  const progressPct = includedDocsCount > 0 ? Math.round((signedDocsCount / includedDocsCount) * 100) : 0;
+
+                  // 상태 레이블 및 색상
+                  let statusBadge = { label: '대기', color: 'text-slate-600 bg-slate-100', emoji: '📄' };
+                  if (c.status === 'completed' || c.status === 'signed') {
+                    statusBadge = { label: '체결 완료', color: 'text-emerald-700 bg-emerald-50 border border-emerald-200', emoji: '✅' };
+                  } else if (overdue) {
+                    statusBadge = { label: '서명 지연 (24h+)', color: 'text-rose-700 bg-rose-50 border border-rose-200', emoji: '⚠️' };
+                  } else if (awaitingLawyer) {
+                    statusBadge = { label: '변호사 서명 대기', color: 'text-blue-700 bg-blue-50 border border-blue-200', emoji: '🖊️' };
+                  } else if (c.status === 'drafting') {
+                    statusBadge = { label: '작성 중', color: 'text-purple-700 bg-purple-50 border border-purple-200', emoji: '📝' };
+                  } else if (c.status === 'cancelled') {
+                    statusBadge = { label: '취소', color: 'text-slate-500 bg-slate-100 border border-slate-200', emoji: '✕' };
+                  } else {
+                    statusBadge = { label: '의뢰인 서명 대기', color: 'text-amber-700 bg-amber-50 border border-amber-200', emoji: '⏳' };
+                  }
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* 계약번호 & 일자 */}
+                      {/* 1. 의뢰인 (연락처 한 줄) */}
                       <td className="p-3.5">
-                        <span className="font-mono font-bold text-slate-900 block">{c.id}</span>
-                        <span className="text-[11px] text-slate-400">{c.contractDate || c.createdAt.slice(0, 10)}</span>
-                      </td>
-
-                      {/* 위임인 */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                           <span>{c.clientName || '성명 미지정'}</span>
                           {c.isBusiness && (
-                            <span className="text-[10px] text-brand bg-brand/10 px-1.5 py-0.2 rounded font-bold">
+                            <span className="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded font-bold">
                               사업자
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-slate-400 font-mono">{c.clientPhone || '-'}</span>
+                        <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-2">
+                          <span>{c.clientPhone || '연락처 없음'}</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-slate-400 font-sans">{c.contractDate || c.createdAt.slice(0, 10)}</span>
+                        </div>
                       </td>
 
-                      {/* 수임인 */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-800">{c.lawyerName} 변호사</div>
-                        <span className="text-[11px] text-slate-400">{c.lawFirmName}</span>
+                      {/* 2. 사건 단계 */}
+                      <td className="p-3.5 text-center">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          2단계 수임계약
+                        </span>
                       </td>
 
-                      {/* 수임료 */}
+                      {/* 3. 수임료 (분납 회차) */}
                       <td className="p-3.5 text-right">
-                        <span className="font-black text-slate-900 block">
+                        <span className="font-black text-slate-900 text-sm block">
                           {contractFeeWon(c).toLocaleString()}원
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {c.feeSchedule && c.feeSchedule.length > 0 ? `${c.feeSchedule.length}회차 분납` : '일시납'}
                         </span>
                       </td>
 
-                      {/* 문서 현황 */}
+                      {/* 4. 서명 진행 막대 (0/5) */}
                       <td className="p-3.5 text-center">
-                        <span className="font-bold text-slate-800">
-                          {signedDocsCount} / {includedDocsCount} 문서 서명
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold text-xs text-slate-700">
+                            {signedDocsCount}/{includedDocsCount} 서명 ({progressPct}%)
+                          </span>
+                          <div className="w-28 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all ${
+                                progressPct === 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-500' : 'bg-slate-300'
+                              }`}
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 5. 상태 */}
+                      <td className="p-3.5 text-center">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg inline-flex items-center gap-1 ${statusBadge.color}`}>
+                          <span>{statusBadge.emoji}</span>
+                          <span>{statusBadge.label}</span>
                         </span>
-                        {c.documents?.some(d => d.requiredConfirmationText) && (
-                          <span className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 block w-fit mx-auto mt-0.5">
-                            자필확약 조항 포함
-                          </span>
-                        )}
                       </td>
 
-                      {/* 무결성 검증 */}
+                      {/* 6. 행별 단일 주 버튼 + 더보기(⋯) (기획서 4.7) */}
                       <td className="p-3.5 text-center">
-                        {c.blockchainAnchor ? (
-                          <button
-                            onClick={() => setVerifyModalContract(c)}
-                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-pointer transition-all hover:scale-105 ${
-                              c.blockchainAnchor.isRealOnChain
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            }`}
-                            title="클릭 시 블록체인 원본 검증창 열기"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>{c.blockchainAnchor.isRealOnChain ? '⛓️ 온체인 기록' : '🔒 해시 보관(온체인 미기록)'}</span>
-                          </button>
-                        ) : c.timestampToken ? (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                            <ShieldCheck className="w-3.5 h-3.5" /> 해시 봉인
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">
-                            체결 후 각인예정
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 상태 */}
-                      <td className="p-3.5 text-center">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg inline-flex items-center gap-1 ${cfg.bgColor} ${cfg.color}`}>
-                          <span>{cfg.emoji}</span>
-                          <span>{cfg.label}</span>
-                        </span>
-                        {overdue && (
-                          <span className="text-[10px] font-bold text-red-600 block mt-1">
-                            ⚠️ 24h 경과
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 관리 액션 */}
-                      <td className="p-3.5 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
-                          {/* 1. 전문 열람 (기본 공통) */}
-                          <button
-                            onClick={() => setViewingContract(c)}
-                            className="h-7.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                            title="계약서 전문 및 감사증서 열람"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-slate-600" />
-                            <span>전문 열람</span>
-                          </button>
-
-                          {/* 2. 상태별 핵심 액션 */}
-                          {/* (1) 서명 완료: 법원 제출용 일체형 PDF 다운로드 */}
-                          {isSignedContract(c) && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* 상태별 단일 주 버튼 */}
+                          {isSignedContract(c) ? (
                             <button
                               onClick={() => generateCourtSubmissionPdf(c)}
-                              className="h-7.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                              title="감사증서 및 블록체인 각인이 포함된 법원제출용 통합 PDF 다운로드"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer shadow-2xs"
+                              title="법원제출용 통합 PDF 다운로드"
                             >
-                              <Download className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>법원PDF</span>
+                              <Download className="w-3.5 h-3.5" />
+                              <span>법원 PDF</span>
                             </button>
-                          )}
-
-                          {/* (2) 서명 완료: 블록체인 원본 검증기 */}
-                          {isSignedContract(c) && (
-                            <button
-                              onClick={() => setVerifyModalContract(c)}
-                              className="h-7.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                              title="블록체인 분산원장 원본 검증 팝업 열기"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>검증</span>
-                            </button>
-                          )}
-
-                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 — 의뢰인이 이미 서명했으면 재촉하지 않는다 */}
-                          {!awaitingLawyer && (c.status === 'signing' || overdue) && (
+                          ) : (c.status === 'signing' || overdue) && !awaitingLawyer ? (
                             <button
                               onClick={() => handleSendReminder(c)}
-                              className="h-7.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                              title="골든타임 재촉 알림톡 미리보기 및 발송"
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer shadow-2xs"
+                              title="골든타임 서명 재촉 문구 복사"
                             >
-                              <Send className="w-3.5 h-3.5 text-amber-700" />
-                              <span>재촉</span>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>재요청</span>
                             </button>
-                          )}
-
-                          {/* (4) 작성중인 경우 마법사 수정 */}
-                          {c.status === 'drafting' && (
+                          ) : c.status === 'drafting' ? (
                             <button
                               onClick={() => setEditingContract(c)}
-                              className="h-7.5 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                              title="계약서 마법사에서 수정"
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer shadow-2xs"
+                              title="계약서 수정하기"
                             >
-                              <Edit3 className="w-3.5 h-3.5 text-purple-600" />
-                              <span>수정</span>
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>계속 작성</span>
                             </button>
-                          )}
-
-                          {/* 3. CRM 이동 버튼 (공통 연동) */}
-                          {onNavigateToCrm && (
+                          ) : (
                             <button
-                              onClick={() => {
-                                onNavigateToCrm();
-                                toast.info(`[${c.clientName}] 의뢰인의 CRM 상세 화면으로 이동합니다.`);
-                              }}
-                              className="h-7.5 px-2.5 bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
-                              title="고객 CRM 상세 페이지로 바로 이동"
+                              onClick={() => setViewingContract(c)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer"
                             >
-                              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                              <span>CRM 이동</span>
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>열람</span>
                             </button>
                           )}
 
-                          {/* 4. 삭제 버튼 (우측 끝 정렬) */}
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            className="h-7.5 w-7.5 inline-flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl cursor-pointer transition-colors press-scale active:scale-95"
-                            title="계약 삭제"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* 더보기 (⋯) 드롭다운 */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setActiveMenuId(activeMenuId === c.id ? null : c.id)}
+                              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                              title="더보기 옵션"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+
+                            {activeMenuId === c.id && (
+                              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-1 space-y-0.5 animate-fadeIn text-left">
+                                <button
+                                  onClick={() => { setViewingContract(c); setActiveMenuId(null); }}
+                                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>계약서 전문 열람</span>
+                                </button>
+
+                                {c.blockchainAnchor && (
+                                  <button
+                                    onClick={() => { setVerifyModalContract(c); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 rounded-lg cursor-pointer"
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                                    <span>블록체인 검증</span>
+                                  </button>
+                                )}
+
+                                {onNavigateToCrm && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      onNavigateToCrm(c.clientId, 'contracts');
+                                      toast.info(`[${c.clientName}] 의뢰인의 사건 화면으로 이동합니다.`);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                                    <span>사건 2단계 이동</span>
+                                  </button>
+                                )}
+
+                                <div className="border-t border-slate-100 my-1" />
+
+                                <button
+                                  onClick={() => { setActiveMenuId(null); handleDelete(c.id); }}
+                                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                  <span>계약 삭제</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -705,10 +612,9 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
             </tbody>
           </table>
         </div>
-
       </div>
 
-      {/* ── 5. 사무소 문서함 (서식 보관함) 단독 모달 ── */}
+      {/* ── 4. 사무소 문서함 (서식 보관함) 모달 ── */}
       <ContractDocLibraryModal
         isOpen={libraryOpen}
         onClose={() => setLibraryOpen(false)}
@@ -716,7 +622,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         lawFirmName={lawFirmName}
       />
 
-      {/* ── 5-1. 신청서류 마스터 설정 모달 (리걸플로 20~21p 벤치마킹) ── */}
+      {/* ── 5. 신청서류 마스터 설정 모달 ── */}
       <ApplicationDocSettingsModal
         isOpen={docSettingsOpen}
         onClose={() => setDocSettingsOpen(false)}
@@ -726,11 +632,10 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       {viewingContract && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-            
             {/* 뷰어 헤더 */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E3A5F] flex items-center justify-center">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -746,35 +651,17 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
 
               <div className="flex items-center gap-2">
                 {isSignedContract(viewingContract) && (
-                  <>
-                    <button
-                      onClick={() => generateCourtSubmissionPdf(viewingContract)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer"
-                      title="법원 제출용 일체형 PDF 다운로드"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>법원제출용 PDF</span>
-                    </button>
-                    <button
-                      onClick={() => setVerifyModalContract(viewingContract)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                      title="블록체인 분산원장 원본 검증기"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                      <span>블록체인 검증</span>
-                    </button>
-                  </>
+                  <button
+                    onClick={() => generateCourtSubmissionPdf(viewingContract)}
+                    className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#152a45] text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>법원제출 PDF</span>
+                  </button>
                 )}
                 <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>인쇄하기</span>
-                </button>
-                <button
                   onClick={() => setViewingContract(null)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -782,118 +669,37 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
             </div>
 
             {/* 뷰어 본문 */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-6 font-sans">
-              {/* 요약 카드 */}
-              <div className="grid grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">총 수임료</span>
-                  <span className="text-sm font-black text-slate-900">{contractFeeWon(viewingContract).toLocaleString()}원</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">분납 조건</span>
-                  <span className="text-sm font-bold text-slate-800">{viewingContract.feeSchedule?.length || 0}회차 분납</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">무결성 토큰</span>
-                  <span className="text-xs font-mono font-bold text-emerald-700" title="시스템이 생성한 시점 토큰입니다 (외부 공인 타임스탬프 기관 발급 아님)">{viewingContract.timestampToken ? '시점토큰 생성(자체)' : '대기중'}</span>
-                </div>
-              </div>
-
-              {/* 첨부 문서 전문 (형광펜 렌더링) */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2">
-                  포함된 계약 문서 및 특약 전문 ({(viewingContract.documents || []).filter(d => d.included).length}종)
-                </h4>
-
-                {(viewingContract.documents || []).filter(d => d.included).map(doc => (
-                  <div key={doc.id} className="p-4 bg-white border border-slate-200 rounded-2xl space-y-2 shadow-2xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                        <span>{CONTRACT_DOC_TYPES[doc.type]?.emoji || '📄'}</span>
-                        <span>{doc.title}</span>
-                      </span>
-                      {doc.clientSignature ? (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          자필서명 완료 ({doc.clientSignedAt?.slice(0, 10)})
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400">서명 대기</span>
-                      )}
-                    </div>
-
-                    <HighlightedDocumentViewer
-                      content={doc.content}
-                      requiredConfirmationText={doc.requiredConfirmationText}
-                    />
-
-                    {doc.clientConfirmationText && (
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 mt-2">
-                        <strong>고객 직접 자필확약 입력 완료:</strong> "{doc.clientConfirmationText}" (일시: {doc.confirmedAt?.slice(0, 16) || '체결시'})
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* 공식 감사추적 인증서 임베딩 */}
-              <div className="pt-4 border-t border-slate-200">
-                <h4 className="text-sm font-black text-slate-800 mb-3">전자계약 감사추적 기록</h4>
-                <AuditTrailCertificate 
-                  contract={viewingContract} 
-                  onOpenVerifyModal={() => setVerifyModalContract(viewingContract)}
-                />
-              </div>
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              <HighlightedDocumentViewer 
+                contract={viewingContract} 
+                lawyerName={lawyerName} 
+                lawFirmName={lawFirmName} 
+                revealFullName={true}
+              />
+              <AuditTrailCertificate contract={viewingContract} />
             </div>
-
-            {/* 뷰어 푸터 */}
-            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/70">
-              <div className="text-xs text-slate-500">
-                {viewingContract.blockchainAnchor && (
-                  <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{viewingContract.blockchainAnchor.isRealOnChain ? '문서 해시 온체인 기록됨' : '문서 해시 서버 보관 (온체인 미기록)'}</span>
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {isSignedContract(viewingContract) && (
-                  <button
-                    onClick={() => generateCourtSubmissionPdf(viewingContract)}
-                    className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>법원제출용 PDF 다운로드</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setViewingContract(null)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs cursor-pointer transition-colors"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-
           </div>
         </div>
       )}
 
-      {/* ── 6. 골든타임 재촉 알림톡 사전 확인 & 미리보기 모달 ── */}
-      <ContractReminderModal
-        isOpen={Boolean(reminderTargetContract)}
-        onClose={() => setReminderTargetContract(null)}
-        contract={reminderTargetContract}
-        onSend={handleConfirmSendReminder}
-      />
+      {/* ── 7. 골든타임 재촉 알림톡 모달 ── */}
+      {reminderTargetContract && (
+        <ContractReminderModal
+          contract={reminderTargetContract}
+          isOpen={!!reminderTargetContract}
+          onClose={() => setReminderTargetContract(null)}
+          onConfirmSend={handleConfirmSendReminder}
+        />
+      )}
 
-      {/* ── 7. 블록체인 공공 원본 검증기 모달 ── */}
-      <ContractPublicVerifierModal
-        isOpen={Boolean(verifyModalContract)}
-        onClose={() => setVerifyModalContract(null)}
-        contract={verifyModalContract}
-        revealFullName
-      />
-
+      {/* ── 8. 블록체인 검증 모달 ── */}
+      {verifyModalContract && (
+        <ContractPublicVerifierModal
+          contract={verifyModalContract}
+          isOpen={!!verifyModalContract}
+          onClose={() => setVerifyModalContract(null)}
+        />
+      )}
     </div>
   );
 }

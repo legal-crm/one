@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { QuickToolId, Position } from './types';
 import { ALL_QUICK_TOOLS } from './defaultTools';
 import { getToolIcon } from './toolIcons';
-import { resetDockShared } from './dockShared';
+import { resetDockShared, useDockShared } from './dockShared';
 import { useDialog } from '../../common/DialogProvider';
 
 // 개별 도구 뷰들 import
@@ -220,6 +220,8 @@ export default function FloatingToolWindow({
     }
   };
 
+  const shared = useDockShared();
+
   // 창 안에서 Esc → 창 접기 (도구는 마운트된 채 숨김 → 입력값 유지). 닫기는 닫기 버튼으로만.
   // 이전: Esc가 창을 닫아(onClose) 유지 중인 도구 목록(mountedIds)이 비워지며 모든 도구 입력이 사라졌음.
   // 도구가 자체적으로 Esc를 처리한 경우(preventDefault)와 한글 조합 중 Esc는 건드리지 않는다.
@@ -238,7 +240,9 @@ export default function FloatingToolWindow({
   const handleResetAll = async () => {
     const ok = await dialog.confirm({
       title: '새 상담 시작',
-      message: '모든 계산기에 입력한 금액·인원수·채권자 목록을 지웁니다. 상담 메모와 핀 메모는 그대로 둡니다.',
+      message: shared.caseContext
+        ? `${shared.caseContext.clientName} 님 사건과 연결되어 있습니다. 모든 계산기 입력값을 비우고 초기화하시겠습니까?`
+        : '모든 계산기에 입력한 금액·인원수·채권자 목록을 지웁니다. 상담 메모와 핀 메모는 그대로 둡니다.',
       confirmText: '입력값 지우기',
       variant: 'warning',
     });
@@ -280,24 +284,33 @@ export default function FloatingToolWindow({
         isDragging ? 'shadow-blue-500/20 ring-2 ring-blue-500/50' : 'shadow-2xl'
       }`}
     >
-      {/* ── 윈도우 타이틀바 (드래그 핸들) ── */}
+      {/* ── 윈도우 타이틀바 (라이트 톤 드래그 핸들) ── */}
       <div
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
         onPointerCancel={handleHeaderPointerUp}
-        className="bg-slate-900 text-white px-3.5 py-2.5 flex items-center justify-between cursor-move select-none border-b border-slate-800 touch-none active:bg-slate-800"
+        className="bg-slate-50 text-slate-900 px-3.5 py-2.5 flex items-center justify-between cursor-move select-none border-b border-slate-200 touch-none active:bg-slate-100/90"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center text-slate-400 hover:text-slate-200 cursor-grab active:cursor-grabbing">
+          <div className="flex items-center text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing">
             <Move className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className={`w-5 h-5 rounded-md ${currentTool.colorClass.bg} ${currentTool.colorClass.text} flex items-center justify-center shrink-0`}>
             <IconComponent className="w-3 h-3" aria-hidden="true" />
           </div>
-          <span id="quickdock-window-title" className="font-bold text-xs text-white truncate">
+          <span id="quickdock-window-title" className="font-bold text-xs text-slate-900 truncate">
             {currentTool.title}
           </span>
+          {shared.caseContext && (
+            <span
+              className="text-xs bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1 max-w-[120px] truncate"
+              title={`${shared.caseContext.clientName} 님 사건 데이터 연동 중`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" aria-hidden="true" />
+              <span className="truncate">{shared.caseContext.clientName}</span>
+            </span>
+          )}
         </div>
 
         {/* 윈도우 컨트롤러 (새 상담, 최소화, 닫기) */}
@@ -306,7 +319,7 @@ export default function FloatingToolWindow({
             type="button"
             onClick={handleResetAll}
             aria-label="계산기 입력값 모두 지우기 (새 상담)"
-            className="p-1 text-slate-400 hover:text-amber-300 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-amber-600 rounded hover:bg-slate-200/70 transition-colors cursor-pointer"
             title="새 상담: 계산기 입력값 모두 지우기"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -317,7 +330,7 @@ export default function FloatingToolWindow({
             onClick={() => setIsMinimized(prev => !prev)}
             aria-label={isMinimized ? '창 펼치기' : '창 접기'}
             aria-expanded={!isMinimized}
-            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-slate-800 rounded hover:bg-slate-200/70 transition-colors cursor-pointer"
             title={isMinimized ? '창 펼치기' : '창 접기 (Esc, 입력값 유지)'}
           >
             {isMinimized ? <Square className="w-3 h-3" /> : <Minus className="w-3.5 h-3.5" />}
@@ -326,7 +339,7 @@ export default function FloatingToolWindow({
             type="button"
             onClick={onClose}
             aria-label="창 닫기"
-            className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
             title="창 닫기"
           >
             <X className="w-3.5 h-3.5" />
@@ -353,7 +366,7 @@ export default function FloatingToolWindow({
                 aria-selected={isActive}
                 aria-controls={`quickdock-panel-${t.id}`}
                 onClick={() => onSelectTool(t.id)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   isActive
                     ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'

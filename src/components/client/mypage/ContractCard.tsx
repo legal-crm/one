@@ -24,7 +24,7 @@ export default function ContractCard({ vm }: { vm: MyPageModel }) {
     );
   }
 
-  const signed = clientContract.status === 'signed';
+  const signed = clientContract.status === 'completed' || clientContract.status === 'signed' || !!clientContract.signedAt;
   const dateLabel = clientContract.signedAt
     ? new Date(clientContract.signedAt).toLocaleDateString('ko-KR')
     : clientContract.createdAt

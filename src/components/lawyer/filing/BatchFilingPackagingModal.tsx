@@ -396,7 +396,7 @@ function BatchFilingPackagingModalInner({
                 <h2 className="text-base font-extrabold text-white">
                   법원 정식 전자소송 14단계 서류 패키징 & 원스톱 단일 PDF 생성
                 </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
                   {courtName} 실무 규격 100% 일치
                 </span>
               </div>
@@ -420,13 +420,13 @@ function BatchFilingPackagingModalInner({
               <Coins className="w-4 h-4 text-amber-600" />
               <span className="text-slate-600">법정 인지액:</span>
               <span className="font-extrabold text-slate-900">{stampFee.toLocaleString()}원</span>
-              <span className="text-[10px] text-slate-600 font-medium">{isBankruptcy ? '(파산·면책 신청, 전자소송 10% 감액)' : '(개시신청 3만 + 금지명령 2천, 전자소송 10% 감액)'}</span>
+              <span className="text-xs text-slate-600 font-medium">{isBankruptcy ? '(파산·면책 신청, 전자소송 10% 감액)' : '(개시신청 3만 + 금지명령 2천, 전자소송 10% 감액)'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Landmark className="w-4 h-4 text-blue-600" />
               <span className="text-slate-600">법정 송달료:</span>
               <span className="font-extrabold text-blue-700">{serviceFee.toLocaleString()}원</span>
-              <span className="text-[10px] text-slate-600 font-medium">
+              <span className="text-xs text-slate-600 font-medium">
                 ({courtFee.deliveryRounds}회 × {DELIVERY_UNIT_FEE_KRW.toLocaleString()}원, 채권자 {creditorCount}명 기준)
               </span>
             </div>
@@ -470,7 +470,7 @@ function BatchFilingPackagingModalInner({
                 }`}
               >
                 <span>🏛️ 법원 뷰어 목차 (시뮬레이터)</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
                   viewMode === 'COURT_VIEWER' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'
                 }`}>
                   추천
@@ -512,7 +512,7 @@ function BatchFilingPackagingModalInner({
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               <span>🏛️ 전자소송 표준 ZIP 다운로드</span>
-              <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
+              <span className="text-xs bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
                 1:1 뷰어 최적화
               </span>
             </button>
@@ -571,14 +571,14 @@ function BatchFilingPackagingModalInner({
                   <Landmark className="w-3.5 h-3.5 text-blue-400" />
                   <span>법원 전자기록 뷰어 목차</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {simulatedManifest.length}개 서류
                 </span>
               </div>
 
-              <div className="p-2 bg-blue-50/60 border-b border-blue-100 text-[11px] text-blue-900 flex items-center justify-between">
+              <div className="p-2 bg-blue-50/60 border-b border-blue-100 text-xs text-blue-900 flex items-center justify-between">
                 <span>회생위원 화면 1:1 프리뷰</span>
-                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5">
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-0.5">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   20MB 제한 준수
                 </span>
@@ -599,14 +599,14 @@ function BatchFilingPackagingModalInner({
                           : 'hover:bg-slate-50 text-slate-700'
                       }`}
                     >
-                      <span className="font-mono text-[10px] bg-slate-100 px-1 py-0.5 rounded text-slate-600 mt-0.5 shrink-0">
+                      <span className="font-mono text-xs bg-slate-100 px-1 py-0.5 rounded text-slate-600 mt-0.5 shrink-0">
                         {String(item.order).padStart(2, '0')}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium leading-tight">
                           {item.fileName}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
                           <span>{item.sizeEst}</span>
                           <span>·</span>
                           {item.isDigital ? (
@@ -633,7 +633,7 @@ function BatchFilingPackagingModalInner({
                   <div className="pb-4 border-b border-slate-200 flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
                           목차 #{String(simulatedManifest[selectedViewerIdx].order).padStart(2, '0')}
                         </span>
                         <span className="text-xs font-bold text-slate-600">
@@ -661,7 +661,7 @@ function BatchFilingPackagingModalInner({
                         <Scale className="w-3.5 h-3.5 text-blue-600" />
                         <span>회생위원 뷰어 목차 연동</span>
                       </span>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         전자소송 접수 시 '파일명과 동일'로 등록되어 뷰어 목차에서 단 한 번의 클릭으로 즉시 열람됩니다.
                       </p>
                     </div>
@@ -671,7 +671,7 @@ function BatchFilingPackagingModalInner({
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                         <span>20MB 파일 제한 검증</span>
                       </span>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         현재 예상 크기 <strong>{simulatedManifest[selectedViewerIdx].sizeEst}</strong>로, 법원 20MB 제한을 안전하게 준수합니다.
                       </p>
                     </div>
@@ -681,7 +681,7 @@ function BatchFilingPackagingModalInner({
                         <Eye className="w-3.5 h-3.5 text-purple-600" />
                         <span>텍스트 레이어 및 검색 (Ctrl+F)</span>
                       </span>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         {simulatedManifest[selectedViewerIdx].isDigital
                           ? '✅ 공식 전산 서식으로 회생위원이 텍스트를 즉시 검색·복사할 수 있습니다.'
                           : '⚠️ 스캔 서류는 회생위원 검색 편의를 위해 OCR 처리를 강력 권장합니다.'}
@@ -693,7 +693,7 @@ function BatchFilingPackagingModalInner({
                         <FileText className="w-3.5 h-3.5 text-slate-600" />
                         <span>서류 분류 및 구성</span>
                       </span>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         {simulatedManifest[selectedViewerIdx].notes || '표준 법원 제출 서류'}
                       </p>
                     </div>
@@ -767,29 +767,29 @@ function BatchFilingPackagingModalInner({
                           {slot.title}
                         </span>
                         {slot.isRequired && (
-                          <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">
+                          <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">
                             필수
                           </span>
                         )}
                         {isCore ? (
-                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 flex items-center gap-1">
+                          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 flex items-center gap-1">
                             <CheckCheck className="w-2.5 h-2.5" />
                             <span>법원 전산양식 자동생성(완료)</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                          <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
                             소명서류
                           </span>
                         )}
                         {fileCount > 1 && (
-                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 flex items-center gap-1">
+                          <span className="text-xs font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 flex items-center gap-1">
                             <FolderArchive className="w-2.5 h-2.5" />
                             <span>{fileCount}개 서류 결합</span>
                           </span>
                         )}
                       </div>
 
-                      <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-2 truncate">
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 truncate">
                         {isCore ? (
                           <span className="text-blue-600 font-medium truncate flex items-center gap-1">
                             <FileText className="w-3 h-3 shrink-0" />
@@ -858,15 +858,15 @@ function BatchFilingPackagingModalInner({
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-bold text-slate-900">{bundle.title}</h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                          <span className="text-xs font-mono px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
                             {bundle.bundleFileName}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{bundle.description}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{bundle.description}</p>
                       </div>
                     </div>
 
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${
                       hasReady ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
                     }`}>
                       {hasReady ? '증빙 매칭됨' : '미매칭'}

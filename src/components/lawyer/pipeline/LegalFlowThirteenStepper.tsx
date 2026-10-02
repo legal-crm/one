@@ -26,7 +26,7 @@ export default function LegalFlowThirteenStepper({
   isDismissedRevoked = false,
   onSelectStage,
   onToggleDismissedRevoked,
-  readOnly = false,
+  readOnly = true,
 }: LegalFlowThirteenStepperProps) {
   const stages: LegalFlowStageConfig[] = isBankruptcy 
     ? LEGALFLOW_BANKRUPTCY_STAGES 
@@ -41,7 +41,12 @@ export default function LegalFlowThirteenStepper({
   const isAfterSubmission = safeCurrentIndex >= SUBMISSION_INDEX;
 
   const handleStageClick = async (targetStage: LegalFlowStageConfig, targetIndex: number) => {
-    if (readOnly) return;
+    if (readOnly) {
+      toast.info(`세부 절차 안내: [${targetStage.label}]`, {
+        description: '법원 진행 단계는 결정 등록 및 사건 진행 상황에 따라 자동으로 동기화됩니다.',
+      });
+      return;
+    }
 
     // 기각 및 폐지 단계는 전용 토글로 분기 처리
     if (targetStage.id === 'dismissed_revoked' || targetStage.id === 'bankruptcy_closed') {
@@ -60,57 +65,66 @@ export default function LegalFlowThirteenStepper({
       return;
     }
 
-    // 저장 결과를 기다린 뒤 안내 (이전: 저장 전에 성공 안내 → 서버 저장 실패여도 '변경되었습니다')
+    // 저장 결과를 기다린 뒤 안내
     const result = await onSelectStage(targetStage.id);
     if (result === false) return;
     toast.success(`사건 단계가 [${targetStage.label}] 단계로 변경되었습니다.`);
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-slate-200 shadow-md select-none">
-      {/* 상단: 타이틀 + 현재 단계 요약 + 기각/폐지 토글 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5 pb-3 border-b border-slate-800">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 text-slate-800 shadow-xs select-none">
+      {/* 상단: 타이틀 + 현재 단계 요약 + 동기화 안내 */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <span className={`px-2.5 py-1 rounded-lg text-xs font-black tracking-wide ${
-            isBankruptcy ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide ${
+            isBankruptcy 
+              ? 'bg-purple-50 text-purple-700 border border-purple-200' 
+              : 'bg-blue-50 text-blue-700 border border-blue-200'
           }`}>
-            {isBankruptcy ? '개인파산 13단계' : '개인회생 13단계'}
+            {isBankruptcy ? '개인파산 13단계 세부 절차' : '개인회생 13단계 세부 절차'}
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-slate-300">
-            <span className="text-slate-500">현재 단계:</span>
-            <span className="font-extrabold text-white text-sm tracking-tight">{currentStageConfig.label}</span>
-            <span className="text-slate-500 text-[11px]">({safeCurrentIndex + 1}/13)</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="text-slate-400">현재 법원 단계:</span>
+            <span className="font-bold text-slate-900 text-sm tracking-tight">{currentStageConfig.label}</span>
+            <span className="text-slate-400 text-xs">({safeCurrentIndex + 1}/13)</span>
           </div>
         </div>
 
-        {/* 기각 및 폐지 체크박스 토글 */}
-        <div className="flex items-center gap-3">
-          {onToggleDismissedRevoked && (
-            <label className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
-              isDismissedRevoked 
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' 
-                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-            }`}>
-              <input 
-                type="checkbox"
-                checked={isDismissedRevoked}
-                onChange={e => onToggleDismissedRevoked(e.target.checked)}
-                className="rounded accent-rose-500 cursor-pointer"
-              />
-              <span>기각 및 폐지</span>
-            </label>
+        {/* 상태 표시 및 기각/폐지 플래그 */}
+        <div className="flex items-center gap-2.5">
+          {readOnly ? (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/80">
+              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+              <span>법원 결정 등록 시 자동 갱신 (읽기 전용 타임라인)</span>
+            </span>
+          ) : (
+            onToggleDismissedRevoked && (
+              <label className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+                isDismissedRevoked 
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                  : 'bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}>
+                <input 
+                  type="checkbox"
+                  checked={isDismissedRevoked}
+                  onChange={e => onToggleDismissedRevoked(e.target.checked)}
+                  className="rounded accent-rose-600 cursor-pointer"
+                />
+                <span>기각 및 폐지</span>
+              </label>
+            )
           )}
 
           {isAfterSubmission && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/20">
-              <Lock className="w-3 h-3" />
-              <span>접수 후 이전 단계 역행 제한</span>
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+              <Lock className="w-3.5 h-3.5" />
+              <span>법원 심리 진행 중</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* 가로 스크롤 가능한 13단계 체인 바 */}
+      {/* 가로 스크롤 가능한 13단계 타임라인 체인 바 */}
       <div className="overflow-x-auto pb-1 no-scrollbar">
         <div className="flex items-center min-w-[780px] gap-1">
           {stages.map((stg, idx) => {
@@ -124,41 +138,40 @@ export default function LegalFlowThirteenStepper({
                 <button
                   type="button"
                   onClick={() => handleStageClick(stg, idx)}
-                  disabled={readOnly}
-                  className={`group relative flex flex-col items-center justify-center py-2 px-2.5 rounded-xl text-center transition-all cursor-pointer select-none shrink-0 min-w-[56px] ${
+                  className={`group relative flex flex-col items-center justify-center py-2 px-2.5 rounded-xl text-center transition-all cursor-pointer select-none shrink-0 min-w-[58px] ${
                     isCurrent
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400 font-black'
+                      ? 'bg-[#1E3A5F] text-white shadow-sm ring-2 ring-[#1E3A5F]/20 font-bold'
                       : isCompleted
-                      ? 'bg-slate-800/90 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60 font-semibold'
+                      ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100/70 border border-emerald-200/80 font-medium'
                       : isDismissedStage && isDismissedRevoked
-                      ? 'bg-rose-600 text-white font-black'
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200 font-bold'
                       : isLocked
-                      ? 'bg-slate-800/40 text-slate-600 border border-slate-800 cursor-not-allowed opacity-60'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-slate-50 text-slate-400 border border-slate-200/50 cursor-default opacity-70'
+                      : 'bg-slate-50/70 text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/60'
                   }`}
-                  title={`${idx + 1}단계: ${stg.label}`}
+                  title={`${idx + 1}단계: ${stg.label} ${readOnly ? '(상세 안내 보기)' : ''}`}
                 >
                   {/* 상단 번호 / 완료 아이콘 */}
                   <div className="flex items-center gap-1 mb-1">
                     {isCompleted ? (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     ) : isLocked ? (
-                      <Lock className="w-3 h-3 text-slate-500" />
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
                     ) : (
-                      <span className={`text-[10px] font-mono leading-none ${isCurrent ? 'text-blue-100' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-mono font-bold leading-none ${isCurrent ? 'text-white' : 'text-slate-400'}`}>
                         {idx + 1}
                       </span>
                     )}
                   </div>
 
-                  {/* 라벨 (짧은 라벨 + 풀 라벨 툴팁) */}
-                  <span className={`text-xs tracking-tight whitespace-nowrap ${isCurrent ? 'text-white' : ''}`}>
+                  {/* 라벨 (짧은 라벨) */}
+                  <span className={`text-xs tracking-tight whitespace-nowrap font-medium ${isCurrent ? 'text-white font-bold' : ''}`}>
                     {stg.shortLabel}
                   </span>
 
                   {/* 접수 단계 구분선 악센트 뱃지 */}
                   {stg.id === 'petition_submitted' && (
-                    <span className="absolute -bottom-1.5 bg-amber-500 text-slate-950 font-black text-[8px] px-1 rounded-sm leading-tight">
+                    <span className="absolute -bottom-1.5 bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs px-1 rounded leading-tight scale-90">
                       접수
                     </span>
                   )}
@@ -167,7 +180,7 @@ export default function LegalFlowThirteenStepper({
                 {/* 단계 간 화살표 */}
                 {idx < stages.length - 1 && (
                   <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                    idx < safeCurrentIndex ? 'text-emerald-500/60' : 'text-slate-700'
+                    idx < safeCurrentIndex ? 'text-emerald-500' : 'text-slate-300'
                   }`} />
                 )}
               </React.Fragment>

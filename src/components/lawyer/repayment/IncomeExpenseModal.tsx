@@ -225,7 +225,7 @@ function IncomeExpenseModalInner({
                 <h3 className="font-extrabold text-base text-white">
                   수입 및 지출에 관한 목록 (대법원 전산양식 D5103)
                 </h3>
-                <span className="text-[10px] bg-blue-500 text-white font-extrabold px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-blue-500 text-white font-extrabold px-2 py-0.5 rounded-full">
                   2026 AUTO-FILING PRO
                 </span>
               </div>
@@ -385,7 +385,7 @@ function IncomeExpenseModalInner({
                     <span className="text-xs font-bold text-slate-700 block">수입 명세 (세전)</span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="text-[11px] text-slate-500 font-bold mb-1 block">
+                        <label className="text-xs text-slate-500 font-bold mb-1 block">
                           매월 정기 수령액 (기본급+수당)
                         </label>
                         <div className="relative">
@@ -401,7 +401,7 @@ function IncomeExpenseModalInner({
                       </div>
 
                       <div>
-                        <label className="text-[11px] text-slate-500 font-bold mb-1 block">
+                        <label className="text-xs text-slate-500 font-bold mb-1 block">
                           정기상여금·성과급 (연간 총액)
                         </label>
                         <div className="relative">
@@ -414,13 +414,13 @@ function IncomeExpenseModalInner({
                           />
                           <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
                         </div>
-                        <span className="text-[10px] text-slate-400 mt-1 block text-right font-mono">
+                        <span className="text-xs text-slate-400 mt-1 block text-right font-mono">
                           월 환산: +{sal.monthlyBonusConverted.toLocaleString()}원
                         </span>
                       </div>
 
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-col justify-center">
-                        <span className="text-[11px] text-slate-400 font-bold">공제 전 월 총수입</span>
+                        <span className="text-xs text-slate-400 font-bold">공제 전 월 총수입</span>
                         <span className="text-sm font-mono font-black text-slate-900">
                           {sal.grossMonthlyIncome.toLocaleString()} 원
                         </span>
@@ -441,7 +441,7 @@ function IncomeExpenseModalInner({
 
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       <div>
-                        <label className="text-[11px] text-slate-500 block mb-1">소득세</label>
+                        <label className="text-xs text-slate-500 block mb-1">소득세</label>
                         <input
                           type="number"
                           value={sal.incomeTax}
@@ -450,7 +450,7 @@ function IncomeExpenseModalInner({
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block mb-1">주민세(지방세)</label>
+                        <label className="text-xs text-slate-500 block mb-1">주민세(지방세)</label>
                         <input
                           type="number"
                           value={sal.residentTax}
@@ -459,7 +459,7 @@ function IncomeExpenseModalInner({
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block mb-1">건강보험료</label>
+                        <label className="text-xs text-slate-500 block mb-1">건강보험료</label>
                         <input
                           type="number"
                           value={sal.healthInsurance}
@@ -468,7 +468,7 @@ function IncomeExpenseModalInner({
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block mb-1">국민연금</label>
+                        <label className="text-xs text-slate-500 block mb-1">국민연금</label>
                         <input
                           type="number"
                           value={sal.nationalPension}
@@ -477,7 +477,7 @@ function IncomeExpenseModalInner({
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block mb-1">고용보험료</label>
+                        <label className="text-xs text-slate-500 block mb-1">고용보험료</label>
                         <input
                           type="number"
                           value={sal.employmentInsurance}
@@ -492,7 +492,7 @@ function IncomeExpenseModalInner({
                   <div className="p-3.5 bg-blue-50/80 rounded-xl border border-blue-200 flex justify-between items-center">
                     <div>
                       <span className="text-xs font-bold text-blue-950 block">월 실수령 순수입액</span>
-                      <span className="text-[11px] text-blue-700">
+                      <span className="text-xs text-blue-700">
                         연간 환산 총 순수입: {sal.annualConvertedIncome.toLocaleString()}원
                       </span>
                     </div>
@@ -550,7 +550,7 @@ function IncomeExpenseModalInner({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold mb-1 block">
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">
                         최근 1년간 총수입 (매출액)
                       </label>
                       <div className="relative">
@@ -566,7 +566,7 @@ function IncomeExpenseModalInner({
                     </div>
 
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold mb-1 block">
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">
                         영업비용 (경영·보존 필요경비)
                       </label>
                       <div className="relative">
@@ -582,7 +582,7 @@ function IncomeExpenseModalInner({
                     </div>
 
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold mb-1 block">
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">
                         제세공과금 (종합소득세 등)
                       </label>
                       <div className="relative">
@@ -601,12 +601,12 @@ function IncomeExpenseModalInner({
                   <div className="p-3.5 bg-purple-50/80 rounded-xl border border-purple-200 flex justify-between items-center">
                     <div>
                       <span className="text-xs font-bold text-purple-950 block">연간 순소득액 및 월평균 수입</span>
-                      <span className="text-[11px] text-purple-700">
+                      <span className="text-xs text-purple-700">
                         연간 순소득: {biz.netAnnualBusinessIncome.toLocaleString()} 원
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[11px] text-purple-600 font-bold block">월평균 수입액</span>
+                      <span className="text-xs text-purple-600 font-bold block">월평균 수입액</span>
                       <span className="text-lg font-mono font-black text-purple-900">
                         {biz.monthlyAverageIncome.toLocaleString()} 원
                       </span>
@@ -623,15 +623,15 @@ function IncomeExpenseModalInner({
                             [별지: 12개월 수입 및 지출 명세서 (수지표)] 법원 제출 원장
                           </h5>
                           {formData.d5103ClientStatus === 'client_submitted' ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                               의뢰인 1차 작성 제출됨
                             </span>
                           ) : formData.d5103ClientStatus === 'lawyer_reviewed' ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                               변호사 검토 완료 승인됨
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600">
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600">
                               원장 미작성 (자동생성 가능)
                             </span>
                           )}
@@ -708,7 +708,7 @@ function IncomeExpenseModalInner({
                             <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 font-medium text-slate-800">
                               <span className="font-bold text-blue-700">{item.name}</span>:
                               <span>{(item.monthlyAmount || 0).toLocaleString()}원</span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-xs text-slate-400">
                                 ({item.rollupTarget === 'rent' ? '월세' : item.rollupTarget === 'utility' ? '공과금' : item.rollupTarget === 'electricity' ? '전기' : '운영비'} 합산)
                               </span>
                             </span>
@@ -914,7 +914,7 @@ function IncomeExpenseModalInner({
                 {formData.seizure.hasSeizure && (
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100 animate-fadeIn">
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold block mb-1">결정 법원</label>
+                      <label className="text-xs text-slate-500 font-bold block mb-1">결정 법원</label>
                       <input
                         type="text"
                         placeholder="예: 서울중앙지방법원"
@@ -924,7 +924,7 @@ function IncomeExpenseModalInner({
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold block mb-1">사건번호</label>
+                      <label className="text-xs text-slate-500 font-bold block mb-1">사건번호</label>
                       <input
                         type="text"
                         placeholder="예: 2025타채 12345"
@@ -934,7 +934,7 @@ function IncomeExpenseModalInner({
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold block mb-1">상대방 채권자</label>
+                      <label className="text-xs text-slate-500 font-bold block mb-1">상대방 채권자</label>
                       <input
                         type="text"
                         placeholder="예: 국민은행"
@@ -944,7 +944,7 @@ function IncomeExpenseModalInner({
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] text-slate-500 font-bold block mb-1">압류 금액 (원)</label>
+                      <label className="text-xs text-slate-500 font-bold block mb-1">압류 금액 (원)</label>
                       <input
                         type="number"
                         step={10000}
@@ -1016,7 +1016,7 @@ function IncomeExpenseModalInner({
                           : 'bg-slate-50 border-slate-200 text-slate-600'
                       }`}
                     >
-                      <span className="block text-[11px]">{size}인 가구</span>
+                      <span className="block text-xs">{size}인 가구</span>
                       <span className="font-mono font-black text-xs">
                         {MIN_LIVING_EXPENSE_60_2026[size].toLocaleString()}원
                       </span>
@@ -1052,7 +1052,7 @@ function IncomeExpenseModalInner({
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">기준 주거비 초과 월세 실비</span>
+                    <span className="text-xs text-slate-400 mt-1 block">기준 주거비 초과 월세 실비</span>
                   </div>
 
                   <div>
@@ -1070,7 +1070,7 @@ function IncomeExpenseModalInner({
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">만성질환 진료비/약제비</span>
+                    <span className="text-xs text-slate-400 mt-1 block">만성질환 진료비/약제비</span>
                   </div>
 
                   <div>
@@ -1088,7 +1088,7 @@ function IncomeExpenseModalInner({
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">필수 특수교육비 등</span>
+                    <span className="text-xs text-slate-400 mt-1 block">필수 특수교육비 등</span>
                   </div>
 
                   <div>
@@ -1106,7 +1106,7 @@ function IncomeExpenseModalInner({
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-slate-400">원</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">미성년 자녀 양육비 실비</span>
+                    <span className="text-xs text-slate-400 mt-1 block">미성년 자녀 양육비 실비</span>
                   </div>
                 </div>
 
@@ -1128,7 +1128,7 @@ function IncomeExpenseModalInner({
                 <div className="p-3.5 bg-rose-50/80 rounded-xl border border-rose-200 flex justify-between items-center">
                   <div>
                     <span className="text-xs font-bold text-rose-950 block">[B] 월평균 총 지출액 (생계비)</span>
-                    <span className="text-[11px] text-rose-700">
+                    <span className="text-xs text-rose-700">
                       기본 생계비({exp.claimedBaseCost.toLocaleString()}원) + 추가 생계비({exp.totalAdditionalExpenses.toLocaleString()}원)
                     </span>
                   </div>
@@ -1151,7 +1151,7 @@ function IncomeExpenseModalInner({
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                       <span>👨‍👩‍👧‍👦 동거 가족 및 피부양자 명세</span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         실시간 만 나이 & 부양 판정 연동
                       </span>
                     </h4>
@@ -1321,7 +1321,7 @@ function IncomeExpenseModalInner({
                               />
                               {/* 실시간 만 나이 & 법원 실무 뱃지 */}
                               <div className="mt-1 flex items-center gap-1">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${ageInfo.badgeColorClass}`}>
+                                <span className={`px-2 py-0.5 rounded-md text-xs font-bold border ${ageInfo.badgeColorClass}`}>
                                   {ageInfo.badgeText}
                                 </span>
                               </div>
@@ -1387,7 +1387,7 @@ function IncomeExpenseModalInner({
                                   }}
                                   className="w-4 h-4 text-emerald-600 rounded"
                                 />
-                                <span className={`text-[11px] font-bold ${
+                                <span className={`text-xs font-bold ${
                                   member.isEligibleDependent ? 'text-emerald-700 font-black' : 'text-slate-400'
                                 }`}>
                                   {member.isEligibleDependent ? '인정' : '제외'}
@@ -1459,7 +1459,7 @@ function IncomeExpenseModalInner({
                   <span className="text-xl font-black font-mono text-slate-900">
                     {disp.monthlyNetIncome.toLocaleString()} 원
                   </span>
-                  <span className="text-[11px] text-slate-400 block mt-1">
+                  <span className="text-xs text-slate-400 block mt-1">
                     {formData.incomeType === 'SALARY' ? '급여 실수령액' : '영업 순소득액'}
                   </span>
                 </div>
@@ -1469,7 +1469,7 @@ function IncomeExpenseModalInner({
                   <span className="text-xl font-black font-mono text-rose-600">
                     -{disp.monthlyTotalExpense.toLocaleString()} 원
                   </span>
-                  <span className="text-[11px] text-slate-400 block mt-1">
+                  <span className="text-xs text-slate-400 block mt-1">
                     {exp.householdSize}인 가구 기준 + 추가생계비
                   </span>
                 </div>
@@ -1479,7 +1479,7 @@ function IncomeExpenseModalInner({
                   <span className="text-2xl font-black font-mono text-white">
                     {disp.monthlyDisposableIncome.toLocaleString()} 원
                   </span>
-                  <span className="text-[11px] text-blue-100 block mt-1">
+                  <span className="text-xs text-blue-100 block mt-1">
                     변제 {disp.repaymentMonths}개월간 총 {disp.totalDisposableIncome.toLocaleString()}원 변제
                   </span>
                 </div>
@@ -1519,7 +1519,7 @@ function IncomeExpenseModalInner({
                         }`} />
                         <div>
                           <strong className="block font-bold">{w.title}</strong>
-                          <p className="text-[11px] leading-relaxed mt-0.5 opacity-90">{w.description}</p>
+                          <p className="text-xs leading-relaxed mt-0.5 opacity-90">{w.description}</p>
                         </div>
                       </div>
                     ))}
@@ -1531,7 +1531,7 @@ function IncomeExpenseModalInner({
               <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 flex items-center justify-between">
                 <div>
                   <span className="text-xs font-bold text-blue-950 block">변제계획안(D5110/D5111) 자동 동기화</span>
-                  <p className="text-[11px] text-blue-700 mt-0.5">
+                  <p className="text-xs text-blue-700 mt-0.5">
                     산출된 월 가용소득 <strong className="font-mono">{disp.monthlyDisposableIncome.toLocaleString()}원</strong>을 변제계획안의 월 변제예정액으로 즉시 동기화합니다.
                   </p>
                 </div>

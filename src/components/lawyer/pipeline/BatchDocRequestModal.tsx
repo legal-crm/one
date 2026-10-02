@@ -211,7 +211,7 @@ export default function BatchDocRequestModal({
                   </button>
                 ))}
               </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">
+              <span className="text-xs text-slate-500 mt-1 block">
                 마감일: <strong className="text-[#1E3A5F] font-bold">{deadlineStr}</strong>까지 제출 안내
               </span>
             </div>
@@ -238,7 +238,7 @@ export default function BatchDocRequestModal({
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-slate-600 hover:text-slate-900 font-bold text-[11px] cursor-pointer"
+                className="text-slate-600 hover:text-slate-900 font-bold text-xs cursor-pointer"
               >
                 전체 반전
               </button>
@@ -268,21 +268,21 @@ export default function BatchDocRequestModal({
                         )}
                         <div className="truncate">
                           <span className="font-bold text-slate-900 mr-2">{doc.name}</span>
-                          <span className="text-[10px] text-slate-400">{doc.agency}</span>
+                          <span className="text-xs text-slate-400">{doc.agency}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         {phaseOf(doc) === 1 ? (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 border border-amber-200">
                             1차 등기
                           </span>
                         ) : (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                          <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-800 border border-blue-200">
                             2차 모바일
                           </span>
                         )}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-bold border ${
                           doc.isRequired 
                             ? 'bg-rose-50 text-rose-600 border-rose-200' 
                             : 'bg-slate-100 text-slate-500 border-slate-200'
@@ -308,9 +308,9 @@ export default function BatchDocRequestModal({
                   ? '[2차 모바일 간편제출] 알림톡 도착 미리보기' 
                   : '고객 스마트폰 카카오 알림톡 도착 미리보기'}
               </span>
-              <span className="text-[10px] text-amber-700 font-bold">미리보기 (실제 문구는 팝빌 승인 템플릿 기준)</span>
+              <span className="text-xs text-amber-700 font-bold">미리보기 (실제 문구는 팝빌 승인 템플릿 기준)</span>
             </div>
-            <div ref={previewRef} className="bg-white p-3 rounded-xl border border-amber-200 text-slate-700 leading-relaxed text-[11px] font-mono whitespace-pre-line">
+            <div ref={previewRef} className="bg-white p-3 rounded-xl border border-amber-200 text-slate-700 leading-relaxed text-xs font-mono whitespace-pre-line">
               {selectedPhase === 1 ? (
 `[${officeName}]
 ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠른등기 안내입니다.

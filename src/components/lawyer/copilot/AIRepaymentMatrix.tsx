@@ -138,11 +138,11 @@ export default function AIRepaymentMatrix({
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
               <span>변제금 3단 시뮬레이션</span>
-              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
                 참고용
               </span>
             </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               기본 산출 변제금을 기준으로 보수안(+18%)·감액안(−22%, 청산가치 하한 적용)을 단순 비율로 계산한 참고값입니다. 법원 판단이나 승인 가능성을 예측하지 않습니다.
             </p>
           </div>
@@ -167,7 +167,7 @@ export default function AIRepaymentMatrix({
               {/* 상단 뱃지 및 타이틀 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${sc.badgeColor}`}>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-md border ${sc.badgeColor}`}>
                     {sc.badge}
                   </span>
                 </div>
@@ -184,13 +184,13 @@ export default function AIRepaymentMatrix({
               {/* 핵심 수치: 월 변제금 & 탕감율 */}
               <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1 text-center">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-[11px] font-bold text-slate-500">예상 월 변제금</span>
+                  <span className="text-xs font-bold text-slate-500">예상 월 변제금</span>
                   <span className="text-base sm:text-lg font-black text-[#1E3A5F] tracking-tight tabular-nums">
                     {formatCurrency(sc.monthlyPayment)}
                   </span>
                 </div>
                 <div className="flex justify-between items-baseline border-t border-slate-200/50 pt-1">
-                  <span className="text-[11px] font-bold text-slate-500">총 탕감률</span>
+                  <span className="text-xs font-bold text-slate-500">총 탕감률</span>
                   <span className="text-sm font-black text-emerald-600 tracking-tight">
                     {sc.reductionRate}%
                   </span>
@@ -198,7 +198,7 @@ export default function AIRepaymentMatrix({
               </div>
 
               {/* 상세 조건 목록 */}
-              <ul className="space-y-1 text-[11px] text-slate-600">
+              <ul className="space-y-1 text-xs text-slate-600">
                 {sc.conditionsSummary.map((cond, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-slate-400 mt-0.5">•</span>

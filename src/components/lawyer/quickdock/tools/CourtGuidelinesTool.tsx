@@ -63,13 +63,13 @@ export default function CourtGuidelinesTool() {
 
   return (
     <div className="space-y-3 p-4 text-slate-800 text-xs">
-      <div className="flex items-start gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-2">
+      <div className="flex items-start gap-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-2">
         <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
         <span>참고용·비공식 정리입니다. 법원별 준칙은 수시로 개정되므로 관할 법원 공고를 직접 확인하세요.</span>
       </div>
 
       <div className="space-y-1.5">
-        <span className="text-[11px] font-bold text-slate-700 block" id="court-select-label">관할 법원 선택</span>
+        <span className="text-xs font-bold text-slate-700 block" id="court-select-label">관할 법원 선택</span>
         <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-labelledby="court-select-label">
           {COURTS.map(c => (
             <button
@@ -95,19 +95,19 @@ export default function CourtGuidelinesTool() {
           <Landmark className="w-4 h-4 text-violet-700" aria-hidden="true" />
           {selectedCourt.name}
         </span>
-        <div className="text-[11px]">
-          <span className="text-slate-600 block text-[10px]">주식·코인 투자손실금 처리</span>
+        <div className="text-xs">
+          <span className="text-slate-600 block text-xs">주식·코인 투자손실금 처리</span>
           <span className="font-bold text-slate-900">{selectedCourt.cryptoRule}</span>
         </div>
-        <div className="text-[11px]">
-          <span className="text-slate-600 block text-[10px]">24개월 단축 특례</span>
+        <div className="text-xs">
+          <span className="text-slate-600 block text-xs">24개월 단축 특례</span>
           <span className={`font-bold ${allows24 ? 'text-emerald-800' : 'text-slate-700'}`}>{special24Text(selectedCourt.name)}</span>
         </div>
         <a
           href={selectedCourt.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-800 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-bold text-violet-800 hover:underline"
         >
           법원 누리집에서 공고 확인
           <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -125,11 +125,11 @@ export default function CourtGuidelinesTool() {
             rel="noopener noreferrer"
             className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-violet-300 transition-colors press-scale"
           >
-            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-900">
+            <span className="flex items-center gap-1 text-xs font-bold text-slate-900">
               {link.label}
               <ExternalLink className="w-3 h-3 text-slate-500" aria-hidden="true" />
             </span>
-            <span className="block text-[10px] text-slate-600 leading-tight mt-0.5">{link.desc}</span>
+            <span className="block text-xs text-slate-600 leading-tight mt-0.5">{link.desc}</span>
             <span className="sr-only">(새 창)</span>
           </a>
         ))}

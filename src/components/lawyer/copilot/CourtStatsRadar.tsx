@@ -34,23 +34,23 @@ export default function CourtStatsRadar({
           <div className="flex items-center gap-2">
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900">{court.courtName || '관할 법원 미입력'}</h4>
             {court.courtName && (court.isSpecialized ? (
-              <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+              <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs font-black px-2 py-0.5 rounded-full">
                 회생법원
               </span>
             ) : (
-              <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
                 지방법원
               </span>
             ))}
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             거주지: <span className="font-medium text-slate-700">{residenceAddress || '미입력'}</span>
             {workLocation && <> | 직장: <span className="font-medium text-slate-700">{workLocation}</span></>}
           </p>
         </div>
       </div>
 
-      <p className="flex items-start gap-1.5 text-[11px] text-slate-500 leading-relaxed">
+      <p className="flex items-start gap-1.5 text-xs text-slate-500 leading-relaxed">
         <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
         <span>{COURT_STATS_UNAVAILABLE_NOTICE}</span>
       </p>

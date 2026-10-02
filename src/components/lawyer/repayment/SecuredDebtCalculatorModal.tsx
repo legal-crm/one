@@ -77,11 +77,11 @@ export default function SecuredDebtCalculatorModal({
             <div>
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
                 <span>별제권 행사 후 예정부족액 보조 계산기</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
                   법원 전산양식
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 대상 채권자: <strong className="text-slate-800 font-bold">{creditorName}</strong>
               </p>
             </div>
@@ -274,24 +274,24 @@ export default function SecuredDebtCalculatorModal({
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div className="relative">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">원금</label>
+                <label className="text-xs text-slate-500 font-semibold block mb-0.5">원금</label>
                 <input
                   type="number"
                   value={principalDebt}
                   onChange={(e) => setPrincipalDebt(Number(e.target.value) || 0)}
                   className="w-full px-3 py-1.5 pr-7 font-mono font-bold bg-white border border-slate-200 rounded-xl focus:border-purple-600 outline-none text-right"
                 />
-                <span className="absolute right-2.5 top-6 text-slate-400 text-[10px] font-bold">원</span>
+                <span className="absolute right-2.5 top-6 text-slate-400 text-xs font-bold">원</span>
               </div>
               <div className="relative">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">이자</label>
+                <label className="text-xs text-slate-500 font-semibold block mb-0.5">이자</label>
                 <input
                   type="number"
                   value={interestDebt}
                   onChange={(e) => setInterestDebt(Number(e.target.value) || 0)}
                   className="w-full px-3 py-1.5 pr-7 font-mono font-bold bg-white border border-slate-200 rounded-xl focus:border-purple-600 outline-none text-right"
                 />
-                <span className="absolute right-2.5 top-6 text-slate-400 text-[10px] font-bold">원</span>
+                <span className="absolute right-2.5 top-6 text-slate-400 text-xs font-bold">원</span>
               </div>
             </div>
             <div className="pt-1 border-t border-slate-200/60 flex justify-between items-center text-slate-600">
@@ -331,7 +331,7 @@ export default function SecuredDebtCalculatorModal({
               </span>
             </div>
 
-            <p className="text-[10px] text-purple-800 leading-tight pt-1">
+            <p className="text-xs text-purple-800 leading-tight pt-1">
               * 별제권 담보평가액으로 충당되지 못하는 <strong>예정부족액({calculatedShortage.toLocaleString()}원)</strong>만이 일반 개인회생채권으로 변제계획안에 편입됩니다.
             </p>
           </div>

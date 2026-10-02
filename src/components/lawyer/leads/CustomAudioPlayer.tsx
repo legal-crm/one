@@ -155,7 +155,7 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
             {!isDriveUrl && (
               <button
                 onClick={cyclePlaybackRate}
-                className="px-2 py-0.5 text-[11px] font-mono font-bold rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors flex items-center gap-1"
+                className="px-2 py-0.5 text-xs font-mono font-bold rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors flex items-center gap-1"
                 title="재생 배속 변경 (1x, 1.25x, 1.5x, 2x)"
               >
                 <Gauge size={11} />
@@ -182,7 +182,7 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
               />
             </div>
             <div className="flex justify-end items-center gap-2">
-              <span className="text-[10px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 * 구글 드라이브 보안 정책으로 표준 플레이어를 사용합니다.
               </span>
               <a
@@ -242,7 +242,7 @@ export const CustomAudioPlayer = forwardRef<CustomAudioPlayerRef, CustomAudioPla
                   background: `linear-gradient(to right, #9333ea ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%)`
                 }}
               />
-              <div className="flex justify-between text-[11px] text-slate-500 font-mono mt-1 px-0.5">
+              <div className="flex justify-between text-xs text-slate-500 font-mono mt-1 px-0.5">
                 <span className="font-semibold text-purple-700">{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>

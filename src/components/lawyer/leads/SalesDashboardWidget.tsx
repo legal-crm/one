@@ -45,7 +45,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
             <span className="text-2xl font-black tracking-tight">{metrics.totalLeads}</span>
             <span className={`text-xs font-bold ${activeFilter === 'all' ? 'text-blue-200' : 'text-slate-400'}`}>건</span>
           </div>
-          <p className={`text-[11px] mt-1 ${activeFilter === 'all' ? 'text-blue-200' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-1 ${activeFilter === 'all' ? 'text-blue-200' : 'text-slate-500'}`}>
             미접촉 신규 <strong className={activeFilter === 'all' ? 'text-white' : 'text-blue-600'}>{metrics.newLeads}건</strong>
           </p>
         </button>
@@ -72,7 +72,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
             <span className="text-2xl font-black tracking-tight text-purple-600 dark:text-purple-300">{metrics.todayReminders}</span>
             <span className={`text-xs font-bold ${activeFilter === 'callback' ? 'text-purple-200' : 'text-slate-400'}`}>건</span>
           </div>
-          <p className={`text-[11px] mt-1 ${activeFilter === 'callback' ? 'text-purple-200' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-1 ${activeFilter === 'callback' ? 'text-purple-200' : 'text-slate-500'}`}>
             당일 약속된 통화 큐
           </p>
         </button>
@@ -103,7 +103,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
             </span>
             <span className={`text-xs font-bold ${activeFilter === 'overdue' ? 'text-rose-200' : 'text-slate-400'}`}>건</span>
           </div>
-          <p className={`text-[11px] mt-1 ${activeFilter === 'overdue' ? 'text-rose-200' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-1 ${activeFilter === 'overdue' ? 'text-rose-200' : 'text-slate-500'}`}>
             예약 시간 경과 미통화
           </p>
         </button>
@@ -130,7 +130,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
             <span className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-300">{metrics.noAnswerLeads}</span>
             <span className={`text-xs font-bold ${activeFilter === 'no_answer' ? 'text-amber-200' : 'text-slate-400'}`}>건</span>
           </div>
-          <p className={`text-[11px] mt-1 ${activeFilter === 'no_answer' ? 'text-amber-200' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-1 ${activeFilter === 'no_answer' ? 'text-amber-200' : 'text-slate-500'}`}>
             1~3차 미수신 재시도 대상
           </p>
         </button>
@@ -161,7 +161,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
               ({metrics.convertedCount}건 승격)
             </span>
           </div>
-          <p className={`text-[11px] mt-1 ${activeFilter === 'converted' ? 'text-emerald-200' : 'text-emerald-700'}`}>
+          <p className={`text-xs mt-1 ${activeFilter === 'converted' ? 'text-emerald-200' : 'text-emerald-700'}`}>
             CRM 고객으로 이전 완료
           </p>
         </button>
@@ -181,7 +181,7 @@ export const SalesDashboardWidget: React.FC<SalesDashboardWidgetProps> = ({
             <span className="text-slate-300">상담 진행 중: <strong className="text-indigo-300">{metrics.inProgressLeads}명</strong></span>
           </div>
         </div>
-        <span className="text-[11px] text-slate-400 self-end sm:self-auto font-medium">
+        <span className="text-xs text-slate-400 self-end sm:self-auto font-medium">
           고객 CRM과 분리된 독립 영업 통계
         </span>
       </div>

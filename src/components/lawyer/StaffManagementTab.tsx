@@ -49,7 +49,7 @@ interface StaffManagementTabProps {
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
 }
 
-type SubSection = 'pending' | 'active' | 'cases' | 'logs' | 'invite-links';
+type SubSection = 'members' | 'invites' | 'cases' | 'logs';
 
 export default function StaffManagementTab({ requests, lawyers, activeLawyer, setRequests }: StaffManagementTabProps) {
   const dialog = useDialog();
@@ -57,7 +57,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<StaffActivityLog[]>([]);
   const [crmData, setCrmData] = useState<CrmDataStore>({});
-  const [activeSection, setActiveSection] = useState<SubSection>('active');
+  const [activeSection, setActiveSection] = useState<SubSection>('members');
 
   // ── 초대 모달 ──
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -144,6 +144,16 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     setCustomRoles(loadCustomRoles());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLawyer.id]);
+
+  // ESC 키로 상세 서랍 닫기
+  useEffect(() => {
+    if (!selectedStaffDetail) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedStaffDetail(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedStaffDetail]);
 
   /** 서버 반영이 끝난 뒤에만 화면·기록을 바꾼다 */
   const runStaffAction = async (fn: () => Promise<void>, onSuccess: () => void, successMsg?: string): Promise<boolean> => {
@@ -508,49 +518,52 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         </button>
       </div>
 
-      {/* ── 통계 카드 (모노크롬 리디자인) ── */}
+      {/* ── 통계 카드 ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {([
-          { label: '전체 직원', count: allManagedStaff.length, icon: '👥', section: 'active' as SubSection },
-          { label: '활성', count: activeStaff.length, icon: '🟢', section: 'active' as SubSection },
-          { label: '승인 대기', count: pendingStaff.length, icon: '⏳', section: 'pending' as SubSection },
-          { label: '정지', count: allManagedStaff.filter(s => s.status === 'suspended').length, icon: '⚠️', section: 'active' as SubSection },
+          { label: '전체 구성원', count: allManagedStaff.length, icon: '👥', section: 'members' as SubSection },
+          { label: '정상 활동', count: activeStaff.length, icon: '🟢', section: 'members' as SubSection },
+          { label: '승인 대기', count: pendingStaff.length, icon: '⏳', section: 'members' as SubSection },
+          { label: '활성 초대 링크', count: inviteTokens.filter(t => !t.isUsed && new Date(t.expiresAt) > new Date()).length, icon: '🔗', section: 'invites' as SubSection },
         ]).map(card => (
-          <button key={card.label} onClick={() => setActiveSection(card.section)}
-            className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left transition-all hover:shadow-sm hover:border-slate-300 active:scale-[0.98] cursor-pointer">
+          <button
+            key={card.label}
+            onClick={() => setActiveSection(card.section)}
+            className="bg-white border border-slate-200/80 rounded-2xl p-4 text-left transition-all hover:shadow-xs hover:border-slate-300 active:scale-[0.98] cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-lg">{card.icon}</span>
+              <span className="text-base">{card.icon}</span>
               {card.label === '승인 대기' && card.count > 0 && (
                 <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse" />
               )}
             </div>
-            <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${card.label === '승인 대기' && card.count > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{card.count}</div>
+            <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${card.label === '승인 대기' && card.count > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+              {card.count}
+            </div>
             <div className="text-xs text-slate-500 font-bold mt-0.5">{card.label}</div>
           </button>
         ))}
       </div>
 
-      {/* ── 서브 네비게이션 ── */}
+      {/* ── 4대 핵심 서브 네비게이션 (기획서 4.7) ── */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {([
-          { key: 'pending' as SubSection, label: '승인 대기', icon: Clock, count: pendingStaff.length, pulse: pendingStaff.length > 0 },
-          { key: 'active' as SubSection, label: '승인된 사용자', icon: Users, count: allManagedStaff.length, pulse: false },
-          { key: 'invite-links' as SubSection, label: '초대 링크', icon: Mail, count: inviteTokens.filter(t => !t.isUsed && new Date(t.expiresAt) > new Date()).length, pulse: false },
+          { key: 'members' as SubSection, label: '구성원 및 권한', icon: Users, count: allManagedStaff.length, pulse: pendingStaff.length > 0 },
+          { key: 'invites' as SubSection, label: '초대 관리', icon: Mail, count: inviteTokens.filter(t => !t.isUsed && new Date(t.expiresAt) > new Date()).length, pulse: false },
           { key: 'cases' as SubSection, label: '사건 배정', icon: Briefcase, count: undefined, pulse: false },
-          { key: 'logs' as SubSection, label: '활동 이력', icon: Activity, count: undefined, pulse: false },
+          { key: 'logs' as SubSection, label: '활동 로그', icon: Activity, count: undefined, pulse: false },
         ]).map(item => (
           <button
             key={item.key}
             onClick={() => setActiveSection(item.key)}
-            className={`px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shrink-0 border cursor-pointer ${
+            className={`px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shrink-0 border cursor-pointer active:scale-[0.98] ${
               activeSection === item.key
                 ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             <item.icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{item.label}</span>
-            <span className="sm:hidden">{item.label.substring(0, 2)}</span>
+            <span>{item.label}</span>
             {item.count !== undefined && item.count > 0 && (
               <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
                 item.pulse ? 'bg-rose-500 text-white animate-pulse' :
@@ -564,65 +577,63 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
-      {/* 섹션 1: 승인 대기 */}
+      {/* 섹션 1: 구성원 및 권한 (기획서 4.7: 승인 대기 상단 배너 + 권한표) */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'pending' && (
-        <div className="space-y-4">
-          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-5 py-3.5 border-b border-amber-200 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-600" />
-              <span className="font-bold text-amber-800 text-base">승인 대기 ({pendingStaff.length})</span>
-            </div>
-            {pendingStaff.length === 0 ? (
-              <div className="p-10 text-center text-amber-600 text-sm font-medium">
-                대기 중인 요청이 없습니다.
+      {activeSection === 'members' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* ── 승인 대기 상단 배너 (대기자 있을 때 즉시 노출) ── */}
+          {pendingStaff.length > 0 && (
+            <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600 animate-pulse shrink-0" />
+                  <h4 className="font-extrabold text-amber-900 text-sm sm:text-base">
+                    가입 승인 대기 중인 직원 ({pendingStaff.length}명)
+                  </h4>
+                </div>
+                <span className="text-xs text-amber-700 font-medium">관리자 승인 후 사무실 데이터에 접근할 수 있습니다.</span>
               </div>
-            ) : (
-              <div className="divide-y divide-amber-200">
+              <div className="divide-y divide-amber-200/70 bg-white/80 rounded-xl border border-amber-200 overflow-hidden">
                 {pendingStaff.map(member => (
-                  <div key={member.id} className="p-5 flex items-center justify-between gap-4 hover:bg-amber-50/50 transition-colors">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 font-black text-base shrink-0">
+                  <div key={member.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-amber-50/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 font-black text-sm shrink-0">
                         {member.name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-bold text-slate-900 text-base">{member.name}</div>
-                        <div className="text-xs text-slate-500 flex items-center gap-2.5 flex-wrap mt-0.5 font-medium">
-                          {member.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {member.email}</span>}
-                          {member.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {member.phone}</span>}
-                          <span>• {formatRelative(member.createdAt)} 요청</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-sm">{member.name}</span>
+                          {renderRoleBadge(member.role)}
                         </div>
-                        <div className="mt-1.5">{renderRoleBadge(member.role)}</div>
+                        <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap mt-0.5 font-medium">
+                          {member.email && <span>{member.email}</span>}
+                          {member.phone && <span>· {member.phone}</span>}
+                          <span>· {formatRelative(member.createdAt)} 요청</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                       <button
                         onClick={() => handleApprove(member)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                       >
-                        <CheckCircle2 className="w-4 h-4" /> 승인
+                        <CheckCircle2 className="w-3.5 h-3.5" /> 승인
                       </button>
                       <button
                         onClick={() => handleReject(member)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer active:scale-[0.98]"
                       >
-                        <XCircle className="w-4 h-4" /> 거부
+                        <XCircle className="w-3.5 h-3.5" /> 거부
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* ══════════════════════════════════════════════════════════ */}
-      {/* 섹션 2: 승인된 사용자 */}
-      {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'active' && (
-        <div className="space-y-4">
-          {/* 검색 바 */}
+          <div className="space-y-4">
+            {/* 검색 바 */}
           <div className="relative w-full sm:max-w-xs">
             <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
@@ -667,7 +678,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         </button>
                         <div className="flex items-center gap-2 mt-0.5">
                           {renderRoleBadge(member.role)}
-                          {isSuspended && <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{'\uC815\uC9C0'}</span>}
+                          {isSuspended && <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{'\uC815\uC9C0'}</span>}
                         </div>
                       </div>
                     </div>
@@ -684,11 +695,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                       {/* 담당 변호사 지정 (비변호사 직원만) */}
                       {member.role !== 'OWNER' && member.role !== 'LAWYER' && (
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">감독 변호사</span>
+                          <span className="text-xs font-bold text-slate-400 whitespace-nowrap">감독 변호사</span>
                           <select
                             value={member.supervisingLawyerId || ''}
                             onChange={e => handleSupervisorChange(member, e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-600 flex-1 min-w-0"
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 flex-1 min-w-0"
                           >
                             <option value="">대표 변호사 (기본)</option>
                             {lawyers.filter(l => l.role === 'LAWYER' || (l as any).isOwner).map(l => (
@@ -702,7 +713,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                     {member.role !== 'OWNER' ? (
                       <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
                         <select value={member.role} onChange={e => handleRoleChange(member, e.target.value as StaffRole)}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-600 flex-1">
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 flex-1">
                           <option value="LAWYER">{'\uBCC0\uD638\uC0AC'}</option>
                           <option value="CONSULTANT">{'\uC0C1\uB2F4'}</option>
                           <option value="STAFF">{'\uC0AC\uBB34'}</option>
@@ -759,7 +770,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         {renderRoleBadge(member.role)}
                         <span className="text-slate-400">• {member.removedAt ? formatDate(member.removedAt) : ''} 탈퇴</span>
                       </div>
-                      <span className="text-red-400 text-[11px]">{member.removalReason || '사유 미기재'}</span>
+                      <span className="text-red-400 text-xs">{member.removalReason || '사유 미기재'}</span>
                     </div>
                   ))}
                 </div>
@@ -767,7 +778,100 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             </details>
           )}
         </div>
+
+          {/* ── 역할별 권한 체계표 (기획서 4.7) ── */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" />
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-base">역할별 권한 체계표</h4>
+                <p className="text-xs text-slate-500 mt-0.5">사무실 직원의 직책에 따라 자동으로 적용되는 기본 권한 범위입니다.</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                  <tr>
+                    <th className="p-3">업무 기능 및 메뉴</th>
+                    <th className="p-3 text-center">대표 변호사 (OWNER)</th>
+                    <th className="p-3 text-center">담당 변호사 (LAWYER)</th>
+                    <th className="p-3 text-center">상담 직원 (CONSULTANT)</th>
+                    <th className="p-3 text-center">사무 직원 (STAFF)</th>
+                    <th className="p-3 text-center">경리 직원 (ACCOUNTING)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">오늘의 업무 & 대시보드</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">전체 조회</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">내 사건 중심</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">상담 중심</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">서류 중심</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">수납 중심</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">상담 요청 응답 & 제안서</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">승인/발송</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">승인/발송</td>
+                    <td className="p-3 text-center text-amber-700 font-bold">작성 후 컨펌 요청</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">사건 관리 (CRM) 열람/수정</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">전체 수정</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">배정 사건 수정</td>
+                    <td className="p-3 text-center text-blue-700 font-bold">상담 단계 수정</td>
+                    <td className="p-3 text-center text-blue-700 font-bold">서류·보정 수정</td>
+                    <td className="p-3 text-center text-slate-500">열람 전용</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">전자계약 작성 및 체결 승인</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">최종 승인</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">최종 승인</td>
+                    <td className="p-3 text-center text-amber-700 font-bold">초안 작성</td>
+                    <td className="p-3 text-center text-amber-700 font-bold">초안 작성</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">법원 서류 번들 & 보정센터</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">전체 권한</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">검토 및 제출</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">작성 및 첨부</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">수임료 수납 & 분납 관리</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">전체 관리</td>
+                    <td className="p-3 text-center text-slate-500">내 사건 열람</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">수납 확인 및 관리</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">직원 초대 및 권한 변경</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">전체 관리</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                    <td className="p-3 text-center text-slate-400">권한 없음</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-bold text-slate-900">광고 상품 구매 & 세금계산서</td>
+                    <td className="p-3 text-center text-emerald-700 font-bold">결제 가능</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                    <td className="p-3 text-center text-slate-400">열람 제한</td>
+                    <td className="p-3 text-center text-blue-700 font-bold">세금계산서 발급</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
+
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 섹션 3: 사건 배정 현황 */}
@@ -802,19 +906,19 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                     </div>
                     <div className="min-w-0">
                       <div className="font-bold text-slate-900 text-sm">{member.name}</div>
-                      <div className="text-[11px]">{renderRoleBadge(member.role)}</div>
+                      <div className="text-xs">{renderRoleBadge(member.role)}</div>
                     </div>
                   </div>
                   <div className="flex items-end justify-between">
                     <div>
                       <div className="text-2xl font-black text-slate-900">{count}<span className="text-sm font-bold text-slate-400 ml-0.5">건</span></div>
-                      <div className="text-[11px] text-slate-400">현재 담당 사건</div>
+                      <div className="text-xs text-slate-400">현재 담당 사건</div>
                     </div>
                     <div className="flex gap-1">
                       <button
                         onClick={() => { setBulkFromId(member.id); setShowBulkTransferModal(true); }}
                         disabled={count === 0}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-slate-200"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-slate-200"
                       >
                         <ArrowRightLeft className="w-3 h-3" /> 이관
                       </button>
@@ -827,7 +931,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             {/* 미배정 카드 */}
             <div className="bg-amber-50/50 rounded-xl border border-amber-200/60 border-dashed p-4 flex flex-col items-center justify-center text-center min-h-[130px]">
               <div className="text-2xl font-black text-amber-500">{unassignedCount}<span className="text-sm font-bold text-amber-400 ml-0.5">건</span></div>
-              <div className="text-[11px] text-amber-500 mt-1 font-bold">미배정 사건</div>
+              <div className="text-xs text-amber-500 mt-1 font-bold">미배정 사건</div>
             </div>
           </div>
 
@@ -906,13 +1010,13 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${typeInfo.color} bg-slate-50 border border-slate-200`}>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${typeInfo.color} bg-slate-50 border border-slate-200`}>
                               {typeInfo.label}
                             </span>
                             <span className="font-bold text-slate-800 text-xs">{log.staffName}</span>
                           </div>
                           <p className="text-[12px] text-slate-500 mt-0.5 text-left">{log.description}</p>
-                          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
+                          <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
                             <span>{formatDate(log.createdAt)}</span>
                             <span>• 실행: {log.actorName}</span>
                           </div>
@@ -1029,7 +1133,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                   <label className="text-xs text-slate-700 font-bold block">이메일 (선택)</label>
                   <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                     placeholder="특정 이메일로 제한 (선택사항)" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
-                  <p className="text-[11px] text-slate-400 font-medium">입력하면 해당 이메일로만 가입 가능합니다.</p>
+                  <p className="text-xs text-slate-400 font-medium">입력하면 해당 이메일로만 가입 가능합니다.</p>
                 </div>
                 <button onClick={handleGenerateInviteLink}
                   className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]">
@@ -1163,7 +1267,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 섹션 5: 초대 링크 관리 */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'invite-links' && (
+      {activeSection === 'invites' && (
         <div className="space-y-6 animate-fadeIn">
           {/* 초대 링크 목록 카드 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs space-y-4">
@@ -1392,11 +1496,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* 패널: 직원 상세 프로필 */}
       {/* ══════════════════════════════════════════════════════════ */}
       {selectedStaffDetail && editPermissions && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={() => setSelectedStaffDetail(null)}>
+        <div role="dialog" aria-modal="true" aria-labelledby="staff-detail-title" className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={() => setSelectedStaffDetail(null)}>
           <div className="bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slideInRight" onClick={e => e.stopPropagation()}>
             {/* 헤더 */}
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
-              <h4 className="font-extrabold text-slate-900">직원 상세 정보</h4>
+              <h4 id="staff-detail-title" className="font-extrabold text-slate-900">직원 상세 정보</h4>
               <button onClick={() => setSelectedStaffDetail(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
                 <XCircle className="w-5 h-5" />
               </button>
@@ -1472,7 +1576,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                       <div key={perm.key} className="flex items-center justify-between p-3 hover:bg-slate-50/50 transition-colors">
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-700">{perm.label}</div>
-                          <div className="text-[11px] text-slate-400">{perm.desc}</div>
+                          <div className="text-xs text-slate-400">{perm.desc}</div>
                         </div>
                         <button
                           onClick={() => {
@@ -1516,7 +1620,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         <span>{typeInfo.emoji}</span>
                         <div className="min-w-0">
                           <span className="text-slate-600">{log.description}</span>
-                          <div className="text-[11px] text-slate-400 mt-0.5">{formatDate(log.createdAt)}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{formatDate(log.createdAt)}</div>
                         </div>
                       </div>
                     );

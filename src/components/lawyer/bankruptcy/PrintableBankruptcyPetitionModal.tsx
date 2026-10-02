@@ -63,7 +63,7 @@ function PrintableBankruptcyPetitionModalInner({
               <h3 className="font-extrabold text-sm text-white">
                 개인파산 및 면책 신청서류 초안 (7종)
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 신청인: {p.debtorName} · 관할: {p.courtName || '미지정'} · 빈칸·사실관계 확인 후 사용
               </p>
             </div>
@@ -304,21 +304,21 @@ function PrintableBankruptcyPetitionModalInner({
                       <td className="border border-slate-300 p-2 text-center font-mono">{idx + 1}</td>
                       <td className="border border-slate-300 p-2 font-bold">
                         <div>{item.creditorName}</div>
-                        {item.representative && <div className="text-[10px] text-slate-600 font-normal">대표자: {item.representative}</div>}
+                        {item.representative && <div className="text-xs text-slate-600 font-normal">대표자: {item.representative}</div>}
                         {item.address && (
-                          <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                          <div className="text-xs text-slate-500 font-normal mt-0.5">
                             주소: {item.address} {item.zipCode ? `(${item.zipCode})` : ''}
                           </div>
                         )}
                         {item.serviceAddress && item.serviceAddress !== item.address && (
-                          <div className="text-[10px] text-slate-500 font-normal">
+                          <div className="text-xs text-slate-500 font-normal">
                             송달지: {item.serviceAddress}
                           </div>
                         )}
                       </td>
                       <td className="border border-slate-300 p-2">
                         {item.debtCauseDetail} <br />
-                        <span className="text-slate-500 text-[10px] font-mono">({item.borrowedDate})</span>
+                        <span className="text-slate-500 text-xs font-mono">({item.borrowedDate})</span>
                       </td>
                       <td className="border border-slate-300 p-2 text-right font-mono font-bold">
                         {item.principal.toLocaleString()}
@@ -333,7 +333,7 @@ function PrintableBankruptcyPetitionModalInner({
                           <span className="text-emerald-700">면책대상</span>
                         )}
                       </td>
-                      <td className="border border-slate-300 p-2 text-[11px]">
+                      <td className="border border-slate-300 p-2 text-xs">
                         {item.lawsuitInfo?.hasLawsuit ? (
                           <span>
                             [{lawsuitLabel[item.lawsuitInfo.lawsuitType || 'OTHER'] || '기타'}] {item.lawsuitInfo.courtName} {item.lawsuitInfo.caseNumber}
@@ -566,7 +566,7 @@ function PrintableBankruptcyPetitionModalInner({
                     </tr>
                   </tbody>
                 </table>
-                <p className="text-[11px] text-slate-500 pt-1">
+                <p className="text-xs text-slate-500 pt-1">
                   * 조세 채권은 면책결정이 있어도 책임이 면제되지 않습니다(채무자회생법 제566조 제1호). 건강보험료·국민연금 등 공과금의 비면책 여부는 담당 변호사가 확인합니다.
                 </p>
               </div>
@@ -655,7 +655,7 @@ function PrintableBankruptcyPetitionModalInner({
                         <td className="border border-slate-300 p-2 text-center font-mono font-bold">#{doc.itemNumber}</td>
                         <td className="border border-slate-300 p-2">
                           <span className="font-bold text-slate-900">{doc.title}</span>
-                          <span className="text-slate-500 text-[11px] block">{doc.detailDescription}</span>
+                          <span className="text-slate-500 text-xs block">{doc.detailDescription}</span>
                         </td>
                         <td className="border border-slate-300 p-2 text-center font-bold">
                           {isSubmitted ? (

@@ -55,7 +55,7 @@ export default function PrintableRepaymentPlanModal({
                 <h3 className="text-base font-black text-slate-900">
                   대법원 표준 [전산양식 {isD5111 ? 'D5111' : 'D5110'}] 변제계획안
                 </h3>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
                   {isD5111 ? '가용소득+재산처분 병행' : '가용소득 전용'}
                 </span>
               </div>
@@ -97,7 +97,7 @@ export default function PrintableRepaymentPlanModal({
             style={{ minHeight: '297mm' }}
           >
             {/* 전산양식 헤더 */}
-            <div className="text-right text-[11px] text-slate-500 font-mono mb-2">
+            <div className="text-right text-xs text-slate-500 font-mono mb-2">
               [전산양식 {isD5111 ? 'D5111' : 'D5110'}]
             </div>
 
@@ -294,7 +294,7 @@ export default function PrintableRepaymentPlanModal({
                       </tr>
                     </tbody>
                   </table>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     * 연 5% 라이프니쯔식 현가 계수 {plan.leibnizFactor}({plan.months}개월)를 적용함.
                   </p>
                 </div>
@@ -339,7 +339,7 @@ export default function PrintableRepaymentPlanModal({
 
             {/* ── [별첨] 개인회생채권 변제예정액표 (D5110/D5111 대법원 전산서식 2단 헤더) ── */}
             <div className="mt-16 pt-12 border-t-2 border-slate-900 print:break-before-page">
-              <div className="text-right text-[11px] text-slate-500 font-mono mb-2">
+              <div className="text-right text-xs text-slate-500 font-mono mb-2">
                 [별첨]
               </div>
               <div className="text-center my-4">
@@ -353,7 +353,7 @@ export default function PrintableRepaymentPlanModal({
 
               {/* 2단 헤더 법원 표준 서식 테이블 */}
               <div className="overflow-x-auto my-4">
-                <table className="w-full text-[11px] border-collapse border border-slate-400 text-center">
+                <table className="w-full text-xs border-collapse border border-slate-400 text-center">
                   <thead className="bg-slate-100 text-slate-900 font-bold">
                     <tr>
                       <th rowSpan={2} className="border border-slate-400 px-1 py-2 w-10">채권<br/>번호</th>
@@ -366,12 +366,12 @@ export default function PrintableRepaymentPlanModal({
                       <th rowSpan={2} className="border border-slate-400 px-1 py-2 w-14">변제율<br/>(%)</th>
                     </tr>
                     <tr>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">확정 채권</th>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">미확정 채권</th>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">확정 채권</th>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">미확정(유보)</th>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">확정 채권</th>
-                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-[10px]">미확정(유보)</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">확정 채권</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">미확정 채권</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">확정 채권</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">미확정(유보)</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">확정 채권</th>
+                      <th className="border border-slate-400 px-1.5 py-1 text-slate-800 font-semibold text-xs">미확정(유보)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300">
@@ -382,10 +382,10 @@ export default function PrintableRepaymentPlanModal({
                           <td className="border border-slate-400 py-1.5 px-1 font-mono">{c.creditorNumber}</td>
                           <td className="border border-slate-400 py-1.5 px-2 text-left font-semibold">
                             {c.name}
-                            {c.isPriority && <span className="ml-1 text-[9px] text-amber-700 font-bold">[우선권]</span>}
-                            {isUnconfirmed && <span className="ml-1 text-[9px] text-indigo-700 font-bold">[미확정]</span>}
+                            {c.isPriority && <span className="ml-1 text-xs text-amber-700 font-bold">[우선권]</span>}
+                            {isUnconfirmed && <span className="ml-1 text-xs text-indigo-700 font-bold">[미확정]</span>}
                           </td>
-                          <td className="border border-slate-400 py-1.5 px-1 text-[10px] text-slate-700">
+                          <td className="border border-slate-400 py-1.5 px-1 text-xs text-slate-700">
                             {c.isPriority ? '우선권채권' : c.isSecured ? '담보부채권' : '일반회생채권'}
                           </td>
                           {/* (D) 개인회생채권액 */}
@@ -396,7 +396,7 @@ export default function PrintableRepaymentPlanModal({
                             {isUnconfirmed ? c.principal.toLocaleString() : '-'}
                           </td>
                           {/* 안분비율 */}
-                          <td className="border border-slate-400 py-1.5 px-1 font-mono text-[10px]">
+                          <td className="border border-slate-400 py-1.5 px-1 font-mono text-xs">
                             {c.allocationRatio.toFixed(2)}%
                           </td>
                           {/* (E) 월 변제예정액 */}
@@ -414,7 +414,7 @@ export default function PrintableRepaymentPlanModal({
                             {isUnconfirmed ? c.totalRepayment.toLocaleString() : '-'}
                           </td>
                           {/* 변제율 */}
-                          <td className="border border-slate-400 py-1.5 px-1 font-mono text-[10px] font-bold">
+                          <td className="border border-slate-400 py-1.5 px-1 font-mono text-xs font-bold">
                             {c.repaymentRate.toFixed(1)}%
                           </td>
                         </tr>
@@ -422,7 +422,7 @@ export default function PrintableRepaymentPlanModal({
                     })}
 
                     {/* 소계: 확정 채권 */}
-                    <tr className="bg-slate-100/70 font-semibold text-[10px]">
+                    <tr className="bg-slate-100/70 font-semibold text-xs">
                       <td colSpan={3} className="border border-slate-400 py-1.5 px-2 text-center text-slate-800">
                         소계 (확정채권)
                       </td>
@@ -448,7 +448,7 @@ export default function PrintableRepaymentPlanModal({
 
                     {/* 소계: 미확정 채권(공탁유보) */}
                     {unconfirmedCreditors.length > 0 && (
-                      <tr className="bg-indigo-50/50 font-semibold text-[10px]">
+                      <tr className="bg-indigo-50/50 font-semibold text-xs">
                         <td colSpan={3} className="border border-slate-400 py-1.5 px-2 text-center text-indigo-900">
                           소계 (미확정 채권 공탁유보)
                         </td>
@@ -474,7 +474,7 @@ export default function PrintableRepaymentPlanModal({
                     )}
 
                     {/* 총계 (G) / (H) / (I) */}
-                    <tr className="bg-slate-200 font-bold text-[11px] text-slate-950">
+                    <tr className="bg-slate-200 font-bold text-xs text-slate-950">
                       <td colSpan={3} className="border border-slate-400 py-2 px-2 text-center">
                         총계 [ (G) / (H) / (I) ]
                       </td>
@@ -500,7 +500,7 @@ export default function PrintableRepaymentPlanModal({
               {plan.isTwoStageRepayment && (
                 <div className="mt-3 p-3 bg-slate-50 border border-slate-300 rounded-lg text-xs space-y-1">
                   <div className="font-bold text-slate-900">[2단계 분할변제 회차별 월 변제 안내]</div>
-                  <div className="text-slate-700 leading-relaxed text-[11px]">
+                  <div className="text-slate-700 leading-relaxed text-xs">
                     • <strong>제1단계 (제1회 ~ 제{plan.stage1Months}회차, {plan.stage1Months}개월간)</strong>: 월 총 변제금 <span className="font-mono font-bold">{plan.stage1MonthlyRepaymentTotal?.toLocaleString()}원</span> (우선권 채권 우선 전액 충당 및 잔여액 일반채권 안분)<br />
                     • <strong>제2단계 (제{plan.stage1Months! + 1}회 ~ 제{plan.months}회차, {plan.stage2Months}개월간)</strong>: 월 총 변제금 <span className="font-mono font-bold">{plan.stage2MonthlyRepaymentTotal?.toLocaleString()}원</span> (일반 채권 원금비율 전액 안분 변제)
                   </div>
@@ -508,7 +508,7 @@ export default function PrintableRepaymentPlanModal({
               )}
 
               {/* 하단 법적 고지문 */}
-              <div className="mt-4 text-[10px] text-slate-500 leading-relaxed space-y-0.5">
+              <div className="mt-4 text-xs text-slate-500 leading-relaxed space-y-0.5">
                 <p>* 본 변제예정액표는 「채무자 회생 및 파산에 관한 법률」에 따라 작성한 초안이며, 관할 법원 양식·실무에 맞는지 제출 전 확인이 필요합니다.</p>
                 <p>* 미확정 채권에 대한 변제예정액은 채권 확정 시까지 회생위원이 관리하는 공탁계좌에 매월 유보·적립됩니다.</p>
               </div>

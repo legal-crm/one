@@ -4,6 +4,7 @@ import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 import { createDefaultCrmExtension, saveCrmClient } from './crmService';
 import { createTask } from './taskTicketService';
 import { localYmd } from '../utils/localDate';
+import { getDisplayClientName, getDisplayPhoneNumber } from '../utils/clientDisplay';
 
 const LEGACY_SALES_LEADS_KEY = 'legal_sales_leads';
 
@@ -722,14 +723,14 @@ export function extractBriefingFromClient(
   req: ConsultRequest,
   ext?: CrmClientExtension | null
 ): CustomerBriefingData {
-  const fp = req.financialProfile;
+  const fp: any = req.financialProfile;
   const age = fp?.age;
   const gender = fp?.gender === 'male' ? '남성' : fp?.gender === 'female' ? '여성' : '-';
   const birthYear = age ? `${new Date().getFullYear() - age}년생 (${age}세)` : '-';
 
   return {
-    customerName: req.clientName || '-',
-    phone: req.phone || '-',
+    customerName: getDisplayClientName(req, ext),
+    phone: getDisplayPhoneNumber(req, ext),
     birthYear,
     gender,
     region: fp?.residenceRegion || '-',
@@ -740,9 +741,9 @@ export function extractBriefingFromClient(
     income: fp?.income ? `${fp.income.toLocaleString()}만원` : '0원',
     loanMonthlyPay: ext?.loanMonthlyPay ? `${ext.loanMonthlyPay.toLocaleString()}만원` : '0원',
     housingType: fp?.housingType || '미입력',
-    depositRent: fp?.housingType === '월세'
-      ? `보증금 ${fp.housingDeposit || 0}만 / 월 ${fp.housingMonthlyRent || 0}만`
-      : fp?.housingType === '자가'
+    depositRent: (fp?.housingType === '월세' || fp?.housingType === 'rent')
+      ? `보증금 ${fp?.housingDeposit || 0}만 / 월 ${fp?.housingMonthlyRent || 0}만`
+      : (fp?.housingType === '자가' || fp?.housingType === 'owned')
       ? '자가 소유'
       : '전세/기타',
     assets: fp?.assetsTotal ? `${fp.assetsTotal.toLocaleString()}만원` : '특이 자산 없음',
@@ -750,7 +751,7 @@ export function extractBriefingFromClient(
     collateralLoan: ext?.collateralLoanDesc || '없음',
     creditCardUse: ext?.creditCardUse || '미확인',
     history: ext?.historyDetail || fp?.debtCause || '이력 없음',
-    specialMemo: ext?.specialMemo || req.content || '없음',
+    specialMemo: (ext as any)?.specialMemo || req.content || '없음',
     isAiSource: false,
   };
 }
@@ -1003,7 +1004,7 @@ export const generateClientSummary = (
   template: string = DEFAULT_SUMMARY_TEMPLATE
 ): string => {
   let processedTemplate = template;
-  const fp = client.financialProfile || {};
+  const fp: any = client.financialProfile || {};
 
   if (fp.maritalStatus === '미혼' || fp.maritalStatus === 'single') {
     processedTemplate = processedTemplate.replace(/^\* 미성년 자녀 수 : .*\r?\n?/gm, '');
@@ -1045,8 +1046,8 @@ export const generateClientSummary = (
 
   const dataMap: Record<string, string> = {
     managerName: managerName || ext?.assignedLawyerId || '담당 변호사',
-    customerName: client.realClientName || client.clientName || '의뢰인',
-    phone: client.phone || '-',
+    customerName: getDisplayClientName(client, ext),
+    phone: getDisplayPhoneNumber(client, ext),
     birth: birthStr,
     gender: genderStr,
     region: fp.residenceRegion || ext?.region || '-',

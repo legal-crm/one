@@ -156,7 +156,7 @@ export default function PropertyValuationModal({
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
                   자산 가치 산정 및 [전산양식 D5102] 재산목록 허브
                 </h2>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
                   대법원 표준
                 </span>
               </div>
@@ -203,30 +203,30 @@ export default function PropertyValuationModal({
         <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 shrink-0">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center text-xs">
             <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-              <span className="text-slate-500 text-[11px]">총 자산 평가액</span>
+              <span className="text-slate-500 text-xs">총 자산 평가액</span>
               <p className="text-sm font-bold text-slate-900 mt-0.5">{won(data.totalMarketValue)}원</p>
             </div>
             <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-              <span className="text-rose-600 text-[11px]">총 담보 채무 (근저당/할부)</span>
+              <span className="text-rose-600 text-xs">총 담보 채무 (근저당/할부)</span>
               <p className="text-sm font-bold text-rose-700 mt-0.5">-{won(data.totalEncumbrance)}원</p>
             </div>
             <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-              <span className="text-slate-500 text-[11px]">총 법정 공제액</span>
+              <span className="text-slate-500 text-xs">총 법정 공제액</span>
               <p className="text-sm font-bold text-slate-700 mt-0.5">-{won(data.totalStatutoryDeduction)}원</p>
             </div>
             <div className="bg-emerald-50 p-2.5 rounded-xl border-2 border-emerald-500 col-span-2 sm:col-span-2 flex items-center justify-between">
               <div>
-                <span className="text-emerald-800 font-bold text-[11px]">최종 총 청산가치 (J)</span>
+                <span className="text-emerald-800 font-bold text-xs">최종 총 청산가치 (J)</span>
                 <p className="text-base font-black text-emerald-700 mt-0.5">{won(data.totalLiquidationValue)}원</p>
               </div>
               <div className="text-right">
                 {currentPlanPresentValue > 0 && (
-                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isLiquidationGuaranteed ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${isLiquidationGuaranteed ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
                     {isLiquidationGuaranteed ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
                     {isLiquidationGuaranteed ? '청산가치 보장 충족' : '청산가치 미달 주의'}
                   </span>
                 )}
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-xs text-slate-500 mt-0.5">
                   변제계획안 총변제액: {won(currentPlanTotalRepayment)}원 (현재가치 {won(currentPlanPresentValue)}원)
                 </div>
               </div>
@@ -246,7 +246,7 @@ export default function PropertyValuationModal({
           >
             <Building2 className="w-4 h-4" />
             <span>1. 부동산 ({data.realEstates.length}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">공시가 130%</span>
+            <span className="text-xs px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">공시가 130%</span>
           </button>
           <button
             onClick={() => setActiveTab('vehicle')}
@@ -258,7 +258,7 @@ export default function PropertyValuationModal({
           >
             <Car className="w-4 h-4" />
             <span>2. 자동차·오토바이 ({data.vehicles.length}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">엔카/보험개발원</span>
+            <span className="text-xs px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">엔카/보험개발원</span>
           </button>
           <button
             onClick={() => setActiveTab('deductions')}
@@ -270,7 +270,7 @@ export default function PropertyValuationModal({
           >
             <Shield className="w-4 h-4" />
             <span>3. 보증금·보험·퇴직금·예금</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">법정공제 4종</span>
+            <span className="text-xs px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">법정공제 4종</span>
           </button>
           <button
             onClick={() => setActiveTab('business')}
@@ -282,7 +282,7 @@ export default function PropertyValuationModal({
           >
             <Briefcase className="w-4 h-4" />
             <span>4. 사업설비·채권 & 면제재산 ({(data.businessAssets?.length || 0) + (data.exemptProperties?.length || 0)}건)</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">리걸플로 7-4</span>
+            <span className="text-xs px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">리걸플로 7-4</span>
           </button>
           <button
             onClick={() => setActiveTab('verification')}
@@ -314,7 +314,7 @@ export default function PropertyValuationModal({
                       실무 공인 부동산 조회 포털 (원클릭 자동검색 및 클립보드 복사)
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400">클릭 시 주소가 클립보드에 자동 복사되어 새창이 열립니다.</span>
+                  <span className="text-xs text-slate-400">클릭 시 주소가 클립보드에 자동 복사되어 새창이 열립니다.</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -443,7 +443,7 @@ export default function PropertyValuationModal({
                       {/* 입력 그리드 */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                         <div className="sm:col-span-2">
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">부동산 소재지 (주소)</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">부동산 소재지 (주소)</label>
                           <input
                             type="text"
                             value={re.address}
@@ -459,7 +459,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">전용/대지면적 (㎡)</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">전용/대지면적 (㎡)</label>
                           <input
                             type="number"
                             value={re.areaSquareMeter || ''}
@@ -479,7 +479,7 @@ export default function PropertyValuationModal({
                         {re.valuationMethod === 'public_price_130' ? (
                           <>
                             <div>
-                              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              <label className="block text-xs font-bold text-slate-600 mb-1">
                                 국토부 공시가격 (원)
                               </label>
                               <input
@@ -502,9 +502,9 @@ export default function PropertyValuationModal({
                               />
                             </div>
                             <div>
-                              <label className="block text-[11px] font-bold text-indigo-700 mb-1 flex items-center justify-between">
+                              <label className="block text-xs font-bold text-indigo-700 mb-1 flex items-center justify-between">
                                 <span>공시가격의 130% 시가 (원)</span>
-                                <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 rounded">자동 환산</span>
+                                <span className="text-xs bg-indigo-100 text-indigo-800 px-1.5 rounded">자동 환산</span>
                               </label>
                               <input
                                 type="number"
@@ -516,7 +516,7 @@ export default function PropertyValuationModal({
                           </>
                         ) : (
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            <label className="block text-xs font-bold text-slate-600 mb-1">
                               KB부동산 시세 일반가 (원)
                             </label>
                             <input
@@ -537,7 +537,7 @@ export default function PropertyValuationModal({
 
                         {/* 담보대출 (근저당 피담보채무) */}
                         <div>
-                          <label className="block text-[11px] font-bold text-rose-600 mb-1">
+                          <label className="block text-xs font-bold text-rose-600 mb-1">
                             담보대출 잔액 (근저당 피담보채무)
                           </label>
                           <input
@@ -562,7 +562,7 @@ export default function PropertyValuationModal({
                           계산식: 시가({won(re.marketValue)}원) - 담보대출({won(re.mortgageBalance)}원)
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500 font-bold text-[11px]">해당 부동산 청산가치:</span>
+                          <span className="text-slate-500 font-bold text-xs">해당 부동산 청산가치:</span>
                           <span className="text-sm font-black text-emerald-600">{won(re.liquidationValue)}원</span>
                         </div>
                       </div>
@@ -585,7 +585,7 @@ export default function PropertyValuationModal({
                     <Sparkles className="w-3.5 h-3.5 text-blue-500" />
                     중고차 시세 & 보험개발원 기준가액 원클릭 조회
                   </span>
-                  <span className="text-[11px] text-slate-400">법원은 엔카/차차차 2~3곳 평균 또는 보험개발원 가액을 인정합니다.</span>
+                  <span className="text-xs text-slate-400">법원은 엔카/차차차 2~3곳 평균 또는 보험개발원 가액을 인정합니다.</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -705,7 +705,7 @@ export default function PropertyValuationModal({
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">차종 및 모델명</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">차종 및 모델명</label>
                           <input
                             type="text"
                             value={v.modelName}
@@ -721,7 +721,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">차량등록번호</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">차량등록번호</label>
                           <input
                             type="text"
                             value={v.plateNumber}
@@ -737,7 +737,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">연식</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">연식</label>
                           <input
                             type="number"
                             value={v.year}
@@ -752,7 +752,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">중고시세/평가액 (원)</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">중고시세/평가액 (원)</label>
                           <input
                             type="number"
                             step={500000}
@@ -768,7 +768,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-rose-600 mb-1">할부/저당채무 (원)</label>
+                          <label className="block text-xs font-bold text-rose-600 mb-1">할부/저당채무 (원)</label>
                           <input
                             type="number"
                             step={500000}
@@ -784,7 +784,7 @@ export default function PropertyValuationModal({
                           />
                         </div>
                         <div className="sm:col-span-3">
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">특이사항 (용도 및 소명)</label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">특이사항 (용도 및 소명)</label>
                           <input
                             type="text"
                             value={v.note || ''}
@@ -806,7 +806,7 @@ export default function PropertyValuationModal({
                           계산식: 시가({won(v.marketValue)}원) - 담보대출({won(v.loanBalance)}원)
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500 font-bold text-[11px]">차량 청산가치:</span>
+                          <span className="text-slate-500 font-bold text-xs">차량 청산가치:</span>
                           <span className="text-sm font-black text-emerald-600">{won(v.liquidationValue)}원</span>
                         </div>
                       </div>
@@ -829,7 +829,7 @@ export default function PropertyValuationModal({
                     <Sparkles className="w-3.5 h-3.5 text-purple-500" />
                     보험 해약환급금 & 전 계좌 잔액 원클릭 통합조회 바로가기
                   </span>
-                  <span className="text-[11px] text-slate-400">의뢰인이 발급받은 증명서와 일치하는지 확인합니다.</span>
+                  <span className="text-xs text-slate-400">의뢰인이 발급받은 증명서와 일치하는지 확인합니다.</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -870,7 +870,7 @@ export default function PropertyValuationModal({
                     <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
                       <span>🏠 임차보증금 (2026 주택임대차 소액보증금 공제)</span>
                     </h4>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-xs text-slate-500">
                       서울 5,500만 원, 과밀억제 4,800만 원, 광역시 2,800만 원, 기타 2,500만 원 한도 자동 공제
                     </span>
                   </div>
@@ -905,7 +905,7 @@ export default function PropertyValuationModal({
                   <div key={ld.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 text-xs">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">임차 주소</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">임차 주소</label>
                         <input
                           type="text"
                           value={ld.address}
@@ -920,7 +920,7 @@ export default function PropertyValuationModal({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">소재 지역 (공제액 결정)</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">소재 지역 (공제액 결정)</label>
                         <select
                           value={ld.region}
                           onChange={(e) => {
@@ -939,7 +939,7 @@ export default function PropertyValuationModal({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">계약 보증금 (원)</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">계약 보증금 (원)</label>
                         <input
                           type="number"
                           step={1000000}
@@ -956,7 +956,7 @@ export default function PropertyValuationModal({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-xs">
                       <div className="text-slate-600">
                         공제액: 소액보증금 -{won(ld.statutoryExemption)}원 (법정 면제)
                       </div>
@@ -986,7 +986,7 @@ export default function PropertyValuationModal({
                     <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
                       <span>💼 예상퇴직금 (퇴직연금 DB/DC/IRP 체크 시 청산가치 0원 전액 면제)</span>
                     </h4>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-xs text-slate-500">
                       근로자퇴직급여보장법 제7조에 따라 퇴직연금은 전액 압류금지채권으로 청산가치에 반영하지 않습니다.
                     </span>
                   </div>
@@ -1017,7 +1017,7 @@ export default function PropertyValuationModal({
                   <div key={sev.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3 text-xs">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">직장명</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">직장명</label>
                         <input
                           type="text"
                           value={sev.workplaceName}
@@ -1032,7 +1032,7 @@ export default function PropertyValuationModal({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">퇴직금 예상 총액 (원)</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">퇴직금 예상 총액 (원)</label>
                         <input
                           type="number"
                           step={1000000}
@@ -1066,7 +1066,7 @@ export default function PropertyValuationModal({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-xs">
                       <div className="text-slate-600">
                         {sev.isRetirementPension ? '퇴직연금 적용으로 전액(100%) 청산가치에서 공제' : '일반퇴직금으로 50%(1/2)만 청산가치 반영'}
                       </div>
@@ -1116,7 +1116,7 @@ export default function PropertyValuationModal({
                           insurances: [...prev.insurances, newIns]
                         }));
                       }}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
                     >
                       + 보험 추가
                     </button>
@@ -1149,7 +1149,7 @@ export default function PropertyValuationModal({
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-slate-500">환급금:</span>
                           <input
@@ -1199,7 +1199,7 @@ export default function PropertyValuationModal({
                           financialAssets: [...prev.financialAssets, newFa]
                         }));
                       }}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
                     >
                       + 계좌 추가
                     </button>
@@ -1232,7 +1232,7 @@ export default function PropertyValuationModal({
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-slate-500">잔액/평가액:</span>
                           <input
@@ -1329,7 +1329,7 @@ export default function PropertyValuationModal({
                       <div key={ba.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+                            <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold">
                               {idx + 1}
                             </span>
                             <select
@@ -1377,7 +1377,7 @@ export default function PropertyValuationModal({
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                           <div>
-                            <span className="text-[11px] text-slate-500 font-bold block mb-1">장부/원금 가액</span>
+                            <span className="text-xs text-slate-500 font-bold block mb-1">장부/원금 가액</span>
                             <input
                               type="number"
                               step={100000}
@@ -1393,7 +1393,7 @@ export default function PropertyValuationModal({
                             />
                           </div>
                           <div>
-                            <span className="text-[11px] text-indigo-600 font-bold block mb-1">실제 회수가능액/평가액</span>
+                            <span className="text-xs text-indigo-600 font-bold block mb-1">실제 회수가능액/평가액</span>
                             <input
                               type="number"
                               step={100000}
@@ -1409,7 +1409,7 @@ export default function PropertyValuationModal({
                             />
                           </div>
                           <div>
-                            <span className="text-[11px] text-rose-600 font-bold block mb-1">담보/질권 설정액</span>
+                            <span className="text-xs text-rose-600 font-bold block mb-1">담보/질권 설정액</span>
                             <input
                               type="number"
                               step={100000}
@@ -1425,7 +1425,7 @@ export default function PropertyValuationModal({
                             />
                           </div>
                           <div className="bg-emerald-50/70 p-2 rounded-lg border border-emerald-200 flex flex-col justify-center">
-                            <span className="text-[10px] text-emerald-800 font-bold">인정 청산가치</span>
+                            <span className="text-xs text-emerald-800 font-bold">인정 청산가치</span>
                             <span className="text-sm font-black text-emerald-700">{won(ba.liquidationValue)}원</span>
                           </div>
                         </div>
@@ -1443,7 +1443,7 @@ export default function PropertyValuationModal({
                                 }));
                               }}
                               placeholder="상세 품목/원인 (예: 매장 내 집기비품 일체)"
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                             />
                           </div>
                           <div>
@@ -1458,7 +1458,7 @@ export default function PropertyValuationModal({
                                 }));
                               }}
                               placeholder="소명 메모 (예: 차용증 구비, 거래처 폐업으로 회수불능 등)"
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                             />
                           </div>
                         </div>
@@ -1512,7 +1512,7 @@ export default function PropertyValuationModal({
                       <div key={ep.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-200 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
                               {idx + 1}
                             </span>
                             <select
@@ -1547,7 +1547,7 @@ export default function PropertyValuationModal({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                           <div>
-                            <span className="text-[11px] text-slate-600 font-bold block mb-1">의뢰인 신청 희망액</span>
+                            <span className="text-xs text-slate-600 font-bold block mb-1">의뢰인 신청 희망액</span>
                             <input
                               type="number"
                               step={100000}
@@ -1563,7 +1563,7 @@ export default function PropertyValuationModal({
                             />
                           </div>
                           <div>
-                            <span className="text-[11px] text-emerald-800 font-bold block mb-1">변호사 검토 인정 공제액 (청산가치 차감)</span>
+                            <span className="text-xs text-emerald-800 font-bold block mb-1">변호사 검토 인정 공제액 (청산가치 차감)</span>
                             <input
                               type="number"
                               step={100000}
@@ -1592,7 +1592,7 @@ export default function PropertyValuationModal({
                               }));
                             }}
                             placeholder="신청 사유 설명"
-                            className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                            className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
                       </div>
@@ -1625,7 +1625,7 @@ export default function PropertyValuationModal({
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div className="text-xs text-slate-600 font-bold">1. 채무자의 총 청산가치 (J)</div>
                     <div className="text-2xl font-black text-slate-900">{won(data.totalLiquidationValue)}원</div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       채무자가 파산할 경우 모든 재산을 현금화하여 채권자들에게 배당할 수 있는 순가치입니다.
                     </p>
                   </div>
@@ -1634,7 +1634,7 @@ export default function PropertyValuationModal({
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div className="text-xs text-slate-600 font-bold">2. 변제계획안 총변제액의 현재가치</div>
                     <div className="text-2xl font-black text-indigo-900">{won(currentPlanPresentValue)}원</div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       명목 총변제액 {won(currentPlanTotalRepayment)}원을 라이프니쯔 계수(연 5%)로 할인한 값입니다. 청산가치 보장은 이 현재가치로 판단합니다.
                     </p>
                   </div>
@@ -1657,7 +1657,7 @@ export default function PropertyValuationModal({
                         ? '✅ 청산가치 보장 원칙 충족 (현재가치 기준)' 
                         : '⚠️ 청산가치 보장의 원칙 미달 (월 변제금 상향 또는 기간 연장 필요)'}
                     </h4>
-                    <p className="text-[11px] mt-1 text-slate-700">
+                    <p className="text-xs mt-1 text-slate-700">
                       {isLiquidationGuaranteed
                         ? `총변제액의 현재가치(${won(currentPlanPresentValue)}원)가 청산가치(${won(data.totalLiquidationValue)}원)보다 ${won(currentPlanPresentValue - data.totalLiquidationValue)}원 많습니다. 청산가치 보장 외 다른 인가 요건은 별도로 확인하세요.`
                         : `총변제액의 현재가치가 청산가치보다 ${won(data.totalLiquidationValue - currentPlanPresentValue)}원 부족합니다. 변제계획안 작성기에서 월 변제금을 상향하거나 변제기간을 연장해야 합니다.`}

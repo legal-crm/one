@@ -214,10 +214,10 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               <User className="w-4 h-4 text-[#1E3A5F]" />
               {clientName}
             </span>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
               {gender === 'female' ? '여성' : gender === 'male' ? '남성' : ''} {age ? `· 만 ${age}세` : ''} · {address}
             </span>
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md font-mono ${
+            <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md font-mono ${
               dtiNum >= 25 ? 'bg-rose-50 text-rose-600 border border-rose-200' :
               dtiNum >= 15 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
               'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -237,7 +237,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
                 <span>AI 정밀 분석 보고서 열기</span>
-                <span className="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">PRO</span>
+                <span className="text-xs bg-white/20 px-1 py-0.2 rounded font-mono">PRO</span>
               </button>
             ) : (
               <button
@@ -248,7 +248,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               >
                 <Lock className="w-3.5 h-3.5 text-slate-400" />
                 <span>AI 정밀 분석</span>
-                <span className="text-[10px] text-slate-400 bg-slate-200 px-1 py-0.2 rounded">유료전용</span>
+                <span className="text-xs text-slate-400 bg-slate-200 px-1 py-0.2 rounded">유료전용</span>
               </button>
             )}
           </div>
@@ -257,19 +257,19 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
         {/* 3대 핵심 KPI 카드 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-gradient-to-br from-rose-50/70 to-rose-100/30 rounded-xl p-2.5 border border-rose-200/80">
-            <div className="text-[10px] text-rose-500 font-bold mb-0.5">총 채무액 ({creditorCount}개사)</div>
+            <div className="text-xs text-rose-500 font-bold mb-0.5">총 채무액 ({creditorCount}개사)</div>
             <div className="text-base font-extrabold text-rose-700 font-mono tracking-tight">
               {debtTotal.toLocaleString()}<span className="text-xs font-sans font-bold ml-0.5">만원</span>
             </div>
           </div>
           <div className="bg-gradient-to-br from-blue-50/70 to-blue-100/30 rounded-xl p-2.5 border border-blue-200/80">
-            <div className="text-[10px] text-blue-500 font-bold mb-0.5">월 실수령액 (세후)</div>
+            <div className="text-xs text-blue-500 font-bold mb-0.5">월 실수령액 (세후)</div>
             <div className="text-base font-extrabold text-blue-700 font-mono tracking-tight">
               {income.toLocaleString()}<span className="text-xs font-sans font-bold ml-0.5">만원</span>
             </div>
           </div>
           <div className="bg-gradient-to-br from-[#1E3A5F]/10 to-[#1E3A5F]/20 rounded-xl p-2.5 border border-[#1E3A5F]/30">
-            <div className="text-[10px] text-[#1E3A5F] font-bold mb-0.5">예상 탕감률</div>
+            <div className="text-xs text-[#1E3A5F] font-bold mb-0.5">예상 탕감률</div>
             <div className="text-base font-extrabold text-[#1E3A5F] font-mono tracking-tight">
               약 {reductionRate}%
             </div>
@@ -279,23 +279,23 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
         {/* 법률 특례 및 관할 뱃지 */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           {isYouthSpecial && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
               <Sparkles className="w-3 h-3 text-emerald-600" />
               만 29세 이하 청년 24개월 특례
             </span>
           )}
           {specialCondLabel && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200">
               <Shield className="w-3 h-3 text-indigo-600" />
               {specialCondLabel}
             </span>
           )}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
             <Landmark className="w-3 h-3 text-slate-500" />
             관할: {selectedCourt}
           </span>
           {harassment && (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border font-bold ${harassment.color}`}>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs border font-bold ${harassment.color}`}>
               <AlertTriangle className="w-3 h-3" />
               {harassment.label}
             </span>
@@ -307,7 +307,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           <button
             type="button"
             onClick={() => scrollToSection('sec-voice')}
-            className="py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <MessageSquare className="w-3 h-3 text-amber-500" />
             <span>사연·질문</span>
@@ -315,7 +315,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           <button
             type="button"
             onClick={() => scrollToSection('sec-family-job')}
-            className="py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <Users className="w-3 h-3 text-blue-500" />
             <span>가구·직업</span>
@@ -323,7 +323,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           <button
             type="button"
             onClick={() => scrollToSection('sec-debts')}
-            className="py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <CreditCard className="w-3 h-3 text-rose-500" />
             <span>채무·독촉</span>
@@ -331,7 +331,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           <button
             type="button"
             onClick={() => scrollToSection('sec-housing-assets')}
-            className="py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <Home className="w-3 h-3 text-emerald-500" />
             <span>주거·재산</span>
@@ -351,7 +351,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               <MessageSquare className="w-4 h-4 text-amber-500" />
               <span>고객 질문 & 상담 신청 사연 (Client Voice)</span>
             </h3>
-            <span className="text-[11px] text-slate-500">질문 {rawQuestions.length}건</span>
+            <span className="text-xs text-slate-500">질문 {rawQuestions.length}건</span>
           </div>
 
           {/* 사연 원문 카드 */}
@@ -361,7 +361,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
                 <FileText className="w-3.5 h-3.5 text-amber-600" />
                 고객 상담 신청 사연 원문
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
                 원인: {debtCauseLabel}
               </span>
             </div>
@@ -374,19 +374,19 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           {/* 핵심 질문 카드 및 원클릭 인용 버튼 */}
           {rawQuestions.length > 0 && (
             <div className="space-y-2">
-              <div className="text-[11px] font-bold text-slate-600">의뢰인 맞춤 추출 질문 (클릭 시 제안서 답변에 자동 삽입)</div>
+              <div className="text-xs font-bold text-slate-600">의뢰인 맞춤 추출 질문 (클릭 시 제안서 답변에 자동 삽입)</div>
               <div className="space-y-2">
                 {rawQuestions.map((q, idx) => (
                   <div key={q.id} className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs flex items-start justify-between gap-3 hover:border-amber-300 transition-colors">
                     <div className="space-y-1 min-w-0">
                       <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] flex items-center justify-center font-black shrink-0">
+                        <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-black shrink-0">
                           {idx + 1}
                         </span>
                         <span className="truncate">{q.question}</span>
                       </div>
                       {q.defaultAnswer && (
-                        <p className="text-[11px] text-slate-500 line-clamp-1 pl-5">
+                        <p className="text-xs text-slate-500 line-clamp-1 pl-5">
                           답변 추천: {q.defaultAnswer}
                         </p>
                       )}
@@ -396,7 +396,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
                       <button
                         type="button"
                         onClick={() => onQuoteQuestion(q.question, q.defaultAnswer)}
-                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
                         title="우측 제안서의 변호사 답변란에 이 질문을 삽입합니다"
                       >
                         <span>제안서 인용</span>
@@ -423,27 +423,27 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
             
             {/* 가구 및 가족 관계 */}
             <div>
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <Heart className="w-3 h-3 text-rose-400" />
                 <span>가족 및 부양가족 현황</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">혼인 상태</div>
+                  <div className="text-xs text-slate-500">혼인 상태</div>
                   <div className="font-bold text-slate-800 mt-0.5">{maritalStatusLabel}</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">법정 부양가족 수</div>
+                  <div className="text-xs text-slate-500">법정 부양가족 수</div>
                   <div className="font-bold text-blue-700 mt-0.5 font-mono">
-                    {dependentsCount}명 <span className="text-[10px] font-sans text-slate-500 font-normal">(본인 제외)</span>
+                    {dependentsCount}명 <span className="text-xs font-sans text-slate-500 font-normal">(본인 제외)</span>
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">미성년 자녀</div>
+                  <div className="text-xs text-slate-500">미성년 자녀</div>
                   <div className="font-bold text-slate-800 mt-0.5">{minorChildren > 0 ? `${minorChildren}명` : '해당 없음'}</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">배우자 경제활동 / 재산</div>
+                  <div className="text-xs text-slate-500">배우자 경제활동 / 재산</div>
                   <div className="font-bold text-slate-800 mt-0.5">
                     {spouseIncome > 0 ? `월소득 약 ${spouseIncome}만` : '무소득 / 전업주부'}
                     {spouseAssets > 0 ? ` (재산 ${spouseAssets}만)` : ' (재산 무)'}
@@ -454,25 +454,25 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
 
             {/* 직업 및 고용 형태 */}
             <div className="pt-2 border-t border-slate-100">
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <Briefcase className="w-3 h-3 text-blue-500" />
                 <span>직업 및 근로 현황</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">고용 형태</div>
+                  <div className="text-xs text-slate-500">고용 형태</div>
                   <div className="font-bold text-slate-800 mt-0.5">{jobLabel}</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">직장 / 사업체명</div>
+                  <div className="text-xs text-slate-500">직장 / 사업체명</div>
                   <div className="font-bold text-slate-800 mt-0.5 truncate">{companyName}</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">근속 / 영업 기간</div>
+                  <div className="text-xs text-slate-500">근속 / 영업 기간</div>
                   <div className="font-bold text-slate-800 mt-0.5">{employmentPeriod}</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">4대보험 가입 여부</div>
+                  <div className="text-xs text-slate-500">4대보험 가입 여부</div>
                   <div className="font-bold text-slate-800 mt-0.5">
                     {hasJobInsurance ? '가입 (원천징수 가능)' : '미가입 / 지역가입'}
                   </div>
@@ -482,7 +482,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
 
             {/* 소득 및 가용소득 산출 */}
             <div className="pt-2 border-t border-slate-100">
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-emerald-500" />
                 <span>소득 및 산출 가용소득</span>
               </div>
@@ -516,7 +516,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               <CreditCard className="w-4 h-4 text-rose-500" />
               <span>채무 상세 구조 & 추심·독촉 실황</span>
             </h3>
-            <span className="text-[11px] text-rose-600 font-bold font-mono">총 {debtTotal.toLocaleString()}만원</span>
+            <span className="text-xs text-rose-600 font-bold font-mono">총 {debtTotal.toLocaleString()}만원</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
@@ -524,27 +524,27 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
             {/* 채무 발생원인 및 채권사 현황 */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <div className="text-[10px] text-slate-500">채무 발생 주원인</div>
+                <div className="text-xs text-slate-500">채무 발생 주원인</div>
                 <div className="font-bold text-slate-900 mt-0.5">{debtCauseLabel}</div>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <div className="text-[10px] text-slate-500">총 채권사 수</div>
+                <div className="text-xs text-slate-500">총 채권사 수</div>
                 <div className="font-bold text-slate-900 mt-0.5 font-mono">{creditorCount}개 금융기관</div>
               </div>
             </div>
 
             {/* 금융권별 채무 구성 비중 바 */}
             <div className="space-y-1.5">
-              <div className="text-[11px] font-bold text-slate-500 flex justify-between">
+              <div className="text-xs font-bold text-slate-500 flex justify-between">
                 <span>금융권별 채무 구성 비율</span>
-                <span className="text-[10px] text-slate-400">1금융 {bankPct}% | 2금융·카드 {cardPct}%</span>
+                <span className="text-xs text-slate-400">1금융 {bankPct}% | 2금융·카드 {cardPct}%</span>
               </div>
               <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden flex">
                 <div style={{ width: `${bankPct}%` }} className="bg-blue-500" title={`1금융 은행: ${bankDebt}만원`} />
                 <div style={{ width: `${cardPct}%` }} className="bg-amber-500" title={`2금융/카드: ${cardDebt}만원`} />
                 {coinLoss > 0 && <div style={{ width: `${coinPct}%` }} className="bg-purple-500" title={`코인/투자: ${coinLoss}만원`} />}
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-slate-500 pt-1">
+              <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> 1금융 은행 ({bankDebt}만)</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> 2금융/카드론 ({cardDebt}만)</span>
                 {coinLoss > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" /> 주식/코인손실 ({coinLoss}만)</span>}
@@ -554,19 +554,19 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
             {/* 특별 주의 채무 (코인, 최근대출, 세금) */}
             <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-slate-100">
               <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                <div className="text-[10px] text-slate-500">주식·코인 손실</div>
+                <div className="text-xs text-slate-500">주식·코인 손실</div>
                 <div className="font-bold text-purple-700 font-mono mt-0.5">
                   {coinLoss > 0 ? `${coinLoss.toLocaleString()}만` : '없음'}
                 </div>
               </div>
               <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                <div className="text-[10px] text-slate-500">최근 1년 대출</div>
+                <div className="text-xs text-slate-500">최근 1년 대출</div>
                 <div className="font-bold text-amber-700 font-mono mt-0.5">
                   {recentLoans > 0 ? `${recentLoans.toLocaleString()}만` : '0원'}
                 </div>
               </div>
               <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                <div className="text-[10px] text-slate-500">세금·우선변제</div>
+                <div className="text-xs text-slate-500">세금·우선변제</div>
                 <div className="font-bold text-rose-700 font-mono mt-0.5">
                   {priorityDebt > 0 ? `${priorityDebt.toLocaleString()}만` : '없음'}
                 </div>
@@ -579,7 +579,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
                 <ShieldAlert className="w-4 h-4 text-rose-600" />
                 <span>추심 수위: {harassment?.label || '수시 전화·문자 독촉'}</span>
               </div>
-              <p className="text-[11px] text-rose-700 leading-relaxed">
+              <p className="text-xs text-rose-700 leading-relaxed">
                 {legalActions.length > 0 ? `현재 법적 조치 진행 중: ${legalActions.join(', ')}` : '신청서 접수 즉시 금지명령을 신청하여 모든 독촉 및 압류를 즉각 차단해야 합니다.'}
               </p>
             </div>
@@ -600,29 +600,29 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
             
             {/* 주거 형태 및 보증금/월세 */}
             <div>
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <Home className="w-3 h-3 text-emerald-500" />
                 <span>주거 형태 및 임대차 내역</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">주거 형태 / 명의</div>
+                  <div className="text-xs text-slate-500">주거 형태 / 명의</div>
                   <div className="font-bold text-slate-800 mt-0.5">{housingLabel} ({leaseHolder})</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">임차 보증금</div>
+                  <div className="text-xs text-slate-500">임차 보증금</div>
                   <div className="font-bold text-slate-800 mt-0.5 font-mono">
                     {rentalDeposit > 0 ? `${rentalDeposit.toLocaleString()}만원` : '0원'}
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">월세 지출액</div>
+                  <div className="text-xs text-slate-500">월세 지출액</div>
                   <div className="font-bold text-slate-800 mt-0.5 font-mono">
                     {rentCost > 0 ? `월 ${rentCost.toLocaleString()}만원` : '없음'}
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">보증금 대출 여부</div>
+                  <div className="text-xs text-slate-500">보증금 대출 여부</div>
                   <div className="font-bold text-slate-800 mt-0.5">
                     {depositLoan > 0 ? `대출 ${depositLoan}만원` : '대출 없음'}
                   </div>
@@ -632,21 +632,21 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
 
             {/* 보유 자산 및 퇴직금 (청산가치 산정) */}
             <div className="pt-2 border-t border-slate-100">
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <Landmark className="w-3 h-3 text-indigo-500" />
                 <span>보유 재산 및 청산가치 산정 내역</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">본인 명의 재산 합계</div>
+                  <div className="text-xs text-slate-500">본인 명의 재산 합계</div>
                   <div className="font-bold text-slate-800 mt-0.5 font-mono">
                     {assetsTotal > 0 ? `${assetsTotal.toLocaleString()}만원` : '0원 (무재산)'}
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div className="text-[10px] text-slate-500">예상 퇴직금 (1/2 공제)</div>
+                  <div className="text-xs text-slate-500">예상 퇴직금 (1/2 공제)</div>
                   <div className="font-bold text-slate-800 mt-0.5 font-mono">
-                    약 {expectedSeverance.toLocaleString()}만원 <span className="text-[10px] text-slate-500 font-normal">(청산가치 약 {Math.round(expectedSeverance / 2)}만)</span>
+                    약 {expectedSeverance.toLocaleString()}만원 <span className="text-xs text-slate-500 font-normal">(청산가치 약 {Math.round(expectedSeverance / 2)}만)</span>
                   </div>
                 </div>
               </div>
@@ -654,7 +654,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
 
             {/* 필수 추가 생계비 */}
             <div className="pt-2 border-t border-slate-100">
-              <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1">
                 <Calculator className="w-3 h-3 text-blue-500" />
                 <span>월 필수 추가 인정 생계비 내역</span>
               </div>
@@ -680,7 +680,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
                   </span>
                 )}
                 {rentCost === 0 && medicalCost === 0 && educationCost === 0 && (
-                  <span className="text-[11px] text-slate-400">등록된 추가 생계비 내역이 없습니다.</span>
+                  <span className="text-xs text-slate-400">등록된 추가 생계비 내역이 없습니다.</span>
                 )}
               </div>
             </div>

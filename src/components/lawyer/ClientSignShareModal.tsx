@@ -91,7 +91,7 @@ ${signUrl}
           <div>
             <label className="font-bold text-slate-700 mb-1.5 flex items-center justify-between">
               <span>📱 일회용 모바일 보안 서명 링크</span>
-              <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+              <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" /> 3중 암호화 보안 적용
               </span>
             </label>
@@ -109,7 +109,7 @@ ${signUrl}
                 <span>{copiedLink ? '복사됨' : '링크 복사'}</span>
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3 text-amber-500" /> 서명이 완료되면 같은 링크로 다시 서명할 수 없습니다. 시간 만료 기능은 아직 없으니, 링크가 유출되면 새 계약서로 재발급하세요.
             </p>
           </div>
@@ -123,7 +123,7 @@ ${signUrl}
               </label>
               <button
                 onClick={handleCopyMessage}
-                className="text-[11px] font-bold text-brand hover:text-brand/80 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-brand hover:text-brand/80 flex items-center gap-1 cursor-pointer"
               >
                 {copiedMsg ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedMsg ? '복사 완료' : '문안 전체 복사'}</span>
@@ -133,12 +133,12 @@ ${signUrl}
               readOnly
               rows={8}
               value={messageTemplate}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed font-sans resize-none focus:outline-none select-all"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 leading-relaxed font-sans resize-none focus:outline-none select-all"
             />
           </div>
 
           {/* 인증 절차 안내 */}
-          <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-[11px] text-amber-800 space-y-1">
+          <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-xs text-amber-800 space-y-1">
             <p className="font-bold flex items-center gap-1">
               <Smartphone className="w-3.5 h-3.5" /> 서명 시 의뢰인 본인인증 절차:
             </p>

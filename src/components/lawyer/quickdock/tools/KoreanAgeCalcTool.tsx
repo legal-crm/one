@@ -160,7 +160,7 @@ export default function KoreanAgeCalcTool() {
       {/* 입력 */}
       <div className="grid grid-cols-5 gap-2">
         <div className="col-span-3">
-          <label htmlFor="age-birth" className="text-[11px] font-bold text-slate-700 block mb-1">생년월일</label>
+          <label htmlFor="age-birth" className="text-xs font-bold text-slate-700 block mb-1">생년월일</label>
           <input
             id="age-birth"
             type="text"
@@ -173,7 +173,7 @@ export default function KoreanAgeCalcTool() {
           />
         </div>
         <div className="col-span-2">
-          <label htmlFor="age-base" className="text-[11px] font-bold text-slate-700 block mb-1">기준일</label>
+          <label htmlFor="age-base" className="text-xs font-bold text-slate-700 block mb-1">기준일</label>
           <input
             id="age-base"
             type="date"
@@ -183,7 +183,7 @@ export default function KoreanAgeCalcTool() {
           />
         </div>
       </div>
-      <p id="age-birth-help" className="text-[10px] text-slate-500 -mt-2">
+      <p id="age-birth-help" className="text-xs text-slate-500 -mt-2">
         주민번호는 앞 6자리(필요하면 성별 1자리)까지만 입력하세요. 입력값은 저장되지 않습니다.
       </p>
 
@@ -196,13 +196,13 @@ export default function KoreanAgeCalcTool() {
                 <CalendarCheck className="w-4 h-4 text-rose-700" aria-hidden="true" />
                 법정 만 나이 ({baseDate} 기준)
               </span>
-              <span className="text-[11px] text-rose-800 font-bold">
+              <span className="text-xs text-rose-800 font-bold">
                 {birthdayPassed ? '올해 생일 지남' : `생일까지 D-${nextBirthdayDday}`}
               </span>
             </div>
             <div className="flex items-baseline justify-between pt-1 border-t border-rose-200/60">
               <span className="text-2xl font-black text-rose-700 tabular-nums tracking-tight">만 {fullAge}세</span>
-              <span className="text-[11px] text-slate-600">연 나이 {yearAge}세 · 생년월일 {localYmd(birth)}</span>
+              <span className="text-xs text-slate-600">연 나이 {yearAge}세 · 생년월일 {localYmd(birth)}</span>
             </div>
           </div>
 
@@ -213,7 +213,7 @@ export default function KoreanAgeCalcTool() {
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
               <p className="font-extrabold text-xs">{verdictTitle}</p>
-              <p className="text-[11px] leading-relaxed opacity-90">{verdictBody}</p>
+              <p className="text-xs leading-relaxed opacity-90">{verdictBody}</p>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export default function KoreanAgeCalcTool() {
         <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
           <AlertCircle className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
           <p className="font-bold">{birthInput.trim() ? '생년월일 형식을 확인해 주세요.' : '생년월일을 입력하세요.'}</p>
-          <p className="text-[11px] text-slate-500">예: 950515, 950515-1, 1995-05-15, 1995.5.15</p>
+          <p className="text-xs text-slate-500">예: 950515, 950515-1, 1995-05-15, 1995.5.15</p>
         </div>
       )}
     </div>

@@ -113,7 +113,7 @@ export default function LawyerStatementReviewSection({
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 고객 제출 법원 진술서 (AI 정제 및 대법원 양식 완비)
               </h4>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
                 {statement.status === 'client_completed' ? '고객 제출 완료' : '변호사 검토 완료'}
               </span>
             </div>
@@ -160,7 +160,7 @@ export default function LawyerStatementReviewSection({
             )}
           </h5>
           {s.aiToneUsed && (
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-400">
               AI 톤: {s.aiToneUsed === 'formal' ? '정중·격식' : s.aiToneUsed === 'emotional' ? '진솔·호소' : '간결'}
             </span>
           )}

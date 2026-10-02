@@ -45,7 +45,7 @@ export default function RequestTimeline({ events }: RequestTimelineProps) {
         className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer w-full"
       >
         <span>📋 처리 이력</span>
-        <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 py-0.5 text-[10px] font-black">{events.length}</span>
+        <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 py-0.5 text-xs font-black">{events.length}</span>
         <span className="flex-1" />
         {/* 최근 1건 미리보기 */}
         <span className={`${latestConfig.color} font-bold`}>
@@ -65,10 +65,10 @@ export default function RequestTimeline({ events }: RequestTimelineProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
-                    <span className="text-[10px] text-slate-400">{evt.actor}</span>
-                    <span className="text-[10px] text-slate-300 ml-auto shrink-0">{formatTime(evt.timestamp)}</span>
+                    <span className="text-xs text-slate-400">{evt.actor}</span>
+                    <span className="text-xs text-slate-300 ml-auto shrink-0">{formatTime(evt.timestamp)}</span>
                   </div>
-                  {evt.detail && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{evt.detail}</p>}
+                  {evt.detail && <p className="text-xs text-slate-500 mt-0.5 truncate">{evt.detail}</p>}
                 </div>
               </div>
             );

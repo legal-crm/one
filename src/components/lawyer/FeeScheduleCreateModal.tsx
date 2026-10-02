@@ -264,7 +264,7 @@ export default function FeeScheduleCreateModal({
                   />
                   <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₩</span>
                 </div>
-                <p className="text-[11px] text-slate-500">{(totalFeeWon / 10000).toLocaleString()}만 원</p>
+                <p className="text-xs text-slate-500">{(totalFeeWon / 10000).toLocaleString()}만 원</p>
               </div>
 
               <div className="space-y-1.5">
@@ -279,7 +279,7 @@ export default function FeeScheduleCreateModal({
                   />
                   <span className="absolute left-3 top-2.5 text-xs text-emerald-600 font-bold">₩</span>
                 </div>
-                <p className="text-[11px] text-slate-500">{(downPaymentWon / 10000).toLocaleString()}만 원 (계약 당일 수납)</p>
+                <p className="text-xs text-slate-500">{(downPaymentWon / 10000).toLocaleString()}만 원 (계약 당일 수납)</p>
               </div>
 
               <div className="space-y-1.5">
@@ -340,7 +340,7 @@ export default function FeeScheduleCreateModal({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <span>분납 회차별 일정 미리보기</span>
-                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                       총 {previewSchedule.length}회차
                     </span>
                   </h4>
@@ -396,7 +396,7 @@ export default function FeeScheduleCreateModal({
                             />
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
                               item.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
                             }`}>
                               {item.status === 'paid' ? '납부완료' : '대기중'}
@@ -425,11 +425,11 @@ export default function FeeScheduleCreateModal({
                         </td>
                         <td colSpan={2} className="py-2.5 px-3 text-center">
                           {totalCalculated === totalFeeWon ? (
-                            <span className="text-[11px] text-emerald-600 font-bold flex items-center justify-center gap-1">
+                            <span className="text-xs text-emerald-600 font-bold flex items-center justify-center gap-1">
                               <Check className="w-3 h-3" /> 일치
                             </span>
                           ) : (
-                            <span className="text-[11px] text-rose-500 font-bold flex items-center justify-center gap-1">
+                            <span className="text-xs text-rose-500 font-bold flex items-center justify-center gap-1">
                               <AlertCircle className="w-3 h-3" /> 차액 발생
                             </span>
                           )}

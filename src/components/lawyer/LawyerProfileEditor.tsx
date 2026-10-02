@@ -141,7 +141,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
     ? 'w-full bg-slate-50 hover:bg-slate-100/70 border border-slate-200 focus:bg-white rounded-xl py-2 px-3 text-xs md:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors'
     : 'w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-2 px-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors';
   const labelCls = inline
-    ? 'block text-[11px] font-bold text-slate-600 mb-1'
+    ? 'block text-xs font-bold text-slate-600 mb-1'
     : 'block text-xs font-bold text-slate-400 mb-1.5';
   const sectionCls = inline
     ? 'space-y-3 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs'
@@ -153,7 +153,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
     ? 'flex-1 bg-slate-50 border border-slate-200 rounded-xl py-1 px-2.5 text-xs text-slate-700'
     : 'flex-1 bg-[#0B0F19] border border-[#1E293B]/60 rounded-xl py-1.5 px-3 text-sm text-slate-300';
   const tagCls = inline
-    ? 'bg-brand/10 border border-brand/20 text-brand text-[11px] px-2 py-0.5 rounded-md font-bold'
+    ? 'bg-brand/10 border border-brand/20 text-brand text-xs px-2 py-0.5 rounded-md font-bold'
     : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-2.5 py-1 rounded-lg font-bold';
   const addBtnCls = inline
     ? 'flex items-center gap-1 bg-brand/10 hover:bg-brand/20 text-brand px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap'
@@ -338,7 +338,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-slate-300 block">사무소 로고</span>
-                    <span className="text-[10px] text-slate-500">{form.sealInfo?.firmLogoUrl ? '등록 완료' : '미등록'}</span>
+                    <span className="text-xs text-slate-500">{form.sealInfo?.firmLogoUrl ? '등록 완료' : '미등록'}</span>
                   </div>
                 </div>
 
@@ -352,11 +352,11 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-slate-300 block">변호사 직인</span>
-                    <span className="text-[10px] text-slate-500">{form.sealInfo?.lawyerSealUrl ? '도장 등록됨' : '미등록'}</span>
+                    <span className="text-xs text-slate-500">{form.sealInfo?.lawyerSealUrl ? '도장 등록됨' : '미등록'}</span>
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                 전자계약 체결, 소송위임장, 보정서 출력 시 공인 직인이 자동 합성되어 정식 문서로 발행됩니다.
               </p>
             </div>
@@ -657,13 +657,13 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                       {/* 전문 분야 태그 */}
                       <div className="flex flex-wrap gap-1 pt-0.5">
                         {form.fields.slice(0, 4).map(f => (
-                          <span key={f} className="bg-white/10 border border-white/10 text-white/80 text-[10px] px-1.5 py-0.5 rounded font-bold">#{f}</span>
+                          <span key={f} className="bg-white/10 border border-white/10 text-white/80 text-xs px-1.5 py-0.5 rounded font-bold">#{f}</span>
                         ))}
                       </div>
 
                       {/* 캐치프레이즈 */}
                       {form.catchphrase && (
-                        <p className="text-[11px] text-white/40 font-medium leading-relaxed truncate">
+                        <p className="text-xs text-white/40 font-medium leading-relaxed truncate">
                           "{form.catchphrase}"
                         </p>
                       )}
@@ -738,8 +738,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                             <div key={svc.title} className="bg-white border border-slate-100 rounded-lg p-3 flex items-start gap-2">
                               <span className="text-sm">{svc.emoji}</span>
                               <div>
-                                <h5 className="font-bold text-[11px] text-slate-900">{svc.title}</h5>
-                                <p className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">{svc.desc}</p>
+                                <h5 className="font-bold text-xs text-slate-900">{svc.title}</h5>
+                                <p className="text-xs text-slate-500 mt-0.5 font-medium leading-tight">{svc.desc}</p>
                               </div>
                             </div>
                           ))}
@@ -754,12 +754,12 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                             사무소 위치 및 연락처
                           </h4>
                           {form.officeAddress && (
-                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               사무소 주소 등록됨
                             </span>
                           )}
                         </div>
-                        <div className="space-y-1.5 text-[11px]">
+                        <div className="space-y-1.5 text-xs">
                           <div className="flex items-center gap-1.5">
                             <Building className="w-3 h-3 text-slate-400 shrink-0" />
                             <span className="font-bold text-slate-900">{officeInfo.firmName}</span>
@@ -788,7 +788,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
                           {(form.specialties || form.fields).map(s => (
-                            <span key={s} className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 text-[#1E3A5F] text-[11px] px-2.5 py-1 rounded-lg font-bold">{s}</span>
+                            <span key={s} className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 text-[#1E3A5F] text-xs px-2.5 py-1 rounded-lg font-bold">{s}</span>
                           ))}
                         </div>
                       </div>
@@ -808,8 +808,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           ].filter((b): b is { label: string; sub: string; icon: string } => !!b).map(badge => (
                             <div key={badge.label} className="flex flex-col items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-xs text-center">
                               <span className="text-lg">{badge.icon}</span>
-                              <div className="text-[10px] font-bold text-slate-900 leading-tight">{badge.label}</div>
-                              <div className="text-[9px] text-[#1E3A5F] font-bold">{badge.sub}</div>
+                              <div className="text-xs font-bold text-slate-900 leading-tight">{badge.label}</div>
+                              <div className="text-xs text-[#1E3A5F] font-bold">{badge.sub}</div>
                             </div>
                           ))}
                         </div>
@@ -827,20 +827,20 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           <div key={row.label} className="flex items-start gap-3 px-3.5 py-2.5">
                             <div className="flex items-center gap-1.5 w-16 shrink-0">
                               <row.icon className="w-3 h-3 text-slate-500" />
-                              <span className="text-[10px] text-slate-600 font-bold">{row.label}</span>
+                              <span className="text-xs text-slate-600 font-bold">{row.label}</span>
                             </div>
                             <div className="flex-1 text-left">
                               {row.list ? (
                                 <div className="space-y-0.5">
                                   {row.list.map((item, i) => (
-                                    <div key={i} className="text-[10px] text-slate-700 font-medium flex items-start gap-1">
+                                    <div key={i} className="text-xs text-slate-700 font-medium flex items-start gap-1">
                                       <ChevronRight className="w-2.5 h-2.5 text-[#1E3A5F] mt-0.5 shrink-0" />
                                       <span>{item}</span>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-slate-700 font-medium">{row.value}</span>
+                                <span className="text-xs text-slate-700 font-medium">{row.value}</span>
                               )}
                             </div>
                           </div>
@@ -1002,7 +1002,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     사무소 위치 및 연락처
                   </h3>
                   {form.officeAddress && (
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                       사무소 주소 등록됨
                     </span>
                   )}
@@ -1050,7 +1050,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
             <div>
               <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <span>{form.name} 프로필 편집</span>
-                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{form.region || '전국'}</span>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{form.region || '전국'}</span>
               </h2>
               <p className="text-xs text-slate-500">의뢰인 탐색 및 상세 페이지에 노출되는 프로필 정보입니다</p>
             </div>
@@ -1101,7 +1101,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98]">
                     <Upload className="w-3.5 h-3.5" /><span>이미지 업로드</span>
                   </button>
-                  <p className="text-[11px] text-slate-500">JPG, PNG, WebP (정사각형 권장, 최대 5MB)</p>
+                  <p className="text-xs text-slate-500">JPG, PNG, WebP (정사각형 권장, 최대 5MB)</p>
                 </div>
               </div>
             </div>
@@ -1182,7 +1182,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
           <div className="lg:col-span-5">
             <div className="sticky top-4 space-y-2.5">
               <div className="flex items-center justify-between bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-xs">
-                <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5 text-brand" /> 실시간 의뢰인 뷰
                 </span>
                 <div className="flex gap-1">
@@ -1208,12 +1208,12 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                         <h3 className="text-base font-black text-white truncate">{displayName} 변호사</h3>
                         <div className="bg-[#1E3A5F]/40 border border-[#1E3A5F]/50 rounded-full p-0.5 shrink-0"><CheckCircle className="w-3 h-3 text-sky-300" /></div>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-white/70">
+                      <div className="flex items-center gap-1 text-xs text-white/70">
                         <Building className="w-3 h-3 shrink-0" /><span className="font-medium truncate">{form.firmName || firm?.name || '법률사무소'}</span>
                         <span className="text-white/30">·</span><MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{form.region}</span>
                       </div>
-                      <div className="flex flex-wrap gap-1 pt-0.5">{form.fields.slice(0, 3).map(f => (<span key={f} className="bg-white/10 border border-white/10 text-white/90 text-[10px] px-1.5 py-0.5 rounded font-bold">#{f}</span>))}</div>
-                      {form.catchphrase && <p className="text-[10px] text-white/50 font-medium truncate">"{form.catchphrase}"</p>}
+                      <div className="flex flex-wrap gap-1 pt-0.5">{form.fields.slice(0, 3).map(f => (<span key={f} className="bg-white/10 border border-white/10 text-white/90 text-xs px-1.5 py-0.5 rounded font-bold">#{f}</span>))}</div>
+                      {form.catchphrase && <p className="text-xs text-white/50 font-medium truncate">"{form.catchphrase}"</p>}
                     </div>
                   </div>
                 </div>
@@ -1230,7 +1230,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                         <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><Shield className="w-3 h-3 text-[#1E3A5F]" />전담 서비스 안내</h4>
                         <div className="grid grid-cols-2 gap-1.5">
                           {[{ title: '초기 상담 지원', emoji: '💬' },{ title: '1:1 밀착 관리', emoji: '🤝' },{ title: '보정명령 긴급 대응', emoji: '⚡' },{ title: '신용 회복 가이드', emoji: '📈' }].map(svc => (
-                            <div key={svc.title} className="bg-slate-50 border border-slate-100 rounded-lg p-2 flex items-center gap-1.5"><span className="text-xs">{svc.emoji}</span><h5 className="font-bold text-[10px] text-slate-800 truncate">{svc.title}</h5></div>
+                            <div key={svc.title} className="bg-slate-50 border border-slate-100 rounded-lg p-2 flex items-center gap-1.5"><span className="text-xs">{svc.emoji}</span><h5 className="font-bold text-xs text-slate-800 truncate">{svc.title}</h5></div>
                           ))}
                         </div>
                       </div>
@@ -1240,7 +1240,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     <div className="space-y-3 animate-fadeIn">
                       <div className="space-y-1.5">
                         <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><Scale className="w-3 h-3 text-[#1E3A5F]" />전문 분야</h4>
-                        <div className="flex flex-wrap gap-1">{(form.specialties || form.fields).map(s => (<span key={s} className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 text-[#1E3A5F] text-[10px] px-2 py-0.5 rounded-md font-bold">{s}</span>))}</div>
+                        <div className="flex flex-wrap gap-1">{(form.specialties || form.fields).map(s => (<span key={s} className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 text-[#1E3A5F] text-xs px-2 py-0.5 rounded-md font-bold">{s}</span>))}</div>
                       </div>
                       <div className="bg-slate-50 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
                         {[
@@ -1250,8 +1250,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           { label: '학력', value: form.education || '미입력', icon: GraduationCap },
                         ].map(row => (
                           <div key={row.label} className="flex items-center gap-2 px-3 py-1.5">
-                            <div className="flex items-center gap-1 w-14 shrink-0"><row.icon className="w-2.5 h-2.5 text-slate-500" /><span className="text-[10px] text-slate-600 font-bold">{row.label}</span></div>
-                            <span className="text-[10px] text-slate-800 font-medium truncate">{row.value}</span>
+                            <div className="flex items-center gap-1 w-14 shrink-0"><row.icon className="w-2.5 h-2.5 text-slate-500" /><span className="text-xs text-slate-600 font-bold">{row.label}</span></div>
+                            <span className="text-xs text-slate-800 font-medium truncate">{row.value}</span>
                           </div>
                         ))}
                       </div>

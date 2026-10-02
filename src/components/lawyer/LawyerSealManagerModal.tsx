@@ -134,7 +134,7 @@ export default function LawyerSealManagerModal({
                 ) : (
                   <div className="text-slate-300 flex flex-col items-center">
                     <ImageIcon className="w-6 h-6 mb-1" />
-                    <span className="text-[10px]">미등록</span>
+                    <span className="text-xs">미등록</span>
                   </div>
                 )}
               </div>
@@ -185,7 +185,7 @@ export default function LawyerSealManagerModal({
                 ) : (
                   <div className="w-16 h-16 rounded-full border-2 border-dashed border-red-300 flex flex-col items-center justify-center text-red-300">
                     <Stamp className="w-6 h-6" />
-                    <span className="text-[9px] font-bold mt-0.5">인장 도장</span>
+                    <span className="text-xs font-bold mt-0.5">인장 도장</span>
                   </div>
                 )}
               </div>

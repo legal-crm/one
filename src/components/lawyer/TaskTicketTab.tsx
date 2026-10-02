@@ -186,7 +186,7 @@ export default function TaskTicketTab({
             <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-brand" /> 담당 직원 업무 지시서 작성
             </span>
-            <span className="text-[11px] text-blue-700 font-medium">
+            <span className="text-xs text-blue-700 font-medium">
               지시 즉시 해당 직원에게 실시간 알림이 발송됩니다.
             </span>
           </div>
@@ -290,14 +290,14 @@ export default function TaskTicketTab({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                      <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${priCfg.color} ${priCfg.bgColor}`}>
+                      <span className={`rounded-lg px-2 py-0.5 text-xs font-extrabold ${priCfg.color} ${priCfg.bgColor}`}>
                         {priCfg.emoji} {priCfg.label}
                       </span>
-                      <span className={`text-[10px] font-bold ${stCfg.color}`}>
+                      <span className={`text-xs font-bold ${stCfg.color}`}>
                         {stCfg.emoji} {stCfg.label}
                       </span>
                       {isOverdue && (
-                        <span className="text-[10px] text-red-500 font-bold flex items-center gap-0.5 bg-red-50 px-1.5 py-0.5 rounded-md">
+                        <span className="text-xs text-red-500 font-bold flex items-center gap-0.5 bg-red-50 px-1.5 py-0.5 rounded-md">
                           ⏰ 기한 초과
                         </span>
                       )}
@@ -313,7 +313,7 @@ export default function TaskTicketTab({
                       </p>
                     )}
 
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 flex-wrap">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3 text-slate-400" />
                         <strong className="text-slate-600">{task.assignerName}</strong> → <strong className="text-slate-700">{task.assigneeName}</strong>
@@ -356,12 +356,12 @@ export default function TaskTicketTab({
                         </button>
                       )}
                       {task.requiresApproval && (
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg whitespace-nowrap">검토 승인 필요</span>
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg whitespace-nowrap">검토 승인 필요</span>
                       )}
                       {canAssign && (
                         <button
                           onClick={() => handleDelete(task.id)}
-                          className="text-slate-400 hover:text-red-500 text-[11px] font-bold p-1 rounded-lg hover:bg-red-50 transition-colors"
+                          className="text-slate-400 hover:text-red-500 text-xs font-bold p-1 rounded-lg hover:bg-red-50 transition-colors"
                         >
                           삭제
                         </button>

@@ -146,9 +146,9 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
 
       <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] overflow-hidden box-border shadow-lg print:shadow-none print:border-none" style={{ pageBreakAfter: 'always' }}>
         <h1 className="text-center text-[18px] font-bold mb-4">[별지] 월평균소득 산출 내역서</h1>
-        <p className="text-center text-[11px] mb-3">(단위 : 원)</p>
+        <p className="text-center text-xs mb-3">(단위 : 원)</p>
         
-        <table className="w-full border-collapse border border-black text-[9px] mb-6 text-center" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black text-xs mb-6 text-center" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr>
               <th className="border border-black font-semibold p-1 w-[8%]">소득내용</th>
@@ -183,7 +183,7 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
           </tbody>
         </table>
 
-        <table className="w-full border-collapse border border-black text-[11px] mb-8 text-center" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black text-xs mb-8 text-center" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr>
               <th className="border border-black font-semibold p-1 w-[8%]">공제내용</th>

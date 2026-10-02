@@ -536,7 +536,7 @@ function CourtDocSuiteViewerModalInner({
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className={`text-[9px] px-1 py-0.1 rounded font-mono ${
+                  <span className={`text-xs px-1 py-0.1 rounded font-mono ${
                     isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-700 text-slate-300'
                   }`}>
                     {tab.badge}
@@ -556,7 +556,7 @@ function CourtDocSuiteViewerModalInner({
               onChange={(e) => setIsEditMode(e.target.checked)}
               className="rounded border-slate-700 text-blue-600"
             />
-            <span className={isEditMode ? 'text-blue-300 font-semibold text-[11px]' : 'text-slate-400 text-[11px]'}>
+            <span className={isEditMode ? 'text-blue-300 font-semibold text-xs' : 'text-slate-400 text-xs'}>
               ✏️ 캔버스 직접타이핑
             </span>
           </label>
@@ -565,7 +565,7 @@ function CourtDocSuiteViewerModalInner({
             <select
               value={selectedFont}
               onChange={(e) => setSelectedFont(e.target.value as any)}
-              className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-slate-200 text-[11px]"
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-slate-200 text-xs"
             >
               <option value="font-serif">바탕체 (법원표준)</option>
               <option value="font-sans">고딕체</option>
@@ -580,7 +580,7 @@ function CourtDocSuiteViewerModalInner({
             >
               <ZoomOut className="w-3 h-3" />
             </button>
-            <span className="font-mono text-[10px] w-9 text-center">{zoomLevel}%</span>
+            <span className="font-mono text-xs w-9 text-center">{zoomLevel}%</span>
             <button 
               onClick={() => setZoomLevel(prev => Math.min(140, prev + 5))}
               className="p-1 hover:bg-slate-800 rounded"

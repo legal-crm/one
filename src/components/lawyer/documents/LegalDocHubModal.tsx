@@ -208,7 +208,7 @@ function LegalDocHubModalInner({
                 <h3 className="font-extrabold text-base text-white">
                   스마트 법원 서식 허브 (80여 종 분류 체계 & 발급/작성 자동화)
                 </h3>
-                <span className="text-[10px] bg-blue-500 text-white font-extrabold px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-blue-500 text-white font-extrabold px-2 py-0.5 rounded-full">
                   AUTO-FILING PRO
                 </span>
               </div>
@@ -367,16 +367,16 @@ function LegalDocHubModalInner({
                             <div className="flex items-center gap-1.5">
                               {/* 2축 성격 뱃지 */}
                               {hasIssuanceGuide && (
-                                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md">
                                   🏛️ 발급형
                                 </span>
                               )}
                               {isSelfWritten && (
-                                <span className="text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-md">
+                                <span className="text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-md">
                                   ✍️ 자가작성
                                 </span>
                               )}
-                              <span className="text-[10px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">
+                              <span className="text-xs font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">
                                 필수 권장
                               </span>
                             </div>
@@ -385,14 +385,14 @@ function LegalDocHubModalInner({
                           <p className="text-xs text-slate-600 leading-relaxed">{doc.description}</p>
                           
                           {recommendations.reasonMap[doc.docCode] && (
-                            <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-[11px] text-amber-900 font-medium">
+                            <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-xs text-amber-900 font-medium">
                               💡 <strong>추천 사유:</strong> {recommendations.reasonMap[doc.docCode]}
                             </div>
                           )}
                         </div>
 
                         <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-3 flex-wrap gap-2">
-                          <span className="text-[11px] text-slate-400 font-mono">
+                          <span className="text-xs text-slate-400 font-mono">
                             {doc.isClientMobileSupport ? '📱 모바일 서명 지원' : hasIssuanceGuide ? '🏛️ 관공서 발급 대상' : '⚖️ 대리인 날인 양식'}
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -462,16 +462,16 @@ function LegalDocHubModalInner({
                             <span className="text-xs font-mono font-bold text-slate-500">#{doc.docCode}</span>
                             <div className="flex items-center gap-1.5">
                               {hasIssuanceGuide && (
-                                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md">
                                   🏛️ 발급형
                                 </span>
                               )}
                               {isSelfWritten && (
-                                <span className="text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-md">
+                                <span className="text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-md">
                                   ✍️ 자가작성
                                 </span>
                               )}
-                              <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
+                              <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
                                 {doc.category}
                               </span>
                             </div>
@@ -480,14 +480,14 @@ function LegalDocHubModalInner({
                           <p className="text-xs text-slate-600 leading-relaxed">{doc.description}</p>
                           
                           {recommendations.reasonMap[doc.docCode] && (
-                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-[11px] text-slate-700">
+                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-xs text-slate-700">
                               🔍 <strong>배경:</strong> {recommendations.reasonMap[doc.docCode]}
                             </div>
                           )}
                         </div>
 
                         <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-3 flex-wrap gap-2">
-                          <span className="text-[11px] text-slate-400 font-mono">
+                          <span className="text-xs text-slate-400 font-mono">
                             {doc.isClientMobileSupport ? '📱 의뢰인 자가작성 지원' : hasIssuanceGuide ? '🏛️ 외부 발급 서류' : '변호사 보정서 작성'}
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -628,29 +628,29 @@ function LegalDocHubModalInner({
                             <span className="text-xs font-mono font-bold text-slate-400">#{doc.docCode}</span>
                             <div className="flex items-center gap-1 flex-wrap">
                               {/* 관할 뱃지 */}
-                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                              <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
                                 {doc.caseScope === 'REHAB' ? '💼 회생' : doc.caseScope === 'BANKRUPTCY' ? '⚖️ 파산' : '🌐 공통'}
                               </span>
                               {/* 성격 뱃지 */}
                               {hasIssuanceGuide && (
-                                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded">
                                   🏛️ 발급형
                                 </span>
                               )}
                               {isSelfWritten && (
-                                <span className="text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded">
+                                <span className="text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded">
                                   ✍️ 자가작성
                                 </span>
                               )}
                               {docTier === 'COLD' && (
-                                <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold">
+                                <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold">
                                   📦 딥보관
                                 </span>
                               )}
                             </div>
                           </div>
                           <h5 className="font-extrabold text-xs text-slate-900 line-clamp-1">{doc.title}</h5>
-                          <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{doc.description}</p>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{doc.description}</p>
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-3 flex-wrap gap-1.5">
@@ -658,7 +658,7 @@ function LegalDocHubModalInner({
                             {hasIssuanceGuide && (
                               <button
                                 onClick={() => setSelectedGuideDoc(doc)}
-                                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 cursor-pointer"
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 cursor-pointer"
                                 title="어디서 어떻게 발급받는지 안내 팝업을 엽니다."
                               >
                                 <ExternalLink className="w-3 h-3" />
@@ -668,7 +668,7 @@ function LegalDocHubModalInner({
                             {isSelfWritten && (
                               <button
                                 onClick={() => handleSendMobileRequest(doc)}
-                                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer ml-1"
+                                className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer ml-1"
                               >
                                 <Smartphone className="w-3 h-3" />
                                 <span>모바일요청</span>
@@ -743,12 +743,12 @@ function LegalDocHubModalInner({
                           <span className="text-xs font-mono font-bold text-slate-400">#{req.docCode}</span>
                           <h5 className="font-bold text-sm text-slate-900">{req.docTitle}</h5>
                           {req.status === 'SUBMITTED' || req.status === 'VERIFIED' ? (
-                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
                               작성 및 전자서명 완료
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               의뢰인 작성 대기중
                             </span>
@@ -758,7 +758,7 @@ function LegalDocHubModalInner({
                           요청일시: {new Date(req.requestedAt).toLocaleString()} · 의뢰인: {req.clientName} ({req.clientPhone})
                         </p>
                         {req.completedAt && (
-                          <p className="text-[11px] text-emerald-600 font-mono">
+                          <p className="text-xs text-emerald-600 font-mono">
                             완료일시: {new Date(req.completedAt).toLocaleString()}
                           </p>
                         )}

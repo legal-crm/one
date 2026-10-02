@@ -277,12 +277,12 @@ export default function FeeAlimtokModal({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-black text-white">팝빌 승인 수임료 알림톡 발송</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 flex items-center gap-1">
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                     <span>카카오 사전심사 승인 전용</span>
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   팝빌에 등록·승인된 수임료 템플릿의 고정 문안은 보호되며, 치환 변수값만 입력하여 안전하게 발송합니다.
                 </p>
               </div>
@@ -304,7 +304,7 @@ export default function FeeAlimtokModal({
             {/* 수신인 및 발송 채널 요약 바 */}
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 text-[11px]">수신 고객:</span>
+                <span className="text-slate-500 text-xs">수신 고객:</span>
                 <span className="font-bold text-slate-900">
                   {client.clientName} ({client.phone || '연락처 없음'})
                 </span>
@@ -314,11 +314,11 @@ export default function FeeAlimtokModal({
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <div className="flex items-center gap-1.5 text-xs text-slate-600">
                   <span>발신 명의:</span>
                   <span className="font-bold text-slate-800">{firmName} {lawyerName}</span>
                 </div>
-                <span className="font-bold text-[#391B1B] bg-yellow-100 border border-yellow-300 px-2 py-0.5 rounded-md text-[10px]">
+                <span className="font-bold text-[#391B1B] bg-yellow-100 border border-yellow-300 px-2 py-0.5 rounded-md text-xs">
                   카카오 알림톡
                 </span>
               </div>
@@ -344,7 +344,7 @@ export default function FeeAlimtokModal({
                       <div className={`font-bold text-xs ${isSelected ? 'text-yellow-950' : 'text-slate-800'}`}>
                         {c.label}
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                      <div className="text-xs text-slate-500 mt-0.5 truncate">
                         {c.templateCode}
                       </div>
                     </button>
@@ -359,7 +359,7 @@ export default function FeeAlimtokModal({
                 <label className="font-bold text-slate-800 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-[#1E3A5F]" />
                   <span>팝빌 승인 템플릿 상세 선택</span>
-                  <span className="text-[10px] text-slate-400 font-normal">
+                  <span className="text-xs text-slate-400 font-normal">
                     (총 {templates.length}건 등록)
                   </span>
                 </label>
@@ -368,7 +368,7 @@ export default function FeeAlimtokModal({
                 <button
                   type="button"
                   onClick={() => setIsRegisterModalOpen(true)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#1E3A5F] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors border border-slate-300 press-scale"
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#1E3A5F] font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors border border-slate-300 press-scale"
                   title="카카오 검수 심사를 위한 신규 템플릿 등록"
                 >
                   <Plus className="w-3 h-3 text-[#1E3A5F]" />
@@ -394,19 +394,19 @@ export default function FeeAlimtokModal({
 
               {/* 선택된 템플릿 세부 정보 칩 */}
               {selectedTemplate && (
-                <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100/70 rounded-lg text-[11px] text-slate-600">
+                <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100/70 rounded-lg text-xs text-slate-600">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-slate-700">{selectedTemplate.templateCode}</span>
                     <span className="text-slate-300">|</span>
                     <span>{selectedTemplate.templateName}</span>
                   </div>
                   {selectedTemplate.state === '승인' ? (
-                    <span className="font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                    <span className="font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded text-xs flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       <span>검수 승인 완료</span>
                     </span>
                   ) : (
-                    <span className="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                    <span className="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs flex items-center gap-1">
                       <span>⏳ {selectedTemplate.state} (승인 대기)</span>
                     </span>
                   )}
@@ -421,7 +421,7 @@ export default function FeeAlimtokModal({
                   <Edit3 className="w-3.5 h-3.5 text-blue-700" />
                   <span>알림톡 치환 변수 입력 ({detectedVars.length}개 항목)</span>
                 </label>
-                <span className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+                <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
                   <Lock className="w-3 h-3 text-blue-500" /> 고정 문안 자동 보호 (변수만 입력)
                 </span>
               </div>
@@ -429,7 +429,7 @@ export default function FeeAlimtokModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 {detectedVars.map((varName) => (
                   <div key={varName} className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-700 font-mono">
                         #&#123;{varName}&#125;
                       </span>
@@ -453,21 +453,21 @@ export default function FeeAlimtokModal({
                   <Sparkles className="w-3.5 h-3.5 text-[#391B1B]" />
                   <span>카카오톡 실시간 수신 화면 미리보기</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {compiledMessage.length}자
                 </span>
               </div>
 
               {/* 카카오 알림톡 노란색 말풍선 카드 */}
               <div className="bg-[#FAE100] rounded-2xl p-4 shadow-inner space-y-2.5">
-                <div className="flex items-center justify-between text-[11px] text-[#391B1B]/80 font-bold border-b border-[#391B1B]/10 pb-1.5">
+                <div className="flex items-center justify-between text-xs text-[#391B1B]/80 font-bold border-b border-[#391B1B]/10 pb-1.5">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-[#391B1B] text-white flex items-center justify-center font-black text-[8px]">
+                    <div className="w-5 h-5 rounded-full bg-[#391B1B] text-white flex items-center justify-center font-black text-xs">
                       TALK
                     </div>
                     <span>{firmName || '사무소명 미설정'}</span>
                   </div>
-                  <span className="text-[10px] opacity-75">알림톡 도착</span>
+                  <span className="text-xs opacity-75">알림톡 도착</span>
                 </div>
 
                 {/* 읽기 전용 흰색 말풍선 (직접 수정 불가, 변수 입력에 따라 실시간 렌더링) */}
@@ -490,7 +490,7 @@ export default function FeeAlimtokModal({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-[10px] text-[#391B1B]/80 font-medium px-1">
+                <div className="flex items-center justify-between text-xs text-[#391B1B]/80 font-medium px-1">
                   <span>승인 템플릿과 문구가 다르면 알림톡 대신 문자(LMS)로 대체 발송될 수 있습니다.</span>
                 </div>
               </div>
@@ -507,7 +507,7 @@ export default function FeeAlimtokModal({
                 />
                 <span>카카오톡 미수신 시 LMS/SMS 대체 발송</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-medium">수신 여부는 통신 환경에 따라 다를 수 있음</span>
+              <span className="text-xs text-slate-400 font-medium">수신 여부는 통신 환경에 따라 다를 수 있음</span>
             </div>
           </div>
 

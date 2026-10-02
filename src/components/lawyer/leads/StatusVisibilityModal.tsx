@@ -52,7 +52,7 @@ export default function StatusVisibilityModal({
 
           <div className="shrink-0 p-3.5 bg-blue-50/80 border-b border-blue-100 text-xs text-blue-900 leading-relaxed">
           <p className="font-bold">💡 체크 해제된 상태는 목록에서 숨겨집니다.</p>
-          <p className="text-blue-700 text-[11px] mt-0.5">(단, 상단 필터에서 해당 상태를 직접 선택하면 즉시 표시됩니다.)</p>
+          <p className="text-blue-700 text-xs mt-0.5">(단, 상단 필터에서 해당 상태를 직접 선택하면 즉시 표시됩니다.)</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">

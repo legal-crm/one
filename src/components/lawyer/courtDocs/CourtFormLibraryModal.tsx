@@ -228,7 +228,7 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
                       <div className="flex-1 min-w-0">
                         <div className="truncate">{form.name}</div>
                         {form.dCode && (
-                          <div className="text-[10px] text-slate-400 mt-0.5">{form.dCode}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{form.dCode}</div>
                         )}
                       </div>
                       <ChevronRight className="w-3 h-3 flex-shrink-0 text-slate-300" />

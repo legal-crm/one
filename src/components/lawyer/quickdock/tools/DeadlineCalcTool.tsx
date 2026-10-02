@@ -7,6 +7,7 @@ import {
 import { HOLIDAY_DATA_LAST_YEAR } from '../../../../utils/koreanHolidays';
 import { useCopyFeedback } from '../clipboard';
 import CopyButton from '../ui/CopyButton';
+import DockCaseActionBar from '../DockCaseActionBar';
 
 const UNIT_LABEL: Record<DeadlineUnit, string> = { day: '일', week: '주', month: '개월' };
 
@@ -27,7 +28,7 @@ function ddayLabel(diff: number | null): { text: string; tone: string } {
  * 기한·기일 계산기
  * - 송달일(고지일) 기준 N일·N주·N개월 만료일을 민법 제157·160·161조로 계산하고
  *   말일이 토요일·일요일·공휴일이면 다음 날로 연장한다.
- * - 입력값은 저장하지 않는다.
+ * - 사건 워크스페이스 연동 시 만료일 기준 '할 일 등록', '메모에 추가' 가능
  */
 export default function DeadlineCalcTool() {
   const [baseDate, setBaseDate] = useState(() => localYmd());
@@ -44,18 +45,31 @@ export default function DeadlineCalcTool() {
   );
   const dday = ddayLabel(result ? daysUntil(result.date) : null);
 
-  const handleCopy = () => {
-    if (!result) return;
+  const briefingText = useMemo(() => {
+    if (!result) return '';
     const extended = result.extendedOver.length > 0
       ? `\n• 연장: 말일 ${formatYmdWithDow(result.rawEndDate)} (${result.extendedOver.map(x => `${x.date.slice(5)} ${x.reason}`).join(', ')}) → 다음 평일 만료`
       : '';
-    const text = `[기한 계산 (참고)]
+    return `[기한 계산 (참고)]
 • 기준일(송달·고지): ${formatYmdWithDow(baseDate)}
 • 기간: ${amount}${UNIT_LABEL[unit]} (초일 불산입, ${formatYmdWithDow(result.startDate)}부터 기산)
 • 만료일: ${formatYmdWithDow(result.date)}${extended}
 ※ 민법 제157·160·161조 기준 계산입니다. 기산일과 기간은 재판서·공고 내용으로 확인해 주세요.`;
-    copy(text, '기한 계산 결과가 복사되었습니다.');
+  }, [result, baseDate, amount, unit]);
+
+  const handleCopy = () => {
+    if (!briefingText) return;
+    copy(briefingText, '기한 계산 결과가 복사되었습니다.');
   };
+
+  const taskData = result
+    ? {
+        title: `[기한 준수] ${amount}${UNIT_LABEL[unit]} 만료일 (${formatYmdWithDow(result.date)})`,
+        description: briefingText,
+        dueDate: result.date,
+        priority: 'HIGH',
+      }
+    : undefined;
 
   return (
     <div className="space-y-3.5 p-4 text-slate-800 text-xs">
@@ -63,7 +77,7 @@ export default function DeadlineCalcTool() {
       <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor="deadline-base" className="text-[11px] font-bold text-slate-700 block mb-1">
+            <label htmlFor="deadline-base" className="text-xs font-bold text-slate-700 block mb-1">
               기준일 (송달·고지일)
             </label>
             <input
@@ -75,7 +89,7 @@ export default function DeadlineCalcTool() {
             />
           </div>
           <div>
-            <label htmlFor="deadline-amount" className="text-[11px] font-bold text-slate-700 block mb-1">
+            <label htmlFor="deadline-amount" className="text-xs font-bold text-slate-700 block mb-1">
               기간
             </label>
             <div className="flex gap-1">
@@ -106,13 +120,13 @@ export default function DeadlineCalcTool() {
           </div>
         </div>
         {!amountValid && (
-          <p id="deadline-amount-error" className="text-[11px] font-bold text-rose-700">
+          <p id="deadline-amount-error" className="text-xs font-bold text-rose-700">
             기간은 1 이상의 정수로 입력하세요 (일 365·주 52·개월 24 이하).
           </p>
         )}
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold text-slate-500">빠른 선택</span>
+          <span className="text-xs font-bold text-slate-500">빠른 선택</span>
           {PRESETS.map(p => {
             const selected = amountValid && amount === p.amount && unit === p.unit;
             return (
@@ -124,7 +138,7 @@ export default function DeadlineCalcTool() {
                   setAmountText(String(p.amount));
                   setUnit(p.unit);
                 }}
-                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer press-scale ${
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer press-scale ${
                   selected ? 'bg-sky-600 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
                 }`}
               >
@@ -135,7 +149,7 @@ export default function DeadlineCalcTool() {
           <button
             type="button"
             onClick={() => setBaseDate(localYmd())}
-            className="ml-auto px-2 py-1 rounded-lg text-[11px] font-bold text-sky-700 hover:bg-sky-50 cursor-pointer"
+            className="ml-auto px-2 py-1 rounded-lg text-xs font-bold text-sky-700 hover:bg-sky-50 cursor-pointer"
           >
             기준일 오늘로
           </button>
@@ -151,11 +165,11 @@ export default function DeadlineCalcTool() {
               만료일
             </span>
             {dday.text && (
-              <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg tabular-nums ${dday.tone}`}>{dday.text}</span>
+              <span className={`text-xs font-black px-2 py-0.5 rounded-lg tabular-nums ${dday.tone}`}>{dday.text}</span>
             )}
           </div>
           <p className="text-lg font-black text-sky-800 tabular-nums">{formatYmdWithDow(result.date)}</p>
-          <div className="text-[11px] text-slate-600 space-y-0.5 pt-1.5 border-t border-sky-200/70">
+          <div className="text-xs text-slate-600 space-y-0.5 pt-1.5 border-t border-sky-200/70">
             <p>기산일 {formatYmdWithDow(result.startDate)} (초일 불산입)</p>
             {result.extendedOver.length > 0 ? (
               <p>
@@ -167,7 +181,7 @@ export default function DeadlineCalcTool() {
             )}
           </div>
           {result.holidayDataMissing && (
-            <p className="flex items-start gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            <p className="flex items-start gap-1 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
               {HOLIDAY_DATA_LAST_YEAR}년 이후 설·추석·대체공휴일 자료가 없어 주말과 고정 공휴일만 반영했습니다. 달력으로 직접 확인하세요.
             </p>
@@ -177,12 +191,12 @@ export default function DeadlineCalcTool() {
         <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
           <CalendarX2 className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
           <p className="font-bold">기준일과 기간을 입력하면 만료일을 계산합니다.</p>
-          <p className="text-[11px] text-slate-500">빠른 선택 버튼으로 7일·14일·1개월을 바로 넣을 수 있습니다.</p>
+          <p className="text-xs text-slate-500">빠른 선택 버튼으로 7일·14일·1개월을 바로 넣을 수 있습니다.</p>
         </div>
       )}
 
       {/* 계산 기준 */}
-      <div className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1 leading-relaxed">
+      <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1 leading-relaxed">
         <p className="font-bold text-slate-700">계산 기준</p>
         <p>• 초일 불산입(민법 제157조), 주·월은 역에 따라 계산(제160조), 말일이 토요일·공휴일이면 익일 만료(제161조). 민사소송법 제170조가 민법을 따르도록 정합니다.</p>
         <p>• 참고: 즉시항고는 재판을 고지받은 날부터 1주(민사소송법 제444조), 채무자회생법상 공고된 재판은 공고일부터 14일(같은 법 제13조). 기산일·적용 조문은 재판서와 공고로 확인하세요.</p>
@@ -190,6 +204,13 @@ export default function DeadlineCalcTool() {
       </div>
 
       <CopyButton copied={copied} onClick={handleCopy} disabled={!result} label="기한 안내 복사" />
+      <DockCaseActionBar
+        taskData={taskData}
+        memoText={briefingText}
+        memoCategory="task"
+        disabled={!result}
+      />
     </div>
   );
 }
+

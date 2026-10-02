@@ -102,7 +102,7 @@ export const ClientCaseSummarySubTab: React.FC<ClientCaseSummarySubTabProps> = (
             </div>
             <div>
               <h3 className="font-black text-slate-800 text-base">사건 기본 요약문</h3>
-              <p className="text-[11px] text-slate-400">의뢰인 인적/소득/채무/자산 현황을 바탕으로 18개 표준 항목으로 구성됩니다.</p>
+              <p className="text-xs text-slate-400">의뢰인 인적/소득/채무/자산 현황을 바탕으로 18개 표준 항목으로 구성됩니다.</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -177,7 +177,7 @@ export const ClientCaseSummarySubTab: React.FC<ClientCaseSummarySubTabProps> = (
             </div>
             <div>
               <h3 className="font-black text-purple-900 text-base">AI 통화 요약문 (Gemini 3.5)</h3>
-              <p className="text-[11px] text-purple-600/80">음성 녹취 분석 결과와 화자분리([변호사/사무장] vs [의뢰인]) 대화록입니다.</p>
+              <p className="text-xs text-purple-600/80">음성 녹취 분석 결과와 화자분리([변호사/사무장] vs [의뢰인]) 대화록입니다.</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -279,7 +279,7 @@ export const ClientCaseSummarySubTab: React.FC<ClientCaseSummarySubTabProps> = (
                 <span>사건 메모로 전송</span>
               </button>
             </div>
-            <p className="text-[11px] text-center text-purple-600 font-medium">
+            <p className="text-xs text-center text-purple-600 font-medium">
               * 전송 시 '특이사항' 부분만 자동으로 추출되어 의뢰인의 상담 메모에 추가됩니다.
             </p>
           </div>

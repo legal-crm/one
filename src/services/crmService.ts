@@ -6,6 +6,8 @@ import type {
 } from '../types';
 import { DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, getStandardDocumentsForClient } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
+import { feeTotalWon } from '../utils/feeUnits';
+import { thirteenStageAfterStatusChange } from '../components/lawyer/pipeline/journeyStage';
 
 // ============================================================
 // CRM Supabase Service Layer
@@ -86,7 +88,11 @@ export async function loadCrmData(): Promise<CrmDataStore> {
 export async function loadCrmDataResult(): Promise<{ ok: boolean; data: CrmDataStore; source: 'server' | 'local' }> {
   if (!isSupabaseConfigured) return { ok: true, data: loadLocalCrmData(), source: 'local' };
   const server = await fetchServerCrmData();
-  return server ? { ok: true, data: server, source: 'server' } : { ok: false, data: {}, source: 'local' };
+  if (server) {
+    return { ok: true, data: server, source: 'server' };
+  }
+  // 서버 불러오기 실패 시: 이전에는 빈 객체 {}를 주어 데이터가 덮어씌워지는 위험이 있었음 -> 로컬 캐시를 반환하되 ok: false로 표시
+  return { ok: false, data: loadLocalCrmData(), source: 'local' };
 }
 
 function loadLocalCrmData(): CrmDataStore {
@@ -148,9 +154,35 @@ async function fetchServerCrmData(): Promise<CrmDataStore | null> {
 
 /** @returns 서버(Supabase) 저장 성공 여부 — 미설정 환경에서는 로컬 저장만 하고 true */
 export async function saveCrmClient(clientId: string, ext: CrmClientExtension): Promise<boolean> {
-  // Always save to localStorage
+  if (!clientId) {
+    console.error('[CRM] saveCrmClient called with empty clientId');
+    return false;
+  }
+
+  // Always save to localStorage with conflict-safe array merging
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  store[clientId] = ext;
+  const existing = store[clientId];
+
+  // 안전 병합: 기존 로컬에 이미 존재하는 노트/활동로그 중 누락된 항목이 있다면 안전하게 보존
+  let mergedExt = { ...ext };
+  if (existing) {
+    if (existing.notes && existing.notes.length > 0 && ext.notes) {
+      const existingNoteIds = new Set(ext.notes.map(n => n.id));
+      const missingNotes = existing.notes.filter(n => !existingNoteIds.has(n.id));
+      if (missingNotes.length > 0) {
+        mergedExt.notes = [...ext.notes, ...missingNotes];
+      }
+    }
+    if (existing.activities && existing.activities.length > 0 && ext.activities) {
+      const existingActIds = new Set(ext.activities.map(a => a.id));
+      const missingActs = existing.activities.filter(a => !existingActIds.has(a.id));
+      if (missingActs.length > 0) {
+        mergedExt.activities = [...ext.activities, ...missingActs];
+      }
+    }
+  }
+
+  store[clientId] = mergedExt;
   setLocalData(CRM_STORAGE_KEY, store);
 
   // Also persist to Supabase if configured
@@ -159,31 +191,31 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
       // 고정 컬럼에 없는 확장 필드(진술서·D5102·D5103·소명표·13단계 등)는 extension_data(jsonb)에 통째로 보관
       // (migration 016). 파일 본문(uploadedFiles)은 기존 uploaded_files 컬럼을 사용하므로 중복 저장하지 않는다.
       // 인증서 금고(certificateVault)는 개인키 원본이 포함되므로 서버 jsonb로 절대 전송하지 않는다.
-      const { uploadedFiles: _files, certificateVault: _vault, ...extensionData } = ext as CrmClientExtension & { certificateVault?: unknown };
+      const { uploadedFiles: _files, certificateVault: _vault, ...extensionData } = mergedExt as CrmClientExtension & { certificateVault?: unknown };
       const baseRow = {
         client_id: clientId,
-        crm_status: ext.crmStatus,
-        assignee_id: ext.assigneeId,
-        assigned_lawyer_id: ext.assignedLawyerId || ext.assigneeId,
-        assigned_consultant_id: ext.assignedConsultantId,
-        assigned_staff_id: ext.assignedStaffId,
-        documents: ext.documents,
-        notes: ext.notes,
-        activities: ext.activities,
-        contract_date: ext.contractDate,
-        contract_amount: ext.contractAmount,
-        last_activity_at: ext.lastActivityAt,
-        intake_channel: ext.intakeChannel,
-        intake_channel_detail: ext.intakeChannelDetail,
-        is_external_client: ext.isExternalClient,
-        total_fee: ext.totalFee,
-        total_paid: ext.totalPaid,
-        fee_schedule: ext.feeSchedule,
-        uploaded_files: ext.uploadedFiles,
-        document_requests: ext.documentRequests,
-        correction_orders: ext.correctionOrders,
-        court_case: ext.courtCase,
-        alimtok_logs: ext.alimtokLogs,
+        crm_status: mergedExt.crmStatus,
+        assignee_id: mergedExt.assigneeId,
+        assigned_lawyer_id: mergedExt.assignedLawyerId || mergedExt.assigneeId,
+        assigned_consultant_id: mergedExt.assignedConsultantId,
+        assigned_staff_id: mergedExt.assignedStaffId,
+        documents: mergedExt.documents,
+        notes: mergedExt.notes,
+        activities: mergedExt.activities,
+        contract_date: mergedExt.contractDate,
+        contract_amount: mergedExt.contractAmount,
+        last_activity_at: mergedExt.lastActivityAt,
+        intake_channel: mergedExt.intakeChannel,
+        intake_channel_detail: mergedExt.intakeChannelDetail,
+        is_external_client: mergedExt.isExternalClient,
+        total_fee: mergedExt.totalFee,
+        total_paid: mergedExt.totalPaid,
+        fee_schedule: mergedExt.feeSchedule,
+        uploaded_files: mergedExt.uploadedFiles,
+        document_requests: mergedExt.documentRequests,
+        correction_orders: mergedExt.correctionOrders,
+        court_case: mergedExt.courtCase,
+        alimtok_logs: mergedExt.alimtokLogs,
         updated_at: new Date().toISOString(),
       };
       let { error } = await supabase
@@ -818,57 +850,120 @@ export async function submitClientDocument(
   if (!synced) throw new Error('서버 저장 실패');
 }
 
+/**
+ * 전자계약 체결/발송 시 CRM 확장 데이터에 반영할 순수 패치 생성
+ * - 계약서 금액(totalFee), 계약일(contractDate), 약정액(contractAmount) 동기화
+ * - 분납 스케줄: 기존 납부 상태(isPaid, paidAt, paymentMethod, receiptUrl 등) 및 연기/알림 이력 보존
+ * - CRM 상태 승격: requested/consulting 상태에서만 contracted로 승격 (filed 이후 진행 사건 덮어쓰기 방지)
+ * - 상태 승격 시 thirteenStageAfterStatusChange를 통해 13단계 여정도 일관되게 맞춤
+ * - 활동 로그: 같은 계약 ID의 직전 상태와 달라졌을 때만 추가 (금액은 feeTotalWon으로 '원' 단위 포맷)
+ */
+export function buildContractSyncPatch(
+  ext: CrmClientExtension,
+  contract: ElectronicContract,
+  actor?: { id: string; name: string; role: StaffRole },
+  clientId?: string
+): Partial<CrmClientExtension> {
+  const actorInfo = actor || { id: 'system', name: contract.lawyerName || '담당 변호사', role: 'LAWYER' as StaffRole };
+  const patch: Partial<CrmClientExtension> = {
+    totalFee: contract.totalFee,
+    contractDate: contract.contractDate,
+    contractAmount: contract.totalFee,
+  };
+
+  // 분납표 보존 매칭: 계약서 feeSchedule을 기반으로 하되, 기존 CRM에 기록된 납부/연기/알림 상태 유지
+  if (contract.feeSchedule && contract.feeSchedule.length > 0) {
+    const prevList = ext.feeSchedule || [];
+    patch.feeSchedule = contract.feeSchedule.map(f => {
+      const prev = prevList.find(p => (f.id && p.id === f.id) || p.round === f.round);
+      const amountUnit = f.amountUnit || (f.amount >= 10000 ? 'won' : 'manwon');
+      return {
+        ...f,
+        amountUnit,
+        status: prev?.status ?? f.status,
+        paidDate: prev?.paidDate ?? f.paidDate,
+        paymentMethod: prev?.paymentMethod ?? f.paymentMethod,
+        memo: prev?.memo ?? f.memo,
+        originalDueDate: prev?.originalDueDate ?? f.originalDueDate,
+        deferralReason: prev?.deferralReason ?? f.deferralReason,
+        rescheduledCount: prev?.rescheduledCount ?? f.rescheduledCount,
+        lastNotifiedAt: prev?.lastNotifiedAt ?? f.lastNotifiedAt,
+        lastNotifiedType: prev?.lastNotifiedType ?? f.lastNotifiedType,
+      };
+    });
+
+    // 기납부 금액(totalPaid) 자동 산출 및 보존 (이전: totalPaid 누락으로 CRM 상단 납부 진행률이 불일치하던 문제 해결)
+    patch.totalPaid = patch.feeSchedule
+      .filter(f => f.status === 'paid')
+      .reduce((sum, f) => {
+        const amt = f.amountUnit === 'won' ? f.amount : f.amount * 10000;
+        return sum + amt;
+      }, 0);
+  }
+
+  // 상태 승격: client_review / pending_sign / signing / completed 일 때
+  // 현재 CRM 상태가 requested 또는 consulting일 때만 'contracted'로 승격 (진행 중인 사건 강제 되돌림 방지)
+  const isContractActive = ['completed', 'signing', 'pending_sign', 'client_review'].includes(contract.status);
+  if (isContractActive && ['requested', 'consulting'].includes(ext.crmStatus)) {
+    patch.crmStatus = 'contracted';
+    const isBk = ext.caseType === 'bankruptcy' || ext.caseType === 'individual_bankruptcy';
+    patch.thirteenStage = thirteenStageAfterStatusChange(ext.thirteenStage, 'contracted', isBk);
+  }
+
+  // 활동 로그(타임라인) 추가: 같은 계약의 직전 활동 로그 상태와 다를 때만 기록
+  const lastContractActivity = [...(ext.activities || [])]
+    .reverse()
+    .find(a => a.metadata?.contractId === contract.id);
+
+  if (!lastContractActivity || lastContractActivity.metadata?.status !== contract.status) {
+    const totalWon = feeTotalWon(contract.totalFee);
+    const logDesc = contract.status === 'completed'
+      ? `전자계약 체결 완료 (계약번호: ${contract.id}, 약정 수임료: ${totalWon.toLocaleString()}원)`
+      : `전자계약서 발송 및 서명 요청 (계약번호: ${contract.id})`;
+
+    const targetClientId = clientId || contract.clientId || 'unknown';
+    patch.activities = [
+      ...(ext.activities || []),
+      createActivityLog(
+        targetClientId,
+        actorInfo.id,
+        actorInfo.name,
+        actorInfo.role,
+        'contract_signed' as CrmActivityType,
+        logDesc,
+        { contractId: contract.id, status: contract.status }
+      )
+    ];
+  }
+
+  return patch;
+}
+
 /** 전자계약 체결 시 CRM 동기화 (수임료, 분납스케줄, 진행상태, 활동로그 일괄 업데이트) */
 export async function syncContractToCrm(
   clientId: string,
   contract: ElectronicContract,
   actor?: { id: string; name: string; role: StaffRole }
-): Promise<void> {
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const ext = store[clientId] || createDefaultCrmExtension(clientId);
+): Promise<CrmClientExtension | null> {
+  const { ok, data: store } = await loadCrmDataResult();
+  const currentExt = store[clientId];
 
-  const actorInfo = actor || { id: 'system', name: contract.lawyerName || '담당 변호사', role: 'LAWYER' as StaffRole };
-
-  // 수임료 및 분납 스케줄 동기화 (만원 단위 변환)
-  ext.totalFee = contract.totalFee;
-  ext.contractDate = contract.contractDate;
-  ext.contractAmount = contract.totalFee;
-  
-  if (contract.feeSchedule && contract.feeSchedule.length > 0) {
-    // 계약서 분납액(원)을 그대로 보관하고 단위를 명시 (이전: 만원으로 반올림 → 1,234,567원이 123만원으로 저장되는 손실)
-    ext.feeSchedule = contract.feeSchedule.map(f => ({
-      ...f,
-      amountUnit: f.amountUnit || (f.amount >= 10000 ? 'won' : 'manwon'),
-    }));
+  // 읽기 실패이고 로컬 사본도 없으면 데이터 유실 방지를 위해 저장하지 않음
+  if (!ok && !currentExt) {
+    console.warn(`[syncContractToCrm] CRM 데이터 로드 실패 및 로컬 사본 없음으로 동기화 건너뜀: ${clientId}`);
+    return null;
   }
 
-  // 계약이 완료/서명진행 상태일 때 CRM 상태를 'contracted' (수임 계약)로 자동 승격
-  if (['completed', 'signing', 'pending_sign'].includes(contract.status)) {
-    if (['requested', 'consulting'].includes(ext.crmStatus) || contract.status === 'completed') {
-      ext.crmStatus = 'contracted';
-    }
-  }
+  const ext = currentExt || createDefaultCrmExtension(clientId);
+  const patch = buildContractSyncPatch(ext, contract, actor, clientId);
+  const merged: CrmClientExtension = {
+    ...ext,
+    ...patch,
+    lastActivityAt: new Date().toISOString(),
+  };
 
-  // 활동 로그(타임라인) 추가
-  const logDesc = contract.status === 'completed'
-    ? `전자계약 체결 완료 (계약번호: ${contract.id}, 약정 수임료: ${contract.totalFee}만원)`
-    : `전자계약서 발송 및 서명 요청 (계약번호: ${contract.id})`;
-
-  ext.activities = [
-    ...(ext.activities || []),
-    createActivityLog(
-      clientId,
-      actorInfo.id,
-      actorInfo.name,
-      actorInfo.role,
-      'contract_signed' as CrmActivityType,
-      logDesc,
-      { contractId: contract.id, status: contract.status }
-    )
-  ];
-
-  ext.lastActivityAt = new Date().toISOString();
-  await saveCrmClient(clientId, ext);
+  const saved = await saveCrmClient(clientId, merged);
+  return saved ? merged : null;
 }
 
 // ============================================================

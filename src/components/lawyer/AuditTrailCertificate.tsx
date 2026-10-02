@@ -54,21 +54,21 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
       <div className="border-b-2 border-slate-800 pb-5 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-slate-900 text-white font-black text-[10px] rounded tracking-wider">OFFICIAL</span>
-            <span className="text-[11px] font-bold text-slate-500 tracking-wider">AUDIT TRAIL</span>
+            <span className="px-2 py-0.5 bg-slate-900 text-white font-black text-xs rounded tracking-wider">OFFICIAL</span>
+            <span className="text-xs font-bold text-slate-500 tracking-wider">AUDIT TRAIL</span>
           </div>
           <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-brand" />
             <span>전자계약 체결 및 감사추적 인증서</span>
           </h3>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             본 문서는 전자계약의 본인확인·서명·해시 기록을 모은 시스템 감사추적 보고서입니다. 공인 인증기관이 발급한 증명서가 아니며, 법적 효력은 개별 사안에서 법원이 판단합니다.
           </p>
         </div>
         <div className="text-right border-l-2 md:border-l border-slate-200 pl-4">
-          <p className="text-[10px] text-slate-400 font-bold uppercase">Contract Identifier</p>
+          <p className="text-xs text-slate-400 font-bold uppercase">Contract Identifier</p>
           <p className="text-sm font-black text-slate-900 font-mono">{data.contractId}</p>
-          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{data.completedAt ? new Date(data.completedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }) : '-'} (KST)</p>
+          <p className="text-xs text-slate-500 font-mono mt-0.5">{data.completedAt ? new Date(data.completedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }) : '-'} (KST)</p>
         </div>
       </div>
 
@@ -81,11 +81,11 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               <Building2 className="w-4 h-4 text-brand" />
               <span>1. 사업자 실체 및 계약 권한 검증 (Authority Verification)</span>
             </h4>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
               <CheckCircle2 className="w-3.5 h-3.5" /> {data.authority.authorityStatus}
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             <div className="flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">상호명 (법인/개인)</span>
               <span className="font-bold text-slate-800">{data.authority.companyName}</span>
@@ -112,11 +112,11 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               <Smartphone className="w-4 h-4 text-brand" />
               <span>2. 스마트폰 본인인증 정보 (Signer Identity & Non-Repudiation)</span>
             </h4>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-md">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-md">
               <CheckCircle2 className="w-3.5 h-3.5" /> 통신 3사 KISA 공인 확인
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             <div className="flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">인증 서명자 실명</span>
               <span className="font-bold text-slate-900">{data.identity.signerName}</span>
@@ -127,7 +127,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
             </div>
             <div className="flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">통신사 공인 거래번호</span>
-              <span className="font-bold text-slate-800 font-mono text-[10px]">{data.identity.txId}</span>
+              <span className="font-bold text-slate-800 font-mono text-xs">{data.identity.txId}</span>
             </div>
             <div className="flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">통신사 공인 시각</span>
@@ -135,7 +135,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
             </div>
             <div className="md:col-span-2 flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">접속 IP / 단말기 환경</span>
-              <span className="font-mono text-[10px] text-slate-700">{data.identity.ipAddress} · {data.identity.deviceInfo}</span>
+              <span className="font-mono text-xs text-slate-700">{data.identity.ipAddress} · {data.identity.deviceInfo}</span>
             </div>
           </div>
         </div>
@@ -147,11 +147,11 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               <FileText className="w-4 h-4 text-brand" />
               <span>3. 의사 확인 및 자필 서명 날인 (Intent & Consent)</span>
             </h4>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
               <CheckCircle2 className="w-3.5 h-3.5" /> 자필 서명 날인 완료
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             <div className="flex justify-between border-b border-slate-200/60 pb-1">
               <span className="text-slate-500 font-medium">전문 열람 및 스크롤 감지</span>
               <span className="font-bold text-emerald-700">{data.intent.viewDurationText}</span>
@@ -174,12 +174,12 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               <Cpu className="w-4 h-4 text-amber-400" />
               <span>4. 문서 무결성 봉인 및 3중 타임스탬프 (Cryptographic Time-Stamp)</span>
             </h4>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded">
               <Lock className="w-3 h-3" /> FIPS 180-4 SHA-256 SEALED
             </span>
           </div>
 
-          <div className="space-y-1.5 text-[10px] font-mono">
+          <div className="space-y-1.5 text-xs font-mono">
             <div>
               <span className="text-slate-400 block">Original Document Hash (서명 전 원본 해시):</span>
               <span className="text-slate-200 break-all select-all">{data.integrity.originalHash}</span>
@@ -193,7 +193,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
                 <span className="text-slate-400">Timestamp Token: </span>
                 <span className="text-amber-300">{data.integrity.timestampToken}</span>
               </div>
-              <div className="text-slate-400 text-[9px]">
+              <div className="text-slate-400 text-xs">
                 한국표준시(KST) 및 통신사 시점 봉인
               </div>
             </div>
@@ -209,13 +209,13 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               <Database className="w-4 h-4 text-blue-400" />
               <span>5. 문서 해시 기록 {contract.blockchainAnchor?.isRealOnChain ? '(블록체인 온체인)' : '(서버 보관 · 온체인 미기록)'}</span>
             </h4>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-700/50 px-2 py-0.5 rounded">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-700/50 px-2 py-0.5 rounded">
               <CheckCircle2 className="w-3 h-3 text-emerald-400" /> 해시 대조로 변경 여부 확인 가능
             </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex-1 space-y-1.5 text-[10px] font-mono w-full">
+            <div className="flex-1 space-y-1.5 text-xs font-mono w-full">
               <div className="flex justify-between border-b border-blue-900/60 pb-1">
                 <span className="text-blue-300 font-sans">분산원장 네트워크</span>
                 <span className="text-white font-bold">{contract.blockchainAnchor?.isRealOnChain ? (contract.blockchainAnchor.network || '-') : '온체인 미기록'}</span>
@@ -239,7 +239,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
                   </button>
                 </div>
               </div>
-              <div className="pt-1 flex items-center justify-between text-[9px] text-blue-300">
+              <div className="pt-1 flex items-center justify-between text-xs text-blue-300">
                 <span>{contract.blockchainAnchor?.isRealOnChain && contract.blockchainAnchor.smartContractAddress ? `기록 컨트랙트: ${contract.blockchainAnchor.smartContractAddress.slice(0, 14)}...` : ''}</span>
                 {contract.blockchainAnchor?.isRealOnChain && contract.blockchainAnchor?.explorerUrl && (
                   <a
@@ -260,12 +260,12 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
               {qrCodeUrl ? (
                 <img src={qrCodeUrl} alt="블록체인 진위검증 QR" className="w-20 h-20 block" />
               ) : (
-                <div className="w-20 h-20 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">
+                <div className="w-20 h-20 bg-slate-100 flex items-center justify-center text-xs text-slate-400">
                   <QrCode className="w-6 h-6 text-slate-400 animate-pulse" />
                 </div>
               )}
-              <span className="text-[9px] font-black text-blue-900 mt-1 block">스마트폰 즉시 검증</span>
-              <span className="text-[8px] text-slate-500 font-sans">카메라 스캔용</span>
+              <span className="text-xs font-black text-blue-900 mt-1 block">스마트폰 즉시 검증</span>
+              <span className="text-xs text-slate-500 font-sans">카메라 스캔용</span>
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function AuditTrailCertificate({ contract, onOpenVerifyModal }: P
 
       {/* ── 액션 버튼 영역 (법원 제출용 PDF 다운로드 & 원본 검증기) ── */}
       <div className="mt-5 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="text-[10px] text-slate-500 leading-relaxed flex-1">
+        <div className="text-xs text-slate-500 leading-relaxed flex-1">
           <p>
             <strong>참고:</strong> 전자서명법 제3조에 따라 전자서명은 전자적 형태라는 이유만으로 효력이 부인되지 않습니다. 다만 이 기록은 공인 증명서가 아니며, 문서의 진정성립 여부는 분쟁 시 법원이 판단합니다. 해시 대조로 체결 후 변경 여부를 확인할 수 있습니다.
           </p>

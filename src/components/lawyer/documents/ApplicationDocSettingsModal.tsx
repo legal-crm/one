@@ -13,6 +13,7 @@ import {
   type DocCategoryKey 
 } from '../../../services/documents/applicationDocTemplateService';
 import ModalPortal from '../../common/ModalPortal';
+import { useDialog } from '../../common/DialogProvider';
 
 interface ApplicationDocSettingsModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ function ApplicationDocSettingsModalInner({
   onClose,
   onSaved
 }: ApplicationDocSettingsModalProps) {
+  const dialog = useDialog();
 
   const [activeCategory, setActiveCategory] = useState<DocCategoryKey>('REHAB_SALARIED');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,9 +147,16 @@ function ApplicationDocSettingsModalInner({
     refreshList();
   };
 
-  // 서류 삭제
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`'${name}' 서류를 마스터 목록에서 삭제하시겠습니까?`)) {
+  // 서류 삭제 (이전: confirm -> dialog.confirm으로 교체)
+  const handleDelete = async (id: string, name: string) => {
+    const confirmed = await dialog.confirm({
+      title: '신청서류 삭제',
+      message: `'${name}' 서류를 마스터 목록에서 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (confirmed) {
       ApplicationDocTemplateService.deleteTemplate(id);
       toast.success(`'${name}' 서류가 삭제되었습니다.`);
       refreshList();
@@ -160,9 +169,16 @@ function ApplicationDocSettingsModalInner({
     refreshList();
   };
 
-  // 기본 표준 데이터셋 복원
-  const handleReset = () => {
-    if (confirm('모든 신청서류 템플릿을 기본 데이터셋(22종)으로 초기화하시겠습니까? (직접 추가한 커스텀 항목은 초기화됩니다)')) {
+  // 기본 표준 데이터셋 복원 (이전: confirm -> dialog.confirm으로 교체)
+  const handleReset = async () => {
+    const confirmed = await dialog.confirm({
+      title: '서류 템플릿 초기화',
+      message: '모든 신청서류 템플릿을 기본 데이터셋(22종)으로 초기화하시겠습니까? (직접 추가한 커스텀 항목은 초기화됩니다)',
+      confirmText: '초기화',
+      cancelText: '취소',
+      variant: 'warning',
+    });
+    if (confirmed) {
       ApplicationDocTemplateService.resetToDefaults();
       toast.success('표준 신청서류 데이터셋으로 복원되었습니다.');
       refreshList();
@@ -187,7 +203,7 @@ function ApplicationDocSettingsModalInner({
                 <h2 className="text-base font-black text-slate-900">
                   신청서류 마스터 설정 (LegalFlow Engine)
                 </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand/10 text-brand border border-brand/20">
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-brand/10 text-brand border border-brand/20">
                   사무소 공통 서류 템플릿
                 </span>
               </div>
@@ -295,7 +311,7 @@ function ApplicationDocSettingsModalInner({
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">서류 구분 (차수) *</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">서류 구분 (차수) *</label>
                   <select
                     value={newPhase}
                     onChange={e => setNewPhase(Number(e.target.value) as 1 | 2)}
@@ -307,7 +323,7 @@ function ApplicationDocSettingsModalInner({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">서류 공식 명칭 *</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">서류 공식 명칭 *</label>
                   <input
                     type="text"
                     required
@@ -326,7 +342,7 @@ function ApplicationDocSettingsModalInner({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">발급처 기관 *</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">발급처 기관 *</label>
                   <input
                     type="text"
                     required
@@ -338,7 +354,7 @@ function ApplicationDocSettingsModalInner({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">온라인 발급 링크 (URL)</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">온라인 발급 링크 (URL)</label>
                   <input
                     type="url"
                     placeholder="https://www.gov.kr/..."
@@ -350,7 +366,7 @@ function ApplicationDocSettingsModalInner({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">발급 팁 및 의뢰인 주의사항 안내문</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">발급 팁 및 의뢰인 주의사항 안내문</label>
                 <input
                   type="text"
                   placeholder="예: 과거 주소 전체 변동사항 포함, 5년 치 전국단위 모든세목 표시 발급"
@@ -397,7 +413,7 @@ function ApplicationDocSettingsModalInner({
           <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-500 uppercase tracking-wider">
                   <th className="p-3 text-center w-12">순번</th>
                   <th className="p-3 text-center w-24">구분</th>
                   <th className="p-3 w-48">서류명</th>
@@ -454,7 +470,7 @@ function ApplicationDocSettingsModalInner({
                               placeholder="URL"
                               value={editAgencyUrl}
                               onChange={e => setEditAgencyUrl(e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] mt-1 text-blue-600"
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs mt-1 text-blue-600"
                             />
                           </td>
                           <td className="p-3">
@@ -465,7 +481,7 @@ function ApplicationDocSettingsModalInner({
                               className="w-full px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs"
                             />
                             <div className="mt-1 flex items-center gap-2">
-                              <label className="text-[10px] font-bold text-amber-800 flex items-center gap-1 cursor-pointer">
+                              <label className="text-xs font-bold text-amber-800 flex items-center gap-1 cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={editIsThirdPartyMasking}
@@ -515,11 +531,11 @@ function ApplicationDocSettingsModalInner({
                         </td>
                         <td className="p-3 text-center">
                           {item.phase === 1 ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-block whitespace-nowrap">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-block whitespace-nowrap">
                               1차 서류
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 inline-block whitespace-nowrap">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 inline-block whitespace-nowrap">
                               2차 서류
                             </span>
                           )}
@@ -527,7 +543,7 @@ function ApplicationDocSettingsModalInner({
                         <td className="p-3">
                           <span className="font-extrabold text-slate-900 block">{item.name}</span>
                           {item.isThirdPartyMasking && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1 mt-0.5">
+                            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1 mt-0.5">
                               <ShieldCheck className="w-3 h-3 text-amber-600" />
                               <span>제3자 마스킹</span>
                             </span>
@@ -540,7 +556,7 @@ function ApplicationDocSettingsModalInner({
                               href={item.agencyUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-blue-600 hover:underline inline-flex items-center gap-0.5 mt-0.5"
+                              className="text-xs text-blue-600 hover:underline inline-flex items-center gap-0.5 mt-0.5"
                             >
                               <span>발급 사이트</span>
                               <ExternalLink className="w-3 h-3" />
@@ -554,11 +570,11 @@ function ApplicationDocSettingsModalInner({
                         </td>
                         <td className="p-3 text-center">
                           {item.isRequired ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                               필수
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
                               해당자
                             </span>
                           )}

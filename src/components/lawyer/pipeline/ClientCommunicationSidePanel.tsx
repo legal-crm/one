@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Send, Phone, MessageSquare, Clock, FileText, CheckCircle2, 
   Sparkles, X, ChevronRight, AlertCircle, Copy, AlertTriangle,
@@ -14,6 +14,7 @@ import { enqueueCall, uploadRecordingToDrive } from '../../../services/communica
 import { generateAiCallSummary, extractSpecialMemoFromSummary } from '../../../services/aiCallSummaryService';
 import { CustomAudioPlayer } from '../leads/CustomAudioPlayer';
 import AlimtalkSendConfirmModal from './AlimtalkSendConfirmModal';
+import { getDisplayClientName, getDisplayPhoneNumber, isClientContactDisclosed } from '../../../utils/clientDisplay';
 
 interface ClientCommunicationSidePanelProps {
   clientRequest: ConsultRequest;
@@ -57,25 +58,72 @@ export default function ClientCommunicationSidePanel({
   const proposals = clientRequest.proposals || [];
   const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
   const hasProposalSent = Boolean(myProposal);
-  const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
+  const isContracted = ['contracted', 'document', 'documents_pending', 'filed', 'commenced', 'repaying', 'discharged'].includes(crmExt?.crmStatus || clientRequest.status || '') || crmExt?.thirteenStage === 'contract_done';
 
-  const isContactShared = Boolean(
-    clientRequest.phoneConsultationRequested || 
-    clientRequest.contactDisclosureStatus === 'contact_shared' ||
-    myProposal?.phoneConsultRequestedAt ||
-    isContracted
-  );
+  const isContactShared = isClientContactDisclosed(clientRequest, crmExt);
 
-  // 스텔스 가명 및 실명 분리
-  const rawClientName = clientRequest.clientName || '고객';
-  const nameParts = rawClientName.split('_');
-  const stealthName = clientRequest.stealthNickname || (nameParts.length > 1 ? nameParts[1] : rawClientName);
-  const realName = clientRequest.realClientName || (nameParts.length > 1 ? nameParts[0] : rawClientName);
-
-  const displayClientName = isContactShared ? `${realName} (${stealthName})` : `${stealthName} (스텔스 가명)`;
-  const displayPhone = isContactShared && clientRequest.phone ? clientRequest.phone : '010-****-****';
+  const clientName = getDisplayClientName(clientRequest, crmExt);
+  const displayClientName = clientName;
+  const displayPhone = getDisplayPhoneNumber(clientRequest, crmExt);
   const cleanPhone = isContactShared && clientRequest.phone ? clientRequest.phone.replace(/[^0-9]/g, '') : '';
-  const clientName = isContactShared ? realName : stealthName;
+
+  // 실제 데이터 기반 처리 필요 항목 도출 (가짜 하드코딩 제거)
+  const actionItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      title: string;
+      desc: string;
+      isUrgent?: boolean;
+      badge?: string;
+    }> = [];
+
+    // 1. 검토 대기 서류 확인
+    const docs = (crmExt?.stage3DocsState as any)?.customDocs || crmExt?.documents || [];
+    const pendingDocs = docs.filter((d: any) => d.status === 'review_needed' || d.status === 'submitted');
+    if (pendingDocs.length > 0) {
+      items.push({
+        id: 'docs-review',
+        title: `서류 제출 도착 (${pendingDocs.length}건 검토 대기)`,
+        desc: `${pendingDocs.slice(0, 2).map((d: any) => d.name || d.docType).join(', ')} 등 검토 대기 중인 서류가 있습니다.`,
+        badge: '서류 검토',
+        isUrgent: true,
+      });
+    }
+
+    // 2. 제안서 미발송 상태
+    if (!hasProposalSent && !isContracted) {
+      items.push({
+        id: 'proposal-needed',
+        title: '맞춤 솔루션 및 제안서 작성 필요',
+        desc: '의뢰인에게 적합한 탕감 솔루션 및 비용 제안서를 먼저 작성해 발송하세요.',
+        badge: '제안서 대기',
+        isUrgent: true,
+      });
+    }
+
+    // 3. 연락처 공유 완료 & 계약 미체결 상태
+    if (isContactShared && !isContracted) {
+      items.push({
+        id: 'consult-contract',
+        title: '유선 상담 및 수임계약 체결 필요',
+        desc: '의뢰인이 연락처를 제공했습니다. 통화 상담 후 수임 계약을 진행하세요.',
+        badge: '계약 대기',
+        isUrgent: true,
+      });
+    }
+
+    // 4. 보정 단계 시 개시결정 미등록 상태
+    if (pipelineStage === 5 && !crmExt?.courtCase?.commencementDate) {
+      items.push({
+        id: 'correction-commence',
+        title: '법원 보정권고 대응 및 개시결정 확인',
+        desc: '보정기한 내 소명서를 제출하고, 법원 개시결정 통지 시 사건 정보를 등록하세요.',
+        badge: '법원 진행',
+      });
+    }
+
+    return items;
+  }, [crmExt, hasProposalSent, isContracted, isContactShared, pipelineStage]);
 
   // 6단계별 추천 알림톡 템플릿
   const stageTemplates: Record<number, Array<{ title: string; desc: string; emoji: string; message: string }>> = {
@@ -286,12 +334,12 @@ export default function ClientCommunicationSidePanel({
                 고객 소통창
               </span>
               {!isContactShared && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                <span className="text-xs px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
                   익명 보호
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+            <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
               <span>{displayClientName}</span>
             </span>
           </div>
@@ -304,14 +352,14 @@ export default function ClientCommunicationSidePanel({
             className="px-2 py-1 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold border border-slate-700/60"
             title="소통창 닫고 서류 작업 복귀"
           >
-            <span className="text-[11px]">닫기</span>
+            <span className="text-xs">닫기</span>
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
       {/* ── 소통 상태 게이트 배너 (Gate Banner) ── */}
-      <div className={`px-3.5 py-2 text-[11px] font-bold flex items-center gap-2 border-b transition-all ${
+      <div className={`px-3.5 py-2 text-xs font-bold flex items-center gap-2 border-b transition-all ${
         isContactShared 
           ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
           : hasProposalSent 
@@ -356,7 +404,7 @@ export default function ClientCommunicationSidePanel({
               <Copy className="w-3 h-3" />
             </button>
           ) : (
-            <span className="text-[10px] text-slate-400 flex items-center gap-0.5" title="제안서 확인 후 고객 동의 시 공개">
+            <span className="text-xs text-slate-400 flex items-center gap-0.5" title="제안서 확인 후 고객 동의 시 공개">
               <Lock className="w-2.5 h-2.5" />
               미공개
             </span>
@@ -366,7 +414,7 @@ export default function ClientCommunicationSidePanel({
         {isContactShared ? (
           <a
             href={`tel:${cleanPhone}`}
-            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
           >
             <Phone className="w-3 h-3" />
             <span>전화 걸기</span>
@@ -380,7 +428,7 @@ export default function ClientCommunicationSidePanel({
                 : '의뢰인에게 맞춤 제안서를 먼저 작성하여 발송해주세요.'
               );
             }}
-            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
             title="고객 제안서 확인 후 통화 가능"
           >
             <Lock className="w-3 h-3 text-slate-400" />
@@ -390,7 +438,7 @@ export default function ClientCommunicationSidePanel({
       </div>
 
       {/* 4대 탭 바 (처리 필요 / 요청 현황 / 전체 타임라인 / 통화 메모) */}
-      <div className="flex border-b border-slate-200 bg-slate-100/70 p-1 gap-1 text-[11px] font-bold">
+      <div className="flex border-b border-slate-200 bg-slate-100/70 p-1 gap-1 text-xs font-bold">
         <button
           type="button"
           onClick={() => setActiveTab('action_required')}
@@ -402,7 +450,7 @@ export default function ClientCommunicationSidePanel({
         >
           <AlertCircle className="w-3 h-3 text-amber-500" />
           <span>처리 필요</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          {actionItems.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
         </button>
         <button
           type="button"
@@ -440,7 +488,7 @@ export default function ClientCommunicationSidePanel({
           <PhoneCall className="w-3 h-3 text-emerald-600" />
           <span>통화·AI</span>
           {(crmExt.recordings || []).length > 0 && (
-            <span className="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.2 rounded-full font-bold">
+            <span className="text-xs bg-purple-100 text-purple-700 px-1 py-0.2 rounded-full font-bold">
               {(crmExt.recordings || []).length}
             </span>
           )}
@@ -452,92 +500,123 @@ export default function ClientCommunicationSidePanel({
         {/* 탭 1: 처리 필요 (Action Required) */}
         {activeTab === 'action_required' && (
           <div className="space-y-3">
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-950 space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                <span>고객 질문 및 확인 요청 (1건)</span>
+            {actionItems.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 space-y-2">
+                <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-500/80" />
+                <p className="font-bold text-slate-700 text-xs">현재 대기 중인 처리 요청이 없습니다</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  새로운 서류 제출, 의뢰인 문의, 단계별 할 일이 발생하면 이곳에 표시됩니다.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-700 leading-relaxed">
-                "급여명세서는 최근 몇 개월분이 필요한가요?" (14분 전 카카오톡 수신)
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isContactShared) {
-                    toast.info(hasProposalSent 
-                      ? '고객이 제안서를 확인하고 상담을 요청한 후 답변할 수 있습니다.'
-                      : '스텔스 익명 보호 상태에서는 직접 답변이 제한됩니다. 맞춤 제안서에 검토 의견을 담아 먼저 발송해주세요.'
-                    );
-                    return;
-                  }
-                  handleOpenSendModal({
-                    title: '고객 질문 답변 안내',
-                    desc: '급여명세서 준비 범위 및 대체 서류 안내',
-                    emoji: '💬',
-                    message: `[답변 안내] ${clientName}님, 문의해주신 급여명세서 서류 관련 안내드립니다.\n\n급여명세서는 최근 1년(12개월)분을 준비해 주시면 되며, 회사 직인 날인이 어렵거나 발급이 어려우신 경우 급여 입금 통장 거래내역서로 대체 가능합니다. 스마트폰 마이페이지 서류함에서 촬영하여 업로드해 주시기 바랍니다.`,
-                  });
-                }}
-                className={`mt-1 text-[11px] font-bold flex items-center gap-1 ${
-                  isContactShared 
-                    ? 'text-[#1E3A5F] hover:underline cursor-pointer' 
-                    : 'text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                {!isContactShared && <Lock className="w-3 h-3 text-slate-400" />}
-                <span>{isContactShared ? '답변하기 ➔' : '답변 대기 (제안서 확인 필요)'}</span>
-              </button>
-            </div>
-
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-950 space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>서류 제출 도착 (2건 대기)</span>
-              </div>
-              <p className="text-[11px] text-slate-700 leading-relaxed">
-                주민등록등본, 원천징수영수증이 모바일로 업로드되었습니다.
-              </p>
-            </div>
+            ) : (
+              actionItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-3 rounded-xl border space-y-1.5 ${
+                    item.isUrgent
+                      ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                      : 'bg-blue-50/80 border-blue-200 text-blue-950'
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {item.isUrgent ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      )}
+                      <span className="truncate text-xs">{item.title}</span>
+                    </div>
+                    {item.badge && (
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                          item.isUrgent
+                            ? 'bg-amber-200/80 text-amber-900'
+                            : 'bg-blue-200/80 text-blue-900'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {/* 탭 2: 요청 현황 (Active Tasks) */}
         {activeTab === 'active_requests' && (
           <div className="space-y-3">
-            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-[11px]">필수서류 6건 일괄 요청</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold">진행중</span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                발송 9/13 14:20 | 열람 14:32 | 현재 2/6건 제출됨
-              </p>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '33%' }} />
-              </div>
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleOpenSendModal({
-                      title: '미제출 서류 제출 재촉 리마인더',
-                      desc: '법원 접수 지연 방지를 위한 서류 신속 제출 독촉',
-                      emoji: '📑',
-                      message: `[서류 제출 재촉] ${clientName}님, 법원 접수를 위한 필수 서류 중 아직 미제출된 항목이 남아있습니다.\n\n서류 제출이 지체되면 채권자 추심·압류를 방지하는 [금지명령] 신청 또한 늦어지게 됩니다. 스마트폰으로 사진을 촬영하여 모바일 서류함에 업로드해 주시기 바랍니다.`,
-                    });
-                  }}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>서류 재촉 알림톡 발송 ➔</span>
-                </button>
-              </div>
-            </div>
+            {/* 서류 현황 카드 */}
+            {(() => {
+              const allDocs = (crmExt?.stage3DocsState as any)?.customDocs || crmExt?.documents || [];
+              const submittedDocs = allDocs.filter((d: any) => d.status === 'submitted' || d.status === 'approved' || d.fileUrl);
+              const totalCount = allDocs.length || 0;
+              const percent = totalCount > 0 ? Math.round((submittedDocs.length / totalCount) * 100) : 0;
 
+              return (
+                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 text-xs">
+                      {totalCount > 0 ? `필수 서류 제출 현황 (${totalCount}종)` : '필수 서류 요청'}
+                    </span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${
+                      percent === 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {percent === 100 ? '완료' : totalCount > 0 ? `${percent}%` : '준비'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {totalCount > 0
+                      ? `제출/승인: ${submittedDocs.length}/${totalCount}건`
+                      : '3단계에서 관공서 필수 서류 발급 안내를 요청할 수 있습니다.'}
+                  </p>
+                  {totalCount > 0 && (
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${percent}%` }} />
+                    </div>
+                  )}
+                  {totalCount > 0 && percent < 100 && (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleOpenSendModal({
+                            title: '미제출 서류 제출 재촉 리마인더',
+                            desc: '법원 접수 지연 방지를 위한 서류 신속 제출 독촉',
+                            emoji: '📑',
+                            message: `[서류 제출 안내] ${clientName}님, 법원 접수를 위한 필수 서류 중 아직 미제출된 항목이 남아있습니다.\n\n서류 제출이 완료되어야 법원 접수 및 금지명령 신청을 신속히 진행할 수 있습니다. 스마트폰으로 서류를 촬영하여 모바일 서류함에 업로드해 주시기 바랍니다.`,
+                          });
+                        }}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>서류 안내 알림 발송 ➔</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 전자계약 현황 카드 */}
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-[11px]">모바일 전자계약서</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">서명 완료</span>
+                <span className="font-bold text-slate-900 text-xs">전자 수임계약</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${
+                  isContracted ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {isContracted ? '체결 완료' : '미체결'}
+                </span>
               </div>
-              <p className="text-[11px] text-slate-500">2026.09.12 전자서명 체결 완료됨</p>
+              <p className="text-xs text-slate-500">
+                {isContracted
+                  ? (crmExt?.contractDate ? `${crmExt.contractDate} 계약 체결됨` : '정식 위임계약 체결 완료')
+                  : 'Stage 02에서 전자계약서 작성 및 발송을 진행하세요.'}
+              </p>
             </div>
           </div>
         )}
@@ -545,25 +624,33 @@ export default function ClientCommunicationSidePanel({
         {/* 탭 3: 전체 타임라인 (Timeline) */}
         {activeTab === 'timeline' && (
           <div className="space-y-2.5">
-            <div className="text-[10px] font-bold text-slate-400">오늘 (9월 13일)</div>
-            <div className="space-y-2 pl-2 border-l-2 border-slate-200">
-              <div className="text-[11px] space-y-0.5">
-                <div className="text-slate-400 text-[10px]">16:35</div>
-                <div className="font-bold text-slate-800">근로소득세 원천징수영수증 제출됨</div>
-              </div>
-              <div className="text-[11px] space-y-0.5">
-                <div className="text-slate-400 text-[10px]">16:20</div>
-                <div className="font-bold text-slate-800">주민등록등본 모바일 제출됨</div>
-              </div>
-              <div className="text-[11px] space-y-0.5">
-                <div className="text-slate-400 text-[10px]">14:32</div>
-                <div className="font-medium text-slate-600">고객이 카카오톡 서류함 링크 열람함</div>
-              </div>
-              <div className="text-[11px] space-y-0.5">
-                <div className="text-slate-400 text-[10px]">14:20</div>
-                <div className="font-medium text-[#1E3A5F]">미제출 서류 묶음 요청 알림톡 발송됨</div>
-              </div>
-            </div>
+            {(() => {
+              const notes = (crmExt?.notes || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+              if (notes.length === 0) {
+                return (
+                  <div className="p-6 text-center text-slate-400 space-y-1.5">
+                    <History className="w-6 h-6 mx-auto text-slate-300" />
+                    <p className="text-xs font-bold text-slate-600">등록된 활동 타임라인이 없습니다</p>
+                    <p className="text-xs text-slate-400">통화 메모나 상태 변경 이력이 발생하면 여기에 기록됩니다.</p>
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-2 pl-2 border-l-2 border-slate-200">
+                  {notes.slice(0, 10).map((note) => (
+                    <div key={note.id} className="text-xs space-y-0.5">
+                      <div className="text-slate-400 text-xs flex items-center gap-1.5">
+                        <span>{note.createdAt ? note.createdAt.slice(0, 16).replace('T', ' ') : ''}</span>
+                        {note.authorName && <span className="font-bold text-slate-600">({note.authorName})</span>}
+                      </div>
+                      <div className="font-medium text-slate-800 whitespace-pre-wrap leading-relaxed">
+                        {note.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -583,7 +670,7 @@ export default function ClientCommunicationSidePanel({
                   if (r.success) toast.success(`${clientName}님께 스마트폰 다이얼러 호출 요청을 보냈습니다.`);
                   else toast.error(r.message);
                 }}
-                className="py-2 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale"
+                className="py-2 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale"
                 title="스마트폰으로 즉시 전화 걸기"
               >
                 <Phone size={13} className="text-blue-600" />
@@ -594,7 +681,7 @@ export default function ClientCommunicationSidePanel({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isTranscribing}
-                className="py-2 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale disabled:opacity-50"
+                className="py-2 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale disabled:opacity-50"
                 title="녹음 파일(.m4a, .mp3) 업로드 및 Gemini 3.5 AI 분석"
               >
                 <UploadCloud size={13} className="text-purple-600" />
@@ -611,7 +698,7 @@ export default function ClientCommunicationSidePanel({
 
             {/* AI 분석 중 인디케이터 */}
             {isTranscribing && (
-              <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl flex items-center gap-2 text-purple-800 text-[11px] font-bold animate-pulse">
+              <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl flex items-center gap-2 text-purple-800 text-xs font-bold animate-pulse">
                 <Sparkles size={14} className="text-purple-600 animate-spin shrink-0" />
                 <span className="truncate">{uploadProgressText}</span>
               </div>
@@ -632,21 +719,21 @@ export default function ClientCommunicationSidePanel({
             {(crmExt.recordings || []).length > 0 && (
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1">
                     <FileAudio size={12} className="text-purple-600" />
                     <span>보관된 녹취 ({crmExt.recordings?.length}건)</span>
                   </span>
-                  <span className="text-[10px] text-slate-400">구글 드라이브</span>
+                  <span className="text-xs text-slate-400">구글 드라이브</span>
                 </div>
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {crmExt.recordings?.slice(0, 5).map((rec) => (
-                    <div key={rec.id} className="p-1.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-[10px]">
+                    <div key={rec.id} className="p-1.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-xs">
                       <span className="truncate max-w-[150px] font-medium text-slate-700">{rec.filename}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={() => setPlayingRecording(rec)}
-                          className="px-1.5 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-[10px] font-bold cursor-pointer"
+                          className="px-1.5 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-xs font-bold cursor-pointer"
                         >
                           청취
                         </button>
@@ -670,7 +757,7 @@ export default function ClientCommunicationSidePanel({
               <button
                 type="button"
                 onClick={handleSendAiMemo}
-                className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <FileText size={12} className="text-blue-600" />
                 <span>AI 요약 특이사항을 사건 메모로 등록</span>
@@ -680,11 +767,11 @@ export default function ClientCommunicationSidePanel({
             {/* 2. 빠른 통화 내용 수동 기록 폼 */}
             <form onSubmit={handleSaveMemo} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 text-[11px]">통화 내용 직접 메모</span>
+                <span className="font-bold text-slate-800 text-xs">통화 내용 직접 메모</span>
                 <select
                   value={callDuration}
                   onChange={e => setCallDuration(e.target.value)}
-                  className="bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] text-slate-600"
+                  className="bg-white border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-600"
                 >
                   <option value="3분">3분</option>
                   <option value="5분">5분</option>
@@ -710,11 +797,11 @@ export default function ClientCommunicationSidePanel({
 
             {/* 3. 이전 상담 메모 목록 */}
             <div className="space-y-2">
-              <span className="text-[11px] font-bold text-slate-700">이전 상담 메모 ({crmExt.notes.length})</span>
+              <span className="text-xs font-bold text-slate-700">이전 상담 메모 ({crmExt.notes.length})</span>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {crmExt.notes.slice(-4).reverse().map(n => (
-                  <div key={n.id} className="p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
-                    <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                  <div key={n.id} className="p-2 bg-white rounded-lg border border-slate-200 text-xs">
+                    <div className="flex justify-between text-xs text-slate-400 mb-0.5">
                       <span className="font-bold text-slate-600">{n.authorName}</span>
                       <span>{new Date(n.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -733,7 +820,7 @@ export default function ClientCommunicationSidePanel({
               <Sparkles className="w-3.5 h-3.5 text-[#1E3A5F]" />
               Stage 0{pipelineStage} 추천 알림톡
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">
+            <span className="text-xs text-slate-400 font-medium">
               {isContactShared ? '원클릭 발송' : '🔒 제안서 확인 후 발송'}
             </span>
           </div>
@@ -772,7 +859,7 @@ export default function ClientCommunicationSidePanel({
                     <Lock className="w-3 h-3 text-slate-400" />
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 line-clamp-1">{tpl.desc}</p>
+                <p className="text-xs text-slate-500 line-clamp-1">{tpl.desc}</p>
               </button>
             ))}
           </div>

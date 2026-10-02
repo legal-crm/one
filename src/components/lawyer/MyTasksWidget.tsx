@@ -81,7 +81,7 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
         <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-brand" /> My Tasks
           {activeTasks.length > 0 && (
-            <span className="bg-brand text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+            <span className="bg-brand text-white text-xs font-extrabold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
               {activeTasks.length}
             </span>
           )}
@@ -100,13 +100,13 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <span className={`text-[9px] font-extrabold px-1 py-0.5 rounded ${priCfg.color} ${priCfg.bgColor}`}>
+                      <span className={`text-xs font-extrabold px-1 py-0.5 rounded ${priCfg.color} ${priCfg.bgColor}`}>
                         {priCfg.emoji}
                       </span>
-                      {isOverdue && <span className="text-[9px] text-red-500 font-bold">overdue</span>}
+                      {isOverdue && <span className="text-xs text-red-500 font-bold">overdue</span>}
                     </div>
                     <p className="text-xs font-bold text-slate-800 truncate">{task.title}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
                       <span>{task.assignerName}</span>
                       {task.dueDate && <span className="flex items-center gap-0.5"><Calendar className="w-2.5 h-2.5" />{task.dueDate}</span>}
                     </div>
@@ -114,12 +114,12 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
                   <div className="flex flex-col gap-1 shrink-0">
                     {task.status === 'PENDING' && (
                       <button onClick={() => handleStart(task.id)}
-                        className="bg-blue-50 text-blue-600 rounded-lg px-2 py-1 text-[10px] font-bold hover:bg-blue-100 active:scale-[0.98] transition-all whitespace-nowrap">
+                        className="bg-blue-50 text-blue-600 rounded-lg px-2 py-1 text-xs font-bold hover:bg-blue-100 active:scale-[0.98] transition-all whitespace-nowrap">
                         Start
                       </button>
                     )}
                     <button onClick={() => setCompletingId(completingId === task.id ? null : task.id)}
-                      className="bg-green-50 text-green-600 rounded-lg px-2 py-1 text-[10px] font-bold hover:bg-green-100 active:scale-[0.98] transition-all whitespace-nowrap">
+                      className="bg-green-50 text-green-600 rounded-lg px-2 py-1 text-xs font-bold hover:bg-green-100 active:scale-[0.98] transition-all whitespace-nowrap">
                       Done
                     </button>
                   </div>
@@ -128,9 +128,9 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
                   <div className="mt-2 pt-2 border-t border-slate-200 flex gap-1.5">
                     <input value={completionNote} onChange={e => setCompletionNote(e.target.value)}
                       placeholder="Note (optional)" autoFocus
-                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] outline-none" />
+                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none" />
                     <button onClick={() => handleComplete(task.id)}
-                      className="bg-green-600 text-white rounded-lg px-2 py-1 text-[10px] font-bold">OK</button>
+                      className="bg-green-600 text-white rounded-lg px-2 py-1 text-xs font-bold">OK</button>
                   </div>
                 )}
               </div>
@@ -142,9 +142,9 @@ export default function MyTasksWidget({ tenantId, userId, userName }: MyTasksWid
       {/* Recent Completed */}
       {recentCompleted.length > 0 && (
         <div>
-          <p className="text-[10px] text-slate-400 font-bold mb-1">Recently completed</p>
+          <p className="text-xs text-slate-400 font-bold mb-1">Recently completed</p>
           {recentCompleted.map(task => (
-            <div key={task.id} className="flex items-center gap-2 py-1 text-[10px] text-slate-400">
+            <div key={task.id} className="flex items-center gap-2 py-1 text-xs text-slate-400">
               <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
               <span className="truncate line-through">{task.title}</span>
               <span className="shrink-0">{timeAgo(task.completedAt || task.updatedAt)}</span>

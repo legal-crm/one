@@ -12,6 +12,7 @@ import ChatInbox from './ChatInbox';
 import ChatConversation, { type ChatLayout } from './ChatConversation';
 import ClientContextRail, { type CrmDetailTab, type RailTab } from './ClientContextRail';
 import type { MemoSaveResult } from './rail/MemoTab';
+import { isClientPseudonymous } from '../../../utils/clientDisplay';
 
 const RAIL_PREF_KEY = 'lawyer_chat_rail_open_v1';
 
@@ -182,7 +183,7 @@ export default function LawyerChatWorkspace({
   const showRailPage = layout === 'single' && mobilePane === 'rail' && Boolean(selectedThread);
 
   const displayName = selectedThread ? getDisplayClientName(selectedThread.request) : '';
-  const isPseudonymous = selectedThread ? getDisplayPhoneNumber(selectedThread.request).includes('****') : true;
+  const isPseudonymous = selectedThread ? isClientPseudonymous(selectedThread.request) : true;
 
   const renderRail = (variant: 'inline' | 'drawer' | 'page', onClose?: () => void) => (
     <ClientContextRail

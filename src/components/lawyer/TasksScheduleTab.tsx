@@ -873,16 +873,15 @@ export default function TasksScheduleTab({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* 서브탭 바 */}
+      {/* 서브탭 바 (기획서 4.7: 기한·일정과 할 일 두 보기로 정리) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
-        {([
-          { key: 'tasks' as const, label: '할일 목록', icon: CalendarCheck },
-          { key: 'calendar' as const, label: '일정 캘린더', icon: Calendar },
-          { key: 'activity' as const, label: '활동 기록', icon: Activity },
-        ]).map(t => (
+        {[
+          { key: 'calendar' as const, label: '기한·일정 (타임라인/캘린더)', icon: Calendar },
+          { key: 'tasks' as const, label: '할 일 (업무함)', icon: CalendarCheck },
+        ].map(t => (
           <button
             key={t.key}
-            onClick={() => setSub(t.key)}
+            onClick={() => setSub(t.key as any)}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer press-scale active:scale-[0.98] flex items-center gap-2 ${
               sub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
@@ -930,7 +929,7 @@ export default function TasksScheduleTab({
                 >
                   <span>📞 영업·콜백</span>
                   {salesTasksCount > 0 && (
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    <span className={`px-1.5 py-0.2 rounded-full text-xs font-black ${
                       domainFilter === 'sales' ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-700'
                     }`}>
                       {salesTasksCount}
@@ -948,7 +947,7 @@ export default function TasksScheduleTab({
                 >
                   <span>⚖️ 고객·사건</span>
                   {clientTasksCount > 0 && (
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    <span className={`px-1.5 py-0.2 rounded-full text-xs font-black ${
                       domainFilter === 'client' ? 'bg-white text-indigo-700' : 'bg-indigo-100 text-indigo-700'
                     }`}>
                       {clientTasksCount}
@@ -1146,46 +1145,46 @@ export default function TasksScheduleTab({
                           {/* 상단 뱃지 라인 */}
                           <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                             {/* 우선순위 */}
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
+                            <span className={`text-xs font-extrabold px-2 py-0.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
                               {pri.emoji} {pri.label}
                             </span>
 
                             {/* 상태 뱃지 */}
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${st.bgColor} ${st.color}`}>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${st.bgColor} ${st.color}`}>
                               {st.emoji} {st.label}
                             </span>
 
                             {/* D-Day 신호등 관제 */}
                             {isOverdue && (
-                              <span className="text-[10px] text-red-600 font-extrabold flex items-center gap-1 bg-red-100 px-2 py-0.5 rounded-lg animate-pulse">
+                              <span className="text-xs text-red-600 font-extrabold flex items-center gap-1 bg-red-100 px-2 py-0.5 rounded-lg animate-pulse">
                                 <AlertTriangle className="w-3 h-3" /> 기한 초과 ({Math.abs(dDayVal!)}일 지남)
                               </span>
                             )}
                             {isDDayToday && (
-                              <span className="text-[10px] text-orange-700 font-extrabold flex items-center gap-1 bg-orange-100 px-2 py-0.5 rounded-lg animate-pulse">
+                              <span className="text-xs text-orange-700 font-extrabold flex items-center gap-1 bg-orange-100 px-2 py-0.5 rounded-lg animate-pulse">
                                 🚨 오늘 마감 (D-Day)
                               </span>
                             )}
                             {isUrgentDue && (
-                              <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-lg">
+                              <span className="text-xs text-amber-700 font-bold flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-lg">
                                 ⏰ 마감 임박 (D-{dDayVal})
                               </span>
                             )}
 
                             {/* 검토 필수 뱃지 */}
                             {task.requiresApproval && (
-                              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                              <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
                                 <ShieldCheck className="w-3 h-3 text-indigo-600" /> 컨펌 필수
                               </span>
                             )}
 
                             {/* 영업·콜백 vs 고객·사건 도메인 뱃지 */}
                             {task.taskDomain === 'sales' || task.targetType === 'sales_lead' ? (
-                              <span className="text-[10px] bg-blue-100 text-blue-800 border border-blue-200 font-black px-2 py-0.5 rounded-lg flex items-center gap-1">
+                              <span className="text-xs bg-blue-100 text-blue-800 border border-blue-200 font-black px-2 py-0.5 rounded-lg flex items-center gap-1">
                                 📞 영업·콜백
                               </span>
                             ) : (
-                              <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2 py-0.5 rounded-lg">
+                              <span className="text-xs bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2 py-0.5 rounded-lg">
                                 ⚖️ 고객·사건
                               </span>
                             )}
@@ -1195,7 +1194,7 @@ export default function TasksScheduleTab({
                               <a
                                 href={`tel:${task.leadPhone}`}
                                 onClick={e => e.stopPropagation()}
-                                className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                                className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1"
                               >
                                 📞 {task.leadPhone} 바로 통화
                               </a>
@@ -1203,7 +1202,7 @@ export default function TasksScheduleTab({
 
                             {/* 연동 사건/상담 뱃지 */}
                             {task.targetType !== 'general' && (
-                              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-lg">
+                              <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-lg">
                                 {task.targetType === 'case' ? '📁 사건 연동' : '💬 상담 연동'}
                               </span>
                             )}
@@ -1224,7 +1223,7 @@ export default function TasksScheduleTab({
                           {/* 서브태스크 (체크리스트) */}
                           {subtasksTotal > 0 && (
                             <div className="mt-3 bg-slate-50/80 rounded-xl p-3 border border-slate-200/70 space-y-2">
-                              <div className="flex items-center justify-between text-[11px]">
+                              <div className="flex items-center justify-between text-xs">
                                 <span className="font-bold text-slate-700 flex items-center gap-1">
                                   <CheckSquare className="w-3.5 h-3.5 text-brand" /> 서브태스크 ({subtasksDone}/{subtasksTotal})
                                 </span>
@@ -1258,7 +1257,7 @@ export default function TasksScheduleTab({
                           )}
 
                           {/* 메타데이터 라인 (지시자, 수행자, 기한, 등록시각) */}
-                          <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-400 flex-wrap">
+                          <div className="flex items-center gap-3 mt-3 text-xs text-slate-400 flex-wrap">
                             <span className="flex items-center gap-1">
                               <User className="w-3 h-3 text-slate-400" />
                               지시: <strong className="text-slate-700">{task.assignerName}</strong> ➔ 담당: <strong className="text-brand font-bold">{task.assigneeName}</strong>
@@ -1346,7 +1345,7 @@ export default function TasksScheduleTab({
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
                                 🔬 승인 대기중
                               </span>
                             )
@@ -1489,7 +1488,7 @@ export default function TasksScheduleTab({
                         <col.icon className="w-4 h-4 text-slate-500" />
                         <span className="text-xs font-extrabold text-slate-800">{col.label}</span>
                       </div>
-                      <span className="text-[11px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
+                      <span className="text-xs font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
                         {col.count}
                       </span>
                     </div>
@@ -1514,15 +1513,15 @@ export default function TasksScheduleTab({
                               className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs hover:shadow-xs transition-all space-y-2"
                             >
                               <div className="flex items-center justify-between gap-1">
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${pri.bgColor} ${pri.color}`}>
+                                <span className={`text-xs font-extrabold px-1.5 py-0.5 rounded ${pri.bgColor} ${pri.color}`}>
                                   {pri.emoji} {pri.label}
                                 </span>
                                 {isOverdue ? (
-                                  <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1 py-0.5 rounded">
+                                  <span className="text-xs font-bold text-red-600 bg-red-50 px-1 py-0.5 rounded">
                                     기한초과
                                   </span>
                                 ) : dDayVal !== null && dDayVal <= 3 && t.status !== 'COMPLETED' ? (
-                                  <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded">
+                                  <span className="text-xs font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded">
                                     D-{dDayVal}
                                   </span>
                                 ) : null}
@@ -1533,13 +1532,13 @@ export default function TasksScheduleTab({
                               </p>
 
                               {subTotal > 0 && (
-                                <div className="text-[10px] text-slate-500 font-medium flex items-center justify-between">
+                                <div className="text-xs text-slate-500 font-medium flex items-center justify-between">
                                   <span>체크리스트: {subDone}/{subTotal}</span>
                                   <span className="font-bold text-brand">{Math.round((subDone / subTotal) * 100)}%</span>
                                 </div>
                               )}
 
-                              <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                              <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span className="truncate max-w-[90px]">
                                   {t.assigneeName}
                                 </span>
@@ -1551,7 +1550,7 @@ export default function TasksScheduleTab({
                                 {t.status === 'PENDING' && (t.assigneeId === userId || hasManageAllPerm) && (
                                   <button
                                     onClick={() => handleStartTask(t.id)}
-                                    className="w-full py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg cursor-pointer"
+                                    className="w-full py-1 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg cursor-pointer"
                                   >
                                     시작 ➔
                                   </button>
@@ -1560,14 +1559,14 @@ export default function TasksScheduleTab({
                                   t.requiresApproval ? (
                                     <button
                                       onClick={() => handleRequestReview(t.id)}
-                                      className="w-full py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg cursor-pointer"
+                                      className="w-full py-1 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg cursor-pointer"
                                     >
                                       검토 요청 ➔
                                     </button>
                                   ) : (
                                     <button
                                       onClick={() => handleCompleteTask(t.id)}
-                                      className="w-full py-1 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg cursor-pointer"
+                                      className="w-full py-1 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg cursor-pointer"
                                     >
                                       완료하기 ✓
                                     </button>
@@ -1586,7 +1585,7 @@ export default function TasksScheduleTab({
                                       setApprovalNoteInput('');
                                       await runTaskAction(() => approveTask(tenantId, t.id, '', { id: userId, name: userName }), '업무를 승인해 완료 처리했습니다');
                                     }}
-                                    className="w-full py-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer shadow-2xs"
+                                    className="w-full py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer shadow-2xs"
                                   >
                                     승인 완료 ✓
                                   </button>
@@ -1617,7 +1616,7 @@ export default function TasksScheduleTab({
             </div>
           )}
           {!isHolidayDataCovered(calMonth.getFullYear()) && (
-            <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
               {calMonth.getFullYear()}년은 공휴일 자료가 없어 설날·추석·대체공휴일이 표시되지 않습니다 (등록 연도: {HOLIDAY_DATA_FIRST_YEAR}~{HOLIDAY_DATA_LAST_YEAR}).
             </p>
           )}
@@ -1636,7 +1635,7 @@ export default function TasksScheduleTab({
                     return (
                       <p key={e.id} className="text-xs text-slate-600">
                         <span className="font-bold">{cfg.emoji}</span> {e.startTime && <span className="text-slate-400">{e.startTime} </span>}
-                        {e.title} {e.visibility !== 'personal' && <span className="text-[10px] text-slate-400">{visEmoji(e.visibility)}</span>}
+                        {e.title} {e.visibility !== 'personal' && <span className="text-xs text-slate-400">{visEmoji(e.visibility)}</span>}
                       </p>
                     );
                   })}
@@ -1662,7 +1661,7 @@ export default function TasksScheduleTab({
                         {dd === 0 ? 'D-Day' : 'D-' + dd}
                       </span>
                       <span className="text-xs font-bold text-slate-700">{e.title}</span>
-                      <span className="text-[10px] text-slate-400">{e.date.slice(5)}</span>
+                      <span className="text-xs text-slate-400">{e.date.slice(5)}</span>
                     </div>
                   );
                 })}
@@ -1674,7 +1673,7 @@ export default function TasksScheduleTab({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0">유형</span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0">유형</span>
                   <div className="flex gap-1 flex-wrap">
                     {(Object.keys(EVENT_TYPE_CONFIG) as EventType[]).map(type => {
                       const cfg = EVENT_TYPE_CONFIG[type];
@@ -1682,7 +1681,7 @@ export default function TasksScheduleTab({
                         <button
                           key={type}
                           onClick={() => setTypeFilters(p => ({ ...p, [type]: !p[type] }))}
-                          className={`px-2 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer active:scale-[0.98] flex items-center gap-1 ${
+                          className={`px-2 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer active:scale-[0.98] flex items-center gap-1 ${
                             typeFilters[type]
                               ? cfg.bgColor + ' ' + cfg.color + ' border-current/20'
                               : 'bg-slate-50 text-slate-300 border-slate-100 line-through'
@@ -1698,7 +1697,7 @@ export default function TasksScheduleTab({
                 <span className="hidden sm:block w-px h-8 bg-slate-200" />
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0">공개</span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0">공개</span>
                   <div className="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
                     {(['all' as const, ...(['firm', 'lawyers', 'personal'] as EventVisibility[])]).map(v => {
                       const active = visFilter === v;
@@ -1707,7 +1706,7 @@ export default function TasksScheduleTab({
                           <button
                             key={v}
                             onClick={() => setVisFilter('all')}
-                            className={`px-2.5 py-1.5 text-[11px] font-bold rounded-md cursor-pointer transition-all ${
+                            className={`px-2.5 py-1.5 text-xs font-bold rounded-md cursor-pointer transition-all ${
                               active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
                             }`}
                           >
@@ -1720,7 +1719,7 @@ export default function TasksScheduleTab({
                         <button
                           key={v}
                           onClick={() => setVisFilter(visFilter === v ? 'all' : v)}
-                          className={`px-2.5 py-1.5 text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center gap-1 ${
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-md cursor-pointer transition-all flex items-center gap-1 ${
                             active ? 'bg-white shadow-sm ' + vc.color : 'text-slate-400 hover:text-slate-600'
                           }`}
                         >
@@ -1880,7 +1879,7 @@ export default function TasksScheduleTab({
                             {day}
                           </span>
                         )}
-                        {holiday && <span className="text-[9px] font-bold text-red-400 truncate max-w-[60px]">{holiday}</span>}
+                        {holiday && <span className="text-xs font-bold text-red-400 truncate max-w-[60px]">{holiday}</span>}
                       </div>
 
                       {allItems.length > 0 && (
@@ -1891,7 +1890,7 @@ export default function TasksScheduleTab({
                               return (
                                 <div
                                   key={idx}
-                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate ${cfg.bgColor} ${cfg.color}`}
+                                  className={`text-xs font-bold px-1.5 py-0.5 rounded truncate ${cfg.bgColor} ${cfg.color}`}
                                 >
                                   {item.e.visibility === 'firm' ? '🏢 ' : ''}{cfg.emoji} {item.e.title}
                                 </div>
@@ -1901,14 +1900,14 @@ export default function TasksScheduleTab({
                             return (
                               <div
                                 key={idx}
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate ${pri.bgColor} ${pri.color}`}
+                                className={`text-xs font-bold px-1.5 py-0.5 rounded truncate ${pri.bgColor} ${pri.color}`}
                               >
                                 📋 {(item.t as TaskTicket).title}
                               </div>
                             );
                           })}
                           {allItems.length > 2 && (
-                            <div className="text-[9px] text-slate-400 font-bold pl-1">
+                            <div className="text-xs text-slate-400 font-bold pl-1">
                               +{allItems.length - 2}
                             </div>
                           )}
@@ -1947,28 +1946,28 @@ export default function TasksScheduleTab({
                         }`}>
                           {wd.getDate()}
                         </span>
-                        {holiday && <span className="text-[9px] font-bold text-red-400 mt-0.5">{holiday}</span>}
+                        {holiday && <span className="text-xs font-bold text-red-400 mt-0.5">{holiday}</span>}
                       </div>
                       <div className="space-y-1">
                         {dayEvents.map(e => {
                           const cfg = EVENT_TYPE_CONFIG[e.type];
                           return (
-                            <div key={e.id} className={`text-[10px] font-bold p-1.5 rounded-lg ${cfg.bgColor} ${cfg.color}`}>
+                            <div key={e.id} className={`text-xs font-bold p-1.5 rounded-lg ${cfg.bgColor} ${cfg.color}`}>
                               <div className="truncate">{e.visibility === 'firm' ? '🏢 ' : ''}{cfg.emoji} {e.title}</div>
-                              {e.startTime && <div className="text-[9px] opacity-70">{e.startTime}</div>}
+                              {e.startTime && <div className="text-xs opacity-70">{e.startTime}</div>}
                             </div>
                           );
                         })}
                         {dayTasks.map(t => {
                           const pri = TASK_PRIORITY_CONFIG[t.priority];
                           return (
-                            <div key={t.id} className={`text-[10px] font-bold p-1.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
+                            <div key={t.id} className={`text-xs font-bold p-1.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
                               <div className="truncate">📋 {t.title}</div>
                             </div>
                           );
                         })}
                         {dayEvents.length === 0 && dayTasks.length === 0 && (
-                          <p className="text-[10px] text-slate-300 text-center pt-4">-</p>
+                          <p className="text-xs text-slate-300 text-center pt-4">-</p>
                         )}
                       </div>
                     </div>
@@ -1984,248 +1983,25 @@ export default function TasksScheduleTab({
           ══ 3. Activity (활동 기록 - 업그레이드 & 10건 단위 페이지네이션)
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'activity' && (
-        <div className="space-y-4">
-          {/* 활동 필터 & 검색 툴바 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-            {/* 1. 카테고리 탭 (실시간 카운트 뱃지 탑재) */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {([
-                { key: 'all' as const, label: '전체 활동', count: activityCounts.all },
-                { key: 'request' as const, label: '상담 요청', count: activityCounts.request },
-                { key: 'counseling' as const, label: '상담 진행', count: activityCounts.counseling },
-                { key: 'case' as const, label: '수임 전환', count: activityCounts.case },
-                { key: 'task' as const, label: '업무 완료', count: activityCounts.task },
-                { key: 'qna' as const, label: 'Q&A', count: activityCounts.qna },
-              ]).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => handleCategoryChange(f.key)}
-                  className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] flex items-center gap-1.5 ${
-                    activityFilter === f.key
-                      ? 'bg-[#1E3A5F] text-white shadow-xs'
-                      : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span>{f.label}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    activityFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {f.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* 2. 검색창 & 기간 필터 */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
-              {/* 검색창 */}
-              <div className="relative w-full sm:max-w-md">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={activitySearchTerm}
-                  onChange={handleSearchChange}
-                  placeholder="의뢰인명, 제목, 활동 내용 검색..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
-                />
-                {activitySearchTerm && (
-                  <button
-                    onClick={() => { setActivitySearchTerm(''); setActivityPage(1); }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* 기간 필터 */}
-              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
-                <span className="text-[11px] font-bold text-slate-400 shrink-0">기간:</span>
-                <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
-                  {([
-                    { key: 'all' as const, label: '전체' },
-                    { key: 'today' as const, label: '오늘' },
-                    { key: '7days' as const, label: '최근 7일' },
-                    { key: '30days' as const, label: '이번 달' },
-                  ]).map(p => (
-                    <button
-                      key={p.key}
-                      onClick={() => handlePeriodChange(p.key)}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer active:scale-[0.98] ${
-                        activityPeriod === p.key
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#1E3A5F] flex items-center justify-center mx-auto">
+            <Activity className="w-7 h-7" />
           </div>
-
-          {/* 활동 목록 리스트 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            {filteredActivity.length === 0 ? (
-              <div className="text-center py-16 space-y-3">
-                <Activity className="w-10 h-10 text-slate-200 mx-auto" />
-                <p className="text-sm text-slate-600 font-bold">조건에 맞는 활동 기록이 없습니다</p>
-                {(activitySearchTerm || activityFilter !== 'all' || activityPeriod !== 'all') && (
-                  <button
-                    onClick={() => {
-                      setActivityFilter('all');
-                      setActivitySearchTerm('');
-                      setActivityPeriod('all');
-                      setActivityPage(1);
-                    }}
-                    className="text-xs text-brand font-bold hover:underline"
-                  >
-                    필터 초기화
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {paginatedActivity.map((item, idx) => (
-                  <div
-                    key={item.id || idx}
-                    onClick={() => setSelectedActivityItem(item)}
-                    className="flex items-start gap-4 p-4 hover:bg-slate-50/70 transition-all cursor-pointer group active:scale-[0.99]"
-                  >
-                    {/* 아이콘 */}
-                    <div className={`p-3 rounded-2xl ${item.bg} ${item.color} shrink-0 group-hover:scale-105 transition-transform`}>
-                      <item.icon className="w-5 h-5" />
-                    </div>
-
-                    {/* 본문 */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${item.bg} ${item.color}`}>
-                            {item.badgeLabel}
-                          </span>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-brand transition-colors">
-                            {item.title}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-slate-500">{timeAgo(item.date)}</span>
-                          <span className="text-[10px] text-slate-400 ml-1.5 hidden sm:inline">({formatSafeFullDate(item.date)})</span>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-slate-600 mt-1 line-clamp-1 leading-relaxed">
-                        {item.desc}
-                      </p>
-
-                      {item.fullContent && (
-                        <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 bg-slate-50 rounded-lg px-2.5 py-1">
-                          {item.fullContent}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════
-                ── 10건 단위 스마트 페이지네이션 컨트롤 바 ──
-               ══════════════════════════════════════════════════════════════ */}
-            {filteredActivity.length > 0 && (
-              <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                {/* 건수 안내 */}
-                <div className="text-xs text-slate-500 font-medium">
-                  총 <strong className="text-slate-800 font-bold">{filteredActivity.length}</strong>건 중{' '}
-                  <strong className="text-slate-800 font-bold">
-                    {(activityPage - 1) * ACTIVITY_PER_PAGE + 1}-
-                    {Math.min(activityPage * ACTIVITY_PER_PAGE, filteredActivity.length)}
-                  </strong>건 표시 (페이지 {activityPage}/{totalActivityPages})
-                </div>
-
-                {/* 페이지 버튼 */}
-                <div className="flex items-center gap-1">
-                  {/* 맨 처음 */}
-                  <button
-                    onClick={() => setActivityPage(1)}
-                    disabled={activityPage === 1}
-                    className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-all border border-transparent hover:border-slate-200"
-                    title="첫 페이지"
-                  >
-                    <ChevronFirst className="w-4 h-4" />
-                  </button>
-
-                  {/* 이전 */}
-                  <button
-                    onClick={() => setActivityPage(p => Math.max(1, p - 1))}
-                    disabled={activityPage === 1}
-                    className="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1 shadow-xs"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" /> 이전
-                  </button>
-
-                  {/* 페이지 번호들 */}
-                  <div className="flex gap-1 mx-1">
-                    {Array.from({ length: totalActivityPages }).map((_, i) => {
-                      const pNum = i + 1;
-                      // 너무 많은 페이지 번호 생략 로직 (현재 페이지 주변 5개만 노출)
-                      if (
-                        totalActivityPages > 7 &&
-                        Math.abs(activityPage - pNum) > 2 &&
-                        pNum !== 1 &&
-                        pNum !== totalActivityPages
-                      ) {
-                        if (pNum === 2 || pNum === totalActivityPages - 1) {
-                          return <span key={pNum} className="px-1 text-xs text-slate-300">...</span>;
-                        }
-                        return null;
-                      }
-
-                      return (
-                        <button
-                          key={pNum}
-                          onClick={() => setActivityPage(pNum)}
-                          className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                            activityPage === pNum
-                              ? 'bg-[#1E3A5F] text-white shadow-xs'
-                              : 'text-slate-600 hover:bg-white hover:text-slate-900 border border-transparent hover:border-slate-200'
-                          }`}
-                        >
-                          {pNum}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* 다음 */}
-                  <button
-                    onClick={() => setActivityPage(p => Math.min(totalActivityPages, p + 1))}
-                    disabled={activityPage === totalActivityPages}
-                    className="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1 shadow-xs"
-                  >
-                    다음 <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* 맨 끝 */}
-                  <button
-                    onClick={() => setActivityPage(totalActivityPages)}
-                    disabled={activityPage === totalActivityPages}
-                    className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-all border border-transparent hover:border-slate-200"
-                    title="마지막 페이지"
-                  >
-                    <ChevronLast className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-base text-slate-900">활동 기록 메뉴 통합 안내</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              로펌 및 사무소 구성원의 전체 활동 로그는 [직원·권한 &gt; 활동 로그] 메뉴로 일원화되었습니다.
+            </p>
           </div>
+          <button
+            onClick={() => setSub('calendar')}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#1E3A5F] hover:bg-[#152a45] text-white transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+          >
+            기한·일정 캘린더 보기
+          </button>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ══ Modal 1: 새 할일 추가 모달 (New Task Modal)
-         ══════════════════════════════════════════════════════════════════ */}
       {showAddTaskModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -2352,7 +2128,7 @@ export default function TasksScheduleTab({
                     <ShieldCheck className="w-4 h-4 text-indigo-600" />
                     <span>완료 시 지시자의 최종 승인(컨펌) 필요</span>
                   </div>
-                  <p className="text-[11px] text-indigo-700">
+                  <p className="text-xs text-indigo-700">
                     체크 시 담당자가 바로 완료할 수 없으며, 검토 요청 후 지시자가 승인해야 최종 완료됩니다.
                   </p>
                 </div>
@@ -2492,11 +2268,11 @@ export default function TasksScheduleTab({
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-extrabold text-slate-900">{tpl.name}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
                           {tpl.badge}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         {tpl.description}
                       </p>
                     </div>
@@ -2554,7 +2330,7 @@ export default function TasksScheduleTab({
             <div>
               <label className="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
                 <span>포함된 표준 업무 ({selectedTemplate.tasks.length}개)</span>
-                <span className="text-[11px] text-indigo-600 font-normal">기준일로부터 마감기한 자동 계산됨</span>
+                <span className="text-xs text-indigo-600 font-normal">기준일로부터 마감기한 자동 계산됨</span>
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {selectedTemplate.tasks.map((t, idx) => {
@@ -2565,21 +2341,21 @@ export default function TasksScheduleTab({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className="font-extrabold text-slate-400">Step {idx + 1}</span>
-                          <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${pri.bgColor} ${pri.color}`}>
+                          <span className={`text-xs font-extrabold px-1.5 py-0.2 rounded ${pri.bgColor} ${pri.color}`}>
                             {pri.label}
                           </span>
                           {t.requiresApproval && (
-                            <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.2 rounded">
+                            <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.2 rounded">
                               컨펌 필수
                             </span>
                           )}
                         </div>
                         <p className="font-bold text-slate-900 truncate">{t.title}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{t.description}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">체크리스트: {t.subtasks.join(' · ')}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>
+                        <p className="text-xs text-slate-400 mt-1">체크리스트: {t.subtasks.join(' · ')}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">
                           D+{t.offsetDays} ({calcDue.slice(5)})
                         </span>
                       </div>
@@ -2628,7 +2404,7 @@ export default function TasksScheduleTab({
                   <h3 className="text-base font-black text-slate-900">
                     법원 불변기한 & 보정명령 계산기
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     민법 제161조에 따라 토/일/공휴일 익일 만료가 자동 적용됩니다.
                   </p>
                 </div>
@@ -2725,17 +2501,17 @@ export default function TasksScheduleTab({
                     <p className="text-lg font-black text-amber-950">
                       {finalDate} ({dow}요일) 23:59까지
                     </p>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                    <p className="text-xs text-amber-800 leading-relaxed">
                       {detail.extendedOver.length > 0
                         ? `※ 말일이 ${detail.extendedOver.map(x => `${x.date.slice(5)}(${x.reason})`).join(', ')}이라 다음 평일로 연장했습니다.`
                         : '※ 말일이 토요일·공휴일이면 다음 평일로 연장합니다(민법 제161조).'}
                     </p>
                     {detail.holidayDataMissing && (
-                      <p role="alert" className="text-[11px] text-red-700 font-bold leading-relaxed">
+                      <p role="alert" className="text-xs text-red-700 font-bold leading-relaxed">
                         {HOLIDAY_DATA_FIRST_YEAR}~{HOLIDAY_DATA_LAST_YEAR}년 밖의 날짜라 설날·추석·대체공휴일을 반영하지 못했습니다. 만료일을 직접 확인해 주세요.
                       </p>
                     )}
-                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                    <p className="text-xs text-amber-700 leading-relaxed">
                       임시공휴일은 지정될 때 따로 반영해야 합니다. 제출 전 법원 공지를 확인해 주세요.
                     </p>
                   </div>
@@ -2914,7 +2690,7 @@ export default function TasksScheduleTab({
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
                 {!REMINDER_DELIVERY_SUPPORTED && (
-                  <p id="reminder-unsupported-note" className="text-[11px] text-slate-500 mt-1">
+                  <p id="reminder-unsupported-note" className="text-xs text-slate-500 mt-1">
                     알림 발송 기능은 준비 중입니다. 지금은 알림이 가지 않습니다.
                   </p>
                 )}
@@ -2977,7 +2753,7 @@ export default function TasksScheduleTab({
                   <selectedActivityItem.icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${selectedActivityItem.bg} ${selectedActivityItem.color}`}>
+                  <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${selectedActivityItem.bg} ${selectedActivityItem.color}`}>
                     {selectedActivityItem.badgeLabel}
                   </span>
                   <h4 className="text-base font-bold text-slate-900 mt-0.5">
@@ -3011,7 +2787,7 @@ export default function TasksScheduleTab({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-slate-500">
+              <div className="grid grid-cols-2 gap-2 pt-2 text-xs text-slate-500">
                 <div>
                   <span className="text-slate-400 block">발생 일시</span>
                   <span className="font-bold text-slate-700">

@@ -82,7 +82,7 @@ export default function DataBackupSection({ isOwner, lawyerName, lawyerId = '', 
           <div>
             <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
               데이터 백업
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+              <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
                 <Shield className="w-3 h-3" />대표변호사 전용
               </span>
             </h3>
@@ -103,7 +103,7 @@ export default function DataBackupSection({ isOwner, lawyerName, lawyerId = '', 
             <div key={item.label} className="bg-white rounded-xl border border-slate-200 p-3 text-center">
               <item.icon className={`w-4 h-4 ${item.color} mx-auto mb-1`} />
               <div className="text-lg font-extrabold text-slate-900">{item.value.toLocaleString()}</div>
-              <div className="text-[11px] font-bold text-slate-500">{item.label}</div>
+              <div className="text-xs font-bold text-slate-500">{item.label}</div>
             </div>
           ))}
         </div>
@@ -135,14 +135,14 @@ export default function DataBackupSection({ isOwner, lawyerName, lawyerId = '', 
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <label htmlFor="backup-password" className="block text-[11px] font-bold text-slate-700 mb-1">백업 비밀번호 ({MIN_BACKUP_PASSWORD_LENGTH}자 이상)</label>
+              <label htmlFor="backup-password" className="block text-xs font-bold text-slate-700 mb-1">백업 비밀번호 ({MIN_BACKUP_PASSWORD_LENGTH}자 이상)</label>
               <input id="backup-password" type="password" autoComplete="new-password" value={password}
                 onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
                 aria-invalid={!!passwordError} aria-describedby={passwordError ? 'backup-password-error' : undefined}
                 className={inputCls} />
             </div>
             <div>
-              <label htmlFor="backup-password-confirm" className="block text-[11px] font-bold text-slate-700 mb-1">비밀번호 확인</label>
+              <label htmlFor="backup-password-confirm" className="block text-xs font-bold text-slate-700 mb-1">비밀번호 확인</label>
               <input id="backup-password-confirm" type="password" autoComplete="new-password" value={passwordConfirm}
                 onChange={e => { setPasswordConfirm(e.target.value); setPasswordError(''); }}
                 aria-invalid={!!passwordError} aria-describedby={passwordError ? 'backup-password-error' : undefined}

@@ -175,7 +175,7 @@ function CourtDocumentExportModalInner({
             <div>
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 법원문서 8종 일괄출력 센터 (STEP 8)
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
                   초안 출력 허브
                 </span>
               </h3>
@@ -201,7 +201,7 @@ function CourtDocumentExportModalInner({
                   <h5 className="font-extrabold text-emerald-200">
                     {clientName} 님의 법원신청문서 제출 동의 완료
                   </h5>
-                  <p className="text-[11px] text-emerald-400 font-mono">
+                  <p className="text-xs text-emerald-400 font-mono">
                     {new Date(consentDate).toLocaleString('ko-KR')} 의뢰인이 법원신청문서 최종 제출에 동의하였습니다.
                   </p>
                 </div>
@@ -215,7 +215,7 @@ function CourtDocumentExportModalInner({
                 </div>
                 <div>
                   <h5 className="font-extrabold text-amber-200">의뢰인 모바일 제출동의 대기 중</h5>
-                  <p className="text-[11px] text-amber-300">
+                  <p className="text-xs text-amber-300">
                     저장된 의뢰인 제출동의 기록이 없습니다. 제출 전에 의뢰인의 확인을 받아 주세요.
                   </p>
                 </div>
@@ -239,7 +239,7 @@ function CourtDocumentExportModalInner({
             <span className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
               <span>📁</span> 법원 제출 일괄출력 문서 목록
             </span>
-            <span className="text-slate-500 text-[11px]">관할 법원 서식과 대조 후 사용</span>
+            <span className="text-slate-500 text-xs">관할 법원 서식과 대조 후 사용</span>
           </div>
 
           <div className="space-y-2">
@@ -255,7 +255,7 @@ function CourtDocumentExportModalInner({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-slate-900 text-sm">{doc.title}</h4>
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                      <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-slate-100 text-slate-600 border border-slate-200">
                         {doc.badge}
                       </span>
                     </div>

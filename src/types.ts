@@ -416,10 +416,19 @@ export const DOC_CATEGORY_CONFIG: Record<DocumentFile['category'], { label: stri
 export interface CourtCaseLink {
   caseNumber: string;
   courtName: string;
-  caseType: '개인회생' | '개인파산' | '면책' | '기타';
+  caseType: '개인회생' | '개인파산' | '면책' | '기타' | string;
   filedDate?: string;
+  filingDate?: string; // 호환성 별칭
+  commencementDate?: string; // 개시결정일
+  creditorMeetingDate?: string; // 채권자집회일
+  courtVirtualAccount?: string; // 법원 가상계좌
+  prohibitionStatus?: 'applied' | 'granted' | 'rejected' | 'dismissed' | string;
+  prohibitionGrantedDate?: string;
+  dischargeDate?: string; // 면책일자
+  dismissalDate?: string; // 기각/폐지일자
   lastSyncedAt?: string;
-  events: CourtEvent[];
+  events?: CourtEvent[];
+  [key: string]: any;
 }
 
 export interface CourtEvent {

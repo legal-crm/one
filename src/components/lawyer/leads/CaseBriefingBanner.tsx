@@ -62,12 +62,12 @@ ${data.specialMemo || '없음'}`;
           </span>
 
           {data.isAiSource ? (
-            <span className="bg-purple-950/80 text-purple-300 border border-purple-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+            <span className="bg-purple-950/80 text-purple-300 border border-purple-800 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
               <Sparkles size={11} className="text-purple-400" />
               AI 분석 기반
             </span>
           ) : (
-            <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+            <span className="bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
               <FileText size={11} className="text-slate-400" />
               CRM 데이터 기반
             </span>
@@ -118,7 +118,7 @@ ${data.specialMemo || '없음'}`;
             <span>신용대출: <b className="text-rose-400 font-bold">{data.creditLoan}</b></span>
             <span className="text-slate-400">({data.loanMonthlyPay})</span>
           </div>
-          <span className="text-[11px] text-indigo-400 font-semibold shrink-0 hover:underline">
+          <span className="text-xs text-indigo-400 font-semibold shrink-0 hover:underline">
             상세 보기 ▼
           </span>
         </div>
@@ -135,34 +135,34 @@ ${data.specialMemo || '없음'}`;
             </div>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">고객이름</span>
+                <span className="text-slate-400 text-xs">고객이름</span>
                 <span className="font-bold text-white text-sm">{data.customerName}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">연락처</span>
+                <span className="text-slate-400 text-xs">연락처</span>
                 <span className="font-bold text-indigo-300 font-mono flex items-center gap-1">
                   <Phone size={11} className="text-emerald-400" />
                   {data.phone}
                 </span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">출생년도 / 성별</span>
+                <span className="text-slate-400 text-xs">출생년도 / 성별</span>
                 <span className="text-slate-200 font-medium">{data.birthYear} ({data.gender})</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">거주지역</span>
+                <span className="text-slate-400 text-xs">거주지역</span>
                 <span className="text-slate-200 font-medium">{data.region}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">직업</span>
-                <span className="font-bold text-slate-200 bg-slate-700/60 px-2 py-0.5 rounded border border-slate-600/60 text-[11px] truncate max-w-[140px]">{data.job}</span>
+                <span className="text-slate-400 text-xs">직업</span>
+                <span className="font-bold text-slate-200 bg-slate-700/60 px-2 py-0.5 rounded border border-slate-600/60 text-xs truncate max-w-[140px]">{data.job}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">4대보험 가입유무</span>
+                <span className="text-slate-400 text-xs">4대보험 가입유무</span>
                 <span className="text-slate-200 font-medium">{data.insurance4}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">결혼 / 미성년 자녀</span>
+                <span className="text-slate-400 text-xs">결혼 / 미성년 자녀</span>
                 <span className="text-slate-200 font-medium">{data.maritalStatus} / 자녀 {data.childrenCount}</span>
               </div>
             </div>
@@ -176,18 +176,18 @@ ${data.specialMemo || '없음'}`;
             </div>
             <div className="space-y-2 text-xs">
               <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-700/80">
-                <span className="text-slate-400 text-[11px] block mb-0.5">월 세후소득 (실급여)</span>
+                <span className="text-slate-400 text-xs block mb-0.5">월 세후소득 (실급여)</span>
                 <div className="font-extrabold text-emerald-400 text-sm">
                   {data.income}
                 </div>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">거주 형태</span>
+                <span className="text-slate-400 text-xs">거주 형태</span>
                 <span className="font-bold text-slate-200 bg-slate-700/60 px-2 py-0.5 rounded border border-slate-600/60">{data.housingType}</span>
               </div>
               <div className="py-0.5">
-                <span className="text-slate-400 text-[11px] block mb-1">보증금, 월세</span>
-                <p className="text-slate-200 font-medium leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-[11px]">
+                <span className="text-slate-400 text-xs block mb-1">보증금, 월세</span>
+                <p className="text-slate-200 font-medium leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-xs">
                   {data.depositRent}
                 </p>
               </div>
@@ -202,32 +202,32 @@ ${data.specialMemo || '없음'}`;
             </div>
             <div className="space-y-1.5 text-xs">
               <div>
-                <span className="text-slate-400 text-[11px] block mb-0.5">신용 대출</span>
-                <p className="font-bold text-rose-400 leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-[11px]">
+                <span className="text-slate-400 text-xs block mb-0.5">신용 대출</span>
+                <p className="font-bold text-rose-400 leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-xs">
                   {data.creditLoan}
                 </p>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">담보 대출</span>
-                <span className="font-medium text-slate-200 text-[11px] truncate max-w-[140px]">{data.collateralLoan}</span>
+                <span className="text-slate-400 text-xs">담보 대출</span>
+                <span className="font-medium text-slate-200 text-xs truncate max-w-[140px]">{data.collateralLoan}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">월 대출납입금</span>
+                <span className="text-slate-400 text-xs">월 대출납입금</span>
                 <span className="font-bold text-amber-400">{data.loanMonthlyPay}</span>
               </div>
               <div>
-                <span className="text-slate-400 text-[11px] block mb-0.5">보유 자산</span>
-                <p className="text-slate-200 font-medium leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-[11px] truncate">
+                <span className="text-slate-400 text-xs block mb-0.5">보유 자산</span>
+                <p className="text-slate-200 font-medium leading-snug bg-slate-950/60 p-2 rounded border border-slate-700/80 text-xs truncate">
                   {data.assets}
                 </p>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">신용카드 사용유무</span>
+                <span className="text-slate-400 text-xs">신용카드 사용유무</span>
                 <span className="text-slate-200 font-medium">{data.creditCardUse}</span>
               </div>
               <div className="flex justify-between items-center py-0.5">
-                <span className="text-slate-400 text-[11px]">회생/파산 이력</span>
-                <span className="font-semibold text-slate-200 text-[11px] truncate max-w-[140px]">{data.history}</span>
+                <span className="text-slate-400 text-xs">회생/파산 이력</span>
+                <span className="font-semibold text-slate-200 text-xs truncate max-w-[140px]">{data.history}</span>
               </div>
             </div>
           </div>
@@ -238,7 +238,7 @@ ${data.specialMemo || '없음'}`;
               <MessageSquare size={14} className="text-indigo-400" />
               <span>4. 상담 특이사항</span>
             </div>
-            <div className="flex-1 overflow-y-auto max-h-[190px] bg-slate-950/60 p-3 rounded-lg border border-slate-700/80 text-slate-300 text-[11px] leading-relaxed whitespace-pre-wrap">
+            <div className="flex-1 overflow-y-auto max-h-[190px] bg-slate-950/60 p-3 rounded-lg border border-slate-700/80 text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
               {data.specialMemo ? (
                 data.specialMemo
               ) : (

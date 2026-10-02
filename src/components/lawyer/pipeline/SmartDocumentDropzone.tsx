@@ -242,7 +242,7 @@ export default function SmartDocumentDropzone({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900">📁 AI 서류 자동 분류 투입함</h3>
-              <p className="text-[11px] text-slate-500">서류를 끌어다 놓으면 AI가 종류를 자동 판별하여 사건 탭에 분배합니다</p>
+              <p className="text-xs text-slate-500">서류를 끌어다 놓으면 AI가 종류를 자동 판별하여 사건 탭에 분배합니다</p>
             </div>
           </div>
           {classifiedDocs.length > 0 && (
@@ -322,16 +322,16 @@ export default function SmartDocumentDropzone({
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-800 truncate">{doc.fileName}</p>
                     {doc.status === 'error' && (
-                      <p className="text-[11px] text-rose-500">{doc.errorMessage}</p>
+                      <p className="text-xs text-rose-500">{doc.errorMessage}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${typeInfo.color}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${typeInfo.color}`}>
                     {typeInfo.icon} {doc.documentLabel}
                   </span>
                   {doc.confidence > 0 && (
-                    <span className="text-[10px] text-slate-400">{Math.round(doc.confidence * 100)}%</span>
+                    <span className="text-xs text-slate-400">{Math.round(doc.confidence * 100)}%</span>
                   )}
                 </div>
               </div>

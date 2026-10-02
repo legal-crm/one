@@ -41,11 +41,11 @@ export default function VirtualAccountTool() {
 
       <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 space-y-2">
         <label className="block">
-          <span className="text-[10px] font-bold text-amber-900 block mb-0.5">은행명</span>
+          <span className="text-xs font-bold text-amber-900 block mb-0.5">은행명</span>
           <input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="예: 개시결정문에 기재된 은행" className={inputClass} />
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold text-amber-900 block mb-0.5">가상계좌번호</span>
+          <span className="text-xs font-bold text-amber-900 block mb-0.5">가상계좌번호</span>
           <input
             value={accountNo}
             onChange={e => setAccountNo(e.target.value)}
@@ -55,13 +55,13 @@ export default function VirtualAccountTool() {
           />
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold text-amber-900 block mb-0.5">사건번호 (선택)</span>
+          <span className="text-xs font-bold text-amber-900 block mb-0.5">사건번호 (선택)</span>
           <input value={caseNo} onChange={e => setCaseNo(e.target.value)} placeholder="예: 2026개회○○○○○" className={inputClass} />
         </label>
         <CopyButton copied={copied} onClick={handleCopy} disabled={!canCopy} label="납입 안내문 복사" copiedLabel="복사 완료" />
       </div>
 
-      <div className="text-[11px] text-slate-700 space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+      <div className="text-xs text-slate-700 space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
         <div className="flex items-center gap-1 text-amber-800 font-bold">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>의뢰인 안내 시 주의</span>

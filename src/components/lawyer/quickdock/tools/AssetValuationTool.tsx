@@ -36,8 +36,8 @@ function PortalButton({ portalKey, query, title, desc, tone }: PortalButtonProps
       className={`p-2 border rounded-xl font-bold flex items-center justify-between text-left transition-colors cursor-pointer group press-scale ${tone}`}
     >
       <span>
-        <span className="block text-[11px]">{title}</span>
-        <span className="block text-[10px] font-normal opacity-90">{desc}</span>
+        <span className="block text-xs">{title}</span>
+        <span className="block text-xs font-normal opacity-90">{desc}</span>
       </span>
       <ExternalLink className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
       <span className="sr-only">(새 창)</span>
@@ -51,7 +51,7 @@ function ApplyButton({ onClick, disabled }: { onClick: () => void; disabled: boo
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full min-h-[34px] py-1.5 rounded-xl text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer press-scale flex items-center justify-center gap-1.5 whitespace-nowrap"
+      className="w-full min-h-[34px] py-1.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer press-scale flex items-center justify-center gap-1.5 whitespace-nowrap"
     >
       <ArrowDownToLine className="w-3.5 h-3.5" aria-hidden="true" />
       청산가치 점검기에 반영
@@ -149,9 +149,9 @@ export default function AssetValuationTool() {
       {activeType === 'housing' && (
         <div className="space-y-3">
           <div className="space-y-1">
-            <label htmlFor="asset-house-address" className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+            <label htmlFor="asset-house-address" className="text-xs font-bold text-slate-700 flex items-center justify-between">
               <span>단지명 또는 도로명 주소</span>
-              <span className="text-[10px] text-emerald-800 font-medium">포털을 열 때 검색어 자동 복사</span>
+              <span className="text-xs text-emerald-800 font-medium">포털을 열 때 검색어 자동 복사</span>
             </label>
             <input
               id="asset-house-address"
@@ -164,7 +164,7 @@ export default function AssetValuationTool() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-600 block">시세·공시가격 포털</span>
+            <span className="text-xs font-bold text-slate-600 block">시세·공시가격 포털</span>
             <div className="grid grid-cols-2 gap-1.5">
               <PortalButton portalKey="kb_realestate" query={houseAddress} title="KB부동산 시세" desc="아파트·오피스텔" tone="bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-200/80" />
               <PortalButton portalKey="realty_price" query={houseAddress} title="공시가격 알리미" desc="빌라·다세대·단독" tone="bg-blue-50 hover:bg-blue-100 text-blue-950 border-blue-200/80" />
@@ -189,7 +189,7 @@ export default function AssetValuationTool() {
                   role="radio"
                   aria-checked={houseBasis === value}
                   onClick={() => setHouseBasis(value)}
-                  className={`py-1 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap ${
+                  className={`py-1 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap ${
                     houseBasis === value ? 'bg-emerald-700 text-white' : 'text-slate-700 hover:bg-white'
                   }`}
                 >
@@ -197,23 +197,23 @@ export default function AssetValuationTool() {
                 </button>
               ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-3 gap-2 text-xs">
               <div>
-                <label htmlFor="asset-house-price" className="text-[10px] text-slate-600 block mb-0.5 font-medium">
+                <label htmlFor="asset-house-price" className="text-xs text-slate-600 block mb-0.5 font-medium">
                   {houseBasis === 'public' ? '공시가격' : '시세'}
                 </label>
                 <MoneyInput id="asset-house-price" value={housePrice} onChange={setHousePrice} placeholder="예: 3억" showHint={false} />
               </div>
               <div>
-                <label htmlFor="asset-house-mortgage" className="text-[10px] text-slate-600 block mb-0.5 font-medium">근저당(대출)</label>
+                <label htmlFor="asset-house-mortgage" className="text-xs text-slate-600 block mb-0.5 font-medium">근저당(대출)</label>
                 <MoneyInput id="asset-house-mortgage" value={houseMortgage} onChange={setHouseMortgage} placeholder="0" showHint={false} />
               </div>
               <div>
-                <label htmlFor="asset-house-tenant" className="text-[10px] text-slate-600 block mb-0.5 font-medium">임차인 보증금 등</label>
+                <label htmlFor="asset-house-tenant" className="text-xs text-slate-600 block mb-0.5 font-medium">임차인 보증금 등</label>
                 <MoneyInput id="asset-house-tenant" value={houseTenantDeposit} onChange={setHouseTenantDeposit} placeholder="0" showHint={false} />
               </div>
             </div>
-            <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1 text-[11px]" aria-live="polite">
+            <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1 text-xs" aria-live="polite">
               <div className="flex justify-between text-slate-600">
                 <span>{houseBasis === 'public' ? '참고 시세 (공시가격×130%)' : '시세'}</span>
                 <span className="font-bold text-slate-900 tabular-nums">{formatWonKorean(houseValuation)}</span>
@@ -231,7 +231,7 @@ export default function AssetValuationTool() {
       {activeType === 'land' && (
         <div className="space-y-3">
           <div className="space-y-1">
-            <label htmlFor="asset-land-address" className="text-[11px] font-bold text-slate-700 block">토지 소재지 (지번/도로명)</label>
+            <label htmlFor="asset-land-address" className="text-xs font-bold text-slate-700 block">토지 소재지 (지번/도로명)</label>
             <input
               id="asset-land-address"
               type="text"
@@ -243,7 +243,7 @@ export default function AssetValuationTool() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-600 block">공시지가·지적도 포털</span>
+            <span className="text-xs font-bold text-slate-600 block">공시지가·지적도 포털</span>
             <div className="grid grid-cols-2 gap-1.5">
               <PortalButton portalKey="eum_land" query={landAddress} title="토지이음" desc="개별공시지가·지목" tone="bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border-emerald-200" />
               <PortalButton portalKey="realty_price" query={landAddress} title="공시가격 알리미 (토지)" desc="표준지·개별공시지가" tone="bg-blue-50 hover:bg-blue-100 text-blue-950 border-blue-200" />
@@ -255,9 +255,9 @@ export default function AssetValuationTool() {
               <Calculator className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
               토지 가액 계산 (공시지가 × 면적)
             </span>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-3 gap-2 text-xs">
               <div>
-                <label htmlFor="asset-land-jiga" className="text-[10px] text-slate-600 block mb-0.5 font-medium">공시지가 (원/㎡)</label>
+                <label htmlFor="asset-land-jiga" className="text-xs text-slate-600 block mb-0.5 font-medium">공시지가 (원/㎡)</label>
                 <input
                   id="asset-land-jiga"
                   type="number"
@@ -269,7 +269,7 @@ export default function AssetValuationTool() {
                 />
               </div>
               <div>
-                <label htmlFor="asset-land-area" className="text-[10px] text-slate-600 block mb-0.5 font-medium">면적 (㎡)</label>
+                <label htmlFor="asset-land-area" className="text-xs text-slate-600 block mb-0.5 font-medium">면적 (㎡)</label>
                 <input
                   id="asset-land-area"
                   type="number"
@@ -281,15 +281,15 @@ export default function AssetValuationTool() {
                 />
               </div>
               <div>
-                <label htmlFor="asset-land-mortgage" className="text-[10px] text-slate-600 block mb-0.5 font-medium">담보대출</label>
+                <label htmlFor="asset-land-mortgage" className="text-xs text-slate-600 block mb-0.5 font-medium">담보대출</label>
                 <MoneyInput id="asset-land-mortgage" value={landMortgage} onChange={setLandMortgage} placeholder="0" showHint={false} />
               </div>
             </div>
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
               <input type="checkbox" checked={landApplyMultiplier} onChange={e => setLandApplyMultiplier(e.target.checked)} className="rounded accent-emerald-600" />
               공시지가 ×130% 참고 환산 적용
             </label>
-            <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1 text-[11px]" aria-live="polite">
+            <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1 text-xs" aria-live="polite">
               <div className="flex justify-between text-slate-600">
                 <span>공시지가 합계 ({landAreaM2 > 0 ? `약 ${(landAreaM2 * 0.3025).toFixed(1)}평` : '면적 입력'})</span>
                 <span className="font-bold text-slate-900 tabular-nums">{formatWonKorean(landPublicTotal)}</span>
@@ -311,7 +311,7 @@ export default function AssetValuationTool() {
       {activeType === 'vehicle' && (
         <div className="space-y-3">
           <div className="space-y-1">
-            <label htmlFor="asset-car-name" className="text-[11px] font-bold text-slate-700 block">차명, 세부 모델 또는 차량번호</label>
+            <label htmlFor="asset-car-name" className="text-xs font-bold text-slate-700 block">차명, 세부 모델 또는 차량번호</label>
             <input
               id="asset-car-name"
               type="text"
@@ -323,7 +323,7 @@ export default function AssetValuationTool() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-600 block">차량 기준가액·중고 시세 포털</span>
+            <span className="text-xs font-bold text-slate-600 block">차량 기준가액·중고 시세 포털</span>
             <div className="grid grid-cols-2 gap-1.5">
               <PortalButton portalKey="kidi_car" title="보험개발원 기준가" desc="차량 기준가액 조회" tone="bg-rose-50 hover:bg-rose-100 text-rose-950 border-rose-200" />
               <PortalButton portalKey="encar" query={carName} title="엔카 시세" desc="실매물 중고 시세" tone="bg-red-50 hover:bg-red-100 text-red-950 border-red-200" />
@@ -337,17 +337,17 @@ export default function AssetValuationTool() {
               <Calculator className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
               차량 순가액 산정
             </span>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <label htmlFor="asset-car-value" className="text-[10px] text-slate-600 block mb-0.5 font-medium">차량 시세/기준가액</label>
+                <label htmlFor="asset-car-value" className="text-xs text-slate-600 block mb-0.5 font-medium">차량 시세/기준가액</label>
                 <MoneyInput id="asset-car-value" value={carValue} onChange={setCarValue} placeholder="예: 1200만" />
               </div>
               <div>
-                <label htmlFor="asset-car-mortgage" className="text-[10px] text-slate-600 block mb-0.5 font-medium">할부·캐피탈 저당액</label>
+                <label htmlFor="asset-car-mortgage" className="text-xs text-slate-600 block mb-0.5 font-medium">할부·캐피탈 저당액</label>
                 <MoneyInput id="asset-car-mortgage" value={carMortgage} onChange={setCarMortgage} placeholder="0" />
               </div>
             </div>
-            <div className="p-2 bg-white rounded-xl border border-emerald-200 text-[11px]" aria-live="polite">
+            <div className="p-2 bg-white rounded-xl border border-emerald-200 text-xs" aria-live="polite">
               <div className="flex justify-between font-extrabold text-emerald-900">
                 <span>순가액</span>
                 <span className="text-sm font-black text-emerald-800 tabular-nums">{formatWonKorean(carNet)}</span>
@@ -358,7 +358,7 @@ export default function AssetValuationTool() {
         </div>
       )}
 
-      <p className="text-[10px] text-slate-500">
+      <p className="text-xs text-slate-500">
         ×130%는 공시가격을 시세로 가늠하기 위한 참고 환산이며 법원 기준이 아닙니다. KB시세·실거래가·감정 결과가 있으면 그 값을 쓰세요.
       </p>
 

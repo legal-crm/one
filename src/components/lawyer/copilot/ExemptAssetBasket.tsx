@@ -49,11 +49,11 @@ export default function ExemptAssetBasket({
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
               <span>압류금지재산·소액보증금 공제</span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
                 법정 공제 바스켓
               </span>
             </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               예금 {fmt(DEPOSIT_EXEMPTION_KRW)}, 보장성 보험 {fmt(EXEMPT_INSURANCE_REFUND_LIMIT)}, 소액임차보증금을 기준에 따라 청산가치에서 공제한 참고값입니다.
             </p>
           </div>
@@ -83,39 +83,39 @@ export default function ExemptAssetBasket({
             <tr className="hover:bg-slate-50/50">
               <td className="py-2.5 px-3 font-bold text-slate-800">
                 🏦 예금·적금 바스켓
-                <span className="block text-[10px] text-slate-400 font-normal">모든 금융기관 계좌 잔액 합산</span>
+                <span className="block text-xs text-slate-400 font-normal">모든 금융기관 계좌 잔액 합산</span>
               </td>
               <td className="py-2.5 px-3 text-right text-slate-600">최대 {fmt(DEPOSIT_EXEMPTION_KRW)}</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptDepositTotal > 0 ? `-${fmt(exemptDepositTotal)}` : '0원'}
               </td>
-              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">민사집행법 §246①(8), 시행령 §7</td>
+              <td className="py-2.5 px-3 text-center text-xs text-slate-500">민사집행법 §246①(8), 시행령 §7</td>
             </tr>
 
             {/* 2. 보장성 보험 150만 원 한도 공제 */}
             <tr className="hover:bg-slate-50/50">
               <td className="py-2.5 px-3 font-bold text-slate-800">
                 🛡️ 보장성 보험 해약환급금
-                <span className="block text-[10px] text-slate-400 font-normal">보장성 보험에 한함 (저축성 제외)</span>
+                <span className="block text-xs text-slate-400 font-normal">보장성 보험에 한함 (저축성 제외)</span>
               </td>
               <td className="py-2.5 px-3 text-right text-slate-600">최대 {fmt(EXEMPT_INSURANCE_REFUND_LIMIT)}</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptInsuranceTotal > 0 ? `-${fmt(exemptInsuranceTotal)}` : '0원'}
               </td>
-              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">민사집행법 §246①(7), 시행령 §6</td>
+              <td className="py-2.5 px-3 text-center text-xs text-slate-500">민사집행법 §246①(7), 시행령 §6</td>
             </tr>
 
             {/* 3. 소액임차보증금 최우선변제금 */}
             <tr className="hover:bg-slate-50/50">
               <td className="py-2.5 px-3 font-bold text-slate-800">
                 🏠 주거용 소액임차보증금
-                <span className="block text-[10px] text-slate-400 font-normal">지역별 최우선변제금 범위 내</span>
+                <span className="block text-xs text-slate-400 font-normal">지역별 최우선변제금 범위 내</span>
               </td>
               <td className="py-2.5 px-3 text-right text-slate-600">서울 {fmt(HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL.exemptAmount)} / 과밀 {fmt(HOUSING_EXEMPT_DEPOSIT_LIMITS.OVERCROWDED.exemptAmount)} 등</td>
               <td className="py-2.5 px-3 text-right font-black text-emerald-600">
                 {exemptHousingDeposit > 0 ? `-${fmt(exemptHousingDeposit)}` : '0원'}
               </td>
-              <td className="py-2.5 px-3 text-center text-[11px] text-slate-500">주택임대차보호법 §8</td>
+              <td className="py-2.5 px-3 text-center text-xs text-slate-500">주택임대차보호법 §8</td>
             </tr>
           </tbody>
         </table>

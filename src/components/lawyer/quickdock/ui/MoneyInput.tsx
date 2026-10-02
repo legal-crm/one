@@ -81,7 +81,7 @@ export default function MoneyInput({
       {showHint && hint && (
         <p
           id={hintId}
-          className={`text-[10px] mt-0.5 leading-tight tabular-nums ${invalid ? 'text-rose-700 font-bold' : 'text-slate-500'}`}
+          className={`text-xs mt-0.5 leading-tight tabular-nums ${invalid ? 'text-rose-700 font-bold' : 'text-slate-500'}`}
         >
           {hint}
         </p>

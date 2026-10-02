@@ -51,7 +51,7 @@ export default function PrintablePropertyListModal({
                 <h3 className="text-base font-black text-white">
                   대법원 표준 [전산양식 D5102] 개인회생 재산목록
                 </h3>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
                   법정 필수 서식
                 </span>
               </div>
@@ -98,10 +98,10 @@ export default function PrintablePropertyListModal({
         {/* 문서 본문 영역 (A4 인쇄 규격) */}
         <div 
           ref={printRef}
-          className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white text-slate-900 font-serif leading-relaxed text-xs print:p-0 print:text-[11px] print:overflow-visible"
+          className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white text-slate-900 font-serif leading-relaxed text-xs print:p-0 print:text-xs print:overflow-visible"
         >
           {/* 양식 식별 헤더 */}
-          <div className="flex justify-between items-start text-[11px] text-slate-500 font-sans mb-4 border-b border-slate-300 pb-2">
+          <div className="flex justify-between items-start text-xs text-slate-500 font-sans mb-4 border-b border-slate-300 pb-2">
             <span>[전산양식 D5102]</span>
             <span>개인회생절차 개시신청서 첨부서면 (법 제589조 제2항 제2호)</span>
           </div>
@@ -132,10 +132,10 @@ export default function PrintablePropertyListModal({
           {/* 1. 현금 및 예금 */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">1·2</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">1·2</span>
               현금 및 예금 (압류금지 185만 원 한도 공제)
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -170,10 +170,10 @@ export default function PrintablePropertyListModal({
           {/* 3. 보험 해약환급금 */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">3</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">3</span>
               보험계약 해약환급금 (보장성 150만 원 한도 공제)
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -210,10 +210,10 @@ export default function PrintablePropertyListModal({
           {/* 4. 자동차 및 이륜차 */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">4</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">4</span>
               자동차 및 이륜차 (보험개발원 가액 / 엔카·KB차차차 시세 기준)
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -250,10 +250,10 @@ export default function PrintablePropertyListModal({
           {/* 5. 임차보증금 */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">5</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">5</span>
               임차보증금 반환채권 (2026 주택임대차 소액보증금 공제 적용)
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -288,10 +288,10 @@ export default function PrintablePropertyListModal({
           {/* 6. 부동산 (토지 및 건물) */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">6</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">6</span>
               부동산 (KB시세 일반가 또는 공시가격의 130% 기준)
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -313,9 +313,9 @@ export default function PrintablePropertyListModal({
                       <td className="border border-slate-300 py-1.5">{idx + 1}</td>
                       <td className="border border-slate-300 py-1.5 text-left px-2">
                         <div className="font-medium">{re.address} {re.detailAddress}</div>
-                        {re.areaSquareMeter && <div className="text-[10px] text-slate-500">면적: {re.areaSquareMeter}㎡</div>}
+                        {re.areaSquareMeter && <div className="text-xs text-slate-500">면적: {re.areaSquareMeter}㎡</div>}
                       </td>
-                      <td className="border border-slate-300 py-1.5 text-[10px]">
+                      <td className="border border-slate-300 py-1.5 text-xs">
                         {re.valuationMethod === 'public_price_130' ? '공시가 130%' : (re.valuationMethod === 'kb_general' ? 'KB시세' : '실거래가')}
                       </td>
                       <td className="border border-slate-300 py-1.5 text-right px-2">{won(re.marketValue)}</td>
@@ -331,10 +331,10 @@ export default function PrintablePropertyListModal({
           {/* 9. 예상퇴직금 & 10. 기타 자산 */}
           <div className="mb-8">
             <h3 className="text-sm font-bold text-slate-900 mb-2 font-sans flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">9·10</span>
+              <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">9·10</span>
               예상퇴직금 (퇴직연금 0원 / 일반 50% 반영) 및 주식·기타
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-center font-sans text-xs">
               <thead className="bg-slate-100 font-bold text-slate-700">
                 <tr>
                   <th className="border border-slate-300 py-1.5 px-2 w-10">번호</th>
@@ -384,27 +384,27 @@ export default function PrintablePropertyListModal({
           <div className="mb-10 p-4 bg-slate-100 rounded-xl border border-slate-300 font-sans">
             <h4 className="text-xs font-bold text-slate-800 mb-3 flex items-center justify-between">
               <span>■ 총 괄 표 (청산가치 산출 집계)</span>
-              <span className="text-[11px] text-slate-500">단위: 원</span>
+              <span className="text-xs text-slate-500">단위: 원</span>
             </h4>
             <div className="grid grid-cols-4 gap-3 text-center">
               <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                <div className="text-[11px] text-slate-500">① 자산 총 평가액</div>
+                <div className="text-xs text-slate-500">① 자산 총 평가액</div>
                 <div className="text-sm font-bold text-slate-900 mt-1">{won(data.totalMarketValue)}원</div>
               </div>
               <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                <div className="text-[11px] text-rose-600">② 담보채무 공제액</div>
+                <div className="text-xs text-rose-600">② 담보채무 공제액</div>
                 <div className="text-sm font-bold text-rose-700 mt-1">-{won(data.totalEncumbrance)}원</div>
               </div>
               <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                <div className="text-[11px] text-slate-600">③ 법정 면제/공제액</div>
+                <div className="text-xs text-slate-600">③ 법정 면제/공제액</div>
                 <div className="text-sm font-bold text-slate-700 mt-1">-{won(data.totalStatutoryDeduction)}원</div>
               </div>
               <div className="bg-emerald-50 p-2.5 rounded-lg border-2 border-emerald-500">
-                <div className="text-[11px] font-bold text-emerald-800">④ 최종 청산가치 (J)</div>
+                <div className="text-xs font-bold text-emerald-800">④ 최종 청산가치 (J)</div>
                 <div className="text-base font-black text-emerald-700 mt-0.5">{won(data.totalLiquidationValue)}원</div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2.5 text-right">
+            <p className="text-xs text-slate-500 mt-2.5 text-right">
               * 청산가치 보장의 원칙: 개인회생 총 변제예정액의 현재가치는 위 최종 청산가치({won(data.totalLiquidationValue)}원) 이상이어야 합니다.
             </p>
           </div>

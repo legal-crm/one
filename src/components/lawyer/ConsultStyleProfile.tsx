@@ -115,7 +115,7 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-brand" /> 설명 분량
             </h4>
-            <span className="text-[11px] text-slate-400">제안서 및 상담문 기본 길이</span>
+            <span className="text-xs text-slate-400">제안서 및 상담문 기본 길이</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
             {EXPLANATION_OPTIONS.map(opt => (
@@ -130,7 +130,7 @@ export default function ConsultStyleProfileSettings({
                 }`}
               >
                 <div className="text-xs">{opt.label}</div>
-                <div className="text-[10px] text-slate-400 font-normal mt-0.5">{opt.desc}</div>
+                <div className="text-xs text-slate-400 font-normal mt-0.5">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -142,7 +142,7 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-brand" /> 용어 수준
             </h4>
-            <span className="text-[11px] text-slate-400">의뢰인 눈높이 맞춤</span>
+            <span className="text-xs text-slate-400">의뢰인 눈높이 맞춤</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
             {TERMINOLOGY_OPTIONS.map(opt => (
@@ -157,7 +157,7 @@ export default function ConsultStyleProfileSettings({
                 }`}
               >
                 <div className="text-xs">{opt.label}</div>
-                <div className="text-[10px] text-slate-400 font-normal mt-0.5">{opt.desc}</div>
+                <div className="text-xs text-slate-400 font-normal mt-0.5">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -169,12 +169,12 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> 필수 주의사항 (법적 면책 고지)
             </h4>
-            <span className="text-[10px] text-amber-600 font-bold">발송문 하단 필수 삽입</span>
+            <span className="text-xs text-amber-600 font-bold">발송문 하단 필수 삽입</span>
           </div>
           <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
             {profile.requiredCautions.map((c, i) => (
               <div key={i} className="flex items-start gap-2 bg-amber-50/70 border border-amber-200/60 rounded-xl p-2 text-xs">
-                <p className="text-amber-900 flex-1 leading-relaxed text-[11px] font-medium">{c}</p>
+                <p className="text-amber-900 flex-1 leading-relaxed text-xs font-medium">{c}</p>
                 <button onClick={() => removeFromList('requiredCautions', i)} className="text-amber-400 hover:text-rose-500 shrink-0 p-0.5">
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -201,7 +201,7 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <Ban className="w-3.5 h-3.5 text-rose-500" /> 금지 표현 (변호사법 광고 규정 필터)
             </h4>
-            <span className="text-[10px] text-rose-600 font-bold">단정적·과장 광고 방지</span>
+            <span className="text-xs text-rose-600 font-bold">단정적·과장 광고 방지</span>
           </div>
           <div className="flex flex-wrap gap-1.5 min-h-[48px] p-2 bg-slate-50 border border-slate-100 rounded-xl">
             {profile.prohibitedExpressions.map((exp, i) => (
@@ -233,7 +233,7 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-blue-500" /> 상담 후 필수 안내 서류 목록
             </h4>
-            <span className="text-[10px] text-blue-600 font-bold">1차 상담 시 동봉</span>
+            <span className="text-xs text-blue-600 font-bold">1차 상담 시 동봉</span>
           </div>
           <div className="flex flex-wrap gap-1.5 min-h-[48px] p-2 bg-slate-50 border border-slate-100 rounded-xl">
             {profile.postConsultDocuments.map((doc, i) => (
@@ -265,7 +265,7 @@ export default function ConsultStyleProfileSettings({
             <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-slate-600" /> 공식 링크 표시 방식
             </h4>
-            <span className="text-[11px] text-slate-400">대법원 판례·전자소송 링크</span>
+            <span className="text-xs text-slate-400">대법원 판례·전자소송 링크</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
             {LINK_STYLE_OPTIONS.map(opt => (

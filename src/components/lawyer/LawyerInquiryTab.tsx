@@ -191,7 +191,7 @@ export default function LawyerInquiryTab({
                       ) : (
                         <div className="w-20 h-20 bg-slate-50 flex flex-col items-center justify-center p-2">
                           <FileText className="w-6 h-6 text-slate-400 mb-1" />
-                          <span className="text-[10px] text-slate-500 truncate w-full text-center">PDF</span>
+                          <span className="text-xs text-slate-500 truncate w-full text-center">PDF</span>
                         </div>
                       )}
                       <button

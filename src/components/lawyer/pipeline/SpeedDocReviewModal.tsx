@@ -99,7 +99,7 @@ export default function SpeedDocReviewModal({
                 <h3 className="text-sm font-black tracking-tight">
                   연속 서류 신속 검토 모드
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-[10px] font-bold font-mono">
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-xs font-bold font-mono">
                   {currentIndex + 1} / {totalCount}
                 </span>
               </div>
@@ -149,10 +149,10 @@ export default function SpeedDocReviewModal({
             <div className="bg-white rounded-xl shadow-md border border-slate-300 w-full max-w-lg h-full max-h-[580px] p-6 flex flex-col justify-between text-slate-800 relative overflow-hidden font-mono text-xs">
               <div className="text-center border-b pb-3 space-y-1">
                 <div className="text-base font-black text-slate-900">{currentDoc.name}</div>
-                <div className="text-[10px] text-slate-400">발급처: {currentDoc.agency} | 발급일: 2026.09.11</div>
+                <div className="text-xs text-slate-400">발급처: {currentDoc.agency} | 발급일: 2026.09.11</div>
               </div>
 
-              <div className="space-y-4 py-4 text-[11px] leading-relaxed">
+              <div className="space-y-4 py-4 text-xs leading-relaxed">
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="font-bold text-slate-900 mb-1">신청인(본인) 인적사항</div>
                   <div className="flex justify-between text-slate-600">
@@ -173,7 +173,7 @@ export default function SpeedDocReviewModal({
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-slate-900">세대원 / 가족 관계</span>
                     {currentDoc.isThirdPartyMaskingRequired && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">
                         제3자 마스킹 필수 구간
                       </span>
                     )}
@@ -190,13 +190,13 @@ export default function SpeedDocReviewModal({
                   </div>
                 </div>
 
-                <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200 text-[10px] text-emerald-900 flex items-center gap-2">
+                <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>AI 서식 분석: 서식 유효기간(3개월 이내) 및 가족 뒷자리 마스킹 통과</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t text-[10px] text-slate-400 flex justify-between">
+              <div className="pt-2 border-t text-xs text-slate-400 flex justify-between">
                 <span>정부24 전자문서 확인번호: 4829-1029-4920</span>
                 <span>공공데이터 전자직인 날인됨</span>
               </div>
@@ -207,7 +207,7 @@ export default function SpeedDocReviewModal({
               <button type="button" className="hover:text-blue-300 cursor-pointer p-1" title="확대"><ZoomIn className="w-3.5 h-3.5" /></button>
               <button type="button" className="hover:text-blue-300 cursor-pointer p-1" title="축소"><ZoomOut className="w-3.5 h-3.5" /></button>
               <button type="button" className="hover:text-blue-300 cursor-pointer p-1" title="회전"><RotateCw className="w-3.5 h-3.5" /></button>
-              <span className="text-[10px] text-slate-400 font-mono">100%</span>
+              <span className="text-xs text-slate-400 font-mono">100%</span>
             </div>
           </div>
 
@@ -220,7 +220,7 @@ export default function SpeedDocReviewModal({
                   <ShieldCheck className="w-4 h-4 text-[#1E3A5F]" />
                   <span>사무장 적격 검증 체크리스트</span>
                 </span>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   법원 보정명령 방지를 위해 4대 항목을 체크하세요.
                 </p>
               </div>
@@ -235,7 +235,7 @@ export default function SpeedDocReviewModal({
                   />
                   <div>
                     <div className="font-bold text-slate-900">문서 종류 일치 확인</div>
-                    <div className="text-[10px] text-slate-500">요구 서식('{currentDoc.name}')과 정확히 일치함</div>
+                    <div className="text-xs text-slate-500">요구 서식('{currentDoc.name}')과 정확히 일치함</div>
                   </div>
                 </label>
 
@@ -248,7 +248,7 @@ export default function SpeedDocReviewModal({
                   />
                   <div>
                     <div className="font-bold text-slate-900">발급일 3개월 이내 유효</div>
-                    <div className="text-[10px] text-slate-500">2026.09.11 발급 (법원 제출 유효)</div>
+                    <div className="text-xs text-slate-500">2026.09.11 발급 (법원 제출 유효)</div>
                   </div>
                 </label>
 
@@ -261,7 +261,7 @@ export default function SpeedDocReviewModal({
                   />
                   <div>
                     <div className="font-bold text-slate-900">제3자 주민번호 마스킹 확인</div>
-                    <div className="text-[10px] text-slate-500">신청인 외 가족 뒷자리 6자리 별표 표시됨</div>
+                    <div className="text-xs text-slate-500">신청인 외 가족 뒷자리 6자리 별표 표시됨</div>
                   </div>
                 </label>
 
@@ -274,7 +274,7 @@ export default function SpeedDocReviewModal({
                   />
                   <div>
                     <div className="font-bold text-slate-900">식별 가능성 및 해상도 양호</div>
-                    <div className="text-[10px] text-slate-500">글자 잘림, 빛 반사, 번짐 없음</div>
+                    <div className="text-xs text-slate-500">글자 잘림, 빛 반사, 번짐 없음</div>
                   </div>
                 </label>
               </div>
@@ -297,7 +297,7 @@ export default function SpeedDocReviewModal({
                         key={r}
                         type="button"
                         onClick={() => setRejectReason(r)}
-                        className="w-full text-left p-1.5 rounded hover:bg-rose-100 text-[11px] text-rose-800 transition-colors cursor-pointer"
+                        className="w-full text-left p-1.5 rounded hover:bg-rose-100 text-xs text-rose-800 transition-colors cursor-pointer"
                       >
                         • {r}
                       </button>
@@ -313,14 +313,14 @@ export default function SpeedDocReviewModal({
                     <button
                       type="button"
                       onClick={() => setShowRejectBox(false)}
-                      className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                      className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
                     >
                       취소
                     </button>
                     <button
                       type="button"
                       onClick={handleConfirmReject}
-                      className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg cursor-pointer press-scale"
+                      className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer press-scale"
                     >
                       알림톡 발송
                     </button>

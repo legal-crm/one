@@ -350,7 +350,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
               <h3 className="text-sm font-black text-slate-900">
                 {clientName} 의뢰인 통화 및 문자 영구 보존 보관함
               </h3>
-              <span className="text-[11px] font-mono text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
                 {clientPhone}
               </span>
             </div>
@@ -411,7 +411,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
             <Sparkles size={16} className="text-purple-600 animate-spin" />
             <span>{uploadProgressText}</span>
           </div>
-          <span className="text-[11px] text-purple-600 font-mono">Gemini 3.5 Transcribe</span>
+          <span className="text-xs text-purple-600 font-mono">Gemini 3.5 Transcribe</span>
         </div>
       )}
 
@@ -430,7 +430,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                   <span>통화 및 문자 기록</span>
-                  <span className="text-[11px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
+                  <span className="text-xs bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
                     {filteredLogs.length}건
                   </span>
                 </h3>
@@ -442,7 +442,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
               <button
                 type="button"
                 onClick={() => setShowQuickCall(!showQuickCall)}
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer press-scale"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer press-scale"
               >
                 <Plus size={12} className="text-blue-600" />
                 <span>통화 기록 추가</span>
@@ -451,7 +451,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
               <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
                 <button
                   onClick={() => setSelectedFilter('all')}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     selectedFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -459,7 +459,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 </button>
                 <button
                   onClick={() => setSelectedFilter('calls')}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     selectedFilter === 'calls' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -467,7 +467,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 </button>
                 <button
                   onClick={() => setSelectedFilter('sms')}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     selectedFilter === 'sms' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -492,7 +492,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 mb-1 block">구분</label>
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">구분</label>
                   <select
                     value={quickCallType}
                     onChange={(e: any) => setQuickCallType(e.target.value)}
@@ -504,7 +504,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 mb-1 block">통화 시간 (초)</label>
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">통화 시간 (초)</label>
                   <input
                     type="number"
                     value={quickCallDuration}
@@ -560,7 +560,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                   <Clock size={24} className="text-slate-300" />
                 </div>
                 <p className="text-xs font-medium text-slate-500">기록된 통화 및 문자 내역이 없습니다.</p>
-                <p className="text-[11px] text-slate-400">우측에서 문자를 발송하거나 통화 기록을 추가하세요.</p>
+                <p className="text-xs text-slate-400">우측에서 문자를 발송하거나 통화 기록을 추가하세요.</p>
               </div>
             ) : (
               filteredLogs.map((log, index) => {
@@ -601,7 +601,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                     {/* 날짜 구분 배너 */}
                     {showDateSeparator && (
                       <div className="flex justify-center my-3">
-                        <span className="bg-slate-200/90 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full shadow-2xs">
+                        <span className="bg-slate-200/90 text-slate-600 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
                           {dateHeader}
                         </span>
                       </div>
@@ -632,18 +632,18 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                                   <span className={`text-xs font-bold ${isMissed ? 'text-rose-700' : 'text-slate-900'}`}>
                                     {isMissed ? '부재중 통화' : isInbound ? '수신 통화' : '발신 통화'}
                                   </span>
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                  <span className={`text-xs font-bold px-1.5 py-0.2 rounded ${
                                     log.lineInfo === '투넘버' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
                                   }`}>
                                     {log.lineInfo || '기본'}
                                   </span>
                                   {log.duration && log.duration > 0 && (
-                                    <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
+                                    <span className="text-xs font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
                                       {formatDuration(log.duration)}
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{timeStr}</span>
+                                <span className="text-xs text-slate-400 font-mono block mt-0.5">{timeStr}</span>
                               </div>
                             </div>
 
@@ -656,7 +656,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                                     setPlayingRecording(matchedRec);
                                     toast.info(`녹음 파일 '${matchedRec.filename}'을 로드하여 재생합니다.`);
                                   }}
-                                  className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                     isCurrentPlaying
                                       ? 'bg-purple-600 text-white border-purple-600 shadow-xs animate-pulse'
                                       : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
@@ -700,10 +700,10 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                             : 'bg-blue-600 text-white rounded-tr-xs'
                         }`}>
                           <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className={`text-[10px] font-bold ${isInbound ? 'text-slate-500' : 'text-blue-100'}`}>
+                            <span className={`text-xs font-bold ${isInbound ? 'text-slate-500' : 'text-blue-100'}`}>
                               {isInbound ? '수신 문자' : `발신 문자 (${log.lineInfo || '기본'})`}
                             </span>
-                            <span className={`text-[10px] ${isInbound ? 'text-slate-400' : 'text-blue-200'}`}>
+                            <span className={`text-xs ${isInbound ? 'text-slate-400' : 'text-blue-200'}`}>
                               {timeStr}
                             </span>
                           </div>
@@ -734,7 +734,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">문자 발송 & 템플릿</h3>
-                  <p className="text-[10px] text-slate-400">스마트폰 통신사 회선으로 자동 전송</p>
+                  <p className="text-xs text-slate-400">스마트폰 통신사 회선으로 자동 전송</p>
                 </div>
               </div>
 
@@ -743,7 +743,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setSimLine('기본')}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     simLine === '기본' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -752,7 +752,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setSimLine('투넘버')}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     simLine === '투넘버' ? 'bg-purple-600 text-white shadow-2xs' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -765,7 +765,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                 <span>상담 템플릿 선택</span>
-                <span className="text-[10px] text-slate-400 font-normal">최대 5개 등록 가능</span>
+                <span className="text-xs text-slate-400 font-normal">최대 5개 등록 가능</span>
               </label>
 
               <div className="flex flex-wrap gap-1.5">
@@ -882,7 +882,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700">문자 본문</label>
-                <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                <div className="flex items-center gap-1.5 font-mono text-xs">
                   <span className={`px-1.5 py-0.2 rounded font-bold ${
                     isLms ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
                   }`}>
@@ -931,10 +931,10 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">구글 드라이브 녹취 아카이브</h4>
-                  <p className="text-[10px] text-slate-400">의뢰인 통화 녹음 영구 보존 목록</p>
+                  <p className="text-xs text-slate-400">의뢰인 통화 녹음 영구 보존 목록</p>
                 </div>
               </div>
-              <span className="text-[11px] font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
                 {(crmExt.recordings || []).length}개 보관
               </span>
             </div>
@@ -958,7 +958,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-slate-800 truncate">{rec.filename}</p>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-xs text-slate-400 font-mono">
                           {new Date(rec.uploadDate || (rec as any).uploadedAt).toLocaleString()}
                         </span>
                       </div>
@@ -969,7 +969,7 @@ export const ClientCallsSmsSubTab: React.FC<ClientCallsSmsSubTabProps> = ({
                             setPlayingRecording(rec);
                             toast.info(`녹음 파일 '${rec.filename}'을 로드합니다.`);
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
                             isCurrent
                               ? 'bg-purple-600 text-white border-purple-600'
                               : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'

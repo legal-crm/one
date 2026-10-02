@@ -106,7 +106,7 @@ function LitigationPowerOfAttorneyModalInner({
             <div>
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 소송위임장 및 담당변호사 지정서 (STEP 7)
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
                   대법원 전자소송 표준양식
                 </span>
               </h3>
@@ -215,7 +215,7 @@ function LitigationPowerOfAttorneyModalInner({
                 </p>
 
                 {/* 8대 수권사항 */}
-                <div className="p-3 bg-slate-50/50 rounded-lg border border-slate-200 font-sans space-y-1.5 text-[11px]">
+                <div className="p-3 bg-slate-50/50 rounded-lg border border-slate-200 font-sans space-y-1.5 text-xs">
                   <span className="font-bold block text-slate-800 mb-1">【 수 권 사 항 】</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     <label className="flex items-center gap-1.5 cursor-pointer" onClick={() => togglePower('p1')}>
@@ -259,7 +259,7 @@ function LitigationPowerOfAttorneyModalInner({
                 <div className="mt-4 pt-4 border-t border-dashed border-slate-300 space-y-3 font-sans">
                   <div className="text-center">
                     <h2 className="text-base font-bold tracking-wider">담 당 변 호 사 지 정 서</h2>
-                    <p className="text-[10px] text-slate-500">(변호사법 제50조 제1항)</p>
+                    <p className="text-xs text-slate-500">(변호사법 제50조 제1항)</p>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1.5">
                     <p>
@@ -281,16 +281,16 @@ function LitigationPowerOfAttorneyModalInner({
               
               <div className="flex justify-around items-end text-xs font-sans">
                 <div>
-                  <span className="text-slate-500 block text-[10px]">위임인(신청인)</span>
+                  <span className="text-slate-500 block text-xs">위임인(신청인)</span>
                   <span className="font-bold text-sm text-slate-900">{clientName}</span>
-                  <span className="inline-block ml-2 border border-slate-300 px-2 py-0.5 text-[10px] text-slate-400 rounded">
+                  <span className="inline-block ml-2 border border-slate-300 px-2 py-0.5 text-xs text-slate-400 rounded">
                     (서명 또는 날인)
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">수임인(대리인)</span>
+                  <span className="text-slate-500 block text-xs">수임인(대리인)</span>
                   <span className="font-bold text-sm text-slate-900">{lawFirmName}</span>
-                  <span className="inline-block ml-2 border border-slate-300 px-2 py-0.5 text-[10px] text-slate-400 rounded">
+                  <span className="inline-block ml-2 border border-slate-300 px-2 py-0.5 text-xs text-slate-400 rounded">
                     (직인)
                   </span>
                 </div>

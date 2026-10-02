@@ -194,7 +194,7 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
             <div>
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>계약 문서 내용 및 특약 상세 편집</span>
-                <span className="text-[11px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
                   {CONTRACT_DOC_TYPES[type]?.label || '문서'}
                 </span>
               </h2>
@@ -289,7 +289,7 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
                 
                 {/* 형광펜 및 볼드 서식 버튼 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
+                  <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
                     <Highlighter className="w-3.5 h-3.5 text-amber-500" />
                     <span>강조 서식:</span>
                   </span>
@@ -347,7 +347,7 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
               </div>
 
               {/* 스마트 치환 태그 빠른 삽입 바 */}
-              <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px]">
+              <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-200 text-xs">
                 <span className="text-slate-400 font-bold">스마트 태그:</span>
                 {[
                   { tag: '{{의뢰인명}}', label: '의뢰인명' },
@@ -384,7 +384,7 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
                         className="text-left p-2.5 bg-white hover:bg-indigo-100/50 border border-indigo-100 rounded-lg transition-colors cursor-pointer group"
                       >
                         <p className="font-bold text-slate-800 group-hover:text-indigo-900">{snip.title}</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{snip.desc}</p>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{snip.desc}</p>
                       </button>
                     ))}
                   </div>
@@ -413,7 +413,7 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
             <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-200 max-h-[420px] overflow-y-auto">
               <div className="mb-4 pb-3 border-b border-slate-200 flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500">실제 고객 열람 및 서명 시 렌더링 형태:</span>
-                <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
                   형광펜 마킹 적용됨
                 </span>
               </div>
@@ -438,11 +438,11 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
                   <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                     <ShieldAlert className="w-4 h-4 text-amber-600" />
                     <span>고객 직접 확약 문구 타이핑(덧쓰기) 필수 요구</span>
-                    <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.2 rounded font-bold">
+                    <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.2 rounded font-bold">
                       법적 부인방지
                     </span>
                   </span>
-                  <p className="text-[11px] text-amber-800/90 mt-0.5">
+                  <p className="text-xs text-amber-800/90 mt-0.5">
                     의뢰인이 스마트폰 서명 시, 아래 지정한 문구를 직접 자필로 타이핑해야만 서명이 완료됩니다.
                   </p>
                 </div>
@@ -462,13 +462,13 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-amber-800">추천 문구:</span>
+                  <span className="text-xs font-bold text-amber-800">추천 문구:</span>
                   {confirmationPresets.map(preset => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setConfirmationText(preset)}
-                      className="text-[10px] px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md cursor-pointer transition-colors"
+                      className="text-xs px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md cursor-pointer transition-colors"
                     >
                       "{preset}"
                     </button>

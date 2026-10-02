@@ -259,11 +259,11 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
             <div>
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                 <span>통화 및 문자 기록</span>
-                <span className="text-[11px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
+                <span className="text-xs bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-full">
                   {filteredLogs.length}건
                 </span>
               </h3>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 스마트폰 삭제 대비 CRM 영구 보관 (통화 클릭 시 구글 드라이브 녹취 즉시 재생)
               </p>
             </div>
@@ -274,7 +274,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
             <button
               type="button"
               onClick={handleExportLogs}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer press-scale active:scale-[0.98]"
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer press-scale active:scale-[0.98]"
               title="분쟁 대비 공식 통화/문자 소명 증빙 파일 다운로드"
             >
               <Download size={12} className="text-blue-600" />
@@ -285,7 +285,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
             <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
               <button
                 onClick={() => setSelectedFilter('all')}
-                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
                   selectedFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -293,7 +293,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
               </button>
               <button
                 onClick={() => setSelectedFilter('calls')}
-                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
                   selectedFilter === 'calls' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -301,7 +301,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
               </button>
               <button
                 onClick={() => setSelectedFilter('sms')}
-                className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-colors ${
+                className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
                   selectedFilter === 'sms' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -330,7 +330,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                 <Clock size={24} className="text-slate-300" />
               </div>
               <p className="text-xs font-medium">기록된 통화 및 문자 내역이 없습니다.</p>
-              <p className="text-[11px] text-slate-400">우측에서 문자를 발송하거나 스마트폰 앱과 동기화하세요.</p>
+              <p className="text-xs text-slate-400">우측에서 문자를 발송하거나 스마트폰 앱과 동기화하세요.</p>
             </div>
           ) : (
             filteredLogs.map((log, index) => {
@@ -371,7 +371,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                   {/* 날짜 구분 배너 */}
                   {showDateSeparator && (
                     <div className="flex justify-center my-3">
-                      <span className="bg-slate-200/90 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full shadow-2xs">
+                      <span className="bg-slate-200/90 text-slate-600 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
                         {dateHeader}
                       </span>
                     </div>
@@ -402,18 +402,18 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                                 <span className={`text-xs font-bold ${isMissed ? 'text-rose-700' : 'text-slate-900'}`}>
                                   {isMissed ? '부재중 통화' : isInbound ? '수신 통화' : '발신 통화'}
                                 </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                <span className={`text-xs font-bold px-1.5 py-0.2 rounded ${
                                   log.lineInfo === '투넘버' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
                                 }`}>
                                   {log.lineInfo || '기본'}
                                 </span>
                                 {log.duration && log.duration > 0 && (
-                                  <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
+                                  <span className="text-xs font-mono bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
                                     {formatDuration(log.duration)}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{timeStr}</span>
+                              <span className="text-xs text-slate-400 font-mono block mt-0.5">{timeStr}</span>
                             </div>
                           </div>
 
@@ -426,7 +426,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                                   setPlayingRecording(matchedRec);
                                   toast.info(`녹음 파일 '${matchedRec.filename}'을 로드하여 재생합니다.`);
                                 }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isCurrentPlaying
                                     ? 'bg-purple-600 text-white border-purple-600 shadow-xs animate-pulse'
                                     : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
@@ -466,8 +466,8 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                     <div className={`flex items-end gap-1.5 w-full ${isInbound ? 'justify-start' : 'justify-end'}`}>
                       {/* 수신인 경우 시간은 우측, 발신인 경우 시간은 좌측 */}
                       {!isInbound && (
-                        <div className="flex flex-col items-end text-[10px] text-slate-400 font-mono mb-0.5 shrink-0">
-                          <span className={`text-[9px] font-bold px-1 rounded mb-0.5 ${
+                        <div className="flex flex-col items-end text-xs text-slate-400 font-mono mb-0.5 shrink-0">
+                          <span className={`text-xs font-bold px-1 rounded mb-0.5 ${
                             log.lineInfo === '투넘버' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'
                           }`}>
                             {log.lineInfo || '기본'}
@@ -487,8 +487,8 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
                       </div>
 
                       {isInbound && (
-                        <div className="flex flex-col items-start text-[10px] text-slate-400 font-mono mb-0.5 shrink-0">
-                          <span className={`text-[9px] font-bold px-1 rounded mb-0.5 ${
+                        <div className="flex flex-col items-start text-xs text-slate-400 font-mono mb-0.5 shrink-0">
+                          <span className={`text-xs font-bold px-1 rounded mb-0.5 ${
                             log.lineInfo === '투넘버' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'
                           }`}>
                             {log.lineInfo || '기본'}
@@ -507,25 +507,25 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
 
         {/* 빠른 통화 기록 시뮬레이션 바 (테스트 및 간편 기록용) */}
         <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0 flex-wrap">
-          <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+          <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
             <Clock size={12} /> 빠른 통화 수동 기록:
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => handleAddQuickCall('CALL_MISSED', 0, '부재중 (고객 미수신)')}
-              className="px-2 py-1 text-[10px] font-bold rounded-lg border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+              className="px-2 py-1 text-xs font-bold rounded-lg border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
             >
               📞 부재중
             </button>
             <button
               onClick={() => handleAddQuickCall('CALL_OUT', 120, '아웃바운드 상담 완료')}
-              className="px-2 py-1 text-[10px] font-bold rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+              className="px-2 py-1 text-xs font-bold rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
             >
               📤 발신(2분)
             </button>
             <button
               onClick={() => handleAddQuickCall('CALL_IN', 300, '고객 인바운드 문의 접수')}
-              className="px-2 py-1 text-[10px] font-bold rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+              className="px-2 py-1 text-xs font-bold rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
             >
               📥 수신(5분)
             </button>
@@ -545,12 +545,12 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">문자 템플릿 & 발송</h3>
-              <p className="text-[10px] text-slate-400">자주 쓰는 문자를 원클릭 선택하여 즉시 발송합니다.</p>
+              <p className="text-xs text-slate-400">자주 쓰는 문자를 원클릭 선택하여 즉시 발송합니다.</p>
             </div>
           </div>
 
           {/* SIM 라인 선택 칩 */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
             <button
               onClick={() => setSimLine('기본')}
               className={`px-2 py-0.5 rounded transition-all ${
@@ -572,7 +572,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
 
         {/* 템플릿 버튼 그리드 (최대 5개 + 직접 입력 + 템플릿 추가) */}
         <div className="space-y-1.5 shrink-0">
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold px-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-500 font-bold px-0.5">
             <span>자주 쓰는 템플릿 ({templates.length}/5)</span>
             {templates.length < 5 && (
               <button
@@ -652,7 +652,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
               </span>
               <button
                 onClick={() => setEditingTemplate(null)}
-                className="text-[11px] text-slate-400 hover:text-slate-600"
+                className="text-xs text-slate-400 hover:text-slate-600"
               >
                 닫기
               </button>
@@ -697,7 +697,7 @@ export const CaseCallsSmsTab: React.FC<CaseCallsSmsTabProps> = ({ lead, onUpdate
               </span>
 
               {/* 글자수 및 SMS/LMS 상태 뱃지 */}
-              <div className="flex items-center gap-1.5 text-[11px] font-mono">
+              <div className="flex items-center gap-1.5 text-xs font-mono">
                 <span className={`px-1.5 py-0.2 rounded font-bold ${
                   isLms ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                 }`}>

@@ -55,14 +55,14 @@ export default function ExtraExpenseTool() {
 
   return (
     <div className="space-y-3 p-4 text-slate-800 text-xs">
-      <p className="flex items-start gap-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2 leading-relaxed">
+      <p className="flex items-start gap-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2 leading-relaxed">
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-700" aria-hidden="true" />
         변제계획안 화면과 같은 산식으로 추가 인정 예상액을 계산합니다. 인정 여부와 금액은 소명 자료와 관할 법원 판단에 따릅니다.
       </p>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label htmlFor="extra-household" className="text-[10px] text-slate-600 font-semibold block mb-0.5">가구원 수</label>
+          <label htmlFor="extra-household" className="text-xs text-slate-600 font-semibold block mb-0.5">가구원 수</label>
           <select
             id="extra-household"
             value={shared.householdSize}
@@ -75,7 +75,7 @@ export default function ExtraExpenseTool() {
           </select>
         </div>
         <div>
-          <label htmlFor="extra-region" className="text-[10px] text-slate-600 font-semibold block mb-0.5">거주 지역</label>
+          <label htmlFor="extra-region" className="text-xs text-slate-600 font-semibold block mb-0.5">거주 지역</label>
           <RegionSelect id="extra-region" value={shared.region} onChange={region => setDockShared({ region })} />
         </div>
       </div>
@@ -84,12 +84,12 @@ export default function ExtraExpenseTool() {
       <div className="border border-slate-200 rounded-2xl p-3 space-y-1.5 bg-slate-50/50">
         <div className="flex items-center justify-between">
           <label htmlFor="extra-housing" className="font-bold text-slate-900">주거비 (월세·주담대 이자 등)</label>
-          <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded-lg">
+          <span className="text-xs bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded-lg">
             추가 {won(r.housing)}
           </span>
         </div>
         <MoneyInput id="extra-housing" value={housing} onChange={setHousing} placeholder="월 실제 주거비" />
-        <p className="text-[10px] text-slate-600 leading-snug">
+        <p className="text-xs text-slate-600 leading-snug">
           지역 한도 {won(r.housingLimit)}까지 인정 대상으로 보고, 기준생계비에 포함된 주거비 {won(r.housingIncluded)}를 뺀 금액입니다.
           소명: 임대차계약서, 월세 이체내역.
         </p>
@@ -99,12 +99,12 @@ export default function ExtraExpenseTool() {
       <div className="border border-slate-200 rounded-2xl p-3 space-y-1.5 bg-slate-50/50">
         <div className="flex items-center justify-between">
           <label htmlFor="extra-medical" className="font-bold text-slate-900">지속적 의료비</label>
-          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-lg">
+          <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-lg">
             추가 {won(r.medical)}
           </span>
         </div>
         <MoneyInput id="extra-medical" value={medical} onChange={setMedical} placeholder="월 평균 본인부담 의료비" />
-        <p className="text-[10px] text-slate-600 leading-snug">
+        <p className="text-xs text-slate-600 leading-snug">
           기초의료비 {won(r.medicalBase)}를 넘는 금액입니다. 소명: 진단서, 최근 진료비 영수증.
         </p>
       </div>
@@ -113,13 +113,13 @@ export default function ExtraExpenseTool() {
       <div className="border border-slate-200 rounded-2xl p-3 space-y-1.5 bg-slate-50/50">
         <div className="flex items-center justify-between">
           <span className="font-bold text-slate-900">자녀 교육비</span>
-          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-lg">
+          <span className="text-xs bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-lg">
             추가 {won(r.education)}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label htmlFor="extra-children" className="text-[10px] text-slate-600 font-semibold block mb-0.5">자녀 수</label>
+            <label htmlFor="extra-children" className="text-xs text-slate-600 font-semibold block mb-0.5">자녀 수</label>
             <input
               id="extra-children"
               type="number"
@@ -131,15 +131,15 @@ export default function ExtraExpenseTool() {
             />
           </div>
           <div className="col-span-2">
-            <label htmlFor="extra-education" className="text-[10px] text-slate-600 font-semibold block mb-0.5">1인당 월 교육비</label>
+            <label htmlFor="extra-education" className="text-xs text-slate-600 font-semibold block mb-0.5">1인당 월 교육비</label>
             <MoneyInput id="extra-education" value={educationPerChild} onChange={setEducationPerChild} placeholder="예: 30만" />
           </div>
         </div>
-        <label className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
           <input type="checkbox" checked={special} onChange={e => setSpecial(e.target.checked)} className="rounded accent-blue-600" />
           특수교육·발달치료 (의사소견서 등 소명)
         </label>
-        <p className="text-[10px] text-slate-600 leading-snug">
+        <p className="text-xs text-slate-600 leading-snug">
           1인당 생계비 포함분 {won(r.educationIncluded)}를 넘는 금액을 1인당 {won(r.educationCap)} 한도로 봅니다.
           양육비는 판결문·양육비부담조서 등 소명 자료에 따라 판단됩니다.
         </p>

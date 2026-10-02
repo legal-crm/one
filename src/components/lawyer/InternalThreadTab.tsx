@@ -167,7 +167,7 @@ export default function InternalThreadTab({
       <div className="flex gap-1 overflow-x-auto pb-1">
         <button
           onClick={() => setCategoryFilter('all')}
-          className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+          className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
             categoryFilter === 'all' ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >전체</button>
@@ -177,7 +177,7 @@ export default function InternalThreadTab({
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+              className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
                 categoryFilter === cat ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >{cfg.emoji} {cfg.label}</button>
@@ -200,7 +200,7 @@ export default function InternalThreadTab({
             <select
               value={category}
               onChange={e => setCategory(e.target.value as MessageCategory)}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] outline-none"
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none"
             >
               {(Object.keys(MESSAGE_CATEGORY_CONFIG) as MessageCategory[]).map(cat => (
                 <option key={cat} value={cat}>{MESSAGE_CATEGORY_CONFIG[cat].emoji} {MESSAGE_CATEGORY_CONFIG[cat].label}</option>
@@ -209,7 +209,7 @@ export default function InternalThreadTab({
             <select
               value={visibility}
               onChange={e => setVisibility(e.target.value as MessageVisibility)}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] outline-none"
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none"
             >
               {visibilityOptions.map(vis => (
                 <option key={vis} value={vis}>{VISIBILITY_CONFIG[vis].emoji} {VISIBILITY_CONFIG[vis].label}</option>
@@ -229,7 +229,7 @@ export default function InternalThreadTab({
       {/* 고정 메시지 */}
       {pinnedMessages.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1"><Pin className="w-3 h-3" /> 고정됨</p>
+          <p className="text-xs font-bold text-amber-600 uppercase flex items-center gap-1"><Pin className="w-3 h-3" /> 고정됨</p>
           {pinnedMessages.map(msg => renderMessage(msg, true))}
         </div>
       )}
@@ -262,14 +262,14 @@ export default function InternalThreadTab({
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-xs text-slate-800">{msg.authorName}</span>
-              <span className="text-[10px] text-slate-400">({msg.authorRole})</span>
-              <span className={`rounded-lg px-1.5 py-0.5 text-[9px] font-bold ${catCfg.color} bg-slate-50`}>{catCfg.emoji} {catCfg.label}</span>
+              <span className="text-xs text-slate-400">({msg.authorRole})</span>
+              <span className={`rounded-lg px-1.5 py-0.5 text-xs font-bold ${catCfg.color} bg-slate-50`}>{catCfg.emoji} {catCfg.label}</span>
               {msg.visibility !== 'all_staff' && (
-                <span className="rounded-lg px-1.5 py-0.5 text-[9px] font-bold text-slate-500 bg-slate-100">{visCfg.emoji} {visCfg.label}</span>
+                <span className="rounded-lg px-1.5 py-0.5 text-xs font-bold text-slate-500 bg-slate-100">{visCfg.emoji} {visCfg.label}</span>
               )}
-              {msg.isEdited && <span className="text-[9px] text-slate-400">(수정됨)</span>}
+              {msg.isEdited && <span className="text-xs text-slate-400">(수정됨)</span>}
             </div>
-            <span className="text-[10px] text-slate-400">{timeAgo(msg.createdAt)}</span>
+            <span className="text-xs text-slate-400">{timeAgo(msg.createdAt)}</span>
           </div>
 
           {/* 내용 */}
@@ -278,22 +278,22 @@ export default function InternalThreadTab({
           {/* 액션 */}
           <div className="flex items-center gap-3 mt-2">
             <button onClick={() => { setReplyingTo(replyingTo === msg.id ? null : msg.id); setReplyContent(''); }}
-              className="text-[10px] text-slate-400 hover:text-brand font-bold flex items-center gap-0.5">
+              className="text-xs text-slate-400 hover:text-brand font-bold flex items-center gap-0.5">
               <Reply className="w-3 h-3" /> 답글
             </button>
             <button onClick={() => handlePin(msg.id)}
-              className={`text-[10px] font-bold flex items-center gap-0.5 ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}>
+              className={`text-xs font-bold flex items-center gap-0.5 ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}>
               <Pin className="w-3 h-3" /> {msg.isPinned ? '고정 해제' : '고정'}
             </button>
             {isOwn && (
               <button onClick={() => handleDelete(msg.id)}
-                className="text-[10px] text-slate-400 hover:text-red-500 font-bold flex items-center gap-0.5">
+                className="text-xs text-slate-400 hover:text-red-500 font-bold flex items-center gap-0.5">
                 <Trash2 className="w-3 h-3" /> 삭제
               </button>
             )}
             {replies.length > 0 || msg.replyCount ? (
               <button onClick={() => toggleReplies(msg.id)}
-                className="text-[10px] text-brand font-bold flex items-center gap-0.5">
+                className="text-xs text-brand font-bold flex items-center gap-0.5">
                 {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 답글 {replies.length || msg.replyCount || 0}개
               </button>
@@ -325,8 +325,8 @@ export default function InternalThreadTab({
             {replies.map(reply => (
               <div key={reply.id} className="px-4 py-2 border-b border-slate-50 last:border-b-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-[11px] font-bold text-slate-700">↳ {reply.authorName}</span>
-                  <span className="text-[10px] text-slate-400">{timeAgo(reply.createdAt)}</span>
+                  <span className="text-xs font-bold text-slate-700">↳ {reply.authorName}</span>
+                  <span className="text-xs text-slate-400">{timeAgo(reply.createdAt)}</span>
                 </div>
                 <p className="text-xs text-slate-600">{reply.content}</p>
               </div>

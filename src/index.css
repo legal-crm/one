@@ -106,6 +106,44 @@
   --text-4xl--line-height: 2.75rem;  /* 44px */
 }
 
+/* ═══════════════════════════════════════════════
+   ADMIN SURFACE SCOPE (변호사·관리자 어드민 전용)
+   - body에 .admin-scale 클래스가 붙거나 어드민 컨테이너에 적용
+   - 12px 하한 보장(text-xs 12px), 실무 고밀도 작업 인터페이스
+   - z-index 계층 스케일 및 독 안전 여백 정의 (기획서 1-1, 1-8)
+   ═══════════════════════════════════════════════ */
+
+.admin-scale {
+  --text-xs: 0.75rem;                /* 12px 하한 보장 */
+  --text-xs--line-height: 1.125rem;  /* 18px */
+  --text-sm: 0.8125rem;              /* 13px */
+  --text-sm--line-height: 1.25rem;   /* 20px */
+  --text-base: 0.875rem;             /* 14px 실무 기준 */
+  --text-base--line-height: 1.375rem;/* 22px */
+  --text-lg: 1rem;                   /* 16px */
+  --text-lg--line-height: 1.5rem;    /* 24px */
+  --text-xl: 1.125rem;               /* 18px */
+  --text-xl--line-height: 1.75rem;   /* 28px */
+  --text-2xl: 1.25rem;               /* 20px */
+  --text-2xl--line-height: 1.875rem; /* 30px */
+
+  /* 퀵툴 플로팅 독 안전 여백 */
+  --dock-safe-area: 72px;
+}
+
+/* 어드민 시맨틱 z-index 계층 변수 */
+:root {
+  --z-table-sticky: 10;
+  --z-bottom-action-bar: 30;
+  --z-shell-header: 40;
+  --z-shell-sidebar: 40;
+  --z-quickdock: 45;
+  --z-drawer: 50;
+  --z-modal: 60;
+  --z-modal-nested: 70;
+  --z-dialog-alert: 99999;
+}
+
 /* 고정 헤더(64/72px)·모바일 하단 메뉴 아래로 포커스·스크롤 대상이 가려지지 않게 (WCAG 2.4.11)
    하단 고정 선택 바처럼 더 높은 바가 뜨는 화면은 그동안 html 인라인 스타일로 값을 늘린다(LawyersView) */
 html:has(> body.client-scale) {

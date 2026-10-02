@@ -41,11 +41,11 @@ export default function SpecialCreditorRadar({
           <div>
             <h4 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
               <span>특수 채권 관리 레이더</span>
-              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">
                 {specialDebts.length}건 감지
               </span>
             </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               사기죄 고소 위험 채권, 세금 우선변제 채무, 양도/대위변제 채권을 정밀 추적합니다.
             </p>
           </div>
@@ -82,7 +82,7 @@ export default function SpecialCreditorRadar({
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${badgeStyle}`}>
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-md border ${badgeStyle}`}>
                       {badgeLabel}
                     </span>
                     <span className="font-extrabold text-sm text-slate-900">{debt.creditor}</span>
@@ -111,7 +111,7 @@ export default function SpecialCreditorRadar({
                     {debt.recommendedAction}
                   </p>
                   {isFraud && (
-                    <div className="bg-rose-50 p-2.5 rounded-lg border border-rose-100 text-[11px] text-rose-800 mt-1 leading-relaxed">
+                    <div className="bg-rose-50 p-2.5 rounded-lg border border-rose-100 text-xs text-rose-800 mt-1 leading-relaxed">
                       💡 <strong>실무 팁:</strong> 대출 실행일 직전·직후의 계좌 거래내역을 확인하여 도박이나 편취가 아닌 실제 생활비, 병원비, 채무변제 돌려막기로 소비되었음을 입증하는 소명서를 미리 준비해 두면 고소 대응에 도움이 됩니다. (처분 결과는 수사기관 판단 사항)
                     </div>
                   )}

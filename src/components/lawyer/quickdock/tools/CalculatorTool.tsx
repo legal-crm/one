@@ -91,7 +91,7 @@ export default function CalculatorTool() {
           <button
             type="button"
             onClick={() => setCreditorCount(basketCount)}
-            className="text-[11px] font-bold text-indigo-700 hover:underline cursor-pointer"
+            className="text-xs font-bold text-indigo-700 hover:underline cursor-pointer"
           >
             채권자 주소록에 담은 {basketCount}곳으로 맞추기
           </button>
@@ -159,7 +159,7 @@ export default function CalculatorTool() {
           <span className="font-black text-slate-800 text-xs">법원 보관금 합계</span>
           <span className="font-black text-base text-blue-700 tabular-nums">{r.total.toLocaleString()}원</span>
         </div>
-        <p className="text-[10px] text-slate-600 leading-snug">송달 회차는 일반적인 예납 기준입니다. 실제 금액은 관할 법원 예납명령을 따르세요.</p>
+        <p className="text-xs text-slate-600 leading-snug">송달 회차는 일반적인 예납 기준입니다. 실제 금액은 관할 법원 예납명령을 따르세요.</p>
       </div>
 
       <CopyButton copied={copied} onClick={handleCopy} label="비용 안내문 복사" />

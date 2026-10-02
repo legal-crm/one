@@ -45,12 +45,9 @@ interface Props {
 }
 
 const STEPS = [
-  { key: 'client', label: '위임인·사건 정보', icon: User },
-  { key: 'fee', label: '수임료·실비·성공보수', icon: CreditCard },
-  { key: 'documents', label: '계약 문서 관리', icon: FileText },
-  { key: 'terms', label: '약관·동의 안내', icon: Shield },
-  { key: 'signature', label: '변호사 서명·고객 발송', icon: PenTool },
-  { key: 'preview', label: '미리보기·도장·출력', icon: Eye },
+  { key: 'client', label: '1. 계약 정보 (위임인·사건)', icon: User },
+  { key: 'fee', label: '2. 비용 (수임료·실비·분납)', icon: CreditCard },
+  { key: 'finalize', label: '3. 확인·서명 (약관·서명·발송)', icon: ShieldCheck },
 ];
 
 export default function ContractWizard({ contract: initialContract, onClose, onSave }: Props) {
@@ -62,7 +59,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const creditorCount = initialContract.courtCosts?.creditorCount ?? 5;
     const debtCertUnitFee = initialContract.courtCosts?.debtCertUnitFee ?? 15000;
     const deliveryUnitFee = initialContract.courtCosts?.deliveryUnitFee ?? DELIVERY_UNIT_FEE_KRW;
-    const initialCosts = calculateCourtCosts(creditorCount, debtCertUnitFee, deliveryUnitFee);
+    const isBk = (initialContract.caseType || '').includes('파산') || initialContract.caseCategory === 'individual_bankruptcy';
+    const initialCosts = calculateCourtCosts(creditorCount, debtCertUnitFee, deliveryUnitFee, initialContract.courtCosts?.stampFee, {
+      caseType: isBk ? 'bankruptcy' : 'rehab',
+      withProhibition: !isBk,
+      electronic: true,
+    });
 
     return {
       ...initialContract,
@@ -112,6 +114,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       },
       feeSchedule: (initialContract.feeSchedule || []).map((item) => ({
         ...item,
+        amountUnit: item.amountUnit || (item.amount >= 10000 ? 'won' : 'manwon'),
         itemType: item.itemType || (item.round === 0 ? 'down_payment' : 'installment'),
         itemTitle: item.itemTitle || item.memo || (item.round === 0 ? '착수금(계약금)' : `${item.round}차 분할납부`),
       })),
@@ -167,21 +170,26 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const [agreeLegalEffect, setAgreeLegalEffect] = useState(false);
   const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
+  // 3단계(확인·서명) 내부 서브탭 상태 (약관동의 -> 문서관리 -> 서명/발송 -> 최종미리보기)
+  const [finalizeSubTab, setFinalizeSubTab] = useState<'terms' | 'documents' | 'signature' | 'preview'>('terms');
+  const [isSaving, setIsSaving] = useState(false);
 
   const update = (patch: Partial<ElectronicContract>) => setC(prev => ({ ...prev, ...patch, updatedAt: new Date().toISOString() }));
 
+  // 1회화된 계약 저장 핸들러 (이전: ContractWizard 내부 saveContract/sync와 부모 onSave 콜백의 saveContract/sync가 이중 실행되어 2회 중복 기록됨)
   const handleSave = async () => {
-    const updated = addAuditLog(c, '계약서 임시 저장', 'lawyer');
-    await saveContract(updated);
-    if (c.clientId) {
-      try {
-        await syncContractToCrm(c.clientId, updated);
-      } catch (err) {
-        console.warn('syncContractToCrm error:', err);
-      }
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const updated = addAuditLog(c, '계약서 임시 저장', 'lawyer');
+      await Promise.resolve(onSave(updated));
+      toast.success('계약서가 저장되었습니다.');
+    } catch (err) {
+      console.error('계약서 저장 오류:', err);
+      toast.error('계약서 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
     }
-    onSave(updated);
-    toast.success('계약서가 저장되었습니다');
   };
 
   // 국세청 사업자 진위확인 실행
@@ -276,15 +284,20 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       const finalCreditors = foundCreditorCount || c.courtCosts.creditorCount || 6;
       const unitFee = c.courtCosts.debtCertUnitFee || 15000;
       const deliveryUnitFee = c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
-      const computed = calculateCourtCosts(finalCreditors, unitFee, deliveryUnitFee, c.courtCosts.stampFee || 30000);
       const caseCat = foundCaseType || c.caseCategory || 'individual_rehab';
+      const isBk = caseCat === 'individual_bankruptcy';
+      const computed = calculateCourtCosts(finalCreditors, unitFee, deliveryUnitFee, c.courtCosts.stampFee, {
+        caseType: isBk ? 'bankruptcy' : 'rehab',
+        withProhibition: !isBk,
+        electronic: true,
+      });
 
       update({
         clientName: foundName || c.clientName,
         clientPhone: foundPhone || c.clientPhone,
         clientAddress: foundAddress || c.clientAddress || '',
         caseCategory: caseCat,
-        caseType: caseCat === 'individual_bankruptcy' ? '개인파산 및 면책사건' : '개인회생사건',
+        caseType: isBk ? '개인파산 및 면책사건' : '개인회생사건',
         totalFee: foundFee || c.totalFee || 0,
         courtCosts: {
           ...c.courtCosts,
@@ -297,7 +310,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         },
       });
 
-      toast.success(`[AI 상담 데이터 연동 완료] 채권자 ${finalCreditors}곳, ${caseCat === 'individual_bankruptcy' ? '개인파산' : '개인회생'} 비용 및 정보가 자동 반영되었습니다.`);
+      toast.success(`[AI 상담 데이터 연동 완료] 채권자 ${finalCreditors}곳, ${isBk ? '개인파산' : '개인회생'} 비용 및 정보가 자동 반영되었습니다.`);
     } catch (err) {
       toast.error('상담 데이터를 불러오는 중 오류가 발생했습니다.');
     }
@@ -308,7 +321,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
-    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
+    const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
+    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {
+      caseType: isBk ? 'bankruptcy' : 'rehab',
+      withProhibition: !isBk,
+      electronic: true,
+    });
     const calculatedCourt = (c.courtCosts?.deliveryFee ?? costs.deliveryFee) + (c.courtCosts?.stampFee ?? costs.stampFee) + (c.courtCosts?.debtCertFee ?? costs.debtCertFee) + (c.courtCosts?.miscFee ?? 0) + (c.courtCosts?.provisionalDeposit ?? 0);
 
     const today = c.contractDate || localYmd();
@@ -319,6 +337,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemTitle: '송달료 및 부대비용',
       dueDate: today,
       amount: calculatedCourt > 0 ? calculatedCourt : 0,
+      amountUnit: 'won',
       status: 'pending',
       memo: '송달료, 인지대, 부채증명서 발급 대행비 일체',
     };
@@ -335,6 +354,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemTitle: '착수금(계약금)',
       dueDate: today,
       amount: (downPayment || 50) * 10000,
+      amountUnit: 'won',
       status: 'pending',
       memo: '계약 체결 시 착수금',
     };
@@ -360,6 +380,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemTitle: `${nextRound}차 분할납부`,
       dueDate: nextDateStr,
       amount: 0,
+      amountUnit: 'won',
       status: 'pending',
       memo: `${nextRound}차 분납 수임료`,
     };
@@ -375,6 +396,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemTitle: '성공보수',
       dueDate: '개시신청 즉시',
       amount: 500000,
+      amountUnit: 'won',
       status: 'pending',
       memo: '면책/인가결정 확정 시 성공보수',
       successFeeOption: {
@@ -403,6 +425,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       itemTitle: '기타 약정 납부금',
       dueDate: today,
       amount: 100000,
+      amountUnit: 'won',
       status: 'pending',
       memo: '사무실 별도 약정 비용',
     };
@@ -450,9 +473,9 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           <div>
             <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
               <span>AI 상담 및 자가진단 납부내역 가져오기</span>
-              <span className="text-[10px] bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 스마트 연동</span>
+              <span className="text-xs bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 스마트 연동</span>
             </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               의뢰인의 AI 자가진단 리포트 및 CRM 상담 데이터(채권자 수, 채무액, 예상비용)를 1초 만에 프리필합니다.
             </p>
           </div>
@@ -534,7 +557,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <Building2 className="w-4 h-4 text-brand" />
               <span>국세청 사업자등록 진위확인 (권한성 검증)</span>
             </h4>
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
               ntsStatus === 'VALID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
             }`}>
               {ntsStatus === 'VALID' ? '✅ 정상 계속사업자 확인' : '⏳ 국세청 진위확인 필요'}
@@ -593,7 +616,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               </div>
             </div>
           </div>
-          <p className="text-[11px] text-slate-500 leading-normal">
+          <p className="text-xs text-slate-500 leading-normal">
             ※ 국세청 공공데이터 API를 통해 폐업·휴업 여부 및 대표자 성명 일치를 실시간 대조하여 계약서 위조를 방지합니다.
           </p>
         </div>
@@ -620,7 +643,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <button 
                 type="button" 
                 onClick={() => setShowResidentNumber(!showResidentNumber)} 
-                className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
               >
                 {showResidentNumber ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 <span>{showResidentNumber ? '마스킹' : '표시'}</span>
@@ -679,7 +702,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 placeholder="상세주소 (동·호수 등)" 
               />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">※ 여기서 입력한 주민등록번호와 주소는 법원 개시신청 서류 및 위임장에 자동으로 연동됩니다.</p>
+            <p className="text-xs text-slate-400 mt-1">※ 여기서 입력한 주민등록번호와 주소는 법원 개시신청 서류 및 위임장에 자동으로 연동됩니다.</p>
           </div>
         </div>
       </div>
@@ -710,7 +733,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
-    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
+    const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
+    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {
+      caseType: isBk ? 'bankruptcy' : 'rehab',
+      withProhibition: !isBk,
+      electronic: true,
+    });
 
     const deliveryFee = c.courtCosts?.deliveryFee ?? costs.deliveryFee;
     const stampFee = c.courtCosts?.stampFee ?? costs.stampFee;
@@ -741,9 +769,9 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div>
               <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
                 <span>📋 사건 형태 및 진행 단계</span>
-                <span className="text-[10px] bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 4-2 표준</span>
+                <span className="text-xs bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 4-2 표준</span>
               </h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 계약하고자 하는 사건의 형태와 진행단계를 선택하고 법률상담 시의 납부내역을 불러옵니다.
               </p>
             </div>
@@ -831,7 +859,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   소계 {statementSubtotal.toLocaleString()}원
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5 mb-3">
+              <p className="text-xs text-slate-500 mt-1.5 mb-3">
                 사무실 기본 수임료와 보수(성공금), 기타 비용을 입력합니다.
               </p>
 
@@ -840,7 +868,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">기본 수임료</label>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-xs text-slate-400 font-mono">
                       {Math.round(statementBaseFee / 10000)}만 원
                     </span>
                   </div>
@@ -867,7 +895,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">보수 (성공보수)</label>
-                    <span className="text-[10px] text-amber-600 font-bold">
+                    <span className="text-xs text-amber-600 font-bold">
                       {statementSuccessFee > 0 ? `${Math.round(statementSuccessFee / 10000)}만 원` : '약정 시 입력'}
                     </span>
                   </div>
@@ -895,7 +923,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">기타비용 (번역·열람·추가서류)</label>
-                    <span className="text-[10px] text-slate-400">사무실별 특수비용</span>
+                    <span className="text-xs text-slate-400">사무실별 특수비용</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <input 
@@ -945,7 +973,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
                     <span>송달료 / 인지대 / 부채증명서 발급비용</span>
                   </h4>
-                  <span className="text-[10px] text-slate-400">채권자 수 {credCount}곳 기준 자동 합산</span>
+                  <span className="text-xs text-slate-400">채권자 수 {credCount}곳 기준 자동 합산</span>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-black text-indigo-900">
@@ -955,13 +983,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               </div>
 
               <div className="flex items-center justify-between gap-2 mt-2 mb-3">
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   송달료와 인지대, 부채증명서 발급비용은 자동으로 계산되며 직접 수정 가능합니다.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowRateSettings(!showRateSettings)}
-                  className="text-[11px] font-bold px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-600 flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-2xs"
+                  className="text-xs font-bold px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-600 flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-2xs"
                 >
                   <Settings2 className="w-3 h-3" />
                   <span>단가설정</span>
@@ -990,14 +1018,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         });
                         toast.success('2026년 법원 표준 단가로 재산출되었습니다.');
                       }}
-                      className="text-[10px] text-indigo-700 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                      className="text-xs text-indigo-700 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                     >
                       <RotateCcw className="w-3 h-3" /> 2026 기본값 복원
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-[10px] text-slate-500 block">송달료 1회분 단가</span>
+                      <span className="text-xs text-slate-500 block">송달료 1회분 단가</span>
                       <input 
                         type="number"
                         value={c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW}
@@ -1011,7 +1039,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       />
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 block">부채발급 1곳당 단가</span>
+                      <span className="text-xs text-slate-500 block">부채발급 1곳당 단가</span>
                       <input 
                         type="number"
                         value={c.courtCosts.debtCertUnitFee || 15000}
@@ -1034,7 +1062,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">송달료</label>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 font-mono">
                         채권자 수:
                       </span>
                       <input 
@@ -1056,7 +1084,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         }}
                         className="w-12 px-1.5 py-0.5 border border-slate-200 rounded text-center text-xs font-bold"
                       />
-                      <span className="text-[10px] text-slate-500 font-bold">곳</span>
+                      <span className="text-xs text-slate-500 font-bold">곳</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
@@ -1080,14 +1108,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       <button
                         type="button"
                         onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 30000, isCustomized: true } })}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${stampFee === 30000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
+                        className={`px-1.5 py-0.5 rounded text-xs font-bold cursor-pointer ${stampFee === 30000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
                       >
                         표준 3만
                       </button>
                       <button
                         type="button"
                         onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 27000, isCustomized: true } })}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${stampFee === 27000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
+                        className={`px-1.5 py-0.5 rounded text-xs font-bold cursor-pointer ${stampFee === 27000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
                       >
                         전자 2.7만
                       </button>
@@ -1110,7 +1138,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">부채증명서 발급 비용</label>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-xs text-slate-400 font-mono">
                       {credCount}곳 × {(c.courtCosts.debtCertUnitFee || 15000).toLocaleString()}원
                     </span>
                   </div>
@@ -1143,11 +1171,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div>
               <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>💳 납부 금액 및 결제 스케줄 (항목 추가·수정·삭제)</span>
-                <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
                   사무실 계약별 자유 커스텀
                 </span>
               </h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 계약금(착수금), 분할납부(1~N차), 송달료 및 성공보수 항목을 자유롭게 추가하고 각 행을 개별 수정하거나 삭제할 수 있습니다.
               </p>
             </div>
@@ -1171,11 +1199,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <Calendar className="w-3.5 h-3.5 text-brand" />
                   <span>착수금 + N회 분할납부 일괄 생성기</span>
                 </span>
-                <span className="text-[10px] text-slate-400">생성 후에도 언제든지 개별 수정 및 삭제 가능합니다.</span>
+                <span className="text-xs text-slate-400">생성 후에도 언제든지 개별 수정 및 삭제 가능합니다.</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500">착수금 (계약금)</label>
+                  <label className="text-xs font-bold text-slate-500">착수금 (계약금)</label>
                   <div className="flex items-center gap-1 mt-1">
                     <input 
                       type="number" 
@@ -1187,7 +1215,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500">착수금 납부일</label>
+                  <label className="text-xs font-bold text-slate-500">착수금 납부일</label>
                   <input 
                     type="date" 
                     value={downDate} 
@@ -1196,7 +1224,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500">잔금 분할 횟수</label>
+                  <label className="text-xs font-bold text-slate-500">잔금 분할 횟수</label>
                   <select 
                     value={installments} 
                     onChange={e => setInstallments(+e.target.value)} 
@@ -1206,7 +1234,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500">1회차 분납 시작일</label>
+                  <label className="text-xs font-bold text-slate-500">1회차 분납 시작일</label>
                   <input 
                     type="date" 
                     value={firstDate} 
@@ -1221,16 +1249,33 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   onClick={() => {
                     const targetBase = c.vatIncluded ? totalFeeWithVat : (c.totalFee * 10000);
                     const rawSchedule = generateFeeSchedule(targetBase, downPayment * 10000, installments, downDate, firstDate);
-                    const converted: FeeInstallment[] = rawSchedule.map(s => ({
-                      ...s,
-                      itemType: s.round === 0 ? 'down_payment' : 'installment',
-                      itemTitle: s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`,
-                      memo: s.memo || (s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`),
-                    }));
+                    let preservedPaidCount = 0;
+                    const converted: FeeInstallment[] = rawSchedule.map(s => {
+                      // 기존 분납 스케줄 중 동일 회차 매칭 (이전: 재계산 시 기존 paid 상태와 납부일이 무조건 지워짐)
+                      const prevMatch = (c.feeSchedule || []).find(p => p.round === s.round);
+                      const isPaid = prevMatch?.status === 'paid';
+                      if (isPaid) preservedPaidCount++;
+                      return {
+                        ...s,
+                        amountUnit: 'won' as const,
+                        itemType: s.round === 0 ? 'down_payment' as const : 'installment' as const,
+                        itemTitle: s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`,
+                        memo: prevMatch?.memo || s.memo || (s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`),
+                        status: isPaid ? 'paid' : s.status,
+                        paidDate: prevMatch?.paidDate ?? s.paidDate,
+                        paymentMethod: prevMatch?.paymentMethod ?? s.paymentMethod,
+                        rescheduledCount: prevMatch?.rescheduledCount ?? s.rescheduledCount,
+                        deferralReason: prevMatch?.deferralReason ?? s.deferralReason,
+                        originalDueDate: prevMatch?.originalDueDate ?? s.originalDueDate,
+                        lastNotifiedAt: prevMatch?.lastNotifiedAt ?? s.lastNotifiedAt,
+                        lastNotifiedType: prevMatch?.lastNotifiedType ?? s.lastNotifiedType,
+                      };
+                    });
                     // 기존 송달료나 성공보수 항목이 있었다면 유지
                     const preserved = (c.feeSchedule || []).filter(f => f.itemType === 'court_cost' || f.itemType === 'success_fee');
                     update({ feeSchedule: [...preserved, ...converted] });
-                    toast.success(`총 ${converted.length}개의 분납 항목이 스케줄에 반영되었습니다.`);
+                    const desc = preservedPaidCount > 0 ? ` (기존 완납 ${preservedPaidCount}건 보존됨)` : '';
+                    toast.success(`총 ${converted.length}개의 분납 항목이 스케줄에 반영되었습니다.${desc}`);
                     setShowAutoSchedulePanel(false);
                   }}
                   className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
@@ -1292,7 +1337,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <div className="p-8 text-center bg-white border border-dashed border-slate-300 rounded-2xl space-y-2">
                 <CreditCard className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-slate-600">등록된 납부 항목이 없습니다.</p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   상단의 [+ 착수금], [+ 분할 납부], [+ 송달료] 버튼을 눌러 개별 항목을 추가하거나,<br />
                   [⚡ 분납 스케줄 일괄 채우기]로 한 번에 스케줄을 생성하세요.
                 </p>
@@ -1318,7 +1363,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                           <Minus className="w-4 h-4" />
                         </button>
 
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                           item.itemType === 'court_cost' ? 'bg-blue-100 text-blue-800' :
                           item.itemType === 'down_payment' ? 'bg-emerald-100 text-emerald-800' :
                           item.itemType === 'success_fee' ? 'bg-amber-100 text-amber-800' :
@@ -1340,7 +1385,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         />
                       </div>
 
-                      <span className="text-[11px] text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 font-mono">
                         # {index + 1}
                       </span>
                     </div>
@@ -1349,7 +1394,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       {/* 결제일자 */}
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 mb-1 block">
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">
                           {isSuccessFeeItem ? '결제 시점 (조건 또는 일자)' : '결제일자'}
                         </label>
                         {isSuccessFeeItem ? (
@@ -1373,8 +1418,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       {/* 결제금액 */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-bold text-slate-500">결제금액 (원)</label>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <label className="text-xs font-bold text-slate-500">결제금액 (원)</label>
+                          <span className="text-xs text-slate-400 font-mono">
                             {item.amount >= 10000 ? `${(item.amount / 10000).toLocaleString()}만 원` : ''}
                           </span>
                         </div>
@@ -1395,7 +1440,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     {/* 성공보수 항목 전용 옵션 3종 (리걸플로 4-3 성공보수 옵션 선택 완벽 재현) */}
                     {isSuccessFeeItem && (
                       <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-xl space-y-2.5 text-xs">
-                        <span className="font-bold text-amber-950 block text-[11px]">성공보수 산정 옵션</span>
+                        <span className="font-bold text-amber-950 block text-xs">성공보수 산정 옵션</span>
                         <div className="space-y-2">
                           {/* 옵션 1: 정액 */}
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -1508,7 +1553,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <Landmark className="w-4 h-4 text-brand" />
                 <span>수임료 및 송달료 입금계좌 (리걸플로 4-4)</span>
               </h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 수임료와 송달료 등 부대비용을 입금받을 계좌를 지정합니다. 기본 계좌와 동일하거나 분리하여 관리할 수 있습니다.
               </p>
             </div>
@@ -1521,7 +1566,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">은행</label>
                     <select
                       value={c.feeAccount?.bankName || ''}
                       onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
@@ -1532,7 +1577,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">예금주</label>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">예금주</label>
                     <input 
                       value={c.feeAccount?.accountHolder || ''} 
                       onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
@@ -1542,7 +1587,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 mb-1 block">계좌번호</label>
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">계좌번호</label>
                   <input 
                     value={c.feeAccount?.accountNumber || ''} 
                     onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
@@ -1583,7 +1628,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">은행</label>
                       <select
                         value={c.courtCostAccount?.bankName || ''}
                         onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
@@ -1594,7 +1639,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 mb-1 block">예금주</label>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">예금주</label>
                       <input 
                         value={c.courtCostAccount?.accountHolder || ''} 
                         onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
@@ -1604,7 +1649,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">계좌번호</label>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">계좌번호</label>
                     <input 
                       value={c.courtCostAccount?.accountNumber || ''} 
                       onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
@@ -1794,7 +1839,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                           </span>
 
                           {/* 서명 주체 뱃지 */}
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md shrink-0 ${
                             doc.signatureRequired === 'both' ? 'bg-indigo-50 text-indigo-700' :
                             doc.signatureRequired === 'client' ? 'bg-amber-50 text-amber-700' :
                             doc.signatureRequired === 'lawyer' ? 'bg-emerald-50 text-emerald-700' :
@@ -1807,7 +1852,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
                           {/* 형광펜 배지 */}
                           {hasHighlight && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.5 rounded border border-yellow-300 flex items-center gap-1">
+                            <span className="text-xs font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.5 rounded border border-yellow-300 flex items-center gap-1">
                               <Highlighter className="w-3 h-3 text-amber-600" />
                               <span>형광펜 강조 조항 있음</span>
                             </span>
@@ -1815,14 +1860,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
                           {/* 필수 확약 문구 배지 */}
                           {hasConfirmation && (
-                            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-1">
+                            <span className="text-xs font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-1">
                               <ShieldAlert className="w-3 h-3 text-amber-700" />
                               <span>직접확약: "{doc.requiredConfirmationText}"</span>
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                           <span>{CONTRACT_DOC_TYPES[doc.type]?.description || '사무소 자체 약정 서식'}</span>
                           <span>•</span>
                           <span>약 {(doc.content || '').length.toLocaleString()}자</span>
@@ -1874,7 +1919,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                           requiredConfirmationText={doc.requiredConfirmationText}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                      <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
                         <span>실제 의뢰인 스마트폰 및 계약서 전문에 이와 동일하게 렌더링됩니다.</span>
                         <button
                           type="button"
@@ -2034,7 +2079,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div>
               <span className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span>모든 필수 약관 및 법적 효력 안내에 전체 동의합니다</span>
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
                   4대 조항 필수
                 </span>
               </span>
@@ -2079,7 +2124,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-slate-800">{item.title}</span>
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                           {item.badge}
                         </span>
                       </div>
@@ -2125,7 +2170,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       {content}
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         위 법률 조항을 확인하고 숙지하신 후 동의해 주십시오.
                       </span>
                       {!item.checked && (
@@ -2239,7 +2284,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-800">{c.lawyerName} 변호사 서명 완료</p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     {c.documents.find(d => d.lawyerSignature)?.lawyerSignedAt 
                       ? new Date(c.documents.find(d => d.lawyerSignature)!.lawyerSignedAt!).toLocaleString('ko-KR')
                       : '서명 완료'}
@@ -2292,7 +2337,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <ShieldCheck className="w-4 h-4 text-brand" />
               <span>본인 명의 스마트폰 직접 서명 원칙 (보안·법적 무결성)</span>
             </p>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               전자서명법 규정에 따라 의뢰인 서명은 본인 명의 스마트폰(통신사 PASS 또는 문자 실명인증)을 통해 직접 진행됩니다.
               방문 대면 상담 시에도 변호사 관리자 화면을 건네지 않고 의뢰인의 스마트폰으로 서명 링크를 전송해 주십시오.
             </p>
@@ -2319,17 +2364,17 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
               <div className="grid grid-cols-2 gap-3 text-xs bg-white p-3 rounded-lg border border-emerald-100">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">서명자 성명</span>
+                  <span className="text-slate-400 block text-xs">서명자 성명</span>
                   <span className="font-bold text-slate-800">{c.clientName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">통신사 실명인증</span>
+                  <span className="text-slate-400 block text-xs">통신사 실명인증</span>
                   <span className="font-bold text-emerald-700">
                     {c.identityVerification?.carrier || 'PASS'} 인증 완료 ({c.identityVerification?.name || c.clientName})
                   </span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-400 block text-[11px]">서명 제출 일시</span>
+                  <span className="text-slate-400 block text-xs">서명 제출 일시</span>
                   <span className="font-bold text-slate-700">
                     {clientSignedDoc?.clientSignedAt ? new Date(clientSignedDoc.clientSignedAt).toLocaleString('ko-KR') : '완료'}
                   </span>
@@ -2338,7 +2383,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
               {clientSignedDoc?.clientSignature && (
                 <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span className="text-[11px] text-slate-400 block mb-1">의뢰인 자필 서명 이미지</span>
+                  <span className="text-xs text-slate-400 block mb-1">의뢰인 자필 서명 이미지</span>
                   <img src={clientSignedDoc.clientSignature} alt="의뢰인 자필 서명" className="h-14 object-contain" />
                 </div>
               )}
@@ -2401,7 +2446,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
-    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
+    const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
+    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {
+      caseType: isBk ? 'bankruptcy' : 'rehab',
+      withProhibition: !isBk,
+      electronic: true,
+    });
 
     const deliveryFee = c.courtCosts?.deliveryFee ?? costs.deliveryFee;
     const stampFee = c.courtCosts?.stampFee ?? costs.stampFee;
@@ -2433,7 +2483,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           <div>
             <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
               <span>📄 계약서 최종 미리보기 및 인쇄 제어</span>
-              <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">온·오프라인 하이브리드</span>
+              <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">온·오프라인 하이브리드</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">내방 고객을 위해 도장을 숨겨 종이로 출력하거나, PDF 다운로드 및 스마트폰 서명을 발송할 수 있습니다.</p>
           </div>
@@ -2588,7 +2638,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 </tbody>
               </table>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">※ 송달료, 인지대, 부채증명서 발급비 등 법원 실비는 사건 진행 중 채권자 수 증감 등에 따라 정산될 수 있습니다.</p>
+            <p className="text-xs text-slate-400 mt-1">※ 송달료, 인지대, 부채증명서 발급비 등 법원 실비는 사건 진행 중 채권자 수 증감 등에 따라 정산될 수 있습니다.</p>
           </div>
 
           {/* 제 2 조 (납부 스케줄 및 전용 입금 계좌 안내) */}
@@ -2616,7 +2666,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       <td className="p-2">
                         <div className="font-bold text-slate-900">{f.itemTitle || f.memo}</div>
                         {f.memo && f.itemTitle && f.memo !== f.itemTitle && (
-                          <div className="text-[10px] text-slate-400 mt-0.5">{f.memo}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{f.memo}</div>
                         )}
                       </td>
                       <td className="p-2 font-mono whitespace-nowrap text-slate-600">{f.dueDate}</td>
@@ -2628,12 +2678,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-700 space-y-1.5 border border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <span><strong>💳 수임료(보수) 입금:</strong> {c.feeAccount?.bankName} {c.feeAccount?.accountNumber} (예금주: {c.feeAccount?.accountHolder})</span>
-                  <span className="text-[11px] text-slate-400">※ 입금 시 의뢰인 본인 성명 기재 요망</span>
+                  <span className="text-xs text-slate-400">※ 입금 시 의뢰인 본인 성명 기재 요망</span>
                 </div>
                 {!c.sameAsFeeAccount && c.courtCostAccount && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-slate-200 pt-1 text-slate-600">
                     <span><strong>⚖️ 송달료 등 공과금 전용계좌:</strong> {c.courtCostAccount?.bankName} {c.courtCostAccount?.accountNumber} (예금주: {c.courtCostAccount?.accountHolder})</span>
-                    <span className="text-[10px] text-blue-600 font-bold">법원 비용 분리 정산</span>
+                    <span className="text-xs text-blue-600 font-bold">법원 비용 분리 정산</span>
                   </div>
                 )}
               </div>
@@ -2658,7 +2708,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <span>약정 조건: {c.successFee.description || '별도 합의 조건에 따름'}</span>
                 )}
               </div>
-              <p className="text-slate-500 text-[11px]">
+              <p className="text-slate-500 text-xs">
                 2. 본 성공보수는 법원의 최종 결정이 확정된 날로부터 14일 이내에 을의 지정 계좌로 입금하기로 한다.
               </p>
             </div>
@@ -2668,7 +2718,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           <div>
             <h4 className="font-bold text-slate-800 mb-2 flex items-center justify-between text-sm">
               <span>첨부 계약 문서 및 특약 전문 ({includedDocs.length}종)</span>
-              <span className="text-[11px] text-slate-400 font-normal">터치하여 형광펜 강조 및 본문 확인</span>
+              <span className="text-xs text-slate-400 font-normal">터치하여 형광펜 강조 및 본문 확인</span>
             </h4>
             {includedDocs.length === 0 ? (
               <p className="text-xs text-slate-400 italic">첨부된 서류가 없습니다.</p>
@@ -2681,23 +2731,23 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         <span>{CONTRACT_DOC_TYPES[d.type]?.emoji || '📎'}</span>
                         <span>{d.title}</span>
                         {d.content?.includes('==') && (
-                          <span className="text-[10px] font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.2 rounded border border-yellow-300">
+                          <span className="text-xs font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.2 rounded border border-yellow-300">
                             형광펜 강조
                           </span>
                         )}
                         {d.requiredConfirmationText && (
-                          <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
+                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
                             ✍️ 직접확약: "{d.requiredConfirmationText}"
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         {d.clientSignature ? (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                             의뢰인 서명완료
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">서명 대기</span>
+                          <span className="text-xs text-slate-400">서명 대기</span>
                         )}
                         <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
                       </div>
@@ -2720,13 +2770,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div className="text-center w-48">
               <p className="text-xs font-bold mb-2">위임인 (갑): {c.clientName} (인)</p>
               {hideStamps ? (
-                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[11px] text-slate-400 bg-slate-50">
+                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-xs text-slate-400 bg-slate-50">
                   (인주 날인란)
                 </div>
               ) : c.documents.find(d => d.clientSignature)?.clientSignature ? (
                 <img src={c.documents.find(d => d.clientSignature)!.clientSignature} alt="의뢰인 서명" className="h-14 mx-auto object-contain" />
               ) : (
-                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[11px] text-slate-400">
+                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-xs text-slate-400">
                   서명 대기중
                 </div>
               )}
@@ -2736,13 +2786,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <div className="text-center w-48">
               <p className="text-xs font-bold mb-2">수임인 (을): {c.lawyerName} (인)</p>
               {hideStamps ? (
-                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[11px] text-slate-400 bg-slate-50">
+                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-xs text-slate-400 bg-slate-50">
                   (인주 날인란)
                 </div>
               ) : c.documents.find(d => d.lawyerSignature)?.lawyerSignature ? (
                 <img src={c.documents.find(d => d.lawyerSignature)!.lawyerSignature} alt="변호사 서명" className="h-14 mx-auto object-contain" />
               ) : (
-                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[11px] text-slate-400">
+                <div className="h-14 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-xs text-slate-400">
                   서명 대기중
                 </div>
               )}
@@ -2759,8 +2809,75 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     );
   };
 
-  const stepContent = [renderClientInfo, renderFeeSchedule, renderDocuments, renderTerms, renderSignature, renderPreview];
-  const canProceed = step !== 3 || (agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect);
+  // ─── Step 3: 확인·서명 (약관 동의 · 서식 관리 · 서명/발송 · 미리보기 통합) ───
+  const renderFinalize = () => {
+    return (
+      <div className="space-y-6">
+        {/* 3단계 내부 서브 모드 탭 바 */}
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/70">
+          {[
+            { key: 'terms', label: '① 필수 약관 동의', icon: Shield, done: agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect },
+            { key: 'documents', label: '② 계약 서식 관리', icon: FileText, done: includedDocs.length > 0 },
+            { key: 'signature', label: '③ 변호사 서명·의뢰인 발송', icon: PenTool, done: Boolean(c.documents.find(d => d.lawyerSignature)?.lawyerSignature) },
+            { key: 'preview', label: '④ 계약서 전문 미리보기', icon: Eye, done: false },
+          ].map((sub) => {
+            const isActive = finalizeSubTab === sub.key;
+            const SubIcon = sub.icon;
+            return (
+              <button
+                key={sub.key}
+                type="button"
+                onClick={() => setFinalizeSubTab(sub.key as any)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
+                  isActive 
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <SubIcon className="w-3.5 h-3.5" />
+                <span>{sub.label}</span>
+                {sub.done && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 선택된 서브 영역 렌더링 */}
+        {finalizeSubTab === 'terms' && renderTerms()}
+        {finalizeSubTab === 'documents' && renderDocuments()}
+        {finalizeSubTab === 'signature' && renderSignature()}
+        {finalizeSubTab === 'preview' && renderPreview()}
+      </div>
+    );
+  };
+
+  const stepContent = [renderClientInfo, renderFeeSchedule, renderFinalize];
+
+  // 단계 건너뛰기 방지 검증 핸들러 (기획서 4.3: 단계 탭을 눌러 검증을 건너뛰지 못하게 함)
+  const handleStepClick = (targetIndex: number) => {
+    if (targetIndex > step) {
+      if (step === 0 && !c.clientName?.trim()) {
+        toast.warning('위임인 성명을 먼저 입력해 주세요.');
+        return;
+      }
+      if (targetIndex === 2 && step === 1) {
+        const hasFees = (c.feeSchedule && c.feeSchedule.length > 0) || (c.totalFee && c.totalFee > 0);
+        if (!hasFees) {
+          toast.warning('수임료 및 분납 일정을 먼저 확인해 주세요.');
+          return;
+        }
+      }
+    }
+    setStep(targetIndex);
+  };
+
+  const canProceed = step === 0 
+    ? Boolean(c.clientName?.trim())
+    : step === 1 
+      ? Boolean((c.feeSchedule && c.feeSchedule.length > 0) || (c.totalFee && c.totalFee > 0))
+      : (agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect);
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -2780,7 +2897,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleSave} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl cursor-pointer whitespace-nowrap transition-colors">💾 임시 저장</button>
-            {step === 5 && (
+            {step === 2 && (
               <button
                 type="button"
                 onClick={async () => {
@@ -2799,18 +2916,20 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <span>{downloadingPdf ? 'PDF 생성중...' : '📄 법원제출용 PDF'}</span>
               </button>
             )}
-            {step === 5 && (
+            {step === 2 && (
               <button 
                 onClick={async () => {
                   const lawyerSig = c.documents.find(d => d.lawyerSignature)?.lawyerSignature;
                   const clientSig = c.documents.find(d => d.clientSignature)?.clientSignature;
 
                   if (!lawyerSig) {
-                    toast.error('수임인(담당 변호사) 서명이 필요합니다. 5단계에서 서명을 먼저 진행해 주세요.');
+                    toast.error('수임인(담당 변호사) 서명이 필요합니다. 3단계 서명 탭에서 서명을 먼저 진행해 주세요.');
+                    setFinalizeSubTab('signature');
                     return;
                   }
                   if (!clientSig) {
                     toast.error('위임인(고객) 스마트폰 서명이 완료되지 않았습니다. 고객에게 서명 링크를 먼저 발송해 주세요.');
+                    setFinalizeSubTab('signature');
                     return;
                   }
 
@@ -2837,13 +2956,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         </div>
       </div>
 
-      {/* 스텝 탭 */}
+      {/* 스텝 탭 (단계 탭 검증 건너뛰기 방지 연결) */}
       <div className="flex gap-2 flex-wrap">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           return (
-            <button key={s.key} onClick={() => setStep(i)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer border whitespace-nowrap ${
+            <button key={s.key} onClick={() => handleStepClick(i)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer border whitespace-nowrap ${
                 step === i
                   ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
@@ -2864,13 +2983,33 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       <div className="flex items-center justify-between">
         <button onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0}
           className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-colors"><ArrowLeft className="w-4 h-4" /> 이전</button>
-        <div className="flex items-center gap-1.5">
-          {STEPS.map((_, i) => <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-[#1E3A5F]' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
+        <div className="flex items-center gap-2">
+          {STEPS.map((_, i) => <span key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i === step ? 'bg-[#1E3A5F]' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
         </div>
-        {step < 5 ? (
-          <button onClick={() => canProceed && setStep(step + 1)} disabled={!canProceed}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shadow-xs transition-colors">다음 <ArrowRight className="w-4 h-4" /></button>
-        ) : <div className="w-20" />}
+        {step < 2 ? (
+          <button 
+            onClick={() => {
+              if (step === 0 && !c.clientName?.trim()) {
+                toast.warning('위임인 성명을 먼저 입력해 주세요.');
+                return;
+              }
+              setStep(step + 1);
+            }} 
+            disabled={!canProceed}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shadow-xs transition-colors"
+          >
+            다음 <ArrowRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setFinalizeSubTab('preview')}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl cursor-pointer whitespace-nowrap shadow-xs transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            <span>최종 전문 미리보기</span>
+          </button>
+        )}
       </div>
 
       {/* 고객 원격 서명 발송 모달 */}

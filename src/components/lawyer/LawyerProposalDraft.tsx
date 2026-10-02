@@ -642,7 +642,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               setTemplateModalDefaultTab('opinion');
               setIsTemplateModalOpen(true);
             }}
-            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
+            className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
           >
             <Settings className="w-3 h-3 text-slate-500" />
             템플릿 설정
@@ -669,17 +669,17 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 text-xs">
             <div>
-              <span className="text-slate-400 block text-[10px]">진단 월 변제금</span>
+              <span className="text-slate-400 block text-xs">진단 월 변제금</span>
               <span className="font-mono font-extrabold text-slate-900 text-sm">{formatCurrency(rehabCalcResult.monthlyPayment)}</span>
             </div>
             <div className="w-px h-6 bg-slate-200" />
             <div>
-              <span className="text-slate-400 block text-[10px]">변제 기간</span>
+              <span className="text-slate-400 block text-xs">변제 기간</span>
               <span className="font-mono font-bold text-slate-800 text-sm">{rehabCalcResult.repaymentMonths}개월</span>
             </div>
             <div className="w-px h-6 bg-slate-200" />
             <div>
-              <span className="text-slate-400 block text-[10px]">예상 탕감률</span>
+              <span className="text-slate-400 block text-xs">예상 탕감률</span>
               <span className="font-mono font-extrabold text-[#1E3A5F] text-sm">약 {rehabCalcResult.debtReductionRate}%</span>
             </div>
           </div>
@@ -700,12 +700,12 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             </h3>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-bold text-slate-400">퀵 프리셋:</span>
+              <span className="text-xs font-bold text-slate-400">퀵 프리셋:</span>
               {feePresets.map(preset => (
                 <button
                   key={preset.id}
                   onClick={() => handleApplyFeePreset(preset)}
-                  className="text-[11px] font-bold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-[#1E3A5F] hover:text-white text-indigo-700 border border-indigo-100 transition-all active:scale-95 cursor-pointer"
+                  className="text-xs font-bold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-[#1E3A5F] hover:text-white text-indigo-700 border border-indigo-100 transition-all active:scale-95 cursor-pointer"
                 >
                   ⚡ {preset.label.split('(')[0].trim()}
                 </button>
@@ -715,7 +715,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">총 수임료 (원)</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">총 수임료 (원)</label>
               <input 
                 type="text" 
                 value={totalFeeStr}
@@ -726,7 +726,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">착수금 (원)</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">착수금 (원)</label>
               <input 
                 type="text" 
                 value={downPaymentStr}
@@ -737,7 +737,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">분납 횟수</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">분납 횟수</label>
               <select 
                 value={installments}
                 onChange={(e) => setInstallments(Number(e.target.value))}
@@ -750,7 +750,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">법원 예납금 (원)</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">법원 예납금 (원)</label>
               <input 
                 type="text" 
                 value={courtDepositStr}
@@ -767,13 +767,13 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               <Clock className="w-3.5 h-3.5 text-[#1E3A5F]" />
               예상 월 분납액: <span className="text-[#1E3A5F] font-mono text-sm ml-1 font-black">{formatCurrency(monthlyInstallment)} / 월</span>
             </span>
-            <span className="text-[11px] text-indigo-800">
+            <span className="text-xs text-indigo-800">
               (총 {formatCurrency(totalFee)} - 착수금 {formatCurrency(downPayment)} ÷ {installments}회)
             </span>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">수임료 안내 메모 (고객 전달용)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">수임료 안내 메모 (고객 전달용)</label>
             <input 
               type="text"
               value={feeMemo}
@@ -792,7 +792,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-[#1E3A5F]" />
                 변호사 종합 소견 및 전략
               </h3>
-              <span className="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+              <span className="text-xs font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                 AI 지원
               </span>
             </div>
@@ -803,23 +803,23 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                   setLawyerOpinion(defaultOpinion);
                   toast.success('AI 추천 소견이 재작성되었습니다.');
                 }}
-                className="text-[11px] font-bold text-[#1E3A5F] bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                className="text-xs font-bold text-[#1E3A5F] bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-[#1E3A5F]" />
                 AI 맞춤 소견 자동완성
               </button>
-              <span className="text-[11px] text-slate-400 font-mono">{lawyerOpinion.length}자</span>
+              <span className="text-xs text-slate-400 font-mono">{lawyerOpinion.length}자</span>
             </div>
           </div>
 
           {/* 전략 태그 칩 리스트 (클릭 시 소견 본문에 자동 추가) */}
           <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-            <span className="text-[10px] font-bold text-slate-400">전략 문단 추가:</span>
+            <span className="text-xs font-bold text-slate-400">전략 문단 추가:</span>
             {STRATEGY_CHIPS.map(chip => (
               <button
                 key={chip.tag}
                 onClick={() => handleAddStrategyTag(chip)}
-                className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-50 hover:bg-[#1E3A5F] hover:text-white text-slate-700 border border-slate-200 transition-all active:scale-95 cursor-pointer"
+                className="text-xs font-bold px-2 py-1 rounded-lg bg-slate-50 hover:bg-[#1E3A5F] hover:text-white text-slate-700 border border-slate-200 transition-all active:scale-95 cursor-pointer"
               >
                 + {chip.tag}
               </button>
@@ -843,7 +843,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 <MessageSquare className="w-4 h-4 text-[#1E3A5F]" />
                 의뢰인 질문에 대한 1:1 맞춤 답변
               </h3>
-              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold font-mono">
+              <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold font-mono">
                 {clientQuestions.length}건
               </span>
             </div>
@@ -853,7 +853,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 setTemplateModalDefaultTab('qa');
                 setIsTemplateModalOpen(true);
               }}
-              className="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 cursor-pointer"
             >
               <Settings className="w-3 h-3" />
               Q&A 스니펫 관리
@@ -870,7 +870,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 <div key={idx} className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-1.5">
-                      <span className="font-bold text-[11px] text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                      <span className="font-bold text-xs text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
                         질문 {idx + 1}
                       </span>
                       <p className="text-xs text-slate-800 font-bold leading-relaxed">{q}</p>
@@ -892,12 +892,12 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
 
                   {/* 빠른 답변 스니펫 바 */}
                   <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                    <span className="text-[10px] font-bold text-slate-400">빠른 답변:</span>
+                    <span className="text-xs font-bold text-slate-400">빠른 답변:</span>
                     {qaSnippets.map(snip => (
                       <button
                         key={snip.id}
                         onClick={() => handleApplyQASnippet(idx, snip)}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded bg-white hover:bg-[#1E3A5F] hover:text-white text-slate-700 border border-slate-200 transition-all cursor-pointer"
+                        className="text-xs font-bold px-2 py-0.5 rounded bg-white hover:bg-[#1E3A5F] hover:text-white text-slate-700 border border-slate-200 transition-all cursor-pointer"
                       >
                         💬 {snip.keyword}
                       </button>

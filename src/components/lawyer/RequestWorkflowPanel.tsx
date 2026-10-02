@@ -84,7 +84,7 @@ export default function RequestWorkflowPanel({
   ];
 
   const statusBadge = reviewStatus !== 'DRAFT' ? (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
+    <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
       reviewStatus === 'STAFF_REVIEWED' ? 'bg-amber-50 text-amber-700' :
       reviewStatus === 'LAWYER_APPROVED' ? 'bg-emerald-50 text-emerald-700' :
       reviewStatus === 'LAWYER_REJECTED' ? 'bg-red-50 text-red-700' :
@@ -141,7 +141,7 @@ export default function RequestWorkflowPanel({
           <div className="space-y-2">
             {opinionFields.map(f => (
               <div key={f.key}>
-                <label className="text-[11px] font-bold text-slate-500 mb-0.5 block">{f.label}</label>
+                <label className="text-xs font-bold text-slate-500 mb-0.5 block">{f.label}</label>
                 <textarea
                   value={localOpinion[f.key]}
                   onChange={e => setLocalOpinion(prev => ({ ...prev, [f.key]: e.target.value }))}

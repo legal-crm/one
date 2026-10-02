@@ -129,11 +129,11 @@ export default function RepaymentTuningBox({
           <div>
             <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
               실무 튜닝박스 (Tuning Box)
-              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
+              <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
                 10개 실무 옵션
               </span>
             </h4>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-400">
               원금 조기완제형, 보정권고 오버라이드, 세금 우선권, 담보부족액, 압류적립금 등을 조정합니다. 적용 전 관할 법원 실무를 확인하세요.
             </p>
           </div>
@@ -141,7 +141,7 @@ export default function RepaymentTuningBox({
 
         {/* 변제기간(36/60) 퀵 스위처 */}
         <div className="flex items-center gap-1.5 self-end sm:self-auto bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
-          <span className="text-[11px] font-bold text-slate-400 px-1.5">총 변제기간</span>
+          <span className="text-xs font-bold text-slate-400 px-1.5">총 변제기간</span>
           <button
             type="button"
             onClick={() => onUpdateMonths(36)}
@@ -240,7 +240,7 @@ export default function RepaymentTuningBox({
           <Landmark className="w-3.5 h-3.5" />
           <span>별제권부 채권</span>
           {securedCreditors.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-700 text-slate-300">
+            <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-700 text-slate-300">
               {securedCreditors.length}건
             </span>
           )}
@@ -285,7 +285,7 @@ export default function RepaymentTuningBox({
         >
           <DollarSign className="w-3.5 h-3.5" />
           <span>원금과 이자 변제</span>
-          <span className="text-[10px] text-slate-400">
+          <span className="text-xs text-slate-400">
             {interestMode === 'principal_only' ? '원금만' : interestMode === 'principal_then_interest' ? '이자후변제' : '동시안분'}
           </span>
         </button>
@@ -330,7 +330,7 @@ export default function RepaymentTuningBox({
                   <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
                     원금 조기완제형 (이자 제외 · 기간 단축)
                   </span>
-                  <span className="text-[11px] text-emerald-300 font-mono">
+                  <span className="text-xs text-emerald-300 font-mono">
                     제422조 준용 특례
                   </span>
                 </div>
@@ -345,7 +345,7 @@ export default function RepaymentTuningBox({
                   <span className="font-bold text-white">원금형 변제계획 적용</span>
                 </label>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 가용소득으로 36개월 이내에 원금을 100% 변제할 수 있는 경우, 남은 기간 이자를 변제하지 않고{' '}
                 <strong className="text-emerald-400 font-bold">원금 완제 시점에서 변제기간을 즉시 종료(단축)</strong>하고 이자는 전액 면책합니다.
               </p>
@@ -354,19 +354,19 @@ export default function RepaymentTuningBox({
             {/* 실시간 시뮬레이션 지표 카드 */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">총 원금 채무</span>
+                <span className="text-xs text-slate-400 block">총 원금 채무</span>
                 <span className="font-black text-white font-mono text-sm">{totalPrincipal.toLocaleString()}원</span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">월 가용소득</span>
+                <span className="text-xs text-slate-400 block">월 가용소득</span>
                 <span className="font-black text-emerald-400 font-mono text-sm">{plan.monthlyRepaymentTotal.toLocaleString()}원</span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">원금 100% 완제 회차</span>
+                <span className="text-xs text-slate-400 block">원금 100% 완제 회차</span>
                 <span className="font-black text-amber-300 font-mono text-sm">{monthsToPayoff <= 60 ? `${monthsToPayoff}회차` : '60회 초과'}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">단축 가능 기간</span>
+                <span className="text-xs text-slate-400 block">단축 가능 기간</span>
                 <span className="font-black text-blue-300 font-mono text-sm">
                   {shortenedMonths > 0 ? `-${shortenedMonths}개월 단축` : '단축 불가'}
                 </span>
@@ -379,7 +379,7 @@ export default function RepaymentTuningBox({
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <div className="font-bold text-white">36개월 내 원금 완제 가능</div>
-                  <p className="text-[11px] text-slate-300 leading-normal">
+                  <p className="text-xs text-slate-300 leading-normal">
                     현재 월 가용소득으로 <strong className="text-emerald-300">{monthsToPayoff}개월</strong> 만에 원금 100%가 완납됩니다.
                     적용하면 변제기간을 <strong className="text-white">{monthsToPayoff}개월로 단축</strong>(36개월 대비 {shortenedMonths}개월 단축)하고 이자 {' '}
                     <strong className="text-amber-300">{totalInterest.toLocaleString()}원</strong>은 변제 대상에서 제외한 계획안을 만듭니다. 이자 면책 여부와 기간 단축 허용은 관할 법원 판단이므로 제출 전 확인하세요.
@@ -391,7 +391,7 @@ export default function RepaymentTuningBox({
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <div className="font-bold text-slate-300">36개월 내 원금 완제 불가</div>
-                  <p className="text-[11px] text-slate-400 leading-normal">
+                  <p className="text-xs text-slate-400 leading-normal">
                     현재 월 가용소득으로는 36개월 내 원금 100% 완제가 불가능(필요: {monthsToPayoff}회차)하므로, 일반 가용소득 변제(원금 일부 변제)로 진행됩니다.
                   </p>
                 </div>
@@ -409,7 +409,7 @@ export default function RepaymentTuningBox({
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-extrabold text-white block">⚠️ 법원 개시후이자 발생 주의 상태</span>
-                  <p className="text-[11px] text-rose-300">
+                  <p className="text-xs text-rose-300">
                     총 변제예정액({(plan.totalRepaymentAmount).toLocaleString()}원)이 총 채무({(plan.totalDebt).toLocaleString()}원)를 초과하여 변제금이 남습니다. 
                     변제기간을 단축하거나 월 변제금을 하향 조정하십시오.
                   </p>
@@ -423,13 +423,13 @@ export default function RepaymentTuningBox({
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-slate-300 font-bold flex items-center gap-1.5">
                     <span>월 가용소득 수동 오버라이드</span>
-                    <span className="text-[10px] text-indigo-400 font-normal">(보정권고 지시액)</span>
+                    <span className="text-xs text-indigo-400 font-normal">(보정권고 지시액)</span>
                   </label>
                   {overrideMonthlyRepayment !== undefined && (
                     <button
                       type="button"
                       onClick={() => onUpdateOverrideMonthlyRepayment?.(undefined)}
-                      className="text-[10px] text-slate-400 hover:text-rose-300 underline"
+                      className="text-xs text-slate-400 hover:text-rose-300 underline"
                     >
                       엔진 자동값 복귀
                     </button>
@@ -445,7 +445,7 @@ export default function RepaymentTuningBox({
                   }}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-xs text-slate-400 mt-1 block">
                   입력 시 생계비 엔진 대신 입력된 금액으로 전 채권자 안분 및 변제율이 즉시 재계산됩니다.
                 </span>
               </div>
@@ -461,7 +461,7 @@ export default function RepaymentTuningBox({
                   onChange={(e) => onUpdateGarnishmentDepositFirstRound?.(Number(e.target.value) || 0)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-xs text-slate-400 mt-1 block">
                   인가 후 1회차에 투입되는 압류적립금으로, 총변제액에 합산되어 변제율을 상승시킵니다.
                 </span>
               </div>
@@ -480,7 +480,7 @@ export default function RepaymentTuningBox({
                       key={m}
                       type="button"
                       onClick={() => onUpdateMonths(m)}
-                      className={`px-2 py-0.5 text-[11px] font-bold rounded-md transition-all ${
+                      className={`px-2 py-0.5 text-xs font-bold rounded-md transition-all ${
                         totalMonths === m
                           ? 'bg-indigo-600 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -537,7 +537,7 @@ export default function RepaymentTuningBox({
           <div className="space-y-3.5 animate-fadeIn text-xs">
             <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60">
               <span className="text-slate-200 font-bold block mb-2">회생위원 선임 유형</span>
-              <p className="text-[11px] text-slate-400 mb-3">
+              <p className="text-xs text-slate-400 mb-3">
                 법원이 외부 회생위원(변호사·회계사)을 선임한 경우, 가용소득의 1%가 회생위원 보수로 공제되어 
                 실제 월 변제금이 줄어듭니다. 대부분의 서울회생법원 사건은 내부위원이 선임됩니다.
               </p>
@@ -556,7 +556,7 @@ export default function RepaymentTuningBox({
                   />
                   <div>
                     <span className="font-bold block">내부 회생위원</span>
-                    <span className="text-[10px] text-slate-500">보수 공제 없음</span>
+                    <span className="text-xs text-slate-500">보수 공제 없음</span>
                   </div>
                 </label>
 
@@ -573,7 +573,7 @@ export default function RepaymentTuningBox({
                   />
                   <div>
                     <span className="font-bold block">외부 회생위원</span>
-                    <span className="text-[10px] text-slate-500">가용소득 1% 공제</span>
+                    <span className="text-xs text-slate-500">가용소득 1% 공제</span>
                   </div>
                 </label>
               </div>
@@ -590,13 +590,13 @@ export default function RepaymentTuningBox({
                   </div>
                   <div className="flex items-center justify-between mt-1 pt-1 border-t border-cyan-700/40">
                     <span className="font-bold">안내</span>
-                    <span className="text-[10px] text-cyan-300">엔진이 가용소득에서 자동 공제 후 월 변제금을 산출합니다</span>
+                    <span className="text-xs text-cyan-300">엔진이 가용소득에서 자동 공제 후 월 변제금을 산출합니다</span>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-800/30 border border-slate-700/40 text-[11px] text-slate-400">
+            <div className="p-2.5 rounded-xl bg-slate-800/30 border border-slate-700/40 text-xs text-slate-400">
               <strong className="text-slate-300">참고:</strong> 채무자회생법 제83조, 외부회생위원 보수는 변제계획안 D5110 상단에 별도 표기됩니다. 
               관할 법원에 따라 보수 비율이 다를 수 있으니 사전에 확인하세요.
             </div>
@@ -609,7 +609,7 @@ export default function RepaymentTuningBox({
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
                 <span className="text-xs font-bold text-slate-200 block">우선권 채권(국세/지방세/건보료) 2단계 분할 변제</span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   총 {totalPriorityDebt.toLocaleString()}원 · 변제계획 내 전액 우선 변제(제611조 제1항 제2호). 1단계 회차 자동값은 내부 보수 기준(기간 1/2 이내)
                 </span>
               </div>
@@ -638,7 +638,7 @@ export default function RepaymentTuningBox({
                   onChange={(e) => onUpdateStage1Months(Number(e.target.value))}
                   className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400">
+                <div className="flex justify-between text-xs text-slate-400">
                   <span>1회차</span>
                   <span>보수 기준 {Math.floor(totalMonths / 2)}회차 (총 {totalMonths}개월의 1/2, 법정 상한 아님)</span>
                 </div>
@@ -682,17 +682,17 @@ export default function RepaymentTuningBox({
                   <div key={cred.id} className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                     <div>
                       <span className="font-bold text-white block">{cred.name} (담보부 채무)</span>
-                      <span className="text-[11px] text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 font-mono">
                         채권최고액: {cred.principal.toLocaleString()}원 · 담보평가액: {(cred.securedValue || 0).toLocaleString()}원
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 text-[11px]">환가율 프리셋:</span>
+                      <span className="text-slate-400 text-xs">환가율 프리셋:</span>
                       {['70%(일반부동산)', '100%(보증금)', '50%(자동차)'].map((p) => (
                         <button
                           key={p}
                           type="button"
-                          className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-[10px] font-bold text-slate-200"
+                          className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-slate-200"
                         >
                           {p}
                         </button>
@@ -711,7 +711,7 @@ export default function RepaymentTuningBox({
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
                 <span className="text-xs font-bold text-white block">급여 압류적립금 변제계획 투입</span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   제3채무자(직장)가 보관 중인 압류금을 개시 후 변제재원에 투입하고 압류를 해제합니다.
                 </span>
               </div>
@@ -782,7 +782,7 @@ export default function RepaymentTuningBox({
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
                 <span className="text-xs font-bold text-white block">재산처분에 의한 변제 (전산양식 D5111)</span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   부동산·차량 등을 처분하여 인가 후 1~2년 이내 청산가치 부족분을 변제재원에 투입합니다.
                 </span>
               </div>
@@ -870,7 +870,7 @@ export default function RepaymentTuningBox({
                   <span>① 원금만 전액 변제</span>
                   {interestMode === 'principal_only' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 ml-auto" />}
                 </div>
-                <p className="text-[11px] text-slate-400">개인회생 표준 원칙. 원금만 변제하고 이자는 전액 면책 처리합니다.</p>
+                <p className="text-xs text-slate-400">개인회생 표준 원칙. 원금만 변제하고 이자는 전액 면책 처리합니다.</p>
               </button>
 
               <button
@@ -886,7 +886,7 @@ export default function RepaymentTuningBox({
                   <span>② 원금 완제 후 이자</span>
                   {interestMode === 'principal_then_interest' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 ml-auto" />}
                 </div>
-                <p className="text-[11px] text-slate-400">법원 실무 다수. 원금을 먼저 100% 충당한 후 남은 기간에 이자를 변제합니다.</p>
+                <p className="text-xs text-slate-400">법원 실무 다수. 원금을 먼저 100% 충당한 후 남은 기간에 이자를 변제합니다.</p>
               </button>
 
               <button
@@ -902,7 +902,7 @@ export default function RepaymentTuningBox({
                   <span>③ 원리금 동시안분</span>
                   {interestMode === 'simultaneous_all' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 ml-auto" />}
                 </div>
-                <p className="text-[11px] text-slate-400">총 채무액(원금+이자)을 기준으로 안분비율을 산출하여 매월 동시 변제합니다.</p>
+                <p className="text-xs text-slate-400">총 채무액(원금+이자)을 기준으로 안분비율을 산출하여 매월 동시 변제합니다.</p>
               </button>
             </div>
           </div>
@@ -914,7 +914,7 @@ export default function RepaymentTuningBox({
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
                 <span className="text-xs font-bold text-white block">장래양육비 지급 정보 (기록용)</span>
-                <span className="text-[11px] text-amber-300">
+                <span className="text-xs text-amber-300">
                   ⚠️ 이 값은 월 변제금 계산에 자동 반영되지 않습니다. 추가생계비로 인정받으려면 [소득·생계비] 섹션의 '기타 인정 생계비'에 직접 입력하세요.
                 </span>
               </div>
@@ -973,7 +973,7 @@ export default function RepaymentTuningBox({
             <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
               <div>
                 <span className="text-xs font-bold text-white block">변제기간 중 성년 도달 자녀 (기록용)</span>
-                <span className="text-[11px] text-amber-300">
+                <span className="text-xs text-amber-300">
                   ⚠️ 단계별 생계비 축소·변제금 상향은 아직 자동 계산되지 않습니다. 성년 도달 회차를 기록해 두고, 필요하면 수동 조정으로 반영하세요.
                 </span>
               </div>
@@ -1021,7 +1021,7 @@ export default function RepaymentTuningBox({
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-200">
+                <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/40 text-xs text-amber-200">
                   💡 법원 실무상 1~{adultChild.transitionMonthIndex - 1}회차는 부양가족을 포함하고 {adultChild.transitionMonthIndex}~{totalMonths}회차는 가구원 수를 줄여 생계비를 다시 산정할 수 있습니다. 현재 계획안에는 자동 반영되지 않으니 수동으로 확인하세요.
                 </div>
               </div>

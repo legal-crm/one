@@ -27,21 +27,21 @@ interface TemplateOption {
 const TEMPLATE_OPTIONS: TemplateOption[] = [
   {
     key: 'urgent',
-    label: '🚨 골든타임 긴급 경고',
-    badge: '추천 (골든타임 지체)',
+    label: '서명 지연 안내 (긴급)',
+    badge: '추천 (서명 지연)',
     badgeColor: 'bg-red-50 text-red-700 border-red-200',
     description: '서명 지연 시 채권자 추심/압류 방지(금지명령) 지연 경고'
   },
   {
     key: 'standard',
-    label: '📋 정중한 서명 리마인드',
+    label: '정중한 서명 리마인드',
     badge: 'D+1 권장',
     badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
     description: '스마트폰 본인인증 및 전자서명 진행 절차 안내'
   },
   {
     key: 'expiry',
-    label: '⏱️ 서명 기한 안내',
+    label: '서명 기한 안내',
     badge: 'D+2~3',
     badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
     description: '일회용 보안 서명 링크 자동 폐기 전 신속 서명 안내'
@@ -80,7 +80,7 @@ export default function ContractReminderModal({
     const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
 
     return {
-      urgent: `[${firm}] 🚨 [긴급] 전자계약 서명 골든타임 경과 안내
+      urgent: `[${firm}] [긴급] 전자계약 서명 지연 안내
 
 ${client} 의뢰인님,
 발송해 드린 회생·파산 전자위임계약서 서명이 지체되고 있어 긴급 안내드립니다.
@@ -184,7 +184,7 @@ ${firm} 드림`
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black text-slate-900">전자계약 서명 재촉 알림 발송</h3>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
                   사전 확인
                 </span>
               </div>
@@ -214,17 +214,17 @@ ${firm} 드림`
                 <span className="text-xs font-mono text-slate-500 bg-white px-2 py-0.5 rounded-lg border border-slate-200">
                   {contract.clientPhone || '연락처 미등록'}
                 </span>
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-xs font-bold text-slate-400">
                   ({contract.lawFirmName} {contract.lawyerName} 변호사)
                 </span>
               </div>
-              <span className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                 <Clock className="w-3 h-3 text-red-500" />
-                <span>발송 24시간+ 경과 (골든타임 지체)</span>
+                <span>발송 24시간+ 경과 (서명 지연)</span>
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div>
                 <span className="text-slate-400 block">계약번호</span>
                 <span className="font-mono font-bold text-slate-700">{contract.id}</span>
@@ -248,7 +248,7 @@ ${firm} 드림`
               <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <span>1. 재촉 템플릿 프리셋 선택</span>
               </label>
-              <span className="text-[11px] text-slate-400">상황에 맞는 문구를 선택하세요</span>
+              <span className="text-xs text-slate-400">상황에 맞는 문구를 선택하세요</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {TEMPLATE_OPTIONS.map(opt => {
@@ -268,11 +268,11 @@ ${firm} 드림`
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="font-bold text-xs text-slate-900">{opt.label}</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                         {opt.description}
                       </p>
                     </div>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border w-fit mt-2 ${opt.badgeColor}`}>
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded border w-fit mt-2 ${opt.badgeColor}`}>
                       {opt.badge}
                     </span>
                   </button>
@@ -293,14 +293,14 @@ ${firm} 드림`
                   <button
                     type="button"
                     onClick={handleResetToDefault}
-                    className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                     title="기본 템플릿 문구로 되돌립니다"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>기본 문구 복원</span>
                   </button>
                 )}
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {customMessage.length}자
                 </span>
               </div>
@@ -310,17 +310,17 @@ ${firm} 드림`
             <div className="bg-[#FAE100] rounded-2xl p-4 shadow-inner space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-yellow-300/60">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#391B1B] flex items-center justify-center text-white font-black text-[9px]">
+                  <div className="w-6 h-6 rounded-full bg-[#391B1B] flex items-center justify-center text-white font-black text-xs">
                     TALK
                   </div>
                   <span className="font-extrabold text-xs text-[#391B1B]">
                     알림톡 도착
                   </span>
-                  <span className="text-[10px] text-yellow-900/80 bg-yellow-200/60 px-1.5 py-0.5 rounded font-bold">
+                  <span className="text-xs text-yellow-900/80 bg-yellow-200/60 px-1.5 py-0.5 rounded font-bold">
                     마이김변 인증로펌
                   </span>
                 </div>
-                <span className="text-[10px] text-yellow-950/70 font-mono">
+                <span className="text-xs text-yellow-950/70 font-mono">
                   {new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -341,13 +341,13 @@ ${firm} 드림`
                     <Smartphone className="w-3.5 h-3.5 text-brand" />
                     <span>✍️ 1분 간편 전자서명 바로가기 (본인인증)</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 text-center mt-1">
+                  <p className="text-xs text-slate-400 text-center mt-1">
                     의뢰인이 카카오톡에서 위 버튼을 누르면 즉시 휴대폰 본인인증 및 서명 화면으로 이동합니다.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-yellow-950 px-1 font-medium">
+              <div className="flex items-center justify-between text-xs text-yellow-950 px-1 font-medium">
                 <span className="flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-yellow-900" />
                   문구를 클릭하여 원하는 내용으로 자유롭게 수정할 수 있습니다.
@@ -365,7 +365,7 @@ ${firm} 드림`
           <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="space-y-0.5">
               <span className="font-bold text-slate-800 block text-xs">발송 채널 설정</span>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 카카오 알림톡 우선 발송 + 카카오톡 미설치/수신 거부 시 SMS/LMS 자동 대체 전송
               </p>
             </div>

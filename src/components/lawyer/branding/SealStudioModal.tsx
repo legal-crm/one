@@ -958,7 +958,7 @@ export default function SealStudioModal({
               <h2 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
                 도장 입력 & 브랜딩 스튜디오
               </h2>
-              <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black border border-amber-400/30">
+              <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-black border border-amber-400/30">
                 도장·서명 이미지
               </span>
             </div>
@@ -1066,7 +1066,7 @@ export default function SealStudioModal({
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               {personalLang === 'hanja'
                 ? "한자 모드는 '변호사·법무법인·대표변호사' 같은 직함만 한자로 바꿉니다. 이름은 음이 같아도 한자가 여러 개라 자동으로 바꾸지 않으니, 한자 이름은 입력칸에 직접 한자로 입력하세요."
                 : '생성된 도장은 이미지일 뿐이며 주민센터에 등록한 인감이나 법인인감이 아닙니다.'}
@@ -1113,7 +1113,7 @@ export default function SealStudioModal({
                       ) : (
                         <div className="text-slate-300 flex flex-col items-center">
                           <Stamp className="w-6 h-6 mb-1" />
-                          <span className="text-[10px]">생성 중</span>
+                          <span className="text-xs">생성 중</span>
                         </div>
                       )}
                     </div>
@@ -1123,7 +1123,7 @@ export default function SealStudioModal({
                       <span className={`text-xs font-bold block ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
                         {preset.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                      <span className="text-xs text-slate-400 block mt-0.5">
                         {preset.desc}
                       </span>
                     </div>
@@ -1237,13 +1237,13 @@ export default function SealStudioModal({
 
               {/* 직함 빠른 선택 추천 칩 */}
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] font-bold text-slate-500 mr-1">직함 추천:</span>
+                <span className="text-xs font-bold text-slate-500 mr-1">직함 추천:</span>
                 {['대표변호사', '변호사', '대표이사', '지배인', '인'].map((title, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setCorpInnerText(title)}
-                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-amber-400 text-[11px] font-medium text-slate-700 hover:text-amber-700 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-amber-400 text-xs font-medium text-slate-700 hover:text-amber-700 transition-colors cursor-pointer"
                   >
                     {title}
                   </button>
@@ -1290,7 +1290,7 @@ export default function SealStudioModal({
                       ) : (
                         <div className="text-slate-300 flex flex-col items-center">
                           <Building2 className="w-6 h-6 mb-1" />
-                          <span className="text-[10px]">생성 중</span>
+                          <span className="text-xs">생성 중</span>
                         </div>
                       )}
                     </div>
@@ -1299,7 +1299,7 @@ export default function SealStudioModal({
                       <span className={`text-xs font-bold block ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
                         {preset.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                      <span className="text-xs text-slate-400 block mt-0.5">
                         {preset.desc}
                       </span>
                     </div>
@@ -1417,7 +1417,7 @@ export default function SealStudioModal({
                     <button
                       type="button"
                       onClick={() => setUploadedRawImg(null)}
-                      className="text-[11px] text-red-500 hover:underline cursor-pointer"
+                      className="text-xs text-red-500 hover:underline cursor-pointer"
                     >
                       초기화
                     </button>
@@ -1434,7 +1434,7 @@ export default function SealStudioModal({
                     >
                       <Upload className="w-8 h-8 mb-2 text-slate-300" />
                       <p className="text-xs font-bold text-slate-600">도장 사진을 여기에 끌어놓거나 클릭</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG, WebP 지원</p>
+                      <p className="text-xs text-slate-400 mt-0.5">JPG, PNG, WebP 지원</p>
                     </div>
                   )}
                 </div>
@@ -1446,7 +1446,7 @@ export default function SealStudioModal({
                     <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                     2. 배경 투명화 추출 결과 (투명 PNG)
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">
+                  <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">
                     투명 체커보드 프리뷰
                   </span>
                 </div>
@@ -1570,7 +1570,7 @@ export default function SealStudioModal({
                   <button
                     type="button"
                     onClick={clearSignature}
-                    className="text-[11px] text-red-500 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                    className="text-xs text-red-500 hover:underline flex items-center gap-1 cursor-pointer font-bold"
                   >
                     <RotateCcw className="w-3 h-3" />
                     지우고 다시 그리기
@@ -1599,7 +1599,7 @@ export default function SealStudioModal({
                 <div className="space-y-4">
                   <span className="text-xs font-black text-slate-700 block">펜 도구 설정</span>
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 block">펜 색상</span>
+                    <span className="text-xs font-bold text-slate-600 block">펜 색상</span>
                     <div className="flex gap-2">
                       {[
                         { hex: '#0F172A', label: '차콜 블랙' },
@@ -1624,7 +1624,7 @@ export default function SealStudioModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                    <div className="flex justify-between text-xs font-bold text-slate-600">
                       <span>펜 굵기</span>
                       <span>{signPenWidth}px</span>
                     </div>
@@ -1706,7 +1706,7 @@ export default function SealStudioModal({
                   ) : (
                     <div className="text-slate-300 flex flex-col items-center">
                       <ImageIcon className="w-6 h-6 mb-1" />
-                      <span className="text-[10px]">미등록</span>
+                      <span className="text-xs">미등록</span>
                     </div>
                   )}
                 </div>
@@ -1714,7 +1714,7 @@ export default function SealStudioModal({
                   <button
                     type="button"
                     onClick={() => setSealInfo(prev => ({ ...prev, firmLogoUrl: undefined }))}
-                    className="text-[11px] text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" /> 로고 삭제
                   </button>
@@ -1732,7 +1732,7 @@ export default function SealStudioModal({
                   ) : (
                     <div className="text-red-300 flex flex-col items-center">
                       <Stamp className="w-7 h-7 mb-1" />
-                      <span className="text-[10px] font-bold">미등록</span>
+                      <span className="text-xs font-bold">미등록</span>
                     </div>
                   )}
                 </div>
@@ -1740,7 +1740,7 @@ export default function SealStudioModal({
                   <button
                     type="button"
                     onClick={() => setSealInfo(prev => ({ ...prev, lawyerSealUrl: undefined }))}
-                    className="text-[11px] text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" /> 직인 삭제
                   </button>
@@ -1756,7 +1756,7 @@ export default function SealStudioModal({
                   ) : (
                     <div className="text-slate-300 flex flex-col items-center">
                       <FileSignature className="w-6 h-6 mb-1" />
-                      <span className="text-[10px]">미등록</span>
+                      <span className="text-xs">미등록</span>
                     </div>
                   )}
                 </div>
@@ -1764,7 +1764,7 @@ export default function SealStudioModal({
                   <button
                     type="button"
                     onClick={() => setSealInfo(prev => ({ ...prev, signUrl: undefined }))}
-                    className="text-[11px] text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-red-500 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" /> 서명 삭제
                   </button>

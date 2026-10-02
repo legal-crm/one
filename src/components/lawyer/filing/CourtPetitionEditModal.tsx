@@ -146,7 +146,7 @@ function CourtPetitionEditModalInner({
                 <h3 className="font-extrabold text-sm text-white">
                   개인회생절차 개시신청서 본안 (D5101) 편집
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
                   R01 표준서식
                 </span>
               </div>
@@ -289,7 +289,7 @@ function CourtPetitionEditModalInner({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-slate-700 font-bold">주민등록상 주소 (등본상 주소) *</label>
-                    <span className="text-slate-500 font-mono text-[11px]">우편번호</span>
+                    <span className="text-slate-500 font-mono text-xs">우편번호</span>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -320,7 +320,7 @@ function CourtPetitionEditModalInner({
                         handleChange('currentPostcode', formData.residentPostcode);
                         toast.info('주민등록상 주소와 동일하게 적용되었습니다.');
                       }}
-                      className="text-blue-600 hover:text-blue-700 text-[11px] font-bold cursor-pointer"
+                      className="text-blue-600 hover:text-blue-700 text-xs font-bold cursor-pointer"
                     >
                       주민등록주소와 동일
                     </button>
@@ -365,7 +365,7 @@ function CourtPetitionEditModalInner({
                   <div className="sm:col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-slate-700 font-bold">직장 주소</label>
-                      <span className="text-slate-500 font-mono text-[11px]">우편번호</span>
+                      <span className="text-slate-500 font-mono text-xs">우편번호</span>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -406,7 +406,7 @@ function CourtPetitionEditModalInner({
                     <option key={court} value={court}>{court}</option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   ※ 채무자의 보통재판적 소재지(주민등록 주소) 또는 주된 사무소나 영업소 소재지 법원을 선택합니다.
                 </p>
               </div>
@@ -428,7 +428,7 @@ function CourtPetitionEditModalInner({
                     />
                     <div>
                       <span className="font-extrabold text-slate-900 text-xs">급여소득자</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         근로자, 일용직, 아르바이트 등 정기적이고 확실한 급여를 수령하는 자
                       </p>
                     </div>
@@ -448,7 +448,7 @@ function CourtPetitionEditModalInner({
                     />
                     <div>
                       <span className="font-extrabold text-slate-900 text-xs">영업소득자</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         개인사업자, 프리랜서, 부동산임대, 농림어업 소득 등 반복적 영업 수입을 얻는 자
                       </p>
                     </div>
@@ -472,7 +472,7 @@ function CourtPetitionEditModalInner({
                   placeholder="신청인은 첨부한 개인회생채권자목록 기재와 같은 채무를 부담하고 있으나..."
                   className="w-full p-3 border border-slate-300 rounded-xl text-slate-900 text-xs leading-relaxed focus:border-blue-500 focus:outline-hidden"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   ※ 대법원 D5101 1/2쪽 '신청이유' 제1항에 인쇄되는 핵심 문구입니다.
                 </p>
               </div>
@@ -484,7 +484,7 @@ function CourtPetitionEditModalInner({
             <div className="space-y-5 animate-fadeIn">
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-amber-900 flex items-start gap-2.5">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="leading-relaxed text-[11px]">
+                <p className="leading-relaxed text-xs">
                   <strong>송달장소 안내:</strong> 의뢰인의 자택으로 법원 우편물이 발송되어 가족에게 알려지는 것을 원천 차단하기 위해, 원칙적으로 대리인 법률사무소를 송달장소 및 송달영수인으로 지정합니다.
                 </p>
               </div>
@@ -506,7 +506,7 @@ function CourtPetitionEditModalInner({
                     />
                     <div>
                       <span className="font-extrabold text-slate-900 text-xs">대리인 법률사무소 (권장)</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         법원 보정권고/명령 일체를 변호사 사무실에서 전자송달 및 등기 수령
                       </p>
                     </div>
@@ -526,7 +526,7 @@ function CourtPetitionEditModalInner({
                     />
                     <div>
                       <span className="font-extrabold text-slate-900 text-xs">채무자 본인 실거주지</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         채무자 본인의 현주소로 송달 서류를 직접 수취
                       </p>
                     </div>
@@ -634,7 +634,7 @@ function CourtPetitionEditModalInner({
             <div className="space-y-5 animate-fadeIn">
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-emerald-900 flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-[11px] leading-relaxed">
+                <div className="text-xs leading-relaxed">
                   <strong>환급계좌 법적 요건 (D5101 2/2쪽 제3항):</strong><br />
                   법원에 납부한 예납비용 및 적립금 잔액을 환급받기 위한 계좌이며, <strong>반드시 신청인 본인 명의</strong> 계좌이어야 합니다. 압류 위험이 없는 1금융권 안전 통장을 권장합니다.
                 </div>
@@ -701,7 +701,7 @@ function CourtPetitionEditModalInner({
                   </label>
                 </div>
 
-                <p className="text-[11px] text-slate-500 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   개시결정, 폐지결정, 면책결정, 월 변제액 3개월분 연체 정보를 대법원에서 휴대전화 문자메시지로 즉시 통지해 주는 제도입니다. (건당 17원 송달료 차감)
                 </p>
 

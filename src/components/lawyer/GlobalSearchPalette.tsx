@@ -168,7 +168,7 @@ export default function GlobalSearchPalette({ isOpen, onClose, requests, getDisp
                         </div>
                       </div>
                     </div>
-                    <span className="text-[11px] text-gray-400 shrink-0 ml-2">{hit.matchedOn}</span>
+                    <span className="text-xs text-gray-400 shrink-0 ml-2">{hit.matchedOn}</span>
                   </button>
                 ))}
               </>

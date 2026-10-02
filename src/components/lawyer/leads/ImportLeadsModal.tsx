@@ -292,7 +292,7 @@ export default function ImportLeadsModal({
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-800">양식이 준비되지 않으셨나요?</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">표준 컬럼이 지정된 엑셀 템플릿을 다운로드받아 채워보세요.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">표준 컬럼이 지정된 엑셀 템플릿을 다운로드받아 채워보세요.</p>
                 </div>
                 <button
                   type="button"
@@ -362,15 +362,15 @@ export default function ImportLeadsModal({
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl">
-                  <p className="text-[11px] font-bold text-emerald-700">가져올 유효 건수</p>
+                  <p className="text-xs font-bold text-emerald-700">가져올 유효 건수</p>
                   <p className="text-xl font-black text-emerald-700 mt-1">{processedResults.valid.length}건</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl">
-                  <p className="text-[11px] font-bold text-amber-700">중복 감지</p>
+                  <p className="text-xs font-bold text-amber-700">중복 감지</p>
                   <p className="text-xl font-black text-amber-700 mt-1">{processedResults.duplicates.length}건</p>
                 </div>
                 <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl">
-                  <p className="text-[11px] font-bold text-rose-700">오류/누락 제외</p>
+                  <p className="text-xs font-bold text-rose-700">오류/누락 제외</p>
                   <p className="text-xl font-black text-rose-700 mt-1">{processedResults.errors.length}건</p>
                 </div>
               </div>
@@ -392,7 +392,7 @@ export default function ImportLeadsModal({
                       <span className="font-bold">중복 건도 강제 등록</span>
                     </label>
                   </div>
-                  <p className="text-[11px] text-amber-700">
+                  <p className="text-xs text-amber-700">
                     기본적으로 중복 번호는 영업 DB에 중복 등록되지 않도록 자동 건너뜁니다.
                   </p>
                 </div>

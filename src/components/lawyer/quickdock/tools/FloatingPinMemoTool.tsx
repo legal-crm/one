@@ -264,7 +264,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
             role="radio"
             aria-checked={currentSlot.type === 'text'}
             onClick={() => updateCurrentSlot({ type: 'text' })}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+            className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
               currentSlot.type === 'text' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
             }`}
           >
@@ -275,7 +275,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
             role="radio"
             aria-checked={currentSlot.type === 'image'}
             onClick={() => updateCurrentSlot({ type: 'image' })}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+            className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
               currentSlot.type === 'image' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
             }`}
           >
@@ -289,7 +289,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
         <div className="space-y-2">
           {currentSlot.imageDataUrl ? (
             <>
-              <div className="flex items-center justify-between bg-slate-100 px-2.5 py-1.5 rounded-xl text-[11px] text-slate-700">
+              <div className="flex items-center justify-between bg-slate-100 px-2.5 py-1.5 rounded-xl text-xs text-slate-700">
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => handleZoom(-0.2)} className="p-1 hover:bg-white rounded hover:text-slate-900 transition-colors cursor-pointer" title="축소" aria-label="축소">
                     <ZoomOut className="w-3.5 h-3.5" />
@@ -303,7 +303,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
                   <button
                     type="button"
                     onClick={() => updateCurrentSlot({ zoom: 1 })}
-                    className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors cursor-pointer ml-1"
+                    className="px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors cursor-pointer ml-1"
                   >
                     100%
                   </button>
@@ -338,7 +338,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
                   draggable={false}
                 />
               </div>
-              <p className="text-[10px] text-slate-500 text-center">
+              <p className="text-xs text-slate-500 text-center">
                 작은 영수증·서류 숫자는 확대해서 보면서 입력하세요. 이미지는 이 탭 메모리에만 있고 새로고침·로그아웃 시 지워집니다.
               </p>
             </>
@@ -355,7 +355,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
                 <span className="block font-extrabold text-slate-800 text-xs">
                   캡처 후 <span className="text-amber-800 bg-amber-200/60 px-1.5 py-0.5 rounded font-mono">Ctrl + V</span>를 누르세요
                 </span>
-                <span className="block text-[11px] text-slate-600 mt-1">
+                <span className="block text-xs text-slate-600 mt-1">
                   또는 클릭해서 신분증·등기부·급여명세서 이미지 파일 올리기 (5MB 이하)
                 </span>
               </span>
@@ -385,7 +385,7 @@ export default function FloatingPinMemoTool({ isActive = true }: FloatingPinMemo
             className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 leading-relaxed placeholder:text-slate-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none font-sans"
           />
 
-          <div className="flex items-center justify-between text-[10px] text-slate-500">
+          <div className="flex items-center justify-between text-xs text-slate-500">
             <span>글자수: {(currentSlot.text || '').length}자</span>
             <button
               type="button"

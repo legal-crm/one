@@ -700,7 +700,7 @@ export default function RepaymentPlanEditor({
                     전산양식 {plan.formType} {plan.formType === 'D5111' ? '(재산처분 병행)' : '(가용소득 전용)'}
                   </span>
                   {isManualMode && (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
                       <Edit3 className="w-3 h-3" />
                       실무자 미세조정 중
                     </span>
@@ -821,7 +821,7 @@ export default function RepaymentPlanEditor({
             <div className="mt-2 text-xl font-black text-slate-900 font-mono">
               {plan.monthlyRepaymentTotal.toLocaleString()}원
             </div>
-            <div className="mt-1 text-[11px] text-slate-500">
+            <div className="mt-1 text-xs text-slate-500">
               {plan.months}개월간 납부 (매월 {plan.paymentDayOfMonth}일)
             </div>
           </div>
@@ -837,7 +837,7 @@ export default function RepaymentPlanEditor({
             <div className="mt-2 text-xl font-black text-slate-900 font-mono">
               {Math.round(plan.totalRepaymentAmount / 10000).toLocaleString()}만원
             </div>
-            <div className="mt-1 text-[11px] text-emerald-600 font-bold">
+            <div className="mt-1 text-xs text-emerald-600 font-bold">
               총 {Math.round(plan.totalForgivenAmount / 10000).toLocaleString()}만원 탕감 ({plan.forgivenessRate}%)
             </div>
           </div>
@@ -851,11 +851,11 @@ export default function RepaymentPlanEditor({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold">청산가치 보장 원칙</span>
               {plan.satisfiesLiquidationGuarantee ? (
-                <span className="text-[10px] font-black bg-emerald-200/80 text-emerald-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs font-black bg-emerald-200/80 text-emerald-800 px-1.5 py-0.5 rounded">
                   통과 (L ≥ J)
                 </span>
               ) : (
-                <span className="text-[10px] font-black bg-rose-200/80 text-rose-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs font-black bg-rose-200/80 text-rose-800 px-1.5 py-0.5 rounded">
                   미달 (L &lt; J)
                 </span>
               )}
@@ -868,7 +868,7 @@ export default function RepaymentPlanEditor({
                 / {Math.round(plan.totalLiquidationValue / 10000).toLocaleString()}만원
               </span>
             </div>
-            <div className="mt-1 text-[11px] opacity-80">
+            <div className="mt-1 text-xs opacity-80">
               라이프니쯔 현가: {plan.presentValue.toLocaleString()}원
             </div>
           </div>
@@ -877,14 +877,14 @@ export default function RepaymentPlanEditor({
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500">법정 최저변제액</span>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                 충족
               </span>
             </div>
             <div className="mt-2 text-xl font-black text-slate-900 font-mono">
               {Math.round(plan.minimumRepaymentThreshold / 10000).toLocaleString()}만원
             </div>
-            <div className="mt-1 text-[11px] text-slate-500">
+            <div className="mt-1 text-xs text-slate-500">
               총 채무액 대비 법정 하한선
             </div>
           </div>
@@ -895,7 +895,7 @@ export default function RepaymentPlanEditor({
             <div className="mt-2 text-base font-black text-slate-900 font-mono">
               {plan.startYearMonth} ~ {plan.endYearMonth}
             </div>
-            <div className="mt-1 text-[11px] text-slate-500">
+            <div className="mt-1 text-xs text-slate-500">
               총 {plan.months}회 납부 (매월 {plan.paymentDayOfMonth}일)
             </div>
           </div>
@@ -951,7 +951,7 @@ export default function RepaymentPlanEditor({
                       ? '우선권 채권 변제기간 내 완납 불가 (인가 요건 미충족)'
                       : '우선권 채권 완납 회차가 내부 보수 기준(변제기간 1/2)을 초과'}
                   </h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
                     {plan.priorityFeasibility.minRequiredMonths > plan.months ? '제611조 제1항 제2호' : '내부 보수 기준'}
                   </span>
                 </div>
@@ -993,7 +993,7 @@ export default function RepaymentPlanEditor({
             <Sparkles className="w-4 h-4 text-blue-600" />
             <span className="text-sm font-black">법원 변제계획안 데이터 파이프라인 안내</span>
           </div>
-          <span className="text-[11px] text-blue-800 font-bold bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200 self-start sm:self-auto">
+          <span className="text-xs text-blue-800 font-bold bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200 self-start sm:self-auto">
             실무 연동 가이드
           </span>
         </div>
@@ -1002,24 +1002,24 @@ export default function RepaymentPlanEditor({
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
           <div className="bg-white/90 p-3 rounded-xl border border-blue-100/80 shadow-2xs flex items-start gap-2.5">
-            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
+            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">1</span>
             <div>
               <div className="font-bold text-slate-900 text-xs">부채증명서 발급 대행 연동</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">금융사별 확정원금·개시전이자·담보권·우선권 자동 반영</div>
+              <div className="text-xs text-slate-500 mt-0.5">금융사별 확정원금·개시전이자·담보권·우선권 자동 반영</div>
             </div>
           </div>
           <div className="bg-white/90 p-3 rounded-xl border border-emerald-100/80 shadow-2xs flex items-start gap-2.5">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
+            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">2</span>
             <div>
               <div className="font-bold text-slate-900 text-xs">2026 생계비 & 가용소득</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">중위 60% 기초생계비 + 주거·의료·교육비 정밀 산정</div>
+              <div className="text-xs text-slate-500 mt-0.5">중위 60% 기초생계비 + 주거·의료·교육비 정밀 산정</div>
             </div>
           </div>
           <div className="bg-white/90 p-3 rounded-xl border border-purple-100/80 shadow-2xs flex items-start gap-2.5">
-            <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
+            <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">3</span>
             <div>
               <div className="font-bold text-slate-900 text-xs">청산가치 보장 & 현가 검증</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">압류금지·소액임차 공제 및 라이프니쯔 현가 실시간 판정</div>
+              <div className="text-xs text-slate-500 mt-0.5">압류금지·소액임차 공제 및 라이프니쯔 현가 실시간 판정</div>
             </div>
           </div>
         </div>
@@ -1094,7 +1094,7 @@ export default function RepaymentPlanEditor({
                     }}
                     className="w-full accent-purple-600 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                  <div className="flex justify-between text-xs text-slate-400 font-mono">
                     <span>24개월(특례)</span>
                     <span className="font-bold text-slate-600">36개월(기본)</span>
                     <span>48개월</span>
@@ -1107,7 +1107,7 @@ export default function RepaymentPlanEditor({
                   <div className="flex justify-between items-center text-xs font-bold">
                     <span className="text-slate-600">월 총 변제금 오버라이드</span>
                     {plan.isManuallyOverridden && (
-                      <span className="text-[10px] text-purple-600 font-semibold">수동 입력됨</span>
+                      <span className="text-xs text-purple-600 font-semibold">수동 입력됨</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -1124,7 +1124,7 @@ export default function RepaymentPlanEditor({
                     />
                     <span className="text-xs text-slate-500 font-bold shrink-0">원</span>
                   </div>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     생계비 계산 기준 가용소득: {plan.calculatedLiving.actualDisposableIncome.toLocaleString()}원
                   </p>
                 </div>
@@ -1176,7 +1176,7 @@ export default function RepaymentPlanEditor({
                     <button
                       type="button"
                       onClick={() => setIsTwoStageRepayment(!isTwoStageRepayment)}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${
+                      className={`px-2 py-0.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
                         isTwoStageRepayment
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
@@ -1188,7 +1188,7 @@ export default function RepaymentPlanEditor({
 
                   {isTwoStageRepayment ? (
                     <div className="space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-600 font-medium">1단계 기간 (세금 완납):</span>
                         <div className="flex items-center gap-1">
                           <input
@@ -1202,12 +1202,12 @@ export default function RepaymentPlanEditor({
                           <span className="text-slate-500 font-bold">회차</span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-indigo-800 leading-tight">
+                      <p className="text-xs text-indigo-800 leading-tight">
                         1~{plan.stage1Months}회차(세금 전액완제) ➔ {plan.stage1Months + 1}~{plan.months}회차(일반채권 전액 재배분)
                       </p>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-slate-500 leading-tight">
+                    <p className="text-xs text-slate-500 leading-tight">
                       국세/지방세/건보료 채권이 있으면 1단계에서 우선 완납하고 2단계에서 일반채권에 배분합니다. 1단계 회차는 자동 산정(내부 보수 기준: 기간 1/2 이내)되며 직접 조정할 수 있습니다.
                     </p>
                   )}
@@ -1228,7 +1228,7 @@ export default function RepaymentPlanEditor({
                       <h3 className="text-sm font-black text-white">
                         청산가치 보장 3대 지표 비교 &amp; 라이프니쯔 현가 산출 내역
                       </h3>
-                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
                         plan.satisfiesLiquidationGuarantee
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
@@ -1244,7 +1244,7 @@ export default function RepaymentPlanEditor({
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-[11px] text-indigo-300 block font-medium">현재가치 - 청산가치</span>
+                    <span className="text-xs text-indigo-300 block font-medium">현재가치 - 청산가치</span>
                     <span className={`text-base font-black font-mono ${
                       plan.presentValue >= plan.totalLiquidationValue ? 'text-emerald-400' : 'text-rose-400'
                     }`}>
@@ -1261,12 +1261,12 @@ export default function RepaymentPlanEditor({
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden">
                   <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
                     <span>1. 청산가치 (J)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">재산목록 합계</span>
+                    <span className="text-xs text-slate-400 font-normal">재산목록 합계</span>
                   </div>
                   <div className="mt-2 text-2xl font-black text-amber-300 font-mono">
                     {plan.totalLiquidationValue.toLocaleString()}원
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-xs text-slate-400">
                     압류금지재산 및 소액임차보증금 공제 후 순가치
                   </p>
                   <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
@@ -1281,12 +1281,12 @@ export default function RepaymentPlanEditor({
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden">
                   <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
                     <span>2. 가용소득 총변제액</span>
-                    <span className="text-[10px] text-indigo-300 font-normal">{plan.months}개월 합산</span>
+                    <span className="text-xs text-indigo-300 font-normal">{plan.months}개월 합산</span>
                   </div>
                   <div className="mt-2 text-2xl font-black text-white font-mono">
                     {plan.totalRepaymentAmount.toLocaleString()}원
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-xs text-slate-400">
                     월 {plan.monthlyRepaymentTotal.toLocaleString()}원 × {plan.months}회 납부 총액 (변제율 {plan.totalRepaymentRate}%)
                   </p>
                   <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
@@ -1304,14 +1304,14 @@ export default function RepaymentPlanEditor({
                     <span className={plan.satisfiesLiquidationGuarantee ? 'text-emerald-300' : 'text-rose-300'}>
                       3. 라이프니쯔 현재가치 (L)
                     </span>
-                    <span className="text-[10px] text-slate-400 font-normal">법원 공제 연 5% 복리할인</span>
+                    <span className="text-xs text-slate-400 font-normal">법원 공제 연 5% 복리할인</span>
                   </div>
                   <div className={`mt-2 text-2xl font-black font-mono ${
                     plan.satisfiesLiquidationGuarantee ? 'text-emerald-300' : 'text-rose-300'
                   }`}>
                     {plan.presentValue.toLocaleString()}원
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-xs text-slate-400">
                     청산가치 대비 충족율: <strong className="font-bold text-white">
                       {Math.round((plan.presentValue / Math.max(1, plan.totalLiquidationValue)) * 100)}%
                     </strong>
@@ -1335,7 +1335,7 @@ export default function RepaymentPlanEditor({
                       <Calculator className="w-3.5 h-3.5 text-indigo-400" />
                       라이프니쯔 회차별 산출 내역서 (대법원 표준 단리·복리 이율 5/1200)
                     </span>
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span className="text-xs text-slate-400 font-mono">
                       총 {plan.months}개월 변제계획
                     </span>
                   </div>
@@ -1343,7 +1343,7 @@ export default function RepaymentPlanEditor({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
                     {/* 1차 기간 */}
                     <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
-                      <span className="text-[11px] font-bold text-indigo-300">
+                      <span className="text-xs font-bold text-indigo-300">
                         1차 ({plan.presentValueBreakdown.stage1Months}개월)
                       </span>
                       <div className="font-mono text-white text-xs">
@@ -1357,7 +1357,7 @@ export default function RepaymentPlanEditor({
                     {/* 2차 기간 (존재할 경우) */}
                     {plan.presentValueBreakdown.stage2Months > 0 ? (
                       <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
-                        <span className="text-[11px] font-bold text-purple-300">
+                        <span className="text-xs font-bold text-purple-300">
                           2차 ({plan.presentValueBreakdown.stage2Months}개월)
                         </span>
                         <div className="font-mono text-white text-xs">
@@ -1375,13 +1375,13 @@ export default function RepaymentPlanEditor({
 
                     {/* 최종 합계 및 보장 여부 */}
                     <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs sm:col-span-2 lg:col-span-1">
-                      <span className="text-[11px] font-bold text-slate-300">
+                      <span className="text-xs font-bold text-slate-300">
                         라이프니쯔 현재가치 합계 (L)
                       </span>
                       <div className="text-base font-black text-white font-mono">
                         {plan.presentValueBreakdown.totalPresentValue.toLocaleString()}원
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-xs text-slate-400">
                         청산가치 보장: <span className={plan.satisfiesLiquidationGuarantee ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>
                           {plan.satisfiesLiquidationGuarantee ? '통과 (인가 적법)' : '부족 (인가 불허)'}
                         </span>
@@ -1439,13 +1439,13 @@ export default function RepaymentPlanEditor({
                         개인회생채권 변제예정액표 (채권자별 안분 상세)
                       </h3>
                       {plan.isSeoulPrincipalOnly && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                           원금 조기완제형 적용 (이자 제외 · {plan.months}회로 단축 · 관할 실무 확인 필요)
                         </span>
                       )}
                       {plan.isTwoStageRepayment && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                           2단계 분할 배분 적용됨 (1단계 1~{plan.stage1Months}회 / 2단계 {plan.stage1Months + 1}~{plan.months}회)
                         </span>
                       )}
@@ -1571,7 +1571,7 @@ export default function RepaymentPlanEditor({
                                 {isGuarantor && (
                                   <div className="flex items-center text-indigo-500 shrink-0 font-bold" title="보증인/보증기관">
                                     <CornerDownRight className="w-3.5 h-3.5 mr-0.5" />
-                                    <span className="text-[10px] bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
+                                    <span className="text-xs bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
                                   </div>
                                 )}
                                 <input
@@ -1586,7 +1586,7 @@ export default function RepaymentPlanEditor({
                                 <button
                                   type="button"
                                   onClick={() => setEditingAddressCreditor(c)}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border press-scale shrink-0 ${
+                                  className={`px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border press-scale shrink-0 ${
                                     c.address
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                       : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
@@ -1599,7 +1599,7 @@ export default function RepaymentPlanEditor({
                               </div>
 
                               {c.address && (
-                                <div className="text-[10px] text-slate-400 truncate max-w-xs" title={`${c.serviceAddress || c.address} (우: ${c.zipCode || '-'})`}>
+                                <div className="text-xs text-slate-400 truncate max-w-xs" title={`${c.serviceAddress || c.address} (우: ${c.zipCode || '-'})`}>
                                   📍 {c.serviceAddress || c.address}
                                 </div>
                               )}
@@ -1617,9 +1617,9 @@ export default function RepaymentPlanEditor({
                                 }
                                 className="w-20 px-2 py-1 text-xs text-right font-mono font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-500 focus:bg-white outline-none"
                               />
-                              <span className="text-[11px] font-bold text-slate-500">만원</span>
+                              <span className="text-xs font-bold text-slate-500">만원</span>
                             </div>
-                            <div className="text-[10px] text-slate-400 font-mono text-right mt-0.5">
+                            <div className="text-xs text-slate-400 font-mono text-right mt-0.5">
                               {c.principal.toLocaleString()}원
                             </div>
                           </td>
@@ -1635,7 +1635,7 @@ export default function RepaymentPlanEditor({
                                 }
                                 className="w-14 px-1.5 py-0.5 text-xs text-right font-mono text-slate-600 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-500 focus:bg-white outline-none"
                               />
-                              <span className="text-[10px] text-slate-400">만원</span>
+                              <span className="text-xs text-slate-400">만원</span>
                             </div>
                           </td>
 
@@ -1646,7 +1646,7 @@ export default function RepaymentPlanEditor({
                               <button
                                 type="button"
                                 onClick={() => handleToggleUnpaidInterest3Times(c.id)}
-                                className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer border flex items-center gap-1 ${
+                                className={`px-2 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border flex items-center gap-1 ${
                                   c.isUnpaidInterest3Times
                                     ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
                                     : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-600'
@@ -1661,7 +1661,7 @@ export default function RepaymentPlanEditor({
                               <button
                                 type="button"
                                 onClick={() => handleToggleCreditorFlag(c.id, 'isSecured')}
-                                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                                   c.isSecured
                                     ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
                                     : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-600'
@@ -1676,7 +1676,7 @@ export default function RepaymentPlanEditor({
                                 <button
                                   type="button"
                                   onClick={() => handleAddGuarantor(c.id)}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all flex items-center gap-1 cursor-pointer"
+                                  className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all flex items-center gap-1 cursor-pointer"
                                   title="클릭 시 하단에 가지번호(예: 4-1)가 매겨진 보증인 채권자 목록이 생성됩니다"
                                 >
                                   <Plus className="w-3 h-3" />
@@ -1688,7 +1688,7 @@ export default function RepaymentPlanEditor({
                               <button
                                 type="button"
                                 onClick={() => handleToggleCreditorFlag(c.id, 'isPriority')}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
+                                className={`px-1.5 py-0.5 rounded text-xs font-bold transition-all cursor-pointer border ${
                                   c.isPriority
                                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
                                     : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
@@ -1702,7 +1702,7 @@ export default function RepaymentPlanEditor({
                                 <button
                                   type="button"
                                   onClick={() => setSelectedSecuredCreditor(c)}
-                                  className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white hover:bg-rose-700 transition-all flex items-center gap-1 cursor-pointer"
+                                  className="px-2 py-0.5 rounded text-xs font-black bg-rose-600 text-white hover:bg-rose-700 transition-all flex items-center gap-1 cursor-pointer"
                                   title="담보평가액 대비 예정부족액 산출기"
                                 >
                                   <Calculator className="w-3 h-3" />
@@ -1726,7 +1726,7 @@ export default function RepaymentPlanEditor({
                                     handleUpdateCreditorField(c.id, 'annexDetail', defaultHint);
                                   }
                                 }}
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg border outline-none cursor-pointer transition-colors ${
+                                className={`text-xs font-bold px-1.5 py-0.5 rounded-lg border outline-none cursor-pointer transition-colors ${
                                   c.annexDocType && c.annexDocType !== 'NONE'
                                     ? ANNEX_DOC_CONFIG[c.annexDocType].badgeColor
                                     : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
@@ -1746,7 +1746,7 @@ export default function RepaymentPlanEditor({
                                   value={c.annexDetail || ''}
                                   onChange={(e) => handleUpdateCreditorField(c.id, 'annexDetail', e.target.value)}
                                   placeholder="부속서류 사유 요약 (예: 5년 상사시효 완성)"
-                                  className="text-[10px] px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700 outline-none focus:border-indigo-500 flex-1 min-w-[130px]"
+                                  className="text-xs px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700 outline-none focus:border-indigo-500 flex-1 min-w-[130px]"
                                   title="부속서류 소명 및 기재 사유"
                                 />
                               )}
@@ -1754,7 +1754,7 @@ export default function RepaymentPlanEditor({
 
                             {/* 별제권 예정부족액 산출 정보 안내 */}
                             {c.securedShortageInfo && (
-                              <div className="text-[10px] text-rose-700 bg-rose-50/70 px-2 py-0.5 rounded border border-rose-200 mt-1">
+                              <div className="text-xs text-rose-700 bg-rose-50/70 px-2 py-0.5 rounded border border-rose-200 mt-1">
                                 담보평가: {Math.round(c.securedShortageInfo.assessedCollateralValue / 10000).toLocaleString()}만원 ➔ 부족액: {Math.round(c.securedShortageInfo.calculatedShortage / 10000).toLocaleString()}만원 산입됨
                               </div>
                             )}
@@ -1776,7 +1776,7 @@ export default function RepaymentPlanEditor({
                               </td>
                               <td className="py-2 px-3 text-right font-mono font-bold bg-indigo-50/30 border-r border-indigo-100">
                                 {c.isPriority ? (
-                                  <span className="text-emerald-600 text-[11px] font-bold">
+                                  <span className="text-emerald-600 text-xs font-bold">
                                     0원 (1단계 완납)
                                   </span>
                                 ) : (
@@ -1797,7 +1797,7 @@ export default function RepaymentPlanEditor({
                                   }
                                   className="w-28 px-2 py-1 text-xs text-right font-mono font-bold text-slate-900 bg-purple-50/50 hover:bg-purple-50 border border-purple-200 rounded-lg focus:border-purple-600 focus:bg-white outline-none"
                                 />
-                                <span className="text-[11px] text-slate-500 font-bold">원</span>
+                                <span className="text-xs text-slate-500 font-bold">원</span>
                               </div>
                             </td>
                           )}
@@ -1854,7 +1854,7 @@ export default function RepaymentPlanEditor({
                                   <button
                                     type="button"
                                     onClick={() => setActiveMemoCreditorId(null)}
-                                    className="px-2.5 py-1 bg-indigo-600 text-white rounded text-[11px] font-bold cursor-pointer"
+                                    className="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs font-bold cursor-pointer"
                                   >
                                     확인
                                   </button>
@@ -1996,7 +1996,7 @@ export default function RepaymentPlanEditor({
                       채무 증대 사유 (중복 선택 가능)
                     </h3>
                   </div>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-xs text-slate-400">
                     선택: <strong className="text-blue-400 font-mono">{debtGrowthReasons.length}</strong>개
                   </span>
                 </div>
@@ -2030,7 +2030,7 @@ export default function RepaymentPlanEditor({
                           onChange={() => toggleDebtGrowthReason(reason)}
                           className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
                         />
-                        <span className="leading-tight text-[11px]">{reason}</span>
+                        <span className="leading-tight text-xs">{reason}</span>
                       </label>
                     );
                   })}
@@ -2038,7 +2038,7 @@ export default function RepaymentPlanEditor({
 
                 {/* 채무증대 사유에 관한 서술 */}
                 <div className="pt-2 space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 block">
+                  <label className="text-xs font-bold text-slate-300 block">
                     채무증대 사유에 관한 서술
                   </label>
                   <textarea
@@ -2060,7 +2060,7 @@ export default function RepaymentPlanEditor({
                       {(plan.totalPriorityDebt || 0).toLocaleString()}원
                     </span>
                   </div>
-                  <p className="text-[11px] text-amber-800/80 mt-1">
+                  <p className="text-xs text-amber-800/80 mt-1">
                     {plan.isTwoStageRepayment
                       ? `제1회차부터 제${plan.stage1Months}회차까지 전액 우선 변제 충당`
                       : '우선권 채권 2단계 분할 배분 모드를 권장합니다.'}
@@ -2074,7 +2074,7 @@ export default function RepaymentPlanEditor({
                       {(plan.totalUnconfirmedReserve || 0).toLocaleString()}원
                     </span>
                   </div>
-                  <p className="text-[11px] text-purple-800/80 mt-1">
+                  <p className="text-xs text-purple-800/80 mt-1">
                     {plan.totalUnconfirmedReserve && plan.totalUnconfirmedReserve > 0
                       ? `인가 확정 시까지 회생위원 공탁계좌에 매월 ${Math.round(plan.totalUnconfirmedReserve / plan.months).toLocaleString()}원 적립`
                       : '미확정 채권이 없습니다.'}
@@ -2088,7 +2088,7 @@ export default function RepaymentPlanEditor({
                       {(plan.monthlyRepaymentTotal - Math.round((plan.totalUnconfirmedReserve || 0) / plan.months)).toLocaleString()}원
                     </span>
                   </div>
-                  <p className="text-[11px] text-blue-800/80 mt-1">
+                  <p className="text-xs text-blue-800/80 mt-1">
                     전체 가용소득 중 공탁 유보금을 제외하고 채권자들에게 즉시 배당되는 월 총액
                   </p>
                 </div>
@@ -2138,7 +2138,7 @@ export default function RepaymentPlanEditor({
                   <h4 className="text-xs font-black text-amber-950">
                     대법원 공식 [전산양식 D5103] 수입 및 지출에 관한 목록 정밀 에디터
                   </h4>
-                  <p className="text-[11px] text-amber-800 mt-0.5">
+                  <p className="text-xs text-amber-800 mt-0.5">
                     급여·상여금·세금공제 상세, 피부양자 동거 가족관계 명세를 정밀 편집하고 법원 제출용 A4 서식을 즉시 출력할 수 있습니다.
                   </p>
                 </div>
@@ -2182,7 +2182,7 @@ export default function RepaymentPlanEditor({
                   }
                   className="w-full px-3 py-2 text-xs font-mono font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none"
                 />
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   맞벌이 공동부양 시 0.5인 적용 (예: 2.5인)
                 </span>
               </div>
@@ -2217,7 +2217,7 @@ export default function RepaymentPlanEditor({
                   }
                   className="w-full px-3 py-2 text-xs font-mono text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none"
                 />
-                <span className="text-[11px] text-blue-600 font-semibold">
+                <span className="text-xs text-blue-600 font-semibold">
                   추가 주거비 인정액: {plan.calculatedLiving.additionalHousingDeduction.toLocaleString()}원
                 </span>
               </div>
@@ -2285,7 +2285,7 @@ export default function RepaymentPlanEditor({
                   <h3 className="text-sm font-black text-slate-900">
                     재산 목록 및 청산가치 산정표
                   </h3>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
                     실무자 직접 수정 가능
                   </span>
                 </div>
@@ -2322,7 +2322,7 @@ export default function RepaymentPlanEditor({
                   <h4 className="text-xs font-black text-indigo-950">
                     대법원 공식 [전산양식 D5102] 재산목록 & 11대 자산 가치 산정 허브
                   </h4>
-                  <p className="text-[11px] text-indigo-800 mt-0.5">
+                  <p className="text-xs text-indigo-800 mt-0.5">
                     KB부동산 시세, 공시가격 130% 공식, 엔카/보험개발원 중고차 시세, 2026 소액임차보증금 공제를 적용하여 청산가치를 원클릭으로 동기화합니다.
                   </p>
                 </div>
@@ -2382,7 +2382,7 @@ export default function RepaymentPlanEditor({
                           placeholder="항목명 입력"
                         />
                         {a.category === 'RETIREMENT' && (
-                          <label className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
+                          <label className="mt-1 flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={!!a.isRetirementPension}
@@ -2461,26 +2461,26 @@ export default function RepaymentPlanEditor({
             {/* 법정 공제 기준 안내 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-slate-600 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
               <div className="space-y-1">
-                <span className="font-bold text-slate-900 text-[11px]">💰 예금 압류금지 공제</span>
-                <p className="text-[11px] text-slate-500 leading-snug">
+                <span className="font-bold text-slate-900 text-xs">💰 예금 압류금지 공제</span>
+                <p className="text-xs text-slate-500 leading-snug">
                   민사집행법 제246조에 따라 금융기관별 개인 예금 총 185만 원까지 공제
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="font-bold text-slate-900 text-[11px]">🛡️ 보장성보험 환급금 공제</span>
-                <p className="text-[11px] text-slate-500 leading-snug">
+                <span className="font-bold text-slate-900 text-xs">🛡️ 보장성보험 환급금 공제</span>
+                <p className="text-xs text-slate-500 leading-snug">
                   보장성 보험 해약환급금 중 150만 원 한도 내 면제재산 자동 공제
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="font-bold text-slate-900 text-[11px]">🏠 소액임차보증금 공제</span>
-                <p className="text-[11px] text-slate-500 leading-snug">
+                <span className="font-bold text-slate-900 text-xs">🏠 소액임차보증금 공제</span>
+                <p className="text-xs text-slate-500 leading-snug">
                   주택임대차보호법상 서울 5,500만 / 과밀 4,800만 / 광역시 2,800만 공제
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="font-bold text-slate-900 text-[11px]">🏢 퇴직금 / 가산재산</span>
-                <p className="text-[11px] text-slate-500 leading-snug">
+                <span className="font-bold text-slate-900 text-xs">🏢 퇴직금 / 가산재산</span>
+                <p className="text-xs text-slate-500 leading-snug">
                   일반퇴직금은 50% 반영, IRP 등 퇴직연금은 0원. 주식·코인 손실액은 전액 합산
                 </p>
               </div>

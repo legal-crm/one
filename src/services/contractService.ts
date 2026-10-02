@@ -617,15 +617,33 @@ export function calculateCourtCosts(
   creditorCount: number,
   debtCertUnitFee: number = 15000,
   deliveryUnitFee: number = DELIVERY_UNIT_FEE_KRW,
-  baseStampFee: number = 30000
+  baseStampFee?: number,
+  options?: {
+    caseType?: 'rehab' | 'bankruptcy';
+    withProhibition?: boolean;
+    withStay?: boolean;
+    electronic?: boolean;
+  }
 ): { deliveryFee: number; stampFee: number; debtCertFee: number; total: number; courtOnlyTotal: number } {
-  // 송달료: 퀵독 비용 계산기와 같은 회생 예납 산식 (기본 10회 + 채권자수 × 8회) × 1회분 단가
-  //  (이전: 채권자수 × 1회분만 계산해 실제 예납액보다 크게 적게 안내됨)
-  const deliveryFee = creditorCount > 0
-    ? calcCourtFees({ caseType: 'rehab', creditorCount, deliveryUnitFee }).deliveryFee
-    : 0;
-  const stampFee = baseStampFee; // 2026년 기준 인지대 (30,000원 기본, 전자소송 27,000원 등 수정 가능)
-  const debtCertFee = creditorCount * debtCertUnitFee; // 부채증명서 발급 대행비 (채권자당 기본 15,000원, 수정 가능)
+  // 공통 법원비용 산식(courtFees.ts)으로 완전 단일화: 전자소송(10% 인지 감액) 및 회생 시 금지명령 기본 동시신청 적용
+  // (이전: 금지명령 누락 및 30,000원 고정값으로 Stage2 화면과 불일치하던 문제 해결)
+  const caseType = options?.caseType || 'rehab';
+  const withProhibition = options?.withProhibition ?? (caseType === 'rehab');
+  const withStay = options?.withStay ?? false;
+  const electronic = options?.electronic ?? true;
+
+  const feeCalc = calcCourtFees({
+    caseType,
+    creditorCount,
+    deliveryUnitFee,
+    withProhibition,
+    withStay,
+    electronic,
+  });
+
+  const deliveryFee = creditorCount > 0 ? feeCalc.deliveryFee : 0;
+  const stampFee = baseStampFee !== undefined ? baseStampFee : feeCalc.stampFee;
+  const debtCertFee = creditorCount * debtCertUnitFee;
   const courtOnlyTotal = deliveryFee + stampFee;
   return { 
     deliveryFee, 

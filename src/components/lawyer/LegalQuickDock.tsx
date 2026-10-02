@@ -12,6 +12,7 @@ import { getToolIcon } from './quickdock/toolIcons';
 import { useDraggableDock } from './quickdock/useDraggableDock';
 import ToolCustomizerModal from './quickdock/ToolCustomizerModal';
 import FloatingToolWindow from './quickdock/FloatingToolWindow';
+import { getDockCaseHandlers, getDockShared } from './quickdock/dockShared';
 
 interface LegalQuickDockProps {
   onOpenAlimtok?: () => void;
@@ -56,9 +57,9 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
    */
   const [windowOpenSignal, setWindowOpenSignal] = useState(0);
   const [enabledToolIds, setEnabledToolIds] = useState<QuickToolId[]>(DEFAULT_ENABLED_TOOL_IDS);
-  const [visibilityMode, setVisibilityMode] = useState<DockVisibilityMode>('normal');
+  const [visibilityMode, setVisibilityMode] = useState<DockVisibilityMode>('minimized');
   const [query, setQuery] = useState('');
-  const visibilityRef = useRef<DockVisibilityMode>('normal');
+  const visibilityRef = useRef<DockVisibilityMode>('minimized');
   visibilityRef.current = visibilityMode;
   const dockRef = useRef<HTMLDivElement>(null);
   const dockBtnRef = useRef<HTMLButtonElement>(null);
@@ -83,6 +84,8 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
       const savedVis = localStorage.getItem(STORAGE_VISIBILITY_KEY);
       if (savedVis === 'normal' || savedVis === 'minimized' || savedVis === 'hidden') {
         setVisibilityMode(savedVis);
+      } else {
+        setVisibilityMode('minimized');
       }
 
       const saved = localStorage.getItem(STORAGE_TOOLS_KEY);
@@ -209,7 +212,12 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
     if (targetTool.isActionOnly) {
       setIsMenuOpen(false);
       if (id === 'alimtok') {
-        if (onOpenAlimtok) {
+        const shared = getDockShared();
+        const handlers = getDockCaseHandlers();
+        if (shared.caseContext && handlers?.onOpenAlimtok) {
+          handlers.onOpenAlimtok(shared.caseContext.caseId);
+          toast.info(`${shared.caseContext.clientName} 님 사건 알림톡 발송으로 이동합니다.`);
+        } else if (onOpenAlimtok) {
           onOpenAlimtok();
         } else {
           toast.info('알림톡 발송 센터로 이동합니다.');
@@ -306,25 +314,25 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
         type="button"
         data-tool-item
         onClick={() => handleSelectTool(tool.id)}
-        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold hover:bg-white/10 focus:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 hover:text-white transition-all cursor-pointer group press-scale"
+        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold hover:bg-slate-100 focus:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A5F]/30 hover:text-slate-900 transition-all cursor-pointer group press-scale"
       >
         <div className={`w-7 h-7 rounded-lg ${tool.colorClass.bg} ${tool.colorClass.text} flex items-center justify-center shrink-0 ${tool.colorClass.hoverBg} group-hover:text-white transition-colors`}>
           <IconComponent className="w-4 h-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className="font-bold text-slate-200 group-hover:text-white leading-tight truncate">
+            <p className="font-bold text-slate-800 group-hover:text-slate-900 leading-tight truncate">
               {tool.title}
             </p>
             {!isEnabled ? (
-              <span className="text-[9px] bg-slate-700 text-slate-200 px-1 py-0.5 rounded shrink-0" title="선택하면 퀵툴 목록에 추가하고 엽니다">꺼짐 · 추가</span>
+              <span className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-1 py-0.5 rounded shrink-0" title="선택하면 퀵툴 목록에 추가하고 엽니다">꺼짐 · 추가</span>
             ) : tool.badge ? (
-              <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded shrink-0">
+              <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-1 py-0.5 rounded shrink-0">
                 {tool.badge}
               </span>
             ) : null}
           </div>
-          <p className="text-[11px] text-slate-400 leading-tight truncate">
+          <p className="text-[12px] text-slate-500 leading-tight truncate">
             {tool.subtitle}
           </p>
         </div>
@@ -345,7 +353,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
           title="실무 퀵툴 다시 켜기"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" aria-hidden="true" />
-          <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">퀵툴 켜기</span>
+          <span className="text-xs font-semibold text-slate-300 group-hover:text-white">퀵툴 켜기</span>
         </button>
       )}
 
@@ -363,19 +371,16 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
           <button
             type="button"
             onClick={() => handleSetVisibility('normal')}
-            className={`flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-[#2563EB] text-white shadow-2xl border border-blue-400/40 cursor-pointer transition-all hover:brightness-110 active:scale-95 ${
+            className={`flex items-center gap-1.5 px-3 py-2 bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-xl border border-slate-700/30 cursor-pointer transition-all active:scale-95 ${
               isDockOnLeft
                 ? 'rounded-r-2xl border-l-0 pl-3 hover:pl-4'
                 : 'rounded-l-2xl border-r-0 pr-3 hover:pr-4'
             }`}
             title="클릭하여 퀵툴 펼치기"
           >
-            <div className="relative">
-              <Calculator className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
-              <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <span className="text-xs font-extrabold tracking-tight">실무 퀵툴</span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-bold">
+            <Calculator className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
+            <span className="text-xs font-bold tracking-tight">실무 퀵툴</span>
+            <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-bold">
               {enabledToolCount}
             </span>
           </button>
@@ -403,19 +408,19 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
               style={{ left: `${menuLeftOffset}px`, width: `${menuWidth}px` }}
               className={`absolute ${
                 isUpperHalf ? 'top-full mt-2' : 'bottom-full mb-2'
-              } bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl p-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-100`}
+              } bg-white/98 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl p-2.5 animate-in fade-in zoom-in-95 duration-150 text-slate-800`}
             >
               {/* 팝오버 헤더 */}
-              <div className="flex items-center justify-between px-2 py-1.5 border-b border-slate-800 text-xs font-bold text-slate-400">
-                <span className="flex items-center gap-1.5 text-blue-300">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+              <div className="flex items-center justify-between px-2 py-1.5 border-b border-slate-100 text-xs font-bold text-slate-700">
+                <span className="flex items-center gap-1.5 text-[#1E3A5F]">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
                   리걸 실무 퀵툴
                 </span>
                 <div className="flex items-center gap-0.5">
                   <button
                     type="button"
                     onClick={() => handleSetVisibility('minimized')}
-                    className="p-1 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer text-slate-400"
+                    className="p-1 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer text-slate-400"
                     title="가장자리로 얇게 접기"
                     aria-label="가장자리로 접기"
                   >
@@ -424,7 +429,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   <button
                     type="button"
                     onClick={() => handleSetVisibility('hidden')}
-                    className="p-1 hover:text-amber-300 rounded hover:bg-slate-800 transition-colors cursor-pointer text-slate-400"
+                    className="p-1 hover:text-amber-600 rounded hover:bg-slate-100 transition-colors cursor-pointer text-slate-400"
                     title="퀵툴 끄기 / 숨기기"
                     aria-label="퀵툴 숨기기"
                   >
@@ -436,7 +441,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                       setIsMenuOpen(false);
                       setIsCustomizerOpen(true);
                     }}
-                    className="p-1 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer text-slate-400"
+                    className="p-1 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer text-slate-400"
                     title="도구 추가 / 삭제 및 설정"
                     aria-label="도구 추가·삭제 설정"
                   >
@@ -445,7 +450,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   <button
                     type="button"
                     onClick={() => setIsMenuOpen(false)}
-                    className="p-1 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer text-slate-400"
+                    className="p-1 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer text-slate-400"
                     title="메뉴 닫기"
                     aria-label="메뉴 닫기"
                   >
@@ -465,7 +470,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   onKeyDown={handleSearchKeyDown}
                   placeholder="도구 검색 (예: 보정, 청산, 압류)"
                   aria-label="퀵툴 도구 검색"
-                  className="w-full pl-8 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-medium text-white placeholder:text-slate-400 select-text focus:outline-none focus:ring-2 focus:ring-blue-400/60"
+                  className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 select-text focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30 focus:border-[#1E3A5F]"
                 />
               </div>
 
@@ -481,17 +486,17 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   ) : (
                     <div className="px-3 py-5 text-center space-y-2">
                       <Search className="w-5 h-5 mx-auto text-slate-400" aria-hidden="true" />
-                      <p className="text-xs font-bold text-slate-200">‘{trimmedQuery}’와 일치하는 도구가 없습니다.</p>
-                      <p className="text-[11px] text-slate-400">다른 검색어를 쓰거나 전체 도구 목록에서 찾아보세요.</p>
+                      <p className="text-xs font-bold text-slate-800">‘{trimmedQuery}’와 일치하는 도구가 없습니다.</p>
+                      <p className="text-[12px] text-slate-500">다른 검색어를 쓰거나 전체 도구 목록에서 찾아보세요.</p>
                       <button
                         type="button"
                         onClick={() => {
                           setIsMenuOpen(false);
                           setIsCustomizerOpen(true);
                         }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold cursor-pointer press-scale whitespace-nowrap"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#1E3A5F] hover:bg-[#163152] text-white text-[12px] font-bold cursor-pointer press-scale whitespace-nowrap"
                       >
-                        <Settings2 className="w-3 h-3" aria-hidden="true" />
+                        <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
                         전체 도구 보기
                       </button>
                     </div>
@@ -502,7 +507,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                     if (tools.length === 0) return null;
                     return (
                       <div key={cat} className="pb-1">
-                        <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-bold text-slate-400 tracking-wide">
+                        <p className="px-3 pt-1.5 pb-0.5 text-xs font-bold text-slate-400 tracking-wide">
                           {CATEGORY_LABELS[cat]}
                         </p>
                         {tools.map(renderToolItem)}
@@ -513,24 +518,24 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
               </div>
 
               {/* 하단 관리 바 (기능 추가/삭제 바로가기, 숨기기 & 위치 복원) */}
-              <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between px-1 text-[11px]">
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between px-1 text-xs">
                 <button
                   type="button"
                   onClick={() => {
                     setIsMenuOpen(false);
                     setIsCustomizerOpen(true);
                   }}
-                  className="flex items-center gap-1 text-blue-300 hover:text-blue-200 font-bold transition-colors cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-1 text-[#1E3A5F] hover:text-[#163152] font-bold transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <Settings2 className="w-3 h-3" aria-hidden="true" />
-                  <span>기능 추가 / 삭제 ({enabledToolIds.length})</span>
+                  <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>기능 설정 ({enabledToolIds.length})</span>
                 </button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleSetVisibility('hidden')}
-                    className="flex items-center gap-1 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer whitespace-nowrap"
+                    className="flex items-center gap-1 text-slate-500 hover:text-amber-600 transition-colors cursor-pointer whitespace-nowrap"
                     title="퀵툴 끄기"
                   >
                     <EyeOff className="w-3 h-3" aria-hidden="true" />
@@ -540,7 +545,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
                   <button
                     type="button"
                     onClick={resetPosition}
-                    className="flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer whitespace-nowrap"
+                    className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer whitespace-nowrap"
                     title="버튼을 기본 위치(우측 하단)로 이동"
                   >
                     <RotateCcw className="w-3 h-3" aria-hidden="true" />
@@ -562,12 +567,12 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
             onClick={handleButtonClick}
             aria-label={`실무 퀵툴 메뉴 (도구 ${enabledToolCount}개)`}
             aria-expanded={isMenuOpen}
-            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold shadow-2xl transition-all press-scale cursor-grab active:cursor-grabbing ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold shadow-xl transition-all press-scale cursor-grab active:cursor-grabbing ${
               isDragging
-                ? 'scale-105 ring-2 ring-blue-400 shadow-blue-500/30'
+                ? 'scale-105 ring-2 ring-[#1E3A5F] shadow-blue-500/20'
                 : isMenuOpen
                 ? 'bg-slate-800 text-white border border-slate-700'
-                : 'bg-gradient-to-r from-[#1E3A5F] to-[#2563EB] text-white hover:shadow-blue-500/30 shadow-lg'
+                : 'bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-lg'
             }`}
             title="드래그하여 원하는 위치로 이동하세요 (클릭 시 메뉴 열기)"
           >
@@ -576,10 +581,9 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
 
             <div className="relative">
               <Calculator className="w-4 h-4 text-amber-300" aria-hidden="true" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#1E3A5F] animate-pulse" />
             </div>
             <span className="text-xs tracking-tight font-black hidden sm:inline">실무 퀵툴</span>
-            <span className="text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-extrabold text-white">
+            <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full font-mono font-extrabold text-white">
               {enabledToolCount}
             </span>
           </button>

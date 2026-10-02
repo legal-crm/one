@@ -406,11 +406,11 @@ export default function BankruptcyManagementTab({
                   개인파산 및 면책 동시신청 관리 센터
                 </h3>
                 {isSimultaneousDismissalEligible ? (
-                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-300" title="동시폐지 여부는 법원이 결정합니다(채무자회생법 제317조). 관재인 선임 여부는 관할 실무에 따라 다릅니다.">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-300" title="동시폐지 여부는 법원이 결정합니다(채무자회생법 제317조). 관재인 선임 여부는 관할 실무에 따라 다릅니다.">
                     입력된 환가 대상 재산 0원 (동시폐지·관재 여부는 법원 판단)
                   </span>
                 ) : (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
                     ⚠️ 환가대상 재산 {totalLiquidationEstate.toLocaleString()}원 존재
                   </span>
                 )}
@@ -574,7 +574,7 @@ export default function BankruptcyManagementTab({
                   <span className="font-bold text-slate-700 flex items-center gap-1.5">
                     <span>📱</span> 의뢰인 작성 원본 진술 (모바일/상담)
                   </span>
-                  <span className="text-[10px] text-slate-400">의뢰인 입력분</span>
+                  <span className="text-xs text-slate-400">의뢰인 입력분</span>
                 </div>
                 <textarea 
                   value={statement.debtorStoryRaw || ''} 
@@ -590,7 +590,7 @@ export default function BankruptcyManagementTab({
                   <span className="font-bold text-purple-900 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-purple-600" /> 법률적 진술문 (변호사 감수·완성본)
                   </span>
-                  <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-md">
                     법원 제출 반영
                   </span>
                 </div>
@@ -713,7 +713,7 @@ export default function BankruptcyManagementTab({
                       {isChecked ? '✓' : ''}
                     </span>
                   </div>
-                  <p className={`text-[11px] mt-1 ${isChecked ? 'text-rose-700 font-medium' : 'text-slate-500'}`}>
+                  <p className={`text-xs mt-1 ${isChecked ? 'text-rose-700 font-medium' : 'text-slate-500'}`}>
                     {item.hint}
                   </p>
                 </div>
@@ -781,7 +781,7 @@ export default function BankruptcyManagementTab({
                             } : item));
                             toast.success(`'${preset.officialName}' 공식 송달주소가 적용되었습니다!`);
                           }}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer press-scale"
+                          className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer press-scale"
                           title="공식 법인명, 우편번호, 주소, 송달장소 원클릭 자동채우기"
                         >
                           <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
@@ -791,17 +791,17 @@ export default function BankruptcyManagementTab({
                     })()}
 
                     {c.isNonDischargeable ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300">
                         🚫 비면책 채권
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
                         면책 대상
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                       <input 
                         type="checkbox" 
                         checked={c.isNonDischargeable} 
@@ -880,22 +880,22 @@ export default function BankruptcyManagementTab({
                 </div>
 
                 {/* ── 법원 송달주소 및 대표자 정보 ── */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-[11px]">
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
                   <div className="flex items-center justify-between text-slate-700 font-bold">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-indigo-600" />
                       <span>법원 송달주소 및 법인정보 (송달불능 방지 필수)</span>
                     </span>
                     {c.address ? (
-                      <span className="text-[10px] text-emerald-600 font-bold">✓ 주소 등록됨</span>
+                      <span className="text-xs text-emerald-600 font-bold">✓ 주소 등록됨</span>
                     ) : (
-                      <span className="text-[10px] text-amber-600 font-bold">⚠️ 주소 미입력 (송달불능 위험)</span>
+                      <span className="text-xs text-amber-600 font-bold">⚠️ 주소 미입력 (송달불능 위험)</span>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <label className="text-slate-500 block mb-0.5 text-[10px]">우편번호</label>
+                      <label className="text-slate-500 block mb-0.5 text-xs">우편번호</label>
                       <input
                         type="text"
                         placeholder="예: 07331"
@@ -908,7 +908,7 @@ export default function BankruptcyManagementTab({
                       />
                     </div>
                     <div>
-                      <label className="text-slate-500 block mb-0.5 text-[10px]">대표자</label>
+                      <label className="text-slate-500 block mb-0.5 text-xs">대표자</label>
                       <input
                         type="text"
                         placeholder="예: 대표이사 OOO"
@@ -921,7 +921,7 @@ export default function BankruptcyManagementTab({
                       />
                     </div>
                     <div>
-                      <label className="text-slate-500 block mb-0.5 text-[10px]">사업자/법인번호</label>
+                      <label className="text-slate-500 block mb-0.5 text-xs">사업자/법인번호</label>
                       <input
                         type="text"
                         placeholder="예: 201-81-47789"
@@ -937,7 +937,7 @@ export default function BankruptcyManagementTab({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="text-slate-500 block mb-0.5 text-[10px]">본점 주소 / 주민등록지</label>
+                      <label className="text-slate-500 block mb-0.5 text-xs">본점 주소 / 주민등록지</label>
                       <input
                         type="text"
                         placeholder="예: 서울특별시 영등포구 의사당대로 141 (여의도동)"
@@ -950,7 +950,7 @@ export default function BankruptcyManagementTab({
                       />
                     </div>
                     <div>
-                      <label className="text-slate-500 block mb-0.5 text-[10px]">법원 우편물 송달장소</label>
+                      <label className="text-slate-500 block mb-0.5 text-xs">법원 우편물 송달장소</label>
                       <input
                         type="text"
                         placeholder="미입력 시 본점 주소로 송달"
@@ -998,7 +998,7 @@ export default function BankruptcyManagementTab({
                             lawsuitInfo: { ...item.lawsuitInfo, hasLawsuit: true, lawsuitType: val }
                           } : item));
                         }}
-                        className="bg-slate-50 border border-slate-200 rounded-lg p-1 text-[11px] font-bold"
+                        className="bg-slate-50 border border-slate-200 rounded-lg p-1 text-xs font-bold"
                       >
                         <option value="PAYMENT_ORDER">지급명령</option>
                         <option value="LOAN_LAWSUIT">대여금청구 소송</option>
@@ -1018,7 +1018,7 @@ export default function BankruptcyManagementTab({
                             lawsuitInfo: { ...item.lawsuitInfo, hasLawsuit: true, courtName: val }
                           } : item));
                         }}
-                        className="border border-slate-200 rounded-lg px-2 py-1 text-[11px] w-28"
+                        className="border border-slate-200 rounded-lg px-2 py-1 text-xs w-28"
                       />
                       <input 
                         type="text" 
@@ -1031,7 +1031,7 @@ export default function BankruptcyManagementTab({
                             lawsuitInfo: { ...item.lawsuitInfo, hasLawsuit: true, caseNumber: val }
                           } : item));
                         }}
-                        className="border border-slate-200 rounded-lg px-2 py-1 text-[11px] w-32"
+                        className="border border-slate-200 rounded-lg px-2 py-1 text-xs w-32"
                       />
                     </div>
                   )}
@@ -1063,12 +1063,12 @@ export default function BankruptcyManagementTab({
               <button
                 type="button"
                 onClick={handleAddAsset}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3 h-3" /> 재산 추가
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">면제·공제액은 면제재산 결정(제383조)·압류금지 기준에 따라 직접 입력하세요. 금액 기준은 시행령 개정에 따라 바뀔 수 있습니다.</p>
+            <p className="text-xs text-slate-500">면제·공제액은 면제재산 결정(제383조)·압류금지 기준에 따라 직접 입력하세요. 금액 기준은 시행령 개정에 따라 바뀔 수 있습니다.</p>
             <div className="space-y-2">
               {assets.length === 0 && (
                 <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">입력된 재산이 없습니다.</div>
@@ -1111,11 +1111,11 @@ export default function BankruptcyManagementTab({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-xs text-slate-900">① 지급불능 1년 전부터 현재까지 처분한 재산</span>
-                  <p className="text-[11px] text-slate-500">부동산, 차량, 회원권 등을 매각한 경우 대금의 구체적 사용처를 소명해야 합니다.</p>
+                  <p className="text-xs text-slate-500">부동산, 차량, 회원권 등을 매각한 경우 대금의 구체적 사용처를 소명해야 합니다.</p>
                 </div>
                 <button
                   onClick={handleAddDisposedAsset}
-                  className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3 h-3" /> 처분재산 추가
                 </button>
@@ -1200,7 +1200,7 @@ export default function BankruptcyManagementTab({
                           disposedAssets1Year: prev.disposedAssets1Year.map(x => x.id === disp.id ? { ...x, usageDetail: val } : x)
                         }));
                       }}
-                      className="w-full border border-slate-200 rounded-lg p-1.5 text-[11px]"
+                      className="w-full border border-slate-200 rounded-lg p-1.5 text-xs"
                     />
                   </div>
                 ))
@@ -1212,11 +1212,11 @@ export default function BankruptcyManagementTab({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-xs text-slate-900">② 최근 2년간 종료된 임대차계약의 반환 보증금</span>
-                  <p className="text-[11px] text-slate-500">종전 거주지에서 돌려받은 보증금의 사용처를 관재인에게 소명합니다.</p>
+                  <p className="text-xs text-slate-500">종전 거주지에서 돌려받은 보증금의 사용처를 관재인에게 소명합니다.</p>
                 </div>
                 <button
                   onClick={handleAddReturnedDeposit}
-                  className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3 h-3" /> 반환보증금 추가
                 </button>
@@ -1288,7 +1288,7 @@ export default function BankruptcyManagementTab({
                           returnedDeposits2Years: prev.returnedDeposits2Years.map(x => x.id === ret.id ? { ...x, usageDetail: val } : x)
                         }));
                       }}
-                      className="w-full border border-slate-200 rounded-lg p-1.5 text-[11px]"
+                      className="w-full border border-slate-200 rounded-lg p-1.5 text-xs"
                     />
                   </div>
                 ))
@@ -1300,7 +1300,7 @@ export default function BankruptcyManagementTab({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-xs text-slate-900">③ 최근 2년 이내 이혼에 따른 재산분할 내역</span>
-                  <p className="text-[11px] text-slate-500">위장이혼을 통한 재산은닉 또는 과도한 재산포기 여부를 조사합니다.</p>
+                  <p className="text-xs text-slate-500">위장이혼을 통한 재산은닉 또는 과도한 재산포기 여부를 조사합니다.</p>
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                   <input 
@@ -1368,7 +1368,7 @@ export default function BankruptcyManagementTab({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-xs text-slate-900">④ 친족 사망에 따른 상속재산 (상속포기/협의분할 추적)</span>
-                  <p className="text-[11px] text-slate-500">상속지분 협의분할 포기는 파산관재인의 부인권(사해행위 취소) 단골 대상입니다.</p>
+                  <p className="text-xs text-slate-500">상속지분 협의분할 포기는 파산관재인의 부인권(사해행위 취소) 단골 대상입니다.</p>
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                   <input 
@@ -1440,7 +1440,7 @@ export default function BankruptcyManagementTab({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-xs text-slate-900">⑤ 예상 퇴직금 및 1/2 압류금지 산정</span>
-                  <p className="text-[11px] text-slate-500">민사집행법 제246조에 따라 퇴직금의 1/2은 압류금지되며 잔여액만 환가대상에 산입됩니다.</p>
+                  <p className="text-xs text-slate-500">민사집행법 제246조에 따라 퇴직금의 1/2은 압류금지되며 잔여액만 환가대상에 산입됩니다.</p>
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                   <input 
@@ -1745,7 +1745,7 @@ export default function BankruptcyManagementTab({
                       <span className="font-mono font-bold text-purple-600 w-6">#{d.itemNumber}</span>
                       <div>
                         <span className="font-bold text-slate-800">{d.title}</span>
-                        <span className="text-[11px] text-slate-500 ml-2">({d.detailDescription})</span>
+                        <span className="text-xs text-slate-500 ml-2">({d.detailDescription})</span>
                       </div>
                     </div>
 
@@ -1787,7 +1787,7 @@ export default function BankruptcyManagementTab({
                   {d.status === 'UNOBTAINABLE' && (
                     <div className="pt-2 border-t border-slate-200">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-amber-800 shrink-0">
+                        <span className="text-xs font-bold text-amber-800 shrink-0">
                           ⚠️ 제출 못하거나 일부만 제출한 사유:
                         </span>
                         <input 

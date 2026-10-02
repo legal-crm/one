@@ -25,6 +25,8 @@ interface Stage1ConsultationViewProps {
   onOpenProposalDraft?: () => void;
   onNavigateToChat?: () => void;
   onSimulateContactShare?: () => void;
+  activeSection?: string;
+  onSelectSection?: (section: string) => void;
 }
 
 export default function Stage1ConsultationView({
@@ -37,6 +39,8 @@ export default function Stage1ConsultationView({
   onOpenProposalDraft,
   onNavigateToChat,
   onSimulateContactShare,
+  activeSection,
+  onSelectSection,
 }: Stage1ConsultationViewProps) {
   const fp = clientRequest.financialProfile || {};
   const debtTotal = fp.debtTotal || (clientRequest as any)?.totalDebt || 0; // 만원
@@ -117,6 +121,8 @@ export default function Stage1ConsultationView({
 
   // 아코디언 섹션 토글
   const [openSection, setOpenSection] = useState<'qualification' | 'article595' | 'casetype'>('qualification');
+  // 수임계약 완료 상태에서 제안 조건 열람/수정 펼침 토글
+  const [showCompletedProposalDetails, setShowCompletedProposalDetails] = useState(false);
 
   const dialog = useDialog();
   const allConditionsMet = debtCheckPassed && incomeCheckPassed && article595Passed && caseTypeConfirmed;
@@ -146,7 +152,7 @@ export default function Stage1ConsultationView({
       emoji: '⚖️',
       linkTab: 'diagnosis',
     });
-    toast.success(`${isBankruptcy ? '개인파산' : '개인회생'} 적격성 검토가 완료되었습니다. [Gate 1 통과]`);
+    toast.success(`${isBankruptcy ? '개인파산' : '개인회생'} 적격성 검토가 완료되었습니다. [적격 요건 충족]`);
   };
 
   // 적격 안내 알림톡 전송
@@ -161,38 +167,224 @@ export default function Stage1ConsultationView({
     toast.success(`${clientRequest.clientName}님 앱에 적격 판정 안내 알림을 등록했습니다.`);
   };
 
+  // 현재 선택된 섹션 (기본값: eligibility)
+  const currentSection = activeSection || 'eligibility';
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ── Next Action Hero Card (제안서 게이팅 동적 카드) ── */}
-      {isAnonymousPhase ? (
-        // [Phase 1: 제안서 미발송 상태 - 제안서 작성 단독 강제]
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="p-3 rounded-xl shrink-0 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
-                <Sparkles className="w-6 h-6 animate-pulse" />
+      {/* ── [Section: summary] 상담 요약 및 신청 사연 ── */}
+      {(currentSection === 'summary' || currentSection === 'all') && (
+        <div className="space-y-5 animate-fadeIn">
+          {/* 사연 요약 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[#1E3A5F] text-white shadow-xs">
+                  <FileText className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    의뢰인 상담 신청 사연 및 상담 요약
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    신청인이 제출한 부채 발생 경위 및 주요 상담 내역입니다.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
-              </h3>
+              <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
+                {stealthName} ({clientRequest.clientType === 'individual' ? '개인' : '영업/사업자'})
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* 사연 내용 */}
+            <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/90 text-slate-800 leading-relaxed text-[13px] whitespace-pre-wrap min-h-[90px]">
+              {clientRequest.summary || clientRequest.story || (clientRequest as any)?.content || (
+                <span className="text-slate-400 italic">
+                  작성된 상담 사연이 없습니다. 우측 소통창 또는 상담 메모를 통해 사연을 기록해 주세요.
+                </span>
+              )}
+            </div>
+
+            {/* 재무·가계 핵심 프로필 4열 요약 타일 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <span className="text-slate-400 block text-xs">총 채무액</span>
+                <span className="text-base font-bold text-slate-900 mt-0.5 block font-mono">
+                  {debtTotal.toLocaleString()}만원
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <span className="text-slate-400 block text-xs">월 평균 소득</span>
+                <span className="text-base font-bold text-blue-600 mt-0.5 block font-mono">
+                  {income.toLocaleString()}만원
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <span className="text-slate-400 block text-xs">보유 자산 (청산가치)</span>
+                <span className="text-base font-bold text-slate-700 mt-0.5 block font-mono">
+                  {assetsTotal.toLocaleString()}만원
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <span className="text-slate-400 block text-xs">가구원 및 부양가족</span>
+                <span className="text-base font-bold text-slate-700 mt-0.5 block font-mono">
+                  {householdSize}인 가구 ({dependents > 0 ? `부양 ${dependents}인` : '단독'})
+                </span>
+              </div>
+            </div>
+
+            {/* 빠른 액션 버튼 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              {onSelectSection && (
+                <button
+                  type="button"
+                  onClick={() => onSelectSection('eligibility')}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                >
+                  <Scale className="w-3.5 h-3.5 text-[#1E3A5F]" />
+                  <span>적격 검토 계기판 보기</span>
+                </button>
+              )}
               {onOpenProposalDraft && (
                 <button
                   type="button"
                   onClick={onOpenProposalDraft}
-                  className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 press-scale cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>제안서 작성 및 발송하기</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>맞춤 제안서 작성</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           </div>
         </div>
-      ) : isProposalSentPhase ? (
+      )}
+
+      {/* ── [Section: ai-review] AI 사건 분석 및 검토 ── */}
+      {currentSection === 'ai-review' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    AI 사건 심층 분석 및 쟁점 검토 리포트
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    채무 발생 경위와 재무 상태를 기반으로 도출한 인공지능 사건 종합 진단입니다.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                AI 진단 완료
+              </span>
+            </div>
+
+            {/* AI 종합 평가 카드 */}
+            <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+              <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                AI 분석 총평
+              </span>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                {(clientRequest as any)?.aiAnalysis?.summary || clientRequest.summary || (
+                  `신청인은 총 채무 ${debtTotal.toLocaleString()}만원 중 무담보 채무가 대부분을 차지하고 있으며, 월 가용소득은 약 ${availableIncome.toLocaleString()}만원으로 산출됩니다. 36개월 기준 예상 변제율은 약 ${myProposal?.reductionRate || Math.max(20, Math.round((1 - (availableIncome * 36) / Math.max(1, debtTotal)) * 100))}%로 회생 신청에 적합한 조건을 갖추고 있습니다.`
+                )}
+              </p>
+            </div>
+
+            {/* 3대 핵심 리스크 스크리닝 */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-800">사건 핵심 쟁점 및 리스크 검토</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-500 block">1. 청산가치 보장</span>
+                  <span className={`text-xs font-bold ${isDebtExceedingAssets ? 'text-emerald-700' : 'text-rose-700'} flex items-center gap-1`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {isDebtExceedingAssets ? '자산 초과 채무 충족' : '청산가치 반영 필요'}
+                  </span>
+                  <p className="text-xs text-slate-500">
+                    총 자산 {assetsTotal.toLocaleString()}만 대비 총 채무 {debtTotal.toLocaleString()}만으로 신청 자격 충족.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-500 block">2. 최근 채무 비중</span>
+                  <span className={`text-xs font-bold ${speculativeDebtRatio <= 20 ? 'text-emerald-700' : 'text-amber-700'} flex items-center gap-1`}>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    사행성/최근 채무 {speculativeDebtRatio}%
+                  </span>
+                  <p className="text-xs text-slate-500">
+                    {speculativeDebtRatio <= 20 ? '사행성 비중 양호 수준' : '보정권고 시 자금사용처 소명 대비 필요'}
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-500 block">3. 압류 및 독촉 대응</span>
+                  <span className={`text-xs font-bold ${hasUrgentSeizure ? 'text-amber-700' : 'text-blue-700'} flex items-center gap-1`}>
+                    <Zap className="w-3.5 h-3.5" />
+                    {hasUrgentSeizure ? '금지명령 신청 시급' : '통상 일정 진행 가능'}
+                  </span>
+                  <p className="text-xs text-slate-500">
+                    {hasUrgentSeizure ? '접수 즉시 금지명령 동시 접수 권장' : '접수 후 개시결정까지 순차 대응'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 하단 액션 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              {onOpenProposalDraft && (
+                <button
+                  type="button"
+                  onClick={onOpenProposalDraft}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>AI 분석 결과 제안서에 반영하기</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── [Section: proposal] 제안서 및 수임 여정 상태 카드 ── */}
+      {(currentSection === 'proposal' || currentSection === 'all') && (
+        <>
+          {/* ── Next Action Hero Card (제안서 게이팅 동적 카드) ── */}
+          {isAnonymousPhase ? (
+            // [Phase 1: 제안서 미발송 상태 - 제안서 작성 단독 강제]
+            <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="p-3 rounded-xl shrink-0 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
+                    <Sparkles className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
+                    신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  {onOpenProposalDraft && (
+                    <button
+                      type="button"
+                      onClick={onOpenProposalDraft}
+                      className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 press-scale cursor-pointer whitespace-nowrap"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>제안서 작성 및 발송하기</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isProposalSentPhase ? (
         // [Phase 2: 제안서 발송 완료 상태 - 고객 검토 및 전화상담 요청(연락처 제공) 대기]
         <div className="p-5 sm:p-6 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-slate-900 via-amber-950/30 to-slate-900 text-white shadow-lg space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -228,39 +420,40 @@ export default function Stage1ConsultationView({
                   <span>제안서 조건 수정 / 재발송</span>
                 </button>
               )}
-              {/* 시연용 고객 열람 시뮬레이션 — 개발 환경에서만 (운영에서는 의뢰인 동의 없이 실명·연락처를 공개하게 됨) */}
-              {import.meta.env.DEV && <button
-                type="button"
-                onClick={() => {
-                  setIsSimulatedShared(true);
-                  if (onSimulateContactShare) onSimulateContactShare();
-                  toast.success(`[시뮬레이션] 의뢰인(${realName})이 제안서를 확인하고 전화 상담을 요청했습니다! 실명과 전화번호가 공개되었습니다.`);
-                }}
-                className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-                title="고객이 모바일에서 제안서를 확인하고 전화 상담을 요청한 상태를 시뮬레이션합니다."
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>🧪 [시뮬레이션] 고객 제안서 확인 & 전화상담 요청</span>
-              </button>}
+              {/* 개발 환경 전용 의뢰인 열람 시뮬레이션 버튼 (기획서 4.3: DEV 표시로 절제) */}
+              {import.meta.env.DEV && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSimulatedShared(true);
+                    if (onSimulateContactShare) onSimulateContactShare();
+                    toast.success(`[DEV] 의뢰인(${realName}) 전화 상담 요청 시뮬레이션 완료. 실명/연락처가 공개되었습니다.`);
+                  }}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                  title="[개발 전용] 의뢰인이 제안서를 확인하고 전화 상담을 요청한 상태를 시뮬레이션합니다."
+                >
+                  <span>🧪 DEV 연락처 공개 테스트</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">예상 채무 탕감률</span>
+              <span className="text-slate-400 block text-xs">예상 채무 탕감률</span>
               <span className="text-base font-black text-emerald-400 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
             </div>
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">예상 월 변제금</span>
+              <span className="text-slate-400 block text-xs">예상 월 변제금</span>
               <span className="text-base font-black text-blue-400 mt-0.5 block">
                 월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
               </span>
             </div>
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">제안 수임료 및 분납</span>
+              <span className="text-slate-400 block text-xs">제안 수임료 및 분납</span>
               <span className="text-base font-black text-slate-200 mt-0.5 block truncate">
                 {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
               </span>
@@ -330,19 +523,19 @@ export default function Stage1ConsultationView({
           {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">예상 채무 탕감률</span>
+              <span className="text-slate-400 block text-xs">예상 채무 탕감률</span>
               <span className="text-base font-black text-emerald-400 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
             </div>
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">예상 월 변제금</span>
+              <span className="text-slate-400 block text-xs">예상 월 변제금</span>
               <span className="text-base font-black text-blue-400 mt-0.5 block">
                 월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
               </span>
             </div>
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-[11px]">제안 수임료 및 분납</span>
+              <span className="text-slate-400 block text-xs">제안 수임료 및 분납</span>
               <span className="text-base font-black text-slate-200 mt-0.5 block truncate">
                 {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
               </span>
@@ -350,50 +543,126 @@ export default function Stage1ConsultationView({
           </div>
         </div>
       ) : (
-        // [상황 D: 수임계약 체결 완료 상태]
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/80 text-emerald-950 shadow-md">
+        // [상황 D: 수임계약 체결 완료 상태 - 기획서 3.4 5번 규칙: 지난 단계 요약 (누가·언제·무엇을)]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/40 text-emerald-950 shadow-sm space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-emerald-600 text-white shadow-xs">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <div>
-                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
-                  🎉 수임계약 체결 완료
-                </span>
-                <h3 className="text-base sm:text-lg font-black tracking-tight text-emerald-950 mt-1">
-                  의뢰인과의 정식 전자 수임계약이 완료되었습니다!
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                    ✓ 1단계(상담·제안) 완료 · 수임 체결
+                  </span>
+                  <span className="text-xs text-emerald-700/80 font-mono">
+                    {crmExt?.contractSignedAt 
+                      ? new Date(crmExt.contractSignedAt).toLocaleDateString('ko-KR')
+                      : myProposal?.updatedAt 
+                        ? new Date(myProposal.updatedAt).toLocaleDateString('ko-KR')
+                        : '수임 체결 완료'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900">
+                  {displayClientName} 님과의 수임 계약이 정식 체결되었습니다
                 </h3>
-                <p className="text-xs text-emerald-800 mt-0.5">
-                  다음 단계(Stage 02)로 이동하여 관공서 필수 서류 수집 및 법원 실비(인지대·송달료) 산출을 진행하세요.
+                <p className="text-xs text-slate-600">
+                  상담 및 제안 절차가 성공적으로 종결되었습니다. 다음 단계인 수임 계약 세부 및 착수 서류 준비를 진행하세요.
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onAdvanceToNextStage}
-              className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2 press-scale cursor-pointer shrink-0"
-            >
-              <span>Stage 02 (계약·착수)로 진행</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowCompletedProposalDetails(prev => !prev)}
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                <span>제안 결과 {showCompletedProposalDetails ? '접기' : '상세보기'}</span>
+                {showCompletedProposalDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={onAdvanceToNextStage}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+              >
+                <span>Stage 02 (수임 계약) 이동</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {/* 지난 단계 결과 요약 (누가·언제·무엇을 그리드) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-emerald-100">
+            <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
+              <span className="text-xs font-bold text-slate-500 block">담당 전문가</span>
+              <span className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 block truncate">
+                {crmExt?.assignedLawyerName || activeLawyer.name || '김수현 변호사'}
+              </span>
+            </div>
+            <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
+              <span className="text-xs font-bold text-slate-500 block">제안 탕감률</span>
+              <span className="text-xs sm:text-sm font-black text-emerald-600 mt-0.5 block">
+                최대 {myProposal?.reductionRate || 0}%
+              </span>
+            </div>
+            <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
+              <span className="text-xs font-bold text-slate-500 block">예상 월 변제금</span>
+              <span className="text-xs sm:text-sm font-black text-blue-600 mt-0.5 block truncate">
+                월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
+              </span>
+            </div>
+            <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
+              <span className="text-xs font-bold text-slate-500 block">확정 수임료</span>
+              <span className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 block truncate">
+                {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
+              </span>
+            </div>
+          </div>
+
+          {/* 토글 펼침: 제안서 세부 조건 및 재검토 */}
+          {showCompletedProposalDetails && (
+            <div className="p-4 rounded-xl bg-white border border-emerald-200/80 shadow-2xs space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  체결된 제안서 세부 내역 및 고객 전달 메시지
+                </span>
+                {onOpenProposalDraft && (
+                  <button
+                    type="button"
+                    onClick={onOpenProposalDraft}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  >
+                    제안 조건 수정 편집기 열기
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed whitespace-pre-wrap">
+                {myProposal?.message || myProposal?.content || '맞춤 제안서가 등록되어 의뢰인과 수임 체결이 완료되었습니다.'}
+              </p>
+            </div>
+          )}
         </div>
       )}
+      </>
+      )}
 
-      {/* ── 3. 고객 사전진단 계기판 (2단 프리미엄 HUD 인포그래픽) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-4 mb-0">
-        {/* HUD 헤더: 컴팩트 타이틀 & 종합 적격 뱃지 */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-[#1E3A5F] text-white shadow-xs">
-              <BarChart3 className="w-4 h-4" />
-            </span>
+      {/* ── [Section: eligibility] 고객 사전진단 계기판 ── */}
+      {(currentSection === 'eligibility' || currentSection === 'all') && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-4 mb-0 animate-fadeIn">
+          {/* 헤더: 컴팩트 타이틀 & 종합 적격 뱃지 */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <span className="font-black text-sm text-slate-900 tracking-tight">
-                사전 진단 요건 검토 계기판
+              <span className="p-1.5 rounded-lg bg-[#1E3A5F] text-white shadow-xs">
+                <BarChart3 className="w-4 h-4" />
               </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-slate-900 tracking-tight">
+                  사전 진단 요건 검토 계기판
+                </span>
               <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                 {stealthName}
               </span>
@@ -414,10 +683,10 @@ export default function Stage1ConsultationView({
                   passedConditionsCount === 4 ? 'bg-emerald-500' : 'bg-amber-500'
                 }`} />
               </span>
-              <span>4대 요건 중 {passedConditionsCount}개 충족 ({passedConditionsCount === 4 ? 'Gate 1 적격 통과' : '보완 검토'})</span>
+              <span>4대 요건 중 {passedConditionsCount}개 충족 ({passedConditionsCount === 4 ? '신청 적격 판정' : '보완 검토'})</span>
             </span>
-            <span className="text-[11px] font-bold text-slate-400 hidden lg:inline-block">
-              Gate 1 신청 적격 인포그래픽 HUD
+            <span className="text-xs font-bold text-slate-400 hidden lg:inline-block">
+              신청 적격 검토 현황판
             </span>
           </div>
         </div>
@@ -434,7 +703,7 @@ export default function Stage1ConsultationView({
                 </span>
                 <span className="text-xs font-black text-slate-800">1. 채무 vs 자산 (청산가치)</span>
               </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
                 isDebtExceedingAssets ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isDebtExceedingAssets ? 'bg-emerald-500' : 'bg-rose-500'}`} />
@@ -473,7 +742,7 @@ export default function Stage1ConsultationView({
                   <span className="font-mono font-black text-xs text-slate-800 leading-none">
                     {assetRatio}%
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                  <span className="text-xs font-bold text-slate-400 mt-0.5 leading-none">
                     자산비
                   </span>
                 </div>
@@ -483,15 +752,15 @@ export default function Stage1ConsultationView({
               <div className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200/80 p-2.5 shadow-2xs">
                 <table className="w-full text-xs">
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">총 채무액</td>
                       <td className="py-1 text-right font-mono font-bold text-slate-900">{debtTotal.toLocaleString()}만원</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">총 자산액 (청산가치)</td>
                       <td className="py-1 text-right font-mono font-bold text-blue-600">{assetsTotal.toLocaleString()}만원</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">탕감 대상 순채무</td>
                       <td className="py-1 text-right font-mono font-black text-emerald-600">{(debtTotal - assetsTotal).toLocaleString()}만원</td>
                     </tr>
@@ -514,7 +783,7 @@ export default function Stage1ConsultationView({
                   title={`순채무 ${(debtTotal - assetsTotal)}만 (${100 - assetRatio}%)`}
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] font-mono">
+              <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-blue-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                   자산 {assetsTotal.toLocaleString()}만 ({assetRatio}%)
@@ -537,7 +806,7 @@ export default function Stage1ConsultationView({
                 </span>
                 <span className="text-xs font-black text-slate-800">2. 월 가용소득 & 변제 수행력</span>
               </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
                 isAvailableIncomeSufficient ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isAvailableIncomeSufficient ? 'bg-emerald-500' : 'bg-purple-500'}`} />
@@ -576,7 +845,7 @@ export default function Stage1ConsultationView({
                   <span className={`font-mono font-black text-xs leading-none ${isAvailableIncomeSufficient ? 'text-emerald-600' : 'text-purple-600'}`}>
                     {availableIncome > 0 ? `${availableIncome}만` : '0원'}
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                  <span className="text-xs font-bold text-slate-400 mt-0.5 leading-none">
                     가용금
                   </span>
                 </div>
@@ -586,15 +855,15 @@ export default function Stage1ConsultationView({
               <div className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200/80 p-2.5 shadow-2xs">
                 <table className="w-full text-xs">
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">월 평균 소득</td>
                       <td className="py-1 text-right font-mono font-bold text-slate-900">{income.toLocaleString()}만원</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">법정 생계비 ({householdSize}인)</td>
                       <td className="py-1 text-right font-mono font-bold text-indigo-600">-{minLivingCost.toLocaleString()}만원</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">월 예상 가용소득</td>
                       <td className={`py-1 text-right font-mono font-black ${isAvailableIncomeSufficient ? 'text-emerald-600' : 'text-purple-600'}`}>
                         +{availableIncome.toLocaleString()}만원
@@ -619,7 +888,7 @@ export default function Stage1ConsultationView({
                   title={`가용소득 ${availableIncome}만`}
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] font-mono">
+              <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-indigo-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                   생계비 {minLivingCost.toLocaleString()}만 ({householdSize}인)
@@ -642,7 +911,7 @@ export default function Stage1ConsultationView({
                 </span>
                 <span className="text-xs font-black text-slate-800">3. 법정 채무한도 준수</span>
               </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
                 isDebtUnderLimit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isDebtUnderLimit ? 'bg-emerald-500' : 'bg-rose-500'}`} />
@@ -681,7 +950,7 @@ export default function Stage1ConsultationView({
                   <span className="font-mono font-black text-xs text-slate-800 leading-none">
                     {debtLimitPercentage}%
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                  <span className="text-xs font-bold text-slate-400 mt-0.5 leading-none">
                     점유율
                   </span>
                 </div>
@@ -691,15 +960,15 @@ export default function Stage1ConsultationView({
               <div className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200/80 p-2.5 shadow-2xs">
                 <table className="w-full text-xs">
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">신청인 총 채무</td>
                       <td className="py-1 text-right font-mono font-bold text-blue-600">{debtTotal.toLocaleString()}만원</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">무담보 법정 상한</td>
                       <td className="py-1 text-right font-mono font-bold text-slate-900">100,000만원 (10억)</td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">잔여 법정 한도</td>
                       <td className="py-1 text-right font-mono font-black text-emerald-600">+{Math.max(0, 100000 - unsecuredDebt).toLocaleString()}만원</td>
                     </tr>
@@ -716,7 +985,7 @@ export default function Stage1ConsultationView({
                   style={{ width: `${Math.min(100, Math.max(5, debtLimitPercentage))}%` }} 
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] font-mono">
+              <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-slate-400">0억</span>
                 <span className="text-blue-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse" />
@@ -737,7 +1006,7 @@ export default function Stage1ConsultationView({
                 </span>
                 <span className="text-xs font-black text-slate-800">4. 결격사유 & 긴급 대응</span>
               </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-black border flex items-center gap-1 ${
                 hasUrgentSeizure ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${hasUrgentSeizure ? 'bg-amber-500 animate-ping' : 'bg-blue-500'}`} />
@@ -776,7 +1045,7 @@ export default function Stage1ConsultationView({
                   <span className={`font-mono font-black text-xs leading-none ${hasUrgentSeizure ? 'text-amber-600' : 'text-emerald-600'}`}>
                     {hasUrgentSeizure ? '⚡' : 'OK'}
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                  <span className="text-xs font-bold text-slate-400 mt-0.5 leading-none">
                     {hasUrgentSeizure ? '긴급대응' : '추심안정'}
                   </span>
                 </div>
@@ -786,7 +1055,7 @@ export default function Stage1ConsultationView({
               <div className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200/80 p-2.5 shadow-2xs">
                 <table className="w-full text-xs">
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">5년 내 면책 이력</td>
                       <td className="py-1 text-right font-bold">
                         {!hasRecentDischarge ? (
@@ -796,7 +1065,7 @@ export default function Stage1ConsultationView({
                         )}
                       </td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-500 font-medium whitespace-nowrap">사행성 채무 비중</td>
                       <td className="py-1 text-right font-mono font-bold">
                         {speculativeDebtRatio <= 20 ? (
@@ -806,7 +1075,7 @@ export default function Stage1ConsultationView({
                         )}
                       </td>
                     </tr>
-                    <tr className="text-[11px]">
+                    <tr className="text-xs">
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">독촉·압류 진행도</td>
                       <td className="py-1 text-right font-bold">
                         {hasUrgentSeizure ? (
@@ -837,7 +1106,7 @@ export default function Stage1ConsultationView({
                   title="3단계: 독촉·압류 대응" 
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] font-mono text-slate-500">
+              <div className="flex justify-between items-center text-xs font-mono text-slate-500">
                 <span className="flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${!hasRecentDischarge ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                   1.면책이력 통과
@@ -855,6 +1124,7 @@ export default function Stage1ConsultationView({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -151,11 +151,11 @@ export default function DocumentChecklistTool() {
     <div className="p-3.5 space-y-3 text-xs text-slate-800">
       {/* ── 조건 선택 ── */}
       <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-2">
-        <span className="font-extrabold text-slate-700 block text-[11px]">의뢰인 상황 (서류 목록 자동 구성)</span>
+        <span className="font-extrabold text-slate-700 block text-xs">의뢰인 상황 (서류 목록 자동 구성)</span>
 
-        <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <span className="text-[10px] text-slate-600 block mb-0.5 font-medium" id="doc-case-label">신청 사건</span>
+            <span className="text-xs text-slate-600 block mb-0.5 font-medium" id="doc-case-label">신청 사건</span>
             <div className="grid grid-cols-2 gap-1" role="radiogroup" aria-labelledby="doc-case-label">
               {([
                 ['rehab', '개인회생'],
@@ -178,7 +178,7 @@ export default function DocumentChecklistTool() {
           </div>
 
           <div>
-            <label htmlFor="doc-job" className="text-[10px] text-slate-600 block mb-0.5 font-medium">소득 형태</label>
+            <label htmlFor="doc-job" className="text-xs text-slate-600 block mb-0.5 font-medium">소득 형태</label>
             <select
               id="doc-job"
               value={jobType}
@@ -193,9 +193,9 @@ export default function DocumentChecklistTool() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-slate-200/60">
+        <div className="grid grid-cols-3 gap-2 text-xs pt-1 border-t border-slate-200/60">
           <div>
-            <label htmlFor="doc-housing" className="text-[10px] text-slate-600 block mb-0.5 font-medium">주거 형태</label>
+            <label htmlFor="doc-housing" className="text-xs text-slate-600 block mb-0.5 font-medium">주거 형태</label>
             <select
               id="doc-housing"
               value={housingType}
@@ -222,10 +222,10 @@ export default function DocumentChecklistTool() {
 
       {/* ── 서류 목록 & 수령 체크 ── */}
       <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
-        <div className="flex items-center justify-between text-[11px] px-1">
+        <div className="flex items-center justify-between text-xs px-1">
           <span className="font-bold text-teal-900">필요 서류 {totalDocCount}종 · 수령 {receivedCount}종</span>
           {receivedCount > 0 && (
-            <button type="button" onClick={() => setReceived([])} className="text-[10px] font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
+            <button type="button" onClick={() => setReceived([])} className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
               체크 초기화
             </button>
           )}
@@ -239,9 +239,9 @@ export default function DocumentChecklistTool() {
 
         {docSections.map(sec => (
           <div key={sec.category} className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
-            <div className="bg-slate-100/80 px-3 py-1.5 font-black text-slate-700 text-[11px] border-b border-slate-200 flex items-center justify-between">
+            <div className="bg-slate-100/80 px-3 py-1.5 font-black text-slate-700 text-xs border-b border-slate-200 flex items-center justify-between">
               <span>{sec.category}</span>
-              <span className="text-[10px] text-slate-500 font-normal">
+              <span className="text-xs text-slate-500 font-normal">
                 {sec.items.filter(d => received.includes(d.id)).length}/{sec.items.length}
               </span>
             </div>
@@ -261,13 +261,13 @@ export default function DocumentChecklistTool() {
                       <span className="flex items-start justify-between gap-1.5">
                         <span className={`font-bold text-xs leading-tight ${isReceived ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
                           {doc.name}
-                          {!doc.required && <span className="ml-1 text-[10px] font-medium text-slate-500">(해당 시)</span>}
+                          {!doc.required && <span className="ml-1 text-xs font-medium text-slate-500">(해당 시)</span>}
                         </span>
-                        <span className="text-[9px] bg-teal-50 text-teal-900 px-1.5 py-0.5 rounded border border-teal-200 font-medium shrink-0">
+                        <span className="text-xs bg-teal-50 text-teal-900 px-1.5 py-0.5 rounded border border-teal-200 font-medium shrink-0">
                           {doc.source}
                         </span>
                       </span>
-                      <span className="block text-[10px] text-slate-500 mt-0.5 leading-tight">{doc.description}</span>
+                      <span className="block text-xs text-slate-500 mt-0.5 leading-tight">{doc.description}</span>
                     </span>
                   </label>
                 );
@@ -295,7 +295,7 @@ export default function DocumentChecklistTool() {
           />
         )}
       </div>
-      <p className="text-[10px] text-slate-500">수령 체크는 이 창에만 남고 저장되지 않습니다. 사무소명은 [설정 &gt; 사업자 정보]의 상호를 씁니다.</p>
+      <p className="text-xs text-slate-500">수령 체크는 이 창에만 남고 저장되지 않습니다. 사무소명은 [설정 &gt; 사업자 정보]의 상호를 씁니다.</p>
     </div>
   );
 }

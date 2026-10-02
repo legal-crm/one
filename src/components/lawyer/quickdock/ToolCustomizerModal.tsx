@@ -111,7 +111,7 @@ function ToolCustomizerModalInner({
                   <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
                   퀵툴 화면 표시 설정
                 </span>
-                <span className="text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200 font-mono">
+                <span className="text-xs text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200 font-mono">
                   단축키: Alt + Q
                 </span>
               </div>
@@ -134,7 +134,7 @@ function ToolCustomizerModalInner({
                     >
                       <Icon className={`w-4 h-4 ${iconClass}`} aria-hidden="true" />
                       <span className="text-xs whitespace-nowrap">{label}</span>
-                      <span className="text-[10px] text-slate-500 font-normal">{desc}</span>
+                      <span className="text-xs text-slate-500 font-normal">{desc}</span>
                     </button>
                   );
                 })}
@@ -152,7 +152,7 @@ function ToolCustomizerModalInner({
                     <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
                     {CATEGORY_LABELS[cat]}
                   </h4>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-xs text-slate-500">
                     {tools.filter(t => enabledToolIds.includes(t.id)).length} / {tools.length}개 선택
                   </span>
                 </div>
@@ -200,12 +200,12 @@ function ToolCustomizerModalInner({
                               {tool.title}
                             </span>
                             {tool.badge && (
-                              <span className="text-[9px] bg-indigo-100 text-indigo-700 font-extrabold px-1.5 py-0.5 rounded shrink-0">
+                              <span className="text-xs bg-indigo-100 text-indigo-700 font-extrabold px-1.5 py-0.5 rounded shrink-0">
                                 {tool.badge}
                               </span>
                             )}
                           </span>
-                          <span className="block text-[11px] text-slate-500 leading-tight mt-0.5 truncate">
+                          <span className="block text-xs text-slate-500 leading-tight mt-0.5 truncate">
                             {tool.subtitle}
                           </span>
                         </span>

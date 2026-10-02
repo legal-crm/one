@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Calculator, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, MessageSquare, MoreHorizontal, PanelRightClose } from 'lucide-react';
+import { Calculator, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, MessageSquare, MoreHorizontal, PanelRightClose, FolderKanban, Scale } from 'lucide-react';
 import type { ConsultRequest } from '../../../types';
 import { HARASSMENT_SHORT_LABELS, harassmentSeverity, lookupLabel } from '../../../constants/clientProfileLabels';
 import type { LawyerChatThread } from './chatSelectors';
@@ -167,6 +167,27 @@ export default function ChatConversation({
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* 기획서 2-7: 사건 열기 및 수임 진행 직행 버튼 */}
+          <button
+            type="button"
+            onClick={() => onOpenCrm(request.id, 'info')}
+            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 whitespace-nowrap transition-colors press-scale cursor-pointer"
+            title="사건 워크스페이스 열기"
+          >
+            <FolderKanban className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">사건 열기</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenCrm(request.id, 'contracts')}
+            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-[#1E3A5F] hover:bg-slate-800 text-white text-xs font-bold whitespace-nowrap transition-colors press-scale cursor-pointer"
+            title="수임 계약 2단계로 직행"
+          >
+            <Scale className="w-3.5 h-3.5 text-amber-300" />
+            <span>수임 진행</span>
+          </button>
+
           {!single && onOpenQuickDock && (
             <button
               ref={quickDockButtonRef}

@@ -111,7 +111,7 @@ export default function AutoDraftReviewSplitModal({
 
             {formItem.reviewedAt && (
               <div className="text-right shrink-0">
-                <span className="text-[11px] text-slate-400 block">최근 승인일시</span>
+                <span className="text-xs text-slate-400 block">최근 승인일시</span>
                 <span className="text-xs font-semibold text-emerald-700">
                   {new Date(formItem.reviewedAt).toLocaleDateString()} ({formItem.reviewedBy || '담당 변호사'})
                 </span>
@@ -148,7 +148,7 @@ export default function AutoDraftReviewSplitModal({
                     <div className="flex-1">
                       <span className="font-semibold">{flag.message}</span>
                       {flag.targetField && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-white/80 font-mono text-slate-600 border border-black/5">
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-white/80 font-mono text-slate-600 border border-black/5">
                           필드: {flag.targetField}
                         </span>
                       )}
@@ -168,19 +168,19 @@ export default function AutoDraftReviewSplitModal({
                   <FileText className="w-4 h-4 text-slate-600" />
                   원천 1·2차 증빙 서류 ({formItem.sourceDocuments.length}종)
                 </span>
-                <span className="text-[11px] text-slate-500">OCR 자동 파싱</span>
+                <span className="text-xs text-slate-500">OCR 자동 파싱</span>
               </div>
               <ul className="space-y-2">
                 {formItem.sourceDocuments.map((doc, i) => (
                   <li key={i} className="flex items-center justify-between text-xs p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                     <span className="font-medium text-slate-700">{doc}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold">
                       정상 매핑됨
                     </span>
                   </li>
                 ))}
               </ul>
-              <div className="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-blue-800 leading-relaxed">
+              <div className="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
                 💡 원천 서류의 원본 이미지나 스캔 PDF 원문은 법원 제출 시 <strong>[R07 첨부서류 일체]</strong>에 전산 번들링됩니다.
               </div>
             </div>
@@ -191,7 +191,7 @@ export default function AutoDraftReviewSplitModal({
                 <span className="text-xs font-bold text-slate-800">
                   작성된 전산 필드 데이터
                 </span>
-                <span className="text-[11px] text-blue-600 font-semibold">
+                <span className="text-xs text-blue-600 font-semibold">
                   대법원 규격 바인딩
                 </span>
               </div>
@@ -201,8 +201,8 @@ export default function AutoDraftReviewSplitModal({
                   if (typeof v === 'object' && v !== null) {
                     return (
                       <div key={idx} className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="text-slate-500 font-medium block text-[11px] mb-1">{k}</span>
-                        <div className="text-slate-800 font-mono text-[11px] max-h-24 overflow-y-auto">
+                        <span className="text-slate-500 font-medium block text-xs mb-1">{k}</span>
+                        <div className="text-slate-800 font-mono text-xs max-h-24 overflow-y-auto">
                           {JSON.stringify(v, null, 2)}
                         </div>
                       </div>

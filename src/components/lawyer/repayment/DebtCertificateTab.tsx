@@ -589,7 +589,7 @@ export default function DebtCertificateTab({
             <div className="mt-2 text-xl font-black text-slate-900 font-mono">
               {(stats.totalExpected / 10000).toLocaleString()}만원
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-xs text-slate-400 mt-1 block">
               상담 시 채무자 진술 금액
             </span>
           </div>
@@ -599,7 +599,7 @@ export default function DebtCertificateTab({
             <div className="mt-2 text-xl font-black text-indigo-700 font-mono">
               {(stats.totalConfirmed / 10000).toLocaleString()}만원
             </div>
-            <span className="text-[11px] text-indigo-600/80 mt-1 block">
+            <span className="text-xs text-indigo-600/80 mt-1 block">
               부채증명서 실발급 원금 합계
             </span>
           </div>
@@ -609,7 +609,7 @@ export default function DebtCertificateTab({
             <div className="mt-2 text-xl font-black text-slate-900 font-mono">
               {stats.totalAgencyFee.toLocaleString()}원
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-xs text-slate-400 mt-1 block">
               대행 수수료 + 금융사 인지대 실비
             </span>
           </div>
@@ -681,29 +681,29 @@ export default function DebtCertificateTab({
                             {isGuarantor && (
                               <div className="flex items-center text-indigo-500 shrink-0 font-bold" title="보증기관">
                                 <CornerDownRight className="w-3.5 h-3.5 mr-0.5" />
-                                <span className="text-[10px] bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
+                                <span className="text-xs bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
                               </div>
                             )}
                             <span className="font-bold text-slate-900">{item.creditorName}</span>
 
                             {item.isUnpaidInterest3Times && (
-                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 inline-flex items-center gap-0.5">
+                              <span className="text-xs font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 inline-flex items-center gap-0.5">
                                 <AlertOctagon className="w-2.5 h-2.5" /> 이자3회미납
                               </span>
                             )}
 
                             {item.isSecured && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 border border-blue-200">
+                              <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 border border-blue-200">
                                 별제권(담보)
                               </span>
                             )}
 
                             {item.address ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-0.5" title={`${item.address} (우: ${item.zipCode || '-'})`}>
+                              <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-0.5" title={`${item.address} (우: ${item.zipCode || '-'})`}>
                                 <MapPin className="w-2.5 h-2.5" /> 주소등록
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-0.5" title="대법원 전자소송 송달을 위해 주소 입력이 필요합니다">
+                              <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-0.5" title="대법원 전자소송 송달을 위해 주소 입력이 필요합니다">
                                 <AlertCircle className="w-2.5 h-2.5" /> 송달주소 누락
                               </span>
                             )}
@@ -712,14 +712,14 @@ export default function DebtCertificateTab({
                               <button
                                 type="button"
                                 onClick={(e) => handleAddGuarantor(item.id, e)}
-                                className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 inline-flex items-center gap-0.5 cursor-pointer"
+                                className="text-xs font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 inline-flex items-center gap-0.5 cursor-pointer"
                                 title="보증기관 가지번호 추가"
                               >
                                 <Plus className="w-2.5 h-2.5" /> 보증기관
                               </button>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-400 truncate max-w-[220px]" title={item.serviceAddress || item.address || ''}>
+                          <div className="text-xs text-slate-400 truncate max-w-[220px]" title={item.serviceAddress || item.address || ''}>
                             {item.serviceAddress || item.address || item.accountOrContractNo || item.branchName || '송달주소 미지정'}
                           </div>
                         </div>
@@ -729,17 +729,17 @@ export default function DebtCertificateTab({
                       </td>
                       <td className="py-3 px-3 text-center">
                         {isDone ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             발급완료
                           </span>
                         ) : item.issueStatus === 'agency_requested' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                             <Clock className="w-3 h-3" />
                             대행의뢰
                           </span>
                         ) : (
-                          <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                             의뢰대기
                           </span>
                         )}
@@ -755,7 +755,7 @@ export default function DebtCertificateTab({
                       </td>
                       <td className="py-3 px-3 text-center">
                         {item.certificateDocUrl ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                             {item.docType === 'pdf' ? <FileText className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
                             첨부됨
                           </span>
@@ -868,7 +868,7 @@ export default function DebtCertificateTab({
                     <p className="text-xs font-bold text-slate-600">
                       등록된 부채증명서 파일이 없습니다
                     </p>
-                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto">
                       대행업체에서 보내준 PDF 파일이나 캡처 사진 이미지를 우측 상단 [서류 등록] 버튼을 눌러 업로드해 주세요.
                     </p>
                   </div>
@@ -879,7 +879,7 @@ export default function DebtCertificateTab({
               <div className="space-y-3 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
                       확정 원금 (증명서상)
                     </label>
                     <input
@@ -897,7 +897,7 @@ export default function DebtCertificateTab({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
                       개시 전 이자 (선택)
                     </label>
                     <input
@@ -916,7 +916,7 @@ export default function DebtCertificateTab({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
                       부채증명서 발급일자
                     </label>
                     <input
@@ -930,7 +930,7 @@ export default function DebtCertificateTab({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
                       발급 상태 변경
                     </label>
                     <select
@@ -951,7 +951,7 @@ export default function DebtCertificateTab({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                  <label className="text-xs font-bold text-slate-600 block mb-1">
                     특이사항 / 메모 (보정 필요사항 등)
                   </label>
                   <input
@@ -980,7 +980,7 @@ export default function DebtCertificateTab({
                     />
                     <div>
                       <span className="text-xs font-black text-rose-700 block">이자 3회 미납</span>
-                      <span className="text-[10px] text-slate-400">사기죄 고소 위험 관리</span>
+                      <span className="text-xs text-slate-400">사기죄 고소 위험 관리</span>
                     </div>
                   </label>
 
@@ -997,7 +997,7 @@ export default function DebtCertificateTab({
                     />
                     <div>
                       <span className="text-xs font-bold text-blue-700 block">별제권부 채권</span>
-                      <span className="text-[10px] text-slate-400">담보대출/근저당 채무</span>
+                      <span className="text-xs text-slate-400">담보대출/근저당 채무</span>
                     </div>
                   </label>
                 </div>
@@ -1032,7 +1032,7 @@ export default function DebtCertificateTab({
                                 });
                                 toast.success(`'${preset.officialName}' 공식 송달주소가 자동 반영되었습니다!`);
                               }}
-                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 cursor-pointer press-scale shadow-2xs"
+                              className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 cursor-pointer press-scale shadow-2xs"
                               title="공식 법인명, 우편번호, 송달주소, 대표자 1클릭 채우기"
                             >
                               <Sparkles className="w-3 h-3 text-amber-300" />
@@ -1042,10 +1042,10 @@ export default function DebtCertificateTab({
                         </div>
 
                         {preset && (!selectedItem.address || selectedItem.address !== preset.address) && (
-                          <div className="bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100 text-[11px] text-indigo-900 flex items-center justify-between">
+                          <div className="bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100 text-xs text-indigo-900 flex items-center justify-between">
                             <div>
                               <span className="font-bold">🏢 추천 DB 일치:</span> {preset.officialName} ({preset.zipCode})
-                              <div className="text-[10px] text-indigo-700 mt-0.5 truncate max-w-sm">
+                              <div className="text-xs text-indigo-700 mt-0.5 truncate max-w-sm">
                                 {preset.address}
                               </div>
                             </div>
@@ -1061,7 +1061,7 @@ export default function DebtCertificateTab({
                                 });
                                 toast.success('추천 송달주소가 적용되었습니다.');
                               }}
-                              className="px-2 py-1 bg-white hover:bg-indigo-100 text-indigo-700 rounded text-[10px] font-extrabold border border-indigo-200 cursor-pointer"
+                              className="px-2 py-1 bg-white hover:bg-indigo-100 text-indigo-700 rounded text-xs font-extrabold border border-indigo-200 cursor-pointer"
                             >
                               적용
                             </button>
@@ -1070,7 +1070,7 @@ export default function DebtCertificateTab({
 
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            <label className="text-xs font-bold text-slate-600 block mb-0.5">
                               우편번호 (5자리)
                             </label>
                             <input
@@ -1084,7 +1084,7 @@ export default function DebtCertificateTab({
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            <label className="text-xs font-bold text-slate-600 block mb-0.5">
                               대표자 (대표이사 등)
                             </label>
                             <input
@@ -1100,7 +1100,7 @@ export default function DebtCertificateTab({
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                          <label className="text-xs font-bold text-slate-600 block mb-0.5">
                             본점 소재지 / 채권자 주소 (등기부상)
                           </label>
                           <input
@@ -1115,7 +1115,7 @@ export default function DebtCertificateTab({
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                          <label className="text-xs font-bold text-slate-600 block mb-0.5">
                             법원 우편물 송달장소 (우편물 수신처)
                           </label>
                           <input
@@ -1131,7 +1131,7 @@ export default function DebtCertificateTab({
 
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            <label className="text-xs font-bold text-slate-600 block mb-0.5">
                               사업자/법인등록번호
                             </label>
                             <input
@@ -1145,7 +1145,7 @@ export default function DebtCertificateTab({
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            <label className="text-xs font-bold text-slate-600 block mb-0.5">
                               차용원인
                             </label>
                             <input
@@ -1160,7 +1160,7 @@ export default function DebtCertificateTab({
                           </div>
                         </div>
 
-                        <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[10px] text-amber-900 leading-relaxed">
+                        <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
                           ⚠️ <strong>법원 송달 유의사항:</strong> 법원은 개시결정문 및 변제계획안을 위 송달장소로 우편 송달합니다. 채권이 양도되었거나 주소가 누락되면 즉시 송달불능 및 주소보정명령이 내려져 절차가 지연됩니다.
                         </div>
                       </>

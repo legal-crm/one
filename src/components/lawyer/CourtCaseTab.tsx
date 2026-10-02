@@ -272,7 +272,7 @@ export default function CourtCaseTab({
             <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
               📁 관련사건 멀티탭 동시 트래커 (본안 · 금지명령 · 중지명령 · 압류집행)
             </span>
-            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
+            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
               총 {relatedCases.length}건 연동
             </span>
           </div>
@@ -305,17 +305,17 @@ export default function CourtCaseTab({
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5 mb-1">
-                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                  <span className="text-xs font-extrabold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
                     {rc.type}
                   </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${rc.statusColor}`}>
+                  <span className={`text-xs font-bold px-1.5 py-0.2 rounded border ${rc.statusColor}`}>
                     {rc.statusBadge}
                   </span>
                 </div>
                 <div className="font-mono font-extrabold text-xs text-slate-900 truncate">
                   {rc.caseNo}
                 </div>
-                <div className="text-[10px] text-slate-500 truncate">
+                <div className="text-xs text-slate-500 truncate">
                   {rc.court}
                 </div>
               </button>
@@ -433,7 +433,7 @@ export default function CourtCaseTab({
                 대법원 나의사건검색 실시간 연동
               </h3>
               {courtDetail && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                   courtDetail.isB2BLive 
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                     : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
@@ -442,7 +442,7 @@ export default function CourtCaseTab({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               법원명과 사건번호를 입력하면 접수일, 재판부, 기일 및 보정명령 송달 내역이 자동 동기화됩니다.
             </p>
           </div>
@@ -473,7 +473,7 @@ export default function CourtCaseTab({
         {/* 입력 필드 그리드 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
           <div>
-            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
               관할 법원
             </label>
             <select
@@ -488,7 +488,7 @@ export default function CourtCaseTab({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
               사건번호
             </label>
             <input
@@ -501,7 +501,7 @@ export default function CourtCaseTab({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
               당사자 성명 (채무자)
             </label>
             <input
@@ -538,7 +538,7 @@ export default function CourtCaseTab({
                   <h4 className="text-xs font-black">
                     🚨 법원 보정명령(권고) 송달 내역 {detectedCorrections.length}건 감지!
                   </h4>
-                  <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                  <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-0.5">
                     대법원 전산망에 보정명령 송달이 확인되었습니다. 마감 기한 내 보정서 제출을 위해 CRM에 등록하세요.
                   </p>
                 </div>
@@ -556,41 +556,41 @@ export default function CourtCaseTab({
           {/* 사건 핵심 현황 그리드 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block">관할 / 사건유형</span>
+              <span className="text-xs font-bold text-slate-400 block">관할 / 사건유형</span>
               <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                 {courtDetail.courtName}
               </p>
-              <span className="text-[10px] text-brand font-bold">
+              <span className="text-xs text-brand font-bold">
                 {courtDetail.caseType}
               </span>
             </div>
 
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block">재판부 / 담당판사</span>
+              <span className="text-xs font-bold text-slate-400 block">재판부 / 담당판사</span>
               <p className="text-xs font-black text-slate-900 dark:text-white">
                 {courtDetail.department}
               </p>
-              <span className="text-[10px] text-slate-500 font-medium">
+              <span className="text-xs text-slate-500 font-medium">
                 {courtDetail.judgeName}
               </span>
             </div>
 
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block">접수일자</span>
+              <span className="text-xs font-bold text-slate-400 block">접수일자</span>
               <p className="text-xs font-black text-slate-900 dark:text-white font-mono">
                 {courtDetail.filedDate || '확인중'}
               </p>
-              <span className="text-[10px] text-emerald-600 font-bold">
+              <span className="text-xs text-emerald-600 font-bold">
                 정상 접수됨
               </span>
             </div>
 
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 block">최종 진행상태</span>
+              <span className="text-xs font-bold text-slate-400 block">최종 진행상태</span>
               <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
                 {courtDetail.finalResult || '진행중'}
               </p>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 {new Date(courtDetail.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 동기화
               </span>
             </div>
@@ -609,7 +609,7 @@ export default function CourtCaseTab({
                       다음 기일: {courtDetail.dates[0].type}
                     </span>
                     {courtDetail.dates[0].dDay !== undefined && (
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                      <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
                         courtDetail.dates[0].dDay <= 7 
                           ? 'bg-rose-500 text-white animate-pulse' 
                           : 'bg-indigo-100 text-indigo-700'
@@ -618,7 +618,7 @@ export default function CourtCaseTab({
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
                     일시: <span className="font-bold text-slate-900 dark:text-white">{courtDetail.dates[0].date}</span> | 장소: {courtDetail.dates[0].place}
                   </p>
                 </div>
@@ -654,7 +654,7 @@ export default function CourtCaseTab({
               >
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  <span className={`text-xs px-1.5 py-0.2 rounded-full font-mono ${
                     activeSubTab === tab.id ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {tab.count}
@@ -669,7 +669,7 @@ export default function CourtCaseTab({
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 divide-y divide-slate-100 dark:divide-slate-800">
               {courtDetail.events.map((ev, idx) => (
                 <div key={ev.id || idx} className="py-2.5 flex items-start gap-3">
-                  <span className="text-[11px] font-mono text-slate-400 shrink-0 w-24 pt-0.5">
+                  <span className="text-xs font-mono text-slate-400 shrink-0 w-24 pt-0.5">
                     {ev.date}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -677,7 +677,7 @@ export default function CourtCaseTab({
                       {ev.title}
                     </p>
                     {ev.detail && (
-                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                      <span className="text-xs text-slate-400 block mt-0.5">
                         {ev.detail}
                       </span>
                     )}
@@ -697,16 +697,16 @@ export default function CourtCaseTab({
                         {del.docName}
                       </p>
                       {del.isCorrectionOrder && (
-                        <span className="text-[10px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md">
+                        <span className="text-xs font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md">
                           보정명령
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       송달대상: {del.target} · {del.status}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                  <span className="text-xs font-mono text-slate-500 shrink-0">
                     {del.deliveryDate}
                   </span>
                 </div>
@@ -722,7 +722,7 @@ export default function CourtCaseTab({
                 </div>
               ) : (
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 dark:bg-slate-800 text-[11px] text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3">회차</th>
                       <th className="p-3">납부기한</th>
@@ -739,7 +739,7 @@ export default function CourtCaseTab({
                         <td className="p-3 font-mono text-slate-800 dark:text-slate-200">{rep.paidDate || '-'}</td>
                         <td className="p-3 font-bold text-right font-mono">{rep.amount.toLocaleString()}원</td>
                         <td className="p-3 text-center">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             rep.paidDate ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                           }`}>
                             {rep.status}
@@ -766,7 +766,7 @@ export default function CourtCaseTab({
             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
               대법원 사건 정보 동기화 대기중
             </h4>
-            <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-1">
+            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
               상단의 관할 법원과 사건번호를 확인하신 후 [대법원 실시간 동기화] 버튼을 클릭하시면 사건 내역이 자동으로 불러와집니다.
             </p>
           </div>

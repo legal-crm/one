@@ -339,9 +339,9 @@ export default function CopilotRuleSetManager({
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm text-slate-800 truncate">{set.name}</span>
-                    <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${stBadge.bg} ${stBadge.color}`}>{stBadge.label}</span>
+                    <span className={`rounded-lg px-2 py-0.5 text-xs font-extrabold ${stBadge.bg} ${stBadge.color}`}>{stBadge.label}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">v{set.version} · {ruleCount}개 규칙</p>
+                  <p className="text-xs text-slate-400">v{set.version} · {ruleCount}개 규칙</p>
                 </button>
               );
             })
@@ -410,9 +410,9 @@ export default function CopilotRuleSetManager({
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span className="text-sm">{outCfg?.emoji || '🏳️'}</span>
                           <span className="font-bold text-sm text-slate-800 truncate">{rule.title || '(제목 없음)'}</span>
-                          <span className="text-[10px] text-slate-400 shrink-0">{rule.conditions.length}개 조건</span>
+                          <span className="text-xs text-slate-400 shrink-0">{rule.conditions.length}개 조건</span>
                           {rule.status === 'INACTIVE' && (
-                            <span className="bg-slate-100 text-slate-500 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">비활성</span>
+                            <span className="bg-slate-100 text-slate-500 rounded-lg px-1.5 py-0.5 text-xs font-bold">비활성</span>
                           )}
                         </div>
                         {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -423,7 +423,7 @@ export default function CopilotRuleSetManager({
                         <div className="border-t border-slate-100 p-4 space-y-3 bg-slate-50/50">
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-500">규칙 제목</label>
+                              <label className="text-xs font-bold text-slate-500">규칙 제목</label>
                               <input
                                 value={rule.title}
                                 onChange={e => handleUpdateRule(rule.id, { title: e.target.value })}
@@ -432,7 +432,7 @@ export default function CopilotRuleSetManager({
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-500">카테고리</label>
+                              <label className="text-xs font-bold text-slate-500">카테고리</label>
                               <input
                                 value={rule.category}
                                 onChange={e => handleUpdateRule(rule.id, { category: e.target.value })}
@@ -443,7 +443,7 @@ export default function CopilotRuleSetManager({
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-500">플래그 메시지 (검토 요청 문구)</label>
+                            <label className="text-xs font-bold text-slate-500">플래그 메시지 (검토 요청 문구)</label>
                             <textarea
                               value={rule.outputMessage}
                               onChange={e => handleUpdateRule(rule.id, { outputMessage: e.target.value })}
@@ -455,7 +455,7 @@ export default function CopilotRuleSetManager({
 
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-500">출력 유형</label>
+                              <label className="text-xs font-bold text-slate-500">출력 유형</label>
                               <select
                                 value={rule.outputType}
                                 onChange={e => handleUpdateRule(rule.id, { outputType: e.target.value as RuleOutputType })}
@@ -467,7 +467,7 @@ export default function CopilotRuleSetManager({
                               </select>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-500">출처 유형</label>
+                              <label className="text-xs font-bold text-slate-500">출처 유형</label>
                               <select
                                 value={rule.sourceType}
                                 onChange={e => handleUpdateRule(rule.id, { sourceType: e.target.value as RuleSourceType })}
@@ -483,10 +483,10 @@ export default function CopilotRuleSetManager({
                           {/* 조건 편집 */}
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <label className="text-[11px] font-bold text-slate-500">조건 (모두 AND로 결합)</label>
+                              <label className="text-xs font-bold text-slate-500">조건 (모두 AND로 결합)</label>
                               <button
                                 onClick={() => handleAddCondition(rule.id)}
-                                className="text-brand text-[11px] font-bold hover:underline flex items-center gap-0.5"
+                                className="text-brand text-xs font-bold hover:underline flex items-center gap-0.5"
                               >
                                 <Plus className="w-3 h-3" /> 조건 추가
                               </button>

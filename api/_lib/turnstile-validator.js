@@ -15,14 +15,15 @@ const DUMMY_SECRET_KEY = '1x0000000000000000000000000000000AA';
 export async function verifyTurnstileToken(token, remoteIp = '', options = {}) {
   const isDev = process.env.NODE_ENV === 'development' && process.env.VERCEL_ENV !== 'production';
 
-  // 로컬 개발 모드 또는 안전 폴백 허용 시 모의 토큰 통과
-  if ((isDev || options.allowFallbackWhenMissingKey) && (token === 'mock_turnstile_pass' || token === 'test-bypass')) {
-    console.warn('[SECURITY Turnstile] Mock bypass used (fallback mode).');
+  // 로컬 개발 환경에서만 모의 바이패스 토큰 허용
+  if (isDev && (token === 'mock_turnstile_pass' || token === 'test-bypass')) {
+    console.warn('[SECURITY Turnstile] Mock bypass used (dev mode).');
     return { success: true };
   }
 
   const secretKey = process.env.TURNSTILE_SECRET_KEY || (isDev ? DUMMY_SECRET_KEY : '');
   if (!secretKey) {
+    // 시크릿 키가 미구성된 경우에만 안전 폴백 옵션 허용 (운영에서 키가 있으면 mock/빈 토큰 엄격 거부)
     if (options.allowFallbackWhenMissingKey) {
       console.warn('[SECURITY Turnstile] TURNSTILE_SECRET_KEY is not configured. Permitting request under fallback mode (rate-limited).');
       return { success: true };
@@ -32,11 +33,12 @@ export async function verifyTurnstileToken(token, remoteIp = '', options = {}) {
   }
 
   if (!token || typeof token !== 'string' || token.trim() === '') {
-    if (options.allowFallbackWhenMissingKey) {
-      console.warn('[SECURITY Turnstile] Missing token under fallback mode. Permitting rate-limited request.');
-      return { success: true };
-    }
     return { success: false, error: '봇 방지 인증(CAPTCHA) 토큰이 누락되었습니다.' };
+  }
+
+  // 운영 환경에서 시크릿 키가 구성된 경우 mock 바이패스 토큰 명시적 거부
+  if (token === 'mock_turnstile_pass' || token === 'test-bypass') {
+    return { success: false, error: '유효하지 않은 보안 인증 토큰입니다.' };
   }
 
   try {

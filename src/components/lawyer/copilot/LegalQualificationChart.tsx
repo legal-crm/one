@@ -84,11 +84,11 @@ export default function LegalQualificationChart({
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-extrabold text-sm sm:text-base text-slate-900">3대 법적 인가 요건 실시간 검증</h4>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${isFullyQualified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'}`}>
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full border ${isFullyQualified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'}`}>
                 {isFullyQualified ? '✅ 법원 인가 적격' : '⚠️ 요건 미달 (기각 위험)'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               청산가치 보장 · 지급불능 요건 · 가용소득 투입 여부를 라이프니츠 현재가치(PV)로 동시 검증합니다.
             </p>
           </div>
@@ -142,7 +142,7 @@ export default function LegalQualificationChart({
               title={`청산가치 기준선: ${formatWon(liquidationValue)}`}
             />
           </div>
-          <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+          <div className="flex justify-between text-xs text-slate-500 font-medium">
             <span className="text-amber-700 font-bold">▲ 청산가치 기준선: {formatWon(liquidationValue)}</span>
             <span>{meetsLiquidationGuarantee ? `청산가치 대비 +${formatWon(presentValue - liquidationValue)} 상회` : `부족: -${formatWon(liquidationGap)}`}</span>
           </div>
@@ -156,7 +156,7 @@ export default function LegalQualificationChart({
           {meetsLiquidationGuarantee ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
           <div>
             <p className="font-extrabold">1. 청산가치 보장</p>
-            <p className="text-[10px] opacity-80 mt-0.5">{meetsLiquidationGuarantee ? '현재가치 충족' : '기각 위험 (미달)'}</p>
+            <p className="text-xs opacity-80 mt-0.5">{meetsLiquidationGuarantee ? '현재가치 충족' : '기각 위험 (미달)'}</p>
           </div>
         </div>
 
@@ -165,7 +165,7 @@ export default function LegalQualificationChart({
           {meetsInsolvency ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
           <div>
             <p className="font-extrabold">2. 지급불능 상태</p>
-            <p className="text-[10px] opacity-80 mt-0.5">{meetsInsolvency ? '채무 > 재산 충족' : '재산초과 (기각)'}</p>
+            <p className="text-xs opacity-80 mt-0.5">{meetsInsolvency ? '채무 > 재산 충족' : '재산초과 (기각)'}</p>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ export default function LegalQualificationChart({
           {meetsDisposableIncome ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
           <div>
             <p className="font-extrabold">3. 가용소득 투입</p>
-            <p className="text-[10px] opacity-80 mt-0.5">{meetsDisposableIncome ? `월 ${formatWon(disposableIncome)}` : '가용소득 부족'}</p>
+            <p className="text-xs opacity-80 mt-0.5">{meetsDisposableIncome ? `월 ${formatWon(disposableIncome)}` : '가용소득 부족'}</p>
           </div>
         </div>
       </div>

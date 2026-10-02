@@ -153,7 +153,7 @@ export default function WorkflowPipelineStepper({
                 {/* 스텝 헤더 (번호 + 뱃지) */}
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
-                    <span className={`text-[11px] font-mono font-black px-1.5 py-0.5 rounded ${
+                    <span className={`text-xs font-mono font-black px-1.5 py-0.5 rounded ${
                       isActive 
                         ? 'text-blue-100 bg-white/15' 
                         : st.isCompleted 
@@ -171,7 +171,7 @@ export default function WorkflowPipelineStepper({
                     )}
                   </div>
 
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap shadow-2xs border ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap shadow-2xs border ${
                     isActive
                       ? 'bg-blue-500 text-white border-blue-400'
                       : st.isCompleted

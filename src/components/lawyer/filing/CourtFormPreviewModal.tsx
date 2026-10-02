@@ -184,14 +184,14 @@ function CourtFormPreviewModalInner({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded bg-blue-600 text-white">
+                <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-blue-600 text-white">
                   {activeTabMeta.code}
                 </span>
                 <h3 className="font-extrabold text-sm text-white truncate">
                   {activeTabMeta.name}
                 </h3>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
                 신청인: {clientRequest.clientName || '신청인'} · 관할: {ctx.courtName}
               </p>
             </div>
@@ -273,7 +273,7 @@ function CourtFormPreviewModalInner({
                   : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+              <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
                 {tab.code}
               </span>
               <span>{tab.shortName.replace(/^[A-Z0-9]+\s*/, '')}</span>

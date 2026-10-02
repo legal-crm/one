@@ -113,19 +113,19 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs">
-            <span className="text-[11px] font-bold text-slate-400 block mb-0.5">정산 주차</span>
+            <span className="text-xs font-bold text-slate-400 block mb-0.5">정산 주차</span>
             <span className="font-black text-slate-800 text-sm">
               {lead.contractAt ? `${lead.contractAt.slice(0, 7)} 정산` : '미배정 (계약일 입력 필요)'}
             </span>
           </div>
           <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs">
-            <span className="text-[11px] font-bold text-slate-400 block mb-0.5">정산 기간</span>
+            <span className="text-xs font-bold text-slate-400 block mb-0.5">정산 기간</span>
             <span className="font-bold text-slate-700 text-sm">
               {lead.contractAt ? `${lead.contractAt} 기준 월간` : '-'}
             </span>
           </div>
           <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs">
-            <span className="text-[11px] font-bold text-slate-400 block mb-0.5">정산 상태</span>
+            <span className="text-xs font-bold text-slate-400 block mb-0.5">정산 상태</span>
             <span className="inline-flex items-center gap-1 font-extrabold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle size={12} />
               {lead.contractFee && lead.contractFee > 0 ? '수임 확정' : '상담 진행중'}
@@ -214,7 +214,7 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
                     key={fee}
                     type="button"
                     onClick={() => handleFieldChange('contractFee', fee)}
-                    className="px-2 py-0.5 text-[11px] font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-lg transition-colors cursor-pointer"
+                    className="px-2 py-0.5 text-xs font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-lg transition-colors cursor-pointer"
                   >
                     {fee}만
                   </button>
@@ -230,7 +230,7 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
             </div>
 
             {commission === 0 && (lead.contractFee || 0) > 0 && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200 mt-2">
+              <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200 mt-2">
                 ⚠️ 적용된 수당 정책이 없거나 0원입니다. 제휴처 설정을 확인해주세요.
               </p>
             )}
@@ -276,7 +276,7 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">금액 (만원)</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">금액 (만원)</label>
                   <input
                     type="number"
                     className="w-full p-2 text-xs sm:text-sm font-black border border-slate-300 rounded-xl bg-white focus:border-blue-500 outline-hidden"
@@ -286,7 +286,7 @@ export const CaseSettlementTab: React.FC<CaseSettlementTabProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">입금일</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">입금일</label>
                   <input
                     type="date"
                     className="w-full p-2 text-xs sm:text-sm font-semibold border border-slate-300 rounded-xl bg-white focus:border-blue-500 outline-hidden"

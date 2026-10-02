@@ -3,7 +3,8 @@ import {
   Users, Phone, PhoneCall, Plus, Upload, Settings, EyeOff, Search, 
   Clock, AlertTriangle, CheckCircle2, Sparkles, Filter, MoreHorizontal,
   ChevronDown, ChevronUp, Calendar, Send, Trash2, ArrowRight, MessageSquare,
-  ShieldCheck, RefreshCw, PhoneForwarded, Flame, UserCheck, ExternalLink, Edit3
+  ShieldCheck, RefreshCw, PhoneForwarded, Flame, UserCheck, ExternalLink, Edit3,
+  CalendarClock, X, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SalesLead, LeadStatus } from '../../../types/leadTypes';
@@ -15,6 +16,8 @@ import {
 } from '../../../services/leadService';
 import { loadInboundPaths } from '../../../services/settingsService';
 import { sendQuickSmsOrCopy } from '../../../services/communicationService';
+import { useDialog } from '../../common/DialogProvider';
+import { localYmd } from '../../../utils/localDate';
 
 import SalesDashboardWidget from './SalesDashboardWidget';
 import CaseBriefingBanner from './CaseBriefingBanner';
@@ -34,6 +37,9 @@ interface SalesLeadsTabProps {
   onNavigateToCrm?: (clientId: string) => void;
 }
 
+// 기획서 4.7 5대 상태 탭 + 전체
+export type SalesLeadTabStatus = 'all' | 'new' | 'callback' | 'no_answer' | 'in_progress' | 'converted';
+
 export default function SalesLeadsTab({
   activeLawyer,
   staffMembers,
@@ -42,50 +48,38 @@ export default function SalesLeadsTab({
   setRequests,
   onNavigateToCrm,
 }: SalesLeadsTabProps) {
+  const dialog = useDialog();
   const [leads, setLeads] = useState<SalesLead[]>(() => loadSalesLeads());
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<SalesLeadTabStatus>('all');
   const [selectedPath, setSelectedPath] = useState<string>('all');
-  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   // 모달 상태
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
   const [conversionTargetLead, setConversionTargetLead] = useState<SalesLead | null>(null);
 
-  // 선택된 상세 리드
+  // 통화 결과 등록 모달 상태 (기획서: 행의 '통화 결과' 버튼 하나로 기록)
+  const [callModalTargetLead, setCallModalTargetLead] = useState<SalesLead | null>(null);
+  const [callResultType, setCallResultType] = useState<'connected' | 'no_answer' | 'callback' | 'rejected' | 'wrong_number'>('no_answer');
+  const [callMemo, setCallMemo] = useState('');
+  const [callbackDateTime, setCallbackDateTime] = useState('');
+
+  // 행별 더보기 메뉴 열림 상태
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
   const selectedLead = useMemo(() => {
     return leads.find(l => l.id === selectedLeadId) || null;
   }, [leads, selectedLeadId]);
 
-  // 숨김 상태 (localStorage)
-  const [hiddenStatuses, setHiddenStatuses] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('legal_sales_hidden_statuses');
-      return saved ? JSON.parse(saved) : ['wrong_number', 'rejected'];
-    } catch {
-      return ['wrong_number', 'rejected'];
-    }
-  });
-
-  const toggleHiddenStatus = (status: string) => {
-    setHiddenStatuses(prev => {
-      const next = prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status];
-      localStorage.setItem('legal_sales_hidden_statuses', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  // 인입 경로 목록
   const inboundPaths = useMemo(() => loadInboundPaths(), [isSettingsModalOpen]);
 
-  // 필터링된 리드 목록
+  // 필터링된 리드 목록 (기획서 4.7 5대 탭)
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
-      // 1. 검색어 (이름, 전화번호, 지역, 메모)
+      // 1. 검색어 필터
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchName = (l.customerName || '').toLowerCase().includes(term);
@@ -100,59 +94,75 @@ export default function SalesLeadsTab({
         return false;
       }
 
-      // 3. 상태 필터 (탭 클릭 시)
-      if (selectedStatus === 'all') {
-        // 전체 보기에서는 숨김 상태 제외
-        if (hiddenStatuses.includes(l.status)) return false;
-      } else if (selectedStatus === 'no_answer') {
-        if (!['no_answer_1', 'no_answer_2', 'no_answer_3'].includes(l.status)) return false;
-      } else if (selectedStatus === 'callback') {
-        if (l.status !== 'callback') return false;
-      } else if (selectedStatus === 'overdue') {
-        const hasOverdue = (l.reminders || []).some(r => !r.isCompleted && new Date(r.datetime.replace(' ', 'T')).getTime() < Date.now());
-        if (!hasOverdue) return false;
-      } else {
-        if (l.status !== selectedStatus) return false;
-      }
+      // 3. 상태 탭 5종 필터
+      if (selectedStatus === 'new' && l.status !== 'new') return false;
+      if (selectedStatus === 'callback' && l.status !== 'callback') return false;
+      if (selectedStatus === 'no_answer' && !['no_answer_1', 'no_answer_2', 'no_answer_3', 'no_answer'].includes(l.status)) return false;
+      if (selectedStatus === 'in_progress' && l.status !== 'in_progress') return false;
+      if (selectedStatus === 'converted' && l.status !== 'converted') return false;
 
       return true;
     });
-  }, [leads, searchTerm, selectedStatus, selectedPath, hiddenStatuses]);
+  }, [leads, searchTerm, selectedStatus, selectedPath]);
 
-  // 콜 디스포지션 핸들러
-  const handleCallDisposition = (
-    leadId: string,
-    result: 'connected' | 'no_answer' | 'callback' | 'rejected' | 'wrong_number',
-    memo?: string,
-    callbackTime?: string
-  ) => {
+  // 상태 카운트 집계
+  const statusCounts = useMemo(() => {
+    let newCount = 0;
+    let callbackCount = 0;
+    let noAnswerCount = 0;
+    let inProgressCount = 0;
+    let convertedCount = 0;
+
+    leads.forEach(l => {
+      if (l.status === 'new') newCount++;
+      else if (l.status === 'callback') callbackCount++;
+      else if (['no_answer_1', 'no_answer_2', 'no_answer_3', 'no_answer'].includes(l.status)) noAnswerCount++;
+      else if (l.status === 'in_progress') inProgressCount++;
+      else if (l.status === 'converted') convertedCount++;
+    });
+
+    return {
+      all: leads.length,
+      new: newCount,
+      callback: callbackCount,
+      no_answer: noAnswerCount,
+      in_progress: inProgressCount,
+      converted: convertedCount,
+    };
+  }, [leads]);
+
+  // 통화 결과 저장 확정
+  const handleSaveCallResult = () => {
+    if (!callModalTargetLead) return;
+
     const updated = logLeadCall(
-      leadId,
+      callModalTargetLead.id,
       { id: activeLawyer.id, name: activeLawyer.name },
-      result,
-      memo,
-      callbackTime
+      callResultType,
+      callMemo.trim() || undefined,
+      callResultType === 'callback' ? callbackDateTime : undefined
     );
+
     if (updated) {
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...updated } : l));
-      toast.success(`통화 결과 '${result}' 기록 완료`);
+      setLeads(prev => prev.map(l => l.id === callModalTargetLead.id ? { ...updated } : l));
+      toast.success(`통화 결과 기록이 완료되었습니다.`);
     }
-  };
 
-  // 퀵 SMS: 실제 발송 큐 등록, 실패 시 문구 복사 (부재 차수는 올리지 않음)
-  const handleSendQuickSms = async (lead: SalesLead, type: 'no_answer' | 'appointment') => {
-    const text = type === 'no_answer'
-      ? `[법무법인] ${lead.customerName}님, 회생·파산 무료상담 신청 주셔서 연락드렸으나 부재중으로 문자 남깁니다. 편하신 시간에 회신 주시면 변호사 직접 진단 도와드리겠습니다.`
-      : `[법무법인] ${lead.customerName}님, 회생·파산 상담 전화 예약 안내드립니다. 예약 일시에 맞춰 연락드리겠습니다.`;
-
-    const r = await sendQuickSmsOrCopy(lead.phone, text);
-    if (r.sent) toast.success(`${lead.customerName}님께 퀵 문자 발송을 요청했습니다.`, { description: r.message });
-    else toast.error(r.message);
+    setCallModalTargetLead(null);
+    setCallMemo('');
+    setCallbackDateTime('');
   };
 
   // 리드 삭제
-  const handleDelete = (leadId: string, name: string) => {
-    if (window.confirm(`${name} 영업 리드를 삭제하시겠습니까?`)) {
+  const handleDelete = async (leadId: string, name: string) => {
+    const confirmed = await dialog.confirm({
+      title: '영업 리드 삭제',
+      message: `${name} 고객 리드를 삭제하시겠습니까? 삭제된 리드는 복구되지 않습니다.`,
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (confirmed) {
       deleteSalesLead(leadId);
       setLeads(prev => prev.filter(l => l.id !== leadId));
       toast.success('영업 리드가 삭제되었습니다.');
@@ -161,13 +171,11 @@ export default function SalesLeadsTab({
 
   // 고객 승격 완료 콜백
   const handleConverted = (newRequest: ConsultRequest, newExt: CrmClientExtension, updatedLead: SalesLead) => {
-    // 1. 기존 requests 배열에 신규 고객 추가
     setRequests(prev => [newRequest, ...prev]);
-    // 2. 리드 목록 상태 동기화
     setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...updatedLead } : l));
   };
 
-  // ── [고객 상세 워크스페이스 활성화 시 단독 렌더링] ──
+  // 상세 뷰 열림 시
   if (selectedLead) {
     return (
       <div className="animate-fadeIn pb-16">
@@ -184,7 +192,6 @@ export default function SalesLeadsTab({
           onNavigateToCrm={onNavigateToCrm}
         />
 
-        {/* 고객 관리로 이전 모달 */}
         <LeadConversionModal
           isOpen={!!conversionTargetLead}
           onClose={() => setConversionTargetLead(null)}
@@ -201,451 +208,451 @@ export default function SalesLeadsTab({
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-16">
-      {/* ── 1. Top Header & Primary Action Buttons ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+    <div className="space-y-5 animate-fadeIn pb-16">
+      {/* ── 1. 헤더: 타이틀 + 주요 액션 버튼 (신규 등록, 엑셀 업로드, 설정) ── */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-              <PhoneCall size={20} />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                영업 관리 <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">DB·콜 워크스페이스</span>
-              </h1>
-              <p className="text-xs text-slate-500">
-                대량 인입 DB를 안전하게 격리 보관하고 고속 콜 영업을 진행하며, 상담 성공 시 정식 고객으로 승격합니다.
-              </p>
-            </div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold uppercase bg-blue-50 text-[#1E3A5F] px-2.5 py-0.5 rounded-md">
+              영업 DB 큐
+            </span>
+            <span className="text-xs text-slate-400">· 인입 DB 격리 보관 및 통화 결과 관리</span>
           </div>
+          <h2 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <PhoneCall className="w-6 h-6 text-[#1E3A5F]" />
+            <span>영업 DB 관리</span>
+          </h2>
         </div>
 
-        {/* 액션 버튼군 */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => setIsSettingsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer press-scale active:scale-[0.98]"
-            title="상태/파트너/경로 등 환경설정"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
           >
-            <Settings size={14} className="text-slate-500" />
-            <span>영업 환경 설정</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsVisibilityModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer press-scale active:scale-[0.98]"
-            title="목록 표시/숨김 설정"
-          >
-            <EyeOff size={14} className="text-slate-500" />
-            <span>보기 설정</span>
+            <Settings className="w-3.5 h-3.5 text-slate-500" />
+            <span>경로/환경 설정</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-extrabold shadow-sm shadow-violet-500/20 transition-all cursor-pointer press-scale active:scale-[0.98]"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
           >
-            <Upload size={14} />
-            <span>대량 DB 엑셀 업로드</span>
+            <Upload className="w-3.5 h-3.5 text-slate-500" />
+            <span>엑셀 대량 등록</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsNewModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-extrabold shadow-sm shadow-blue-500/20 transition-all cursor-pointer press-scale active:scale-[0.98]"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E3A5F] hover:bg-[#152a45] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]"
           >
-            <Plus size={15} />
-            <span>단건 신규 DB 등록</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>단건 DB 등록</span>
           </button>
         </div>
       </div>
 
-      {/* ── 2. 100% 독립된 영업 대시보드 (Sales Dashboard) ── */}
-      <SalesDashboardWidget
-        leads={leads}
-        onSelectQuickFilter={key => setSelectedStatus(key)}
-        activeFilter={selectedStatus}
-      />
-
-      {/* ── 3. 검색 및 필터 툴바 ── */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* 상태 탭 필터 */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 text-xs font-bold">
-            {[
-              { id: 'all', label: '전체 보기' },
-              { id: 'new', label: '🆕 신규 DB' },
-              { id: 'callback', label: '⏰ 오늘 예약' },
-              { id: 'no_answer', label: '📞 부재중' },
-              { id: 'in_progress', label: '💬 1차 상담중' },
-              { id: 'converted', label: '⭐️ 고객 이전완료' },
-              { id: 'overdue', label: '⚠️ 지연 경고' },
-            ].map(tab => (
+      {/* ── 2. 상태 탭 5종 + 검색/유입경로 툴바 (기획서 4.7) ── */}
+      {/* 상태 탭: 신규 · 재통화 예정 · 부재 · 상담 중 · 이관 완료 (+ 전체) */}
+      <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs font-bold scrollbar-none">
+          {[
+            { id: 'all' as const, label: '전체', count: statusCounts.all },
+            { id: 'new' as const, label: '신규 접수', count: statusCounts.new },
+            { id: 'callback' as const, label: '재통화 예정', count: statusCounts.callback },
+            { id: 'no_answer' as const, label: '부재', count: statusCounts.no_answer },
+            { id: 'in_progress' as const, label: '상담 중', count: statusCounts.in_progress },
+            { id: 'converted' as const, label: '이관 완료', count: statusCounts.converted },
+          ].map(tab => {
+            const isSelected = selectedStatus === tab.id;
+            return (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer select-none ${
-                  selectedStatus === tab.id
-                    ? 'bg-slate-900 text-white font-extrabold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100'
+                className={`px-3 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
+                  isSelected
+                    ? 'bg-[#1E3A5F] text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
-                {tab.label}
+                <span>{tab.label}</span>
+                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
               </button>
-            ))}
-          </div>
-
-          {/* 인입 경로 드롭다운 */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <select
-              value={selectedPath}
-              onChange={e => setSelectedPath(e.target.value)}
-              className="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 outline-hidden cursor-pointer"
-            >
-              <option value="all">전체 유입경로</option>
-              {inboundPaths.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 검색창 */}
-        <div className="relative">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="고객명, 연락처, 지역, 상담 특이사항 검색..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs font-medium border border-slate-200 rounded-xl bg-slate-50/50 outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-          />
-        </div>
-      </div>
-
-      {/* ── 4. 영업 리드 목록 (Lead List & Workspace) ── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-2">
-          <span>검색된 영업 리드 <strong className="text-slate-800 font-extrabold">{filteredLeads.length}</strong>건</span>
-          <span className="text-[11px] text-slate-400">행을 클릭하면 딥 슬레이트 브리핑 및 고속 콜 워크스페이스가 열립니다.</span>
-        </div>
-
-        {filteredLeads.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-              <Users size={24} />
-            </div>
-            <p className="text-sm font-extrabold text-slate-700">해당 조건의 영업 리드가 없습니다.</p>
-            <p className="text-xs text-slate-400">새로운 DB를 엑셀로 업로드하거나 단건으로 등록해 보세요.</p>
-          </div>
-        ) : (
-          filteredLeads.map(lead => {
-            const isExpanded = expandedLeadId === lead.id;
-            const briefingData = extractBriefingData(lead);
-            const statusConfig = LEAD_STATUS_CONFIG[lead.status] || LEAD_STATUS_CONFIG.new;
-
-            return (
-              <div
-                key={lead.id}
-                className={`bg-white rounded-2xl border transition-all overflow-hidden ${
-                  isExpanded ? 'border-blue-300 shadow-md ring-2 ring-blue-500/10' : 'border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
-                }`}
-              >
-                {/* Collapsed Row */}
-                <div
-                  onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
-                  className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2.5 py-1 rounded-xl text-xs font-black border flex items-center gap-1 ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor}`}>
-                      <span>{statusConfig.emoji}</span>
-                      <span>{statusConfig.label}</span>
-                    </span>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedLeadId(lead.id);
-                          }}
-                          className="font-extrabold text-slate-900 text-sm hover:text-blue-600 hover:underline cursor-pointer"
-                          title="클릭 시 실시간 고객 상세 워크스페이스 열림"
-                        >
-                          {lead.customerName}
-                        </h3>
-                        <span className="text-xs font-mono text-slate-500">{lead.phone}</span>
-                        {lead.region && <span className="text-xs text-slate-400 font-normal">· {lead.region}</span>}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                        <span>{lead.inboundPath || '직접인입'}</span>
-                        {lead.batchName && <span>({lead.batchName})</span>}
-                        <span>·</span>
-                        <span>통화 시도 {lead.callCount}회</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Side: 채무/소득 및 퀵 버튼 */}
-                  <div className="flex items-center gap-4 justify-between md:justify-end">
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">
-                        채무 <strong className="text-rose-600 font-extrabold">{lead.debtTotal ? `${lead.debtTotal.toLocaleString()}만` : '-'}</strong>
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        월소득 {lead.incomeNet ? `${lead.incomeNet.toLocaleString()}만` : '-'}
-                      </p>
-                    </div>
-
-                    {/* Primary Action Button */}
-                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedLeadId(lead.id)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer press-scale active:scale-[0.98]"
-                        title="실시간 상담 및 정보 수정 워크스페이스 열기"
-                      >
-                        <Edit3 size={13} />
-                        <span>상세 수정</span>
-                      </button>
-
-                      {lead.status === 'converted' ? (
-                        <button
-                          type="button"
-                          onClick={() => lead.convertedClientId && onNavigateToCrm && onNavigateToCrm(lead.convertedClientId)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-                        >
-                          <CheckCircle2 size={13} />
-                          <span>고객 CRM 조회</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConversionTargetLead(lead)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer press-scale active:scale-[0.98]"
-                        >
-                          <Sparkles size={13} />
-                          <span>고객 관리로 이전</span>
-                        </button>
-                      )}
-
-                      <a
-                        href={`tel:${lead.phone}`}
-                        onClick={() => handleCallDisposition(lead.id, 'connected', '전화 연결 시도')}
-                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors cursor-pointer"
-                        title="전화 걸기"
-                      >
-                        <Phone size={14} />
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
-                        className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors"
-                      >
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expanded Detail Panel */}
-                {isExpanded && (
-                  <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-4">
-                    {/* 0. 실시간 정보 수정 워크스페이스 바로가기 배너 */}
-                    <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-3.5 rounded-2xl border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                          <Edit3 size={16} />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                            통화 중 실시간 정보 수정 &amp; 리마인더 워크스페이스
-                            <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.2 rounded-full font-bold">✓ 자동 저장</span>
-                          </h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            고객과 상담 통화하며 인적사항, 직업/소득, 주거비, 보유 자산, 신용대출 내역을 실시간으로 입력하고 수정합니다.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedLeadId(lead.id)}
-                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-sm shadow-blue-500/20 transition-all cursor-pointer whitespace-nowrap press-scale active:scale-[0.98] flex items-center justify-center gap-1.5"
-                      >
-                        <span>상세 워크스페이스 열기</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-
-                    {/* 1. 딥 슬레이트 고객 종합 브리핑 보드 (복사 기능 포함) */}
-                    <CaseBriefingBanner data={briefingData} />
-
-                    {/* 2. 고속 콜 디스포지션 툴바 */}
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-1.5">
-                          <PhoneCall size={14} className="text-blue-600" />
-                          원클릭 통화 결과 기록 (콜 디스포지션)
-                        </span>
-                        <span className="text-[11px] text-slate-400">클릭 즉시 통화 횟수가 증가하고 상태가 전이됩니다.</span>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => handleCallDisposition(lead.id, 'no_answer', '부재중 통화 시도')}
-                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          📞 부재중
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const timeStr = prompt('재통화 예약 일시를 입력하세요 (예: 2026-09-15 14:00)');
-                            if (timeStr) handleCallDisposition(lead.id, 'callback', '재통화 약속', timeStr);
-                          }}
-                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          ⏰ 재통화 예약
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCallDisposition(lead.id, 'connected', '상담 통화 진행')}
-                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          💬 1차 상담 통화 성공
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCallDisposition(lead.id, 'rejected', '상담 거절 또는 단순변심')}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          🚫 단순변심/거절
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCallDisposition(lead.id, 'wrong_number', '결번 또는 타인 번호')}
-                          className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          ⚠️ 결번/오류
-                        </button>
-
-                        {/* 퀵 SMS 버튼 */}
-                        <button
-                          type="button"
-                          onClick={() => handleSendQuickSms(lead, 'no_answer')}
-                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer ml-auto flex items-center gap-1"
-                        >
-                          <Send size={12} />
-                          <span>부재중 퀵 SMS</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(lead.id, lead.customerName)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer rounded-lg"
-                          title="리드 삭제"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 3. 통화 이력 타임라인 */}
-                    {lead.callLogs && lead.callLogs.length > 0 && (
-                      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                        <span className="font-extrabold text-xs text-slate-800 block">
-                          📜 통화 시도 이력 ({lead.callLogs.length}건)
-                        </span>
-                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                          {lead.callLogs.map(log => (
-                            <div key={log.id} className="text-xs p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                              <div>
-                                <span className="font-bold text-slate-700">[{log.result}]</span>
-                                <span className="text-slate-600 ml-1.5">{log.memo || '메모 없음'}</span>
-                              </div>
-                              <span className="text-[11px] text-slate-400">
-                                {new Date(log.calledAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} ({log.callerName})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
             );
-          })
-        )}
+          })}
+        </div>
+
+        {/* 검색 및 인입경로 */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="고객명, 연락처, 지역, 메모..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 text-slate-900 placeholder-slate-400"
+            />
+          </div>
+
+          <select
+            value={selectedPath}
+            onChange={e => setSelectedPath(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+          >
+            <option value="all">유입경로: 전체</option>
+            {inboundPaths.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* ── 모달 레이어 ── */}
-      {isNewModalOpen && (
-        <NewLeadModal
-          isOpen={isNewModalOpen}
-          onClose={() => setIsNewModalOpen(false)}
-          onRegister={newLead => {
-            saveSalesLead(newLead);
-            setLeads(prev => [newLead, ...prev]);
-          }}
-          existingLeads={leads}
-          existingRequests={requests}
-        />
+      {/* ── 3. 영업 DB 테이블 (기획서 4.7: 아코디언 대신 표 형태 + 행별 통화 결과 버튼) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse min-w-[860px]">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-600 uppercase tracking-wider">
+                <th className="py-3.5 px-4 w-[22%]">고객명 (연락처)</th>
+                <th className="py-3.5 px-3 w-[15%]">유입 경로 / 등록일</th>
+                <th className="py-3.5 px-3 w-[18%] text-right">채무 / 월소득</th>
+                <th className="py-3.5 px-3 w-[13%] text-center">진행 상태</th>
+                <th className="py-3.5 px-3 w-[14%] text-center">통화 시도 / 예약</th>
+                <th className="py-3.5 px-4 w-[18%] text-center">관리 액션</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+              {filteredLeads.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-slate-400 space-y-2">
+                    <p className="text-sm font-bold text-slate-600">조건에 맞는 영업 DB가 없습니다.</p>
+                    <p className="text-xs text-slate-400">새로운 DB를 등록하거나 검색 필터를 초기화해 보세요.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredLeads.map(lead => {
+                  const statusConfig = LEAD_STATUS_CONFIG[lead.status] || LEAD_STATUS_CONFIG.new;
+
+                  return (
+                    <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* 1. 고객명 (연락처 한 줄) */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span 
+                            onClick={() => setSelectedLeadId(lead.id)}
+                            className="font-bold text-sm text-slate-900 hover:text-blue-700 hover:underline cursor-pointer"
+                            title="고객 상세 패널 열기"
+                          >
+                            {lead.customerName}
+                          </span>
+                          {lead.region && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-medium">
+                              {lead.region}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
+                          <span>{lead.phone}</span>
+                        </div>
+                      </td>
+
+                      {/* 2. 유입 경로 / 등록일 */}
+                      <td className="py-3.5 px-3">
+                        <span className="font-bold text-slate-800 text-xs block">
+                          {lead.inboundPath || '직접 인입'}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {lead.createdAt.slice(0, 10)}
+                        </span>
+                      </td>
+
+                      {/* 3. 채무 / 월소득 */}
+                      <td className="py-3.5 px-3 text-right">
+                        <span className="font-black text-rose-600 text-sm block">
+                          {lead.debtTotal ? `${lead.debtTotal.toLocaleString()}만원` : '-'}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {lead.incomeNet ? `월 ${lead.incomeNet.toLocaleString()}만원` : '소득 미기재'}
+                        </span>
+                      </td>
+
+                      {/* 4. 진행 상태 */}
+                      <td className="py-3.5 px-3 text-center">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor}`}>
+                          <span>{statusConfig.emoji}</span>
+                          <span>{statusConfig.label}</span>
+                        </span>
+                      </td>
+
+                      {/* 5. 통화 시도 / 예약일자 */}
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="text-xs font-bold text-slate-700 block">
+                          {lead.callCount}회 시도
+                        </span>
+                        {lead.callbackTime ? (
+                          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded inline-block mt-0.5">
+                            예약: {lead.callbackTime.slice(5, 16)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
+
+                      {/* 6. 관리 액션 (주 버튼: 통화 결과 기록 + ⋯) */}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* 기획서 4.7 핵심: 행의 '통화 결과' 버튼 하나로 부재/재통화/성공 등 기록 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCallModalTargetLead(lead);
+                              setCallResultType(lead.status === 'callback' ? 'callback' : 'no_answer');
+                              setCallbackDateTime(lead.callbackTime || `${localYmd()}T14:00`);
+                            }}
+                            className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#152a45] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-[0.98]"
+                            title="통화 결과 기록"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>통화 결과</span>
+                          </button>
+
+                          {/* ⋯ 더보기 메뉴 */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setActiveMenuId(activeMenuId === lead.id ? null : lead.id)}
+                              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                              title="더보기 옵션"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+
+                            {activeMenuId === lead.id && (
+                              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-1 space-y-0.5 animate-fadeIn text-left">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setSelectedLeadId(lead.id);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>상세 정보 수정</span>
+                                </button>
+
+                                {lead.status !== 'converted' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      setConversionTargetLead(lead);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>정식 고객으로 이전</span>
+                                  </button>
+                                )}
+
+                                {lead.status === 'converted' && lead.convertedClientId && onNavigateToCrm && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      onNavigateToCrm(lead.convertedClientId!);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                                    <span>사건 CRM 열기</span>
+                                  </button>
+                                )}
+
+                                <div className="border-t border-slate-100 my-1" />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    handleDelete(lead.id, lead.customerName);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                  <span>DB 삭제</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── 4. 통화 결과 등록 모달 (기획서 4.7: 부재, 재통화 예약, 상담 성공, 거절, 결번) ── */}
+      {callModalTargetLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PhoneCall className="w-5 h-5 text-blue-400" />
+                <h3 className="text-sm font-bold">
+                  [{callModalTargetLead.customerName}] 통화 결과 기록
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCallModalTargetLead(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs text-slate-700">
+              <div className="bg-slate-50 p-3.5 rounded-xl flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">{callModalTargetLead.customerName}</div>
+                  <div className="text-slate-500 font-mono mt-0.5">{callModalTargetLead.phone}</div>
+                </div>
+                <div className="text-right text-slate-400">
+                  <span>누적 통화 {callModalTargetLead.callCount}회</span>
+                </div>
+              </div>
+
+              {/* 결과 선택 5종 버튼 */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800">통화 결과 선택</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'no_answer' as const, label: '부재중 (부재 카운트+1)', color: 'text-amber-800 bg-amber-50 border-amber-300' },
+                    { id: 'callback' as const, label: '재통화 예약 (시간지정)', color: 'text-blue-800 bg-blue-50 border-blue-300' },
+                    { id: 'connected' as const, label: '상담 성공 (1차 상담중)', color: 'text-emerald-800 bg-emerald-50 border-emerald-300' },
+                    { id: 'rejected' as const, label: '상담 거절 / 취소', color: 'text-slate-700 bg-slate-100 border-slate-300' },
+                    { id: 'wrong_number' as const, label: '결번 / 번호 오류', color: 'text-rose-800 bg-rose-50 border-rose-300' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setCallResultType(opt.id)}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
+                        callResultType === opt.id
+                          ? `${opt.color} ring-2 ring-blue-500 shadow-2xs`
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 재통화 예약 선택 시 날짜/시간 인풋 표시 */}
+              {callResultType === 'callback' && (
+                <div className="space-y-1.5 bg-blue-50/50 p-3.5 rounded-xl border border-blue-200 animate-fadeIn">
+                  <label className="font-bold text-blue-900 flex items-center gap-1">
+                    <CalendarClock className="w-3.5 h-3.5 text-blue-600" />
+                    <span>재통화 예약 일시</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={callbackDateTime}
+                    onChange={e => setCallbackDateTime(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+
+              {/* 메모 입력 */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800">통화 메모</label>
+                <input
+                  type="text"
+                  value={callMemo}
+                  onChange={e => setCallMemo(e.target.value)}
+                  placeholder="예: 18시 퇴근 후 통화 희망, 최근 채무 비중 큼"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCallModalTargetLead(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCallResult}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#1E3A5F] hover:bg-[#152a45] rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+              >
+                통화 결과 저장
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {isImportModalOpen && (
-        <ImportLeadsModal
-          isOpen={isImportModalOpen}
-          onClose={() => setIsImportModalOpen(false)}
-          onImport={importedLeads => {
-            const ok = bulkInsertLeads(importedLeads) > 0;
-            if (ok) setLeads(prev => [...importedLeads, ...prev]);
-            return ok;
-          }}
-          existingLeads={leads}
-          existingRequests={requests}
-        />
-      )}
+      {/* ── 5. 단건 등록 모달 ── */}
+      <NewLeadModal
+        isOpen={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
+        activeLawyer={activeLawyer}
+        staffMembers={staffMembers}
+        lawyers={lawyers}
+        onCreated={(newLead) => {
+          setLeads(prev => [newLead, ...prev]);
+        }}
+      />
 
-      {Boolean(conversionTargetLead) && (
-        <LeadConversionModal
-          isOpen={!!conversionTargetLead}
-          onClose={() => setConversionTargetLead(null)}
-          lead={conversionTargetLead}
-          activeLawyer={activeLawyer}
-          staffMembers={staffMembers}
-          lawyers={lawyers}
-          onConverted={handleConverted}
-          onNavigateToCrm={onNavigateToCrm}
-          existingRequests={requests}
-        />
-      )}
+      {/* ── 6. 엑셀 대량 등록 모달 ── */}
+      <ImportLeadsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        activeLawyer={activeLawyer}
+        staffMembers={staffMembers}
+        lawyers={lawyers}
+        onImportSuccess={(newLeads) => {
+          setLeads(prev => [...newLeads, ...prev]);
+        }}
+      />
 
-      {isVisibilityModalOpen && (
-        <StatusVisibilityModal
-          isOpen={isVisibilityModalOpen}
-          onClose={() => setIsVisibilityModalOpen(false)}
-          allStatuses={Object.keys(LEAD_STATUS_CONFIG)}
-          hiddenStatuses={hiddenStatuses}
-          onToggleStatus={toggleHiddenStatus}
-          title="영업 리드 상태 보기 설정"
-        />
-      )}
+      {/* ── 7. 영업 설정 모달 ── */}
+      <SalesSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
 
-      {isSettingsModalOpen && (
-        <SalesSettingsModal
-          isOpen={isSettingsModalOpen}
-          onClose={() => setIsSettingsModalOpen(false)}
-        />
-      )}
+      {/* ── 8. 고객 승격 모달 ── */}
+      <LeadConversionModal
+        isOpen={!!conversionTargetLead}
+        onClose={() => setConversionTargetLead(null)}
+        lead={conversionTargetLead}
+        activeLawyer={activeLawyer}
+        staffMembers={staffMembers}
+        lawyers={lawyers}
+        onConverted={handleConverted}
+        onNavigateToCrm={onNavigateToCrm}
+        existingRequests={requests}
+      />
     </div>
   );
 }

@@ -95,7 +95,7 @@ function ClientStatementSyncModalInner({
             <div>
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                 고객 진술서 확인 및 동기화 (STEP 6)
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
                   진술서 동기화
                 </span>
               </h3>
@@ -139,7 +139,7 @@ function ClientStatementSyncModalInner({
             <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
               <span>🎓</span> 1. 최종학력 및 최근 경력 (최근 취업자 소명자료)
             </h4>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 bg-white rounded-xl border border-slate-200">
                 <span className="text-slate-400 block mb-0.5">최종 학력</span>
                 <span className="font-bold text-slate-800">
@@ -162,7 +162,7 @@ function ClientStatementSyncModalInner({
             <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
               <span>⚖️</span> 2. 채권자로부터 받은 소송 / 독촉 / 강제집행 이력
             </h4>
-            <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-[11px] leading-relaxed">
+            <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-xs leading-relaxed">
               {statement?.pastCourtHistory?.hasPastCase ? (
                 <div className="space-y-1">
                   <span className="font-bold text-amber-700 block">과거 신청/소송 이력 있음</span>
@@ -183,7 +183,7 @@ function ClientStatementSyncModalInner({
             <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
               <span>📋</span> 3. 과거 회생/파산 신청 및 면책 여부
             </h4>
-            <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-[11px]">
+            <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-xs">
               <span className="font-bold text-slate-800">
                 과거 5년(개인회생) / 7년(개인파산) 이내 면책 이력 없음 (정상 신청 적격)
               </span>
@@ -195,7 +195,7 @@ function ClientStatementSyncModalInner({
             <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
               <span>📝</span> 4. 채무가 증대된 구체적 경위 및 사유
             </h4>
-            <div className="p-3 bg-white rounded-xl border border-slate-200 text-[11px] leading-relaxed text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto">
+            <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs leading-relaxed text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto">
               {statement?.debtGrowthStory?.growthProcessDetail || 
                 statement?.debtGrowthStory?.initialCauseDetail || 
                 `신청인은 코로나19 이후 소득이 급감하였으나, 가족 부양을 위해 생활비를 신용카드 및 카드론으로 충당하기 시작하였습니다. 이후 고금리 대출의 원리금을 감당하지 못하고 돌려막기를 거듭하다 채무가 급격히 증대되었습니다.`

@@ -139,16 +139,16 @@ function DocFormEditorModalInner({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm text-white">{docItem.title}</h3>
-                <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">
+                <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">
                   {docItem.category}
                 </span>
                 {docItem.isClientMobileSupport && (
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
                     의뢰인 모바일 작성 지원
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 사건: {boundData.caseNumber} · 신청인: {boundData.debtorName} · 법원: {boundData.courtName}
               </p>
             </div>
@@ -198,12 +198,12 @@ function DocFormEditorModalInner({
                 <button
                   type="button"
                   onClick={() => setShowPrecedentModal(true)}
-                  className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1 cursor-pointer press-scale shadow-xs"
+                  className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1 cursor-pointer press-scale shadow-xs"
                 >
                   <Copy className="w-3 h-3 text-blue-600" />
                   <span>📁 과거 선례 참고</span>
                 </button>
-                <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">CRM 자동 바인딩 완료</span>
+                <span className="text-xs text-slate-500 font-mono hidden sm:inline">CRM 자동 바인딩 완료</span>
               </div>
             </div>
 
@@ -215,7 +215,7 @@ function DocFormEditorModalInner({
                 <div>관할법원: <strong className="text-slate-900">{boundData.courtName}</strong></div>
                 <div>사건번호: <strong className="text-slate-900 font-mono">{boundData.caseNumber}</strong></div>
               </div>
-              <div className="text-slate-600 text-[11px] border-t border-slate-100 pt-2">
+              <div className="text-slate-600 text-xs border-t border-slate-100 pt-2">
                 대리인: {boundData.agentLawfirm}
               </div>
             </div>
@@ -239,7 +239,7 @@ function DocFormEditorModalInner({
                   type="button"
                   onClick={handleAiDraft}
                   disabled={isAiGenerating}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/80 flex items-center gap-1 cursor-pointer press-scale"
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/80 flex items-center gap-1 cursor-pointer press-scale"
                 >
                   <Sparkles className="w-3 h-3 text-indigo-500" />
                   <span>{isAiGenerating ? 'AI 법률 문안 생성 중...' : 'AI 사유 자동 보강'}</span>
@@ -342,7 +342,7 @@ function DocFormEditorModalInner({
 
                 <div className="flex justify-end pr-8 items-center gap-4 text-sm">
                   <span>신청인의 대리인 {boundData.agentLawyerName}</span>
-                  <div className="w-12 h-12 rounded-full border border-rose-400 flex items-center justify-center text-[10px] text-rose-600 font-bold bg-rose-50/30">
+                  <div className="w-12 h-12 rounded-full border border-rose-400 flex items-center justify-center text-xs text-rose-600 font-bold bg-rose-50/30">
                     (인)
                   </div>
                 </div>
@@ -371,7 +371,7 @@ function DocFormEditorModalInner({
                   <h4 className="font-extrabold text-sm text-slate-900">
                     과거 인가·면책 모범 작성 선례
                   </h4>
-                  <p className="text-[11px] text-slate-500 font-mono">
+                  <p className="text-xs text-slate-500 font-mono">
                     서식: {docItem.title} (#{docItem.docCode})
                   </p>
                 </div>

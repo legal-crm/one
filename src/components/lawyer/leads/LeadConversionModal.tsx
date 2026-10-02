@@ -61,22 +61,19 @@ export default function LeadConversionModal({
 
       onConverted(newRequest, newExt, updatedLead);
       if (!serverSaved) {
-        toast.warning(`${lead.customerName}님을 고객으로 이전했지만 서버 저장에 실패했습니다. 이 기기에만 저장되어 있으니 네트워크 확인 후 다시 저장해 주세요.`);
+        toast.warning(`${lead.customerName}님을 사건으로 전환했지만 서버 저장에 실패했습니다. 이 기기에만 저장되어 있으니 네트워크 확인 후 다시 저장해 주세요.`);
+      } else {
+        toast.success(`${lead.customerName}님의 영업 리드가 정식 사건으로 성공적으로 전환되었습니다.`);
       }
-      (serverSaved ? toast.success : toast.info)(
-        `${lead.customerName}님을 정식 고객으로 이전했습니다.`,
-        {
-          action: onNavigateToCrm ? {
-            label: '고객 CRM 바로가기',
-            onClick: () => onNavigateToCrm(newRequest.id),
-          } : undefined,
-          duration: 6000,
-        }
-      );
       onClose();
+
+      // 기획서 2-8: 전환 후 자동으로 사건 워크스페이스 직행
+      if (onNavigateToCrm) {
+        onNavigateToCrm(newRequest.id);
+      }
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || '고객 이전 중 오류가 발생했습니다.');
+      toast.error(err?.message || '사건 전환 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -96,13 +93,13 @@ export default function LeadConversionModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900">정식 고객 DB로 승격 이전</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                  Lead → Client
+                <h2 className="text-base font-extrabold text-slate-900">영업 리드 → 정식 사건 전환</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
+                  Lead → Case
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                유의미한 상담이 성사된 리드를 고객관리 파이프라인으로 이전합니다.
+                영업 상담이 성사된 리드를 사건 관리 워크스페이스(1단계 상담·제안)로 즉시 전환합니다.
               </p>
             </div>
           </div>
@@ -125,10 +122,10 @@ export default function LeadConversionModal({
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-600 pt-0.5">
-              <div><span className="text-slate-400 block text-[11px]">총 채무액</span><strong className="text-rose-600 font-black text-sm">{lead.debtTotal ? `${lead.debtTotal.toLocaleString()}만` : '-'}</strong></div>
-              <div><span className="text-slate-400 block text-[11px]">월 실급여</span><strong className="text-emerald-700 font-extrabold text-sm">{lead.incomeNet ? `${lead.incomeNet.toLocaleString()}만` : '-'}</strong></div>
-              <div><span className="text-slate-400 block text-[11px]">거주지</span><span className="font-bold text-slate-800">{lead.region || '-'}</span></div>
-              <div><span className="text-slate-400 block text-[11px]">통화 시도</span><span className="font-bold text-slate-800">{lead.callCount}회 완료</span></div>
+              <div><span className="text-slate-400 block text-xs">총 채무액</span><strong className="text-rose-600 font-black text-sm">{lead.debtTotal ? `${lead.debtTotal.toLocaleString()}만` : '-'}</strong></div>
+              <div><span className="text-slate-400 block text-xs">월 실급여</span><strong className="text-emerald-700 font-extrabold text-sm">{lead.incomeNet ? `${lead.incomeNet.toLocaleString()}만` : '-'}</strong></div>
+              <div><span className="text-slate-400 block text-xs">거주지</span><span className="font-bold text-slate-800">{lead.region || '-'}</span></div>
+              <div><span className="text-slate-400 block text-xs">통화 시도</span><span className="font-bold text-slate-800">{lead.callCount}회 완료</span></div>
             </div>
           </div>
 
@@ -208,13 +205,36 @@ export default function LeadConversionModal({
               />
             </div>
 
-            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 text-emerald-950">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="font-extrabold text-xs">데이터 무손실 100% 이관 보장</p>
-                <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  인적사항, 채무 및 재산 정보, 과거 이력, 그리고 <strong>지금까지의 모든 통화 기록</strong>이 고객 CRM의 타임라인으로 온전히 이관됩니다.
-                </p>
+            {/* 기획서 2-8: 이관·미이관 항목 표시 */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+              <span className="font-bold text-xs text-slate-800 block">
+                전환 데이터 정합성 명세 (이관 항목 vs 신규 생성 항목)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-white rounded-xl border border-emerald-200/80 space-y-1.5 shadow-2xs">
+                  <span className="font-bold text-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    온전히 이관되는 항목
+                  </span>
+                  <ul className="text-slate-600 space-y-1 pl-4 list-disc">
+                    <li>의뢰인 성명, 휴대폰 번호, 거주지</li>
+                    <li>총 채무액, 소득, 부양가족 데이터</li>
+                    <li>지금까지의 모든 통화 상담 기록 히스토리</li>
+                    <li>실무진 인계 메모 및 특약 희망사항</li>
+                  </ul>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-blue-200/80 space-y-1.5 shadow-2xs">
+                  <span className="font-bold text-blue-800 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                    새로 초기화·부여되는 항목
+                  </span>
+                  <ul className="text-slate-600 space-y-1 pl-4 list-disc">
+                    <li>사건 워크스페이스 1단계(상담·제안) 배정</li>
+                    <li>지정된 전담 변호사 및 사무장 매핑</li>
+                    <li>사건번호는 법원 정식 접수 시 부여</li>
+                    <li>CRM 사건 ID 신규 발급</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -236,7 +256,7 @@ export default function LeadConversionModal({
             className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm shadow-emerald-500/20 transition-all cursor-pointer press-scale active:scale-[0.98] flex items-center gap-1.5"
           >
             <Sparkles size={14} />
-            <span>{isSubmitting ? '이전 처리 중...' : '고객관리로 이전 확정'}</span>
+            <span>{isSubmitting ? '사건 전환 중...' : '사건으로 전환하고 워크스페이스 열기'}</span>
           </button>
         </div>
       </div>

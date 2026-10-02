@@ -173,11 +173,11 @@ ${selectedArt.details.join('\n')}
           <BookOpen className="w-4 h-4 text-blue-700" aria-hidden="true" />
           <span>{selectedArt.title}</span>
         </div>
-        <p className="text-[11px] text-blue-900 font-semibold">{selectedArt.summary}</p>
+        <p className="text-xs text-blue-900 font-semibold">{selectedArt.summary}</p>
 
         <div className="space-y-1 pt-1 max-h-56 overflow-y-auto pr-1">
           {selectedArt.details.map((line, idx) => (
-            <p key={idx} className="text-[11px] text-slate-700 leading-relaxed font-sans whitespace-pre-wrap">
+            <p key={idx} className="text-xs text-slate-700 leading-relaxed font-sans whitespace-pre-wrap">
               {line}
             </p>
           ))}
@@ -187,7 +187,7 @@ ${selectedArt.details.join('\n')}
           href={lawUrl(selectedArt.no)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-800 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-bold text-blue-800 hover:underline"
         >
           국가법령정보센터에서 원문 보기
           <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -195,7 +195,7 @@ ${selectedArt.details.join('\n')}
         </a>
       </div>
 
-      <p className="text-[10px] text-slate-500">조문 요약본입니다. 서면 작성·제출 전에는 원문과 최신 개정 여부를 확인하세요.</p>
+      <p className="text-xs text-slate-500">조문 요약본입니다. 서면 작성·제출 전에는 원문과 최신 개정 여부를 확인하세요.</p>
 
       <CopyButton copied={copied} onClick={handleCopy} label="조문 요약 복사" />
     </div>

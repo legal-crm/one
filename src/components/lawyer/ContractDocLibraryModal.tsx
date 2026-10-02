@@ -181,7 +181,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
             <div>
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>계약 문서함 (서식 보관함)</span>
-                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
                   {activeTab === 'standard' ? '대한변협·법률 표준 11종' : `사무소 등록 ${customTemplates.length}종`}
                 </span>
               </h2>
@@ -265,7 +265,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
             
             {/* 카테고리 칩 필터 (표준 탭일 때) */}
             {activeTab === 'standard' && (
-              <div className="p-3 border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px]">
+              <div className="p-3 border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-xs">
                 {[
                   { id: 'all', label: '전체' },
                   { id: 'contract', label: '위임계약' },
@@ -321,13 +321,13 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
                             <span>{CONTRACT_DOC_TYPES[tpl.type]?.emoji || '📄'}</span>
                             <span>{tpl.title}</span>
                           </h4>
-                          <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                             {tpl.description}
                           </p>
                         </div>
 
                         {/* 서명 주체 뱃지 */}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md shrink-0 ${
                           tpl.signatureRequired === 'both' ? 'bg-indigo-50 text-indigo-700' :
                           tpl.signatureRequired === 'client' ? 'bg-amber-50 text-amber-700' :
                           tpl.signatureRequired === 'lawyer' ? 'bg-emerald-50 text-emerald-700' :
@@ -340,7 +340,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
                       </div>
 
                       {/* 하단 태그 및 확약 문구 표시 */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1 flex-wrap">
                           {tpl.tags?.map((t, idx) => (
                             <span key={idx} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
@@ -374,7 +374,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
                     <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                       <span>{selectedTemplate.title}</span>
                       {selectedTemplate.isCustom && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                           사무소 맞춤
                         </span>
                       )}
@@ -436,10 +436,10 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 font-sans space-y-4">
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <span className="text-[11px] font-bold text-slate-400">
+                      <span className="text-xs font-bold text-slate-400">
                         서약/형광펜 마커가 적용된 실제 렌더링 화면
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         본문 글자 수: {selectedTemplate.content.length.toLocaleString()}자
                       </span>
                     </div>
@@ -545,7 +545,7 @@ export const ContractDocLibraryModal: React.FC<Props> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-slate-600">양식 본문 (형광펜 마킹: ==텍스트==)</label>
-                  <span className="text-[11px] text-slate-400">태그: &#123;&#123;의뢰인명&#125;&#125;, &#123;&#123;총수임료&#125;&#125;</span>
+                  <span className="text-xs text-slate-400">태그: &#123;&#123;의뢰인명&#125;&#125;, &#123;&#123;총수임료&#125;&#125;</span>
                 </div>
                 <textarea
                   value={formContent}

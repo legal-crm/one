@@ -27,6 +27,7 @@ import { uploadRecordingToDrive, getGoogleDriveConfig } from '../../../services/
 import { loadTelegramRooms } from '../../../services/settingsService';
 import { GoogleDriveSettingsModal } from './GoogleDriveSettingsModal';
 import { toast } from 'sonner';
+import { useDialog } from '../../common/DialogProvider';
 
 interface CaseDetailAiSummaryProps {
   lead: SalesLead;
@@ -43,6 +44,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
   activeLawyerEmail,
   activeLawyerName
 }) => {
+  const dialog = useDialog();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const [activeRecordingId, setActiveRecordingId] = useState<string | null>(null);
@@ -93,9 +95,17 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
     }
   };
 
-  const handleDeleteRecording = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteRecording = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (window.confirm('해당 통화 녹음 파일을 삭제하시겠습니까?')) {
+    // 이전: window.confirm 사용 -> dialog.confirm으로 교체
+    const confirmed = await dialog.confirm({
+      title: '녹음 파일 삭제',
+      message: '해당 통화 녹음 파일을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (confirmed) {
       const filtered = (lead.recordings || []).filter(r => r.id !== id);
       onUpdateLead({
         ...lead,
@@ -109,8 +119,16 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
     }
   };
 
-  const handleDeleteAiSummary = () => {
-    if (window.confirm('AI 요약본을 삭제하시겠습니까?')) {
+  const handleDeleteAiSummary = async () => {
+    // 이전: window.confirm 사용 -> dialog.confirm으로 교체
+    const confirmed = await dialog.confirm({
+      title: 'AI 요약본 삭제',
+      message: 'AI 요약본을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (confirmed) {
       onUpdateLead({
         ...lead,
         aiSummary: undefined,
@@ -387,11 +405,11 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
           <div>
             <h3 className="text-sm font-bold text-purple-950 flex items-center gap-1.5">
               <span>AI 상담 요약</span>
-              <span className="text-[10px] bg-purple-200/90 text-purple-900 font-extrabold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-purple-200/90 text-purple-900 font-extrabold px-2 py-0.5 rounded-full">
                 Gemini 3.5 Transcribe
               </span>
             </h3>
-            <p className="text-[11px] text-purple-700/80">
+            <p className="text-xs text-purple-700/80">
               구글 드라이브 자동 보관 & 화자분리 타임스탬프 대화록 누적 아카이빙
             </p>
           </div>
@@ -461,7 +479,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
               <Archive size={13} className="text-purple-600" />
               <span>녹음 아카이브 ({lead.recordings.length}건)</span>
             </span>
-            <span className="text-[10px] text-slate-400 font-normal">
+            <span className="text-xs text-slate-400 font-normal">
               * 클릭 시 해당 녹음 파일 및 당시 대화록으로 즉시 전환
             </span>
           </h4>
@@ -492,7 +510,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
                       <span className={isSelected ? 'text-purple-900' : 'font-medium text-slate-800'}>
                         {rec.filename}
                       </span>
-                      <span className="text-slate-400 text-[10px] ml-2 font-mono">
+                      <span className="text-slate-400 text-xs ml-2 font-mono">
                         {formatArchiveDate(rec.uploadDate)}
                       </span>
                     </div>
@@ -540,7 +558,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
             <ListOrdered size={13} />
             <span>2. 전체 대화록</span>
             {transcriptLines.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full text-[10px] font-mono">
+              <span className="ml-1 px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full text-xs font-mono">
                 {transcriptLines.length}
               </span>
             )}
@@ -550,7 +568,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
         {activeSubTab === 'transcript' && transcriptLines.length > 0 && (
           <button
             onClick={handleCopyTranscript}
-            className="flex items-center gap-1 text-[11px] text-purple-700 hover:text-purple-900 px-2 py-1 rounded hover:bg-purple-100 transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 px-2 py-1 rounded hover:bg-purple-100 transition-colors font-medium cursor-pointer"
             title="전체 대화록 복사"
           >
             {copiedTranscript ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
@@ -590,7 +608,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
               {lead.aiSummary ? (
                 <div>
                   <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-100">
-                    <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
                       <CheckCircle2 size={13} className="text-purple-600" />
                       18개 항목 정밀 분석 요약
                     </span>
@@ -624,7 +642,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
                     <Mic size={20} />
                   </div>
                   <p className="text-xs font-medium text-slate-600">아직 분석된 AI 통화 요약이 없습니다.</p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     상단의 [녹음 파일 선택] 후 [AI 분석 실행]을 누르면 18개 항목 구조화 요약이 생성됩니다.
                   </p>
                 </div>
@@ -672,7 +690,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                               isAgent
                                 ? 'bg-indigo-600 text-white'
                                 : 'bg-purple-600 text-white'
@@ -681,14 +699,14 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
                             {isAgent ? '👤 상담원' : '🧑 고객'}
                           </span>
                           {line.speaker !== '상담원' && line.speaker !== '고객' && (
-                            <span className="text-slate-500 text-[11px]">({line.speaker})</span>
+                            <span className="text-slate-500 text-xs">({line.speaker})</span>
                           )}
                         </div>
 
                         {/* 타임스탬프 클릭 시 해당 오디오 구간으로 seekTo 점프 */}
                         <button
                           onClick={() => handleSeekToTimestamp(line.seconds)}
-                          className="flex items-center gap-1 px-1.5 py-0.5 bg-white border border-purple-200 hover:border-purple-400 text-purple-700 hover:bg-purple-50 rounded text-[10px] font-mono transition-colors shadow-2xs cursor-pointer font-bold"
+                          className="flex items-center gap-1 px-1.5 py-0.5 bg-white border border-purple-200 hover:border-purple-400 text-purple-700 hover:bg-purple-50 rounded text-xs font-mono transition-colors shadow-2xs cursor-pointer font-bold"
                           title="이 발언 시점으로 이동하여 오디오 재생"
                         >
                           <PlayCircle size={11} className="text-purple-600" />
@@ -708,7 +726,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
             <div className="text-center py-8 text-slate-400 space-y-2">
               <Clock size={22} className="mx-auto text-purple-300" />
               <p className="text-xs font-medium text-slate-600">분석된 타임스탬프 대화록이 없습니다.</p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 음성 녹음 파일을 업로드하고 [AI 분석 실행]을 누르면 구간별 대화록이 생성됩니다.
               </p>
             </div>
@@ -765,7 +783,7 @@ export const CaseDetailAiSummary: React.FC<CaseDetailAiSummaryProps> = ({
                   >
                     <div className="flex flex-col">
                       <span className="font-bold text-xs text-indigo-950 group-hover:text-indigo-700">{room.name}</span>
-                      <span className="text-[10px] text-indigo-400 mt-0.5 truncate max-w-[180px]">{room.url}</span>
+                      <span className="text-xs text-indigo-400 mt-0.5 truncate max-w-[180px]">{room.url}</span>
                     </div>
                     <Send size={13} className="text-indigo-400 group-hover:text-indigo-600 shrink-0" />
                   </button>

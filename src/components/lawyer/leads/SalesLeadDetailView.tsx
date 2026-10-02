@@ -502,7 +502,7 @@ export default function SalesLeadDetailView({
                 <h2 className="font-extrabold text-slate-900 text-sm md:text-base">
                   고객 상황 및 채무 입력 정보 (CRM 폼)
                 </h2>
-                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">직접 수정 가능</span>
+                <span className="text-xs text-slate-400 font-medium hidden sm:inline">직접 수정 가능</span>
               </div>
               <span className={`text-xs px-3 py-1 rounded-full font-extrabold border transition-all ${
                 isSavedPulsing 
@@ -529,7 +529,7 @@ export default function SalesLeadDetailView({
                         기본 인적사항 및 접수
                       </h3>
                     </div>
-                    <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
                       접수: {currentLead.createdAt ? currentLead.createdAt.slice(0, 10) : '-'}
                     </span>
                   </div>
@@ -680,7 +680,7 @@ export default function SalesLeadDetailView({
                       </h3>
                     </div>
                     {currentLead.incomeNet > 0 && (
-                      <span className="text-[11px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded font-extrabold">
+                      <span className="text-xs text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded font-extrabold">
                         월 소득: {currentLead.incomeNet.toLocaleString()}만원
                       </span>
                     )}
@@ -817,7 +817,7 @@ export default function SalesLeadDetailView({
                         주거 형태 및 주거비
                       </h3>
                     </div>
-                    <span className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded">
                       {currentLead.housingType || '미지정'} {currentLead.housingDetail && `(${currentLead.housingDetail})`}
                     </span>
                   </div>
@@ -865,7 +865,7 @@ export default function SalesLeadDetailView({
                       <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2.5">
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">집 시세 (만원)</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">집 시세 (만원)</label>
                             <input
                               type="number"
                               value={currentLead.ownHousePrice || ''}
@@ -875,7 +875,7 @@ export default function SalesLeadDetailView({
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">집 담보 대출 (만원)</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">집 담보 대출 (만원)</label>
                             <input
                               type="number"
                               value={currentLead.ownHouseLoan || ''}
@@ -886,7 +886,7 @@ export default function SalesLeadDetailView({
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">집 명의자</label>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">집 명의자</label>
                           <div className="flex gap-1.5">
                             {['본인', '배우자', '배우자 공동명의'].map(opt => (
                               <button
@@ -907,7 +907,7 @@ export default function SalesLeadDetailView({
                       </div>
                     ) : currentLead.housingType === '무상거주' ? (
                       <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">집 명의자 (무상제공자)</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">집 명의자 (무상제공자)</label>
                         <div className="flex gap-1.5">
                           {FREE_HOUSING_OWNERS.map(opt => (
                             <button
@@ -929,7 +929,7 @@ export default function SalesLeadDetailView({
                       <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2.5">
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">보증금 (만원)</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">보증금 (만원)</label>
                             <input
                               type="number"
                               value={currentLead.deposit || ''}
@@ -939,7 +939,7 @@ export default function SalesLeadDetailView({
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">보증금 대출 (만원)</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">보증금 대출 (만원)</label>
                             <input
                               type="number"
                               value={currentLead.depositLoanAmount || ''}
@@ -950,7 +950,7 @@ export default function SalesLeadDetailView({
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">월세 (만원)</label>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">월세 (만원)</label>
                           <input
                             type="number"
                             value={currentLead.rent || ''}
@@ -960,7 +960,7 @@ export default function SalesLeadDetailView({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">임대차 계약인</label>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">임대차 계약인</label>
                           <div className="flex gap-2">
                             {RENT_CONTRACTORS.map(opt => (
                               <button
@@ -1011,7 +1011,7 @@ export default function SalesLeadDetailView({
                         자산 및 부채 관리
                       </h3>
                     </div>
-                    <span className="text-[11px] font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded">
                       대출 {currentLead.creditLoans?.length || 0}건 | 자산 {currentLead.assets?.length || 0}건
                     </span>
                   </div>
@@ -1022,7 +1022,7 @@ export default function SalesLeadDetailView({
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-bold text-slate-800 flex items-center gap-1.5">
                           <span>🚗 보유 자산 목록</span>
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.2 rounded-full text-[11px] font-bold">
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.2 rounded-full text-xs font-bold">
                             {currentLead.assets?.length || 0}건
                           </span>
                         </span>
@@ -1120,7 +1120,7 @@ export default function SalesLeadDetailView({
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-bold text-slate-800 flex items-center gap-1.5">
                           <span>💳 신용대출 내역</span>
-                          <span className="bg-rose-100 text-rose-700 px-2 py-0.2 rounded-full text-[11px] font-bold">
+                          <span className="bg-rose-100 text-rose-700 px-2 py-0.2 rounded-full text-xs font-bold">
                             {currentLead.creditLoans?.length || 0}건
                           </span>
                         </span>
@@ -1260,7 +1260,7 @@ export default function SalesLeadDetailView({
                         과거 이력 및 상태 변경 기록
                       </h3>
                     </div>
-                    <span className="text-[11px] font-bold text-indigo-700">
+                    <span className="text-xs font-bold text-indigo-700">
                       히스토리 관리
                     </span>
                   </div>
@@ -1303,7 +1303,7 @@ export default function SalesLeadDetailView({
                         <label className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
                           <CalendarClock size={14} className="text-indigo-600" />
                           <span>상태 변경 타임라인</span>
-                          <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded text-[10px] font-bold">
+                          <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded text-xs font-bold">
                             {currentLead.statusLogs.length}건
                           </span>
                         </label>
@@ -1312,14 +1312,14 @@ export default function SalesLeadDetailView({
                             <div key={log.logId} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
                               <div className="flex justify-between items-center mb-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-slate-400 line-through text-[11px] px-1.5 py-0.5 bg-slate-200 rounded">{log.fromStatus}</span>
+                                  <span className="text-slate-400 line-through text-xs px-1.5 py-0.5 bg-slate-200 rounded">{log.fromStatus}</span>
                                   <span className="text-slate-400">→</span>
                                   <span className="font-bold text-indigo-600 text-xs px-2 py-0.5 bg-indigo-50 rounded border border-indigo-200">{log.toStatus}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-mono">{log.changedAt.slice(2, 16).replace('T', ' ')}</span>
+                                <span className="text-xs text-slate-400 font-mono">{log.changedAt.slice(2, 16).replace('T', ' ')}</span>
                               </div>
                               {log.memo && (
-                                <p className="text-slate-600 text-[11px] bg-white p-1.5 rounded-lg border border-slate-100 mt-1">
+                                <p className="text-slate-600 text-xs bg-white p-1.5 rounded-lg border border-slate-100 mt-1">
                                   {log.memo}
                                 </p>
                               )}
@@ -1355,7 +1355,7 @@ export default function SalesLeadDetailView({
                 <Calendar size={13} className={dockTab === 'reminders' ? 'text-amber-500' : 'text-slate-400'} />
                 <span>리마인더 & 이력</span>
                 {(currentLead.reminders || []).filter(r => !r.isCompleted).length > 0 && (
-                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
+                  <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
                     {(currentLead.reminders || []).filter(r => !r.isCompleted).length}
                   </span>
                 )}
@@ -1396,7 +1396,7 @@ export default function SalesLeadDetailView({
                     </h3>
                   </div>
                   {(currentLead.reminders || []).filter(r => !r.isCompleted).length > 0 && (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
                       대기 {(currentLead.reminders || []).filter(r => !r.isCompleted).length}건
                     </span>
                   )}
@@ -1467,7 +1467,7 @@ export default function SalesLeadDetailView({
 
                 {/* ⚡ 빠른 선택 버튼군 */}
                 <div className="pt-1.5 border-t border-amber-200/60 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-amber-800 font-bold flex items-center gap-0.5 mr-1">
+                  <span className="text-xs text-amber-800 font-bold flex items-center gap-0.5 mr-1">
                     <Zap size={12} className="text-amber-600" />
                     빠른선택:
                   </span>
@@ -1482,7 +1482,7 @@ export default function SalesLeadDetailView({
                       key={p.label}
                       type="button"
                       onClick={() => handleQuickAddReminder(p.days, p.label)}
-                      className="px-2 py-0.5 text-[11px] font-bold bg-white text-amber-800 border border-amber-300 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
+                      className="px-2 py-0.5 text-xs font-bold bg-white text-amber-800 border border-amber-300 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
                     >
                       {p.label}
                     </button>
@@ -1520,7 +1520,7 @@ export default function SalesLeadDetailView({
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-extrabold text-slate-800">{r.datetime}</span>
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                              <span className="px-1.5 py-0.2 rounded text-xs font-bold bg-amber-100 text-amber-800">
                                 {r.type}
                               </span>
                             </div>
@@ -1578,7 +1578,7 @@ export default function SalesLeadDetailView({
                   ) : (
                     currentLead.memos.map((m: LeadMemoItem) => (
                       <div key={m.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
-                        <div className="flex justify-between items-center text-[10px] text-slate-400">
+                        <div className="flex justify-between items-center text-xs text-slate-400">
                           <span className="font-bold text-slate-600">{m.authorName || '상담원'}</span>
                           <div className="flex items-center gap-2">
                             <span>{m.createdAt.slice(2, 16).replace('T', ' ')}</span>

@@ -245,7 +245,7 @@ function PostCommencementManagementModalInner({
               <h3 className="font-extrabold text-sm text-white">
                 개시결정 이후 사후관리 센터 (가상계좌 & 집회 & 이의대응)
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 사건: {caseLabel} · 신청인: {clientName} · 월 변제금: {monthlyRepayment > 0 ? `${monthlyRepayment.toLocaleString()}원` : '변제계획안 미저장'}
               </p>
             </div>
@@ -415,7 +415,7 @@ function PostCommencementManagementModalInner({
                         <td className="p-3 font-mono">{item.yearMonth}</td>
                         <td className="p-3 text-right font-mono font-bold">{item.amount.toLocaleString()}원</td>
                         <td className="p-3 text-center">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                             item.isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700 animate-pulse'
                           }`}>
                             {item.isPaid ? '납부완료' : '미납(소급대상)'}
@@ -475,7 +475,7 @@ function PostCommencementManagementModalInner({
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
                   <span>채권자집회는 채무자 본인 출석이 원칙입니다</span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-rose-900">
+                <p className="text-xs leading-relaxed text-rose-900">
                   정당한 사유 없이 불출석하면 절차 진행에 불이익(폐지 등)이 생길 수 있습니다. 불이익의 내용은 재판부가 판단합니다. 부득이한 사정이 있으면 기일 전에 법원에 알리도록 안내하세요.
                 </p>
               </div>
@@ -486,7 +486,7 @@ function PostCommencementManagementModalInner({
                   <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">1</span>
                   <div>
                     <span className="font-bold text-slate-900">신분증 필참</span>
-                    <p className="text-[11px] text-slate-500">주민등록증 또는 운전면허증 (모바일 신분증 가능)</p>
+                    <p className="text-xs text-slate-500">주민등록증 또는 운전면허증 (모바일 신분증 가능)</p>
                   </div>
                 </div>
 
@@ -494,7 +494,7 @@ function PostCommencementManagementModalInner({
                   <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">2</span>
                   <div>
                     <span className="font-bold text-slate-900">통지서 지참</span>
-                    <p className="text-[11px] text-slate-500">법원에서 우편 송달된 채권자집회 기일통지서</p>
+                    <p className="text-xs text-slate-500">법원에서 우편 송달된 채권자집회 기일통지서</p>
                   </div>
                 </div>
 
@@ -502,7 +502,7 @@ function PostCommencementManagementModalInner({
                   <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">3</span>
                   <div>
                     <span className="font-bold text-slate-900">단정한 복장</span>
-                    <p className="text-[11px] text-slate-500">슬리퍼, 반바지, 모자 착용 금지</p>
+                    <p className="text-xs text-slate-500">슬리퍼, 반바지, 모자 착용 금지</p>
                   </div>
                 </div>
 
@@ -510,7 +510,7 @@ function PostCommencementManagementModalInner({
                   <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">4</span>
                   <div>
                     <span className="font-bold text-slate-900">여유 있게 도착</span>
-                    <p className="text-[11px] text-slate-500">기일 시작 전 법정 앞에서 대기 (지각하면 불출석으로 처리될 수 있음)</p>
+                    <p className="text-xs text-slate-500">기일 시작 전 법정 앞에서 대기 (지각하면 불출석으로 처리될 수 있음)</p>
                   </div>
                 </div>
               </div>
@@ -542,11 +542,11 @@ function PostCommencementManagementModalInner({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-900">{obj.creditorName}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
                           {obj.objectionType === 'DEBT_TRANSFER' ? '채권양도신고' : '금액이의'}
                         </span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${obj.status === 'ANSWERED' ? 'text-emerald-700 bg-emerald-100' : 'text-amber-700 bg-amber-100'}`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${obj.status === 'ANSWERED' ? 'text-emerald-700 bg-emerald-100' : 'text-amber-700 bg-amber-100'}`}>
                         {obj.status === 'ANSWERED' ? '답변 완료' : '답변 준비'}
                       </span>
                     </div>
@@ -575,7 +575,7 @@ function PostCommencementManagementModalInner({
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-500 text-white">
+                        <span className="text-xs font-black uppercase px-2 py-0.5 rounded-md bg-red-500 text-white">
                           참고용 일반 경향
                         </span>
                         <span className="text-xs text-amber-300 font-bold">
@@ -588,7 +588,7 @@ function PostCommencementManagementModalInner({
                           : '변제금 미납 폐지 위험 참고 판정 (납부 기록 없음)'}
                       </h4>
                       {!hasPaymentRecords && (
-                        <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                           의뢰인의 회생동행 납부 기록이 이 기기에 없어 실제 미납 회차를 알 수 없습니다. 오른쪽 미납 회차는 가정값이니, 법원 가상계좌 입금 내역이나 회생위원 안내로 확인해 주세요.
                         </p>
                       )}
@@ -612,31 +612,31 @@ function PostCommencementManagementModalInner({
                 {/* 게이지 및 임계치 정보 */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1">
-                    <span className="text-slate-400 text-[11px] block">현재 누적 미납액</span>
+                    <span className="text-slate-400 text-xs block">현재 누적 미납액</span>
                     <span className="text-base font-black text-amber-400">
                       {totalOverdueAmount.toLocaleString()}원
                     </span>
-                    <span className="text-[10px] text-slate-500 block">
+                    <span className="text-xs text-slate-500 block">
                       월 {monthlyRepayment.toLocaleString()}원 × {overdueRoundsCount}회
                     </span>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1">
-                    <span className="text-slate-400 text-[11px] block">관할 법원 폐지 임계치</span>
+                    <span className="text-slate-400 text-xs block">관할 법원 폐지 임계치</span>
                     <span className="text-base font-black text-red-400">
                       {courtThreshold.repealRiskRounds}회 이상 연체 시
                     </span>
-                    <span className="text-[10px] text-slate-400 block truncate">
+                    <span className="text-xs text-slate-400 block truncate">
                       {courtThreshold.leniencyLevel === 'HIGH_FLEXIBLE' ? '비교적 유연한 경향' : courtThreshold.leniencyLevel === 'MODERATE' ? '보통' : '비교적 엄격한 경향'} (재판부마다 다름)
                     </span>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1">
-                    <span className="text-slate-400 text-[11px] block">폐지결정 즉시항고 기간</span>
+                    <span className="text-slate-400 text-xs block">폐지결정 즉시항고 기간</span>
                     <span className="text-base font-black text-emerald-400">
                       공고일부터 14일
                     </span>
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-xs text-slate-400 block">
                       제13조 제2항 · 기산일은 결정문·공고로 확인
                     </span>
                   </div>
@@ -663,7 +663,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-blue-400 transition-all shadow-xs flex flex-col justify-between gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
                           법 제619조
                         </span>
                         <span className="text-xs font-bold text-slate-700">소득감소·실직</span>
@@ -689,7 +689,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-purple-400 transition-all shadow-xs flex flex-col justify-between gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800">
                           법 제624조 제2항
                         </span>
                         <span className="text-xs font-bold text-slate-700">질병·불가항력</span>
@@ -715,7 +715,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-red-400 transition-all shadow-xs flex flex-col justify-between gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-800">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-800">
                           공고일부터 14일
                         </span>
                         <span className="text-xs font-bold text-red-600">폐지결정 불복</span>
@@ -755,7 +755,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                     <div className="text-xs space-y-0.5">
                       <div className="font-bold text-slate-900">① 1~2회 미납 주의 & 가상계좌 분납 안내</div>
-                      <p className="text-slate-500 text-[11px]">가능한 금액부터 입금 권고 (분납 방식은 회생위원 안내)</p>
+                      <p className="text-slate-500 text-xs">가능한 금액부터 입금 권고 (분납 방식은 회생위원 안내)</p>
                     </div>
                     <button
                       type="button"
@@ -770,7 +770,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                     <div className="text-xs space-y-0.5">
                       <div className="font-bold text-slate-900">② 미납 누적 경고문</div>
-                      <p className="text-slate-500 text-[11px]">폐지 검토 가능성 안내 및 사정 소명 요청</p>
+                      <p className="text-slate-500 text-xs">폐지 검토 가능성 안내 및 사정 소명 요청</p>
                     </div>
                     <button
                       type="button"
@@ -785,7 +785,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                     <div className="text-xs space-y-0.5">
                       <div className="font-bold text-slate-900">③ 변제계획변경 & 특별면책 구제 안내문</div>
-                      <p className="text-slate-500 text-[11px]">급여감소·질환 의뢰인용 증빙서류 안내</p>
+                      <p className="text-slate-500 text-xs">급여감소·질환 의뢰인용 증빙서류 안내</p>
                     </div>
                     <button
                       type="button"
@@ -800,7 +800,7 @@ function PostCommencementManagementModalInner({
                   <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                     <div className="text-xs space-y-0.5">
                       <div className="font-bold text-slate-900">④ 폐지결정 즉시항고 안내문</div>
-                      <p className="text-slate-500 text-[11px]">즉시항고 기간·준비사항 안내 (결과 보장 아님)</p>
+                      <p className="text-slate-500 text-xs">즉시항고 기간·준비사항 안내 (결과 보장 아님)</p>
                     </div>
                     <button
                       type="button"

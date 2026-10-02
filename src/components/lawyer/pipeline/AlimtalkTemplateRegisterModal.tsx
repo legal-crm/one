@@ -141,11 +141,11 @@ export default function AlimtalkTemplateRegisterModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-white">알림톡 신규 템플릿 등록 및 심사 신청</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
+                <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
                   초안 저장 (심사 신청은 팝빌에서)
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 카카오 비즈니스 심사 가이드라인에 따라 템플릿을 등록하고 승인을 요청합니다.
               </p>
             </div>
@@ -164,7 +164,7 @@ export default function AlimtalkTemplateRegisterModal({
           {/* 가이드 배너 */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-[11px] leading-relaxed space-y-0.5">
+            <div className="text-xs leading-relaxed space-y-0.5">
               <p className="font-bold">카카오 알림톡 사전 검수 승인 제도</p>
               <p className="text-blue-700">
                 카카오 규정에 따라 광고성 문구는 반려될 수 있으며, 정보성 안내문구만 심사 통과됩니다.
@@ -210,18 +210,18 @@ export default function AlimtalkTemplateRegisterModal({
             <div className="flex items-center justify-between">
               <label className="font-bold text-slate-800 flex items-center gap-1.5">
                 <span>템플릿 고정 문안 및 변수 삽입</span>
-                <span className="text-[10px] text-slate-400 font-normal">
+                <span className="text-xs text-slate-400 font-normal">
                   (감지된 변수: {detectedVariables.length}개)
                 </span>
               </label>
-              <span className="text-[11px] text-slate-400 font-mono">
+              <span className="text-xs text-slate-400 font-mono">
                 {templateText.length}자 / 최대 1,000자
               </span>
             </div>
 
             {/* 치환 변수 원클릭 삽입 칩 */}
             <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mr-1">
+              <span className="text-xs font-bold text-slate-500 flex items-center gap-1 mr-1">
                 <Plus className="w-3 h-3 text-slate-400" />
                 변수 삽입:
               </span>
@@ -230,7 +230,7 @@ export default function AlimtalkTemplateRegisterModal({
                   key={chip.tag}
                   type="button"
                   onClick={() => handleInsertTag(chip.tag)}
-                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-mono text-[10px] transition-all cursor-pointer shadow-2xs press-scale"
+                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-mono text-xs transition-all cursor-pointer shadow-2xs press-scale"
                   title={`${chip.tag} 삽입`}
                 >
                   +{chip.label}
@@ -250,7 +250,7 @@ export default function AlimtalkTemplateRegisterModal({
           {/* 버튼 링크 설정 (옵션) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 text-[11px]">카카오 알림톡 하단 버튼명 (선택)</label>
+              <label className="font-bold text-slate-700 text-xs">카카오 알림톡 하단 버튼명 (선택)</label>
               <input
                 type="text"
                 value={buttonName}
@@ -260,7 +260,7 @@ export default function AlimtalkTemplateRegisterModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 text-[11px]">연결 웹링크 URL</label>
+              <label className="font-bold text-slate-700 text-xs">연결 웹링크 URL</label>
               <input
                 type="text"
                 value={buttonUrl}
@@ -273,19 +273,19 @@ export default function AlimtalkTemplateRegisterModal({
 
           {/* 실시간 승인 미리보기 */}
           <div className="space-y-1.5">
-            <label className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+            <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>카카오톡 승인 시 수신 화면 실시간 미리보기</span>
             </label>
             <div className="bg-[#FAE100] rounded-2xl p-3.5 shadow-inner space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-[#391B1B]/80 font-bold border-b border-[#391B1B]/10 pb-1.5">
+              <div className="flex items-center justify-between text-xs text-[#391B1B]/80 font-bold border-b border-[#391B1B]/10 pb-1.5">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-[#391B1B] text-white flex items-center justify-center font-black text-[8px]">
+                  <div className="w-5 h-5 rounded-full bg-[#391B1B] text-white flex items-center justify-center font-black text-xs">
                     TALK
                   </div>
                   <span>알림톡 도착</span>
                 </div>
-                <span className="text-[10px] opacity-75">승인 후 수신자 화면</span>
+                <span className="text-xs opacity-75">승인 후 수신자 화면</span>
               </div>
 
               <div className="bg-white rounded-xl rounded-tl-none p-3 text-xs leading-relaxed text-slate-900 border border-yellow-300 whitespace-pre-wrap shadow-xs">
@@ -303,7 +303,7 @@ export default function AlimtalkTemplateRegisterModal({
           </div>
 
           {/* 하단 팝빌 관리자 센터 이동 안내 */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
             <span>팝빌 콘솔에서 직접 검수 상태를 확인하고 승인 내역을 관리할 수 있습니다.</span>
             <a
               href={templateMgtUrl}

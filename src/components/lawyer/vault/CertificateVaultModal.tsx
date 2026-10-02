@@ -237,11 +237,11 @@ export default function CertificateVaultModal({
                   {clientRequest.clientName} 님의 인증서 안전 금고
                 </h3>
                 {isShredded ? (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold">
                     사본 삭제됨
                   </span>
                 ) : (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
                     <ShieldAlert className="w-3 h-3" />
                     이 브라우저에만 보관
                   </span>
@@ -273,7 +273,7 @@ export default function CertificateVaultModal({
             <KeyRound className="w-4 h-4" />
             공동인증서 (NPKI)
             {npki && !isShredded && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300">
+              <span className="text-xs px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300">
                 {npkiDays === null ? '만료일 미확인' : npkiDays <= 0 ? '만료' : `D-${npkiDays}`}
               </span>
             )}
@@ -290,7 +290,7 @@ export default function CertificateVaultModal({
             <Smartphone className="w-4 h-4" />
             금융인증서 (YESKEY Cloud)
             {financial?.registered && !isShredded && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300">
+              <span className="text-xs px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300">
                 클라우드
               </span>
             )}
@@ -306,7 +306,7 @@ export default function CertificateVaultModal({
           >
             <Clock className="w-4 h-4" />
             열람 기록
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+            <span className="text-xs px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
               {vault.accessLogs.length}
             </span>
           </button>
@@ -336,7 +336,7 @@ export default function CertificateVaultModal({
                   <p className="text-xs text-rose-400/80">
                     이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웠습니다. 이전에 내려받은 파일이나 다른 기기의 사본은 이 기능으로 삭제되지 않습니다.
                   </p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     삭제 일시: {vault.shreddedAt ? new Date(vault.shreddedAt).toLocaleString('ko-KR') : '-'} | 담당: {vault.shreddedBy || '-'}
                   </p>
                 </div>
@@ -357,15 +357,15 @@ export default function CertificateVaultModal({
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">일련번호</span>
+                        <span className="text-slate-400 block text-xs">일련번호</span>
                         <span className="font-mono text-slate-200 break-all">{npki.serialNumber || '확인 불가'}</span>
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">유효기간 만료일</span>
+                        <span className="text-slate-400 block text-xs">유효기간 만료일</span>
                         <span className="font-mono text-slate-200">{formatLocalDate(npki.validTo)}</span>
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">잔여 유효기간</span>
+                        <span className="text-slate-400 block text-xs">잔여 유효기간</span>
                         {npkiDays === null ? (
                           <span className="font-bold text-slate-400">확인 불가</span>
                         ) : npkiDays <= 0 ? (
@@ -377,7 +377,7 @@ export default function CertificateVaultModal({
                         )}
                       </div>
                       <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block text-[11px]">보안 수준</span>
+                        <span className="text-slate-400 block text-xs">보안 수준</span>
                         <span className="text-amber-400 font-semibold">비밀번호만 AES-GCM (앱 내장 키) · 인증서 파일은 미암호화 — 서버 KMS 전환 필요</span>
                       </div>
                     </div>
@@ -387,7 +387,7 @@ export default function CertificateVaultModal({
                   <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4">
                     <h5 className="text-xs font-bold text-slate-200 mb-2 flex items-center justify-between">
                       <span>NPKI 인증서 파일 쌍</span>
-                      <span className="text-[11px] text-slate-400 font-normal">PC의 AppData/LocalLow/NPKI 구조와 동일</span>
+                      <span className="text-xs text-slate-400 font-normal">PC의 AppData/LocalLow/NPKI 구조와 동일</span>
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex items-center justify-between p-3 bg-slate-900/80 rounded-xl border border-slate-800">
@@ -395,7 +395,7 @@ export default function CertificateVaultModal({
                           <FileText className="w-4 h-4 text-blue-400" />
                           <div>
                             <span className="text-xs font-mono font-medium text-slate-200">signCert.der</span>
-                            <span className="block text-[10px] text-slate-400">공개키 인증서 ({formatB64Size(npki.derBase64)})</span>
+                            <span className="block text-xs text-slate-400">공개키 인증서 ({formatB64Size(npki.derBase64)})</span>
                           </div>
                         </div>
                         <button
@@ -412,7 +412,7 @@ export default function CertificateVaultModal({
                           <FileText className="w-4 h-4 text-amber-400" />
                           <div>
                             <span className="text-xs font-mono font-medium text-slate-200">signPri.key</span>
-                            <span className="block text-[10px] text-slate-400">개인키 파일 ({openedKeyBase64 ? formatB64Size(openedKeyBase64) : isLegacyNpki(npki) ? '재등록 필요' : '보관 PIN으로 잠김'})</span>
+                            <span className="block text-xs text-slate-400">개인키 파일 ({openedKeyBase64 ? formatB64Size(openedKeyBase64) : isLegacyNpki(npki) ? '재등록 필요' : '보관 PIN으로 잠김'})</span>
                           </div>
                         </div>
                         <button
@@ -434,7 +434,7 @@ export default function CertificateVaultModal({
                           <Lock className="w-3.5 h-3.5 text-emerald-400" />
                           인증서 비밀번호 보안 열람
                         </h5>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-400 mt-0.5">
                           의뢰인이 정한 보관 PIN으로만 열립니다(앱·서버에 키 없음). 열람 목적이 이 브라우저 기록에 남고, 클립보드 복사 시 30초 후 소거를 시도합니다.
                         </p>
                       </div>
@@ -580,7 +580,7 @@ export default function CertificateVaultModal({
                         {/* 클립보드 30초 카운트다운 바 */}
                         {zeroizeRemaining !== null && (
                           <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px]">
+                            <div className="flex items-center justify-between text-xs">
                               <span className="text-amber-400 font-semibold flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 30초 후 클립보드 소거 시도 예정
@@ -639,15 +639,15 @@ export default function CertificateVaultModal({
                 <h5 className="text-xs font-bold text-slate-200">연동 정보</h5>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                   <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block text-[11px]">의뢰인 휴대폰</span>
+                    <span className="text-slate-400 block text-xs">의뢰인 휴대폰</span>
                     <span className="font-mono text-slate-200">{financial?.relayPhone || clientRequest.phone}</span>
                   </div>
                   <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block text-[11px]">인증서 보관소</span>
+                    <span className="text-slate-400 block text-xs">인증서 보관소</span>
                     <span className="text-violet-300 font-medium">금융결제원 (YESKEY) 클라우드</span>
                   </div>
                   <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block text-[11px]">유효기간 만료일</span>
+                    <span className="text-slate-400 block text-xs">유효기간 만료일</span>
                     <span className="text-slate-200 font-mono">{formatLocalDate(financial?.expiresAt)}</span>
                   </div>
                 </div>
@@ -658,7 +658,7 @@ export default function CertificateVaultModal({
                 <h5 className="text-xs font-bold text-slate-200">원격 승인 안내 문구</h5>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex-1 min-w-[200px]">
-                    <label className="text-[11px] text-slate-400 block mb-1">발급 대상 기관/은행 선택</label>
+                    <label className="text-xs text-slate-400 block mb-1">발급 대상 기관/은행 선택</label>
                     <select
                       value={relayTargetCreditor}
                       onChange={(e) => setRelayTargetCreditor(e.target.value)}
@@ -685,9 +685,9 @@ export default function CertificateVaultModal({
                   </div>
                 </div>
                 {!financial && (
-                  <p className="text-[11px] text-slate-400">등록된 금융인증서 정보가 없습니다.</p>
+                  <p className="text-xs text-slate-400">등록된 금융인증서 정보가 없습니다.</p>
                 )}
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   승인번호는 발급기관 화면에 표시된 번호를 전화 등으로 직접 알려 주세요. 이 앱은 번호를 만들거나 승인 결과를 확인하지 않습니다.
                 </p>
               </div>
@@ -700,7 +700,7 @@ export default function CertificateVaultModal({
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div>
                   <h5 className="text-xs font-bold text-slate-200">열람 기록 (이 브라우저)</h5>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     비밀번호 열람, 파일 다운로드, 안내 문구 복사 일시와 목적을 이 브라우저에 기록합니다. 서버에 저장되지 않으며 위변조 방지 기능은 없습니다.
                   </p>
                 </div>
@@ -716,7 +716,7 @@ export default function CertificateVaultModal({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                          <span className={`text-xs px-2 py-0.5 rounded font-bold ${
                             log.targetItem === 'password_view' ? 'bg-blue-500/20 text-blue-300' :
                             log.targetItem === 'file_download' ? 'bg-amber-500/20 text-amber-300' :
                             log.targetItem === 'auto_shred' ? 'bg-rose-500/20 text-rose-300' :
@@ -729,15 +729,15 @@ export default function CertificateVaultModal({
                              log.targetItem === 'revocation' ? '철회' : '원격 승인 안내'}
                           </span>
                           <span className="font-bold text-slate-200">{log.actorName}</span>
-                          <span className="text-slate-400 text-[11px]">({log.actorRole})</span>
+                          <span className="text-slate-400 text-xs">({log.actorRole})</span>
                         </div>
-                        <span className="text-[11px] font-mono text-slate-400">
+                        <span className="text-xs font-mono text-slate-400">
                           {new Date(log.timestamp).toLocaleString('ko-KR')}
                         </span>
                       </div>
                       <p className="text-slate-300 text-xs pl-0.5">{log.purpose}</p>
                       {log.ipAddress && (
-                        <div className="text-[10px] text-slate-400 font-mono pl-0.5">
+                        <div className="text-xs text-slate-400 font-mono pl-0.5">
                           접속 통로: {log.ipAddress}
                         </div>
                       )}
@@ -761,11 +761,11 @@ export default function CertificateVaultModal({
                     의뢰인 위임 목적 제한 동의서 (Consent Deed)
                   </h5>
                   {vault.consent?.agreed ? (
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
                       의뢰인 동의함
                     </span>
                   ) : (
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
                       동의 기록 없음
                     </span>
                   )}
@@ -795,7 +795,7 @@ export default function CertificateVaultModal({
                   <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
                   <div>
                     <h5 className="text-xs font-bold text-rose-300">이 브라우저의 인증서 사본 삭제</h5>
-                    <p className="text-[11px] text-rose-400/80 mt-0.5">
+                    <p className="text-xs text-rose-400/80 mt-0.5">
                       이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웁니다. 내려받은 파일, 다른 기기·브라우저의 사본은 남으므로 따로 삭제해야 합니다.
                     </p>
                   </div>
@@ -848,7 +848,7 @@ export default function CertificateVaultModal({
               </p>
 
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">파기 사유</label>
+                <label className="text-xs text-slate-400 block mb-1">파기 사유</label>
                 <input
                   type="text"
                   value={shredReason}

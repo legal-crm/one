@@ -90,7 +90,7 @@ export default function CreditorSearchTool() {
 
   return (
     <div className="p-3.5 space-y-3 text-xs text-slate-800">
-      <p className="text-[10px] text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-2 py-1.5 leading-snug">
+      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-2 py-1.5 leading-snug">
         참고용 주소록입니다. 대표자 변경·본점 이전이 잦으므로 채권자목록 작성 전 법인등기사항증명서로 반드시 확인하세요.
       </p>
 
@@ -105,7 +105,7 @@ export default function CreditorSearchTool() {
             <button
               type="button"
               onClick={handleClearBasket}
-              className="text-[10px] font-bold text-slate-600 hover:text-rose-700 flex items-center gap-0.5 cursor-pointer"
+              className="text-xs font-bold text-slate-600 hover:text-rose-700 flex items-center gap-0.5 cursor-pointer"
             >
               <Trash2 className="w-3 h-3" aria-hidden="true" />
               비우기
@@ -115,7 +115,7 @@ export default function CreditorSearchTool() {
             <button
               type="button"
               onClick={handleCopyBasket}
-              className="py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer press-scale whitespace-nowrap"
+              className="py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer press-scale whitespace-nowrap"
             >
               {copiedKey === 'basket' ? <Check className="w-3 h-3 text-emerald-400" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
               {copiedKey === 'basket' ? '복사됨' : '목록 전체 복사'}
@@ -123,7 +123,7 @@ export default function CreditorSearchTool() {
             <button
               type="button"
               onClick={handleApplyCount}
-              className="py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 text-[11px] font-bold cursor-pointer press-scale whitespace-nowrap"
+              className="py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 text-xs font-bold cursor-pointer press-scale whitespace-nowrap"
             >
               송달료 채권자 수 반영
             </button>
@@ -163,7 +163,7 @@ export default function CreditorSearchTool() {
             role="radio"
             aria-checked={category === cat}
             onClick={() => setCategory(cat)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               category === cat ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
@@ -176,7 +176,7 @@ export default function CreditorSearchTool() {
             role="radio"
             aria-checked={category === 'BASKET'}
             onClick={() => setCategory('BASKET')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               category === 'BASKET' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
             }`}
           >
@@ -187,7 +187,7 @@ export default function CreditorSearchTool() {
 
       {/* ── 검색 결과 목록 ── */}
       <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-        <div className="flex items-center justify-between text-[10px] text-slate-500 px-1">
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <span>검색 결과: 총 {filteredList.length}건</span>
           <span>항목을 누르면 복사됩니다.</span>
         </div>
@@ -195,7 +195,7 @@ export default function CreditorSearchTool() {
         {filteredList.length === 0 ? (
           <div className="p-6 text-center text-slate-600 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
             <p className="font-bold">일치하는 채권자가 없습니다.</p>
-            <p className="text-[11px] text-slate-500">철자나 별칭을 확인하거나 분류를 ‘전체’로 바꿔 보세요.</p>
+            <p className="text-xs text-slate-500">철자나 별칭을 확인하거나 분류를 ‘전체’로 바꿔 보세요.</p>
             {(searchTerm || category !== 'ALL') && (
               <button
                 type="button"
@@ -203,7 +203,7 @@ export default function CreditorSearchTool() {
                   setSearchTerm('');
                   setCategory('ALL');
                 }}
-                className="mt-1 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer press-scale"
+                className="mt-1 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer press-scale"
               >
                 검색 초기화
               </button>
@@ -223,11 +223,11 @@ export default function CreditorSearchTool() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-extrabold text-xs text-slate-900">{item.officialName}</span>
-                      <span className="text-[9px] bg-indigo-50 text-indigo-800 font-bold px-1.5 py-0.5 rounded border border-indigo-200/50 shrink-0">
+                      <span className="text-xs bg-indigo-50 text-indigo-800 font-bold px-1.5 py-0.5 rounded border border-indigo-200/50 shrink-0">
                         {item.categoryLabel}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">검색어: {item.alias.join(', ')}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">검색어: {item.alias.join(', ')}</p>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
@@ -235,7 +235,7 @@ export default function CreditorSearchTool() {
                       type="button"
                       onClick={() => toggleBasket(item)}
                       aria-pressed={inBasket}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer press-scale ${
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer press-scale ${
                         inBasket ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
                       }`}
                       title={inBasket ? '채권자 목록에서 빼기' : '채권자 목록에 담기'}
@@ -246,7 +246,7 @@ export default function CreditorSearchTool() {
                     <button
                       type="button"
                       onClick={() => handleCopyFull(item)}
-                      className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer press-scale"
+                      className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer press-scale"
                       title="전자소송용 전체 송달정보 복사"
                     >
                       {copiedKey === item.id ? <Check className="w-3 h-3 text-emerald-400" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
@@ -255,7 +255,7 @@ export default function CreditorSearchTool() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] pt-1 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs pt-1 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => handleCopyField(item.representative, '대표자')}
@@ -286,8 +286,8 @@ export default function CreditorSearchTool() {
                 >
                   <MapPin className="w-3.5 h-3.5 text-indigo-700 shrink-0 mt-0.5" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
-                    <span className="text-[10px] text-indigo-800 font-bold block">법원 송달장소 (우편번호 {item.zipCode})</span>
-                    <span className="font-medium text-slate-900 text-[11px] leading-tight block">{item.serviceAddress}</span>
+                    <span className="text-xs text-indigo-800 font-bold block">법원 송달장소 (우편번호 {item.zipCode})</span>
+                    <span className="font-medium text-slate-900 text-xs leading-tight block">{item.serviceAddress}</span>
                   </span>
                   <Copy className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" aria-hidden="true" />
                 </button>

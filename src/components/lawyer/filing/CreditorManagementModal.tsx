@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../../common/ModalPortal';
+import { useDialog } from '../../common/DialogProvider';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
 import { CREDITOR_DIRECTORY, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
@@ -38,7 +39,7 @@ function CreditorManagementModalInner({
   crmExt,
   onUpdateCrmExt,
 }: CreditorManagementModalProps) {
-
+  const dialog = useDialog();
   const clientName = clientRequest.clientName || '신청인';
   const currentPlan = crmExt.repaymentPlan;
   
@@ -282,11 +283,16 @@ function CreditorManagementModalInner({
     toast.success(`'${finalizedCreditor.name}' 채권정보가 반영되었습니다.`);
   };
 
-  // 채권자 삭제
-  const handleDeleteCreditor = (id: string, name: string) => {
-    if (!window.confirm(`'${name}' 채권사를 채권자목록에서 완전히 삭제하시겠습니까?`)) {
-      return;
-    }
+  // 채권자 삭제 (이전: window.confirm -> dialog.confirm으로 교체)
+  const handleDeleteCreditor = async (id: string, name: string) => {
+    const confirmed = await dialog.confirm({
+      title: '채권자 삭제',
+      message: `'${name}' 채권사를 채권자목록에서 완전히 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setCreditors(prev => {
       const next = prev.filter(c => c.id !== id);
@@ -372,7 +378,7 @@ function CreditorManagementModalInner({
                 <h3 className="font-extrabold text-sm text-white">
                   개인회생 채권자목록 관리 및 편집 (R02)
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                   대법원 전자소송 규격
                 </span>
               </div>
@@ -411,7 +417,7 @@ function CreditorManagementModalInner({
           {/* 전자소송 업로드 실무 주의 배너 (투더코어 벤치마킹) */}
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-amber-900">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-[11px] leading-relaxed">
+            <div className="text-xs leading-relaxed">
               <span className="font-extrabold text-amber-950">대법원 전자소송 업로드 실무 주의사항:</span>{' '}
               다운로드받은 CSV 파일을 엑셀(Excel)에서 열어 '저장'하시면 인코딩(ANSI 변조) 및 따옴표 서식이 훼손되어 전자소송 업로드 시 오류가 발생합니다. 
               <strong>반드시 다운로드된 원본 CSV 파일을 그대로 전자소송에 첨부</strong>하시거나, [CSV 복사]를 활용해 주세요. (전국대표번호 1588 등은 업로드 규격인 02 국번으로 자동 정규화됩니다.)
@@ -538,10 +544,10 @@ function CreditorManagementModalInner({
                       >
                         <div>
                           <span className="font-bold text-slate-900">{item.officialName}</span>
-                          <span className="text-[10px] text-slate-500 ml-2">대표: {item.representative}</span>
-                          <p className="text-[11px] text-slate-400 truncate">{item.serviceAddress}</p>
+                          <span className="text-xs text-slate-500 ml-2">대표: {item.representative}</span>
+                          <p className="text-xs text-slate-400 truncate">{item.serviceAddress}</p>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold shrink-0">
+                        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold shrink-0">
                           {item.categoryLabel}
                         </span>
                       </button>
@@ -619,7 +625,7 @@ function CreditorManagementModalInner({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-slate-700 font-bold">대표 전화번호</label>
-                    <span className="text-[10px] text-emerald-600 font-medium">※ 1588은 02 자동부여</span>
+                    <span className="text-xs text-emerald-600 font-medium">※ 1588은 02 자동부여</span>
                   </div>
                   <input
                     type="text"
@@ -669,7 +675,7 @@ function CreditorManagementModalInner({
                     <Shield className="w-3.5 h-3.5 text-blue-600" />
                     <span>채권 특수 성격 옵션 (부속서류 1~4 자동 생성)</span>
                   </span>
-                  <span className="text-[11px] text-slate-400">해당하는 항목을 체크하시면 부속서류가 자동 작성됩니다.</span>
+                  <span className="text-xs text-slate-400">해당하는 항목을 체크하시면 부속서류가 자동 작성됩니다.</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -682,7 +688,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-amber-900 block">우선변제 채권</span>
-                      <span className="text-[10px] text-slate-400">체납세금, 4대보험료</span>
+                      <span className="text-xs text-slate-400">체납세금, 4대보험료</span>
                     </div>
                   </label>
 
@@ -695,7 +701,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-blue-900 block">담보 (별제권)</span>
-                      <span className="text-[10px] text-slate-400">부동산, 차량 근저당</span>
+                      <span className="text-xs text-slate-400">부동산, 차량 근저당</span>
                     </div>
                   </label>
 
@@ -708,7 +714,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-purple-900 block">구상권 채권</span>
-                      <span className="text-[10px] text-slate-400">보증기관 장래구상</span>
+                      <span className="text-xs text-slate-400">보증기관 장래구상</span>
                     </div>
                   </label>
 
@@ -721,7 +727,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-indigo-900 block">보증 채무</span>
-                      <span className="text-[10px] text-slate-400">타인 채무 보증</span>
+                      <span className="text-xs text-slate-400">타인 채무 보증</span>
                     </div>
                   </label>
 
@@ -734,7 +740,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-rose-900 block">다툼 채권 (부속2호)</span>
-                      <span className="text-[10px] text-slate-400">원금·이자 다툼</span>
+                      <span className="text-xs text-slate-400">원금·이자 다툼</span>
                     </div>
                   </label>
 
@@ -747,7 +753,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-red-900 block">전부명령 (부속3호)</span>
-                      <span className="text-[10px] text-slate-400">급여 전부명령</span>
+                      <span className="text-xs text-slate-400">급여 전부명령</span>
                     </div>
                   </label>
 
@@ -760,7 +766,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-slate-900 block">미확정 (담보신탁)</span>
-                      <span className="text-[10px] text-slate-400">신탁재산 담보</span>
+                      <span className="text-xs text-slate-400">신탁재산 담보</span>
                     </div>
                   </label>
 
@@ -773,7 +779,7 @@ function CreditorManagementModalInner({
                     />
                     <div>
                       <span className="font-bold text-slate-900 block">일반 미확정 채권</span>
-                      <span className="text-[10px] text-slate-400">변제유보금 공탁</span>
+                      <span className="text-xs text-slate-400">변제유보금 공탁</span>
                     </div>
                   </label>
                 </div>
@@ -784,13 +790,13 @@ function CreditorManagementModalInner({
                 <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-blue-900 text-xs">【부속서류 1】 담보물 및 별제권 예정부족액 산정</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 font-bold">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 font-bold">
                       실무 환가율: {editingCreditor.securedCollateralType === 'REAL_ESTATE' ? '부동산 70%' : editingCreditor.securedCollateralType === 'VEHICLE' ? '차량 50%' : '100%'}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">담보물 종류</label>
+                      <label className="block text-xs text-slate-600 mb-1">담보물 종류</label>
                       <select
                         value={editingCreditor.securedCollateralType || 'REAL_ESTATE'}
                         onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedCollateralType: e.target.value as any }))}
@@ -803,7 +809,7 @@ function CreditorManagementModalInner({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">담보물 시가/평가액</label>
+                      <label className="block text-xs text-slate-600 mb-1">담보물 시가/평가액</label>
                       <input
                         type="number"
                         value={editingCreditor.collateralAppraisalValue ?? ''}
@@ -812,7 +818,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">선순위 담보액</label>
+                      <label className="block text-xs text-slate-600 mb-1">선순위 담보액</label>
                       <input
                         type="number"
                         value={editingCreditor.priorSecuredAmount ?? ''}
@@ -821,7 +827,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">채권최고액</label>
+                      <label className="block text-xs text-slate-600 mb-1">채권최고액</label>
                       <input
                         type="number"
                         value={editingCreditor.securedMaxAmount ?? ''}
@@ -830,7 +836,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                   </div>
-                  <div className="p-2 bg-white rounded-lg border border-blue-200 text-[11px] flex justify-between items-center">
+                  <div className="p-2 bg-white rounded-lg border border-blue-200 text-xs flex justify-between items-center">
                     <span className="text-slate-600">
                       담보물 환가 후 <strong>별제권 행사 등으로 변제받을 수 없는 채권액 (부속서류 1 예정부족액)</strong>:
                     </span>
@@ -849,7 +855,7 @@ function CreditorManagementModalInner({
                     {editingCreditor.isGuarantorClaim && (
                       <>
                         <div>
-                          <label className="block text-[11px] text-slate-600 mb-1">장래 구상권자 (보증기관/지인)</label>
+                          <label className="block text-xs text-slate-600 mb-1">장래 구상권자 (보증기관/지인)</label>
                           <input
                             type="text"
                             value={editingCreditor.guarantorName || ''}
@@ -859,7 +865,7 @@ function CreditorManagementModalInner({
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] text-slate-600 mb-1">대위변제 여부</label>
+                          <label className="block text-xs text-slate-600 mb-1">대위변제 여부</label>
                           <select
                             value={editingCreditor.subrogationStatus || 'BEFORE'}
                             onChange={(e) => setEditingCreditor(prev => ({ ...prev, subrogationStatus: e.target.value as any }))}
@@ -873,7 +879,7 @@ function CreditorManagementModalInner({
                     )}
                     {editingCreditor.isGuaranteedDebt && (
                       <div>
-                        <label className="block text-[11px] text-slate-600 mb-1">주채무자 성명 (피보증인)</label>
+                        <label className="block text-xs text-slate-600 mb-1">주채무자 성명 (피보증인)</label>
                         <input
                           type="text"
                           value={editingCreditor.principalDebtorName || ''}
@@ -893,7 +899,7 @@ function CreditorManagementModalInner({
                   <span className="font-bold text-rose-900 text-xs block">【부속서류 2】 다툼이 있는 채권 상세</span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">채권자 주장액</label>
+                      <label className="block text-xs text-slate-600 mb-1">채권자 주장액</label>
                       <input
                         type="number"
                         value={editingCreditor.disputeCreditorClaim ?? ''}
@@ -902,7 +908,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">신청인 주장액</label>
+                      <label className="block text-xs text-slate-600 mb-1">신청인 주장액</label>
                       <input
                         type="number"
                         value={editingCreditor.disputeDebtorClaim ?? ''}
@@ -911,7 +917,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">다툼의 사유 및 경위</label>
+                      <label className="block text-xs text-slate-600 mb-1">다툼의 사유 및 경위</label>
                       <input
                         type="text"
                         value={editingCreditor.disputeReason || ''}
@@ -930,7 +936,7 @@ function CreditorManagementModalInner({
                   <span className="font-bold text-red-900 text-xs block">【부속서류 3】 급여 전부명령 상세</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">전부 청구금액</label>
+                      <label className="block text-xs text-slate-600 mb-1">전부 청구금액</label>
                       <input
                         type="number"
                         value={editingCreditor.garnishmentAmount ?? ''}
@@ -939,7 +945,7 @@ function CreditorManagementModalInner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 mb-1">전부명령 법원 및 사건번호</label>
+                      <label className="block text-xs text-slate-600 mb-1">전부명령 법원 및 사건번호</label>
                       <input
                         type="text"
                         value={editingCreditor.garnishmentCourtCase || ''}
@@ -1025,7 +1031,7 @@ function CreditorManagementModalInner({
                       </td>
                       <td className="p-3">
                         <div className="font-bold text-slate-900">{creditor.name}</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {creditor.debtCauseDetail || '신용대출'} · {creditor.borrowedDate || '일자 미상'}
                           {creditor.debtUsage && <span className="text-slate-400"> · 사용처: {creditor.debtUsage}</span>}
                         </div>
@@ -1033,42 +1039,42 @@ function CreditorManagementModalInner({
                       <td className="p-3 text-center">
                         <div className="flex flex-wrap items-center justify-center gap-1">
                           {creditor.isPriority && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs">
                               우선변제
                             </span>
                           )}
                           {creditor.isSecured && (
-                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]" title={`예정부족액: ${creditor.unsecuredExpectedShortage?.toLocaleString()}원`}>
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs" title={`예정부족액: ${creditor.unsecuredExpectedShortage?.toLocaleString()}원`}>
                               담보(부속1)
                             </span>
                           )}
                           {creditor.isGuarantorClaim && (
-                            <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-bold text-xs">
                               구상(부속4)
                             </span>
                           )}
                           {creditor.isGuaranteedDebt && (
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs">
                               보증(부속4)
                             </span>
                           )}
                           {creditor.isDisputed && (
-                            <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs">
                               다툼(부속2)
                             </span>
                           )}
                           {creditor.isGarnished && (
-                            <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 font-bold text-xs">
                               전부(부속3)
                             </span>
                           )}
                           {creditor.isTrustUnconfirmed && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs">
                               신탁미확정
                             </span>
                           )}
                           {!creditor.isPriority && !creditor.isSecured && !creditor.isGuarantorClaim && !creditor.isGuaranteedDebt && !creditor.isDisputed && !creditor.isGarnished && !creditor.isTrustUnconfirmed && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium text-xs">
                               일반신용
                             </span>
                           )}
