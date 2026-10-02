@@ -24,7 +24,8 @@ import DebtSummaryPanel from './room/DebtSummaryPanel';
 import ConsultStatusStrip, { getStageCopy } from './room/ConsultStatusStrip';
 import { getDisplayName } from './lawyerDirectory';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
-import { startContractFromProposal } from '../../services/proposalContractService';
+import { startContractFromProposal, requestOfflineContractFromProposal } from '../../services/proposalContractService';
+import ContractMethodSelectModal, { type OfflineContractRequestPayload } from './ContractMethodSelectModal';
 
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 
@@ -106,6 +107,7 @@ export default function ChatView({
   const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
   const [activeChatLawyerId, setActiveChatLawyerId] = useState<string | null>(null);
   const [selectedProposalForReport, setSelectedProposalForReport] = useState<ConsultProposal | null>(null);
+  const [contractSelectProposal, setContractSelectProposal] = useState<ConsultProposal | null>(null);
   const [showNotice, setShowNotice] = useState<boolean>(true);
   const [noticeExpanded, setNoticeExpanded] = useState<boolean>(false);
 
@@ -146,6 +148,39 @@ export default function ChatView({
       window.location.assign(signUrl);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '계약서 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  // 온·오프라인 서면(방문/우편) 수임계약 요청 핸들러
+  const handleExecuteOfflineContract = async (payload: OfflineContractRequestPayload) => {
+    if (!currentRequest || !contractSelectProposal) return;
+    try {
+      await requestOfflineContractFromProposal({
+        request: currentRequest,
+        proposal: contractSelectProposal,
+        clientDisplayName: currentRequest.stealthNickname || currentRequest.clientName || '의뢰인',
+        payload,
+      });
+
+      const modeLabel = payload.method === 'in_person' ? '방문 체결' : '우편 등기 계약';
+      const detailInfo = payload.method === 'in_person'
+        ? `방문 희망: ${payload.visitDate || ''} ${payload.visitTime || ''}${payload.notes ? ` (메모: ${payload.notes})` : ''}`
+        : `배송 주소: ${payload.postalAddress || ''} ${payload.postalDetailAddress || ''}${payload.notes ? ` (메모: ${payload.notes})` : ''}`;
+
+      if (currentRequest.id && onAddMessage) {
+        await onAddMessage(
+          currentRequest.id,
+          `[${modeLabel} 요청] 의뢰인님이 제안서 조건으로 ${modeLabel}을 요청하셨습니다. (${detailInfo})\n담당자가 확인 후 연락드립니다.`,
+          'client',
+          currentRequest.clientId || 'client',
+          currentRequest.stealthNickname || currentRequest.clientName || '의뢰인',
+          contractSelectProposal.lawyerId
+        );
+      }
+
+      toast.success(`${modeLabel} 요청이 정상 접수되었습니다. 담당 사무소에서 확인 후 연락드립니다.`);
+    } catch (err: any) {
+      toast.error(err?.message || '요청 처리 중 오류가 발생했습니다. 담당 사무소로 직접 문의해 주세요.');
     }
   };
 
@@ -476,7 +511,7 @@ export default function ChatView({
         return <Button variant="secondary" onClick={browseLawyersForRequest}>변호사 직접 고르기</Button>;
       case 'counseling':
         return currentChatProposal && !isChatClosedWithCurrent
-          ? <Button onClick={() => handleAppointLawyerFromChat(currentChatProposal)} leftIcon={<Check className="w-4 h-4" aria-hidden="true" />}>수임 계약 진행</Button>
+          ? <Button onClick={() => setContractSelectProposal(currentChatProposal)} leftIcon={<Check className="w-4 h-4" aria-hidden="true" />}>수임 계약 진행</Button>
           : null;
       case 'contracted':
         return <Button variant="secondary" onClick={() => onSetActiveTab('mypage')}>마이페이지에서 진행 보기</Button>;
@@ -819,8 +854,24 @@ export default function ChatView({
           isContracted={stage === 'contracted'}
           proposal={selectedProposalForReport}
           clientInfo={currentRequest || activeResult}
-          onAppointLawyer={() => handleAppointLawyerFromChat(selectedProposalForReport)}
-          onAcceptProposal={() => handleAppointLawyerFromChat(selectedProposalForReport)}
+          onAppointLawyer={() => setContractSelectProposal(selectedProposalForReport)}
+          onAcceptProposal={() => setContractSelectProposal(selectedProposalForReport)}
+        />
+      )}
+
+      {/* 온·오프라인 수임계약 방식 선택 모달 (전자계약 / 방문 내방 / 우편 등기) */}
+      {contractSelectProposal && (
+        <ContractMethodSelectModal
+          isOpen={!!contractSelectProposal}
+          onClose={() => setContractSelectProposal(null)}
+          proposal={contractSelectProposal}
+          clientDisplayName={currentRequest?.stealthNickname || currentRequest?.clientName || '의뢰인'}
+          onSelectElectronic={async () => {
+            const p = contractSelectProposal;
+            setContractSelectProposal(null);
+            await handleAppointLawyerFromChat(p);
+          }}
+          onSelectOffline={handleExecuteOfflineContract}
         />
       )}
     </>

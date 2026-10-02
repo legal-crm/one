@@ -9,7 +9,7 @@ import {
   ExternalLink, FileText, Phone, Clock, Eye, Edit3, Printer,
   Plus, Check, X, ShieldCheck, ChevronRight, FileSignature,
   Download, Layers, AlertCircle, Copy, CheckSquare, Square,
-  Trash2, ChevronDown, ChevronUp, Bookmark, Save, RotateCcw, FolderKanban
+  Trash2, ChevronDown, ChevronUp, Bookmark, Save, RotateCcw, FolderKanban, Mail, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -1074,6 +1074,43 @@ ${d.content}
           </div>
         </div>
       </div>
+      )}
+
+      {/* ── 의뢰인 온·오프라인 서면(방문/우편) 전환 요청 알림 카드 ── */}
+      {!isContractSigned && (contract?.paperContractInfo || crmExt?.contractMethod) && (
+        <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <span className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+              {contract?.contractMethod === 'postal' || contract?.paperContractInfo?.method === 'postal' ? (
+                <Mail className="w-5 h-5 text-purple-700" />
+              ) : (
+                <Building2 className="w-5 h-5 text-amber-700" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-slate-900">
+                  의뢰인이 [{contract?.contractMethod === 'postal' || contract?.paperContractInfo?.method === 'postal' ? '우편(등기) 계약' : '법률사무소 방문 체결'}]을 요청했습니다
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-200/80 text-amber-900 rounded-md">
+                  서면 전환 요청 접수
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5 truncate">
+                {contract?.paperContractInfo?.notes || 
+                  (contract?.paperContractInfo?.postalInfo ? `배송지: ${contract.paperContractInfo.postalInfo.recipientAddress}` : '방문 상담 및 서면 계약 날인 희망')}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsPaperModalOpen(true)}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shrink-0 transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer"
+          >
+            <FileSignature className="w-3.5 h-3.5" />
+            <span>서면계약 확인 및 체결 등록</span>
+          </button>
+        </div>
       )}
 
       {/* ── [기획서 4.3 2단계] 의뢰인 총 부담금 요약 한 줄 (하단 다크 바 대체) ── */}

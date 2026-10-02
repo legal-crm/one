@@ -57,19 +57,21 @@ export default function PaperContractModal({
   if (!isOpen) return null;
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const existingPaper = contract.paperContractInfo;
+  const initialMethod = (contract.contractMethod === 'postal' || existingPaper?.method === 'postal') ? 'postal' : 'in_person';
 
-  const [method, setMethod] = useState<'in_person' | 'postal'>('in_person');
-  const [signedDate, setSignedDate] = useState<string>(todayStr);
-  const [notes, setNotes] = useState<string>('');
+  const [method, setMethod] = useState<'in_person' | 'postal'>(initialMethod);
+  const [signedDate, setSignedDate] = useState<string>(existingPaper?.signedDate || todayStr);
+  const [notes, setNotes] = useState<string>(existingPaper?.notes || '');
 
   // 우편 등기 정보
-  const [carrier, setCarrier] = useState<string>('우체국 등기');
-  const [trackingNumber, setTrackingNumber] = useState<string>('');
-  const [sentDate, setSentDate] = useState<string>(todayStr);
-  const [returnedSignedDate, setReturnedSignedDate] = useState<string>(todayStr);
-  const [recipientAddress, setRecipientAddress] = useState<string>('');
-  const [recipientDetailAddress, setRecipientDetailAddress] = useState<string>('');
-  const [postcode, setPostcode] = useState<string>('');
+  const [carrier, setCarrier] = useState<string>(existingPaper?.postalInfo?.carrier || '우체국 등기');
+  const [trackingNumber, setTrackingNumber] = useState<string>(existingPaper?.postalInfo?.trackingNumber || '');
+  const [sentDate, setSentDate] = useState<string>(existingPaper?.postalInfo?.sentDate || todayStr);
+  const [returnedSignedDate, setReturnedSignedDate] = useState<string>(existingPaper?.postalInfo?.returnedSignedDate || todayStr);
+  const [recipientAddress, setRecipientAddress] = useState<string>(existingPaper?.postalInfo?.recipientAddress || '');
+  const [recipientDetailAddress, setRecipientDetailAddress] = useState<string>(existingPaper?.postalInfo?.recipientDetailAddress || '');
+  const [postcode, setPostcode] = useState<string>(existingPaper?.postalInfo?.postcode || '');
 
   // 스캔본 / 사진 파일
   const [scannedFiles, setScannedFiles] = useState<Array<{
@@ -78,7 +80,7 @@ export default function PaperContractModal({
     url: string;
     size?: number;
     uploadedAt: string;
-  }>>([]);
+  }>>(() => existingPaper?.scannedFiles || []);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

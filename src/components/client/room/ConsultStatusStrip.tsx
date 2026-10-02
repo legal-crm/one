@@ -47,7 +47,7 @@ export function getStageCopy(stage: ConsultRoomStage, ctx: StageCopyContext): { 
     case 'counseling':
       return {
         headline: ctx.lawyerName ? `${ctx.lawyerName} 변호사와 상담하고 있어요` : '상담 변호사와 상담하고 있어요',
-        description: '수임 계약은 제안서 조건으로 본인인증과 전자서명을 거쳐 진행합니다.',
+        description: '제안서 조건으로 안전하게 수임계약을 진행합니다. (온라인 전자서명 · 방문 · 우편)',
       };
     case 'contracted':
       return {

@@ -1,5 +1,7 @@
 import type { ConsultProposal, ConsultRequest, ElectronicContract } from '../types';
 import { createContract, saveContract, addAuditLog, loadContractsLocal } from './contractService';
+import { addClientNotification } from './clientNotificationService';
+import type { OfflineContractRequestPayload } from '../components/client/ContractMethodSelectModal';
 
 // ============================================================
 // 제안서 → 전자 수임계약 시작 (고객 화면 공용)
@@ -100,4 +102,94 @@ export async function startContractFromProposal(params: {
   await saveContract(contract);
 
   return { contract, signUrl: buildSignUrl(contract) };
+}
+
+/**
+ * 제안서 기준 온·오프라인 하이브리드 서면(방문/우편) 계약 요청 접수
+ */
+export async function requestOfflineContractFromProposal(params: {
+  request: ConsultRequest;
+  proposal: ConsultProposal;
+  clientDisplayName: string;
+  payload: OfflineContractRequestPayload;
+}): Promise<ElectronicContract> {
+  const { request, proposal, clientDisplayName, payload } = params;
+
+  if (!request?.id) throw new Error('상담 요청 정보를 찾을 수 없습니다.');
+  if (!proposal?.lawyerId) throw new Error('제안서의 담당 변호사 정보가 없습니다.');
+
+  const OPEN_STATUSES = ['drafting', 'pending_sign', 'client_review'];
+  let contract = loadContractsLocal().find(
+    c => c.sourceProposalId === proposal.id && OPEN_STATUSES.includes(c.status)
+  );
+
+  const modeLabel = payload.method === 'in_person' ? '방문(대면) 체결' : '우편(등기) 계약';
+  const detailNote = payload.method === 'in_person'
+    ? `방문 희망일시: ${payload.visitDate || ''} ${payload.visitTime || ''}${payload.notes ? ` (메모: ${payload.notes})` : ''}`
+    : `수령 주소: ${payload.postalAddress || ''} ${payload.postalDetailAddress || ''}${payload.postcode ? ` (${payload.postcode})` : ''}${payload.notes ? ` (메모: ${payload.notes})` : ''}`;
+
+  if (!contract) {
+    const base = createContract({
+      clientId: request.clientId || request.id,
+      clientRefId: request.id,
+      clientName: clientDisplayName || request.clientName || '의뢰인',
+      clientPhone: request.phone || '',
+      lawyerName: proposal.lawyerName,
+      lawFirmName: proposal.firmName || '',
+      assignedLawyerId: proposal.lawyerId,
+      totalFee: proposal.fee,
+      caseCategory: 'individual_rehab',
+    });
+
+    contract = {
+      ...base,
+      status: 'drafting',
+      consultRequestId: request.id,
+      sourceProposalId: proposal.id,
+      contractMethod: payload.method,
+      paperContractInfo: {
+        method: payload.method,
+        signedDate: '',
+        notes: detailNote,
+        postalInfo: payload.method === 'postal' ? {
+          recipientAddress: payload.postalAddress || '',
+          recipientDetailAddress: payload.postalDetailAddress,
+          postcode: payload.postcode,
+        } : undefined,
+      },
+    };
+  } else {
+    contract = {
+      ...contract,
+      contractMethod: payload.method,
+      paperContractInfo: {
+        method: payload.method,
+        signedDate: '',
+        notes: detailNote,
+        postalInfo: payload.method === 'postal' ? {
+          recipientAddress: payload.postalAddress || '',
+          recipientDetailAddress: payload.postalDetailAddress,
+          postcode: payload.postcode,
+        } : undefined,
+      },
+    };
+  }
+
+  contract = addAuditLog(
+    contract,
+    `의뢰인이 ${proposal.lawyerName} 변호사 제안서 기준 [${modeLabel}]을 요청함 - ${detailNote}`,
+    'client'
+  );
+
+  await saveContract(contract);
+
+  // 변호사 알림 등록
+  addClientNotification({
+    type: 'status_change',
+    title: `[${modeLabel} 요청] 의뢰인이 ${modeLabel}을 요청했습니다. (${detailNote})`,
+    emoji: payload.method === 'in_person' ? '🏢' : '📮',
+    linkTab: 'diagnosis',
+  });
+
+  return contract;
 }
