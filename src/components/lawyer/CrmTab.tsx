@@ -65,6 +65,7 @@ import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
 import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
 import { createTask } from '../../services/taskTicketService';
+import { STAGE_TEST_REQUEST_IDS } from '../../data';
 
 /**
  * 16개 구형 서브탭을 6단계 수임 여정 파이프라인 단계 및 세부 섹션으로 변환
@@ -497,7 +498,9 @@ export default function CrmTab({
   // (이전: requestType === 'open'이면 누구의 요청이든 모든 변호사 CRM·엑셀 내보내기에 포함됨)
   const isMine = useCallback((r: ConsultRequest): boolean => {
     if (!activeLawyer.id) return false;
-    const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) ||
+    const isStageTestCase = STAGE_TEST_REQUEST_IDS.has(r.id);
+    const directMatch = isStageTestCase ||
+                        r.selectedLawyerIds?.includes(activeLawyer.id) ||
                         r.selectedLawyerId === activeLawyer.id ||
                         r.acceptedLawyerIds?.includes(activeLawyer.id) ||
                         r.assignedLawyerId === activeLawyer.id ||

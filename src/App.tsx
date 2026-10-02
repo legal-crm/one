@@ -27,7 +27,8 @@ import {
   initialInquiries,
   initialPlatformConfig,
   initialPopupConfig,
-  initialLawyerInquiries
+  initialLawyerInquiries,
+  STAGE_TEST_REQUEST_IDS
 } from './data';
 import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig } from './types';
 const ClientRole = React.lazy(() => import('./components/ClientRole'));
@@ -51,17 +52,19 @@ import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
 // 뻔한 ?role=admin은 허니팟으로 유인. 실제 인가는 서버(JWT role=admin + MFA aal2)가 판정.
 
 // ── 시연용 시드 (DEV 전용) ──
-// 운영 빌드에서는 가상 상담 요청(req-mock-*, req-amjone-*)·가상 제안서·가상 사건을 주입하지 않는다.
-// (이전에는 모든 브라우저에 주입되어 변호사 CRM에 실제 의뢰인처럼 표시되고 DB로 동기화됐으며,
-//  테스트 변호사를 선택한 실제 의뢰인 요청에 가짜 제안서가 자동으로 붙었음)
-const initialConsultRequests: ConsultRequest[] = import.meta.env.DEV ? SEED_CONSULT_REQUESTS : [];
+// 운영 빌드에서는 과거 가상 상담 요청(req-mock-*, req-amjone-*)·가상 제안서·가상 사건을 주입하지 않는다.
+// 단, 변호사 어드민 사건관리 단계별 테스트 케이스(STAGE_TEST_REQUEST_IDS: Stage 1~6 및 개인파산)는
+// 변호사가 기능 테스트를 원활히 진행할 수 있도록 항상 제공한다.
+const initialConsultRequests: ConsultRequest[] = import.meta.env.DEV 
+  ? SEED_CONSULT_REQUESTS 
+  : SEED_CONSULT_REQUESTS.filter(r => STAGE_TEST_REQUEST_IDS.has(r.id));
 const mockTestProposals = import.meta.env.DEV ? SEED_TEST_PROPOSALS : [];
 const initialConsultMessages: ConsultMessage[] = import.meta.env.DEV ? SEED_CONSULT_MESSAGES : [];
 const initialCases: Case[] = import.meta.env.DEV ? SEED_CASES : [];
 const SEED_REQUEST_IDS = new Set(SEED_CONSULT_REQUESTS.map(r => r.id));
 const SEED_CASE_IDS = new Set(SEED_CASES.map(c => c.id));
-/** 운영 환경에서 과거에 저장된 시연 데이터 식별 */
-const isProdSeedRequest = (id: string) => import.meta.env.PROD && SEED_REQUEST_IDS.has(id);
+/** 운영 환경에서 과거에 저장된 시연 데이터 식별 (사건관리 단계별 테스트 케이스는 보존) */
+const isProdSeedRequest = (id: string) => import.meta.env.PROD && SEED_REQUEST_IDS.has(id) && !STAGE_TEST_REQUEST_IDS.has(id);
 const isProdSeedCase = (id: string) => import.meta.env.PROD && SEED_CASE_IDS.has(id);
 
 // [PART 3-2] 가상 회원 18명·가상 활동 로그 16건(가짜 IP·가짜 상담 대화)도 DEV 전용.

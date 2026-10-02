@@ -657,7 +657,338 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         createdAt: '2026-09-10T08:50:00Z'
       }
     ]
+  },
+
+  // ── [Stage 1: 상담·제안] 박지훈 ──
+  'req-stage1-lead': {
+    crmStatus: 'requested',
+    thirteenStage: 'consultation_scheduled',
+    caseType: 'individual_rehab',
+    intakeChannel: 'direct_input',
+    preInfo: '외식업 매장 자영업 대출 등 1억 2,500만원 채무. 월 220만원 순익. 빠른 금지명령과 사업자 개인회생 제안서 발송 대기 중.',
+    notes: [
+      {
+        id: 'note-st1-1',
+        clientId: 'req-stage1-lead',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: 'AI 사건 진단 결과 총 채무 1.25억, 월 가용소득 약 85만원 수준으로 예상 탕감률 약 79% 분석됨. 맞춤 제안서 발송 요망.',
+        createdAt: '2026-10-01T10:30:00Z',
+        category: 'consult'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-st1-1',
+        clientId: 'req-stage1-lead',
+        actorId: 'system',
+        actorName: '시스템',
+        actorRole: 'OWNER',
+        type: 'created',
+        description: '의뢰인으로부터 [신규 1:1 상담 및 제안서 요청]이 접수되었습니다.',
+        createdAt: '2026-10-01T10:00:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 2-A: 수임계약 - 전자서명 대기] 최수안 ──
+  'req-stage2-electronic': {
+    crmStatus: 'consulting',
+    thirteenStage: 'proposal_sent',
+    caseType: 'individual_rehab',
+    contractMethod: 'electronic',
+    totalFee: 1600000,
+    feeSchedule: [
+      { id: 'fee-st2e-1', round: 1, amount: 400000, dueDate: '2026-10-05', status: 'pending', memo: '착수금' },
+      { id: 'fee-st2e-2', round: 2, amount: 400000, dueDate: '2026-11-05', status: 'pending', memo: '1회차 분납' },
+      { id: 'fee-st2e-3', round: 3, amount: 400000, dueDate: '2026-12-05', status: 'pending', memo: '2회차 분납' },
+      { id: 'fee-st2e-4', round: 4, amount: 400000, dueDate: '2027-01-05', status: 'pending', memo: '3회차 잔금' },
+    ],
+    preInfo: '1금융 신용대출 6,800만원. 제안서 조건(수임료 160만) 수락 후 모바일 전자계약서 발송 완료 (원격 서명 대기).',
+    activities: [
+      {
+        id: 'act-st2e-1',
+        clientId: 'req-stage2-electronic',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'contract',
+        description: '전자 수임계약서 패키지 발송 완료 (의뢰인 휴대폰 본인인증 및 서명 대기)',
+        createdAt: '2026-09-28T14:30:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 2-B: 수임계약 - 방문 체결 요청] 강태양 ──
+  'req-stage2-visit': {
+    crmStatus: 'consulting',
+    thirteenStage: 'proposal_sent',
+    caseType: 'individual_rehab',
+    contractMethod: 'in_person',
+    paperContractInfo: {
+      method: 'in_person',
+      signedDate: '',
+      notes: '방문 희망일시: 2026-10-05 14:00 (신분증 및 소득서류 지참 내방 상담 희망)'
+    },
+    totalFee: 1700000,
+    preInfo: '핸드폰 정지로 전자서명 불가하여 사무소 방문(대면) 체결 요청 접수. 내방 일정 확정 대기 중.',
+    notes: [
+      {
+        id: 'note-st2v-1',
+        clientId: 'req-stage2-visit',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '의뢰인이 통신비 체납으로 본인인증이 안 되어 10월 5일 오후 2시 사무소 내방 서면 체결을 요청함. 회의실 예약 및 종이 계약서 서식 인쇄 준비 필요.',
+        createdAt: '2026-09-29T11:30:00Z',
+        category: 'consult'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-st2v-1',
+        clientId: 'req-stage2-visit',
+        actorId: 'client',
+        actorName: '강태양',
+        actorRole: 'OWNER',
+        type: 'contract',
+        description: '의뢰인이 [법률사무소 방문 대면 체결] 전환을 요청하였습니다. (희망일: 2026-10-05 14:00)',
+        createdAt: '2026-09-29T11:15:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 2-C: 수임계약 - 우편 등기 요청] 윤하은 ──
+  'req-stage2-postal': {
+    crmStatus: 'consulting',
+    thirteenStage: 'proposal_sent',
+    caseType: 'individual_rehab',
+    contractMethod: 'postal',
+    paperContractInfo: {
+      method: 'postal',
+      signedDate: '',
+      notes: '우편 등기 요청: 강원도 춘천시 영서로 1980 102동 504호 (우편번호: 24231)',
+      postalInfo: {
+        recipientAddress: '강원도 춘천시 영서로 1980',
+        recipientDetailAddress: '102동 504호',
+        postcode: '24231',
+        carrier: '우체국 등기'
+      }
+    },
+    totalFee: 1500000,
+    preInfo: '강원 춘천 거주로 방문 곤란하여 우편 등기 계약서 발송 요청 접수. 등기우편 발송 대기.',
+    activities: [
+      {
+        id: 'act-st2p-1',
+        clientId: 'req-stage2-postal',
+        actorId: 'client',
+        actorName: '윤하은',
+        actorRole: 'OWNER',
+        type: 'contract',
+        description: '의뢰인이 [우편(등기) 서면 계약] 전환을 요청하였습니다. (수령주소: 강원도 춘천시 영서로 1980)',
+        createdAt: '2026-09-30T09:45:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 3: 서류 준비] 정우성 ──
+  'req-stage3-docs': {
+    crmStatus: 'document',
+    thirteenStage: 'documents_gathering',
+    caseType: 'individual_rehab',
+    contractDate: '2026-09-15',
+    contractAmount: 1800000,
+    contractMethod: 'electronic',
+    totalFee: 1800000,
+    totalPaid: 600000,
+    feeSchedule: [
+      { id: 'fee-st3-1', round: 1, amount: 600000, dueDate: '2026-09-15', paidDate: '2026-09-15', status: 'paid', memo: '착수금 완납' },
+      { id: 'fee-st3-2', round: 2, amount: 400000, dueDate: '2026-10-15', status: 'pending', memo: '1회차 분납' },
+      { id: 'fee-st3-3', round: 3, amount: 400000, dueDate: '2026-11-15', status: 'pending', memo: '2회차 분납' },
+      { id: 'fee-st3-4', round: 4, amount: 400000, dueDate: '2026-12-15', status: 'pending', memo: '3회차 잔금' }
+    ],
+    preInfo: '수임계약 체결 완료. 15종 필수서류 수합 중 (동사무소 서류 6종 승인, 세무서 서류 검토 중).',
+    documents: [
+      { id: 'doc-01', name: '주민등록등본', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-02', name: '주민등록초본 (과거주소 포함)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-03', name: '가족관계증명서 (상세)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-04', name: '혼인관계증명서 (상세)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-05', name: '인감증명서 (채권자수+3통)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-06', name: '지방세 세목별 과세증명서', category: 'property', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-07', name: '근로소득원천징수영수증', category: 'income', required: true, checked: false, reviewStatus: 'submitted' },
+      { id: 'doc-08', name: '급여통장 거래내역서 (1년치)', category: 'income', required: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-09', name: '예금계좌조회서 (계좌정보통합관리원)', category: 'property', required: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-10', name: '보험계약조회서 및 해약환급금확인서', category: 'property', required: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-11', name: '임대차계약서 사본', category: 'property', required: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-12', name: '자동차등록원부 (갑/을)', category: 'property', required: false, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-13', name: '부채증명서 (채권사별 각 1통)', category: 'debt', required: true, checked: false, reviewStatus: 'not_submitted' },
+    ],
+    activities: [
+      {
+        id: 'act-st3-1',
+        clientId: 'req-stage3-docs',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'document',
+        description: '공문서 6종(등초본, 가족관계증명서, 임대차계약서 등) 검토 및 최종 승인 완료',
+        createdAt: '2026-09-20T11:00:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 4: 신청·접수] 최은지 ──
+  'req-stage4-filing': {
+    crmStatus: 'applied',
+    thirteenStage: 'petition_filed',
+    caseType: 'individual_rehab',
+    contractDate: '2026-08-01',
+    contractAmount: 1800000,
+    totalFee: 1800000,
+    totalPaid: 1800000,
+    preInfo: '서울회생법원 2026개회10428 접수 완료. 금지명령 인용 송달 완료. 1회차 집회 대기 중.',
+    courtCase: {
+      courtName: '서울회생법원',
+      caseNumber: '2026개회10428',
+      judgeDepartment: '제21단독',
+      trusteeName: '박회생 위원',
+      status: '금지명령 인용 / 서류 심사 중',
+      appliedAt: '2026-08-10',
+      prohibitionOrderDate: '2026-08-14'
+    },
+    activities: [
+      {
+        id: 'act-st4-1',
+        clientId: 'req-stage4-filing',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'court_case',
+        description: '서울회생법원 전자접수 완료 (사건번호: 2026개회10428) 및 금지명령 인용 결정',
+        createdAt: '2026-08-14T10:00:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 5: 보정·개시] 김민석 ──
+  'req-stage5-correction': {
+    crmStatus: 'correction',
+    thirteenStage: 'correction_recommended',
+    caseType: 'individual_rehab',
+    contractDate: '2026-07-20',
+    contractAmount: 2000000,
+    totalFee: 2000000,
+    totalPaid: 2000000,
+    preInfo: '수원회생법원 1차 보정권고 수령(기한 14일 이내). 100만원 이상 출금 소명서 및 통장 내역 작성 중.',
+    courtCase: {
+      courtName: '수원회생법원',
+      caseNumber: '2026개회33912',
+      judgeDepartment: '제12단독',
+      trusteeName: '최도산 위원',
+      status: '1차 보정권고 수령 대응 중',
+      appliedAt: '2026-08-01'
+    },
+    correctionOrders: [
+      {
+        id: 'corr-st5-1',
+        orderNumber: 1,
+        courtName: '수원회생법원',
+        receivedAt: '2026-09-25',
+        deadline: '2026-10-09',
+        status: 'drafting',
+        content: '1. 최근 1년간 각 은행 계좌에서 100만 원 이상 인출된 내역에 대하여 그 사용처를 구체적으로 소명하고 소명자료(영수증 등)를 제출할 것.\n2. 배우자 명의 재산(차량 및 임차보증금)에 대하여 형성 경위를 밝히고 청산가치에 1/2 반영 여부를 재산목록에 보정할 것.',
+        responseDocId: 'doc-corr-st5-1'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-st5-1',
+        clientId: 'req-stage5-correction',
+        actorId: 'system',
+        actorName: '전자소송 연동',
+        actorRole: 'OWNER',
+        type: 'court_case',
+        description: '수원회생법원 1차 보정권고 전자 송달 접수 (기한: 2026-10-09까지)',
+        createdAt: '2026-09-25T15:30:00Z'
+      }
+    ]
+  },
+
+  // ── [Stage 6: 변제·면책] 한예은 ──
+  'req-stage6-discharge': {
+    crmStatus: 'discharged',
+    thirteenStage: 'discharge_granted',
+    caseType: 'individual_rehab',
+    contractDate: '2023-08-10',
+    contractAmount: 1800000,
+    totalFee: 1800000,
+    totalPaid: 1800000,
+    preInfo: '36개월 변제금 완납 완료. 법원 면책 결정 송달 및 신용정보원 공공기록 해제 완료.',
+    courtCase: {
+      courtName: '서울회생법원',
+      caseNumber: '2023개회55120',
+      status: '36개월 변제 완료 / 최종 면책 허가 확정',
+      appliedAt: '2023-08-20',
+      prohibitionOrderDate: '2023-08-25',
+      commencementDate: '2023-11-10',
+      approvalDate: '2024-02-15',
+      dischargeDate: '2026-08-15'
+    },
+    repaymentPlan: {
+      monthlyRepaymentTotal: 780000,
+      months: 36,
+      totalDebt: 72000000,
+      totalLiquidationValue: 6000000,
+      totalForgivenAmount: 43920000,
+      totalRepaymentRate: 39
+    },
+    activities: [
+      {
+        id: 'act-st6-1',
+        clientId: 'req-stage6-discharge',
+        actorId: 'system',
+        actorName: '법원 전자송달',
+        actorRole: 'OWNER',
+        type: 'court_case',
+        description: '서울회생법원 최종 면책 허가 결정 확정 (신용정보원 공공기록 코드 1101 해제)',
+        createdAt: '2026-08-15T11:00:00Z'
+      }
+    ]
+  },
+
+  // ── [개인파산 Stage 3] 오동석 ──
+  'req-bankruptcy-stage3': {
+    crmStatus: 'document',
+    thirteenStage: 'documents_gathering',
+    caseType: 'bankruptcy',
+    preInfo: '68세 고령 무소득 기초수급자 개인파산 서류 준비. 파산 관재인 면담 서류 수합 중.',
+    notes: [
+      {
+        id: 'note-bk-1',
+        clientId: 'req-bankruptcy-stage3',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '수급자 증명서 및 생계급여 내역 확보 완료. 법원 파산관재인 예납금(30만원) 안내 완료.',
+        createdAt: '2026-09-20T14:00:00Z',
+        category: 'consult'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-bk-1',
+        clientId: 'req-bankruptcy-stage3',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'document',
+        description: '개인파산 필수 서류(기초생활수급자 증명서 등) 4종 접수 완료',
+        createdAt: '2026-09-22T10:00:00Z'
+      }
+    ]
   }
+
 };
 
 // ── CrmClientExtension 초기화 헬퍼 ──
@@ -668,7 +999,7 @@ export function createDefaultCrmExtension(
   incomeType?: 'EMPLOYEE' | 'BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME'
 ): CrmClientExtension {
   // 시연용 사전 프로필은 DEV 빌드에서만 적용 (운영에서는 가짜 사건번호·수임료·메모가 실제 고객처럼 저장되던 문제)
-  const predefined = (import.meta.env.DEV ? PREDEFINED_AMJONE_PROFILES[clientId] : undefined) || {};
+  const predefined = PREDEFINED_AMJONE_PROFILES[clientId] || {};
   const effectiveCaseType = (predefined.caseType as any) || caseType;
   const docs = getStandardDocumentsForClient(effectiveCaseType, incomeType);
   

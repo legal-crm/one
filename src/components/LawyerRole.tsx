@@ -11,7 +11,7 @@ import {
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
 } from '../types';
-import { adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
+import { adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices, STAGE_TEST_REQUEST_IDS } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
@@ -1798,10 +1798,11 @@ export default function LawyerRole({
     const openMatch = isOpenForProposals(r);
     return directMatch || sameFirmMatch || openMatch;
   };
-  /** 본인(또는 같은 사무소)이 담당·참여 중인 요청만 (오픈 매칭 대기 제외) */
+  /** 본인(또는 같은 사무소)이 담당·참여 중인 요청만 (오픈 매칭 대기 제외, 단계별 테스트 사건 포함) */
   const isOwnRequest = (r: ConsultRequest) => {
     if (!activeLawyer.id) return false;
     return Boolean(
+      STAGE_TEST_REQUEST_IDS.has(r.id) ||
       r.selectedLawyerIds?.includes(activeLawyer.id) ||
       r.selectedLawyerId === activeLawyer.id ||
       r.acceptedLawyerIds?.includes(activeLawyer.id) ||

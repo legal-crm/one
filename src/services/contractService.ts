@@ -806,16 +806,106 @@ export async function finalizeContractWithIntegrity(
 // ── Mock 데이터 ──
 
 export function seedMockContracts(): void {
-  const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  if (existing.length > 0) return;
-  const mockData = [
-    { id: 'EC-2026-0001', clientName: '김철수', clientPhone: '010-1234-5678', status: 'completed' as ContractStatus, totalFee: 220, date: '2026-08-25' },
-    { id: 'EC-2026-0002', clientName: '이영희', clientPhone: '010-9876-5432', status: 'pending_sign' as ContractStatus, totalFee: 300, date: '2026-08-21' },
-    { id: 'EC-2026-0003', clientName: '박민수', clientPhone: '010-5555-1234', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-19' },
-    { id: 'EC-2026-0004', clientName: '최지우', clientPhone: '010-7777-8888', status: 'drafting' as ContractStatus, totalFee: 300, date: '2026-08-12' },
-    { id: 'EC-2026-0005', clientName: '강시우', clientPhone: '010-3333-4444', status: 'client_review' as ContractStatus, totalFee: 300, date: '2026-08-09' },
-    { id: 'EC-2026-0006', clientName: '한예은', clientPhone: '010-2222-3333', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-07' },
-    { id: 'EC-2026-0007', clientName: '송지호', clientPhone: '010-1111-2222', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-04' },
+  const existing: ElectronicContract[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const existingIds = new Set(existing.map(c => c.id));
+  const existingClientIds = new Set(existing.map(c => c.clientId));
+
+  const mockData: Array<any> = [
+    { id: 'EC-2026-0001', clientId: 'EC-2026-0001', clientName: '김철수', clientPhone: '010-1234-5678', status: 'completed' as ContractStatus, totalFee: 220, date: '2026-08-25', contractMethod: 'electronic' },
+    { id: 'EC-2026-0002', clientId: 'EC-2026-0002', clientName: '이영희', clientPhone: '010-9876-5432', status: 'pending_sign' as ContractStatus, totalFee: 300, date: '2026-08-21', contractMethod: 'electronic' },
+    { id: 'EC-2026-0003', clientId: 'EC-2026-0003', clientName: '박민수', clientPhone: '010-5555-1234', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-19', contractMethod: 'electronic' },
+    { id: 'EC-2026-0004', clientId: 'EC-2026-0004', clientName: '최지우', clientPhone: '010-7777-8888', status: 'drafting' as ContractStatus, totalFee: 300, date: '2026-08-12', contractMethod: 'electronic' },
+    { id: 'EC-2026-0005', clientId: 'EC-2026-0005', clientName: '강시우', clientPhone: '010-3333-4444', status: 'client_review' as ContractStatus, totalFee: 300, date: '2026-08-09', contractMethod: 'electronic' },
+    { id: 'EC-2026-0006', clientId: 'EC-2026-0006', clientName: '한예은', clientPhone: '010-2222-3333', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-07', contractMethod: 'electronic' },
+    { id: 'EC-2026-0007', clientId: 'EC-2026-0007', clientName: '송지호', clientPhone: '010-1111-2222', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-04', contractMethod: 'electronic' },
+    
+    // ── 단계별 테스트용 전자/서면 계약서 ──
+    {
+      id: 'EC-ST2-ELECTRONIC',
+      clientId: 'req-stage2-electronic',
+      clientName: '최수안',
+      clientPhone: '010-4499-1234',
+      status: 'pending_sign' as ContractStatus,
+      totalFee: 160,
+      date: '2026-09-28',
+      contractMethod: 'electronic'
+    },
+    {
+      id: 'EC-ST2-VISIT',
+      clientId: 'req-stage2-visit',
+      clientName: '강태양',
+      clientPhone: '010-5511-8899',
+      status: 'drafting' as ContractStatus,
+      totalFee: 170,
+      date: '2026-09-29',
+      contractMethod: 'in_person',
+      paperContractInfo: {
+        method: 'in_person',
+        signedDate: '',
+        notes: '방문 희망일시: 2026-10-05 14:00 (신분증 및 소득서류 지참 내방 상담 희망)'
+      }
+    },
+    {
+      id: 'EC-ST2-POSTAL',
+      clientId: 'req-stage2-postal',
+      clientName: '윤하은',
+      clientPhone: '010-6622-3344',
+      status: 'drafting' as ContractStatus,
+      totalFee: 150,
+      date: '2026-09-30',
+      contractMethod: 'postal',
+      paperContractInfo: {
+        method: 'postal',
+        signedDate: '',
+        notes: '우편 등기 요청: 강원도 춘천시 영서로 1980 102동 504호 (우편번호: 24231)',
+        postalInfo: {
+          recipientAddress: '강원도 춘천시 영서로 1980',
+          recipientDetailAddress: '102동 504호',
+          postcode: '24231',
+          carrier: '우체국 등기'
+        }
+      }
+    },
+    {
+      id: 'EC-ST3-DOCS',
+      clientId: 'req-stage3-docs',
+      clientName: '정우성',
+      clientPhone: '010-8888-2222',
+      status: 'completed' as ContractStatus,
+      totalFee: 180,
+      date: '2026-09-15',
+      contractMethod: 'electronic'
+    },
+    {
+      id: 'EC-ST4-FILING',
+      clientId: 'req-stage4-filing',
+      clientName: '최은지',
+      clientPhone: '010-7777-1111',
+      status: 'completed' as ContractStatus,
+      totalFee: 180,
+      date: '2026-08-01',
+      contractMethod: 'electronic'
+    },
+    {
+      id: 'EC-ST5-CORRECTION',
+      clientId: 'req-stage5-correction',
+      clientName: '김민석',
+      clientPhone: '010-6644-2211',
+      status: 'completed' as ContractStatus,
+      totalFee: 200,
+      date: '2026-07-20',
+      contractMethod: 'electronic'
+    },
+    {
+      id: 'EC-ST6-DISCHARGE',
+      clientId: 'req-stage6-discharge',
+      clientName: '한예은',
+      clientPhone: '010-2222-3333',
+      status: 'completed' as ContractStatus,
+      totalFee: 180,
+      date: '2023-08-10',
+      contractMethod: 'electronic'
+    }
   ];
 
   const contracts: ElectronicContract[] = mockData.map(m => {
@@ -826,7 +916,7 @@ export function seedMockContracts(): void {
 
     return {
       ...m,
-      clientId: m.id,
+      clientId: m.clientId || m.id,
       clientAddress: '서울시 서초구 서초대로 250',
       lawyerName: '김리걸',
       lawFirmName: '법무법인 마이김변',
@@ -885,5 +975,9 @@ export function seedMockContracts(): void {
 
   // 데모 데이터는 이 브라우저(localStorage)에만 둔다 — 개발 빌드가 운영 Supabase를 보더라도 가짜 계약이 DB에 올라가지 않도록
   // (이전: saveContracts()로 Supabase upsert)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+  const missingContracts = contracts.filter(c => !existingIds.has(c.id));
+  if (missingContracts.length > 0) {
+    const merged = [...existing, ...missingContracts];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  }
 }
