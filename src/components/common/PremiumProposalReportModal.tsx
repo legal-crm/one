@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   X, Download, CheckCircle2, ShieldCheck, Scale, Sparkles, 
-  Landmark, TrendingDown, Clock, AlertTriangle, MessageSquare, 
+  Landmark, TrendingDown, Clock, AlertTriangle, AlertCircle, MessageSquare, 
   DollarSign, FileText, ChevronRight, User, Printer, ArrowRight,
   Shield, Check, Phone, Building2, HelpCircle, Layers, Eye,
   BarChart3, Users, Home, CreditCard, Calculator, Percent, Zap
