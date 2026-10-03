@@ -246,7 +246,7 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
                   contentEditable={isEditMode}
                   suppressContentEditableWarning
                   className="bg-white max-w-[210mm] min-h-[297mm] w-full shadow-xl font-serif text-[16px] leading-[2.0] text-black"
-                  style={{ padding: '170px 76px 113px 76px' }}
+                  style={{ padding: '170px 76px 113px 76px', fontFamily: "'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif" }}
                   dangerouslySetInnerHTML={{ __html: selectedForm.html }}
                 />
               ) : (

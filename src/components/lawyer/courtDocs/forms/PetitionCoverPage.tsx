@@ -35,7 +35,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
       className="court-page bg-white w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] h-[297mm] mx-auto text-black font-serif px-[22mm] pt-[26mm] pb-[22mm] flex flex-col justify-between box-border shadow-lg print:shadow-none print:border-none print:m-0 print:p-[22mm] select-text"
       style={{ 
         pageBreakAfter: 'always',
-        fontFamily: "'Batang', 'BatangChe', 'Gungsuh', serif" 
+        fontFamily: "'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif" 
       }}
     >
       {/* ── 상단 ~ 중단 본문 콘텐츠 영역 ── */}
@@ -91,7 +91,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
                   <td className="border border-black px-2 text-center font-semibold w-[42%] tracking-[0.3em]">
                     사 건 &nbsp;번 호
                   </td>
-                  <td className="border border-black px-2.5 text-left font-mono text-[12px] w-[58%]">
+                  <td className="border border-black px-2.5 text-left text-[12px] w-[58%]">
                     {court?.caseNumber || ''}
                   </td>
                 </tr>
@@ -128,7 +128,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
                   </td>
                 </tr>
                 <tr className="h-[64px]">
-                  <td className="border border-black p-2.5 align-top text-left font-mono text-[13px]">
+                  <td className="border border-black p-2.5 align-top text-left text-[13px]">
                     <span>20 &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; :</span>
                   </td>
                   <td className="border border-black p-2 text-center align-middle"></td>

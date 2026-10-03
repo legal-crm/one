@@ -38,7 +38,7 @@ const COURT_PRINT_CSS = `
     margin: 0;
     padding: 0;
     background: #ffffff;
-    font-family: 'Batang', 'BatangChe', '바탕', 'Gungsuh', serif;
+    font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     color: #000000;
@@ -66,6 +66,7 @@ export function openCourtFormPrintWindow(htmlContent: string, title: string = '�
       <head>
         <meta charset="utf-8" />
         <title>${escapeHtml(title)}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-kopub@1.0.2/kopubbatang.css" />
         <style>${COURT_PRINT_CSS}</style>
       </head>
       <body>

@@ -35,7 +35,7 @@ const A4_PAGE_STYLE = `
   padding: 170px 76px 113px 76px;
   background: #ffffff;
   color: #000000;
-  font-family: 'Batang', 'BatangChe', '바탕', 'Gungsuh', serif;
+  font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif;
   font-size: 16px;
   line-height: 2.0;
   box-sizing: border-box;

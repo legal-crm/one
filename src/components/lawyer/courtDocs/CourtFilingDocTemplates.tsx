@@ -889,7 +889,7 @@ export const EvidenceSubmissionListDoc: React.FC<DocTemplateProps> = ({ data, is
   return (
     <div className="court-page bg-white pt-[170px] pb-[113px] px-[76px] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-xs leading-normal print:border-none print:shadow-none print:pt-[170px] print:pb-[113px] print:px-[76px] space-y-3">
       <div className="text-center border-b border-black pb-2">
-        <div className="flex justify-between items-center text-xs text-black mb-1 font-sans">
+        <div className="flex justify-between items-center text-xs text-black mb-1">
           <span>{jurisdictionMeta.appliedDate}</span>
           <span className="font-semibold text-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
             {jurisdictionMeta.title}
@@ -912,7 +912,7 @@ export const EvidenceSubmissionListDoc: React.FC<DocTemplateProps> = ({ data, is
       </div>
 
       {/* 법원별 필수 지침 안내 배너 */}
-      <div className="p-2.5 border border-amber-300 bg-amber-50/70 text-xs text-amber-950 rounded font-sans leading-[2.0]">
+      <div className="p-2.5 border border-amber-300 bg-amber-50/70 text-xs text-amber-950 rounded leading-[2.0]">
         <div className="font-bold text-amber-900 flex items-center gap-1 mb-0.5">
           <span>⚖️ {jurisdictionMeta.title} 제출 유의사항</span>
         </div>
@@ -938,7 +938,7 @@ export const EvidenceSubmissionListDoc: React.FC<DocTemplateProps> = ({ data, is
                 </div>
                 <div className="text-xs text-gray-800">{ev.categoryTitle}</div>
                 {ev.noticeText && (
-                  <div className="text-xs text-black font-sans mt-0.5 font-medium">
+                  <div className="text-xs text-black mt-0.5 font-medium">
                     {ev.noticeText}
                   </div>
                 )}

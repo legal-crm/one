@@ -129,7 +129,7 @@ function CourtDocSuiteViewerModalInner({
   const [activeTab, setActiveTab] = useState<DocTabId>(resolveInitialTab);
   const [isEditMode, setIsEditMode] = useState<boolean>(true);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
-  const [selectedFont, setSelectedFont] = useState<'font-serif' | 'font-sans'>('font-serif');
+  const selectedFont = 'font-serif';
   const [fontSize, setFontSize] = useState<string>('text-[12px]');
   const [zoomLevel, setZoomLevel] = useState<number>(95);
   const [isBundling, setIsBundling] = useState<boolean>(false);
@@ -276,6 +276,7 @@ function CourtDocSuiteViewerModalInner({
       <style>{`
         /* ── 화면 미리보기 & 인쇄 공통: 대법원 A4 규격 (가로 210mm) 영구 고정 ── */
         .court-suite-canvas {
+          font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif !important;
           width: 210mm !important;
           min-width: 210mm !important;
           max-width: 210mm !important;
@@ -283,6 +284,7 @@ function CourtDocSuiteViewerModalInner({
         }
 
         .court-page {
+          font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif !important;
           width: 210mm !important;
           min-width: 210mm !important;
           max-width: 210mm !important;
@@ -372,6 +374,7 @@ function CourtDocSuiteViewerModalInner({
 
           /* 6. A4 캔버스: 화면 줌(scale) 해제 및 100% 실규격 A4 출력 */
           .court-suite-canvas {
+            font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif !important;
             transform: none !important;
             margin: 0 auto !important;
             padding: 0 !important;
@@ -385,6 +388,7 @@ function CourtDocSuiteViewerModalInner({
 
           /* 7. 법원 전산 서식 페이지 스타일 보존 및 페이지 브레이크 최적화 */
           .court-page {
+            font-family: 'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif !important;
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
@@ -561,15 +565,9 @@ function CourtDocSuiteViewerModalInner({
             </span>
           </label>
 
-          <div className="flex items-center gap-1.5">
-            <select
-              value={selectedFont}
-              onChange={(e) => setSelectedFont(e.target.value as any)}
-              className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-slate-200 text-xs"
-            >
-              <option value="font-serif">바탕체 (법원표준)</option>
-              <option value="font-sans">고딕체</option>
-            </select>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/90 border border-slate-700/80 rounded-lg text-xs text-amber-300 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>대법원 표준 바탕체 고정</span>
           </div>
 
           <div className="flex items-center gap-1 text-slate-400">
@@ -600,8 +598,12 @@ function CourtDocSuiteViewerModalInner({
             ref={printAreaRef}
             contentEditable={isEditMode}
             suppressContentEditableWarning
-            style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-            className={`court-suite-canvas w-[210mm] min-w-[210mm] max-w-[210mm] shrink-0 transition-transform duration-100 ${selectedFont} ${fontSize} outline-none print:transform-none`}
+            style={{ 
+              transform: `scale(${zoomLevel / 100})`, 
+              transformOrigin: 'top center',
+              fontFamily: "'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif"
+            }}
+            className={`court-suite-canvas w-[210mm] min-w-[210mm] max-w-[210mm] shrink-0 transition-transform duration-100 font-serif ${fontSize} outline-none print:transform-none`}
           >
             {/* 1. 표지 (법원 원본 표지) */}
             {activeTab === 'PETITION_COVER' && (
