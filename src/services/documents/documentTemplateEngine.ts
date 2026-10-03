@@ -166,8 +166,8 @@ export function bindHwpxTemplateHtml(
     );
   }
 
-  // 2. 사건번호 치환 (사건 20 개회 개인회생 등)
-  const caseNoPattern = /<p[^>]*>\s*사\s*건[\s\S]*?(?:개회|하단|타경|개인회생|파산)[\s\S]*?<\/p>/i;
+  // 2. 사건번호 치환 (사건 20 개회 개인회생, 사건번호 20 가 (차), 사건 20 하단 등 전수 지원)
+  const caseNoPattern = /<p[^>]*>\s*사\s*건(?:\s*번\s*호)?[\s\S]*?(?:20|\(담당재판부|개회|하단|타경|차|가|개인회생|파산)[\s\S]*?<\/p>/i;
   if (caseNoPattern.test(html)) {
     html = html.replace(
       caseNoPattern,
@@ -175,12 +175,16 @@ export function bindHwpxTemplateHtml(
     );
   } else {
     html = html.replace(
-      /(?:사\s*건)\s*(?:20\s*(?:개회|하단|타경)[^<]*)?/gi,
+      /(?:사\s*건(?:\s*번\s*호)?)\s*(?:20\s*(?:개회|하단|타경|가|차)[^<]*)?/gi,
       `<span class="font-bold text-slate-900 font-mono">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${caseNoDisplay}</span>`
     );
   }
+  // 본문 내 사건번호 플레이스홀더 치환
+  html = html.replace(/20○○타경○○○호/g, caseNoDisplay);
+  html = html.replace(/20\s*개회\s*○○/g, caseNoDisplay);
+  html = html.replace(/20\s*하단\s*○○/g, caseNoDisplay);
 
-  // 3. 당사자(채무자/신청인/대리인) 표시 치환
+  // 3. 당사자(채무자/신청인/원고/피고/대리인) 표시 치환
   const partyBlockHtml = `
 <div class="my-4 p-4 bg-slate-50/90 rounded-xl border border-slate-300 text-[14px] leading-relaxed font-serif text-slate-900">
   <div class="flex mb-1.5">
@@ -201,19 +205,54 @@ export function bindHwpxTemplateHtml(
   </div>
 </div>`;
 
+  // 3-1. 복합 당사자 블록 치환
   const debtorPattern = /<p[^>]*>[\s\S]*?\(채\s*무\s*자\)[\s\S]*?주\s*소:[\s\S]*?<\/p>/i;
   const debtorPatternAlt = /채\s*권\s*자\s*○○○[\s\S]*?채무자\s*겸\s*소유자\s*◇◇◇/i;
+  const applicantPattern = /<p[^>]*>\s*신\s*청\s*인\s*\([가-힣\s]*성명\s*\)[\s\S]*?<\/p>\s*<p[^>]*>\s*\([가-힣\s]*주소\s*\)[\s\S]*?<\/p>/i;
+
   if (debtorPattern.test(html)) {
     html = html.replace(debtorPattern, partyBlockHtml);
   } else if (debtorPatternAlt.test(html)) {
     html = html.replace(debtorPatternAlt, partyBlockHtml);
+  } else if (applicantPattern.test(html)) {
+    html = html.replace(applicantPattern, partyBlockHtml);
   } else {
     html = html.replace(/\(채\s*무\s*자\)\s*주\s*소:/g, partyBlockHtml);
   }
 
+  // 3-2. 단독 당사자 태그 보강 (개별 문단으로 등장하는 경우)
+  html = html.replace(
+    /<p[^>]*>\s*(?:신\s*청\s*인\s*\(\s*채\s*무\s*자\s*\)|신\s*청\s*인\s*\(채무자\))\s*<\/p>/gi,
+    `<div class="my-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>신청인(채무자):</strong> <strong class="text-slate-900">${data.debtorName}</strong> ${data.debtorRrn ? `(${data.debtorRrn})` : ''} <span class="text-slate-600 ml-2">주소: ${data.debtorAddress || '서초구 서초대로 254'}</span></div>`
+  );
+  html = html.replace(
+    /<p[^>]*>\s*피\s*고\s*\(\s*채\s*무\s*자\s*\)\s*<\/p>/gi,
+    `<div class="my-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>피고(채무자):</strong> <strong class="text-slate-900">${data.debtorName}</strong> ${data.debtorRrn ? `(${data.debtorRrn})` : ''} <span class="text-slate-600 ml-2">주소: ${data.debtorAddress || '서초구 서초대로 254'}</span></div>`
+  );
+  html = html.replace(
+    /<p[^>]*>\s*채\s*무\s*자\s*<\/p>/gi,
+    `<div class="my-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>채&nbsp;&nbsp;무&nbsp;&nbsp;자:</strong> <strong class="text-slate-900">${data.debtorName}</strong> ${data.debtorRrn ? `(${data.debtorRrn})` : ''} <span class="text-slate-600 ml-2">주소: ${data.debtorAddress || '서초구 서초대로 254'}</span></div>`
+  );
+  html = html.replace(
+    /<p[^>]*>\s*원\s*고\s*\(\s*채\s*권\s*자\s*\)\s*<\/p>/gi,
+    `<div class="my-1.5 p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>원고(채권자):</strong> 채권자목록 기재 채권자 외</div>`
+  );
+  html = html.replace(
+    /<p[^>]*>\s*채\s*권\s*자\s*<\/p>/gi,
+    `<div class="my-1.5 p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>채&nbsp;&nbsp;권&nbsp;&nbsp;자:</strong> 채권자목록 기재 채권자 외</div>`
+  );
+  html = html.replace(
+    /<p[^>]*>\s*원\s*고\s*<\/p>/gi,
+    `<div class="my-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs"><strong>원&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;고:</strong> <strong class="text-slate-900">${data.debtorName}</strong></div>`
+  );
+  html = html.replace(
+    /피고\(채무자\)\s+의 주소를 보정합니다/g,
+    `피고(채무자) <strong class="text-slate-900">${data.debtorName}</strong>의 주소를 보정합니다`
+  );
+
   // 4. 신청취지 및 신청이유 섹션 실시간 치환
-  // 4-1. 신청취지 영역 매칭
-  const purposeSectionPattern = /(<p[^>]*>\s*신\s*청\s*취\s*지\s*<\/p>)([\s\S]*?)(?=(?:<p[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유)\s*<\/p>|<div[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유)\s*<\/div>))/i;
+  // 4-1. 신청취지 영역 매칭 (신청취지, 보정취지, 이의신청취지 등)
+  const purposeSectionPattern = /(<p[^>]*>\s*(?:신\s*청\s*취\s*지|보\s*정\s*취\s*지|이\s*의\s*신\s*청\s*취\s*지)\s*<\/p>)([\s\S]*?)(?=(?:<p[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유|보\s*정\s*이\s*유|소\s*명\s*사\s*유|소\s*명\s*방\s*법)\s*<\/p>|<div[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유|보\s*정\s*이\s*유|소\s*명\s*사\s*유|소\s*명\s*방\s*법)\s*<\/div>))/i;
   if (purposeSectionPattern.test(html)) {
     html = html.replace(purposeSectionPattern, (match, header) => {
       return `${header}
@@ -225,7 +264,7 @@ ${activePurpose}
   }
 
   // 4-2. 신청원인 / 신청이유 영역 매칭
-  const reasonSectionPattern = /(<p[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유)\s*<\/p>|<div[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유)\s*<\/div>)([\s\S]*?)(?=(?:<p[^>]*>\s*20\s*\.|\s*<div[^>]*>\s*20\s*\.|$))/i;
+  const reasonSectionPattern = /(<p[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유|보\s*정\s*이\s*유|소\s*명\s*사\s*유|소\s*명\s*방\s*법)\s*<\/p>|<div[^>]*>\s*(?:신\s*청\s*원\s*인|신\s*청\s*이\s*유|보\s*정\s*이\s*유|소\s*명\s*사\s*유|소\s*명\s*방\s*법)\s*<\/div>)([\s\S]*?)(?=(?:<p[^>]*>\s*20\s*\.|\s*<div[^>]*>\s*20\s*\.|$))/i;
   if (reasonSectionPattern.test(html)) {
     const evidenceListHtml = data.evidenceList && data.evidenceList.length > 0 ? `
 <div class="my-4 pt-3 border-t border-slate-200">
@@ -245,12 +284,12 @@ ${evidenceListHtml}`;
   }
 
   // 5. 날짜, 서명란, 법원 관할 치환
-  // 5-1. 날짜
+  // 5-1. 날짜 (20 . . ., 20 . . ., 200 . . .)
   html = html.replace(
-    /<p[^>]*>\s*20\s*\.\s*\.\s*\.\s*<\/p>/i,
+    /<p[^>]*>\s*20\s*(?:0\s*)?\.\s*\.\s*\.\s*<\/p>/gi,
     `<div class="my-6 text-center font-mono font-bold text-[15px] tracking-widest text-slate-900">${data.submissionDate}</div>`
   );
-  html = html.replace(/20\s*\.\s*\.\s*\./g, `<span class="font-mono font-bold">${data.submissionDate}</span>`);
+  html = html.replace(/20\s*(?:0\s*)?\.\s*\.\s*\./g, `<span class="font-mono font-bold">${data.submissionDate}</span>`);
 
   // 5-2. 서명 및 날인
   const signBlockHtml = `
@@ -267,21 +306,21 @@ ${evidenceListHtml}`;
   ${data.debtorPhone ? `<div class="text-xs text-slate-500 font-mono">연락처: ${data.debtorPhone}</div>` : ''}
 </div>`;
 
-  const signPattern = /<p[^>]*>\s*신청인\(채무자\)[\s\S]*?(?:서명\s*또는\s*날인\)|\(인\))[\s\S]*?<\/p>/i;
+  const signPattern = /<p[^>]*>\s*(?:신청인\(채무자\)|이의신청인\(채무자\)|원고|피고|신청인|제출자)[\s\S]*?(?:서명\s*또는\s*날인|\(인\))[\s\S]*?<\/p>/i;
   if (signPattern.test(html)) {
     html = html.replace(signPattern, signBlockHtml);
-    html = html.replace(/<p[^>]*>\s*연락\s*가능한\s*전화번호:[\s\S]*?<\/p>/i, '');
+    html = html.replace(/<p[^>]*>\s*연락\s*가능한\s*전화번호:?[\s\S]*?<\/p>/gi, '');
   } else {
     html = html.replace(
-      /신청인\(채무자\)\s*\(서명 또는 날인\)/g,
+      /(?:신청인\(채무자\)|이의신청인\(채무자\)|신청인)\s*\(서명 또는 날인\)/g,
       `<span>신청인(채무자) <strong class="text-slate-900">${data.debtorName}</strong> (인) / 대리인 ${data.agentLawfirm} (인)</span>`
     );
     html = html.replace(/신\s*청\s*인\s*\(인\)/g, `<span>신청인 <strong class="text-slate-900">${data.debtorName}</strong> (인) / 대리인 ${data.agentLawyerName} (인)</span>`);
   }
 
-  // 5-3. 관할법원
+  // 5-3. 관할법원 (법원 귀중, ○○지방법원 귀중, 귀직)
   const courtTarget = `${data.courtName || '서울회생법원'} 귀중`;
-  const courtPattern = /<p[^>]*>(?:[가-힣\s]*지방법원|법원)\s*귀중\s*<\/p>/i;
+  const courtPattern = /<p[^>]*>(?:[가-힣\s]*지방법원|법원|귀직)\s*귀중\s*<\/p>/i;
   if (courtPattern.test(html)) {
     html = html.replace(courtPattern, `<div class="my-6 text-center font-bold text-xl tracking-widest text-slate-950">${courtTarget}</div>`);
   } else {
