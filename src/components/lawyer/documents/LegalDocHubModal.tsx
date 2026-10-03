@@ -93,11 +93,23 @@ function LegalDocHubModalInner({
   };
 
   const [includeColdArchive, setIncludeColdArchive] = useState(false);
+  const [onlyOfficialCourt, setOnlyOfficialCourt] = useState(false);
+  const [onlyPendingUpload, setOnlyPendingUpload] = useState(false);
 
-  // 서류 목록 필터 (사건 관할 범위 + 서류 성격 + 카테고리 + 검색어 + Cold Archive)
+  // 서류 목록 필터 (사건 관할 범위 + 서류 성격 + 카테고리 + 검색어 + Cold Archive + 정식 서식 전용 + 미등록 대기 전용)
   const filteredAllDocs = useMemo(() => {
     return ALL_LEGAL_DOC_REGISTRY.filter(doc => {
       const docTier = getDocumentTier(doc);
+
+      // 0. 대법원 정식 서식 전용 필터
+      if (onlyOfficialCourt && !doc.isOfficialCourtForm) {
+        return false;
+      }
+
+      // 0-1. 서식 파일 미등록 (업로드 대기) 전용 필터
+      if (onlyPendingUpload && !doc.isPendingUpload) {
+        return false;
+      }
 
       // 1. 관할 범위 필터 (activeTab 기반)
       if (activeTab === 'rehab' && doc.caseScope !== 'REHAB' && doc.caseScope !== 'COMMON') {
@@ -143,7 +155,23 @@ function LegalDocHubModalInner({
 
       return true;
     });
-  }, [activeTab, searchQuery, selectedCategory, selectedNature, includeColdArchive]);
+  }, [activeTab, searchQuery, selectedCategory, selectedNature, includeColdArchive, onlyOfficialCourt, onlyPendingUpload]);
+
+  // 대법원 정식 서식 HWPX/XLSX/PDF 다운로드 핸들러
+  const handleDownloadHwpx = (doc: LegalDocItem) => {
+    if (!doc.downloadUrl) {
+      toast.error('해당 서식의 원본 파일이 준비되지 않았습니다.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = doc.downloadUrl;
+    link.download = doc.hwpxFileName || `${doc.title}.hwpx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    const ext = doc.hwpxFileName?.endsWith('.xlsx') ? 'XLSX' : doc.hwpxFileName?.endsWith('.pdf') ? 'PDF' : 'HWPX';
+    toast.success(`'${doc.title}' 정식 서식 파일(${ext})을 다운로드했습니다.`);
+  };
 
   // 모바일 작성 요청 발송 핸들러
   const handleSendMobileRequest = (doc: LegalDocItem) => {
@@ -176,14 +204,14 @@ function LegalDocHubModalInner({
   // 카테고리 필터 목록
   const categories: { key: DocCategory | 'ALL'; label: string; count: number }[] = [
     { key: 'ALL', label: '전체', count: ALL_LEGAL_DOC_REGISTRY.length },
+    { key: 'CORE', label: '본신청·기본 서식', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'CORE').length },
     { key: 'STAY_INJUNCT', label: '중지·금지명령', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'STAY_INJUNCT').length },
-    { key: 'CORRECTION', label: '보정명령 핵심 14종', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'CORRECTION').length },
-    { key: 'RELEASE', label: '인가 후 압류해제 8종', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'RELEASE').length },
-    { key: 'EVIDENCE', label: '소명·부속 서식', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'EVIDENCE').length },
+    { key: 'CORRECTION', label: '보정명령·실무 보정례', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'CORRECTION').length },
+    { key: 'MODIFICATION', label: '채권·변제계획 수정', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'MODIFICATION').length },
+    { key: 'RELEASE', label: '면책·압류해제', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'RELEASE').length },
     { key: 'SERVICE', label: '송달·주소보정', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'SERVICE').length },
-    { key: 'MODIFICATION', label: '채권·변제 수정', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'MODIFICATION').length },
-    { key: 'APPEAL', label: '항고·이의·쟁송', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'APPEAL').length },
-    { key: 'CORE', label: '본신청 기본', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'CORE').length }
+    { key: 'EVIDENCE', label: '소명·부속 서식', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'EVIDENCE').length },
+    { key: 'APPEAL', label: '항고·이의·쟁송', count: ALL_LEGAL_DOC_REGISTRY.filter(d => d.category === 'APPEAL').length }
   ];
 
   // 서류 개수 집계
@@ -206,7 +234,7 @@ function LegalDocHubModalInner({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base text-white">
-                  스마트 법원 서식 허브 (80여 종 분류 체계 & 발급/작성 자동화)
+                  스마트 법원 서식 허브 (대법원 정식 HWPX 전자소송 양식 & 발급/작성 자동화)
                 </h3>
                 <span className="text-xs bg-blue-500 text-white font-extrabold px-2 py-0.5 rounded-full">
                   AUTO-FILING PRO
@@ -423,6 +451,16 @@ function LegalDocHubModalInner({
                                 </button>
                               </>
                             )}
+                            {doc.downloadUrl && doc.hasOfficialFormFile && (
+                              <button
+                                onClick={() => handleDownloadHwpx(doc)}
+                                className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg press-scale cursor-pointer flex items-center gap-1"
+                                title={`${doc.hwpxFileName || '법원 서식'} 원본 파일 다운로드`}
+                              >
+                                <Download className="w-3 h-3 text-slate-600" />
+                                <span>{doc.hwpxFileName?.endsWith('.xlsx') ? 'XLSX' : doc.hwpxFileName?.endsWith('.pdf') ? 'PDF' : 'HWPX'}</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => setEditingDoc(doc)}
                               className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-1 press-scale cursor-pointer shadow-xs"
@@ -517,6 +555,16 @@ function LegalDocHubModalInner({
                                 </button>
                               </>
                             )}
+                            {doc.downloadUrl && doc.hasOfficialFormFile && (
+                              <button
+                                onClick={() => handleDownloadHwpx(doc)}
+                                className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-200 border border-slate-200 rounded-lg press-scale cursor-pointer flex items-center gap-1 shadow-xs"
+                                title={`${doc.hwpxFileName || '법원 서식'} 원본 파일 다운로드`}
+                              >
+                                <Download className="w-3 h-3 text-slate-600" />
+                                <span>{doc.hwpxFileName?.endsWith('.xlsx') ? 'XLSX' : doc.hwpxFileName?.endsWith('.pdf') ? 'PDF' : 'HWPX'}</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => setEditingDoc(doc)}
                               className="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center gap-1 press-scale cursor-pointer"
@@ -551,16 +599,61 @@ function LegalDocHubModalInner({
                     />
                   </div>
                   
-                  {/* Cold Storage 딥아카이브 토글 스위치 */}
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100/80 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-200/80 transition-colors shrink-0 select-none">
-                    <input
-                      type="checkbox"
-                      checked={includeColdArchive}
-                      onChange={e => setIncludeColdArchive(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span>📦 특수·쟁송 딥아카이브 포함</span>
-                  </label>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* 대법원 정식 서식만 보기 토글 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOnlyOfficialCourt(!onlyOfficialCourt);
+                        if (!onlyOfficialCourt) setOnlyPendingUpload(false);
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border cursor-pointer transition-all shrink-0 select-none ${
+                        onlyOfficialCourt
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:bg-blue-100/70'
+                      }`}
+                    >
+                      <span>🏛️ 대법원 정식 서식</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                        onlyOfficialCourt ? 'bg-white/25 text-white' : 'bg-blue-600 text-white'
+                      }`}>
+                        {ALL_LEGAL_DOC_REGISTRY.filter(d => d.isOfficialCourtForm).length}
+                      </span>
+                    </button>
+
+                    {/* 서식 미등록 (업로드 대기)만 보기 토글 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOnlyPendingUpload(!onlyPendingUpload);
+                        if (!onlyPendingUpload) setOnlyOfficialCourt(false);
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border cursor-pointer transition-all shrink-0 select-none ${
+                        onlyPendingUpload
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-amber-50/70 text-amber-800 border-amber-300 hover:bg-amber-100/70'
+                      }`}
+                      title="아직 HWPX 원본 파일이 등록되지 않은 실무 서식 목록만 필터링합니다 (추후 업로드용)"
+                    >
+                      <span>📁 서식 미등록 (대기)</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                        onlyPendingUpload ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'
+                      }`}>
+                        {ALL_LEGAL_DOC_REGISTRY.filter(d => d.isPendingUpload).length}
+                      </span>
+                    </button>
+
+                    {/* Cold Storage 딥아카이브 토글 스위치 */}
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100/80 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-200/80 transition-colors shrink-0 select-none">
+                      <input
+                        type="checkbox"
+                        checked={includeColdArchive}
+                        onChange={e => setIncludeColdArchive(e.target.checked)}
+                        className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span>📦 딥아카이브</span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* 2축: 서류 성격 필터 (발급형 vs 자가작성형 vs 변호사작성) */}
@@ -631,6 +724,33 @@ function LegalDocHubModalInner({
                               <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
                                 {doc.caseScope === 'REHAB' ? '💼 회생' : doc.caseScope === 'BANKRUPTCY' ? '⚖️ 파산' : '🌐 공통'}
                               </span>
+                              {/* 대법원 정식 서식 뱃지 */}
+                              {doc.isOfficialCourtForm && (
+                                <span 
+                                  className="text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-xs"
+                                  title={doc.officialSourceNote || '대법원/회생법원 정식 서식'}
+                                >
+                                  🏛️ 정식서식
+                                </span>
+                              )}
+                              {/* 실무 커스텀 서식 (파일 보유) 뱃지 */}
+                              {doc.isPracticeCustomTemplate && doc.hasOfficialFormFile && (
+                                <span 
+                                  className="text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-xs"
+                                  title={doc.officialSourceNote || '실무 소명 및 보정 대체 양식'}
+                                >
+                                  📄 실무서식
+                                </span>
+                              )}
+                              {/* 서식 미등록 (업로드 대기) 뱃지 */}
+                              {doc.isPendingUpload && (
+                                <span 
+                                  className="text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-xs"
+                                  title="아직 HWPX 파일이 등록되지 않은 실무 서식입니다 (추후 법원양식 폴더 업로드 대상)"
+                                >
+                                  📁 서식 미등록 (대기)
+                                </span>
+                              )}
                               {/* 성격 뱃지 */}
                               {hasIssuanceGuide && (
                                 <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded">
@@ -649,7 +769,18 @@ function LegalDocHubModalInner({
                               )}
                             </div>
                           </div>
-                          <h5 className="font-extrabold text-xs text-slate-900 line-clamp-1">{doc.title}</h5>
+                          <h5 className="font-extrabold text-xs text-slate-900 line-clamp-1 flex items-center gap-1.5">
+                            <span>{doc.title}</span>
+                          </h5>
+                          {doc.isPendingUpload ? (
+                            <p className="text-[11px] text-amber-700 font-semibold line-clamp-1 flex items-center gap-1">
+                              <span>⏳ 서식 파일 미등록 (법원양식 폴더 업로드 대기)</span>
+                            </p>
+                          ) : doc.officialSourceNote ? (
+                            <p className="text-[11px] text-blue-600/80 font-medium line-clamp-1">
+                              출처: {doc.officialSourceNote}
+                            </p>
+                          ) : null}
                           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{doc.description}</p>
                         </div>
 
@@ -677,6 +808,26 @@ function LegalDocHubModalInner({
                           </div>
 
                           <div className="flex items-center gap-1">
+                            {/* HWPX / XLSX / PDF 원본 다운로드 버튼 */}
+                            {doc.downloadUrl && doc.hasOfficialFormFile ? (
+                              <button
+                                onClick={() => handleDownloadHwpx(doc)}
+                                className="px-2 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg press-scale cursor-pointer flex items-center gap-1"
+                                title={`${doc.hwpxFileName || '법원 서식'} 원본 파일 다운로드`}
+                              >
+                                <Download className="w-3 h-3 text-slate-600" />
+                                <span>{doc.hwpxFileName?.endsWith('.xlsx') ? 'XLSX' : doc.hwpxFileName?.endsWith('.pdf') ? 'PDF' : 'HWPX'}</span>
+                              </button>
+                            ) : doc.isPendingUpload ? (
+                              <button
+                                onClick={() => toast.info(`'${doc.title}'은(는) 아직 서식 파일이 등록되지 않았습니다.\n'법원양식' 폴더에 해당 HWPX 파일을 추가하시면 즉시 다운로드가 활성화됩니다.`)}
+                                className="px-2 py-1 text-xs font-semibold text-amber-700/90 bg-amber-50 hover:bg-amber-100 border border-dashed border-amber-300 rounded-lg cursor-pointer flex items-center gap-1"
+                                title="서식 파일 업로드 대기 중 (클릭 시 안내)"
+                              >
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>업로드 대기</span>
+                              </button>
+                            ) : null}
                             {isSelfWritten && (
                               <button
                                 onClick={() => handleSimulateMobileFill(doc)}
