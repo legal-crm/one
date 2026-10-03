@@ -311,6 +311,14 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '채무자 겸 소유자 소유의 별지 기재 부동산에 대한 귀원 부동산강제경매(또는 임의경매) 사건의 경매절차는 개인회생절차 개시신청에 대한 결정이 있을 때까지 이를 중지한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인(채무자 겸 소유자)은 귀원에 개인회생절차 개시신청을 접수하여 현재 성실하게 절차를 진행 중에 있습니다.\n2. 그러나 채권자의 신청에 기하여 개시된 위 부동산 강제경매(또는 임의경매) 절차가 계속 진행되어 매각될 경우, 신청인 및 그 부양가족의 주거권이 상실되고 변제계획안에 따른 원활한 변제수행이 불가능해지는 중대한 손해가 발생합니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 의하여 본 신청에 이르렀사오니 신속히 경매절차를 중지하여 주시기 바랍니다.',
+    defaultEvidenceList: [
+      '1. 개인회생절차 개시신청 접수증명원 1통',
+      '2. 부동산 경매개시결정문 사본 1통',
+      '3. 부동산등기사항전부증명서 1통',
+      '4. 소송위임장 1통'
+],
     description: '채무자 소유 부동산에 대한 임의경매 또는 강제경매 절차의 중지'
   },
   {
@@ -328,6 +336,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인 소유의 유체동산에 대하여 귀원 소속 집행관이 행하는 강제집행(유체동산 압류 및 경매) 절차는 개인회생절차 개시신청에 대한 결정이 있을 때까지 이를 중지한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 귀원에 개인회생절차 개시신청을 접수하고 성실히 절차를 이행하고 있습니다.\n2. 그러나 채권자의 집행신청으로 신청인의 주거지(또는 사업장) 내 기본 가재도구 및 필수 집기비품에 대한 유체동산 압류집행이 실시되어 조만간 경매 매각될 위기에 처해 있습니다.\n3. 위 유체동산이 매각될 경우 신청인 가구의 기초 일상생활 및 영업 지속이 원천적으로 불가능해져 회생 변제계획을 수행할 수 없게 되므로, 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 기하여 긴급히 중지를 구합니다.',
+    defaultEvidenceList: [
+      '1. 개인회생절차 개시신청 접수증명원 1통',
+      '2. 유체동산 압류조서(또는 집행통지서) 사본 1통',
+      '3. 소송위임장 1통'
+],
     description: '가재도구, 가전제품, 사업장 집기 등 빨간딱지 경매 절차 중지'
   },
   {
@@ -345,6 +360,14 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'CRITICAL',
+    defaultPurpose: '신청인과 채권자 사이의 귀원 채권압류 및 추심명령에 기한 급여 및 퇴직금에 대한 강제집행 절차는 개인회생절차 개시신청에 대한 결정이 있을 때까지 이를 중지한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 성실히 직장에 재직하며 계속적·반복적 소득을 얻고 있으나, 채권자의 급여채권 압류 및 추심명령으로 인하여 매월 수령하는 실수령액이 법정 최저생계비에도 미치지 못하여 정상적인 생계유지가 불가능한 상태입니다.\n2. 위 압류집행이 지속될 경우 신청인은 개인회생 변제계획에 따른 월 가용소득 납입을 개시할 수 없게 되어 회생절차가 폐지될 위험에 직면하게 됩니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 의거 본 신청에 이르렀사오니 신속히 인용하여 주시기 바랍니다.',
+    defaultEvidenceList: [
+      '1. 개인회생절차 개시신청 접수증명원 1통',
+      '2. 채권압류 및 추심명령 결정문 사본 1통',
+      '3. 재직증명서 및 급여명세서 각 1통',
+      '4. 소송위임장 1통'
+],
     description: '직장 급여 압류 절차 중지 및 회사 추심금 지급 보류'
   },
   {
@@ -362,6 +385,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인 소유 별지 기재 부동산에 대한 귀원 부동산경매 사건의 매각대금 배당절차는 개인회생절차 개시신청에 대한 결정이 있을 때까지 이를 중지한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 귀원에 개인회생 개시신청을 접수하여 절차를 진행 중입니다.\n2. 해당 경매사건의 매각대금 배당기일이 지정되어 특정 채권자들에게 배당금이 교부될 경우, 전체 회생 채권자들 간의 공평한 변제 원칙이 심각하게 훼손되고 변제계획 인가 요건을 갖추기 어렵게 됩니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 따라 배당절차의 중지를 구합니다.',
+    defaultEvidenceList: [
+      '1. 개인회생 개시신청 접수증명원 1통',
+      '2. 배당기일 통지서 사본 1통',
+      '3. 소송위임장 1통'
+],
     description: '경매 매각대금 배당기일 전 배당표 확정 및 배당금 지급 중지'
   },
   {
@@ -1313,7 +1343,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isOfficialCourtForm: false,
     priorityLevel: 'CRITICAL',
     description: '인가결정 확정에 따라 종전 급여 및 은행 통장 압류 해제',
-    defaultPurpose: '신청인과 채권자 사이의 귀원 채권압류 및 추심명령 사건의 강제집행은 개인회생인가결정 확정으로 실효되었으므로 그 집행을 해제하여 주시기 바랍니다.'
+    defaultPurpose: '신청인과 채권자 사이의 귀원 채권압류 및 추심명령 사건에 기한 강제집행은 개인회생인가결정 확정으로 실효되었으므로, 그 집행을 해제하여 주시기 바랍니다.',
+    defaultReasonTemplate: '1. 신청인에 대한 귀원 개인회생사건에 관하여 변제계획인가결정이 내려졌고, 본 결정은 확정되었습니다.\n2. 채무자 회생 및 파산에 관한 법률 제615조 제3항에 따라 개인회생재단에 속하는 채권에 대하여 행하여진 강제집행, 가압류 또는 가처분은 변제계획인가결정에 의하여 그 효력을 잃습니다.\n3. 따라서 종전 채권압류 및 추심명령 집행을 해제하고 제3채무자에게 해제통지서를 송달하여 주시기 바랍니다.',
+    defaultEvidenceList: [
+      '1. 개인회생인가결정 정본 및 확정증명원 각 1통',
+      '2. 채권자목록등본 1통',
+      '3. 압류 및 추심명령 결정문 사본 1통'
+],
   },
   {
     docCode: '121280',
@@ -1330,6 +1366,12 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인과 채권자 사이의 귀원 채권가압류 결정에 기한 집행을 해제하여 주시기 바랍니다.',
+    defaultReasonTemplate: '1. 신청인에 대한 개인회생 변제계획인가결정이 확정되었습니다.\n2. 채무자회생법 제615조 제3항에 따라 인가 전 행하여진 가압류는 그 효력을 상실하였으므로 집행 해제를 신청합니다.',
+    defaultEvidenceList: [
+      '1. 개인회생인가결정 정본 및 확정증명원 1통',
+      '2. 채권가압류 결정문 사본 1통'
+],
     description: '인가결정 확정에 따른 채권 가압류 집행 해제'
   },
   {
@@ -1347,6 +1389,12 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인 소유 별지 기재 부동산에 대하여 경료된 가압류등기의 말소촉탁을 신청합니다.',
+    defaultReasonTemplate: '1. 신청인은 개인회생인가결정을 받아 확정되었습니다.\n2. 채무자회생법 제615조 제3항에 따라 가압류의 효력이 소멸하였으므로 등기부상 가압류등기의 말소촉탁을 신청합니다.',
+    defaultEvidenceList: [
+      '1. 인가결정 정본 및 확정증명원 1통',
+      '2. 부동산등기사항전부증명서 1통'
+],
     description: '인가 확정 후 채무자 소유 아파트/주택 등기부 상 가압류 등기 말소 신청'
   },
   {
@@ -1379,6 +1427,12 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'NORMAL',
+    defaultPurpose: '신청인 소유 유체동산에 대한 가압류 집행을 해제하여 주시기 바랍니다.',
+    defaultReasonTemplate: '1. 신청인에 대한 개인회생인가결정이 확정되어 가압류 효력이 상실되었습니다.\n2. 이에 유체동산 가압류 집행 해제를 구합니다.',
+    defaultEvidenceList: [
+      '1. 인가결정정본 및 확정증명원 1통',
+      '2. 유체동산 가압류 집행조서 사본 1통'
+],
     description: '살림살이 가압류 해제'
   },
   {
@@ -1396,6 +1450,12 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     isPendingUpload: false,
     isOfficialCourtForm: false,
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인 소유 유체동산에 대한 강제집행(압류)을 취소하고 봉인을 해제하여 주시기 바랍니다.',
+    defaultReasonTemplate: '1. 개인회생인가결정 확정에 따라 종전 강제집행의 효력이 실효되었습니다.\n2. 집행관 사무소의 압류 표목(빨간딱지) 봉인 해제 및 집행 취소를 신청합니다.',
+    defaultEvidenceList: [
+      '1. 인가결정정본 및 확정증명원 1통',
+      '2. 압류물목록 사본 1통'
+],
     description: '집행관 사무소에 빨간딱지 압류 취소 및 봉인 해제 신청'
   },
   {
