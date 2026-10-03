@@ -30,61 +30,61 @@ export const StatComparisonCard: React.FC<StatComparisonCardProps> = ({
     unit = ''
 }) => {
     const colorMap = {
-        green: { bg: 'from-green-500/10 to-emerald-600/10', border: 'border-green-500/30', text: 'text-green-700', badge: 'bg-green-500/20 text-green-700' },
-        blue: { bg: 'from-blue-500/10 to-cyan-600/10', border: 'border-blue-500/30', text: 'text-blue-700', badge: 'bg-blue-500/20 text-blue-700' },
-        yellow: { bg: 'from-yellow-500/10 to-orange-600/10', border: 'border-yellow-500/30', text: 'text-amber-700', badge: 'bg-yellow-500/20 text-amber-700' },
-        red: { bg: 'from-red-500/10 to-pink-600/10', border: 'border-red-500/30', text: 'text-red-700', badge: 'bg-red-500/20 text-red-700' }
+        green: { badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200', text: 'text-slate-900', bar: 'bg-emerald-600' },
+        blue: { badge: 'bg-blue-50 text-blue-700 border border-blue-200', text: 'text-slate-900', bar: 'bg-[#1E3A5F]' },
+        yellow: { badge: 'bg-amber-50 text-amber-700 border border-amber-200', text: 'text-slate-900', bar: 'bg-amber-500' },
+        red: { badge: 'bg-slate-100 text-slate-700 border border-slate-200', text: 'text-slate-900', bar: 'bg-slate-700' }
     };
 
-    const colors = colorMap[percentile.color];
+    const colors = colorMap[percentile.color] || colorMap.blue;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl bg-gradient-to-br ${colors.bg} border ${colors.border}`}
+            className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all"
         >
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${colors.badge}`}>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-[#1E3A5F]">
                         {icon}
                     </div>
-                    <h4 className="text-sm font-bold text-gray-800">{title}</h4>
+                    <h4 className="text-sm font-bold text-slate-800">{title}</h4>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${colors.badge} font-bold`}>
+                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${colors.badge}`}>
                     {percentile.message}
                 </span>
             </div>
 
             <div className="space-y-2">
                 <div className="flex justify-between items-baseline">
-                    <span className="text-xs text-gray-600">귀하의 {title}</span>
-                    <span className={`text-lg font-bold ${colors.text}`}>
+                    <span className="text-xs text-slate-500 font-medium">귀하의 {title}</span>
+                    <span className={`text-base sm:text-lg font-black ${colors.text} font-mono`}>
                         {typeof userValue === 'number' ? formatCurrency(userValue) : userValue}{unit}
                     </span>
                 </div>
 
                 {averageValue && (
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-xs text-gray-600">평균</span>
-                        <span className="text-sm text-gray-700">
+                    <div className="flex justify-between items-baseline pt-1 border-t border-slate-100">
+                        <span className="text-xs text-slate-400 font-medium">평균 (사법연감 통계)</span>
+                        <span className="text-xs text-slate-600 font-semibold font-mono">
                             {typeof averageValue === 'number' ? formatCurrency(averageValue) : averageValue}{unit}
                         </span>
                     </div>
                 )}
 
                 {/* Animated Progress Bar */}
-                <div className="mt-3">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="mt-2.5 pt-1">
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
                         <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: `${percentile.percentile}%` }}
-                            transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-                            className={`h-full bg-gradient-to-r ${colors.bg.replace('/10', '/50')}`}
+                            animate={{ width: `${Math.min(100, Math.max(5, percentile.percentile))}%` }}
+                            transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                            className={`h-full ${colors.bar} rounded-full`}
                         />
                     </div>
-                    <p className="text-xs text-gray-600 mt-1 text-right">
-                        상위 {(100 - percentile.percentile).toFixed(0)}%
+                    <p className="text-[11px] text-slate-500 mt-1.5 text-right font-medium">
+                        전체 신청자 중 상위 <strong className="text-slate-800 font-bold font-mono">{(100 - percentile.percentile).toFixed(0)}%</strong> 위치
                     </p>
                 </div>
             </div>
