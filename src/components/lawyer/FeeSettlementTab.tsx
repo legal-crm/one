@@ -4,7 +4,8 @@ import {
   Calendar, Search, Filter, Download, Plus, MessageCircle, ArrowRight,
   UserCheck, ShieldAlert, ChevronRight, RefreshCw, Send, Check, Sparkles,
   ExternalLink, FileText, Smartphone, MoreHorizontal, UserX, CalendarClock,
-  Layers, ShieldCheck, CreditCard, ChevronDown, Award
+  Layers, ShieldCheck, CreditCard, ChevronDown, Award,
+  ChevronLeft, ChevronsLeft, ChevronsRight, ArrowUpDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -30,6 +31,15 @@ interface Props {
 // 기획서 4.7 5대 보기 탭 + 전체
 export type FeeFilterTab = 'all' | 'overdue' | 'upcoming_week' | 'high_risk' | 'normal' | 'completed';
 
+// 수임료 수납 정렬 옵션
+export type FeeSortOption = 
+  | 'contract_desc'       // 최근 계약순 (기본값)
+  | 'contract_asc'        // 오래된 계약순
+  | 'due_date_asc'        // 납부 마감 임박순
+  | 'remaining_fee_desc'  // 미수 잔금 높은순
+  | 'total_fee_desc'      // 총 수임료 높은순
+  | 'client_name_asc';    // 의뢰인 이름순
+
 export default function FeeSettlementTab({
   requests,
   activeLawyer,
@@ -41,6 +51,9 @@ export default function FeeSettlementTab({
   const [activeFilterTab, setActiveFilterTab] = useState<FeeFilterTab>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'rehab' | 'bankruptcy'>('all');
+  const [sortOption, setSortOption] = useState<FeeSortOption>('contract_desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
   const [activeRowMenuId, setActiveRowMenuId] = useState<string | null>(null);
 
@@ -142,7 +155,7 @@ export default function FeeSettlementTab({
         caseType: (ext.caseType as any) || req.requestType || 'individual_rehab',
         caseNumber: ext.courtCase?.caseNumber,
         courtName: ext.courtCase?.courtName,
-        contractDate: ext.contractDate,
+        contractDate: ext.contractDate || ext.contracts?.[0]?.contractDate || (req.createdAt ? req.createdAt.slice(0, 10) : undefined),
         filingDate: ext.courtCase?.filedDate,
         totalFee,
         totalPaid,
@@ -253,6 +266,60 @@ export default function FeeSettlementTab({
     });
   }, [settlementList, activeFilterTab, caseTypeFilter, searchTerm]);
 
+  // 정렬된 목록
+  const sortedList = useMemo(() => {
+    const list = [...filteredList];
+    list.sort((a, b) => {
+      switch (sortOption) {
+        case 'contract_desc': {
+          const dateA = a.contractDate || '';
+          const dateB = b.contractDate || '';
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateB.localeCompare(dateA);
+        }
+        case 'contract_asc': {
+          const dateA = a.contractDate || '';
+          const dateB = b.contractDate || '';
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateA.localeCompare(dateB);
+        }
+        case 'due_date_asc': {
+          const dateA = a.nextDueDate || '';
+          const dateB = b.nextDueDate || '';
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateA.localeCompare(dateB);
+        }
+        case 'remaining_fee_desc': {
+          return b.remainingFee - a.remainingFee;
+        }
+        case 'total_fee_desc': {
+          return b.totalFee - a.totalFee;
+        }
+        case 'client_name_asc': {
+          const nameA = a.realClientName || a.clientName || '';
+          const nameB = b.realClientName || b.clientName || '';
+          return nameA.localeCompare(nameB, 'ko');
+        }
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [filteredList, sortOption]);
+
+  // 페이징 계산 (10건 단위)
+  const totalPages = Math.max(1, Math.ceil(sortedList.length / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, sortedList.length);
+  const pagedList = sortedList.slice(startIndex, endIndex);
+
   // 체크박스 선택
   const handleToggleSelect = (clientId: string) => {
     setSelectedClientIds(prev => {
@@ -264,10 +331,10 @@ export default function FeeSettlementTab({
   };
 
   const handleSelectAll = () => {
-    if (selectedClientIds.size === filteredList.length) {
+    if (selectedClientIds.size === pagedList.length && pagedList.length > 0) {
       setSelectedClientIds(new Set());
     } else {
-      setSelectedClientIds(new Set(filteredList.map(item => item.clientId)));
+      setSelectedClientIds(new Set(pagedList.map(item => item.clientId)));
     }
   };
 
@@ -391,7 +458,7 @@ export default function FeeSettlementTab({
 
   // CSV 다운로드
   const handleExportCsv = () => {
-    if (filteredList.length === 0) {
+    if (sortedList.length === 0) {
       toast.error('내보낼 데이터가 없습니다.');
       return;
     }
@@ -402,7 +469,7 @@ export default function FeeSettlementTab({
       '다음납부일', '다음납부예정액', '상태', '집중관리대상'
     ];
 
-    const rows = filteredList.map(i => [
+    const rows = sortedList.map(i => [
       i.realClientName || i.clientName,
       i.phone,
       i.caseType === 'bankruptcy' ? '개인파산' : '개인회생',
@@ -656,7 +723,10 @@ export default function FeeSettlementTab({
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveFilterTab(tab.id)}
+                    onClick={() => {
+                      setActiveFilterTab(tab.id);
+                      setCurrentPage(1);
+                    }}
                     className={`px-3 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
                       isSelected
                         ? tab.isAlert ? 'bg-rose-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
@@ -676,14 +746,17 @@ export default function FeeSettlementTab({
               })}
             </div>
 
-            {/* 검색 및 사건 구분 */}
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
+            {/* 검색, 사건 구분 및 정렬 */}
+            <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+              <div className="relative flex-1 min-w-[180px] md:w-56">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  onChange={e => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="의뢰인명, 연락처, 사건번호..."
                   className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 text-slate-900 placeholder-slate-400"
                 />
@@ -691,13 +764,36 @@ export default function FeeSettlementTab({
 
               <select
                 value={caseTypeFilter}
-                onChange={e => setCaseTypeFilter(e.target.value as any)}
+                onChange={e => {
+                  setCaseTypeFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
               >
                 <option value="all">사건: 전체</option>
                 <option value="rehab">개인회생</option>
                 <option value="bankruptcy">개인파산</option>
               </select>
+
+              {/* 정렬 셀렉트 */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <select
+                  value={sortOption}
+                  onChange={e => {
+                    setSortOption(e.target.value as FeeSortOption);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
+                >
+                  <option value="contract_desc">최근 계약순</option>
+                  <option value="contract_asc">오래된 계약순</option>
+                  <option value="due_date_asc">납부 마감 임박순</option>
+                  <option value="remaining_fee_desc">미수 잔금 높은순</option>
+                  <option value="total_fee_desc">총 수임료 높은순</option>
+                  <option value="client_name_asc">의뢰인 이름순</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -718,7 +814,7 @@ export default function FeeSettlementTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                  {filteredList.length === 0 ? (
+                  {sortedList.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center text-slate-400 space-y-2">
                         <p className="text-sm font-bold text-slate-600">조건에 일치하는 수납 대상이 없습니다.</p>
@@ -726,7 +822,7 @@ export default function FeeSettlementTab({
                       </td>
                     </tr>
                   ) : (
-                    filteredList.map(item => {
+                    pagedList.map(item => {
                       const isSelected = selectedClientIds.has(item.clientId);
                       const paymentPercent = item.totalFee > 0 ? Math.min(100, Math.round((item.totalPaid / item.totalFee) * 100)) : 0;
                       const isRehab = item.caseType === 'individual_rehab' || item.caseType === 'rehab';
@@ -764,8 +860,13 @@ export default function FeeSettlementTab({
                                 {isRehab ? '개인회생' : '개인파산'}
                               </span>
                             </div>
-                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 font-mono">
+                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 font-mono flex-wrap">
                               <span>{item.phone || '-'}</span>
+                              {item.contractDate && (
+                                <span className="text-slate-600 font-sans font-medium bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200/80">
+                                  계약 {item.contractDate}
+                                </span>
+                              )}
                               {item.caseNumber && (
                                 <span className="text-slate-400 font-sans">· {item.caseNumber}</span>
                               )}
@@ -958,6 +1059,148 @@ export default function FeeSettlementTab({
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* ── 하단 페이지네이션 바 ── */}
+            <div className="border-t border-slate-200 bg-slate-50/60 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              {/* 왼쪽: 건수 및 페이지 정보 */}
+              <div className="text-slate-500 font-medium flex items-center gap-2">
+                <span>
+                  전체 <strong className="text-slate-800 font-bold">{sortedList.length}</strong>건 중{' '}
+                  {sortedList.length === 0 ? (
+                    '0건'
+                  ) : (
+                    <>
+                      <strong className="text-slate-800 font-bold">{startIndex + 1}</strong>~
+                      <strong className="text-slate-800 font-bold">{endIndex}</strong>건 표시
+                    </>
+                  )}
+                </span>
+                {sortedList.length > 0 && (
+                  <>
+                    <span className="text-slate-300">|</span>
+                    <span>
+                      <strong className="text-slate-800 font-bold">{validCurrentPage}</strong> / {totalPages} 페이지
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* 오른쪽: 페이지 단위 및 페이지 이동 버튼 */}
+              <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+                {/* 페이지당 건수 */}
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <select
+                    value={pageSize}
+                    onChange={e => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                  >
+                    <option value={10}>10건씩 보기</option>
+                    <option value={20}>20건씩 보기</option>
+                    <option value={50}>50건씩 보기</option>
+                  </select>
+                </div>
+
+                {/* 페이지 이동 버튼 바 */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
+                    {/* 맨 앞으로 */}
+                    {totalPages > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={validCurrentPage === 1}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors press-scale"
+                        title="첫 페이지"
+                      >
+                        <ChevronsLeft className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* 이전 페이지 */}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={validCurrentPage === 1}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 press-scale"
+                      title="이전 페이지"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">이전</span>
+                    </button>
+
+                    {/* 번호 버튼들 */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => {
+                          if (totalPages <= 7) return true;
+                          if (p === 1 || p === totalPages) return true;
+                          return Math.abs(p - validCurrentPage) <= 1;
+                        })
+                        .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                          if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) {
+                            acc.push('...');
+                          }
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((p, idx) => {
+                          if (p === '...') {
+                            return (
+                              <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400 select-none">
+                                ...
+                              </span>
+                            );
+                          }
+                          const pageNum = p as number;
+                          const isActive = validCurrentPage === pageNum;
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`min-w-[30px] h-7 text-xs font-bold rounded-lg transition-all cursor-pointer press-scale ${
+                                isActive
+                                  ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                                  : 'text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    {/* 다음 페이지 */}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 press-scale"
+                      title="다음 페이지"
+                    >
+                      <span className="hidden sm:inline">다음</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* 맨 뒤로 */}
+                    {totalPages > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={validCurrentPage === totalPages}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors press-scale"
+                        title="마지막 페이지"
+                      >
+                        <ChevronsRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
