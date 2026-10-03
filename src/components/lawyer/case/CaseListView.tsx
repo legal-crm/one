@@ -3,13 +3,15 @@ import {
   Search, Filter, Plus, List, LayoutGrid, Download, Upload, 
   Settings, Trash2, ChevronRight, X, Star, Users, CheckCircle2, 
   Clock, AlertTriangle, AlertCircle, Calendar, MessageSquare, 
-  MoreHorizontal, ChevronLeft, ArrowUpDown, Shield, FileText, UserPlus
+  MoreHorizontal, ChevronLeft, ArrowUpDown, Shield, FileText, UserPlus,
+  ChevronsLeft, ChevronsRight, CalendarDays
 } from 'lucide-react';
 import type { ConsultRequest, CrmClientExtension, StaffMember } from '../../../types';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
 import { stageForStatus } from '../pipeline/pipelineGates';
 import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import { daysUntil, formatYmdWithDow } from '../../../services/court/deadlineCalculator';
+import { getKoreanHoliday } from '../../../utils/koreanHolidays';
 
 export type SavedViewTab = 'all' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5' | 'stage6' | 'closed';
 
@@ -84,8 +86,13 @@ export function CaseListView({
   onOpenTrash,
   onOpenSettings,
 }: CaseListViewProps) {
-  // 보기 모드 (리스트 vs 칸반)
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  // 보기 모드 (리스트 vs 칸반 vs 캘린더)
+  const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'calendar'>('list');
+
+  // 캘린더 뷰 상태
+  const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth() + 1); // 1~12
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(() => localYmd(new Date()));
 
   // 저장된 보기 탭 (전체, 1~6단계, 종결)
   const [savedViewTab, setSavedViewTab] = useState<SavedViewTab>('all');
@@ -101,7 +108,7 @@ export function CaseListView({
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all');
   const [caseTypeFilter, setCaseTypeFilter] = useState('all');
-  const [perPage, setPerPage] = useState<number>(25);
+  const [perPage, setPerPage] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
 
   // 정렬 상태
@@ -351,6 +358,254 @@ export function CaseListView({
     return { text: '진행 상태 점검', due: '', isUrgent: false, type: 'stage' };
   };
 
+  // ── 캘린더 뷰 제어 및 이벤트 매핑 로직 ──
+  const handlePrevMonth = () => {
+    if (calMonth === 1) {
+      setCalYear(y => y - 1);
+      setCalMonth(12);
+    } else {
+      setCalMonth(m => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calMonth === 12) {
+      setCalYear(y => y + 1);
+      setCalMonth(1);
+    } else {
+      setCalMonth(m => m + 1);
+    }
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    setCalYear(now.getFullYear());
+    setCalMonth(now.getMonth() + 1);
+    setSelectedCalDate(localYmd(now));
+  };
+
+  // 사건 목록에서 캘린더 이벤트 매핑 (현재 필터링된 사건 대상)
+  const calendarEvents = useMemo(() => {
+    const events: Array<{
+      id: string;
+      caseId: string;
+      clientName: string;
+      caseTypeLabel: string;
+      stageNum: number;
+      dateStr: string;
+      type: 'created' | 'contract' | 'correction' | 'reminder' | 'fee';
+      title: string;
+      badgeLabel: string;
+      isUrgent?: boolean;
+      request: ConsultRequest;
+      ext: CrmClientExtension;
+    }> = [];
+
+    filteredRequests.forEach(r => {
+      const ext = getCrmExt(r.id);
+      const displayName = getDisplayClientName(r, ext);
+      const stage = stageForStatus(ext.crmStatus);
+      const caseTypeLabel = (ext as any).caseType || r.caseType || (r.caseType?.includes('파산') ? '개인파산' : '개인회생');
+
+      // 1. 사건 접수/등록일
+      if (r.createdAt) {
+        const dStr = r.createdAt.slice(0, 10);
+        events.push({
+          id: `${r.id}-created`,
+          caseId: r.id,
+          clientName: displayName,
+          caseTypeLabel,
+          stageNum: stage,
+          dateStr: dStr,
+          type: 'created',
+          title: '사건 접수/등록',
+          badgeLabel: '접수',
+          isUrgent: false,
+          request: r,
+          ext,
+        });
+      }
+
+      // 2. 수임 계약 체결일
+      if (ext.contractDate) {
+        const dStr = ext.contractDate.slice(0, 10);
+        events.push({
+          id: `${r.id}-contract`,
+          caseId: r.id,
+          clientName: displayName,
+          caseTypeLabel,
+          stageNum: stage,
+          dateStr: dStr,
+          type: 'contract',
+          title: '수임 계약',
+          badgeLabel: '계약',
+          isUrgent: false,
+          request: r,
+          ext,
+        });
+      }
+
+      // 3. 보정명령/보정권고 기한
+      if (ext.correctionOrders && ext.correctionOrders.length > 0) {
+        ext.correctionOrders.forEach((co, idx) => {
+          if (co.deadline) {
+            const dStr = co.deadline.slice(0, 10);
+            const dl = daysUntil(co.deadline);
+            events.push({
+              id: `${r.id}-corr-${idx}`,
+              caseId: r.id,
+              clientName: displayName,
+              caseTypeLabel,
+              stageNum: stage,
+              dateStr: dStr,
+              type: 'correction',
+              title: co.title ? `보정: ${co.title}` : `보정서 제출 기한 (${dl >= 0 ? `D-${dl}` : `D+${Math.abs(dl)}`})`,
+              badgeLabel: dl !== null ? (dl >= 0 ? `보정 D-${dl}` : `보정 D+${Math.abs(dl)}`) : '보정',
+              isUrgent: dl !== null && dl <= 7 && dl >= 0,
+              request: r,
+              ext,
+            });
+          }
+        });
+      }
+
+      // 4. 미완료 리마인더
+      ext.notes?.forEach((n, idx) => {
+        if (n.reminder && !n.reminder.completed && n.reminder.date) {
+          const dStr = n.reminder.date.slice(0, 10);
+          events.push({
+            id: `${r.id}-reminder-${idx}`,
+            caseId: r.id,
+            clientName: displayName,
+            caseTypeLabel,
+            stageNum: stage,
+            dateStr: dStr,
+            type: 'reminder',
+            title: n.reminder.action || '상담 리마인더',
+            badgeLabel: '리마인더',
+            isUrgent: true,
+            request: r,
+            ext,
+          });
+        }
+      });
+
+      // 5. 분납 약정일
+      ext.feeSchedule?.forEach((f, idx) => {
+        if (f.dueDate && f.status !== 'paid') {
+          const dStr = f.dueDate.slice(0, 10);
+          events.push({
+            id: `${r.id}-fee-${idx}`,
+            caseId: r.id,
+            clientName: displayName,
+            caseTypeLabel,
+            stageNum: stage,
+            dateStr: dStr,
+            type: 'fee',
+            title: `${f.round || idx + 1}차 분납 (${formatWonShort(f.amount)})`,
+            badgeLabel: '분납',
+            isUrgent: false,
+            request: r,
+            ext,
+          });
+        }
+      });
+    });
+
+    return events;
+  }, [filteredRequests, getCrmExt]);
+
+  // 캘린더 매트릭스 계산 (5~6주)
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay(); // 0(일) ~ 6(토)
+    const lastDate = new Date(calYear, calMonth, 0).getDate();
+    const prevLastDate = new Date(calYear, calMonth - 1, 0).getDate();
+
+    const days: Array<{
+      dateStr: string;
+      year: number;
+      month: number;
+      day: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+      dayOfWeek: number;
+      holidayName: string | null;
+      events: typeof calendarEvents;
+    }> = [];
+
+    const todayStr = localYmd(new Date());
+
+    // 1. 이전 달 날짜들
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = prevLastDate - i;
+      const m = calMonth === 1 ? 12 : calMonth - 1;
+      const y = calMonth === 1 ? calYear - 1 : calYear;
+      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({
+        dateStr,
+        year: y,
+        month: m,
+        day: d,
+        isCurrentMonth: false,
+        isToday: dateStr === todayStr,
+        dayOfWeek: new Date(y, m - 1, d).getDay(),
+        holidayName: getKoreanHoliday(y, m, d),
+        events: calendarEvents.filter(e => e.dateStr === dateStr),
+      });
+    }
+
+    // 2. 이번 달 날짜들
+    for (let d = 1; d <= lastDate; d++) {
+      const dateStr = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({
+        dateStr,
+        year: calYear,
+        month: calMonth,
+        day: d,
+        isCurrentMonth: true,
+        isToday: dateStr === todayStr,
+        dayOfWeek: new Date(calYear, calMonth - 1, d).getDay(),
+        holidayName: getKoreanHoliday(calYear, calMonth, d),
+        events: calendarEvents.filter(e => e.dateStr === dateStr),
+      });
+    }
+
+    // 3. 다음 달 날짜들
+    const currentCount = days.length;
+    const targetLength = currentCount <= 35 ? 35 : 42;
+    const needToAdd = targetLength - currentCount;
+    for (let d = 1; d <= needToAdd; d++) {
+      const m = calMonth === 12 ? 1 : calMonth + 1;
+      const y = calMonth === 12 ? calYear + 1 : calYear;
+      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({
+        dateStr,
+        year: y,
+        month: m,
+        day: d,
+        isCurrentMonth: false,
+        isToday: dateStr === todayStr,
+        dayOfWeek: new Date(y, m - 1, d).getDay(),
+        holidayName: getKoreanHoliday(y, m, d),
+        events: calendarEvents.filter(e => e.dateStr === dateStr),
+      });
+    }
+
+    return days;
+  }, [calYear, calMonth, calendarEvents]);
+
+  // 이번 달 전체 이벤트 개수
+  const monthEventCount = useMemo(() => {
+    const prefix = `${calYear}-${String(calMonth).padStart(2, '0')}`;
+    return calendarEvents.filter(e => e.dateStr.startsWith(prefix)).length;
+  }, [calendarEvents, calYear, calMonth]);
+
+  // 현재 선택된 날짜의 이벤트 목록
+  const selectedDateEvents = useMemo(() => {
+    if (!selectedCalDate) return [];
+    return calendarEvents.filter(e => e.dateStr === selectedCalDate);
+  }, [calendarEvents, selectedCalDate]);
+
   return (
     <div className="space-y-4">
       {/* ── 1. 헤더: 제목 '사건 관리' + 주 버튼 '사건 등록' + ⋯ 메뉴 ── */}
@@ -449,7 +704,7 @@ export function CaseListView({
             )}
           </div>
 
-          {/* 리스트 vs 칸반 뷰 토글 */}
+          {/* 리스트 vs 칸반 vs 캘린더 뷰 토글 */}
           <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
             <button
               type="button"
@@ -470,6 +725,16 @@ export function CaseListView({
               title="조회용 칸반 보기"
             >
               <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`p-2 cursor-pointer transition-colors ${
+                viewMode === 'calendar' ? 'bg-[#1E3A5F] text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title="사건 캘린더 일정 보기"
+            >
+              <Calendar className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -918,35 +1183,85 @@ export function CaseListView({
           </div>
 
           {/* 페이징 네비게이션 */}
-          {totalPages > 1 && (
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
-              <span className="text-slate-500">
-                전체 {sortedRequests.length}건 중 {(page - 1) * perPage + 1}~{Math.min(page * perPage, sortedRequests.length)}건 표시
-              </span>
+          <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <span className="text-slate-500">
+              전체 <strong className="text-slate-800 font-bold">{sortedRequests.length}</strong>건 중{' '}
+              {sortedRequests.length > 0 ? (page - 1) * perPage + 1 : 0}~
+              {Math.min(page * perPage, sortedRequests.length)}건 표시 ({perPage}건씩)
+            </span>
 
+            {totalPages > 1 && (
               <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="px-2 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="첫 페이지"
+                >
+                  <ChevronsLeft className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white disabled:opacity-40 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="이전 페이지"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="px-3 font-mono font-bold text-slate-700">
-                  {page} / {totalPages}
-                </span>
+
+                {/* 페이지 번호 버튼들 */}
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => {
+                      if (totalPages <= 7) return true;
+                      return Math.abs(p - page) <= 2 || p === 1 || p === totalPages;
+                    })
+                    .map((p, idx, arr) => {
+                      const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {showEllipsisBefore && (
+                            <span className="px-1 text-slate-400 select-none">…</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setPage(p)}
+                            className={`min-w-[28px] h-7 px-2 rounded-lg font-mono font-bold text-xs cursor-pointer transition-colors ${
+                              page === p
+                                ? 'bg-[#1E3A5F] text-white shadow-xs'
+                                : 'border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-900'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white disabled:opacity-40 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="다음 페이지"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  className="px-2 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="마지막 페이지"
+                >
+                  <ChevronsRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -1040,6 +1355,321 @@ export function CaseListView({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── 6. 사건 캘린더 뷰 (월간 일정 및 기한 관리) ── */}
+      {viewMode === 'calendar' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            {/* 캘린더 툴바 헤더 */}
+            <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              {/* 월 이동 네비게이션 */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="p-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    title="이전 달"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleToday}
+                    className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 border-x border-slate-200 transition-colors cursor-pointer"
+                  >
+                    오늘
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="p-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    title="다음 달"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4 text-[#1E3A5F]" />
+                    <span>{calYear}년 {calMonth}월</span>
+                  </h3>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#1E3A5F] border border-blue-200/80 font-mono">
+                    이 달의 사건 일정 {monthEventCount}건
+                  </span>
+                </div>
+              </div>
+
+              {/* 범례 (Legend) */}
+              <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  접수·유입
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  수임 계약
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  보정 기한
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  리마인더
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  수임료 분납
+                </span>
+              </div>
+            </div>
+
+            {/* 요일 헤더 */}
+            <div className="grid grid-cols-7 border-b border-slate-200 text-center text-xs font-bold bg-slate-50/40">
+              <div className="py-2.5 text-rose-600">일</div>
+              <div className="py-2.5 text-slate-700">월</div>
+              <div className="py-2.5 text-slate-700">화</div>
+              <div className="py-2.5 text-slate-700">수</div>
+              <div className="py-2.5 text-slate-700">목</div>
+              <div className="py-2.5 text-slate-700">금</div>
+              <div className="py-2.5 text-blue-600">토</div>
+            </div>
+
+            {/* 캘린더 일자 그리드 */}
+            <div className="grid grid-cols-7 bg-slate-200 gap-px">
+              {calendarDays.map((cDay, idx) => {
+                const isSelected = selectedCalDate === cDay.dateStr;
+                const isSun = cDay.dayOfWeek === 0;
+                const isSat = cDay.dayOfWeek === 6;
+                const isHoli = !!cDay.holidayName;
+
+                return (
+                  <div
+                    key={`${cDay.dateStr}-${idx}`}
+                    onClick={() => setSelectedCalDate(cDay.dateStr)}
+                    className={`min-h-[110px] p-2 bg-white transition-colors cursor-pointer flex flex-col justify-between ${
+                      !cDay.isCurrentMonth ? 'bg-slate-50/60 text-slate-400' : 'hover:bg-slate-50/70'
+                    } ${isSelected ? 'ring-2 ring-[#1E3A5F] ring-inset bg-blue-50/20' : ''}`}
+                  >
+                    {/* 날짜 상단 (일자 숫자 + 공휴일 라벨) */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span
+                          className={`text-xs font-mono font-bold inline-flex items-center justify-center ${
+                            cDay.isToday
+                              ? 'w-5 h-5 rounded-full bg-[#1E3A5F] text-white shadow-2xs'
+                              : isHoli || isSun
+                              ? 'text-rose-600'
+                              : isSat
+                              ? 'text-blue-600'
+                              : 'text-slate-800'
+                          }`}
+                        >
+                          {cDay.day}
+                        </span>
+
+                        {cDay.holidayName && (
+                          <span
+                            className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-1 py-0.2 rounded truncate max-w-[80px]"
+                            title={cDay.holidayName}
+                          >
+                            {cDay.holidayName}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 사건 이벤트 칩 목록 (최대 3개) */}
+                      <div className="space-y-1">
+                        {cDay.events.slice(0, 3).map((ev) => {
+                          const chipStyle =
+                            ev.type === 'correction'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                              : ev.type === 'reminder'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                              : ev.type === 'contract'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
+                              : ev.type === 'fee'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300';
+
+                          return (
+                            <div
+                              key={ev.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectCase(ev.caseId);
+                              }}
+                              className={`px-1.5 py-0.5 rounded text-[11px] font-medium border truncate transition-all cursor-pointer press-scale flex items-center gap-1 ${chipStyle} ${
+                                ev.isUrgent ? 'ring-1 ring-rose-400 font-bold' : ''
+                              }`}
+                              title={`${ev.clientName} [${ev.badgeLabel}]: ${ev.title} (클릭 시 사건 상세로 이동)`}
+                            >
+                              <span className="font-bold shrink-0">[{ev.badgeLabel}]</span>
+                              <span className="truncate">{ev.clientName}</span>
+                            </div>
+                          );
+                        })}
+
+                        {/* 4개 이상 시 더보기 뱃지 */}
+                        {cDay.events.length > 3 && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCalDate(cDay.dateStr);
+                            }}
+                            className="text-[10px] font-bold text-slate-500 hover:text-slate-800 hover:underline px-1 cursor-pointer"
+                          >
+                            +{cDay.events.length - 3}건 더보기
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 오늘 표시 텍스트 */}
+                    {cDay.isToday && (
+                      <span className="text-[10px] text-[#1E3A5F] font-bold mt-1 block text-right">
+                        오늘
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── 선택된 일자의 사건 상세 패널 ── */}
+          {selectedCalDate && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1E3A5F]">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <span>{selectedCalDate} 일정 상세</span>
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                        {selectedDateEvents.length}건
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      선택한 날짜에 예정된 법원 기한, 수임 계약, 리마인더 및 사건 이력을 확인합니다.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalDate(null)}
+                  className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 self-end sm:self-auto cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>패널 닫기</span>
+                </button>
+              </div>
+
+              {selectedDateEvents.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                  <p className="font-medium text-slate-600">이 날짜에 등록된 사건 일정이 없습니다.</p>
+                  <p className="text-slate-400 mt-1">상단 달력에서 색상 칩이 표시된 날짜를 클릭하면 상세 내역을 보실 수 있습니다.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {selectedDateEvents.map((ev) => {
+                    const nextAct = getNextActionText(ev.request, ev.ext);
+                    const stageInfo = STAGE_CONFIG[ev.stageNum] || STAGE_CONFIG[1];
+
+                    return (
+                      <div
+                        key={ev.id}
+                        className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:border-[#1E3A5F] hover:shadow-xs transition-all space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${
+                                ev.type === 'correction'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : ev.type === 'reminder'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : ev.type === 'contract'
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : ev.type === 'fee'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {ev.badgeLabel}
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium border ${stageInfo.color}`}>
+                                {ev.stageNum}단계 {stageInfo.label}
+                              </span>
+                            </div>
+                            <h5 className="font-bold text-sm text-slate-900">
+                              {ev.clientName}
+                            </h5>
+                          </div>
+
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                            ev.caseTypeLabel.includes('파산')
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'bg-blue-50 text-blue-700'
+                          }`}>
+                            {ev.caseTypeLabel.includes('파산') ? '파산' : '회생'}
+                          </span>
+                        </div>
+
+                        {/* 일정 상세 내용 */}
+                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-xs space-y-1">
+                          <div className="text-slate-500 font-medium flex items-center justify-between">
+                            <span>일정 항목</span>
+                            {ev.isUrgent && (
+                              <span className="text-rose-600 font-bold flex items-center gap-0.5">
+                                <AlertTriangle className="w-3 h-3" /> 기한 임박
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-900 font-bold text-xs">{ev.title}</p>
+                          <div className="text-slate-500 text-[11px] pt-1 border-t border-slate-100">
+                            다음 할 일: <strong className="text-slate-700">{nextAct.text}</strong>
+                          </div>
+                        </div>
+
+                        {/* 채무액 & 액션 버튼 */}
+                        <div className="flex items-center justify-between pt-1 text-xs">
+                          <span className="font-mono font-bold text-slate-800">
+                            {formatWonShort(ev.request.financialProfile?.debtTotal)}
+                          </span>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onOpenChat(ev.request)}
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1 transition-colors cursor-pointer text-xs"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                              <span>채팅</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onSelectCase(ev.caseId)}
+                              className="px-3 py-1.5 rounded-lg bg-[#1E3A5F] hover:bg-[#162A45] text-white font-bold transition-all cursor-pointer text-xs"
+                            >
+                              사건 열기
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
