@@ -3,13 +3,14 @@
  * 법원 양식 라이브러리 — 60종 양식 브라우저 + 편집 + 인쇄/PDF 저장
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   X, Search, Printer, Download, FileText, 
-  FolderOpen, ChevronRight, Edit3, Eye, Scale
+  FolderOpen, ChevronRight, ChevronLeft, Edit3, Eye, Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../../common/ModalPortal';
+import A4PagedSheets from '../documents/A4PagedSheets';
 
 interface CourtFormEntry {
   id: string;
@@ -43,7 +44,20 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedForm, setSelectedForm] = useState<CourtFormEntry | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
+  const [libEditedHtml, setLibEditedHtml] = useState<string>('');
+  const [libPage, setLibPage] = useState(1);
+  const [libPages, setLibPages] = useState(1);
+  const libHtml = libEditedHtml || selectedForm?.html || '';
+  const handleLibPageCount = useCallback((count: number) => {
+    setLibPages(count);
+    setLibPage(p => Math.min(p, count));
+  }, []);
+
+  // 양식 변경 시 편집 내용·페이지 초기화
+  useEffect(() => {
+    setLibEditedHtml('');
+    setLibPage(1);
+  }, [selectedForm?.fileName]);
 
   // 양식 라이브러리 로드
   useEffect(() => {
@@ -80,7 +94,7 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
 
   // 인쇄
   const handlePrint = () => {
-    if (!selectedForm || !printRef.current) return;
+    if (!selectedForm) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('팝업이 차단되었습니다. 팝업을 허용해 주세요.');
@@ -93,21 +107,22 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
           <title>${String(selectedForm.name).replace(/[<>&"']/g, '')}</title>
           <meta charset="utf-8" />
           <style>
-            @page { size: A4 portrait; margin: 45mm 20mm 30mm 20mm; }
+            @page { size: A4 portrait; margin: 20mm; }
             body {
               margin: 0; padding: 0;
               font-family: 'Batang', 'BatangChe', '바탕', serif;
-              font-size: 16px; line-height: 2.0; color: #000;
+              font-size: 15px; line-height: 1.8; color: #000;
               -webkit-print-color-adjust: exact;
             }
-            table { width: 100%; border-collapse: collapse; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
             td, th { border: 1px solid #000; padding: 6px 8px; }
+            tr { break-inside: avoid; }
             h2 { text-align: center; font-size: 20px; letter-spacing: 0.15em; }
             .editable-field { background: #f0f0f0; min-width: 60px; display: inline-block; }
             @media print { .editable-field { background: transparent; } }
           </style>
         </head>
-        <body>${printRef.current.innerHTML}</body>
+        <body>${libHtml}</body>
       </html>
     `);
     printWindow.document.close();
@@ -238,19 +253,60 @@ export default function CourtFormLibraryModal({ isOpen, onClose }: CourtFormLibr
               </div>
             </aside>
 
-            {/* 우측 메인: A4 프리뷰 */}
-            <main className="flex-1 bg-slate-200 overflow-y-auto p-6 flex justify-center">
+            {/* 우측 메인: A4 프리뷰 (비율 유지 + 실제 장 분할) */}
+            <main className="flex-1 min-w-0 bg-slate-200 flex flex-col overflow-hidden">
               {selectedForm ? (
-                <div 
-                  ref={printRef}
-                  contentEditable={isEditMode}
-                  suppressContentEditableWarning
-                  className="bg-white max-w-[210mm] min-h-[297mm] w-full shadow-xl font-serif text-[16px] leading-[2.0] text-black"
-                  style={{ padding: '170px 76px 113px 76px', fontFamily: "'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif" }}
-                  dangerouslySetInnerHTML={{ __html: selectedForm.html }}
-                />
+                <>
+                  <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-300 bg-slate-100 text-xs">
+                    <span className="font-bold text-slate-800 truncate">{selectedForm.name}</span>
+                    <div className="flex items-center gap-1 bg-white px-1.5 py-1 rounded-xl border border-slate-300">
+                      {isEditMode && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={libPage <= 1}
+                            onClick={() => setLibPage(p => Math.max(1, p - 1))}
+                            className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 cursor-pointer text-slate-700"
+                            aria-label="이전 장"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      <span className="font-mono font-bold text-slate-800 px-1.5 whitespace-nowrap">
+                        {isEditMode ? `${libPage} / ${libPages}` : `총 ${libPages}`}
+                        <span className="font-sans font-normal text-slate-500 ml-0.5">장</span>
+                      </span>
+                      {isEditMode && (
+                        <button
+                          type="button"
+                          disabled={libPage >= libPages}
+                          onClick={() => setLibPage(p => Math.min(libPages, p + 1))}
+                          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 cursor-pointer text-slate-700"
+                          aria-label="다음 장"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+                      <span className="text-[11px] text-slate-500 pl-1 whitespace-nowrap">A4 210×297mm</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-auto p-6">
+                    <A4PagedSheets
+                      key={selectedForm.fileName}
+                      html={libHtml}
+                      mode={isEditMode ? 'SINGLE' : 'CONTINUOUS'}
+                      currentPage={libPage}
+                      zoom={100}
+                      onPageCountChange={handleLibPageCount}
+                      editable={isEditMode}
+                      onHtmlEdit={setLibEditedHtml}
+                      fontFamily="'Batang', 'BatangChe', '바탕', '바탕체', 'KoPub Batang', 'Noto Serif KR', 'AppleMyungjo', serif"
+                    />
+                  </div>
+                </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <div className="flex flex-col items-center justify-center h-full text-slate-500">
                   <FolderOpen className="w-16 h-16 mb-4 opacity-30" />
                   <p className="text-lg font-medium">양식을 선택하세요</p>
                   <p className="text-sm mt-1">좌측 목록에서 법원 양식을 클릭하면 미리보기/편집할 수 있습니다</p>
