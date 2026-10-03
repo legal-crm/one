@@ -262,6 +262,38 @@ export function formatLocalDate(iso: string | undefined | null): string {
 }
 
 /**
+ * 브라우저 환경 제약(iframe, 비보안 컨텍스트 등)에 구애받지 않는 안전한 클립보드 복사
+ * navigator.clipboard 실패 시 textarea + execCommand('copy') 폴백 실행
+ */
+export async function safeCopyToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn('navigator.clipboard.writeText failed, using fallback:', err);
+    }
+  }
+  if (typeof document === 'undefined') return false;
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    textArea.setAttribute('readonly', '');
+    document.body.appendChild(textArea);
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('Fallback clipboard copy failed:', err);
+    return false;
+  }
+}
+
+/**
  * 30초 자동 소거 클립보드 복사 (Zeroize)
  * - onCopied(ok): 최초 복사 성공 여부
  * - onZeroized(ok): 소거(빈 문자열 덮어쓰기) 성공 여부. 실패 시 사용자에게 수동 삭제를 안내해야 한다.
@@ -404,7 +436,11 @@ export function recordFinancialRelayGuide(
       ...vault.financial,
       lastRelayRequestAt: new Date().toISOString(),
       lastRelayNumber: undefined,
-    } : undefined,
+    } : {
+      registered: false,
+      relayStatus: 'idle',
+      lastRelayRequestAt: new Date().toISOString(),
+    },
     accessLogs: [log, ...vault.accessLogs]
   };
 }

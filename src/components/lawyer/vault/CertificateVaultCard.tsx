@@ -9,6 +9,7 @@ import {
   loadCertificateVault, 
   saveCertificateVault, 
   computeDaysRemaining,
+  safeCopyToClipboard,
 } from '../../../services/vault/certificateVaultService';
 import CertificateVaultModal from './CertificateVaultModal';
 
@@ -84,18 +85,22 @@ export default function CertificateVaultCard({
   const isExpired = npki && !daysUnknown ? daysRemaining <= 0 : false;
   const daysLabel = daysUnknown ? '만료일 미확인' : isExpired ? '만료됨' : `D-${daysRemaining}`;
 
-  // 알림톡 연동 전: 안내 문구만 복사 (이전: 아무것도 보내지 않고 '발송했습니다' 표시)
+  // 안내 문구 복사
   const handleSendRenewalAlimtok = async () => {
     const text = `[${clientRequest.clientName}님] 등록하신 공동인증서가 곧 만료됩니다. 갱신 후 다시 제출해 주세요.`;
-    try { await navigator.clipboard.writeText(text); toast.success('인증서 갱신 안내 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
-    catch { toast.error('클립보드 복사에 실패했습니다.'); }
+    const ok = await safeCopyToClipboard(text);
+    if (ok) toast.success('인증서 갱신 안내 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.');
+    else toast.error('클립보드 복사에 실패했습니다.');
   };
 
   const handleSendRequestAlimtok = async () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const text = `[${clientRequest.clientName}님] 부채증명서 발급·전자소송 진행을 위해 마이페이지 > 인증서 제출에서 공동인증서를 등록해 주세요. ${origin}/?tab=mypage`;
-    try { await navigator.clipboard.writeText(text); toast.success('인증서 제출 요청 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
-    catch { toast.error('클립보드 복사에 실패했습니다.'); }
+    const text = `[${clientRequest.clientName || '의뢰인'}님] 부채증명서 발급 대행을 위해 공동인증서(NPKI) 또는 금융인증서 협조가 필요합니다.\n` +
+      `1. 금융인증서: PC 파일 없이 전화 통화 중 휴대폰으로 원격 승인\n` +
+      `2. 공동인증서: PC의 인증서 파일(signCert.der, signPri.key)을 사무소 카카오톡/이메일로 전송\n` +
+      `편하신 방법으로 담당자에게 알려주시면 신속히 안내해 드리겠습니다.`;
+    const ok = await safeCopyToClipboard(text);
+    if (ok) toast.success('인증서 협조 안내 문구가 복사되었습니다. 카카오톡이나 문자로 전달해 주세요.');
+    else toast.error('클립보드 복사에 실패했습니다.');
   };
   const hasAnyCert = Boolean(vault.npki || vault.financial);
 

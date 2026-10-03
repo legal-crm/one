@@ -15,7 +15,61 @@ export default function CertificateVaultCard({ vm }: { vm: MyPageModel }) {
   const { clientVault, dialog, profile, setClientVault, targetClientId, userAlias } = vm;
 
   const hasStored = !!clientVault && clientVault.status !== 'shredded' && (!!clientVault.npki || !!clientVault.financial?.registered);
-  if (!hasStored || !clientVault) return null;
+  if (!hasStored || !clientVault) {
+    return (
+      <Card as="section" aria-labelledby="mypage-vault-guide-title" className="space-y-4 border-dashed border-slate-300 bg-slate-50/60">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden="true">
+            <KeyRound className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h3 id="mypage-vault-guide-title" className="flex flex-wrap items-center gap-2 text-base font-bold text-slate-900">
+              부채증명서 발급을 위한 인증서 준비 안내
+              <Badge tone="info">실무 협조</Badge>
+            </h3>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 break-keep">
+              개인회생·파산 사건 진행을 위해 10~30여 개 금융기관의 부채증명서를 발급받아야 합니다. 아래 두 가지 방법 중 편하신 방식으로 협조해 주세요.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 pt-1">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-800">1. 금융인증서 원격 승인 (권장)</span>
+              <Badge tone="success">가장 간편</Badge>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed break-keep">
+              파일 제출 없이 스마트폰에서 실시간으로 승인합니다. 담당자가 은행 사이트 접속 시 전화나 카카오톡으로 알려드리면 스마트폰에서 2자리 번호 확인 후 승인해 주시면 됩니다.
+            </p>
+            <p className="text-xs text-emerald-700 font-semibold flex items-center gap-1 pt-1">
+              ✓ 별도 파일 제출 불필요 · 통화 시 승인 협조
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-800">2. 공동인증서 (구 공인인증서)</span>
+              <Badge tone="warning">PC 전용</Badge>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed break-keep">
+              PC에 저장된 인증서 파일(signCert.der, signPri.key)은 담당자 통화 시 안내에 따라 사무소 카카오톡/이메일로 보내주시거나, PC 브라우저에서 아래 마법사로 등록할 수 있습니다.
+            </p>
+            <div className="pt-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => vm.setIsCertSubmissionModalOpen(true)}
+                className="w-full text-xs font-bold text-slate-700 hover:text-slate-900 border-slate-300"
+              >
+                인증서 안심 제출 마법사 열기
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   const handleShred = async () => {
     const ok = await dialog.confirm({

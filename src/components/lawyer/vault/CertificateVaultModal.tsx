@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, ShieldCheck, ShieldAlert, KeyRound, Lock, Unlock, Copy, 
   Download, Eye, EyeOff, Clock, AlertTriangle, CheckCircle2, 
-  Send, ExternalLink, RefreshCw, Trash2, Smartphone, FileText, Check, AlertOctagon
+  Send, ExternalLink, RefreshCw, Trash2, Smartphone, FileText, Check, AlertOctagon, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CertificateVaultData, CertificateAccessLog } from '../../../types';
@@ -11,6 +11,7 @@ import {
   isLegacyNpki,
   downloadBase64File, 
   copyWithAutoZeroize, 
+  safeCopyToClipboard,
   createAccessLog, 
   shredCertificateVault,
   buildFinancialRelayGuide,
@@ -18,6 +19,7 @@ import {
   computeDaysRemaining,
   formatLocalDate,
 } from '../../../services/vault/certificateVaultService';
+import ClientCertificateSubmissionModal from '../../client/vault/ClientCertificateSubmissionModal';
 
 interface CertificateVaultModalProps {
   clientId: string;
@@ -75,6 +77,11 @@ export default function CertificateVaultModal({
 
   // 금융인증서 원격 승인 안내 (자동 발송·번호 생성 없음)
   const [relayTargetCreditor, setRelayTargetCreditor] = useState('국민은행');
+
+  // 신규 수합 인증서 직접 등록 모달
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
+  // 버튼 클릭 시각 피드백
+  const [copiedType, setCopiedType] = useState<'financial' | 'submit_request' | null>(null);
 
   // 영구 파기(Shredding) 확인 모달
   const [showShredConfirm, setShowShredConfirm] = useState(false);
@@ -186,18 +193,18 @@ export default function CertificateVaultModal({
   };
 
   // 4. 금융인증서 원격 승인 안내 문구 복사
-  // (이전: Math.random 2자리 번호를 만들어 '발송되었습니다' 표시 + '의뢰인 승인 완료 시뮬레이션' 버튼)
   const handleCopyFinancialRelayGuide = async () => {
-    if (!financial || isShredded) return;
+    if (isShredded) return;
     const text = buildFinancialRelayGuide(clientRequest.clientName || '', relayTargetCreditor);
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
+    const ok = await safeCopyToClipboard(text);
+    if (!ok) {
       toast.error('클립보드 복사에 실패했습니다.');
       return;
     }
+    setCopiedType('financial');
+    setTimeout(() => setCopiedType(null), 2000);
     await onUpdateVault(recordFinancialRelayGuide(vault, actorName, actorRole, relayTargetCreditor));
-    toast.success('원격 승인 안내 문구가 복사되었습니다. 자동 발송되지 않으니 채팅·문자로 전달해 주세요.', { duration: 6000 });
+    toast.success(`[${relayTargetCreditor}] 원격 승인 안내 문구가 복사되었습니다. 통화 또는 카카오톡으로 전달해 주세요.`, { duration: 5000 });
   };
 
   // 5. 이 브라우저 사본 삭제
@@ -210,16 +217,20 @@ export default function CertificateVaultModal({
     toast.success('이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 삭제했습니다. 내려받은 파일·다른 기기 사본은 따로 삭제해야 합니다.', { duration: 8000 });
   };
 
-  // 6. 미등록 시 제출 요청 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 전송되었습니다' 표시)
+  // 6. 미등록 시 제출 요청 문구 복사
   const handleCopySubmitRequest = async () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const text = `[${clientRequest.clientName || '의뢰인'}님] 부채증명서 발급·전자소송 진행을 위해 마이페이지 > 인증서 제출에서 공동인증서를 등록해 주세요. ${origin}/?tab=mypage`;
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('인증서 제출 요청 문구가 복사되었습니다. 자동 발송되지 않으니 채팅·문자로 전달해 주세요.');
-    } catch {
+    const text = `[${clientRequest.clientName || '의뢰인'}님] 부채증명서 발급 대행을 위해 공동인증서(NPKI) 또는 금융인증서 협조가 필요합니다.\n` +
+      `1. 금융인증서: PC 파일 없이 전화 통화 중 휴대폰으로 원격 승인\n` +
+      `2. 공동인증서: PC의 인증서 파일(signCert.der, signPri.key)을 사무소 카카오톡/이메일로 전송\n` +
+      `편하신 방법으로 담당자에게 알려주시면 신속히 안내해 드리겠습니다.`;
+    const ok = await safeCopyToClipboard(text);
+    if (!ok) {
       toast.error('클립보드 복사에 실패했습니다.');
+      return;
     }
+    setCopiedType('submit_request');
+    setTimeout(() => setCopiedType(null), 2000);
+    toast.success('인증서 협조 안내 문구가 복사되었습니다. 카카오톡이나 문자로 전달해 주세요.', { duration: 5000 });
   };
 
   return (
@@ -385,10 +396,19 @@ export default function CertificateVaultModal({
 
                   {/* NPKI 파일 다운로드 섹션 */}
                   <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4">
-                    <h5 className="text-xs font-bold text-slate-200 mb-2 flex items-center justify-between">
-                      <span>NPKI 인증서 파일 쌍</span>
-                      <span className="text-xs text-slate-400 font-normal">PC의 AppData/LocalLow/NPKI 구조와 동일</span>
-                    </h5>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                      <h5 className="text-xs font-bold text-slate-200">
+                        NPKI 인증서 파일 쌍
+                        <span className="text-xs text-slate-400 font-normal ml-2">PC의 AppData/LocalLow/NPKI 구조와 동일</span>
+                      </h5>
+                      <button
+                        onClick={() => setIsSubmissionModalOpen(true)}
+                        className="px-2.5 py-1 text-xs font-semibold text-blue-300 hover:text-white bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 rounded-lg transition-colors flex items-center gap-1 active:scale-95"
+                      >
+                        <Upload className="w-3 h-3" />
+                        인증서 재등록/교체
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex items-center justify-between p-3 bg-slate-900/80 rounded-xl border border-slate-800">
                         <div className="flex items-center gap-2">
@@ -605,16 +625,29 @@ export default function CertificateVaultModal({
                 <div className="p-6 bg-slate-800/40 border border-slate-700/50 rounded-2xl text-center space-y-3">
                   <KeyRound className="w-8 h-8 text-slate-400 mx-auto" />
                   <h4 className="text-sm font-bold text-slate-300">등록된 공동인증서가 없습니다</h4>
-                  <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    의뢰인이 마이페이지 &gt; 인증서 제출에서 인증서 파일과 비밀번호를 등록하면 여기에 표시됩니다. (의뢰인이 등록한 기기와 같은 브라우저에서만 보입니다)
+                  <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed break-keep">
+                    고객과 통화하여 PC에 다운로드받으셨거나 카카오톡/이메일로 수합한 인증서 파일(signCert.der, signPri.key)을 금고에 직접 등록하세요.
                   </p>
-                  <button
-                    onClick={handleCopySubmitRequest}
-                    className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    제출 요청 문구 복사 (자동 발송 아님)
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      onClick={() => setIsSubmissionModalOpen(true)}
+                      className="px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-all shadow-md inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      인증서 파일 직접 등록 (사무소 수합분)
+                    </button>
+                    <button
+                      onClick={handleCopySubmitRequest}
+                      className={`px-4 py-2.5 text-xs font-semibold rounded-xl transition-all shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap ${
+                        copiedType === 'submit_request'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95'
+                      }`}
+                    >
+                      {copiedType === 'submit_request' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedType === 'submit_request' ? '안내 문구 복사 완료!' : '의뢰인 안내 문구 복사'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -676,19 +709,20 @@ export default function CertificateVaultModal({
                   <div className="pt-5">
                     <button
                       onClick={handleCopyFinancialRelayGuide}
-                      disabled={!financial || isShredded}
-                      className="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap"
+                      disabled={isShredded}
+                      className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+                        copiedType === 'financial'
+                          ? 'bg-emerald-600 hover:bg-emerald-500'
+                          : 'bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      <Copy className="w-3.5 h-3.5" />
-                      안내 문구 복사 (자동 발송 아님)
+                      {copiedType === 'financial' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedType === 'financial' ? '원격 승인 문구 복사 완료!' : '안내 문구 복사 (통화·카톡 전달)'}
                     </button>
                   </div>
                 </div>
-                {!financial && (
-                  <p className="text-xs text-slate-400">등록된 금융인증서 정보가 없습니다.</p>
-                )}
-                <p className="text-xs text-slate-400">
-                  승인번호는 발급기관 화면에 표시된 번호를 전화 등으로 직접 알려 주세요. 이 앱은 번호를 만들거나 승인 결과를 확인하지 않습니다.
+                <p className="text-xs text-slate-400 leading-relaxed break-keep">
+                  💡 발급기관 화면에 표시된 2자리 번호를 고객과 통화 또는 카카오톡으로 알려주세요. 의뢰인이 스마트폰 금융인증서 앱에서 해당 번호를 승인하면 발급이 완료됩니다.
                 </p>
               </div>
             </div>
@@ -873,6 +907,24 @@ export default function CertificateVaultModal({
               </div>
             </div>
           </div>
+        )}
+
+        {/* 신규 수합 인증서 직접 등록 모달 */}
+        {isSubmissionModalOpen && (
+          <ClientCertificateSubmissionModal
+            clientId={clientId}
+            clientName={clientRequest.clientName || '의뢰인'}
+            clientPhone={clientRequest.phone || ''}
+            existingVault={vault}
+            mode="lawyer"
+            actorName={actorName}
+            actorRole={actorRole}
+            onSaveVault={async (updated) => {
+              await onUpdateVault(updated);
+              setIsSubmissionModalOpen(false);
+            }}
+            onClose={() => setIsSubmissionModalOpen(false)}
+          />
         )}
       </div>
     </div>

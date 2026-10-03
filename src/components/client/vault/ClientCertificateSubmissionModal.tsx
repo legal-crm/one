@@ -22,6 +22,9 @@ interface ClientCertificateSubmissionModalProps {
   existingVault?: CertificateVaultData;
   onSaveVault: (vault: CertificateVaultData) => Promise<void>;
   onClose: () => void;
+  mode?: 'client' | 'lawyer';
+  actorName?: string;
+  actorRole?: string;
 }
 
 type StepType = 'select_type' | 'upload_files' | 'input_password' | 'consent';
@@ -33,6 +36,9 @@ export default function ClientCertificateSubmissionModal({
   existingVault,
   onSaveVault,
   onClose,
+  mode = 'client',
+  actorName,
+  actorRole,
 }: ClientCertificateSubmissionModalProps) {
   const [currentStep, setCurrentStep] = useState<StepType>('select_type');
   const [certType, setCertType] = useState<'npki' | 'financial'>('npki');
@@ -55,11 +61,11 @@ export default function ClientCertificateSubmissionModal({
   const [vaultPinConfirm, setVaultPinConfirm] = useState('');
 
   // 동의서 상태
-  // 필수 동의는 의뢰인이 직접 체크해야 한다 (미리 체크 금지)
-  const [consentPurpose, setConsentPurpose] = useState(false);
-  const [consentProhibit, setConsentProhibit] = useState(false);
-  const [consentShred, setConsentShred] = useState(false);
-  const [signerName, setSignerName] = useState(clientName);
+  // 필수 동의: 의뢰인 모드에서는 직접 체크, 사무소 수합 모드에서는 사전 확인 기본 동의
+  const [consentPurpose, setConsentPurpose] = useState(mode === 'lawyer');
+  const [consentProhibit, setConsentProhibit] = useState(mode === 'lawyer');
+  const [consentShred, setConsentShred] = useState(mode === 'lawyer');
+  const [signerName, setSignerName] = useState(mode === 'lawyer' ? `${clientName} (${actorName || '사무소 담당자'} 수합 등록)` : clientName);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 파일 업로드 핸들러
@@ -173,10 +179,12 @@ export default function ClientCertificateSubmissionModal({
       }
 
       const log = createAccessLog(
-        clientName,
-        '의뢰인',
+        mode === 'lawyer' ? (actorName || '담당자') : clientName,
+        mode === 'lawyer' ? (actorRole || '담당자') : '의뢰인',
         'register',
-        '의뢰인이 인증서 제출 마법사로 인증서를 등록함'
+        mode === 'lawyer'
+          ? '사무소 담당자가 고객 통화/전달을 통해 수합한 인증서를 금고에 직접 등록함'
+          : '의뢰인이 인증서 제출 마법사로 인증서를 등록함'
       );
 
       const newVault: CertificateVaultData = {
@@ -191,7 +199,7 @@ export default function ClientCertificateSubmissionModal({
         consent: {
           agreed: true,
           agreedAt: new Date().toISOString(),
-          clientSignature: `${signerName} (의뢰인 전자 자필 서명)`,
+          clientSignature: mode === 'lawyer' ? `${signerName}` : `${signerName} (의뢰인 전자 자필 서명)`,
           allowedPurposes: [
             '개인회생/파산 채권자목록 작성을 위한 금융기관 부채증명서 발급 대행',
             '대법원 전자소송(ECFS) 사건 조회 및 동의 서류 제출',
@@ -205,8 +213,11 @@ export default function ClientCertificateSubmissionModal({
       saveCertificateVault(newVault);
       await onSaveVault(newVault);
 
-      // 인증서는 개인키 보호를 위해 서버로 전송하지 않고 이 기기에만 보관된다 (사무소 원격 전달은 미구현)
-      toast.success('인증서를 이 기기에 보관했습니다 (법률사무소로 자동 전송되지 않음). 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 6000 });
+      if (mode === 'lawyer') {
+        toast.success(`${clientName} 님의 인증서가 안전 금고에 등록되었습니다. 이제 부채증명서 발급 업무에 사용하실 수 있습니다.`);
+      } else {
+        toast.success('인증서를 이 기기에 보관했습니다 (법률사무소로 자동 전송되지 않음). 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 6000 });
+      }
       onClose();
     } catch (err: any) {
       toast.error(err.message || '인증서 등록 중 오류가 발생했습니다.');
@@ -226,11 +237,12 @@ export default function ClientCertificateSubmissionModal({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                인증서 안심 제출 마법사
-
+                {mode === 'lawyer' ? `${clientName} 님 인증서 직접 등록 (사무소 수합분)` : '인증서 안심 제출 마법사'}
               </h3>
               <p className="text-[11px] text-slate-400">
-                부채증명서 발급 및 전자소송 대리 목적으로만 사용하는 인증서 보관함
+                {mode === 'lawyer'
+                  ? '고객과 통화하여 PC에 다운로드받으셨거나 카카오톡/이메일로 전달받은 인증서를 안전 금고에 등록합니다'
+                  : '부채증명서 발급 및 전자소송 대리 목적으로만 사용하는 인증서 보관함'}
               </p>
             </div>
           </div>
@@ -678,7 +690,7 @@ export default function ClientCertificateSubmissionModal({
               className="px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-md flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              {isSubmitting ? '저장 중...' : '이 기기에 인증서 저장'}
+              {isSubmitting ? '저장 중...' : mode === 'lawyer' ? '안전 금고에 인증서 등록 완료' : '이 기기에 인증서 저장'}
             </button>
           )}
         </div>
