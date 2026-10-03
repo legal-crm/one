@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Building2, Home, Briefcase, CreditCard, ShieldCheck, 
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
@@ -227,6 +227,23 @@ export default function Stage3DocumentsHubView({
     }).sort(compareDocItemsPriority);
   });
 
+  const isFirstRenderRef = useRef(true);
+  const prevClientIdRef = useRef(clientRequest.id);
+  if (prevClientIdRef.current !== clientRequest.id) {
+    prevClientIdRef.current = clientRequest.id;
+    isFirstRenderRef.current = true;
+  }
+
+  const onUpdateCrmExtRef = useRef(onUpdateCrmExt);
+  useEffect(() => {
+    onUpdateCrmExtRef.current = onUpdateCrmExt;
+  });
+
+  const crmExtRef = useRef(crmExt);
+  useEffect(() => {
+    crmExtRef.current = crmExt;
+  });
+
   // 서류 진행 상태 변경 시 서버(crmExt) + 브라우저 로컬 캐시 동기화
   useEffect(() => {
     const docs: Record<string, Stage3DocState> = {};
@@ -238,9 +255,16 @@ export default function Stage3DocumentsHubView({
 
     saveStage3State(clientRequest.id, { docs, postalCarrier, postalTrackingNumber });
 
-    if (!onUpdateCrmExt) return;
+    // 첫 마운트 또는 고객 전환 시에는 이미 로드된 데이터이므로 서버 저장을 건너뜀 (무한 루프 방지)
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+
+    if (!onUpdateCrmExtRef.current) return;
     const timer = setTimeout(() => {
-      const currentDocs = [...(crmExt?.documents || [])];
+      const ext = crmExtRef.current;
+      const currentDocs = [...(ext?.documents || [])];
       let hasDocsChanged = false;
 
       docList.forEach(d => {
@@ -268,17 +292,28 @@ export default function Stage3DocumentsHubView({
         }
       });
 
-      onUpdateCrmExt({
+      const hasPostalCarrierChanged = postalCarrier !== (ext?.postalCarrier || '');
+      const hasPostalTrackingChanged = postalTrackingNumber !== (ext?.postalTrackingNumber || '');
+      const hasSealChanged = Boolean(isSealKeptInSafe) !== Boolean(ext?.isSealKeptInSafe);
+      const prevStage3Docs = (ext as any)?.stage3DocsState || {};
+      const hasDocsStateChanged = JSON.stringify(docs) !== JSON.stringify(prevStage3Docs);
+
+      // 실제 변경사항이 없으면 불필요한 서버 저장 호출 차단
+      if (!hasDocsChanged && !hasPostalCarrierChanged && !hasPostalTrackingChanged && !hasSealChanged && !hasDocsStateChanged) {
+        return;
+      }
+
+      onUpdateCrmExtRef.current?.({
         ...(hasDocsChanged ? { documents: currentDocs } : {}),
-        postalCarrier,
-        postalTrackingNumber,
-        isSealKeptInSafe,
-        ...({ stage3DocsState: docs } as any),
+        ...(hasPostalCarrierChanged ? { postalCarrier } : {}),
+        ...(hasPostalTrackingChanged ? { postalTrackingNumber } : {}),
+        ...(hasSealChanged ? { isSealKeptInSafe } : {}),
+        ...(hasDocsStateChanged ? { stage3DocsState: docs } as any : {}),
       }).catch(() => {});
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [docList, postalCarrier, postalTrackingNumber, isSealKeptInSafe, clientRequest.id, onUpdateCrmExt]);
+  }, [docList, postalCarrier, postalTrackingNumber, isSealKeptInSafe, clientRequest.id]);
 
   // 서류 통계
   const stats = useMemo(() => {

@@ -568,6 +568,7 @@ export default function CrmTab({
 
   /** @returns 서버 저장 성공 여부 (실패 시 이 기기에만 저장된 상태) */
   const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> => {
+    if (!clientId || Object.keys(updates).length === 0) return true;
     const current = getCrmExt(clientId);
     // 상태만 바꾸는 저장이면 13단계도 새 상태에 맞춘다 (상태 변경 핸들러·칸반·일괄 변경·배정·이탈 처리 공통)
     const updated = { ...current, ...withThirteenStageSync(current, updates), lastActivityAt: new Date().toISOString() };
@@ -579,7 +580,7 @@ export default function CrmTab({
   const saveOrThrow = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<void> => {
     const ok = await updateCrmExt(clientId, updates);
     if (!ok) {
-      toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+      toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.', { id: 'crm-save-error' });
       throw new Error('서버 저장 실패 (이 기기에만 임시 저장됨)');
     }
   }, [updateCrmExt]);
@@ -587,7 +588,7 @@ export default function CrmTab({
   /** 저장 결과에 따라 성공/실패 토스트 */
   const notifySaved = useCallback((ok: boolean, successMsg: string) => {
     if (ok) toast.success(successMsg);
-    else toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.');
+    else toast.error('서버 저장에 실패했습니다. 이 기기에만 임시 저장되었으니 네트워크 확인 후 다시 시도해 주세요.', { id: 'crm-save-error' });
   }, []);
 
   // ── 현재 권한 확인 ──
@@ -2103,7 +2104,7 @@ export default function CrmTab({
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
                         onUpdateCrmExt={async (patch) => {
-                          await saveOrThrow(selectedId, patch);
+                          await updateCrmExt(selectedId, patch);
                         }}
                         onAdvanceToNextStage={() => advancePipelineStage(4)}
                         onOpenDocScanner={() => setShowDocScanner(true)}
