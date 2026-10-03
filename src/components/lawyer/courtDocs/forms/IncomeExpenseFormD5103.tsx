@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -37,11 +38,11 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
               <td className="border border-black font-semibold p-2">업종</td>
               <td className="border border-black p-2" colSpan={2}></td>
               <td className="border border-black font-semibold p-2">직위</td>
-              <td className="border border-black p-2">{debtor.jobTitle}</td>
+              <td className="border border-black p-2"><F k="debtor.jobTitle">{debtor.jobTitle}</F></td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-2">종사 경력</td>
-              <td className="border border-black p-2" colSpan={4}>{debtor.tenureYearsMonths}</td>
+              <td className="border border-black p-2" colSpan={4}><F k="debtor.tenureYearsMonths">{debtor.tenureYearsMonths}</F></td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-2">근무 기간</td>

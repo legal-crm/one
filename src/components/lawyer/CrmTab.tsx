@@ -2725,7 +2725,7 @@ export default function CrmTab({
         />
       )}
 
-      {/* ── 4-1. 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 (로패스 2025 규격) ── */}
+      {/* ── 4-1. 대법원 전자소송 13종 법원 표준 서식 통합 에디터 & 인쇄 뷰어 ── */}
       {showCourtDocSuite && selectedClient && (
         <CourtDocSuiteViewerModal
           isOpen={showCourtDocSuite}

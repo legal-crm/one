@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -26,13 +27,13 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
       {/* 인적사항 — 법원 원본: 테이블 없이 단순 텍스트 */}
       <div className="mb-8 space-y-1">
         <p>
-          <span className="tracking-[0.5em]">성      명</span>: {debtor?.name || ''}
+          <span className="tracking-[0.5em]">성      명</span>: <F k="debtor.name">{debtor?.name || ''}</F>
         </p>
         <p>
-          <span className="tracking-[0.5em]">주      소</span>: {debtor?.address || ''}
+          <span className="tracking-[0.5em]">주      소</span>: <F k="debtor.currentAddress">{debtor?.address || ''}</F>
         </p>
         <p>
-          주민등록번호: {debtor?.residentNumber || ''}
+          주민등록번호: <F k="debtor.residentNumber">{debtor?.residentNumber || ''}</F>
         </p>
       </div>
 
@@ -50,10 +51,10 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
           <span className="underline">위임사항</span>: 사건번호 ({caseNumber})
         </p>
         <p className="ml-12">
-          신청인 ({debtor?.name || ''})
+          신청인 (<F k="debtor.name">{debtor?.name || ''}</F>)
         </p>
         <p className="ml-4">
-          ({court?.lawyerFirm || ''} {court?.lawyerName || ''} 변호사)
+          (<F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사)
         </p>
       </div>
 
@@ -73,10 +74,10 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
           {'                    '}(서명 또는 날인)
         </p>
         <p className="ml-16">
-          <span className="tracking-[0.5em]">주      소</span>{'  '}{debtor?.address || ''}
+          <span className="tracking-[0.5em]">주      소</span>{'  '}<F k="debtor.currentAddress">{debtor?.address || ''}</F>
         </p>
         <p className="ml-16">
-          주민등록번호{'  '}{debtor?.residentNumber || ''}
+          주민등록번호{'  '}<F k="debtor.residentNumber">{debtor?.residentNumber || ''}</F>
         </p>
       </div>
 

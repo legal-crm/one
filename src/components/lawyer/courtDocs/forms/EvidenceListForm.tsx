@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -54,8 +55,8 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
       <h1 className="text-center text-[24px] font-bold mb-6 tracking-[0.2em]">첨 부 서 류  목 록</h1>
       
       <div className="text-[14px] mb-6">
-        <p>사    건: {court?.caseNumber || ''} 호 개인회생</p>
-        <p>신 청 인: {debtor?.name || ''}</p>
+        <p>사    건: <F k="court.caseNumber">{court?.caseNumber || ''}</F> 호 개인회생</p>
+        <p>신 청 인: <F k="debtor.name">{debtor?.name || ''}</F></p>
       </div>
 
       <table className="w-full border-collapse border border-black text-[13px] mb-8">
@@ -100,8 +101,8 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
       <div className="mt-12 text-center">
         <p className="mb-6">{applicationDate}</p>
         <p className="font-bold">
-          신청인 {debtor?.name || ''}{'  '}
-          대리인 {court?.lawyerFirm || ''} {court?.lawyerName || ''} 변호사
+          신청인 <F k="debtor.name">{debtor?.name || ''}</F>{'  '}
+          대리인 <F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사
         </p>
       </div>
 

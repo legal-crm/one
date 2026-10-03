@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -16,8 +17,8 @@ export const RepaymentPlanFormD5110: React.FC<CourtFormProps> = ({ data, isEdita
       
       <div className="mb-8">
         <h3 className="font-bold mb-2">제1조 (변제기간)</h3>
-        <p>변제기간은 인가일로부터 {repaymentSummary.repaymentMonths}개월간으로 한다.</p>
-        <p>최초 변제일: {court.firstRepaymentDate || ''}</p>
+        <p>변제기간은 인가일로부터 <F k="repaymentSummary.repaymentMonths">{repaymentSummary.repaymentMonths}</F>개월간으로 한다.</p>
+        <p>최초 변제일: <F k="court.firstRepaymentDate">{court.firstRepaymentDate || ''}</F></p>
       </div>
 
       <div className="mb-8">

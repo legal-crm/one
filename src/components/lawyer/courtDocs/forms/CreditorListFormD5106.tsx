@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -46,8 +47,8 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
         <h1 className="text-center text-[24px] font-bold mb-8 tracking-widest">개인회생채권자목록</h1>
         
         <div className="text-right text-[14px] mb-4">
-          <p>채권현재액 산정기준일: {court.applicationDate || '20    .    .    .'}</p>
-          <p>목록 작성일: {court.applicationDate || '20    .    .    .'}</p>
+          <p>채권현재액 산정기준일: <F k="court.applicationDate">{court.applicationDate || '20    .    .    .'}</F></p>
+          <p>목록 작성일: <F k="court.applicationDate">{court.applicationDate || '20    .    .    .'}</F></p>
         </div>
 
         <table className="w-full border-collapse border border-black text-[14px] mb-6">

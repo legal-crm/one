@@ -19,6 +19,7 @@ import {
   type AutoDraftFormItem
 } from '../../../services/documents/filingAutoDraftEngine';
 import AutoDraftReviewSplitModal from '../documents/AutoDraftReviewSplitModal';
+import FilingChecklistPanel from './FilingChecklistPanel';
 import { localYmd } from '../../../utils/localDate';
 import { computePipelineGates } from './pipelineGates';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
@@ -1144,6 +1145,15 @@ export default function Stage4FilingBundleView({
       {/* ── 4. 섹션 3: 검토·제출 및 접수 (filing) ── */}
       {currentSection === 'filing' && (
         <div className="space-y-6">
+          {/* 대법원 전자소송 제출목록 종합 관리 패널 */}
+          <FilingChecklistPanel
+            clientRequest={clientRequest}
+            crmExt={crmExt}
+            activeLawyerName={lawyerName}
+            onOpenCourtDocSuite={onOpenCourtDocSuite}
+            onOpenBatchFilingModal={onOpenBatchFilingModal}
+          />
+
           {/* 4대 관문 게이트웨이 파이프라인 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Gate 1: 변호사 전수 검토 완료 여부 */}

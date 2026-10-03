@@ -6,7 +6,7 @@ import {
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
   RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy,
   FileSpreadsheet, Lock, Unlock, ArrowUpRight, Edit2, Save, X,
-  BookOpen, Calendar, HelpCircle
+  BookOpen, Calendar, HelpCircle, Landmark
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
@@ -18,6 +18,7 @@ import {
 } from '../../../services/documents/applicationDocTemplateService';
 import BatchDocRequestModal, { type BatchDocItem } from './BatchDocRequestModal';
 import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
+import PublicDocGuideModal from '../documents/PublicDocGuideModal';
 import { sendAlimtok } from '../../../services/alimtokService';
 import { addClientNotification } from '../../../services/clientNotificationService';
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
@@ -153,6 +154,7 @@ export default function Stage3DocumentsHubView({
   const [batchPresetPhase, setBatchPresetPhase] = useState<DocPhase | undefined>(undefined);
   const [showSpeedReviewModal, setShowSpeedReviewModal] = useState(false);
   const [isAgencyAppModalOpen, setIsAgencyAppModalOpen] = useState(false);
+  const [showPublicDocGuide, setShowPublicDocGuide] = useState(false);
 
   // 부채증명서 대행 주문 상태
   const [debtOrder, setDebtOrder] = useState<DebtCertificateOrder>(() => {
@@ -734,15 +736,27 @@ export default function Stage3DocumentsHubView({
                 </button>
               </div>
 
-              {/* 우측 묶음 재요청 액션 */}
-              <button
-                type="button"
-                onClick={() => setShowBatchModal(true)}
-                className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 press-scale"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>미제출 묶음 재요청</span>
-              </button>
+              {/* 우측 공공기관 발급 가이드 & 묶음 재요청 액션 */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowPublicDocGuide(true)}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 press-scale"
+                  title="8대 공공기관별 필수 발급 옵션 및 의뢰인 전송용 문자 템플릿 확인"
+                >
+                  <Landmark className="w-3.5 h-3.5 text-blue-600" />
+                  <span>8대 공공기관 발급 가이드</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBatchModal(true)}
+                  className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 press-scale"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>미제출 묶음 재요청</span>
+                </button>
+              </div>
             </div>
 
             {/* 발급처별 필터 탭 */}
@@ -1253,6 +1267,15 @@ export default function Stage3DocumentsHubView({
             saveDebtCertificateOrder(newOrder);
           }}
           activeLawyerName={(clientRequest as any).assignedLawyerName || ''}
+        />
+      )}
+
+      {/* 8대 공공기관 서류 발급 가이드 & 안내 센터 모달 */}
+      {showPublicDocGuide && (
+        <PublicDocGuideModal
+          isOpen={showPublicDocGuide}
+          onClose={() => setShowPublicDocGuide(false)}
+          clientName={clientRequest.clientName}
         />
       )}
     </div>

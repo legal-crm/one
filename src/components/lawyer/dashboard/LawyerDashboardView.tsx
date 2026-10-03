@@ -3,13 +3,16 @@ import {
   Users, MessageSquare, Clock, Calendar, AlertTriangle, 
   CheckCircle2, ChevronDown, ChevronUp, ChevronRight, 
   FileText, CreditCard, Scale, Sparkles, Filter, 
-  ArrowRight, Shield, Check, Phone, ArrowUpRight
+  ArrowRight, Shield, Check, Phone, ArrowUpRight,
+  Landmark, MessageSquarePlus, X
 } from 'lucide-react';
 import type { ConsultRequest, User, StaffMember, CrmClientExtension } from '../../../types';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
 import { loadCrmExtMap } from '../../../services/crmService';
 import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import { daysUntil, formatYmdWithDow } from '../../../services/court/deadlineCalculator';
+import PublicDocGuideModal from '../documents/PublicDocGuideModal';
+import LawyerFeedbackModal from '../feedback/LawyerFeedbackModal';
 
 export interface PendingProposal {
   id: string;
@@ -84,6 +87,17 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
   const [weekOpen, setWeekOpen] = useState(true);
   // 사무소 현황 아코디언 (기본 접힘)
   const [officeStatsOpen, setOfficeStatsOpen] = useState(false);
+
+  // 신규 기능 안내 배너 닫기 및 가이드/피드백 모달 상태
+  const [isFeatureBannerDismissed, setIsFeatureBannerDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('lawyer_suite_feature_banner_dismissed_v1') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [showPublicDocGuide, setShowPublicDocGuide] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const todayStr = useMemo(() => localYmd(), []);
   
@@ -460,6 +474,64 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ── 1.5. 신규 기능 안내 배너 (전자소송 13종 자동화 & 통장 소명 스마트 스위트) ── */}
+      {!isFeatureBannerDismissed && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md border border-indigo-900/60 relative overflow-hidden animate-fadeIn">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px]">
+                  NEW UPDATE
+                </span>
+                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>전자소송 13종 자동화 & 통장 소명 스마트 스위트 오픈</span>
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                대법원 전자소송 13종 서식 실시간 양방향 매핑, 법원 규격 A4 PDF 직접 다운로드, 통장 6대 스마트 프리셋, 8대 공공기관 서류 발급 가이드가 모두 적용되었습니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPublicDocGuide(true)}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>공공서류 발급 가이드</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowFeedbackModal(true)}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <MessageSquarePlus className="w-3.5 h-3.5 text-indigo-300" />
+                <span>실무 개선 제안</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFeatureBannerDismissed(true);
+                  try {
+                    localStorage.setItem('lawyer_suite_feature_banner_dismissed_v1', 'true');
+                  } catch {
+                    // ignore
+                  }
+                }}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="배너 닫기"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── 2. 핵심 수치 4종 (누르면 필터된 큐/화면으로 이동) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -883,6 +955,25 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* 8대 공공기관 서류 발급 가이드 & 안내 센터 모달 */}
+      {showPublicDocGuide && (
+        <PublicDocGuideModal
+          isOpen={showPublicDocGuide}
+          onClose={() => setShowPublicDocGuide(false)}
+        />
+      )}
+
+      {/* 변호사·실무관 개선 제안 & 피드백 모달 */}
+      {showFeedbackModal && (
+        <LawyerFeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+          currentScreen="대시보드 메인"
+          lawyerName={activeLawyer.name}
+          firmName={activeLawyer.firmName}
+        />
+      )}
     </div>
   );
 };

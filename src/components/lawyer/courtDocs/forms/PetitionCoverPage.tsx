@@ -1,5 +1,6 @@
 import { DELIVERY_UNIT_FEE_KRW } from '../../../../services/court/courtFees';
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -30,6 +31,9 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
   const rawLawyerName = lawyer?.lawyerName || court?.lawyerName || '';
   const cleanLawyerName = rawLawyerName.replace(/변호사/g, '').trim();
 
+  // 서울회생법원 실무준칙 표지 양식 여부
+  const isSeoulCourt = (court?.courtName || '서울회생법원').includes('서울');
+
   return (
     <div 
       className="court-page bg-white w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] h-[297mm] mx-auto text-black font-serif px-[22mm] pt-[26mm] pb-[22mm] flex flex-col justify-between box-border shadow-lg print:shadow-none print:border-none print:m-0 print:p-[22mm] select-text"
@@ -50,7 +54,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
           <div className="w-[340px] space-y-3.5 text-[15px]">
             <div className="flex items-baseline">
               <span className="w-[72px] shrink-0 font-normal">신청인</span>
-              <span className="font-semibold text-[15px]">{debtor?.name || '차미선'}</span>
+              <span className="font-semibold text-[15px]"><F k="debtor.name">{debtor?.name || ''}</F></span>
             </div>
             <div className="flex items-baseline">
               <span className="w-[72px] shrink-0 font-normal">대리인</span>
@@ -92,7 +96,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
                     사 건 &nbsp;번 호
                   </td>
                   <td className="border border-black px-2.5 text-left text-[12px] w-[58%]">
-                    {court?.caseNumber || ''}
+                    <F k="court.caseNumber">{court?.caseNumber || ''}</F>
                   </td>
                 </tr>
                 <tr className="h-[30px]">
@@ -116,40 +120,43 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
               </tbody>
             </table>
 
-            {/* [테이블 2] 최초면담기일통지 / 영수인 */}
-            <table className="w-full border-collapse border border-black text-[13px]">
-              <tbody>
-                <tr className="h-[28px]">
-                  <td className="border border-black px-2 text-center font-semibold w-[70%]">
-                    최초면담기일통지
-                  </td>
-                  <td className="border border-black px-2 text-center font-semibold w-[30%] tracking-[0.3em]">
-                    영 수 인
-                  </td>
-                </tr>
-                <tr className="h-[64px]">
-                  <td className="border border-black p-2.5 align-top text-left text-[13px]">
-                    <span>20 &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; :</span>
-                  </td>
-                  <td className="border border-black p-2 text-center align-middle"></td>
-                </tr>
-              </tbody>
-            </table>
+            {/* [테이블 2 & 3] 서울회생법원 고유 서식: 최초면담기일통지 / 영수인 및 당일면담 희망여부 */}
+            {isSeoulCourt && (
+              <>
+                <table className="w-full border-collapse border border-black text-[13px]">
+                  <tbody>
+                    <tr className="h-[28px]">
+                      <td className="border border-black px-2 text-center font-semibold w-[70%]">
+                        최초면담기일통지
+                      </td>
+                      <td className="border border-black px-2 text-center font-semibold w-[30%] tracking-[0.3em]">
+                        영 수 인
+                      </td>
+                    </tr>
+                    <tr className="h-[64px]">
+                      <td className="border border-black p-2.5 align-top text-left text-[13px]">
+                        <span>20 &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; . &nbsp; &nbsp; &nbsp; &nbsp; :</span>
+                      </td>
+                      <td className="border border-black p-2 text-center align-middle"></td>
+                    </tr>
+                  </tbody>
+                </table>
 
-            {/* [테이블 3] 당일면담 희망여부 (테이블 1, 2 좌측선에 정렬) */}
-            <table className="border-collapse border border-black text-[12px] w-[115px]">
-              <tbody>
-                <tr className="h-[32px]">
-                  <td className="border border-black p-1 text-center font-semibold leading-tight">
-                    <div>당일면담</div>
-                    <div>희망여부</div>
-                  </td>
-                </tr>
-                <tr className="h-[44px]">
-                  <td className="border border-black text-center"></td>
-                </tr>
-              </tbody>
-            </table>
+                <table className="border-collapse border border-black text-[12px] w-[115px]">
+                  <tbody>
+                    <tr className="h-[32px]">
+                      <td className="border border-black p-1 text-center font-semibold leading-tight">
+                        <div>당일면담</div>
+                        <div>희망여부</div>
+                      </td>
+                    </tr>
+                    <tr className="h-[44px]">
+                      <td className="border border-black text-center"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
         </div>
       </div>

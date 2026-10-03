@@ -1,6 +1,6 @@
 /**
- * LawPassCourtFilingSidebar.tsx
- * 로패스(LawPass 2025) 스타일의 스마트 양방향 정보 입력 아코디언 사이드바
+ * CourtFilingInputSidebar.tsx
+ * 법원 서식 양방향 정보 입력 아코디언 사이드바
  * - 실시간 Two-Way Live Binding (입력 즉시 좌측 법원 공식 서식에 0초 동기화)
  * - 10대 아코디언 섹션 (기본정보, 진술서, 채권자, 부속서류, 재산, 수입/생계비, 변제계획안, 대리인, 송달, 자료제출)
  * - 5대 특약 문구 원클릭 삽입기
@@ -9,12 +9,12 @@
  * - 서울회생법원 실무기준 자동차 감가율 & 250만원 압류금지 공제한도 검증 가이드
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { 
   User, FileText, ListOrdered, Paperclip, Coins, 
   Calculator, Calendar, Shield, Send, Layers, 
   ChevronDown, ChevronRight, Plus, Trash2, Download, 
-  AlertCircle, CheckCircle2, Info, Sparkles, HelpCircle
+  AlertCircle, CheckCircle2, Info, Sparkles, HelpCircle, Keyboard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../../common/DialogProvider';
@@ -28,27 +28,110 @@ import {
   recalculateMasterData,
   DEFAULT_SPECIAL_CLAUSES
 } from '../../../services/documents/courtFilingEngine';
+import {
+  type CourtIssueSummary,
+  COURT_SECTION_ORDER,
+  getFieldDef,
+  getFieldValue,
+  setFieldValue,
+} from '../../../services/documents/courtFieldRegistry';
+import { COURT_EDITOR_SHORTCUTS } from './useCourtEditorHotkeys';
 
-interface LawPassCourtFilingSidebarProps {
+export interface CourtFilingInputSidebarHandle {
+  /** 필드가 있는 섹션을 열고 입력 칸으로 스크롤 (focus=true 면 포커스까지) */
+  revealField: (key: string, opts?: { focus?: boolean }) => boolean;
+  /** 섹션을 열고 첫 입력 칸에 포커스 */
+  openSectionAt: (index: number) => void;
+  /** 단축키 안내 열기/닫기 */
+  toggleShortcuts: () => void;
+}
+
+interface CourtFilingInputSidebarProps {
   data: CourtFilingMasterData;
   onChangeData: (updated: CourtFilingMasterData) => void;
   activeDocTab: string;
   onSelectDocTab: (tabId: string) => void;
+  /** 미입력·형식 오류 요약 (섹션 뱃지·입력 칸 표시용) */
+  issueSummary?: CourtIssueSummary;
+  /** 입력 칸 포커스 시 해당 필드 키 전달 (서식 강조용) */
+  onActiveFieldChange?: (key: string | null) => void;
 }
 
-export default function LawPassCourtFilingSidebar({
+const FOCUSABLE_SELECTOR = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+
+/** 섹션 헤더 옆 미입력 개수 뱃지 */
+function SectionIssueBadge({ count }: { count?: number }) {
+  if (!count) return null;
+  return (
+    <span
+      className="ml-1 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold"
+      title={`확인이 필요한 항목 ${count}건`}
+    >
+      {count}
+    </span>
+  );
+}
+
+/** 레지스트리 기반 입력 칸 (라벨·필수 표시·인라인 오류 문구 포함) */
+function RegField({
+  k, data, issueSummary, onChange, mono, type = 'text', placeholder,
+}: {
+  k: string;
+  data: CourtFilingMasterData;
+  issueSummary?: CourtIssueSummary;
+  onChange: (key: string, value: unknown) => void;
+  mono?: boolean;
+  type?: 'text' | 'number';
+  placeholder?: string;
+}) {
+  const def = getFieldDef(k);
+  const raw = getFieldValue(data, k);
+  const issue = issueSummary?.byKey.get(k);
+  return (
+    <div>
+      <label className="text-xs text-slate-400 block mb-1">
+        {def?.label ?? k}
+        {def?.required && <span className="text-rose-300 ml-0.5" aria-hidden="true">*</span>}
+      </label>
+      <input
+        data-field={k}
+        type={type}
+        value={raw === undefined || raw === null ? '' : String(raw)}
+        placeholder={placeholder}
+        aria-invalid={issue ? true : undefined}
+        onChange={(e) => onChange(k, type === 'number' ? Number(e.target.value) || 0 : e.target.value)}
+        className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 ${mono ? 'font-mono' : ''}`}
+      />
+      {issue?.kind === 'invalid' && (
+        <p className="mt-1 text-[11px] text-rose-300">{issue.message}</p>
+      )}
+    </div>
+  );
+}
+
+const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtFilingInputSidebarProps>(function CourtFilingInputSidebar({
   data,
   onChangeData,
   activeDocTab,
-  onSelectDocTab
-}: LawPassCourtFilingSidebarProps) {
+  onSelectDocTab,
+  issueSummary,
+  onActiveFieldChange,
+}, ref) {
   const dialog = useDialog();
   // 열려있는 아코디언 섹션 관리
   const [openSection, setOpenSection] = useState<string>('basic');
   const [annexSubTab, setAnnexSubTab] = useState<'secured' | 'disputed' | 'assignment' | 'etc'>('secured');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const asideRef = useRef<HTMLElement | null>(null);
+  // 섹션이 열린 뒤 처리할 이동 요청 (렌더 후 DOM 이 생겨야 찾을 수 있음)
+  const pendingRevealRef = useRef<{ key?: string; first?: boolean; focus?: boolean } | null>(null);
+  const pendingImeMoveRef = useRef<{ target: HTMLElement; dir: 1 | -1 } | null>(null);
+  const [revealTick, setRevealTick] = useState(0);
 
   // 활성 탭 전환 시 매칭되는 아코디언 섹션 자동 확장
   useEffect(() => {
+    // 특정 필드로 이동 중이면 그 필드의 섹션을 우선한다
+    if (pendingRevealRef.current) return;
     if (activeDocTab === 'PETITION_COVER' || activeDocTab === 'PETITION_BODY' || activeDocTab === 'SERVICE_REPORT') {
       setOpenSection('basic');
     } else if (activeDocTab === 'STATEMENT') {
@@ -73,6 +156,124 @@ export default function LawPassCourtFilingSidebar({
   const updateMaster = (updater: (prev: CourtFilingMasterData) => CourtFilingMasterData) => {
     const updated = updater(data);
     onChangeData(recalculateMasterData(updated));
+  };
+
+  /** 레지스트리 경로로 값 수정 */
+  const updateField = (key: string, value: unknown) => {
+    updateMaster(prev => setFieldValue(prev, key, value));
+  };
+
+  const getFocusables = (): HTMLElement[] => {
+    const root = asideRef.current;
+    if (!root) return [];
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      .filter(el => el.offsetParent !== null);
+  };
+
+  /** 섹션 열기 + 렌더 후 처리할 이동 요청 등록 */
+  const requestReveal = (section: string, req: { key?: string; first?: boolean; focus?: boolean }) => {
+    pendingRevealRef.current = req;
+    setOpenSection(section);
+    setRevealTick(t => t + 1);
+  };
+
+  useImperativeHandle(ref, () => ({
+    revealField: (key, opts) => {
+      const def = getFieldDef(key);
+      if (!def) return false;
+      requestReveal(def.section, { key: def.key, focus: opts?.focus });
+      return true;
+    },
+    openSectionAt: (index) => {
+      const section = COURT_SECTION_ORDER[index];
+      if (section) requestReveal(section, { first: true, focus: true });
+    },
+    toggleShortcuts: () => setShowShortcuts(v => !v),
+  }));
+
+  // 섹션이 열린 뒤 대상 입력 칸으로 스크롤·포커스
+  useEffect(() => {
+    const req = pendingRevealRef.current;
+    if (!req) return;
+    const raf = requestAnimationFrame(() => {
+      pendingRevealRef.current = null;
+      const root = asideRef.current;
+      if (!root) return;
+      let el: HTMLElement | null = null;
+      if (req.key) {
+        el = root.querySelector<HTMLElement>(`[data-field="${req.key}"]`);
+      } else if (req.first) {
+        const section = root.querySelector<HTMLElement>(`[data-section-body="${openSection}"]`);
+        el = section?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ?? null;
+      }
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.remove('cf-input-flash');
+      void el.offsetWidth; // 애니메이션 재시작
+      el.classList.add('cf-input-flash');
+      window.setTimeout(() => el?.classList.remove('cf-input-flash'), 1300);
+      if (req.focus) el.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [revealTick, openSection]);
+
+  // 미입력·형식 오류 입력 칸 표시 (기존 입력 칸도 data-field 로 일괄 처리)
+  useEffect(() => {
+    const root = asideRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('[data-field]').forEach(el => {
+      const issue = issueSummary?.byKey.get(el.dataset.field || '');
+      el.classList.toggle('cf-input-missing', issue?.kind === 'missing');
+      el.classList.toggle('cf-input-invalid', issue?.kind === 'invalid');
+      if (issue) el.setAttribute('title', issue.message);
+      else el.removeAttribute('title');
+    });
+  });
+
+  /** Enter 이동: dir=1 다음, -1 이전. 섹션 끝이면 다음 섹션을 연다 */
+  const moveFocus = (from: HTMLElement, dir: 1 | -1) => {
+    const list = getFocusables();
+    const idx = list.indexOf(from);
+    const next = idx >= 0 ? list[idx + dir] : undefined;
+    if (next) {
+      next.focus();
+      if (next instanceof HTMLInputElement && (next.type === 'text' || next.type === 'number')) next.select();
+      return;
+    }
+    if (dir === 1) {
+      const curIdx = COURT_SECTION_ORDER.indexOf(openSection as typeof COURT_SECTION_ORDER[number]);
+      const nextSection = COURT_SECTION_ORDER[curIdx + 1];
+      if (nextSection) requestReveal(nextSection, { first: true, focus: true });
+    }
+  };
+
+  const handleAsideKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'Enter') return;
+    const t = e.target as HTMLElement;
+    const tag = t.tagName;
+    if (tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return;
+    // textarea 는 줄바꿈이 기본, Ctrl+Enter 로 이동
+    if (tag === 'TEXTAREA' && !(e.ctrlKey || e.metaKey)) return;
+    const dir: 1 | -1 = e.shiftKey ? -1 : 1;
+    e.preventDefault();
+    // 한글 조합 중 Enter: 조합이 끝난 뒤 이동해야 마지막 글자가 사라지지 않는다
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      pendingImeMoveRef.current = { target: t, dir };
+      return;
+    }
+    moveFocus(t, dir);
+  };
+
+  const handleCompositionEnd = () => {
+    const pending = pendingImeMoveRef.current;
+    if (!pending) return;
+    pendingImeMoveRef.current = null;
+    window.setTimeout(() => moveFocus(pending.target, pending.dir), 0);
+  };
+
+  const handleFocusCapture = (e: React.FocusEvent<HTMLElement>) => {
+    const key = (e.target as HTMLElement).closest<HTMLElement>('[data-field]')?.dataset.field ?? null;
+    onActiveFieldChange?.(key);
   };
 
   // 관할법원 변경 핸들러
@@ -132,9 +333,14 @@ export default function LawPassCourtFilingSidebar({
   };
 
   return (
-    <aside className="w-[430px] shrink-0 bg-slate-900 border-l border-slate-800 flex flex-col h-full overflow-hidden text-slate-200 select-none print:hidden">
+    <aside
+      ref={asideRef}
+      onKeyDown={handleAsideKeyDown}
+      onCompositionEnd={handleCompositionEnd}
+      onFocusCapture={handleFocusCapture}
+      className="w-[430px] shrink-0 bg-slate-900 border-l border-slate-800 flex flex-col h-full overflow-hidden text-slate-200 select-none print:hidden">
       {/* 1. 사이드바 상단 헤더 */}
-      <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+      <div className="relative px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
             <Sparkles className="w-4 h-4" />
@@ -142,11 +348,18 @@ export default function LawPassCourtFilingSidebar({
           <div>
             <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
               <span>정보 입력</span>
-              <span className="text-xs bg-blue-900/60 text-blue-300 px-1.5 py-0.5 rounded font-mono border border-blue-700/50">
-                LawPass 2025
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(v => !v)}
+                aria-expanded={showShortcuts}
+                className="press-scale inline-flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded-lg border border-slate-700 whitespace-nowrap"
+                title="단축키 안내 (?)"
+              >
+                <Keyboard className="w-3 h-3" />
+                단축키
+              </button>
             </h3>
-            <p className="text-xs text-slate-400">입력 즉시 좌측 법원 서식에 실시간 바인딩</p>
+            <p className="text-xs text-slate-400">입력 칸을 누르면 왼쪽 서식에서 위치가 표시됩니다</p>
           </div>
         </div>
 
@@ -157,6 +370,23 @@ export default function LawPassCourtFilingSidebar({
             {data.court.courtName}
           </div>
         </div>
+
+        {showShortcuts && (
+          <div className="absolute left-4 right-4 top-full mt-2 z-20 rounded-2xl border border-slate-700 bg-slate-950 shadow-xl p-4 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-bold text-white">키보드 단축키</span>
+              <button type="button" onClick={() => setShowShortcuts(false)} className="text-slate-400 hover:text-white px-1">닫기</button>
+            </div>
+            <ul className="divide-y divide-slate-800">
+              {COURT_EDITOR_SHORTCUTS.map(s => (
+                <li key={s.keys} className="flex items-center justify-between py-1.5">
+                  <span className="text-slate-300">{s.desc}</span>
+                  <kbd className="font-mono text-[11px] text-slate-200 bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 whitespace-nowrap">{s.keys}</kbd>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* 2. 아코디언 스크롤 영역 */}
@@ -174,17 +404,18 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <User className="w-4 h-4 text-blue-400" />
               <span className="text-xs font-bold text-slate-100">기본 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.basic} />
               <span className="text-xs text-slate-500 font-mono">신청인·대리인·법원</span>
             </div>
             {openSection === 'basic' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'basic' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="basic" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">신청인 성명</label>
-                  <input
+                  <input data-field="debtor.name"
                     type="text"
                     value={data.debtor.name}
                     onChange={(e) => updateMaster(prev => ({
@@ -196,7 +427,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">주민등록번호</label>
-                  <input
+                  <input data-field="debtor.residentNumber"
                     type="text"
                     value={data.debtor.residentNumber}
                     onChange={(e) => updateMaster(prev => ({
@@ -211,7 +442,7 @@ export default function LawPassCourtFilingSidebar({
               <div>
                 <label className="text-xs text-slate-400 block mb-1">신청인 주민등록주소</label>
                 <div className="flex gap-1.5">
-                  <input
+                  <input data-field="debtor.residentAddress"
                     type="text"
                     value={data.debtor.residentAddress}
                     onChange={(e) => updateMaster(prev => ({
@@ -231,7 +462,7 @@ export default function LawPassCourtFilingSidebar({
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">신청인 현거주지 주소</label>
-                <input
+                <input data-field="debtor.currentAddress"
                   type="text"
                   value={data.debtor.currentAddress}
                   onChange={(e) => updateMaster(prev => ({
@@ -245,7 +476,7 @@ export default function LawPassCourtFilingSidebar({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">송달 영수인</label>
-                  <input
+                  <input data-field="debtor.serviceRecipient"
                     type="text"
                     value={data.debtor.serviceRecipient}
                     onChange={(e) => updateMaster(prev => ({
@@ -257,7 +488,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">휴대전화 번호</label>
-                  <input
+                  <input data-field="debtor.phone"
                     type="text"
                     value={data.debtor.phone}
                     onChange={(e) => updateMaster(prev => ({
@@ -267,6 +498,13 @@ export default function LawPassCourtFilingSidebar({
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
+              </div>
+
+              <RegField k="debtor.serviceAddress" data={data} issueSummary={issueSummary} onChange={updateField} placeholder="송달받을 주소" />
+
+              <div className="grid grid-cols-2 gap-2">
+                <RegField k="debtor.homePhone" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="02-000-0000" />
+                <RegField k="court.applicationDate" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="2026. 10. 3." />
               </div>
 
               <div>
@@ -317,7 +555,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">사건번호</label>
-                  <input
+                  <input data-field="court.caseNumber"
                     type="text"
                     value={data.court.caseNumber}
                     onChange={(e) => updateMaster(prev => ({
@@ -356,13 +594,14 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <FileText className="w-4 h-4 text-emerald-400" />
               <span className="text-xs font-bold text-slate-100">진술서 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.statement} />
               <span className="text-xs text-slate-500 font-mono">경력·주거·채무경위</span>
             </div>
             {openSection === 'statement' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'statement' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="statement" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">현재 주거상황 구분</label>
                 <div className="space-y-1.5 bg-slate-800/60 p-2.5 rounded-lg border border-slate-700 text-xs">
@@ -448,7 +687,7 @@ export default function LawPassCourtFilingSidebar({
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">【별지】 채무 부담 경위서 상세</label>
-                <textarea
+                <textarea data-field="statement.detailedReasonEssay"
                   rows={4}
                   value={data.statement.detailedReasonEssay}
                   onChange={(e) => updateMaster(prev => ({
@@ -486,6 +725,7 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <ListOrdered className="w-4 h-4 text-purple-400" />
               <span className="text-xs font-bold text-slate-100">채권 목록 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.creditor} />
               <span className="text-xs text-purple-300 font-mono bg-purple-900/40 px-1.5 py-0.5 rounded">
                 {data.creditors.length}개 기관
               </span>
@@ -494,7 +734,7 @@ export default function LawPassCourtFilingSidebar({
           </button>
 
           {openSection === 'creditor' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="creditor" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               <div className="space-y-1 bg-slate-800/60 p-2.5 rounded-lg border border-slate-700">
                 <label className="text-xs text-slate-400 block mb-1">변제 유형 선택</label>
                 <div className="space-y-1 text-xs">
@@ -630,13 +870,14 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Paperclip className="w-4 h-4 text-amber-400" />
               <span className="text-xs font-bold text-slate-100">부속서류 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.annex} />
               <span className="text-xs text-amber-300 font-mono">별제권·다툼·전부</span>
             </div>
             {openSection === 'annex' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'annex' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="annex" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               {/* 서브 탭 */}
               <div className="flex border-b border-slate-800 text-xs">
                 {(['secured', 'disputed', 'assignment', 'etc'] as const).map((tab) => {
@@ -655,7 +896,7 @@ export default function LawPassCourtFilingSidebar({
                 })}
               </div>
 
-              {/* 서울회생법원 실무기준 안내 박스 (로패스 규격 노란 박스) */}
+              {/* 서울회생법원 실무기준 안내 박스 */}
               <div className="p-2.5 bg-amber-950/40 border border-amber-600/40 rounded-lg text-amber-200 text-xs leading-relaxed">
                 <div className="font-bold flex items-center gap-1 text-amber-300 mb-1">
                   <Info className="w-3.5 h-3.5" />
@@ -702,6 +943,7 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Coins className="w-4 h-4 text-yellow-400" />
               <span className="text-xs font-bold text-slate-100">재산 목록 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.assets} />
               <span className="text-xs text-slate-400 font-mono">
                 청산가치 {data.repaymentSummary.liquidationValue.toLocaleString()}원
               </span>
@@ -710,7 +952,7 @@ export default function LawPassCourtFilingSidebar({
           </button>
 
           {openSection === 'assets' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="assets" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               {/* 예금 섹션 */}
               <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 space-y-2">
                 <div className="flex justify-between items-center">
@@ -722,7 +964,7 @@ export default function LawPassCourtFilingSidebar({
                     <span>압류금지 공제금액</span>
                     <span className="text-yellow-400 font-semibold">최대 250만원</span>
                   </div>
-                  <input
+                  <input data-field="assets.bankDeduction"
                     type="number"
                     max={2500000}
                     value={data.assets.bankDeduction}
@@ -752,7 +994,7 @@ export default function LawPassCourtFilingSidebar({
                     <span>압류금지 보장성보험 공제금액</span>
                     <span className="text-yellow-400 font-semibold">최대 250만원</span>
                   </div>
-                  <input
+                  <input data-field="assets.insuranceDeduction"
                     type="number"
                     max={2500000}
                     value={data.assets.insuranceDeduction}
@@ -803,17 +1045,18 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Calculator className="w-4 h-4 text-cyan-400" />
               <span className="text-xs font-bold text-slate-100">수입 및 지출 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.income} />
               <span className="text-xs text-cyan-300 font-mono">생계비 2026 기준</span>
             </div>
             {openSection === 'income' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'income' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="income" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">월 평균 세후 소득</label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <input data-field="repaymentSummary.monthlyNetIncome"
                     type="number"
                     step={10000}
                     value={data.repaymentSummary.monthlyNetIncome}
@@ -830,7 +1073,12 @@ export default function LawPassCourtFilingSidebar({
                 </div>
               </div>
 
-              {/* 2026년 기준중위소득 60% 원클릭 선택 버튼 그리드 (로패스 규격) */}
+              <div className="grid grid-cols-2 gap-2">
+                <RegField k="debtor.jobTitle" data={data} issueSummary={issueSummary} onChange={updateField} placeholder="예: 사원" />
+                <RegField k="debtor.tenureYearsMonths" data={data} issueSummary={issueSummary} onChange={updateField} placeholder="예: 3년 2개월" />
+              </div>
+
+              {/* 2026년 기준중위소득 60% 원클릭 선택 버튼 그리드 */}
               <div>
                 <label className="text-xs text-slate-400 block mb-1.5 flex justify-between items-center">
                   <span>2026년 기준중위소득 60% 생계비 (가구수 클릭)</span>
@@ -896,13 +1144,22 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Calendar className="w-4 h-4 text-indigo-400" />
               <span className="text-xs font-bold text-slate-100">변제계획안 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.plan} />
               <span className="text-xs text-indigo-300 font-mono">특약 원클릭 삽입</span>
             </div>
             {openSection === 'plan' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'plan' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="plan" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+              <div className="grid grid-cols-2 gap-2">
+                <RegField k="repaymentSummary.repaymentMonths" type="number" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="36" />
+                <RegField k="court.firstRepaymentDate" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="2026. 12. 25." />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <RegField k="debtor.refundBank" data={data} issueSummary={issueSummary} onChange={updateField} placeholder="예: 국민" />
+                <RegField k="debtor.refundAccount" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="신청인 본인 계좌" />
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">회생위원 계좌 은행</label>
@@ -930,7 +1187,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
               </div>
 
-              {/* 5대 특약 문구 원클릭 추가 버튼 그룹 (로패스 2025 핵심 기능) */}
+              {/* 5대 특약 문구 원클릭 추가 버튼 그룹 */}
               <div>
                 <label className="text-xs text-slate-400 block mb-1.5 flex items-center gap-1">
                   <span>법원 필수 특약 문구 원클릭 추가 (클릭 시 토글)</span>
@@ -994,17 +1251,18 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Shield className="w-4 h-4 text-emerald-400" />
               <span className="text-xs font-bold text-slate-100">대리인 정보</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.lawyer} />
               <span className="text-xs text-slate-400 font-mono">{data.lawyer.firmName}</span>
             </div>
             {openSection === 'lawyer' ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
           </button>
 
           {openSection === 'lawyer' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+            <div data-section-body="lawyer" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">대리인 법률사무소</label>
-                  <input
+                  <input data-field="lawyer.firmName"
                     type="text"
                     value={data.lawyer.firmName}
                     onChange={(e) => updateMaster(prev => ({
@@ -1016,7 +1274,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">담당 변호사 성명</label>
-                  <input
+                  <input data-field="lawyer.lawyerName"
                     type="text"
                     value={data.lawyer.lawyerName}
                     onChange={(e) => updateMaster(prev => ({
@@ -1030,7 +1288,7 @@ export default function LawPassCourtFilingSidebar({
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">사무실 주소</label>
-                <input
+                <input data-field="lawyer.address"
                   type="text"
                   value={data.lawyer.address}
                   onChange={(e) => updateMaster(prev => ({
@@ -1044,7 +1302,7 @@ export default function LawPassCourtFilingSidebar({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">사무실 전화</label>
-                  <input
+                  <input data-field="lawyer.phone"
                     type="text"
                     value={data.lawyer.phone}
                     onChange={(e) => updateMaster(prev => ({
@@ -1056,7 +1314,7 @@ export default function LawPassCourtFilingSidebar({
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">FAX 번호</label>
-                  <input
+                  <input data-field="lawyer.fax"
                     type="text"
                     value={data.lawyer.fax}
                     onChange={(e) => updateMaster(prev => ({
@@ -1067,6 +1325,8 @@ export default function LawPassCourtFilingSidebar({
                   />
                 </div>
               </div>
+
+              <RegField k="lawyer.email" data={data} issueSummary={issueSummary} onChange={updateField} mono placeholder="name@lawfirm.com" />
             </div>
           )}
         </div>
@@ -1083,6 +1343,7 @@ export default function LawPassCourtFilingSidebar({
             <div className="flex items-center gap-2.5">
               <Layers className="w-4 h-4 text-pink-400" />
               <span className="text-xs font-bold text-slate-100">자료 제출 (법원별 제출목록)</span>
+              <SectionIssueBadge count={issueSummary?.countBySection.evidence} />
               <span className="text-xs text-pink-300 font-mono bg-pink-900/40 px-1.5 py-0.5 rounded">
                 HWP 다운로드
               </span>
@@ -1091,8 +1352,8 @@ export default function LawPassCourtFilingSidebar({
           </button>
 
           {openSection === 'evidence' && (
-            <div className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
-              {/* 관할법원 4개 권역 선택 버튼 (로패스 스크린샷 192212 규격) */}
+            <div data-section-body="evidence" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+              {/* 관할법원 4개 권역 선택 버튼 */}
               <div className="space-y-1.5">
                 <label className="text-xs text-slate-400 block">관할 권역별 표준 서식 다운로드</label>
                 {(['NATIONWIDE', 'GANGNEUNG', 'DAEJEON', 'CHEONGJU'] as CourtJurisdiction[]).map((jId) => {
@@ -1175,4 +1436,6 @@ export default function LawPassCourtFilingSidebar({
       </div>
     </aside>
   );
-}
+});
+
+export default CourtFilingInputSidebar;

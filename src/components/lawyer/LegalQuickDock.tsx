@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Sparkles, X, Settings2, RotateCcw, Move, EyeOff, Minimize2, Calculator, Search,
+  Sparkles, X, Settings2, RotateCcw, Move, EyeOff, Minimize2, Calculator, Search, MessageSquarePlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,9 +13,11 @@ import { useDraggableDock } from './quickdock/useDraggableDock';
 import ToolCustomizerModal from './quickdock/ToolCustomizerModal';
 import FloatingToolWindow from './quickdock/FloatingToolWindow';
 import { getDockCaseHandlers, getDockShared } from './quickdock/dockShared';
+import LawyerFeedbackModal from './feedback/LawyerFeedbackModal';
 
 interface LegalQuickDockProps {
   onOpenAlimtok?: () => void;
+  onOpenFeedback?: () => void;
 }
 
 export type DockVisibilityMode = 'normal' | 'minimized' | 'hidden';
@@ -50,6 +52,7 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
   // 상태 관리
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [activeToolId, setActiveToolId] = useState<QuickToolId | null>(null);
   /**
    * 메뉴에서 도구를 고를 때마다 1씩 증가 → 접혀 있던 도구 창을 다시 펼친다.
@@ -519,17 +522,36 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
 
               {/* 하단 관리 바 (기능 추가/삭제 바로가기, 숨기기 & 위치 복원) */}
               <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between px-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    setIsCustomizerOpen(true);
-                  }}
-                  className="flex items-center gap-1 text-[#1E3A5F] hover:text-[#163152] font-bold transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>기능 설정 ({enabledToolIds.length})</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsCustomizerOpen(true);
+                    }}
+                    className="flex items-center gap-1 text-[#1E3A5F] hover:text-[#163152] font-bold transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>기능 설정 ({enabledToolIds.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      if (onOpenFeedback) {
+                        onOpenFeedback();
+                      } else {
+                        setIsFeedbackOpen(true);
+                      }
+                    }}
+                    className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer whitespace-nowrap"
+                    title="실무 중 필요한 서식이나 기능 개선사항을 제안합니다"
+                  >
+                    <MessageSquarePlus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>개선 제안</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <button
@@ -610,6 +632,15 @@ export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
         visibilityMode={visibilityMode}
         onSetVisibility={handleSetVisibility}
       />
+
+      {/* ── 변호사·실무관 개선 제안 & 피드백 모달 ── */}
+      {isFeedbackOpen && (
+        <LawyerFeedbackModal
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
+          currentScreen="실무 퀵툴"
+        />
+      )}
     </>
   );
 }

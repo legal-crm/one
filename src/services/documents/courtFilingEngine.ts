@@ -1,7 +1,7 @@
 /**
  * courtFilingEngine.ts
  * 대법원 전자소송 개인회생 표준 서식 데이터 바인딩 및 법적 인가요건/비용 산정 엔진
- * (로패스 2025 실무 분할형 및 대법원/대전/강릉/청주 4대 관할법원 제출목록 전수 분석 기반)
+ * (실무 분할형 및 대법원/대전/강릉/청주 4대 관할법원 제출목록 전수 분석 기반)
  */
 
 import type { ConsultRequest, CrmClientExtension } from '../../types';
@@ -277,7 +277,7 @@ export interface CourtFilingMasterData {
   assignmentCreditors: RepaymentCreditor[];
   guarantyCreditors: RepaymentCreditor[];
 
-  // 6. 재산 상세 (로패스 규격 7종)
+  // 6. 재산 상세 (7종)
   assets: {
     cash: number;
     bankAccounts: { bankName: string; accountNumber: string; balance: number }[];

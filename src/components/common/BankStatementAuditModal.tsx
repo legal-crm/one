@@ -13,7 +13,8 @@ import {
   calculateAuditStats, 
   parseExcelBankStatement, 
   parseRawBankStatementText,
-  exportAuditStatementToExcel
+  exportAuditStatementToExcel,
+  classifyTransactionRisk
 } from '../../services/bankAuditService';
 import { analyzePreFilingRisks, getRiskBadgeSummary, buildMoneyTrailReport } from '../../services/riskDetectionService';
 import type { MoneyTrailReport } from '../../services/riskDetectionService';
@@ -29,6 +30,8 @@ interface BankStatementAuditModalProps {
   onSyncToCrmCorrection?: (resolvedItems: AuditTransactionItem[]) => void;
   isClientMode?: boolean; // 의뢰인 마이페이지용 모드 여부
 }
+
+export type IssuePresetType = 'ALL' | 'HIGH_RISK' | 'HIGH_AMOUNT' | 'ATM_CASH' | 'FAMILY_TRANSFER' | 'DEBT_PAYMENT' | 'UNRESOLVED';
 
 // 닫혀 있을 때는 내부 컴포넌트를 아예 만들지 않는다.
 // (이전: 훅보다 앞에서 `if (!isOpen) return null` → 부모가 항상 렌더링한 채 열면 훅 개수가 달라져 React 오류로 화면이 멈춤)
@@ -53,6 +56,9 @@ function BankStatementAuditModalInner({
   // 현재 목록이 예시(샘플) 데이터인지 — 파일 불러오기·붙여넣기로 실제 내역이 들어오면 false
   const [isSampleData, setIsSampleData] = useState<boolean>(!isClientMode);
   const courtLabel = String(courtName || '').trim() || '관할 법원 확인 필요';
+
+  // 스마트 이슈 프리셋 필터 상태
+  const [issuePreset, setIssuePreset] = useState<IssuePresetType>('ALL');
 
   // 필터 상태
   const [thresholdAmount, setThresholdAmount] = useState<number>(500000); // 기본 50만원 이상
@@ -84,11 +90,47 @@ function BankStatementAuditModalInner({
   const hasAuditTargets = stats.thresholdCount > 0;
   const resolvedRateLabel = hasAuditTargets ? `${stats.resolvedRate}%` : '-';
 
+  // 6대 스마트 프리셋별 건수 집계
+  const presetCounts = useMemo(() => {
+    let highRisk = 0;
+    let highAmount = 0;
+    let atm = 0;
+    let family = 0;
+    let debt = 0;
+    let unresolved = 0;
+
+    for (const item of items) {
+      if (item.riskCategory === 'DANGER_SPECULATION' || item.riskCategory === 'DANGER_LUXURY') highRisk++;
+      if (item.amount >= 1000000) highAmount++;
+      if (item.transactionType === 'ATM_CASH' || item.riskCategory === 'CAUTION_CASH') atm++;
+      if (item.riskCategory === 'CAUTION_TRANSFER') family++;
+      if (item.riskCategory === 'SAFE_DEBT') debt++;
+      if (!item.isResolved || !item.explanation?.trim()) unresolved++;
+    }
+
+    return { highRisk, highAmount, atm, family, debt, unresolved };
+  }, [items]);
+
   // 필터링 및 정렬된 목록
   const filteredItems = useMemo(() => {
     let list = items.filter(item => {
-      // 1. 금액 기준 필터
-      if (thresholdAmount > 0 && item.amount < thresholdAmount) return false;
+      // 0. 스마트 이슈 프리셋 필터 (최우선 적용)
+      if (issuePreset === 'HIGH_RISK') {
+        if (item.riskCategory !== 'DANGER_SPECULATION' && item.riskCategory !== 'DANGER_LUXURY') return false;
+      } else if (issuePreset === 'HIGH_AMOUNT') {
+        if (item.amount < 1000000) return false;
+      } else if (issuePreset === 'ATM_CASH') {
+        if (item.transactionType !== 'ATM_CASH' && item.riskCategory !== 'CAUTION_CASH') return false;
+      } else if (issuePreset === 'FAMILY_TRANSFER') {
+        if (item.riskCategory !== 'CAUTION_TRANSFER') return false;
+      } else if (issuePreset === 'DEBT_PAYMENT') {
+        if (item.riskCategory !== 'SAFE_DEBT') return false;
+      } else if (issuePreset === 'UNRESOLVED') {
+        if (item.isResolved && item.explanation.trim()) return false;
+      }
+
+      // 1. 금액 기준 필터 (프리셋이 HIGH_AMOUNT가 아닐 때 적용)
+      if (issuePreset !== 'HIGH_AMOUNT' && thresholdAmount > 0 && item.amount < thresholdAmount) return false;
 
       // 2. 거래 구분 필터
       if (typeFilter !== 'ALL' && item.transactionType !== typeFilter) return false;
@@ -127,7 +169,7 @@ function BankStatementAuditModalInner({
       }
       return 0;
     });
-  }, [items, thresholdAmount, typeFilter, statusFilter, riskFilter, sortBy, searchQuery]);
+  }, [items, issuePreset, thresholdAmount, typeFilter, statusFilter, riskFilter, sortBy, searchQuery]);
 
   // 개별 소명 문구 수정
   const handleExplanationChange = (id: string, text: string) => {
@@ -157,6 +199,40 @@ function BankStatementAuditModalInner({
       return item;
     }));
     toast.success('표준 소명 문구가 적용되었습니다.');
+  };
+
+  // 필터링된 항목들에 표준 소명 문구 일괄 적용
+  const handleBatchApplyPreset = (targetTemplateId: string) => {
+    const tpl = AUDIT_PRESET_TEMPLATES.find(p => p.id === targetTemplateId);
+    if (!tpl) return;
+    const targetIds = new Set(filteredItems.map(i => i.id));
+    if (targetIds.size === 0) {
+      toast.info('적용할 대상 거래가 없습니다.');
+      return;
+    }
+    setItems(prev => prev.map(item => {
+      if (targetIds.has(item.id)) {
+        return {
+          ...item,
+          explanation: item.explanation.trim() ? item.explanation : tpl.templateText,
+          evidenceType: item.evidenceType ? item.evidenceType : tpl.suggestedEvidence,
+          isResolved: true
+        };
+      }
+      return item;
+    }));
+    toast.success(`표시된 ${targetIds.size}건에 [${tpl.name}] 표준 소명을 적용했습니다.`);
+  };
+
+  // AI 추천 소명 즉시 1초 적용
+  const handleQuickAiRecommend = (item: AuditTransactionItem) => {
+    const classified = classifyTransactionRisk(item.counterparty, item.transactionType, item.amount);
+    if (classified.defaultExplanation) {
+      handleApplyPreset(item.id, classified.defaultExplanation, classified.defaultEvidence);
+    } else {
+      const fallback = AUDIT_PRESET_TEMPLATES[0];
+      handleApplyPreset(item.id, fallback.templateText, fallback.suggestedEvidence);
+    }
   };
 
   // 증빙 서류명 수정
@@ -581,9 +657,130 @@ function BankStatementAuditModalInner({
           </div>
         )}
 
-        {/* ═══ 3. 컨트롤 툴바 (금액 필터, 검색, 파일 업로드) ═══ */}
+        {/* ═══ 3. 컨트롤 툴바 (스마트 이슈 프리셋, 금액 필터, 검색, 파일 업로드) ═══ */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0 text-xs print:hidden">
           
+          {/* 0행: 법원 단골 지적 6대 스마트 원클릭 이슈 프리셋 */}
+          <div className="space-y-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>법원 단골 지적 이슈 원클릭 필터:</span>
+              </span>
+              {issuePreset !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setIssuePreset('ALL')}
+                  className="text-[10px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+                >
+                  필터 초기화 (전체 보기)
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'ALL', label: '전체 거래', count: items.length },
+                { id: 'HIGH_RISK', label: '🚨 주식·코인·사행', count: presetCounts.highRisk },
+                { id: 'HIGH_AMOUNT', label: '💸 100만↑ 고액', count: presetCounts.highAmount },
+                { id: 'ATM_CASH', label: '🏧 ATM 현금출금', count: presetCounts.atm },
+                { id: 'FAMILY_TRANSFER', label: '👨‍👩‍👧 가족·친족 송금', count: presetCounts.family },
+                { id: 'DEBT_PAYMENT', label: '💳 대출·카드상환', count: presetCounts.debt },
+                { id: 'UNRESOLVED', label: '⚠️ 미소명 건만', count: presetCounts.unresolved },
+              ].map(preset => {
+                const isActive = issuePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setIssuePreset(preset.id as IssuePresetType)}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm ring-2 ring-indigo-500'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>{preset.label}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                      isActive 
+                        ? 'bg-indigo-500 text-white' 
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      {preset.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 활성화된 프리셋 실무 가이드 및 일괄 적용 바 */}
+            {issuePreset !== 'ALL' && (
+              <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs animate-fadeIn">
+                <div className="space-y-0.5">
+                  <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>
+                      {issuePreset === 'HIGH_RISK' && '법원 심사 주의: 가상자산/주식/도박 거래는 입출금 내역서 및 손실증명원 필수'}
+                      {issuePreset === 'HIGH_AMOUNT' && '법원 심사 주의: 100만 원 이상 고액 출금은 거래처 및 자금 귀속처 상세 소명 필수'}
+                      {issuePreset === 'ATM_CASH' && '법원 심사 주의: 현금인출은 은닉 추정을 방지하기 위해 생활비 지출 메모 복원 필수'}
+                      {issuePreset === 'FAMILY_TRANSFER' && '법원 심사 주의: 가족/친족 송금은 편파변제 의심 방지를 위해 차용증 또는 생활비 증빙 필수'}
+                      {issuePreset === 'DEBT_PAYMENT' && '법원 심사 주의: 신청 직전 특정 채무 변제는 편파변제(부인권) 검토 대상'}
+                      {issuePreset === 'UNRESOLVED' && '소명서 완성: 미소명 건이 남아있으면 추가 보정명령이 발령되므로 전건 소명 작성 필요'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    권장 증빙: {
+                      issuePreset === 'HIGH_RISK' ? '거래소 출입금내역서 / 손실증명원' :
+                      issuePreset === 'HIGH_AMOUNT' ? '세금계산서 / 계좌이체증 / 계약서 사본' :
+                      issuePreset === 'ATM_CASH' ? '가계부 지출 메모 / 병원·마트 영수증' :
+                      issuePreset === 'FAMILY_TRANSFER' ? '가족관계증명서 / 주민등록등본 / 차용증' :
+                      issuePreset === 'DEBT_PAYMENT' ? '대환 송금확인증 / 금융거래확인서' : '거래 영수증 / 소명 메모'
+                    }
+                  </div>
+                </div>
+                {filteredItems.length > 0 && (
+                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                    {issuePreset === 'HIGH_RISK' && (
+                      <button
+                        type="button"
+                        onClick={() => handleBatchApplyPreset('preset-speculation')}
+                        className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer active:scale-[0.98]"
+                      >
+                        📉 주식·코인 표준소명 일괄적용 ({filteredItems.length}건)
+                      </button>
+                    )}
+                    {issuePreset === 'ATM_CASH' && (
+                      <button
+                        type="button"
+                        onClick={() => handleBatchApplyPreset('preset-cash')}
+                        className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer active:scale-[0.98]"
+                      >
+                        💵 단순 현금인출 소명 일괄적용 ({filteredItems.length}건)
+                      </button>
+                    )}
+                    {issuePreset === 'FAMILY_TRANSFER' && (
+                      <button
+                        type="button"
+                        onClick={() => handleBatchApplyPreset('preset-family')}
+                        className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer active:scale-[0.98]"
+                      >
+                        👨‍👩‍👧 가족 생활비 소명 일괄적용 ({filteredItems.length}건)
+                      </button>
+                    )}
+                    {issuePreset === 'DEBT_PAYMENT' && (
+                      <button
+                        type="button"
+                        onClick={() => handleBatchApplyPreset('preset-debt')}
+                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer active:scale-[0.98]"
+                      >
+                        💳 대출상환 소명 일괄적용 ({filteredItems.length}건)
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* 1행: 금액 기준 필터 칩 & 샘플/업로드 액션 */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             
@@ -956,6 +1153,17 @@ function BankStatementAuditModalInner({
                           <span className="font-mono font-black text-base text-rose-600 dark:text-rose-400">
                             -{item.amount.toLocaleString()}원
                           </span>
+                          {!item.explanation.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAiRecommend(item)}
+                              className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-[10px] flex items-center gap-1 transition-all active:scale-[0.98] cursor-pointer shadow-2xs whitespace-nowrap"
+                              title="법원 판례 및 키워드 기반 추천 소명 문구를 즉시 적용합니다"
+                            >
+                              <Sparkles className="w-3 h-3 text-amber-500" />
+                              <span>추천 소명 1초 입력</span>
+                            </button>
+                          )}
                           {item.isResolved && item.explanation.trim() ? (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
@@ -984,17 +1192,29 @@ function BankStatementAuditModalInner({
                           <span>원클릭 표준 소명 문구 선택:</span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {AUDIT_PRESET_TEMPLATES.map(preset => (
-                            <button
-                              key={preset.id}
-                              type="button"
-                              onClick={() => handleApplyPreset(item.id, preset.templateText, preset.suggestedEvidence)}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/70 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-600 text-[11px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 transition-colors flex items-center gap-1 cursor-pointer active:scale-[0.98]"
-                            >
-                              <span>{preset.icon}</span>
-                              <span>{preset.name}</span>
-                            </button>
-                          ))}
+                          {AUDIT_PRESET_TEMPLATES.map(preset => {
+                            const isRecommended = preset.category === item.riskCategory;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => handleApplyPreset(item.id, preset.templateText, preset.suggestedEvidence)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-[0.98] ${
+                                  isRecommended
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-400'
+                                    : 'bg-slate-100 dark:bg-slate-700/70 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600'
+                                }`}
+                              >
+                                <span>{preset.icon}</span>
+                                <span>{preset.name}</span>
+                                {isRecommended && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200 font-black">
+                                    추천
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 

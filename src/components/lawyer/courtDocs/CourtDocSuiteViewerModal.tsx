@@ -1,28 +1,36 @@
 /**
  * CourtDocSuiteViewerModal.tsx
  * 대법원 전자소송 개인회생 13종 표준 서식 통합 웹 위지윅(WYSIWYG) 에디터 & 인쇄/PDF 뷰어 모달
- * - 로패스(LawPass 2025) Split-Screen 실시간 양방향 반응형 인터페이스 (Live-Binding Dual Screen)
+ * - Split-Screen 실시간 양방향 반응형 인터페이스 (Live-Binding Dual Screen)
  * - 상단 12개 가로형 서식 탭 ([표지] ~ [자료 제출] + [전체 일괄])
  * - 좌측 62%: A4 실시간 캔버스 (대법원 바탕체 표준 규격)
- * - 우측 38%: LawPassCourtFilingSidebar (스마트 아코디언 입력 폼 & 5대 특약 원클릭 삽입기)
+ * - 우측 38%: CourtFilingInputSidebar (스마트 아코디언 입력 폼 & 5대 특약 원클릭 삽입기)
  * - 4대 관할법원(전국공통, 강릉지원, 대전지법, 청주지법) 자료제출목록 동적 전환 및 HWP 원본 다운로드
  * - 110~140p 첨부 직결(Interleaved) 완성본 번들 PDF 머징 연동
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   X, Printer, Download, Save, Edit3, CheckCircle2, 
   AlertTriangle, FileText, Layers, RefreshCw, ZoomIn, 
   ZoomOut, ShieldCheck, Scale, Sparkles, FolderArchive,
-  PanelRightClose, PanelRightOpen, ArrowRight, Eye
+  PanelRightClose, PanelRightOpen, ArrowRight, Eye, AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ModalPortal from '../../common/ModalPortal';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   buildCourtFilingMasterData, 
+  recalculateMasterData,
+  getEvidenceListForJurisdiction,
   type CourtFilingMasterData 
 } from '../../../services/documents/courtFilingEngine';
+import {
+  computeFieldIssues,
+  summarizeFieldIssues,
+  getFieldDef,
+  type CourtDocTabKey,
+} from '../../../services/documents/courtFieldRegistry';
 import { 
   SummaryAndUrgentNoticeDoc,
   PetitionCoverDoc,
@@ -38,10 +46,51 @@ import {
   EvidenceSubmissionListDoc,
   PowerOfAttorneyAndPledgeDoc
 } from './CourtFilingDocTemplates';
-import LawPassCourtFilingSidebar from './LawPassCourtFilingSidebar';
+import CourtFilingInputSidebar, { type CourtFilingInputSidebarHandle } from './CourtFilingInputSidebar';
+import { useCourtEditorHotkeys } from './useCourtEditorHotkeys';
+import { exportCourtPagesToPdf } from '../../../services/documents/courtPdfExportService';
 import { exportCourtFilingCompleteBundle } from '../../../services/documents/courtFilingBundleService';
 import { downloadFilledHwpx, HWPX_TEMPLATE_CATALOG } from '../../../services/court/hwpxTemplateEngine';
 import { mapMasterDataToHwpxFields, type CourtFormType } from '../../../services/court/hwpxFieldMapper';
+
+/**
+ * 편집기에서 사용자가 직접 입력한 값 묶음.
+ * CRM 원본(채권자 등)은 매번 새로 만들고, 사용자가 입력한 인적사항·일정은 이 초안으로 덮어쓴다.
+ */
+type CourtFilingDraft = Pick<CourtFilingMasterData, 'debtor' | 'lawyer' | 'court' | 'statement' | 'trusteeAccount'> & {
+  repaymentSummary?: Partial<CourtFilingMasterData['repaymentSummary']>;
+  courtJurisdiction?: CourtFilingMasterData['courtJurisdiction'];
+};
+
+const DRAFT_SUMMARY_KEYS = [
+  'monthlyNetIncome', 'householdSize', 'medianIncomeAmount', 'medianIncomeRatio',
+  'monthlyLivingCost', 'additionalLivingCost', 'repaymentMonths',
+] as const;
+
+function extractDraft(d: CourtFilingMasterData): CourtFilingDraft {
+  const summary: Partial<CourtFilingMasterData['repaymentSummary']> = {};
+  DRAFT_SUMMARY_KEYS.forEach(k => { (summary as Record<string, unknown>)[k] = d.repaymentSummary[k]; });
+  return {
+    debtor: d.debtor, lawyer: d.lawyer, court: d.court, statement: d.statement,
+    trusteeAccount: d.trusteeAccount, repaymentSummary: summary, courtJurisdiction: d.courtJurisdiction,
+  };
+}
+
+function applyDraft(base: CourtFilingMasterData, draft?: Partial<CourtFilingDraft> | null): CourtFilingMasterData {
+  if (!draft || typeof draft !== 'object') return base;
+  const jurisdiction = draft.courtJurisdiction ?? base.courtJurisdiction;
+  return recalculateMasterData({
+    ...base,
+    courtJurisdiction: jurisdiction,
+    evidenceList: jurisdiction !== base.courtJurisdiction ? getEvidenceListForJurisdiction(jurisdiction) : base.evidenceList,
+    debtor: { ...base.debtor, ...(draft.debtor || {}) },
+    lawyer: { ...base.lawyer, ...(draft.lawyer || {}) },
+    court: { ...base.court, ...(draft.court || {}) },
+    statement: { ...base.statement, ...(draft.statement || {}) },
+    trusteeAccount: { ...base.trusteeAccount, ...(draft.trusteeAccount || {}) },
+    repaymentSummary: { ...base.repaymentSummary, ...(draft.repaymentSummary || {}) },
+  });
+}
 
 // ── 법원 원본 1:1 양식 컴포넌트 (HWPX 파싱 기반) ──
 import { PetitionFormD5100 } from './forms/PetitionFormD5100';
@@ -121,9 +170,10 @@ function CourtDocSuiteViewerModalInner({
     return 'PETITION_BODY';
   };
 
-  // 데이터 바인딩
+  // 데이터 바인딩 (CRM 원본 + 이전에 저장한 편집 초안)
   const [masterData, setMasterData] = useState<CourtFilingMasterData>(() => {
-    return buildCourtFilingMasterData(clientRequest, crmExt, activeLawyerName);
+    const base = buildCourtFilingMasterData(clientRequest, crmExt, activeLawyerName);
+    return applyDraft(base, (crmExt?.courtCase as Record<string, any> | undefined)?.courtFilingDraft);
   });
 
   const [activeTab, setActiveTab] = useState<DocTabId>(resolveInitialTab);
@@ -133,7 +183,17 @@ function CourtDocSuiteViewerModalInner({
   const [fontSize, setFontSize] = useState<string>('text-[12px]');
   const [zoomLevel, setZoomLevel] = useState<number>(95);
   const [isBundling, setIsBundling] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const printAreaRef = useRef<HTMLDivElement | null>(null);
+  const sidebarRef = useRef<CourtFilingInputSidebarHandle | null>(null);
+
+  // 입력 칸 ↔ 서식 매핑: 현재 선택된 필드 키
+  const [activeFieldKey, setActiveFieldKey] = useState<string | null>(null);
+  // 입력 칸에서 온 선택이면 서식 쪽을 해당 위치로 스크롤
+  const scrollCanvasRef = useRef(false);
+
+  // 미입력·형식 오류
+  const issueSummary = useMemo(() => summarizeFieldIssues(computeFieldIssues(masterData)), [masterData]);
 
   // initialTab 또는 initialFormCode 변경 시 동기화
   useEffect(() => {
@@ -144,7 +204,7 @@ function CourtDocSuiteViewerModalInner({
     }
   }, [initialTab, initialFormCode, isOpen]);
 
-  // 로패스(LawPass 2025) 표준 12개 가로 탭 목록
+  // 표준 가로 서식 탭 목록
   const horizontalTabs: { id: DocTabId; label: string; badge?: string }[] = [
     { id: 'PETITION_COVER', label: '표지' },
     { id: 'PETITION_BODY', label: '신청서' },
@@ -159,15 +219,81 @@ function CourtDocSuiteViewerModalInner({
     { id: 'EVIDENCE_LIST', label: '자료 제출', badge: 'HWP' },
     { id: 'PROHIBITION_ORDER', label: '금지명령' },
     { id: 'STAY_ORDER', label: '중지명령' },
-    { id: 'ALL', label: '전체문서 (35p)', badge: '통합' }
+    { id: 'ALL', label: '전체문서', badge: '통합' }
   ];
+
+  // ── 서식 위 강조·미입력 표시 (값 래퍼 F 의 data-field 기준, 렌더마다 동기화) ──
+  useEffect(() => {
+    const root = printAreaRef.current;
+    if (!root) return;
+    let firstActive: HTMLElement | null = null;
+    root.querySelectorAll<HTMLElement>('[data-field]').forEach(el => {
+      const key = el.dataset.field || '';
+      const isActive = key === activeFieldKey;
+      el.classList.toggle('cf-active', isActive);
+      el.classList.toggle('cf-missing', issueSummary.byKey.get(key)?.kind === 'missing');
+      el.classList.toggle('cf-invalid', issueSummary.byKey.get(key)?.kind === 'invalid');
+      if (isActive && !firstActive) firstActive = el;
+    });
+    if (scrollCanvasRef.current && firstActive) {
+      (firstActive as HTMLElement).scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    scrollCanvasRef.current = false;
+  });
+
+  /** 입력 칸 포커스 → 서식 강조 */
+  const handleSidebarFieldFocus = (key: string | null) => {
+    if (key === activeFieldKey) return;
+    scrollCanvasRef.current = !!key;
+    setActiveFieldKey(key);
+  };
+
+  /** 서식 클릭 → 입력 칸으로 이동 (직접 타이핑 모드에서는 커서를 뺏지 않고 위치만 표시) */
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = (e.target as HTMLElement).closest<HTMLElement>('[data-field]');
+    if (!target) return;
+    const key = target.dataset.field || '';
+    if (!getFieldDef(key)) return;
+    setActiveFieldKey(key);
+    if (!showSidebar) setShowSidebar(true);
+    // 사이드바가 막 열렸다면 렌더 후 호출
+    window.setTimeout(() => sidebarRef.current?.revealField(key, { focus: !isEditMode }), 0);
+  };
+
+  /** F2 / 버튼: 다음 미입력·오류 항목으로 이동 */
+  const goToNextIssue = () => {
+    const list = issueSummary.issues;
+    if (list.length === 0) {
+      toast.success('확인이 필요한 항목이 없습니다.');
+      return;
+    }
+    const curIdx = activeFieldKey ? list.findIndex(i => i.key === activeFieldKey) : -1;
+    const next = list[(curIdx + 1) % list.length];
+    const onCurrentTab = next.docTabs.includes(activeTab as CourtDocTabKey);
+    if (!onCurrentTab && activeTab !== 'ALL') setActiveTab(next.docTabs[0] as DocTabId);
+    if (!showSidebar) setShowSidebar(true);
+    scrollCanvasRef.current = true;
+    setActiveFieldKey(next.key);
+    window.setTimeout(() => sidebarRef.current?.revealField(next.key, { focus: true }), 0);
+  };
+
+  const moveTab = (dir: 1 | -1) => {
+    const idx = horizontalTabs.findIndex(t => t.id === activeTab);
+    const next = horizontalTabs[(idx + dir + horizontalTabs.length) % horizontalTabs.length];
+    setActiveTab(next.id);
+  };
 
   // 수정사항 저장 핸들러
   const handleSave = async () => {
     try {
       if (onUpdateCrmExt) {
+        const prevCourtCase = (crmExt?.courtCase || {}) as Record<string, any>;
+        const prevPlan = (crmExt?.repaymentPlan || {}) as Record<string, any>;
         await onUpdateCrmExt({
           courtCase: {
+            // 기존 사건 정보(caseType, 개시결정일, 이벤트 등)는 유지하고 편집한 값만 덮어쓴다
+            ...prevCourtCase,
+            caseType: prevCourtCase.caseType || '개인회생',
             courtName: masterData.court.courtName,
             caseNumber: masterData.court.caseNumber,
             applicantName: masterData.debtor.name,
@@ -175,39 +301,64 @@ function CourtDocSuiteViewerModalInner({
             serviceAddress: masterData.debtor.serviceAddress,
             refundBank: masterData.debtor.refundBank,
             refundAccount: masterData.debtor.refundAccount,
-            refundDepositor: masterData.debtor.refundDepositor,
+            courtFilingDraft: extractDraft(masterData),
           },
           repaymentPlan: {
-            ...(crmExt?.repaymentPlan || {}),
+            ...prevPlan,
             creditors: masterData.creditors,
-            monthlyIncome: masterData.repaymentSummary.monthlyIncome,
-            livingCost: masterData.repaymentSummary.monthlyLivingCost,
-            monthlyAvailableIncome: masterData.repaymentSummary.monthlyRepaymentAmount,
-            repaymentMonths: masterData.repaymentSummary.repaymentPeriodMonths,
-            totalPrincipal: masterData.repaymentSummary.totalPrincipal,
-            totalRepaymentAmount: masterData.repaymentSummary.totalRepaymentAmount,
-            repaymentRatio: masterData.repaymentSummary.repaymentRatio,
-            clearingValue: masterData.repaymentSummary.clearingValue,
-          }
+            months: masterData.repaymentSummary.repaymentMonths,
+          } as CrmClientExtension['repaymentPlan'],
         });
       }
-      toast.success('로패스형 위지윅 입력 데이터가 사건 및 CRM 데이터베이스에 안전하게 저장되었습니다.');
+      toast.success('서식 입력 내용을 저장했습니다.');
     } catch (err: any) {
       toast.error(`저장 중 오류: ${err.message || '저장 실패'}`);
     }
   };
+
+  // 키보드 단축키 (Enter 이동은 사이드바에서 처리)
+  useCourtEditorHotkeys({
+    enabled: isOpen,
+    onSave: () => { void handleSave(); },
+    onNextTab: () => moveTab(1),
+    onPrevTab: () => moveTab(-1),
+    onOpenSection: (index) => {
+      if (!showSidebar) setShowSidebar(true);
+      window.setTimeout(() => sidebarRef.current?.openSectionAt(index), 0);
+    },
+    onNextIssue: goToNextIssue,
+    onToggleHelp: () => {
+      if (!showSidebar) setShowSidebar(true);
+      window.setTimeout(() => sidebarRef.current?.toggleShortcuts(), 0);
+    },
+  });
 
   // 인쇄 핸들러
   const handlePrint = () => {
     window.print();
   };
 
-  // PDF 다운로드 핸들러
-  const handleDownloadPdf = () => {
-    toast.info('인쇄 대화상자에서 "PDF로 저장"을 선택하면 대법원 전자소송 제출용 텍스트 PDF가 생성됩니다.', { duration: 5000 });
-    setTimeout(() => {
-      window.print();
-    }, 500);
+  // PDF 다운로드 핸들러 (실제 A4 PDF 파일 즉시 생성 및 다운로드)
+  const handleDownloadPdf = async () => {
+    if (!printAreaRef.current) return;
+    try {
+      setIsGeneratingPdf(true);
+      const currentTabObj = horizontalTabs.find(t => t.id === activeTab);
+      const tabLabel = currentTabObj?.label || '법원서식';
+      const defaultName = `[${tabLabel}]_${masterData.debtor.name || '신청인'}_${masterData.court.caseNumber || '개인회생'}.pdf`;
+
+      toast.info(`'${tabLabel}' A4 PDF를 생성 중입니다...`);
+      await exportCourtPagesToPdf(printAreaRef.current, defaultName, {
+        scale: 2,
+      });
+      toast.success(`'${defaultName}' PDF 다운로드가 완료되었습니다.`);
+    } catch (err: any) {
+      console.error('PDF export error:', err);
+      toast.error('PDF 자동 생성 중 오류가 발생하여 인쇄 대화상자로 전환합니다.');
+      setTimeout(() => window.print(), 300);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   // 법원 양식 다운로드 핸들러 — 법원 원본 양식(HWP)을 다운로드 (HWPX 시 자동 바인딩)
@@ -251,6 +402,13 @@ function CourtDocSuiteViewerModalInner({
       setIsBundling(true);
       toast.info('고객 제출 증빙(부채증명서, 주민등초본, 과세증명 등)과 13종 본안 서식을 법원 공식 순서로 결합 중입니다...');
       const mergedPdfBytes = await exportCourtFilingCompleteBundle(masterData, crmExt);
+      // 결합할 첨부 서류가 없으면 빈 PDF 가 만들어지므로 다운로드하지 않는다
+      const { PDFDocument } = await import('pdf-lib');
+      const pageCount = (await PDFDocument.load(mergedPdfBytes)).getPageCount();
+      if (pageCount === 0) {
+        toast.info('결합할 첨부 서류가 아직 없습니다. 서식은 [인쇄 미리보기]에서 PDF로 저장할 수 있습니다.', { duration: 6000 });
+        return;
+      }
       
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -262,7 +420,7 @@ function CourtDocSuiteViewerModalInner({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      toast.success('110~140p 분량의 법원 전자소송 완성본 번들 PDF가 성공적으로 생성 및 다운로드되었습니다!');
+      toast.success(`묶음 PDF(${pageCount}쪽)를 다운로드했습니다.`);
     } catch (err: any) {
       toast.error(`번들 생성 중 오류 발생: ${err.message || '파일 처리 실패'}`);
     } finally {
@@ -300,6 +458,59 @@ function CourtDocSuiteViewerModalInner({
           .court-page {
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
           }
+
+          /* ── 입력 칸 ↔ 서식 매핑 (화면 전용) ── */
+          .cf-field {
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background-color 120ms ease, outline-color 120ms ease;
+          }
+          .cf-field:hover { background-color: rgba(37, 99, 235, 0.08); }
+          /* 빈 값도 클릭·표시할 수 있도록 최소 폭 확보 (인쇄 시 해제) */
+          .cf-field:empty {
+            display: inline-block;
+            min-width: 3.5em;
+            min-height: 1em;
+            vertical-align: middle;
+          }
+          .cf-field.cf-missing { outline: 1.5px dashed #dc2626; outline-offset: 1px; }
+          .cf-field.cf-invalid { outline: 1.5px solid #f59e0b; outline-offset: 1px; }
+          .cf-field.cf-active {
+            outline: 2px solid #2563eb;
+            outline-offset: 1px;
+            background-color: rgba(37, 99, 235, 0.14);
+          }
+
+          /* 사이드바 입력 칸 상태 */
+          .cf-input-missing { border-color: rgba(245, 158, 11, 0.7) !important; }
+          .cf-input-invalid { border-color: rgba(244, 63, 94, 0.8) !important; }
+          @keyframes cf-flash {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.9); }
+            100% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+          }
+          .cf-input-flash {
+            animation: cf-flash 0.6s ease-out 2;
+            border-color: #3b82f6 !important;
+          }
+          /* PDF 캡처 중 화면 전용 아웃라인/배경색 완전 은닉 */
+          .cf-pdf-capturing .cf-field,
+          .cf-pdf-capturing .cf-field.cf-active,
+          .cf-pdf-capturing .cf-field.cf-missing,
+          .cf-pdf-capturing .cf-field.cf-invalid {
+            outline: none !important;
+            background: transparent !important;
+            cursor: auto !important;
+          }
+          .cf-pdf-capturing .cf-field:empty { display: inline !important; min-width: 0 !important; }
+        }
+
+        @media print {
+          .cf-field, .cf-field.cf-active, .cf-field.cf-missing, .cf-field.cf-invalid {
+            outline: none !important;
+            background: transparent !important;
+            cursor: auto !important;
+          }
+          .cf-field:empty { display: inline !important; min-width: 0 !important; }
         }
 
         @media print {
@@ -342,7 +553,7 @@ function CourtDocSuiteViewerModalInner({
             margin: 0 !important;
           }
 
-          /* 4. 최상단 헤더, 서식 탭 네비게이션, 우측 LawPass 2025 정보입력 편집창(사이드바) 완벽 은닉 */
+          /* 4. 최상단 헤더, 서식 탭 네비게이션, 우측 정보입력 편집창(사이드바) 완벽 은닉 */
           .court-suite-header,
           .court-suite-tabs,
           .court-suite-sidebar,
@@ -489,10 +700,12 @@ function CourtDocSuiteViewerModalInner({
 
           <button
             onClick={handleDownloadPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold text-white shadow-sm transition"
+            disabled={isGeneratingPdf}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-xs font-semibold text-white shadow-sm transition"
+            title="현재 서식을 고해상도 A4 규격 PDF 파일로 즉시 다운로드"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>단일 PDF</span>
+            <span>{isGeneratingPdf ? 'PDF 생성 중...' : '단일 PDF'}</span>
           </button>
 
           <button
@@ -523,7 +736,7 @@ function CourtDocSuiteViewerModalInner({
         </div>
       </header>
 
-      {/* ── 2. 로패스형 가로 서식 탭 네비게이션 바 ── */}
+      {/* ── 2. 가로 서식 탭 네비게이션 바 ── */}
       <div className="court-suite-tabs bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex items-center justify-between shrink-0 overflow-x-auto print:hidden">
         <div className="flex items-center gap-1 overflow-x-auto py-0.5">
           {horizontalTabs.map((tab) => {
@@ -539,6 +752,21 @@ function CourtDocSuiteViewerModalInner({
                 }`}
               >
                 <span>{tab.label}</span>
+                {(() => {
+                  const c = issueSummary.countByTab[tab.id as CourtDocTabKey];
+                  if (!c || (c.missing + c.invalid) === 0) return null;
+                  const total = c.missing + c.invalid;
+                  return (
+                    <span
+                      className={`min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-lg text-[11px] font-bold ${
+                        c.invalid > 0 ? 'bg-rose-500/25 text-rose-200 border border-rose-400/50' : 'bg-amber-500/25 text-amber-200 border border-amber-400/50'
+                      }`}
+                      title={`미입력 ${c.missing}건 · 형식 확인 ${c.invalid}건`}
+                    >
+                      {total}
+                    </span>
+                  );
+                })()}
                 {tab.badge && (
                   <span className={`text-xs px-1 py-0.1 rounded font-mono ${
                     isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-700 text-slate-300'
@@ -553,6 +781,19 @@ function CourtDocSuiteViewerModalInner({
 
         {/* 뷰어 제어 툴바 (글꼴, 글자크기, 줌) */}
         <div className="flex items-center gap-3 text-xs pl-4 border-l border-slate-800 shrink-0">
+          <button
+            type="button"
+            onClick={goToNextIssue}
+            className={`press-scale flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold whitespace-nowrap transition ${
+              issueSummary.issues.length > 0
+                ? 'bg-amber-500/15 border-amber-500/50 text-amber-200 hover:bg-amber-500/25'
+                : 'bg-emerald-500/10 border-emerald-600/50 text-emerald-300'
+            }`}
+            title="다음 미입력 항목으로 이동 (F2)"
+          >
+            {issueSummary.issues.length > 0 ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            <span>{issueSummary.issues.length > 0 ? `확인 필요 ${issueSummary.issues.length}건 → 다음` : '필수 항목 입력 완료'}</span>
+          </button>
           <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
             <input 
               type="checkbox" 
@@ -590,12 +831,13 @@ function CourtDocSuiteViewerModalInner({
         </div>
       </div>
 
-      {/* ── 3. 메인 바디 (좌측 A4 캔버스 + 우측 로패스형 스마트 사이드바) ── */}
+      {/* ── 3. 메인 바디 (좌측 A4 캔버스 + 우측 입력 사이드바) ── */}
       <div className="court-suite-body-wrapper flex-1 flex overflow-hidden print:block print:overflow-visible print:h-auto">
         {/* 좌측 메인 영역: 실시간 A4 법원 전산 서식 렌더링 캔버스 */}
         <main className="court-suite-main flex-1 bg-slate-900/90 overflow-auto p-6 flex justify-center custom-scrollbar print:block print:overflow-visible print:bg-white print:p-0 print:m-0 print:h-auto print:w-full">
           <div 
             ref={printAreaRef}
+            onClick={handleCanvasClick}
             contentEditable={isEditMode}
             suppressContentEditableWarning
             style={{ 
@@ -695,14 +937,17 @@ function CourtDocSuiteViewerModalInner({
           </div>
         </main>
 
-        {/* 우측 스마트 아코디언 입력 폼 (로패스 2025 규격 사이드바) */}
+        {/* 우측 아코디언 입력 폼 */}
         {showSidebar && (
           <div className="court-suite-sidebar h-full shrink-0 print:hidden">
-            <LawPassCourtFilingSidebar
+            <CourtFilingInputSidebar
+              ref={sidebarRef}
               data={masterData}
               onChangeData={setMasterData}
               activeDocTab={activeTab}
               onSelectDocTab={(tabId) => setActiveTab(tabId as DocTabId)}
+              issueSummary={issueSummary}
+              onActiveFieldChange={handleSidebarFieldFocus}
             />
           </div>
         )}

@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -41,7 +42,7 @@ export const StayOrderFormD5113: React.FC<CourtFormProps> = ({ data }) => {
               </p>
               <p>
                 (<span className="tracking-[0.3em]">채 무 자</span>){'       '}
-                <span className="tracking-[0.3em]">주 소</span>: {debtor?.address || ''}
+                <span className="tracking-[0.3em]">주 소</span>: <F k="debtor.currentAddress">{debtor?.address || ''}</F>
               </p>
               <p>
                 <span className="tracking-[0.3em]">상 대 방</span>{'       '}
@@ -101,7 +102,7 @@ export const StayOrderFormD5113: React.FC<CourtFormProps> = ({ data }) => {
                 신청인(채무자){'                    '}(서명 또는 날인)
               </p>
               <p className="text-left mt-2">
-                연락 가능한 전화번호: {debtor?.phone || ''}
+                연락 가능한 전화번호: <F k="debtor.phone">{debtor?.phone || ''}</F>
               </p>
             </div>
 

@@ -226,14 +226,14 @@ function CourtFormPreviewModalInner({
               </button>
             </div>
 
-            {/* 즉시 편집 버튼 (로패스 Split-Screen 실시간 에디터 호출) */}
+            {/* 즉시 편집 버튼 (Split-Screen 실시간 에디터 호출) */}
             <button
               type="button"
               onClick={() => {
                 onOpenEditModal(activeCode);
               }}
               className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-              title="왼쪽 실시간 A4 미리보기와 오른쪽 입력 패널이 결합된 로패스 양방향 실시간 에디터로 전환합니다."
+              title="왼쪽 실시간 A4 미리보기와 오른쪽 입력 패널이 결합된 실시간 서식 편집기로 전환합니다."
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>실시간 서식 수정 (Split-Screen)</span>

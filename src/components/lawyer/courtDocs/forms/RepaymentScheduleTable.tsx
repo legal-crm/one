@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -28,11 +29,11 @@ export const RepaymentScheduleTable: React.FC<CourtFormProps> = ({ data }) => {
     <div className="court-page bg-white pt-[120px] pb-[80px] px-[40px] w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] mx-auto text-black font-serif text-[14px] leading-[1.6] box-border shadow-lg print:shadow-none print:border-none">
       <h1 className="text-center text-[22px] font-bold mb-2 tracking-widest">변제예정액표</h1>
       <p className="text-center text-[13px] mb-6">
-        사건: {court?.caseNumber || '20    개회        '} 채무자: {data.debtor?.name || ''}
+        사건: <F k="court.caseNumber">{court?.caseNumber || '20    개회        '}</F> 채무자: <F k="debtor.name">{data.debtor?.name || ''}</F>
       </p>
 
       <div className="text-[13px] mb-4 space-y-1">
-        <p>변제기간: {months}개월 ({court?.firstRepaymentDate || ''} ~ )</p>
+        <p>변제기간: {months}개월 (<F k="court.firstRepaymentDate">{court?.firstRepaymentDate || ''}</F> ~ )</p>
         <p>월 가용소득: {fmt(repaymentSummary?.monthlyDisposableIncome)}원</p>
         <p>회생위원 보수: 월 가용소득의 1% 차감</p>
       </div>

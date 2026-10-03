@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { F } from './CourtField';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -23,12 +24,12 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
         <tbody>
           <tr>
             <td className="border border-black p-3 font-semibold text-center w-32">사    건</td>
-            <td className="border border-black p-3">{court?.caseNumber || '20    개회        '} 호 개인회생</td>
+            <td className="border border-black p-3"><F k="court.caseNumber">{court?.caseNumber || '20    개회        '}</F> 호 개인회생</td>
           </tr>
           <tr>
             <td className="border border-black p-3 font-semibold text-center">신 청 인<br/>(채무자)</td>
             <td className="border border-black p-3">
-              {debtor?.name || ''} ({debtor?.residentNumber || ''})
+              <F k="debtor.name">{debtor?.name || ''}</F> (<F k="debtor.residentNumber">{debtor?.residentNumber || ''}</F>)
             </td>
           </tr>
         </tbody>
@@ -61,7 +62,7 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
           <tr>
             <td className="border border-black p-3 font-semibold text-center">3. 전화번호</td>
             <td className="border border-black p-3">
-              {debtor?.phone || ''}
+              <F k="debtor.phone">{debtor?.phone || ''}</F>
             </td>
           </tr>
           <tr>
@@ -82,10 +83,10 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
       <div className="mt-16 text-center">
         <p className="mb-8">{applicationDate}</p>
         <p className="mb-2 font-bold">
-          신청인 {debtor?.name || ''}{'  '} (서명 또는 날인)
+          신청인 <F k="debtor.name">{debtor?.name || ''}</F>{'  '} (서명 또는 날인)
         </p>
         <p className="mt-2">
-          대리인 {court?.lawyerFirm || ''} {court?.lawyerName || ''} 변호사
+          대리인 <F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사
         </p>
       </div>
 
