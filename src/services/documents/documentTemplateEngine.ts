@@ -152,39 +152,7 @@ export function bindHwpxTemplateHtml(
   const activePurpose = purposeInput || data.purpose;
   const activeReason = reasonInput || data.reason;
 
-  // 1. 문서 대제목 교체 / 보정 (파산 문서의 경우 명확히 파산 표기)
-  if (isBankruptcy) {
-    html = html.replace(
-      /<h2([^>]*)>([\s\S]*?)<\/h2>/i,
-      (match, attrs, titleText) => {
-        let cleanTitle = titleText.replace(/\s+/g, ' ').trim();
-        if (!cleanTitle.includes('파산')) {
-          cleanTitle = cleanTitle ? `${cleanTitle} (파산)` : docItem.title;
-        }
-        return `<h2${attrs}>${cleanTitle}</h2>`;
-      }
-    );
-  }
-
-  // 2. 사건번호 치환 (사건 20 개회 개인회생, 사건번호 20 가 (차), 사건 20 하단 등 전수 지원)
-  const caseNoPattern = /<p[^>]*>\s*사\s*건(?:\s*번\s*호)?[\s\S]*?(?:20|\(담당재판부|개회|하단|타경|차|가|개인회생|파산)[\s\S]*?<\/p>/i;
-  if (caseNoPattern.test(html)) {
-    html = html.replace(
-      caseNoPattern,
-      `<div class="mb-3 text-[15px] font-serif"><strong>사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="font-bold underline decoration-slate-400 font-mono text-slate-900">${caseNoDisplay}</span></div>`
-    );
-  } else {
-    html = html.replace(
-      /(?:사\s*건(?:\s*번\s*호)?)\s*(?:20\s*(?:개회|하단|타경|가|차)[^<]*)?/gi,
-      `<span class="font-bold text-slate-900 font-mono">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${caseNoDisplay}</span>`
-    );
-  }
-  // 본문 내 사건번호 플레이스홀더 치환
-  html = html.replace(/20○○타경○○○호/g, caseNoDisplay);
-  html = html.replace(/20\s*개회\s*○○/g, caseNoDisplay);
-  html = html.replace(/20\s*하단\s*○○/g, caseNoDisplay);
-
-  // 3. 당사자(채무자/신청인/원고/피고/대리인) 표시 치환
+  // 당사자(채무자/신청인/원고/피고/대리인) 표시 기본 블록
   const partyBlockHtml = `
 <div class="my-4 p-4 bg-slate-50/90 rounded-xl border border-slate-300 text-[14px] leading-relaxed font-serif text-slate-900">
   <div class="flex mb-1.5">
@@ -204,6 +172,85 @@ export function bindHwpxTemplateHtml(
     </div>
   </div>
 </div>`;
+
+  // 0. HWPX 원본 파싱이 깨진 서식(예: 유체동산 중지/취소 등 단어 쪼개짐) 지능 감지 및 표준 복원
+  const isBrokenFragmentedForm = (
+    (docItem.title.includes('유체동산') && (html.includes('>본<') || (html.includes('집행정지') && html.includes('집행취소')))) ||
+    (html.includes('>본<') && html.length < 1200)
+  );
+
+  if (isBrokenFragmentedForm) {
+    const evidenceListHtml = data.evidenceList && data.evidenceList.length > 0 ? `
+<div class="my-6 pt-4 border-t border-slate-300">
+  <p class="font-bold text-sm mb-2 text-slate-900">[ 첨 부 서 류 ]</p>
+  <div class="space-y-1 text-[13px] text-slate-700 pl-2">
+    ${data.evidenceList.map((item, idx) => `<div>${item}</div>`).join('')}
+  </div>
+</div>` : '';
+
+    return `
+<h2 class="text-center text-[22px] font-bold mb-6 tracking-widest text-slate-900">${docItem.title}</h2>
+<div class="mb-4 text-[15px] font-serif"><strong>사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="font-bold underline decoration-slate-400 font-mono text-slate-900">${caseNoDisplay}</span></div>
+${partyBlockHtml}
+<p class="text-center font-bold text-lg my-5 tracking-widest">[ 신 청 취 지 ]</p>
+<div class="my-3 p-4 bg-blue-50/40 rounded-xl border-l-4 border-blue-600 text-[14.5px] leading-relaxed whitespace-pre-wrap font-serif text-slate-900 shadow-2xs">
+${activePurpose}
+</div>
+<p class="text-right text-xs text-slate-600 mb-6 font-serif">라는 결정을 구합니다.</p>
+<p class="text-center font-bold text-lg my-6 tracking-widest">[ 신 청 이 유 ]</p>
+<div class="my-3 p-4 bg-blue-50/40 rounded-xl border-l-4 border-blue-600 text-[14.5px] leading-relaxed whitespace-pre-wrap font-serif text-slate-900 shadow-2xs">
+${activeReason}
+</div>
+${evidenceListHtml}
+<div class="my-8 text-center font-mono font-bold text-[15px] tracking-widest text-slate-900">${data.submissionDate}</div>
+<div class="my-6 flex flex-col items-end pr-4 text-[14px] text-slate-900 space-y-2">
+  <div>
+    신청인(채무자)&nbsp;&nbsp;<strong class="text-base text-slate-950">${data.debtorName}</strong>&nbsp;&nbsp;(인)
+  </div>
+  <div class="flex items-center gap-2">
+    신청인의 대리인&nbsp;&nbsp;<strong>${data.agentLawfirm}</strong>
+    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-rose-500 text-rose-600 text-xs font-bold bg-rose-50/50">
+      (인)
+    </span>
+  </div>
+  ${data.debtorPhone ? `<div class="text-xs text-slate-500 font-mono">연락처: ${data.debtorPhone}</div>` : ''}
+</div>
+<div class="my-8 text-center font-bold text-xl tracking-widest text-slate-950">${data.courtName || '서울회생법원'} 귀중</div>
+`;
+  }
+
+  // 1. 문서 대제목 교체 / 보정 (파산 문서 또는 깨진 제목인 경우 명확히 보정)
+  html = html.replace(
+    /<h2([^>]*)>([\s\S]*?)<\/h2>/i,
+    (match, attrs, titleText) => {
+      let cleanTitle = titleText.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (cleanTitle.length <= 3 || cleanTitle === '본' || cleanTitle === '허' || cleanTitle === '인지' || cleanTitle.includes('※')) {
+        return `<h2${attrs}>${docItem.title}</h2>`;
+      }
+      if (isBankruptcy && !cleanTitle.includes('파산')) {
+        cleanTitle = `${cleanTitle} (파산)`;
+      }
+      return `<h2${attrs}>${cleanTitle}</h2>`;
+    }
+  );
+
+  // 2. 사건번호 치환 (사건 20 개회 개인회생, 사건번호 20 가 (차), 사건 20 하단 등 전수 지원)
+  const caseNoPattern = /<p[^>]*>\s*사\s*건(?:\s*번\s*호)?[\s\S]*?(?:20|\(담당재판부|개회|하단|타경|차|가|개인회생|파산)[\s\S]*?<\/p>/i;
+  if (caseNoPattern.test(html)) {
+    html = html.replace(
+      caseNoPattern,
+      `<div class="mb-3 text-[15px] font-serif"><strong>사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="font-bold underline decoration-slate-400 font-mono text-slate-900">${caseNoDisplay}</span></div>`
+    );
+  } else {
+    html = html.replace(
+      /(?:사\s*건(?:\s*번\s*호)?)\s*(?:20\s*(?:개회|하단|타경|가|차)[^<]*)?/gi,
+      `<span class="font-bold text-slate-900 font-mono">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${caseNoDisplay}</span>`
+    );
+  }
+  // 본문 내 사건번호 플레이스홀더 치환
+  html = html.replace(/20○○타경○○○호/g, caseNoDisplay);
+  html = html.replace(/20\s*개회\s*○○/g, caseNoDisplay);
+  html = html.replace(/20\s*하단\s*○○/g, caseNoDisplay);
 
   // 3-1. 복합 당사자 블록 치환
   const debtorPattern = /<p[^>]*>[\s\S]*?\(채\s*무\s*자\)[\s\S]*?주\s*소:[\s\S]*?<\/p>/i;

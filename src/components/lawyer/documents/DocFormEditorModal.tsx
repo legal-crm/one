@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, Printer, Download, Sparkles, Send, FileText, CheckCircle2, 
-  RotateCcw, Scale, Copy, ExternalLink, ShieldCheck, Eye, Edit3, ArrowRight 
+  RotateCcw, Scale, Copy, ExternalLink, ShieldCheck, Eye, Edit3, ArrowRight,
+  ChevronLeft, ChevronRight, Layers, BookOpen, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -127,6 +128,48 @@ function DocFormEditorModalInner({
       reasonInput
     );
   }, [hwpxEntry, hwpxEditedHtml, boundData, docItem, purposeInput, reasonInput]);
+
+  // A4 규격 시트 및 페이지 넘김 상태
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageViewMode, setPageViewMode] = useState<'SINGLE' | 'CONTINUOUS'>('SINGLE');
+  const [zoomScale, setZoomScale] = useState<number>(100);
+
+  // 컨텐츠 분량에 따른 총 페이지 수(totalPages) 계산
+  const totalPages = useMemo(() => {
+    if (viewMode === 'HWPX_OFFICIAL' && hwpxEntry) {
+      const len = activeHwpxHtml.length;
+      if (len > 3500) return 4;
+      if (len > 2200) return 3;
+      if (len > 1100) return 2;
+      return 1;
+    } else {
+      // A4 서면 모드
+      const isLong = (reasonInput?.length || 0) > 420 || boundData.evidenceList.length > 3;
+      return isLong ? 2 : 1;
+    }
+  }, [viewMode, hwpxEntry, activeHwpxHtml, reasonInput, boundData.evidenceList.length]);
+
+  // 서식이나 뷰 모드가 변경되면 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [docItem.docCode, viewMode]);
+
+  // 키보드 방향키/PageUp/PageDown으로 자연스러운 페이지 넘김
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT' || (activeEl as HTMLElement).isContentEditable)) {
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        setCurrentPage(p => Math.min(totalPages, p + 1));
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        setCurrentPage(p => Math.max(1, p - 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [totalPages]);
 
   // AI 사유서 보강 생성기 (서식 유형별 전문 법률 문안)
   const handleAiDraft = () => {
@@ -453,30 +496,32 @@ function DocFormEditorModalInner({
             </div>
           </div>
 
-          {/* ── 우측: 대법원 표준 규격 A4 실시간 프리뷰 ── */}
+          {/* ── 우측: 대법원 표준 규격 A4 실시간 프리뷰 & 자연스러운 페이지 넘김 ── */}
           <div className="w-full md:w-1/2 bg-slate-200/80 p-4 md:p-6 overflow-y-auto flex flex-col items-center print:w-full print:p-0 print:bg-white print:overflow-visible">
             
-            {/* 상단 뷰 모드 탭 바 (HWPX 원본 서식 vs A4 서면 변수 에디터) */}
-            <div className="w-full max-w-[210mm] flex items-center justify-between pb-3 mb-3 border-b border-slate-300 print:hidden">
+            {/* 상단 뷰 모드 및 페이지네이션 네비게이션 툴바 */}
+            <div className="w-full max-w-[210mm] flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-300 print:hidden text-xs">
+              
+              {/* 좌측: 모드 탭 (HWPX 정식 서식 vs A4 서면 변수 에디터) */}
               <div className="flex items-center gap-1.5">
                 {hwpxEntry && (
                   <button
                     type="button"
-                    onClick={() => setViewMode('HWPX_OFFICIAL')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    onClick={() => { setViewMode('HWPX_OFFICIAL'); setCurrentPage(1); }}
+                    className={`px-3 py-1.5 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                       viewMode === 'HWPX_OFFICIAL'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
                     }`}
                   >
-                    <span>🏛️ 대법원 정식 서식 (HWPX)</span>
+                    <span>🏛️ 정식 서식 (HWPX)</span>
                     <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">원본 규격</span>
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => setViewMode('A4_CUSTOM')}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  onClick={() => { setViewMode('A4_CUSTOM'); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                     viewMode === 'A4_CUSTOM'
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
@@ -486,29 +531,80 @@ function DocFormEditorModalInner({
                 </button>
               </div>
 
+              {/* 중앙: A4 규격 페이지 넘김 컨트롤러 */}
+              <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-xl border border-slate-300 shadow-2xs">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-slate-700 transition-colors"
+                  title="이전 페이지 (단축키: ←)"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                
+                <span className="font-bold text-slate-800 font-mono px-1.5 select-none text-xs">
+                  {currentPage} / {totalPages} <span className="font-sans font-normal text-[11px] text-slate-500">장</span>
+                </span>
+                
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-slate-700 transition-colors"
+                  title="다음 페이지 (단축키: →)"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                <div className="w-px h-3.5 bg-slate-200 mx-1" />
+
+                {/* 보기 모드: 1장씩 넘기기 vs 전장 연속 스크롤 */}
+                <button
+                  type="button"
+                  onClick={() => setPageViewMode(m => m === 'SINGLE' ? 'CONTINUOUS' : 'SINGLE')}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                    pageViewMode === 'SINGLE'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  title={pageViewMode === 'SINGLE' ? '1장씩 넘겨보기 활성화됨' : '전체 장 연속 보기 활성화됨'}
+                >
+                  {pageViewMode === 'SINGLE' ? (
+                    <>
+                      <BookOpen className="w-3 h-3" />
+                      <span>1장씩 넘김</span>
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="w-3 h-3" />
+                      <span>전장 연속</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 우측: 원본 파일 다운로드 */}
               {docItem.downloadUrl && (
                 <button
                   type="button"
                   onClick={handleDownloadHwpxFile}
-                  className="text-xs text-blue-700 font-bold hover:underline flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs"
+                  className="text-xs text-blue-700 font-bold hover:underline flex items-center gap-1 bg-white px-2.5 py-1 rounded-xl border border-blue-200 shadow-2xs cursor-pointer"
                 >
                   <Download className="w-3 h-3 text-blue-600" />
-                  <span>HWPX 원본 받기</span>
+                  <span>HWPX 받기</span>
                 </button>
               )}
             </div>
 
-            {/* [모드 1] 대법원 정식 HWPX 파싱 실시간 캔버스 */}
+            {/* [모드 1] 대법원 정식 HWPX 파싱 실시간 캔버스 (A4 규격 시트) */}
             {viewMode === 'HWPX_OFFICIAL' && hwpxEntry ? (
-              <div 
-                id="court-hwpx-printable"
-                className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-lg rounded-sm p-8 md:p-12 text-slate-900 font-serif select-text print:shadow-none print:border-none print:m-0 print:p-0 print:mx-auto"
-                style={{ fontFamily: `'Batang', 'BatangChe', '바탕', serif`, lineHeight: '1.8' }}
-              >
+              <div className="w-full flex flex-col items-center print:block">
+                
                 {/* 상단 안내 바 */}
-                <div className="mb-4 pb-2 border-b border-blue-200 bg-blue-50/80 p-3 rounded-xl text-xs text-blue-900 font-sans flex items-center justify-between print:hidden shadow-2xs">
+                <div className="w-full max-w-[210mm] mb-3 pb-2 border-b border-blue-200 bg-blue-50/90 p-3 rounded-xl text-xs text-blue-900 font-sans flex items-center justify-between print:hidden shadow-2xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-blue-700">🏛️ 대법원 정식 서식 원본:</span>
+                    <span className="font-extrabold text-blue-700">🏛️ 대법원 정식 서식:</span>
                     <span className="font-bold">{hwpxEntry.name}</span>
                     <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold border border-emerald-300/60">
                       ✓ CRM 실데이터 바인딩 완료
@@ -525,106 +621,349 @@ function DocFormEditorModalInner({
                         바인딩 원본 복원
                       </button>
                     )}
-                    <span className="text-[11px] text-slate-500">본문 직접 편집 가능</span>
+                    <span className="text-[11px] text-slate-500">A4 규격 (210×297mm)</span>
                   </div>
                 </div>
 
-                {/* HWPX 원본 HTML 본문 (CRM 의뢰인 실데이터 및 취지/이유 실시간 바인딩) */}
-                <div
-                  ref={hwpxContentRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) => setHwpxEditedHtml(e.currentTarget.innerHTML)}
-                  className="outline-none focus:ring-1 focus:ring-blue-300/40 rounded-sm p-1 court-hwpx-render text-slate-900"
-                  dangerouslySetInnerHTML={{ __html: activeHwpxHtml }}
-                />
+                {/* ── HWPX 모드 1: 1장씩 넘겨보기 (SINGLE 모드) ── */}
+                {pageViewMode === 'SINGLE' ? (
+                  <div 
+                    id="court-hwpx-printable"
+                    className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-8 md:p-12 text-slate-900 font-serif select-text flex flex-col justify-between overflow-hidden relative print:shadow-none print:border-none print:m-0 print:p-0 print:h-auto print:max-h-none print:overflow-visible"
+                    style={{ fontFamily: `'Batang', 'BatangChe', '바탕', serif`, lineHeight: '1.8' }}
+                  >
+                    {/* 상단 내용 뷰포트 (현재 페이지에 맞게 890px 단위 슬라이딩) */}
+                    <div className="flex-1 overflow-hidden relative">
+                      <div
+                        ref={hwpxContentRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => setHwpxEditedHtml(e.currentTarget.innerHTML)}
+                        className="outline-none focus:ring-1 focus:ring-blue-300/40 rounded-sm p-1 court-hwpx-render text-slate-900 transition-transform duration-300 ease-out"
+                        style={{
+                          transform: `translateY(-${(currentPage - 1) * 890}px)`
+                        }}
+                        dangerouslySetInnerHTML={{ __html: activeHwpxHtml }}
+                      />
+                    </div>
+
+                    {/* A4 하단 대법원 표준 쪽번호 */}
+                    <div className="text-center text-xs text-slate-500 font-serif pt-3 border-t border-slate-200 mt-2 select-none print:hidden">
+                      - {currentPage} -
+                    </div>
+                  </div>
+                ) : (
+                  /* ── HWPX 모드 2: 전장 연속 보기 (CONTINUOUS 모드 - 여러 장의 A4 시트 나열) ── */
+                  <div className="w-full flex flex-col items-center space-y-8 print:space-y-0">
+                    {Array.from({ length: totalPages }).map((_, pageIdx) => (
+                      <div 
+                        key={pageIdx}
+                        className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-8 md:p-12 text-slate-900 font-serif select-text flex flex-col justify-between overflow-hidden relative print:shadow-none print:border-none print:m-0 print:p-0 print:h-auto print:max-h-none print:overflow-visible"
+                        style={{ fontFamily: `'Batang', 'BatangChe', '바탕', serif`, lineHeight: '1.8' }}
+                      >
+                        <div className="flex-1 overflow-hidden relative">
+                          <div
+                            className="court-hwpx-render text-slate-900"
+                            style={{
+                              transform: `translateY(-${pageIdx * 890}px)`
+                            }}
+                            dangerouslySetInnerHTML={{ __html: activeHwpxHtml }}
+                          />
+                        </div>
+                        <div className="text-center text-xs text-slate-500 font-serif pt-3 border-t border-slate-200 mt-2 select-none print:hidden">
+                          - {pageIdx + 1} -
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
               </div>
             ) : (
               /* [모드 2] 신청취지·사유 중심 대법원 규격 A4 실시간 프리뷰 */
-              <div 
-                id="court-a4-printable"
-                className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-lg rounded-sm p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text print:shadow-none print:border-none print:m-0 print:mx-auto"
-                style={{ fontFamily: `'Batang', 'BatangChe', 'Gungsuh', serif` }}
-              >
-                {/* 법원 문서 상단 */}
-                <div className="space-y-6">
-                  {/* 대제목 */}
-                  <div className="text-center pt-2 pb-4 border-b-2 border-slate-800">
-                    <h1 className="text-2xl font-bold tracking-widest text-slate-900">
-                      {docItem.title}
-                    </h1>
+              <div className="w-full flex flex-col items-center print:block">
+                
+                {/* 상단 안내 바 */}
+                <div className="w-full max-w-[210mm] mb-3 pb-2 border-b border-blue-200 bg-blue-50/90 p-3 rounded-xl text-xs text-blue-900 font-sans flex items-center justify-between print:hidden shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-blue-700">✍️ 대법원 표준 규격 서면:</span>
+                    <span className="font-bold">{docItem.title}</span>
+                    <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-bold">
+                      A4 서면 규격
+                    </span>
                   </div>
-
-                  {/* 사건 및 당사자 표시 */}
-                  <div className="space-y-2 text-sm leading-relaxed">
-                    <div className="flex">
-                      <span className="w-24 font-bold">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</span>
-                      <span className="font-mono">{boundData.caseNumber || '귀원 개인회생 사건'}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="w-24 font-bold">신&nbsp;&nbsp;청&nbsp;&nbsp;인</span>
-                      <div>
-                        <span>{boundData.debtorName} {boundData.debtorRrn ? `(${boundData.debtorRrn})` : ''}</span>
-                        {boundData.debtorAddress && (
-                          <div className="text-xs text-slate-600 font-sans mt-0.5">{boundData.debtorAddress}</div>
-                        )}
-                        {boundData.debtorPhone && (
-                          <div className="text-xs text-slate-500 font-sans">연락처: {boundData.debtorPhone}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex pt-2">
-                      <span className="w-24 font-bold">대&nbsp;&nbsp;리&nbsp;&nbsp;인</span>
-                      <div>
-                        <span>{boundData.agentLawfirm}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 신청취지 */}
-                  <div className="space-y-2 pt-4">
-                    <h3 className="font-bold text-base tracking-wider">[ 신 청 취 지 ]</h3>
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
-                      {purposeInput}
-                    </div>
-                  </div>
-
-                  {/* 신청이유 */}
-                  <div className="space-y-2 pt-4">
-                    <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 ]</h3>
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
-                      {reasonInput}
-                    </div>
-                  </div>
-
-                  {/* 첨부서류 */}
-                  <div className="space-y-1.5 pt-4">
-                    <h3 className="font-bold text-sm tracking-wider">[ 첨 부 서 류 ]</h3>
-                    <div className="text-xs text-slate-700 pl-4 space-y-1">
-                      {boundData.evidenceList.map((doc, idx) => (
-                        <div key={idx}>{doc}</div>
-                      ))}
-                    </div>
-                  </div>
+                  <span className="text-[11px] text-slate-500">210 × 297mm 대법원 표준 규격</span>
                 </div>
 
-                {/* 법원 문서 하단: 제출일자, 대리인 날인, 관할법원 */}
-                <div className="space-y-8 pt-10 text-center">
-                  <div className="text-sm tracking-widest font-mono">
-                    {boundData.submissionDate}
-                  </div>
+                {/* ── A4 서면 모드: 단일 페이지 vs 다중 페이지 스마트 렌더링 ── */}
+                {totalPages === 1 ? (
+                  /* 1페이지 완결형 서면 */
+                  <div 
+                    id="court-a4-printable"
+                    className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text print:shadow-none print:border-none print:m-0 print:mx-auto"
+                    style={{ fontFamily: `'Batang', 'BatangChe', 'Gungsuh', serif` }}
+                  >
+                    <div className="space-y-6">
+                      {/* 대제목 */}
+                      <div className="text-center pt-2 pb-4 border-b-2 border-slate-800">
+                        <h1 className="text-2xl font-bold tracking-widest text-slate-900">
+                          {docItem.title}
+                        </h1>
+                      </div>
 
-                  <div className="flex justify-end pr-8 items-center gap-4 text-sm">
-                    <span>신청인의 대리인 {boundData.agentLawyerName}</span>
-                    <div className="w-12 h-12 rounded-full border border-rose-400 flex items-center justify-center text-xs text-rose-600 font-bold bg-rose-50/30">
-                      (인)
+                      {/* 사건 및 당사자 표시 */}
+                      <div className="space-y-2 text-sm leading-relaxed">
+                        <div className="flex">
+                          <span className="w-24 font-bold">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</span>
+                          <span className="font-mono font-bold">{boundData.caseNumber || '귀원 개인회생 사건'}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-24 font-bold">신&nbsp;&nbsp;청&nbsp;&nbsp;인</span>
+                          <div>
+                            <span className="font-bold">{boundData.debtorName}</span> {boundData.debtorRrn ? `(${boundData.debtorRrn})` : ''}
+                            {boundData.debtorAddress && (
+                              <div className="text-xs text-slate-600 font-sans mt-0.5">{boundData.debtorAddress}</div>
+                            )}
+                            {boundData.debtorPhone && (
+                              <div className="text-xs text-slate-500 font-sans">연락처: {boundData.debtorPhone}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex pt-2">
+                          <span className="w-24 font-bold">대&nbsp;&nbsp;리&nbsp;&nbsp;인</span>
+                          <div>
+                            <span>{boundData.agentLawfirm}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 신청취지 */}
+                      <div className="space-y-2 pt-2">
+                        <h3 className="font-bold text-base tracking-wider">[ 신 청 취 지 ]</h3>
+                        <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
+                          {purposeInput}
+                        </div>
+                      </div>
+
+                      {/* 신청이유 */}
+                      <div className="space-y-2 pt-2">
+                        <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 ]</h3>
+                        <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
+                          {reasonInput}
+                        </div>
+                      </div>
+
+                      {/* 첨부서류 */}
+                      <div className="space-y-1.5 pt-2">
+                        <h3 className="font-bold text-sm tracking-wider">[ 첨 부 서 류 ]</h3>
+                        <div className="text-xs text-slate-700 pl-4 space-y-1">
+                          {boundData.evidenceList.map((doc, idx) => (
+                            <div key={idx}>{doc}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 법원 문서 하단: 제출일자, 대리인 날인, 관할법원 */}
+                    <div className="space-y-6 pt-8 text-center">
+                      <div className="text-sm tracking-widest font-mono">
+                        {boundData.submissionDate}
+                      </div>
+
+                      <div className="flex justify-end pr-8 items-center gap-4 text-sm">
+                        <span>신청인의 대리인 {boundData.agentLawyerName}</span>
+                        <div className="w-11 h-11 rounded-full border border-rose-500 flex items-center justify-center text-xs text-rose-600 font-bold bg-rose-50/40">
+                          (인)
+                        </div>
+                      </div>
+
+                      <div className="text-lg font-bold tracking-widest text-slate-900 pt-2">
+                        {boundData.courtName || '서울회생법원'} 귀중
+                      </div>
+
+                      <div className="text-center text-xs text-slate-500 font-serif pt-2 border-t border-slate-100 select-none print:hidden">
+                        - 1 -
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  /* 2페이지 분할형 서면 (SINGLE 또는 CONTINUOUS) */
+                  pageViewMode === 'SINGLE' ? (
+                    currentPage === 1 ? (
+                      /* ── 2페이지 중 제 1 장 (표지, 당사자, 신청취지, 신청이유 전반부) ── */
+                      <div 
+                        id="court-a4-printable"
+                        className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text overflow-hidden print:shadow-none print:border-none print:m-0 print:mx-auto"
+                        style={{ fontFamily: `'Batang', 'BatangChe', 'Gungsuh', serif` }}
+                      >
+                        <div className="space-y-6">
+                          <div className="text-center pt-2 pb-4 border-b-2 border-slate-800">
+                            <h1 className="text-2xl font-bold tracking-widest text-slate-900">
+                              {docItem.title}
+                            </h1>
+                          </div>
 
-                  <div className="text-lg font-bold tracking-widest text-slate-900 pt-4">
-                    {boundData.courtName || '서울회생법원'} 귀중
-                  </div>
-                </div>
+                          <div className="space-y-2 text-sm leading-relaxed">
+                            <div className="flex">
+                              <span className="w-24 font-bold">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</span>
+                              <span className="font-mono font-bold">{boundData.caseNumber || '귀원 개인회생 사건'}</span>
+                            </div>
+                            <div className="flex">
+                              <span className="w-24 font-bold">신&nbsp;&nbsp;청&nbsp;&nbsp;인</span>
+                              <div>
+                                <span className="font-bold">{boundData.debtorName}</span> {boundData.debtorRrn ? `(${boundData.debtorRrn})` : ''}
+                                {boundData.debtorAddress && (
+                                  <div className="text-xs text-slate-600 font-sans mt-0.5">{boundData.debtorAddress}</div>
+                                )}
+                                {boundData.debtorPhone && (
+                                  <div className="text-xs text-slate-500 font-sans">연락처: {boundData.debtorPhone}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex pt-2">
+                              <span className="w-24 font-bold">대&nbsp;&nbsp;리&nbsp;&nbsp;인</span>
+                              <div>
+                                <span>{boundData.agentLawfirm}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 취 지 ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
+                              {purposeInput}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
+                              {reasonInput.slice(0, 380)}
+                              {reasonInput.length > 380 ? '...' : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                          <span className="italic">[다음 페이지에 계속]</span>
+                          <span className="font-serif">- 1 -</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── 2페이지 중 제 2 장 (신청이유 후반부, 첨부서류, 날짜, 날인, 관할법원) ── */
+                      <div 
+                        id="court-a4-printable"
+                        className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between select-text overflow-hidden print:shadow-none print:border-none print:m-0 print:mx-auto"
+                        style={{ fontFamily: `'Batang', 'BatangChe', 'Gungsuh', serif` }}
+                      >
+                        <div className="space-y-6 pt-4">
+                          <div className="space-y-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 (이어서) ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200 text-slate-800">
+                              {reasonInput.length > 380 ? reasonInput.slice(380) : reasonInput}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-4">
+                            <h3 className="font-bold text-sm tracking-wider">[ 첨 부 서 류 ]</h3>
+                            <div className="text-xs text-slate-700 pl-4 space-y-1.5">
+                              {boundData.evidenceList.map((doc, idx) => (
+                                <div key={idx}>{doc}</div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6 pt-10 text-center">
+                          <div className="text-sm tracking-widest font-mono">
+                            {boundData.submissionDate}
+                          </div>
+
+                          <div className="flex justify-end pr-8 items-center gap-4 text-sm">
+                            <span>신청인의 대리인 {boundData.agentLawyerName}</span>
+                            <div className="w-11 h-11 rounded-full border border-rose-500 flex items-center justify-center text-xs text-rose-600 font-bold bg-rose-50/40">
+                              (인)
+                            </div>
+                          </div>
+
+                          <div className="text-lg font-bold tracking-widest text-slate-900 pt-2">
+                            {boundData.courtName || '서울회생법원'} 귀중
+                          </div>
+
+                          <div className="text-center text-xs text-slate-500 font-serif pt-2 border-t border-slate-100 select-none print:hidden">
+                            - 2 -
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    /* ── 2페이지 연속 보기 모드 (2개의 A4 시트 나열) ── */
+                    <div className="w-full flex flex-col items-center space-y-8 print:space-y-0">
+                      {/* 제 1 장 */}
+                      <div className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between overflow-hidden">
+                        <div className="space-y-6">
+                          <div className="text-center pt-2 pb-4 border-b-2 border-slate-800">
+                            <h1 className="text-2xl font-bold tracking-widest text-slate-900">{docItem.title}</h1>
+                          </div>
+                          <div className="space-y-2 text-sm leading-relaxed">
+                            <div className="flex">
+                              <span className="w-24 font-bold">사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;건</span>
+                              <span className="font-mono font-bold">{boundData.caseNumber || '귀원 개인회생 사건'}</span>
+                            </div>
+                            <div className="flex">
+                              <span className="w-24 font-bold">신&nbsp;&nbsp;청&nbsp;&nbsp;인</span>
+                              <div>
+                                <span className="font-bold">{boundData.debtorName}</span> {boundData.debtorRrn ? `(${boundData.debtorRrn})` : ''}
+                                {boundData.debtorAddress && <div className="text-xs text-slate-600 mt-0.5">{boundData.debtorAddress}</div>}
+                              </div>
+                            </div>
+                            <div className="flex pt-2">
+                              <span className="w-24 font-bold">대&nbsp;&nbsp;리&nbsp;&nbsp;인</span>
+                              <span>{boundData.agentLawfirm}</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2 pt-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 취 지 ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200">{purposeInput}</div>
+                          </div>
+                          <div className="space-y-2 pt-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200">{reasonInput.slice(0, 380)}...</div>
+                          </div>
+                        </div>
+                        <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                          <span className="italic">[다음 페이지에 계속]</span>
+                          <span className="font-serif">- 1 -</span>
+                        </div>
+                      </div>
+
+                      {/* 제 2 장 */}
+                      <div className="bg-white w-full max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] shadow-2xl rounded-xs border border-slate-300 p-10 md:p-14 text-slate-900 font-serif flex flex-col justify-between overflow-hidden">
+                        <div className="space-y-6 pt-4">
+                          <div className="space-y-2">
+                            <h3 className="font-bold text-base tracking-wider">[ 신 청 이 유 (이어서) ]</h3>
+                            <div className="text-sm whitespace-pre-wrap leading-relaxed pl-4 border-l-2 border-slate-200">{reasonInput.slice(380)}</div>
+                          </div>
+                          <div className="space-y-2 pt-4">
+                            <h3 className="font-bold text-sm tracking-wider">[ 첨 부 서 류 ]</h3>
+                            <div className="text-xs text-slate-700 pl-4 space-y-1.5">
+                              {boundData.evidenceList.map((doc, idx) => <div key={idx}>{doc}</div>)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-6 pt-10 text-center">
+                          <div className="text-sm tracking-widest font-mono">{boundData.submissionDate}</div>
+                          <div className="flex justify-end pr-8 items-center gap-4 text-sm">
+                            <span>신청인의 대리인 {boundData.agentLawyerName}</span>
+                            <div className="w-11 h-11 rounded-full border border-rose-500 flex items-center justify-center text-xs text-rose-600 font-bold bg-rose-50/40">(인)</div>
+                          </div>
+                          <div className="text-lg font-bold tracking-widest text-slate-900 pt-2">{boundData.courtName || '서울회생법원'} 귀중</div>
+                          <div className="text-center text-xs text-slate-500 font-serif pt-2 border-t border-slate-100 select-none">- 2 -</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
 
               </div>
             )}
