@@ -93,6 +93,13 @@ export function CaseListView({
   const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth() + 1); // 1~12
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(() => localYmd(new Date()));
+  const [hoveredTooltip, setHoveredTooltip] = useState<{
+    event: any;
+    x: number;
+    y: number;
+    placement: 'top' | 'bottom';
+    align: 'left' | 'right';
+  } | null>(null);
 
   // 저장된 보기 탭 (전체, 1~6단계, 종결)
   const [savedViewTab, setSavedViewTab] = useState<SavedViewTab>('all');
@@ -605,6 +612,44 @@ export function CaseListView({
     if (!selectedCalDate) return [];
     return calendarEvents.filter(e => e.dateStr === selectedCalDate);
   }, [calendarEvents, selectedCalDate]);
+
+  // 담당자 성명 헬퍼
+  const getAssigneeName = (ext: CrmClientExtension) => {
+    const assignedId = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId;
+    if (!assignedId) return '미배정';
+    const member = staffMembers.find(m => m.id === assignedId);
+    return member ? member.name : '담당자';
+  };
+
+  // 캘린더 칩 마우스 호버 툴팁 제어 핸들러
+  const handleChipMouseEnter = (
+    ev: (typeof calendarEvents)[number],
+    targetEl: HTMLElement
+  ) => {
+    const rect = targetEl.getBoundingClientRect();
+    const tooltipWidth = 280;
+    const tooltipHeight = 220;
+    
+    // 화면 우측 여백이 부족하면 오른쪽 기준 정렬
+    const align: 'left' | 'right' = rect.left + tooltipWidth > window.innerWidth - 20 ? 'right' : 'left';
+    const x = align === 'left' ? rect.left : rect.right;
+    
+    // 화면 하단 여백이 부족하면 위쪽 배치
+    const placement: 'top' | 'bottom' = rect.bottom + tooltipHeight > window.innerHeight - 20 ? 'top' : 'bottom';
+    const y = placement === 'bottom' ? rect.bottom + 6 : rect.top - 6;
+
+    setHoveredTooltip({
+      event: ev,
+      x,
+      y,
+      placement,
+      align,
+    });
+  };
+
+  const handleChipMouseLeave = () => {
+    setHoveredTooltip(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -1503,10 +1548,11 @@ export function CaseListView({
                                 e.stopPropagation();
                                 onSelectCase(ev.caseId);
                               }}
+                              onMouseEnter={(e) => handleChipMouseEnter(ev, e.currentTarget)}
+                              onMouseLeave={handleChipMouseLeave}
                               className={`px-1.5 py-0.5 rounded text-[11px] font-medium border truncate transition-all cursor-pointer press-scale flex items-center gap-1 ${chipStyle} ${
                                 ev.isUrgent ? 'ring-1 ring-rose-400 font-bold' : ''
                               }`}
-                              title={`${ev.clientName} [${ev.badgeLabel}]: ${ev.title} (클릭 시 사건 상세로 이동)`}
                             >
                               <span className="font-bold shrink-0">[{ev.badgeLabel}]</span>
                               <span className="truncate">{ev.clientName}</span>
@@ -1668,6 +1714,120 @@ export function CaseListView({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── 캘린더 사건 칩 스마트 플로팅 툴팁 ── */}
+          {hoveredTooltip && (
+            <div
+              className="fixed z-50 pointer-events-none transition-all duration-150 ease-out animate-fadeIn"
+              style={{
+                top: hoveredTooltip.placement === 'bottom' ? `${hoveredTooltip.y}px` : undefined,
+                bottom: hoveredTooltip.placement === 'top' ? `${window.innerHeight - hoveredTooltip.y}px` : undefined,
+                left: hoveredTooltip.align === 'left' ? `${hoveredTooltip.x}px` : undefined,
+                right: hoveredTooltip.align === 'right' ? `${window.innerWidth - hoveredTooltip.x}px` : undefined,
+                width: '280px',
+              }}
+            >
+              {(() => {
+                const ev = hoveredTooltip.event;
+                const nextAct = getNextActionText(ev.request, ev.ext);
+                const stageInfo = STAGE_CONFIG[ev.stageNum] || STAGE_CONFIG[1];
+                const assignee = getAssigneeName(ev.ext);
+                const debtStr = formatWonShort(ev.request.financialProfile?.debtTotal);
+                const incomeStr = formatWonShort(ev.request.financialProfile?.income);
+
+                return (
+                  <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 p-3.5 shadow-xl text-xs space-y-2.5">
+                    {/* 툴팁 헤더: 성명 + 사건유형 + 단계 */}
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                            ev.caseTypeLabel.includes('파산')
+                              ? 'bg-purple-100 text-purple-700 font-bold'
+                              : 'bg-blue-100 text-blue-700 font-bold'
+                          }`}>
+                            {ev.caseTypeLabel.includes('파산') ? '개인파산' : '개인회생'}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${stageInfo.color}`}>
+                            {ev.stageNum}단계 {stageInfo.label}
+                          </span>
+                        </div>
+                        <div className="font-bold text-sm text-slate-900 tracking-tight flex items-center gap-1">
+                          <span>{ev.clientName}</span>
+                          {ev.request.stealthNickname && ev.request.stealthNickname !== ev.clientName && (
+                            <span className="text-[11px] text-slate-400 font-normal">
+                              ({ev.request.stealthNickname})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 ${
+                        ev.type === 'correction'
+                          ? 'bg-rose-100 text-rose-800'
+                          : ev.type === 'reminder'
+                          ? 'bg-amber-100 text-amber-800'
+                          : ev.type === 'contract'
+                          ? 'bg-indigo-100 text-indigo-800'
+                          : ev.type === 'fee'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {ev.badgeLabel}
+                      </span>
+                    </div>
+
+                    {/* 일정 배너 */}
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-0.5">
+                      <div className="flex items-center justify-between text-slate-500 font-medium">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          {ev.dateStr}
+                        </span>
+                        {ev.isUrgent && (
+                          <span className="text-rose-600 font-bold flex items-center gap-0.5 text-[10px]">
+                            <AlertTriangle className="w-3 h-3" /> 기한 임박
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-bold text-slate-800 line-clamp-2">
+                        {ev.title}
+                      </div>
+                    </div>
+
+                    {/* 주요 재무/진행 스펙 */}
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                      <div className="p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                        <span className="text-slate-400 block text-[10px]">총 채무액</span>
+                        <span className="font-bold text-slate-800 font-mono">{debtStr}</span>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                        <span className="text-slate-400 block text-[10px]">월 소득</span>
+                        <span className="font-bold text-slate-800 font-mono">{incomeStr}</span>
+                      </div>
+                    </div>
+
+                    {/* 다음 할 일 & 담당자 */}
+                    <div className="pt-1.5 border-t border-slate-100 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-[10px]">담당자</span>
+                        <span className="font-medium text-slate-700">{assignee}</span>
+                      </div>
+                      <div className="text-slate-500">
+                        <span className="text-slate-400 text-[10px] block">다음 할 일</span>
+                        <span className="font-medium text-slate-800 line-clamp-1">{nextAct.text}</span>
+                      </div>
+                    </div>
+
+                    {/* 푸터 클릭 안내 */}
+                    <div className="pt-1 border-t border-slate-100 text-[10px] text-blue-600 font-medium text-center flex items-center justify-center gap-1">
+                      <span>👉 클릭하여 사건 상세 열기</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
