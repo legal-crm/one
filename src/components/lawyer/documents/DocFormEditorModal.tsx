@@ -10,6 +10,7 @@ import {
 } from '../../../services/documents/legalDocRegistry';
 import { 
   bindDocumentVariables, 
+  bindHwpxTemplateHtml,
   generateAiLegalDraftPrompt, 
   type BoundDocumentData 
 } from '../../../services/documents/documentTemplateEngine';
@@ -57,6 +58,16 @@ function DocFormEditorModalInner({
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [showPrecedentModal, setShowPrecedentModal] = useState(false);
 
+  // docItem이나 의뢰인 정보 변경 시 boundData, 취지, 이유 동기화
+  useEffect(() => {
+    if (!isOpen) return;
+    const fresh = bindDocumentVariables(docItem, clientRequest, crmExt, activeLawyerName);
+    setBoundData(fresh);
+    setPurposeInput(fresh.purpose);
+    setReasonInput(fresh.reason);
+    setHwpxEditedHtml(''); // 새로운 서식이 열리면 에디터 상태 초기화
+  }, [isOpen, docItem, clientRequest, crmExt, activeLawyerName]);
+
   // HWPX 정식 법원 서식 원본 라이브러리 연동 상태
   const [hwpxEntry, setHwpxEntry] = useState<CourtFormEntry | null>(null);
   const [isLoadingHwpx, setIsLoadingHwpx] = useState(false);
@@ -91,7 +102,6 @@ function DocFormEditorModalInner({
 
         if (matched) {
           setHwpxEntry(matched);
-          setHwpxEditedHtml(matched.html);
           setViewMode('HWPX_OFFICIAL');
         } else {
           setHwpxEntry(null);
@@ -104,6 +114,19 @@ function DocFormEditorModalInner({
         setViewMode('A4_CUSTOM');
       });
   }, [isOpen, docItem]);
+
+  // HWPX 템플릿에 실시간 의뢰인 데이터 및 수정된 취지·이유를 바인딩한 최종 렌더링 HTML
+  const activeHwpxHtml = useMemo(() => {
+    if (!hwpxEntry) return '';
+    const baseHtml = hwpxEditedHtml || hwpxEntry.html;
+    return bindHwpxTemplateHtml(
+      baseHtml,
+      boundData,
+      docItem,
+      purposeInput,
+      reasonInput
+    );
+  }, [hwpxEntry, hwpxEditedHtml, boundData, docItem, purposeInput, reasonInput]);
 
   // AI 사유서 보강 생성기 (서식 유형별 전문 법률 문안)
   const handleAiDraft = () => {
@@ -155,7 +178,7 @@ function DocFormEditorModalInner({
               p { margin: 6px 0; }
             </style>
           </head>
-          <body>${hwpxEditedHtml || hwpxEntry.html}</body>
+          <body>${activeHwpxHtml}</body>
         </html>
       `);
       printWindow.document.close();
@@ -483,23 +506,37 @@ function DocFormEditorModalInner({
                 style={{ fontFamily: `'Batang', 'BatangChe', '바탕', serif`, lineHeight: '1.8' }}
               >
                 {/* 상단 안내 바 */}
-                <div className="mb-4 pb-2 border-b border-blue-200 bg-blue-50/70 p-3 rounded-xl text-xs text-blue-900 font-sans flex items-center justify-between print:hidden">
+                <div className="mb-4 pb-2 border-b border-blue-200 bg-blue-50/80 p-3 rounded-xl text-xs text-blue-900 font-sans flex items-center justify-between print:hidden shadow-2xs">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-blue-700">🏛️ 대법원 정식 서식 원본:</span>
                     <span className="font-bold">{hwpxEntry.name}</span>
-                    <span className="text-[11px] text-blue-600">({hwpxEntry.fileName})</span>
+                    <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold border border-emerald-300/60">
+                      ✓ CRM 실데이터 바인딩 완료
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-500">클릭하여 본문 직접 수정 가능</span>
+                  <div className="flex items-center gap-2">
+                    {hwpxEditedHtml && (
+                      <button
+                        type="button"
+                        onClick={() => setHwpxEditedHtml('')}
+                        className="text-[11px] text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
+                        title="수정 사항을 초기화하고 기본 바인딩 상태로 되돌립니다."
+                      >
+                        바인딩 원본 복원
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-500">본문 직접 편집 가능</span>
+                  </div>
                 </div>
 
-                {/* HWPX 원본 HTML 본문 (수정 및 인쇄 지원) */}
+                {/* HWPX 원본 HTML 본문 (CRM 의뢰인 실데이터 및 취지/이유 실시간 바인딩) */}
                 <div
                   ref={hwpxContentRef}
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => setHwpxEditedHtml(e.currentTarget.innerHTML)}
                   className="outline-none focus:ring-1 focus:ring-blue-300/40 rounded-sm p-1 court-hwpx-render text-slate-900"
-                  dangerouslySetInnerHTML={{ __html: hwpxEditedHtml || hwpxEntry.html }}
+                  dangerouslySetInnerHTML={{ __html: activeHwpxHtml }}
                 />
               </div>
             ) : (

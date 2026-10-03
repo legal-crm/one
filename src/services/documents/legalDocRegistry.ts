@@ -408,6 +408,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%ED%8C%8C%EC%82%B0%EA%B8%88%EC%A7%80%EB%AA%85%EB%A0%B9%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
     officialSourceNote: '금지명령 신청서(D5114) 준용',
     priorityLevel: 'NORMAL',
+    defaultPurpose: '신청인에 대한 귀원 파산사건에 관하여 파산선고에 대한 결정이 있을 때까지 다음의 각 절차 또는 행위를 금지한다.\n1. 파산채권에 기하여 신청인 소유의 유체동산 및 급여채권에 대하여 하는 강제집행·가압류 또는 가처분.\n2. 파산채권을 변제받거나 변제를 요구하는 일체의 행위.\n라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 귀원에 파산 및 면책 동시신청을 접수하여 심리가 진행 중입니다.\n2. 파산선고 전 채권자들의 무차별적인 강제집행 및 채권추심으로 인하여 신청인의 최소한의 생계유지가 불가능하고 전체 파산채권자들 간의 공평한 배당 형평성이 심각하게 침해될 우려가 있습니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제348조, 제349조 등의 취지에 따라 파산선고 전 금지명령을 신청하오니 신속히 인용하여 주시기 바랍니다.',
+    defaultEvidenceList: [
+      '1. 파산 및 면책 신청서 접수증명원 1통',
+      '2. 채권자목록 사본 1통',
+      '3. 소송위임장 1통'
+],
     description: '파산절차 신청 중 채권자의 강제집행 등 보전처분 금지'
   },
   {
@@ -424,6 +431,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%ED%8C%8C%EC%82%B0%EC%A4%91%EC%A7%80%EA%B8%88%EC%A7%80%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
     officialSourceNote: '면제재산 결정신청서 [개인파산/면책] 준용',
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인에 대한 파산선고가 있을 때까지 채권자들의 강제집행을 중지·금지하고, 신청인 소유 주택임차보증금 중 5,500만 원(또는 6개월 생계비 1,110만 원)을 파산재단에서 면제한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 귀원에 파산 및 면책을 동시 신청한 상태입니다.\n2. 채권자들의 급여 및 살림살이 압류를 중지시켜 생계를 보호하고, 법률상 압류금지 범위 내의 필수 임차보증금 및 생계비에 대해 면제재산 결정을 구합니다.',
+    defaultEvidenceList: [
+      '1. 파산신청 접수증명원 1통',
+      '2. 임대차계약서 사본 1통',
+      '3. 소송위임장 1통'
+],
     description: '파산선고 전 집행중지와 1,110만 원 면제재산 지정을 동시 신청'
   },
   {
@@ -440,6 +454,13 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%ED%8C%8C%EC%82%B0%EA%B0%95%EC%A0%9C%EC%A7%91%ED%96%89%EC%A0%95%EC%A7%80%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
     officialSourceNote: '3_강제집행정지결정신청서 [강제집행]',
     priorityLevel: 'HIGH',
+    defaultPurpose: '신청인과 채권자 사이의 귀원 강제집행 사건에 관하여, 신청인에 대한 파산선고가 있을 때까지 그 집행절차를 일시 정지한다. 라는 결정을 구합니다.',
+    defaultReasonTemplate: '1. 신청인은 파산 및 면책 절차를 진행 중입니다.\n2. 개별 채권자의 강제집행이 지속될 경우 파산재단 형성 및 파산관재인의 공평 환가 절차가 불가능해지므로, 파산선고 시까지 강제집행의 정지를 구합니다.',
+    defaultEvidenceList: [
+      '1. 파산신청 접수증명원 1통',
+      '2. 강제집행 결정문 사본 1통',
+      '3. 소송위임장 1통'
+],
     description: '파산선고 및 면책신청 계류 중 진행 중인 강제집행 일시 정지'
   },
 
