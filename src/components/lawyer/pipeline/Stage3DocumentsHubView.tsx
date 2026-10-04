@@ -6,7 +6,7 @@ import {
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
   RotateCcw, Filter, FileCheck2, Mail, Truck, Stamp, Info, Copy,
   FileSpreadsheet, Lock, Unlock, ArrowUpRight, Edit2, Save, X,
-  BookOpen, Calendar, HelpCircle, Landmark
+  BookOpen, Calendar, HelpCircle, Landmark, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
@@ -382,6 +382,89 @@ export default function Stage3DocumentsHubView({
     });
     return counts;
   }, [docList]);
+
+  // 스마트 카테고리 아코디언 상태 및 그룹핑 (옵션 1: 스크롤 단축 및 인지 부하 해결)
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+
+  const categoryGroups = useMemo(() => {
+    const groups = [
+      {
+        id: 'gov',
+        title: '주민센터 · 정부24 · 대법원',
+        desc: '인적·가족관계 증빙 및 기본 증명',
+        icon: <Home className="w-4 h-4 text-emerald-600" />,
+        match: (d: DocItemModel) => d.agency.includes('주민센터') || d.agency.includes('정부24') || d.agency.includes('대법원')
+      },
+      {
+        id: 'tax',
+        title: '국세청 · 홈택스 · 위택스',
+        desc: '소득금액 및 지방세 세목별 과세 증명',
+        icon: <Building2 className="w-4 h-4 text-blue-600" />,
+        match: (d: DocItemModel) => d.agency.includes('홈택스') || d.agency.includes('국세청') || d.agency.includes('위택스')
+      },
+      {
+        id: 'work',
+        title: '직장 · 사업장 · 국민건강보험·연금공단',
+        desc: '소득·재직 및 4대보험 자격 증빙',
+        icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+        match: (d: DocItemModel) => d.agency.includes('직장') || d.agency.includes('사업장') || d.agency.includes('공단')
+      },
+      {
+        id: 'finance',
+        title: '금융기관 · 카드사 · 보험사',
+        desc: '부채증명서, 신용정보조회서, 보험해약환급금 등',
+        icon: <CreditCard className="w-4 h-4 text-amber-600" />,
+        match: (d: DocItemModel) => d.agency.includes('은행') || d.agency.includes('보험') || d.agency.includes('금융') || d.agency.includes('국토')
+      },
+      {
+        id: 'personal',
+        title: '신청인 직접 준비 및 기타 첨부',
+        desc: '진술서, 임대차계약서, 가계수지표 등',
+        icon: <FileText className="w-4 h-4 text-slate-600" />,
+        match: () => true
+      }
+    ];
+
+    const assignedIds = new Set<string>();
+    return groups.map(g => {
+      const docsInGroup = filteredDocs.filter(d => {
+        if (assignedIds.has(d.id)) return false;
+        if (g.match(d)) {
+          assignedIds.add(d.id);
+          return true;
+        }
+        return false;
+      });
+      const approvedCount = docsInGroup.filter(d => d.status === 'APPROVED').length;
+      const isAllApproved = docsInGroup.length > 0 && approvedCount === docsInGroup.length;
+      return {
+        ...g,
+        docs: docsInGroup,
+        approvedCount,
+        totalCount: docsInGroup.length,
+        isAllApproved
+      };
+    }).filter(g => g.docs.length > 0);
+  }, [filteredDocs]);
+
+  const isCategoryOpen = (catId: string, isAllApproved: boolean) => {
+    if (openCategories[catId] !== undefined) {
+      return openCategories[catId];
+    }
+    // 스마트 기본값: 전원 승인 완료된 카테고리는 기본 접힘(false), 미완료 카테고리는 기본 펼침(true)
+    return !isAllApproved;
+  };
+
+  const toggleCategoryOpen = (catId: string, isAllApproved: boolean) => {
+    const current = isCategoryOpen(catId, isAllApproved);
+    setOpenCategories(prev => ({ ...prev, [catId]: !current }));
+  };
+
+  const setAllCategoriesOpen = (open: boolean) => {
+    const next: Record<string, boolean> = {};
+    categoryGroups.forEach(g => { next[g.id] = open; });
+    setOpenCategories(next);
+  };
 
   // 사무소 정보
   const office = getOfficeProfile((clientRequest as any).assignedLawyerName);
@@ -759,190 +842,283 @@ export default function Stage3DocumentsHubView({
               </div>
             </div>
 
-            {/* 발급처별 필터 탭 */}
-            <div className="px-4 py-2 border-b border-slate-200 bg-slate-100/60 flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setActiveAgency('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  activeAgency === 'all' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                전체 발급처 ({agencyCounts.all})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAgency('gov')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeAgency === 'gov' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Home className="w-3.5 h-3.5 text-emerald-600" />
-                <span>주민센터·정부24 ({agencyCounts.gov})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAgency('tax')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeAgency === 'tax' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>국세청·홈택스 ({agencyCounts.tax})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAgency('work')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeAgency === 'work' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
-                <span>직장·사업장 ({agencyCounts.work})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAgency('finance')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeAgency === 'finance' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-                <span>금융·재산 ({agencyCounts.finance})</span>
-              </button>
+            {/* 발급처별 필터 탭 & 모두 접기/펼치기 */}
+            <div className="px-4 py-2 border-b border-slate-200 bg-slate-100/60 flex items-center justify-between gap-1.5 overflow-x-auto text-xs font-semibold">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveAgency('all')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    activeAgency === 'all' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  전체 발급처 ({agencyCounts.all})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAgency('gov')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    activeAgency === 'gov' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Home className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>주민센터·정부24 ({agencyCounts.gov})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAgency('tax')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    activeAgency === 'tax' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                  <span>국세청·홈택스 ({agencyCounts.tax})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAgency('work')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    activeAgency === 'work' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>직장·사업장 ({agencyCounts.work})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAgency('finance')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    activeAgency === 'finance' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                  <span>금융·재산 ({agencyCounts.finance})</span>
+                </button>
+              </div>
+
+              {/* 아코디언 일괄 컨트롤 */}
+              <div className="flex items-center gap-1 shrink-0 ml-auto pl-2">
+                <button
+                  type="button"
+                  onClick={() => setAllCategoriesOpen(true)}
+                  className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 rounded font-medium text-[11px] transition-colors"
+                >
+                  모두 펼치기
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setAllCategoriesOpen(false)}
+                  className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 rounded font-medium text-[11px] transition-colors"
+                >
+                  모두 접기
+                </button>
+              </div>
             </div>
 
-            {/* 서류 목록 테이블 */}
-            <div className="divide-y divide-slate-100">
-              {filteredDocs.length === 0 ? (
+            {/* 서류 목록 스마트 아코디언 */}
+            <div className="divide-y divide-slate-200">
+              {categoryGroups.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-xs">
                   조건에 일치하는 서류가 없습니다.
                 </div>
               ) : (
-                filteredDocs.map((doc) => {
+                categoryGroups.map((group) => {
+                  const isOpen = isCategoryOpen(group.id, group.isAllApproved);
+                  const remainCount = group.totalCount - group.approvedCount;
+
                   return (
-                    <div 
-                      key={doc.id}
-                      className="p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
-                          doc.status === 'APPROVED'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : doc.status === 'SUBMITTED'
-                            ? 'bg-blue-100 text-blue-700'
-                            : doc.status === 'SUPPLEMENT_NEEDED'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-100 text-slate-400'
-                        }`}>
-                          {doc.status === 'APPROVED' ? (
-                            <CheckCircle2 className="w-4 h-4" />
+                    <div key={group.id} className="border-b border-slate-200 last:border-b-0">
+                      {/* 카테고리 아코디언 헤더 */}
+                      <button
+                        type="button"
+                        onClick={() => toggleCategoryOpen(group.id, group.isAllApproved)}
+                        className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors cursor-pointer ${
+                          group.isAllApproved 
+                            ? 'bg-slate-50/70 hover:bg-slate-100/80' 
+                            : 'bg-blue-50/30 hover:bg-blue-50/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            group.isAllApproved
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-white border border-blue-200 text-blue-600 shadow-2xs'
+                          }`}>
+                            {group.isAllApproved ? (
+                              <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                              group.icon
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs sm:text-sm text-slate-900">{group.title}</span>
+                              {group.isAllApproved ? (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  ✓ 승인 완료 ({group.approvedCount}/{group.totalCount})
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                    {group.approvedCount}/{group.totalCount} 승인
+                                  </span>
+                                  {remainCount > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                      {remainCount}건 조치 필요
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{group.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="text-[11px] text-slate-400 hidden sm:inline">
+                            {isOpen ? '접기' : '펼쳐보기'}
+                          </span>
+                          {isOpen ? (
+                            <ChevronUp className="w-4 h-4 text-slate-400" />
                           ) : (
-                            <FileText className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
                           )}
                         </div>
+                      </button>
 
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-xs text-slate-900">{doc.name}</span>
-                            {doc.isRequired ? (
-                              <span className="text-xs px-1.5 py-0.2 rounded font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                필수
-                              </span>
-                            ) : (
-                              <span className="text-xs px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600">
-                                선택
-                              </span>
-                            )}
-                            {doc.isCreditorMultiplier && (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                총 {requiredSealCount}부 필수
-                              </span>
-                            )}
-                            {doc.phase === 1 && (
-                              <span className="text-xs px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                                실물 등기
-                              </span>
-                            )}
-                          </div>
+                      {/* 카테고리 내부 서류 행 목록 */}
+                      {isOpen && (
+                        <div className="divide-y divide-slate-100 bg-white">
+                          {group.docs.map((doc) => {
+                            return (
+                              <div 
+                                key={doc.id}
+                                className="p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                              >
+                                <div className="flex items-start gap-3 min-w-0">
+                                  <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                                    doc.status === 'APPROVED'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : doc.status === 'SUBMITTED'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : doc.status === 'SUPPLEMENT_NEEDED'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-slate-100 text-slate-400'
+                                  }`}>
+                                    {doc.status === 'APPROVED' ? (
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    ) : (
+                                      <FileText className="w-4 h-4" />
+                                    )}
+                                  </div>
 
-                          <div className="text-[12px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span className="text-slate-600 font-medium">{doc.agency}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="truncate max-w-md">{doc.notes}</span>
-                            {doc.supplementReason && (
-                              <span className="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
-                                보완 사유: {doc.supplementReason}
-                              </span>
-                            )}
-                          </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-xs text-slate-900">{doc.name}</span>
+                                      {doc.isRequired ? (
+                                        <span className="text-xs px-1.5 py-0.2 rounded font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                          필수
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600">
+                                          선택
+                                        </span>
+                                      )}
+                                      {doc.isCreditorMultiplier && (
+                                        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                          총 {requiredSealCount}부 필수
+                                        </span>
+                                      )}
+                                      {doc.phase === 1 && (
+                                        <span className="text-xs px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                          실물 등기
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="text-[12px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                      <span className="text-slate-600 font-medium">{doc.agency}</span>
+                                      <span className="text-slate-300">•</span>
+                                      <span className="truncate max-w-md">{doc.notes}</span>
+                                      {doc.supplementReason && (
+                                        <span className="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                                          보완 사유: {doc.supplementReason}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ── 행당 단일 액션 버튼 (기획서 3-1: 행 버튼 1개 원칙) ── */}
+                                <div className="shrink-0">
+                                  {doc.status === 'SUBMITTED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (doc.phase === 1) {
+                                          handleApproveDoc(doc.id);
+                                          toast.success(`'${doc.name}' 수령이 확인되었습니다.`);
+                                        } else {
+                                          setShowSpeedReviewModal(true);
+                                        }
+                                      }}
+                                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>검토하기</span>
+                                    </button>
+                                  )}
+
+                                  {doc.status === 'APPROVED' && (
+                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1 whitespace-nowrap">
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>승인 완료</span>
+                                    </span>
+                                  )}
+
+                                  {doc.status === 'NOT_REQUESTED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDocList(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'REQUESTED', requestedAt: localYmd() } : d));
+                                        toast.success(`'${doc.name}' 요청 상태로 전환되었습니다.`);
+                                      }}
+                                      className="px-3 py-1.5 text-slate-700 hover:text-slate-900 border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                                    >
+                                      요청하기
+                                    </button>
+                                  )}
+
+                                  {doc.status === 'REQUESTED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSendSingleReminder(doc.name)}
+                                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                                      title="고객에게 알림톡 다시 알림"
+                                    >
+                                      다시 알림
+                                    </button>
+                                  )}
+
+                                  {doc.status === 'SUPPLEMENT_NEEDED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        toast.info(`'${doc.name}' 보완 가이드 알림톡을 발송합니다.`);
+                                        handleSendSingleReminder(doc.name);
+                                      }}
+                                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                                    >
+                                      보완 재요청
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-
-                      {/* ── 행당 단일 액션 버튼 (기획서 3-1: 행 버튼 1개 원칙) ── */}
-                      <div className="shrink-0">
-                        {doc.status === 'SUBMITTED' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (doc.phase === 1) {
-                                handleApproveDoc(doc.id);
-                                toast.success(`'${doc.name}' 수령이 확인되었습니다.`);
-                              } else {
-                                setShowSpeedReviewModal(true);
-                              }
-                            }}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>검토하기</span>
-                          </button>
-                        )}
-
-                        {doc.status === 'APPROVED' && (
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1 whitespace-nowrap">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>승인 완료</span>
-                          </span>
-                        )}
-
-                        {doc.status === 'NOT_REQUESTED' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDocList(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'REQUESTED', requestedAt: localYmd() } : d));
-                              toast.success(`'${doc.name}' 요청 상태로 전환되었습니다.`);
-                            }}
-                            className="px-3 py-1.5 text-slate-700 hover:text-slate-900 border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                          >
-                            요청하기
-                          </button>
-                        )}
-
-                        {doc.status === 'REQUESTED' && (
-                          <button
-                            type="button"
-                            onClick={() => handleSendSingleReminder(doc.name)}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                            title="고객에게 알림톡 다시 알림"
-                          >
-                            다시 알림
-                          </button>
-                        )}
-
-                        {doc.status === 'SUPPLEMENT_NEEDED' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toast.info(`'${doc.name}' 보완 가이드 알림톡을 발송합니다.`);
-                              handleSendSingleReminder(doc.name);
-                            }}
-                            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                          >
-                            보완 재요청
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   );
                 })
