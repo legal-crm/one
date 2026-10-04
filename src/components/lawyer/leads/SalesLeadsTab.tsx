@@ -28,6 +28,12 @@ import LeadConversionModal from './LeadConversionModal';
 import StatusVisibilityModal from './StatusVisibilityModal';
 import SalesSettingsModal from './SalesSettingsModal';
 
+/** 가장 최근 '재통화 예약' 통화 기록의 예약 일시 (SalesLead에 callbackTime 필드가 없어 통화 이력에서 도출) */
+const getCallbackTime = (lead: SalesLead): string | undefined =>
+  (lead.callLogs || [])
+    .filter(l => l.result === 'callback' && l.callbackScheduledAt)
+    .sort((a, b) => (b.calledAt || '').localeCompare(a.calledAt || ''))[0]?.callbackScheduledAt;
+
 interface SalesLeadsTabProps {
   activeLawyer: User;
   staffMembers: StaffMember[];
@@ -397,9 +403,9 @@ export default function SalesLeadsTab({
                         <span className="text-xs font-bold text-slate-700 block">
                           {lead.callCount}회 시도
                         </span>
-                        {lead.callbackTime ? (
+                        {getCallbackTime(lead) ? (
                           <span className="text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded inline-block mt-0.5">
-                            예약: {lead.callbackTime.slice(5, 16)}
+                            예약: {getCallbackTime(lead)?.slice(5, 16)}
                           </span>
                         ) : (
                           <span className="text-xs text-slate-400">-</span>
@@ -415,7 +421,7 @@ export default function SalesLeadsTab({
                             onClick={() => {
                               setCallModalTargetLead(lead);
                               setCallResultType(lead.status === 'callback' ? 'callback' : 'no_answer');
-                              setCallbackDateTime(lead.callbackTime || `${localYmd()}T14:00`);
+                              setCallbackDateTime(getCallbackTime(lead) || `${localYmd()}T14:00`);
                             }}
                             className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#152a45] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-[0.98]"
                             title="통화 결과 기록"
@@ -612,27 +618,30 @@ export default function SalesLeadsTab({
       )}
 
       {/* ── 5. 단건 등록 모달 ── */}
+      {/* (이전: 모달에 없는 activeLawyer/onCreated 등을 넘겨 onRegister가 undefined → 등록 시 오류·미저장) */}
       <NewLeadModal
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
-        activeLawyer={activeLawyer}
-        staffMembers={staffMembers}
-        lawyers={lawyers}
-        onCreated={(newLead) => {
+        onRegister={(newLead) => {
+          saveSalesLead(newLead);
           setLeads(prev => [newLead, ...prev]);
         }}
+        existingLeads={leads}
+        existingRequests={requests}
       />
 
       {/* ── 6. 엑셀 대량 등록 모달 ── */}
       <ImportLeadsModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        activeLawyer={activeLawyer}
-        staffMembers={staffMembers}
-        lawyers={lawyers}
-        onImportSuccess={(newLeads) => {
+        onImport={(newLeads) => {
+          const inserted = bulkInsertLeads(newLeads);
+          if (inserted === 0 && newLeads.length > 0) return false;
           setLeads(prev => [...newLeads, ...prev]);
+          return true;
         }}
+        existingLeads={leads}
+        existingRequests={requests}
       />
 
       {/* ── 7. 영업 설정 모달 ── */}

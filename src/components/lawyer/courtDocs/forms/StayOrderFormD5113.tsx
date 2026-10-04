@@ -42,7 +42,7 @@ export const StayOrderFormD5113: React.FC<CourtFormProps> = ({ data }) => {
               </p>
               <p>
                 (<span className="tracking-[0.3em]">채 무 자</span>){'       '}
-                <span className="tracking-[0.3em]">주 소</span>: <F k="debtor.currentAddress">{debtor?.address || ''}</F>
+                <span className="tracking-[0.3em]">주 소</span>: <F k="debtor.currentAddress">{debtor?.currentAddress || ''}</F>
               </p>
               <p>
                 <span className="tracking-[0.3em]">상 대 방</span>{'       '}

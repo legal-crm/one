@@ -12,7 +12,7 @@ interface CourtFormProps {
  * 개인회생 신청 시 첨부할 증빙 서류 목록
  */
 export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
-  const { debtor, court, creditors } = data;
+  const { debtor, court, lawyer, creditors } = data;
   const applicationDate = court?.applicationDate || '20  .   .   .';
 
   // 기본 제출서류 목록
@@ -102,7 +102,7 @@ export const EvidenceListForm: React.FC<CourtFormProps> = ({ data }) => {
         <p className="mb-6">{applicationDate}</p>
         <p className="font-bold">
           신청인 <F k="debtor.name">{debtor?.name || ''}</F>{'  '}
-          대리인 <F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사
+          대리인 <F k="lawyer.firmName">{lawyer?.firmName || ''}</F> <F k="lawyer.lawyerName">{lawyer?.lawyerName || ''}</F> 변호사
         </p>
       </div>
 

@@ -438,6 +438,11 @@ export function recordFinancialRelayGuide(
       lastRelayNumber: undefined,
     } : {
       registered: false,
+      provider: 'other',
+      relayPhone: '',
+      registeredAt: '',
+      expiresAt: '',
+      validMonths: 0,
       relayStatus: 'idle',
       lastRelayRequestAt: new Date().toISOString(),
     },

@@ -777,7 +777,7 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
                         <span>{creditor.name}</span>
                       </div>
                       <div className="text-xs text-slate-400 mt-0.5">
-                        원금: <strong className="text-purple-300">{(creditor.currentPrincipal || 0).toLocaleString()}원</strong> / 이자: {(creditor.currentInterest || 0).toLocaleString()}원
+                        원금: <strong className="text-purple-300">{(creditor.principal || 0).toLocaleString()}원</strong> / 이자: {(creditor.interest || 0).toLocaleString()}원
                       </div>
                     </div>
                     <button
@@ -824,11 +824,17 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
                         {
                           id: `c-${Date.now()}`,
                           name: trimmed,
-                          debtType: 'UNSECURED_CREDIT',
-                          originalAmount: 10000000,
-                          currentPrincipal: 9500000,
-                          currentInterest: 120000,
-                          totalDebt: 9620000,
+                          // 금액은 부채증명서 확인 후 입력 (이전: 950만원 등 임의 샘플 금액 + 존재하지 않는 필드로 저장)
+                          creditorNumber: prev.creditors.length + 1,
+                          principal: 0,
+                          interest: 0,
+                          isSecured: false,
+                          isUnconfirmed: false,
+                          isPriority: false,
+                          allocationRatio: 0,
+                          monthlyRepayment: 0,
+                          totalRepayment: 0,
+                          repaymentRate: 0,
                           principalCalculationBasis: '부채증명서 참조',
                           interestCalculationBasis: '연체이자 계산서 참조'
                         }

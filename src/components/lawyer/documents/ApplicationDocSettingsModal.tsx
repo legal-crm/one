@@ -91,6 +91,7 @@ function ApplicationDocSettingsModalInner({
       name: newName.trim(),
       category: activeCategory,
       phase: assignedPhase,
+      submissionMethod: assignedPhase === 1 ? 'POST_MAIL' : 'DIGITAL_UPLOAD', // 1차=실물 등기, 2차=업로드 (서비스 기본 규칙과 동일)
       agency: newAgency.trim() || '정부24 / 주민센터',
       agencyUrl: newAgencyUrl.trim() || undefined,
       tips: newTips.trim() || '관공서 또는 온라인을 통해 발급받아 첨부해 주세요.',
@@ -135,6 +136,7 @@ function ApplicationDocSettingsModalInner({
     ApplicationDocTemplateService.updateTemplate(id, {
       name: editName.trim(),
       phase: assignedPhase,
+      submissionMethod: assignedPhase === 1 ? 'POST_MAIL' : 'DIGITAL_UPLOAD', // 1차=실물 등기, 2차=업로드 (서비스 기본 규칙과 동일)
       agency: editAgency.trim(),
       agencyUrl: editAgencyUrl.trim() || undefined,
       tips: editTips.trim(),

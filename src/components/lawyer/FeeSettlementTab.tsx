@@ -147,6 +147,13 @@ export default function FeeSettlementTab({
       const consecutiveOverdueCount = schedule.filter(i => i.status === 'overdue').length;
       const isHighRiskTarget = totalRescheduled >= 2 || consecutiveOverdueCount >= 2;
 
+      // 연체 지표 (FeeSettlementSummary 필수 필드)
+      const overdueRounds = schedule.filter(i => i.status === 'overdue' || (i.status === 'pending' && i.dueDate && i.dueDate < todayStr));
+      const isOverdue = status === 'overdue';
+      const overdueDays = isOverdue && nextDueDate
+        ? Math.max(0, Math.round((today.getTime() - (parseLocalYmd(nextDueDate) || today).getTime()) / (1000 * 60 * 60 * 24)))
+        : 0;
+
       return {
         clientId: req.id,
         clientName: req.clientName,
@@ -155,7 +162,7 @@ export default function FeeSettlementTab({
         caseType: (ext.caseType as any) || req.requestType || 'individual_rehab',
         caseNumber: ext.courtCase?.caseNumber,
         courtName: ext.courtCase?.courtName,
-        contractDate: ext.contractDate || ext.contracts?.[0]?.contractDate || (req.createdAt ? req.createdAt.slice(0, 10) : undefined),
+        contractDate: ext.contractDate || (req.createdAt ? req.createdAt.slice(0, 10) : undefined),
         filingDate: ext.courtCase?.filedDate,
         totalFee,
         totalPaid,
@@ -166,6 +173,9 @@ export default function FeeSettlementTab({
         nextDueDate,
         nextDueAmount,
         nextDueRound,
+        isOverdue,
+        overdueDays,
+        overdueRoundsCount: overdueRounds.length,
         status,
         feeSchedule: schedule,
         isHighRiskTarget,

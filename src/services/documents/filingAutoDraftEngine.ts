@@ -140,7 +140,7 @@ export function generateAll8AutoDrafts(
   const now = new Date().toISOString();
 
   const creditors = crmExt?.repaymentPlan?.creditors || [];
-  const creditorCount = creditors.length || Number(clientRequest.creditorCount) || 0;
+  const creditorCount = creditors.length || Number(clientRequest.financialProfile?.creditorCount) || 0;
   const totalPrincipal = crmExt?.repaymentPlan?.totalPrincipal || 0;
   // 청산가치 0원도 정상 반영되도록 널 병합 연산자(??) 사용
   const totalLiquidation = crmExt?.repaymentPlan?.totalLiquidationValue ?? 0;
@@ -152,7 +152,11 @@ export function generateAll8AutoDrafts(
   // 별제권(담보부 채권)을 공제한 무담보 회생채권 기준 법원 표준 변제율 산출
   // 담보부 채권 원금 합계 (이전: 담보 채권이 하나라도 있으면 8,050,000원 고정값 차감)
   const securedAmount = creditors
-    .filter((c: any) => c.isSecured || c.debtType?.includes('담보') || c.debtType?.includes('별제권'))
+    .filter((c: any) => {
+      // RepaymentCreditor에는 debtType 필드가 없다 (차용원인은 debtCauseDetail). 구버전 데이터 호환을 위해 둘 다 확인
+      const cause = String(c.debtCauseDetail ?? c.debtType ?? '');
+      return c.isSecured || cause.includes('담보') || cause.includes('별제권');
+    })
     .reduce((s: number, c: any) => s + (Number(c.principal) || 0), 0);
   const prop: any = (crmExt as any)?.propertyListD5102;
   const inc: any = (crmExt as any)?.incomeExpenseD5103;

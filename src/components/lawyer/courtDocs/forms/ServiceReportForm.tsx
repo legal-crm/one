@@ -11,7 +11,7 @@ interface CourtFormProps {
  * 송달장소 및 송달영수인 신고서 — 법원 표준 양식 (A4 규격)
  */
 export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
-  const { debtor, court } = data;
+  const { debtor, court, lawyer } = data;
   const applicationDate = court?.applicationDate || '20  .   .   .';
 
   return (
@@ -50,13 +50,13 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
           <tr>
             <td className="border border-black p-3 font-semibold text-center w-40">1. 송달장소</td>
             <td className="border border-black p-3">
-              {debtor?.serviceAddress || court?.lawyerFirm || ''}
+              {debtor?.serviceAddress || lawyer?.address || lawyer?.firmName || ''}
             </td>
           </tr>
           <tr>
             <td className="border border-black p-3 font-semibold text-center">2. 송달영수인</td>
             <td className="border border-black p-3">
-              {debtor?.serviceRecipient || court?.lawyerName || ''} 변호사
+              {debtor?.serviceRecipient || lawyer?.lawyerName || ''} 변호사
             </td>
           </tr>
           <tr>
@@ -68,7 +68,7 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
           <tr>
             <td className="border border-black p-3 font-semibold text-center">4. 팩스번호</td>
             <td className="border border-black p-3">
-              {debtor?.fax || ''}
+              {lawyer?.fax || ''}
             </td>
           </tr>
         </tbody>
@@ -86,7 +86,7 @@ export const ServiceReportForm: React.FC<CourtFormProps> = ({ data }) => {
           신청인 <F k="debtor.name">{debtor?.name || ''}</F>{'  '} (서명 또는 날인)
         </p>
         <p className="mt-2">
-          대리인 <F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사
+          대리인 <F k="lawyer.firmName">{lawyer?.firmName || ''}</F> <F k="lawyer.lawyerName">{lawyer?.lawyerName || ''}</F> 변호사
         </p>
       </div>
 

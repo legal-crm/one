@@ -2880,7 +2880,7 @@ export default function LawyerRole({
                 setProposalRehabResult(rehabResult);
                 setProposalRehabInput(rehabInput);
                 setProposalConsultRequest(req);
-                setReviewModalProposal(p);
+                setReviewModalProposal({ ...p, proposalData: p.proposalData, memo: p.memo || '' });
               }
             }}
             onOpenCase={(caseId, options) => {

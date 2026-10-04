@@ -189,7 +189,7 @@ export type NotificationType =
   | 'REPLY_RECEIVED';    // 답글 수신
 
 /** 알림 링크 대상 유형 */
-export type NotificationLinkType = 'consult_request' | 'case' | 'copilot_review' | 'task' | 'proposal_review' | 'general';
+export type NotificationLinkType = 'consult_request' | 'case' | 'copilot_review' | 'task' | 'proposal_review' | 'general' | 'sales_lead';
 
 /** 인앱 알림 */
 export interface InAppNotification {

@@ -198,7 +198,8 @@ export default function AlimtalkSendConfirmModal({
           customText: compiledMessage,
           altSubject: `[${firmName}] ${selectedTemplate?.templateName || '안내'}`,
           altContent: compiledMessage,
-          buttons: selectedTemplate?.buttons,
+          // 발송 API 버튼 규격({ name, url })으로 변환 (템플릿은 urlMobile/urlPc만 보유)
+          buttons: selectedTemplate?.buttons?.map(b => ({ name: b.name, url: b.urlMobile || b.urlPc || '', urlMobile: b.urlMobile, urlPc: b.urlPc })),
         }
       );
 

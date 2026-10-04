@@ -5,7 +5,7 @@
  */
 
 import type { CourtFilingMasterData } from '../../../services/documents/courtFilingEngine';
-import { COURT_JURISDICTIONS } from '../../../services/documents/courtFilingEngine';
+import { COURT_JURISDICTIONS, creditorPrincipal, creditorInterest, creditorDebtLabel, creditorAnnexNumbers } from '../../../services/documents/courtFilingEngine';
 
 interface DocTemplateProps {
   data: CourtFilingMasterData;
@@ -319,8 +319,8 @@ export const PetitionBodyDoc: React.FC<DocTemplateProps> = ({ data, isEditable }
 // ── 4. 개인회생채권자목록 본지 & 부속서류 (5~8p) ──
 export const CreditorListDoc: React.FC<DocTemplateProps> = ({ data, isEditable }) => {
   const { creditors, debtor, court } = data;
-  const totalPrincipal = creditors.reduce((sum, c) => sum + (c.currentPrincipal || 0), 0);
-  const totalInterest = creditors.reduce((sum, c) => sum + (c.currentInterest || 0), 0);
+  const totalPrincipal = creditors.reduce((sum, c) => sum + creditorPrincipal(c), 0);
+  const totalInterest = creditors.reduce((sum, c) => sum + creditorInterest(c), 0);
   const grandTotal = totalPrincipal + totalInterest;
 
   return (
@@ -382,17 +382,17 @@ export const CreditorListDoc: React.FC<DocTemplateProps> = ({ data, isEditable }
               <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
               <td className="border border-black p-1 font-semibold text-center">{c.name}</td>
               <td className="border border-black p-1 text-xs">
-                <div className="font-semibold">{c.debtType.includes('CARD') ? '신용카드 사용대금' : '대여금(신용대출)'}</div>
-                <div className="text-black">{c.creditorAddress} (전화: {c.creditorPhone || '고객센터'})</div>
-                <div className="text-black">이율: 연 {c.interestRate || 10}%</div>
+                <div className="font-semibold">{creditorDebtLabel(c)}</div>
+                <div className="text-black">{c.address || ''} (전화: {c.phone || '고객센터'})</div>
+                {c.interestRate != null && <div className="text-black">이율: 연 {c.interestRate}%</div>}
               </td>
               <td className="border border-black p-1 text-center text-xs">
                 ☑ 부속서류<br />
-                ( {c.annexDocTypes?.map(a => a.replace('ANNEX_', '')).join(', ') || '3, 4'} )
+                ( {creditorAnnexNumbers(c).join(', ') || '해당없음'} )
               </td>
               <td className="border border-black p-1 text-right text-xs">
-                <div className="font-bold">원금: {(c.currentPrincipal || 0).toLocaleString()}원</div>
-                <div>이자: {(c.currentInterest || 0).toLocaleString()}원</div>
+                <div className="font-bold">원금: {creditorPrincipal(c).toLocaleString()}원</div>
+                <div>이자: {creditorInterest(c).toLocaleString()}원</div>
                 <div className="text-black text-xs">{c.principalCalculationBasis || '부채증명서 참조'}</div>
               </td>
             </tr>

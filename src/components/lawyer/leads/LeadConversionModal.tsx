@@ -37,7 +37,8 @@ export default function LeadConversionModal({
 
   useEffect(() => {
     if (lead) {
-      setCaseType(lead.caseType === '개인파산' ? '개인파산' : '개인회생');
+      // CaseType의 파산 값은 '파산' (이전: 타입에 없는 '개인파산'으로 저장)
+      setCaseType((lead as any).caseType === '파산' || (lead as any).caseType === '개인파산' ? '파산' as CaseType : '개인회생');
       setAssignedLawyerId(activeLawyer.id);
       setConsultMemo(lead.specialMemo || '');
     }
@@ -150,9 +151,9 @@ export default function LeadConversionModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCaseType('개인파산')}
+                  onClick={() => setCaseType('파산')}
                   className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
-                    caseType === '개인파산'
+                    caseType === '파산'
                       ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}

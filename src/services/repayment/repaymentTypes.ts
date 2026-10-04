@@ -242,6 +242,11 @@ export interface RepaymentCreditor {
   debtUsage?: string;                // 차용금 사용처 (생활비, 사업자금, 병원비 등)
   phone?: string;                    // 채권자 대표전화 (02 국번 자동 보정 대상)
   fax?: string;                      // 팩스번호
+
+  // 법원 서식(채권자목록) 표시용 선택 입력
+  interestRate?: number;             // 약정 이율 (연 %, 미입력 시 서식에 미표시)
+  principalCalculationBasis?: string;// 원금 산정 근거 (예: 부채증명서 참조)
+  interestCalculationBasis?: string; // 이자 산정 근거
 }
 
 // ══════════════════════════════════════════════════════════════════

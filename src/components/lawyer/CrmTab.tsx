@@ -1867,7 +1867,7 @@ export default function CrmTab({
           '담당 미배정';
 
         // 단일 주 버튼 (Primary CTA)
-        const primaryActionConfig = (() => {
+        const primaryActionConfig = ((): { label: string; onClick: () => void; disabled?: boolean } => {
           if (pipelineStage === 1) {
             const hasProposal = (selectedClient.proposals || []).length > 0;
             return {

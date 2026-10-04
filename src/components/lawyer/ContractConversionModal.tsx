@@ -131,6 +131,7 @@ function ContractConversionModalInner({
         clientAddress: request.financialProfile?.residenceRegion || '',
         lawyerName: activeLawyer.name,
         lawFirmName: firmLabel,
+        lawFirmPhone: activeLawyer.officePhone || undefined,
         assignedLawyerId: activeLawyer.id,
         totalFee: totalFee,
         courtCosts: {

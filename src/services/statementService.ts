@@ -168,10 +168,12 @@ export class StatementService {
       ext.activities.unshift({
         id: `act-stmt-${Date.now()}`,
         type: 'status_change',
+        clientId: statement.clientId,
         actorId: 'client',
+        actorRole: 'CLIENT',
         actorName: `${statement.applicantName} (의뢰인)`,
-        title: `[서류제출] 법원 제출용 ${isRehab ? '개인회생' : '개인파산'} 진술서 작성 완료`,
-        description: `의뢰인이 AI 스마트 진술서 작성을 완료하고 변호사 사무실로 자동 전달하였습니다. (사유: ${statement.story.initialCauseKeywords.join(', ')})`,
+        description: `[서류제출] 법원 제출용 ${isRehab ? '개인회생' : '개인파산'} 진술서 작성 완료 — 의뢰인이 AI 스마트 진술서 작성을 완료하고 변호사 사무실로 자동 전달하였습니다. (사유: ${statement.story.initialCauseKeywords.join(', ')})`,
+        createdAt: new Date().toISOString(),
         timestamp: new Date().toISOString()
       });
 

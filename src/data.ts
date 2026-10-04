@@ -1027,7 +1027,7 @@ export const initialConsultRequests: ConsultRequest[] = [
       residenceRegion: '서울 마포구',
       workLocation: '서울 마포구',
       housingType: 'rent' as const,
-      housingContractHolder: 'family' as const,
+      housingContractHolder: 'others' as const,
       debtCause: 'LIVING' as const,
       harassmentLevel: 'LETTER' as const,
       debtTypes: { banks: 2500, cards: 4200, personals: 800, recentLoans: 0, coinCrypto: 0 },
@@ -1177,7 +1177,7 @@ export const initialConsultRequests: ConsultRequest[] = [
       residenceRegion: '경기 수원시 팔달구',
       workLocation: '경기 수원시',
       housingType: 'rent' as const,
-      housingContractHolder: 'other' as const,
+      housingContractHolder: 'others' as const,
       debtCause: 'BUSINESS' as const,
       harassmentLevel: 'SEIZURE' as const,
       debtTypes: { banks: 12000, cards: 3000, personals: 4000, recentLoans: 1000, coinCrypto: 0 },
@@ -1386,6 +1386,7 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 1 테스트] 소상공인 자영업 폐업 위기 채무 1억 2,500만원 개인회생 상담',
     content: '외식업 매장을 4년간 운영하다 고금리 자영업 대출과 카드론으로 채무가 1억 2,500만원까지 불어났습니다. 현재 월 순이익은 220만원 수준으로 이자 납입도 벅찹니다. 빠른 금지명령과 사업자 개인회생 제안서 발송 부탁드립니다.',
     financialProfile: {
+      riskFlags: [],
       clientName: '박지훈',
       age: 42,
       gender: 'male' as const,
@@ -1433,6 +1434,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 2-A 테스트] 1금융 신용대출 및 대부업 채무 6,800만원 전자 수임계약 진행 중',
     content: '상담 후 변호사님 제안 조건(수임료 160만원, 4회 분납)에 동의하여 전자계약서 링크를 발송받았습니다. 스마트폰 본인인증 후 서명 대기 상태입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '최수안',
       age: 33,
       gender: 'female' as const,
@@ -1471,6 +1474,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 2-B 테스트] 본인명의 휴대폰 정지로 인한 법률사무소 방문(대면) 체결 요청',
     content: '채무 연체로 휴대폰이 일시 정지되어 전자계약 본인인증이 불가합니다. 변호사 사무소에 직접 내방하여 종이 계약서에 서명하고 서류를 전달하고자 방문 체결을 신청했습니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '강태양',
       age: 46,
       gender: 'male' as const,
@@ -1509,6 +1514,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 2-C 테스트] 강원 춘천 거주로 인한 우편(등기) 서면계약서 발송 요청',
     content: '직장 근무와 지리적 거리로 서울 사무소 방문이 어렵고 스마트폰 인증 오류가 발생하여, 우편 등기로 계약서 원본 2부를 받고자 배송지 주소를 접수했습니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '윤하은',
       age: 39,
       gender: 'female' as const,
@@ -1547,6 +1554,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 3 테스트] 사건 위임계약 체결 완료 / 15종 필수서류 수합 및 부채증명서 발급 대행',
     content: '수임료 계약(총 180만원, 착수 60만 완납) 완료 후 15종 서류 수합을 개시했습니다. 동사무소 공문서 6종 제출 완료, 세무서 서류 검토 중입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '정우성',
       age: 41,
       gender: 'male' as const,
@@ -1577,7 +1586,7 @@ export const initialConsultRequests: ConsultRequest[] = [
     phone: '010-7777-1111',
     requestType: 'direct_multi',
     maxParticipants: 3,
-    status: 'applied',
+    status: 'filed',
     selectedLawyerIds: ['lawyer-1', 'lawyer-2'],
     assignedLawyerId: 'lawyer-1',
     acceptedLawyerIds: ['lawyer-1'],
@@ -1585,6 +1594,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 4 테스트] 서울회생법원 전자접수 완료 (2026개회10428) 및 금지명령 인용 송달',
     content: '서울회생법원에 개인회생 신청서 및 변제계획안 최종 접수 완료. 접수 4일 만에 금지명령 인용되어 채권추심 및 급여 가압류 압류 해제 통보 완료 상태입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '최은지',
       age: 35,
       gender: 'female' as const,
@@ -1623,6 +1634,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 5 테스트] 수원회생법원 1차 보정권고 수령 (2026개회33912) 보정서 작성 대응',
     content: '수원회생법원 회생위원으로부터 최근 1년 계좌 거래내역 100만원 이상 출금 소명 및 청산가치 조정 1차 보정권고를 수령하여 보정서 작성 중입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '김민석',
       age: 44,
       gender: 'male' as const,
@@ -1662,6 +1675,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[Stage 6 테스트] 서울회생법원 36개월 성실 변제 전액 불입 및 최종 면책 허가 결정',
     content: '월 78만원씩 36개월간 총 2,808만원 성실 변제 완료. 법원 면책 결정 확정 및 한국신용정보원 공공정보(1101) 등록 해제 완료 건입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '한예은',
       age: 37,
       gender: 'female' as const,
@@ -1700,6 +1715,8 @@ export const initialConsultRequests: ConsultRequest[] = [
     title: '[개인파산 테스트] 68세 고령 및 기초수급자 무소득 파산·면책 서류 준비',
     content: '과거 사업 실패 후 고령과 지병으로 근로 능력 상실. 부채 6,500만원(소멸시효 완성채권 포함)에 대해 파산 관재인 면담 서류 준비 중입니다.',
     financialProfile: {
+      debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 }, // 채무 유형별 내역 미입력
+      riskFlags: [],
       clientName: '오동석',
       age: 68,
       gender: 'male' as const,

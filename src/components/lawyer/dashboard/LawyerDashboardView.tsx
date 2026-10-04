@@ -136,7 +136,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
     return targetRequests.filter(r => {
       const ext = crmStore[r.id];
       const status = ext?.crmStatus || 'requested';
-      return status === 'requested' || r.status === 'pending';
+      return status === 'requested' || r.status === 'requested';
     }).length;
   }, [targetRequests, crmStore]);
 
@@ -144,7 +144,8 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
   const unreadChatCount = useMemo(() => {
     // 의뢰인이 마지막으로 메시지를 남겼거나 미확인된 채팅 수
     return targetRequests.filter(r => {
-      return (r.unreadCount && r.unreadCount > 0) || r.status === 'in_progress';
+      // ConsultRequest에 미확인 카운트 필드가 없어 '상담 진행 중' 상태 기준으로 집계 (이전: 없는 unreadCount/'in_progress' 비교로 항상 0)
+      return r.status === 'counseling';
     }).length;
   }, [targetRequests]);
 
@@ -157,7 +158,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext.correctionOrders) {
         ext.correctionOrders.forEach(co => {
           if (co.status === 'pending' && co.deadline) {
-            const diff = daysUntil(co.deadline, todayStr);
+            const diff = (daysUntil(co.deadline) ?? 0);
             if (diff >= 0 && diff <= 7) count++;
           }
         });
@@ -165,7 +166,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext.courtCase?.events) {
         ext.courtCase.events.forEach(ev => {
           if (ev.date) {
-            const diff = daysUntil(ev.date, todayStr);
+            const diff = (daysUntil(ev.date) ?? 0);
             if (diff >= 0 && diff <= 7) count++;
           }
         });
@@ -203,11 +204,11 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext?.correctionOrders) {
         ext.correctionOrders.forEach(co => {
           if (co.status === 'pending' && co.deadline) {
-            const diff = daysUntil(co.deadline, todayStr);
+            const diff = (daysUntil(co.deadline) ?? 0);
             list.push({
-              id: `corr-${r.id}-${co.orderNumber}`,
+              id: `corr-${r.id}-${co.round}`,
               type: 'correction',
-              title: `${co.orderNumber || 1}차 보정서 제출`,
+              title: `${co.round || 1}차 보정서 제출`,
               clientName: cName,
               caseId: r.id,
               stage: 5,
@@ -227,7 +228,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext?.feeSchedule) {
         ext.feeSchedule.forEach((f, idx) => {
           if (f.status === 'overdue' || (f.status === 'pending' && f.dueDate && f.dueDate < todayStr)) {
-            const diff = f.dueDate ? daysUntil(f.dueDate, todayStr) : -1;
+            const diff = f.dueDate ? (daysUntil(f.dueDate) ?? 0) : -1;
             list.push({
               id: `fee-${r.id}-${idx}`,
               type: 'fee_overdue',
@@ -248,9 +249,9 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       }
 
       // C. 신규 상담 요청 응답 대기
-      if (r.status === 'pending' || ext?.crmStatus === 'requested') {
+      if (r.status === 'requested' || ext?.crmStatus === 'requested') {
         const createdDate = r.createdAt ? r.createdAt.slice(0, 10) : todayStr;
-        const diff = daysUntil(createdDate, todayStr);
+        const diff = (daysUntil(createdDate) ?? 0);
         list.push({
           id: `newlead-${r.id}`,
           type: 'new_lead',
@@ -332,12 +333,12 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext?.courtCase?.events) {
         ext.courtCase.events.forEach(ev => {
           if (ev.date) {
-            const diff = daysUntil(ev.date, todayStr);
+            const diff = (daysUntil(ev.date) ?? 0);
             if (diff >= 0 && diff <= 7) {
               list.push({
                 id: `ev-${r.id}-${ev.id || ev.date}`,
                 dateStr: ev.date,
-                timeStr: ev.time || '기일',
+                timeStr: '기일',
                 title: ev.title || (ev.type === 'hearing' ? '채권자집회' : '법원 기일'),
                 clientName: cName,
                 caseId: r.id,
@@ -350,12 +351,12 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
       if (ext?.correctionOrders) {
         ext.correctionOrders.forEach(co => {
           if (co.status === 'pending' && co.deadline) {
-            const diff = daysUntil(co.deadline, todayStr);
+            const diff = (daysUntil(co.deadline) ?? 0);
             if (diff >= 0 && diff <= 7) {
               list.push({
-                id: `co-${r.id}-${co.orderNumber}`,
+                id: `co-${r.id}-${co.round}`,
                 dateStr: co.deadline,
-                title: `보정 기한 (${co.orderNumber || 1}차)`,
+                title: `보정 기한 (${co.round || 1}차)`,
                 clientName: cName,
                 caseId: r.id,
                 type: 'correction',

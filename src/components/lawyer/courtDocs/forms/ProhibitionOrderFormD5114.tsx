@@ -14,7 +14,7 @@ interface CourtFormProps {
 export const ProhibitionOrderFormD5114: React.FC<CourtFormProps> = ({ data }) => {
   const { debtor, court } = data;
   const caseNumber = court?.caseNumber || '20    개회        ';
-  const employerName = debtor?.employerName || debtor?.workplace || '(회사명)';
+  const employerName = debtor?.workplaceName || '(회사명)';
   const applicationDate = court?.applicationDate || '20  .   .    .';
 
   return (
@@ -37,7 +37,7 @@ export const ProhibitionOrderFormD5114: React.FC<CourtFormProps> = ({ data }) =>
         </p>
         <p>
           (<span className="tracking-[0.3em]">채 무 자</span>){'       '}
-          <span className="tracking-[0.3em]">주 소</span>: <F k="debtor.currentAddress">{debtor?.address || ''}</F>
+          <span className="tracking-[0.3em]">주 소</span>: <F k="debtor.currentAddress">{debtor?.currentAddress || ''}</F>
         </p>
       </div>
 

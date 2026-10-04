@@ -458,19 +458,18 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2026하단2019',
+      caseType: '개인파산',
       filedDate: '2026-09-05',
       status: '파산관재인 서류 검토 중',
     },
     notes: [
       {
         id: 'note-amj-1-1',
-        clientId: 'req-amjone-1',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '1차 전화상담 완료: 만 58세 여성, 무릎 수술 후 근로능력 현저히 부족함. 2년 전 반환보증금 1,000만원 전액 수술비 영수증 확보 완료. 소명 완료 시 동시폐지(관재인 보수 절약) 유력.',
         createdAt: '2026-09-08T11:00:00Z',
-        category: 'consultation'
+        category: 'consult'
       }
     ],
     activities: [
@@ -506,19 +505,18 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2026개회89211',
+      caseType: '개인회생',
       filedDate: '2026-08-01',
       status: '보정권고 송달 / 대응 중',
     },
     notes: [
       {
         id: 'note-amj-2-1',
-        clientId: 'req-amjone-2',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '서울회생법원 준칙 제408호 적용 대상. 해외선물 거래내역서 및 업비트 거래내역 분석 중. 직장 통보 방지 요청 철저 관리 요망. ⚠️ 수임료 2회차 연속 미납 상태로 특별 유선 상담 필요.',
         createdAt: '2026-09-08T16:00:00Z',
-        category: 'general'
+        category: 'consult'
       }
     ],
     activities: [
@@ -551,18 +549,18 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     ],
     courtCase: {
       courtName: '수원회생법원',
+      caseNumber: '',
+      caseType: '개인파산',
       status: '수임 계약 체결 / 접수 준비',
     },
     notes: [
       {
         id: 'note-amj-3-1',
-        clientId: 'req-amjone-3',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '수임계약 체결 완료. 착수금 100만원 수납. 유체동산 압류 통지서 송달되었으므로 파산신청과 동시에 강제집행 중지명령 신청서 함께 제출 예정.',
         createdAt: '2026-09-09T10:30:00Z',
-        category: 'contract'
+        category: 'billing'
       }
     ],
     activities: [
@@ -572,7 +570,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'contract',
+        type: 'contract_signed',
         description: '전자 수임계약 체결 완료 (총 수임료 250만원 / 착수금 100만원 수납)',
         createdAt: '2026-09-09T10:20:00Z'
       }
@@ -596,16 +594,15 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2026개회104921',
+      caseType: '개인회생',
       filedDate: '2026-09-02',
       status: '금지명령 인용 / 개시 대기',
     },
     notes: [
       {
         id: 'note-amj-4-1',
-        clientId: 'req-amjone-4',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '서울회생법원 2026개회104921 접수 완료. 금지명령 인용 결정문 송달되어 시중은행 독촉 즉시 전면 중단됨. HUG 안심전세대출 구제 특례 적용 진행 중. 수임료 전액 완납 완료.',
         createdAt: '2026-09-10T09:30:00Z',
         category: 'court'
@@ -618,7 +615,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'court_case',
+        type: 'status_change',
         description: '서울회생법원 금지명령 인용 결정 (사건번호: 2026개회104921)',
         createdAt: '2026-09-10T09:15:00Z'
       }
@@ -642,6 +639,8 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     ],
     courtCase: {
       courtName: '인천지방법원',
+      caseNumber: '',
+      caseType: '개인회생',
       status: '부채증명서 발급 및 신청서 작성 중',
     },
     notes: [],
@@ -664,15 +663,13 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     crmStatus: 'requested',
     thirteenStage: 'consultation_scheduled',
     caseType: 'individual_rehab',
-    intakeChannel: 'direct_input',
+    intakeChannel: 'visit',
     preInfo: '외식업 매장 자영업 대출 등 1억 2,500만원 채무. 월 220만원 순익. 빠른 금지명령과 사업자 개인회생 제안서 발송 대기 중.',
     notes: [
       {
         id: 'note-st1-1',
-        clientId: 'req-stage1-lead',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: 'AI 사건 진단 결과 총 채무 1.25억, 월 가용소득 약 85만원 수준으로 예상 탕감률 약 79% 분석됨. 맞춤 제안서 발송 요망.',
         createdAt: '2026-10-01T10:30:00Z',
         category: 'consult'
@@ -713,7 +710,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'contract',
+        type: 'contract_signed',
         description: '전자 수임계약서 패키지 발송 완료 (의뢰인 휴대폰 본인인증 및 서명 대기)',
         createdAt: '2026-09-28T14:30:00Z'
       }
@@ -736,10 +733,8 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     notes: [
       {
         id: 'note-st2v-1',
-        clientId: 'req-stage2-visit',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '의뢰인이 통신비 체납으로 본인인증이 안 되어 10월 5일 오후 2시 사무소 내방 서면 체결을 요청함. 회의실 예약 및 종이 계약서 서식 인쇄 준비 필요.',
         createdAt: '2026-09-29T11:30:00Z',
         category: 'consult'
@@ -752,7 +747,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'client',
         actorName: '강태양',
         actorRole: 'OWNER',
-        type: 'contract',
+        type: 'contract_signed',
         description: '의뢰인이 [법률사무소 방문 대면 체결] 전환을 요청하였습니다. (희망일: 2026-10-05 14:00)',
         createdAt: '2026-09-29T11:15:00Z'
       }
@@ -785,7 +780,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'client',
         actorName: '윤하은',
         actorRole: 'OWNER',
-        type: 'contract',
+        type: 'contract_signed',
         description: '의뢰인이 [우편(등기) 서면 계약] 전환을 요청하였습니다. (수령주소: 강원도 춘천시 영서로 1980)',
         createdAt: '2026-09-30T09:45:00Z'
       }
@@ -810,19 +805,19 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     ],
     preInfo: '수임계약 체결 완료. 15종 필수서류 수합 중 (동사무소 서류 6종 승인, 세무서 서류 검토 중).',
     documents: [
-      { id: 'doc-01', name: '주민등록등본', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-02', name: '주민등록초본 (과거주소 포함)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-03', name: '가족관계증명서 (상세)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-04', name: '혼인관계증명서 (상세)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-05', name: '인감증명서 (채권자수+3통)', category: 'basic', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-06', name: '지방세 세목별 과세증명서', category: 'property', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-07', name: '근로소득원천징수영수증', category: 'income', required: true, checked: false, reviewStatus: 'submitted' },
-      { id: 'doc-08', name: '급여통장 거래내역서 (1년치)', category: 'income', required: true, checked: false, reviewStatus: 'not_submitted' },
-      { id: 'doc-09', name: '예금계좌조회서 (계좌정보통합관리원)', category: 'property', required: true, checked: false, reviewStatus: 'not_submitted' },
-      { id: 'doc-10', name: '보험계약조회서 및 해약환급금확인서', category: 'property', required: true, checked: false, reviewStatus: 'not_submitted' },
-      { id: 'doc-11', name: '임대차계약서 사본', category: 'property', required: true, checked: true, reviewStatus: 'approved' },
-      { id: 'doc-12', name: '자동차등록원부 (갑/을)', category: 'property', required: false, checked: false, reviewStatus: 'not_submitted' },
-      { id: 'doc-13', name: '부채증명서 (채권사별 각 1통)', category: 'debt', required: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-01', label: '주민등록등본', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-02', label: '주민등록초본 (과거주소 포함)', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-03', label: '가족관계증명서 (상세)', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-04', label: '혼인관계증명서 (상세)', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-05', label: '인감증명서 (채권자수+3통)', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-06', label: '지방세 세목별 과세증명서', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-07', label: '근로소득원천징수영수증', isRequired: true, checked: false, reviewStatus: 'submitted' },
+      { id: 'doc-08', label: '급여통장 거래내역서 (1년치)', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-09', label: '예금계좌조회서 (계좌정보통합관리원)', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-10', label: '보험계약조회서 및 해약환급금확인서', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-11', label: '임대차계약서 사본', isRequired: true, checked: true, reviewStatus: 'approved' },
+      { id: 'doc-12', label: '자동차등록원부 (갑/을)', isRequired: false, checked: false, reviewStatus: 'not_submitted' },
+      { id: 'doc-13', label: '부채증명서 (채권사별 각 1통)', isRequired: true, checked: false, reviewStatus: 'not_submitted' },
     ],
     activities: [
       {
@@ -831,7 +826,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'document',
+        type: 'document_checked',
         description: '공문서 6종(등초본, 가족관계증명서, 임대차계약서 등) 검토 및 최종 승인 완료',
         createdAt: '2026-09-20T11:00:00Z'
       }
@@ -840,7 +835,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
 
   // ── [Stage 4: 신청·접수] 최은지 ──
   'req-stage4-filing': {
-    crmStatus: 'applied',
+    crmStatus: 'filed',
     thirteenStage: 'petition_filed',
     caseType: 'individual_rehab',
     contractDate: '2026-08-01',
@@ -851,6 +846,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2026개회10428',
+      caseType: '개인회생',
       judgeDepartment: '제21단독',
       trusteeName: '박회생 위원',
       status: '금지명령 인용 / 서류 심사 중',
@@ -864,7 +860,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'court_case',
+        type: 'status_change',
         description: '서울회생법원 전자접수 완료 (사건번호: 2026개회10428) 및 금지명령 인용 결정',
         createdAt: '2026-08-14T10:00:00Z'
       }
@@ -873,7 +869,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
 
   // ── [Stage 5: 보정·개시] 김민석 ──
   'req-stage5-correction': {
-    crmStatus: 'correction',
+    crmStatus: 'filed',
     thirteenStage: 'correction_recommended',
     caseType: 'individual_rehab',
     contractDate: '2026-07-20',
@@ -884,6 +880,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '수원회생법원',
       caseNumber: '2026개회33912',
+      caseType: '개인회생',
       judgeDepartment: '제12단독',
       trusteeName: '최도산 위원',
       status: '1차 보정권고 수령 대응 중',
@@ -892,13 +889,12 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     correctionOrders: [
       {
         id: 'corr-st5-1',
-        orderNumber: 1,
-        courtName: '수원회생법원',
-        receivedAt: '2026-09-25',
+        round: 1,
+        issuedDate: '2026-09-25',
+        title: '1차 보정권고 (수원회생법원)',
         deadline: '2026-10-09',
-        status: 'drafting',
-        content: '1. 최근 1년간 각 은행 계좌에서 100만 원 이상 인출된 내역에 대하여 그 사용처를 구체적으로 소명하고 소명자료(영수증 등)를 제출할 것.\n2. 배우자 명의 재산(차량 및 임차보증금)에 대하여 형성 경위를 밝히고 청산가치에 1/2 반영 여부를 재산목록에 보정할 것.',
-        responseDocId: 'doc-corr-st5-1'
+        status: 'pending',
+        content: '1. 최근 1년간 각 은행 계좌에서 100만 원 이상 인출된 내역에 대하여 그 사용처를 구체적으로 소명하고 소명자료(영수증 등)를 제출할 것.\n2. 배우자 명의 재산(차량 및 임차보증금)에 대하여 형성 경위를 밝히고 청산가치에 1/2 반영 여부를 재산목록에 보정할 것.'
       }
     ],
     activities: [
@@ -908,7 +904,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'system',
         actorName: '전자소송 연동',
         actorRole: 'OWNER',
-        type: 'court_case',
+        type: 'status_change',
         description: '수원회생법원 1차 보정권고 전자 송달 접수 (기한: 2026-10-09까지)',
         createdAt: '2026-09-25T15:30:00Z'
       }
@@ -928,6 +924,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     courtCase: {
       courtName: '서울회생법원',
       caseNumber: '2023개회55120',
+      caseType: '개인회생',
       status: '36개월 변제 완료 / 최종 면책 허가 확정',
       appliedAt: '2023-08-20',
       prohibitionOrderDate: '2023-08-25',
@@ -935,14 +932,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
       approvalDate: '2024-02-15',
       dischargeDate: '2026-08-15'
     },
-    repaymentPlan: {
-      monthlyRepaymentTotal: 780000,
-      months: 36,
-      totalDebt: 72000000,
-      totalLiquidationValue: 6000000,
-      totalForgivenAmount: 43920000,
-      totalRepaymentRate: 39
-    },
+    // 변제계획 요약(월 78만원 × 36개월, 변제율 39%)은 preInfo로만 표기 — repaymentPlan은 전체 RepaymentPlanData 구조가 필요
     activities: [
       {
         id: 'act-st6-1',
@@ -950,7 +940,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'system',
         actorName: '법원 전자송달',
         actorRole: 'OWNER',
-        type: 'court_case',
+        type: 'status_change',
         description: '서울회생법원 최종 면책 허가 결정 확정 (신용정보원 공공기록 코드 1101 해제)',
         createdAt: '2026-08-15T11:00:00Z'
       }
@@ -966,10 +956,8 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     notes: [
       {
         id: 'note-bk-1',
-        clientId: 'req-bankruptcy-stage3',
         authorId: 'lawyer-1',
         authorName: '김우진 변호사',
-        authorRole: 'OWNER',
         content: '수급자 증명서 및 생계급여 내역 확보 완료. 법원 파산관재인 예납금(30만원) 안내 완료.',
         createdAt: '2026-09-20T14:00:00Z',
         category: 'consult'
@@ -982,7 +970,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
         actorId: 'lawyer-1',
         actorName: '김우진 변호사',
         actorRole: 'OWNER',
-        type: 'document',
+        type: 'document_checked',
         description: '개인파산 필수 서류(기초생활수급자 증명서 등) 4종 접수 완료',
         createdAt: '2026-09-22T10:00:00Z'
       }

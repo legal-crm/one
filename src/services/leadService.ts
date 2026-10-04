@@ -486,11 +486,13 @@ export async function convertLeadToClient(
   }
   if (lead.depositHistory && lead.depositHistory.length > 0) {
     newExt.feeSchedule = lead.depositHistory.map((d, i) => ({
-      installmentNo: i + 1,
+      // FeeInstallment 규격 (이전: installmentNo/paidAt 등 없는 필드로 저장되어 회차·납부일 미표시)
+      id: `fee-lead-${lead.id}-${i + 1}`,
+      round: i + 1,
       dueDate: d.date,
       amount: d.amount,
-      status: d.amount > 0 ? 'paid' : 'pending',
-      paidAt: d.amount > 0 ? d.date : undefined,
+      status: d.amount > 0 ? 'paid' as const : 'pending' as const,
+      paidDate: d.amount > 0 ? d.date : undefined,
     }));
   }
 

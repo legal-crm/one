@@ -110,7 +110,7 @@ export function matchFileToSlot(fileName: string, linkedDocId?: string): string 
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 실제 서울회생법원 접수 4건(강순화, 김정원, 이순우, 차미선) 전수 분석 기반
+// 실제 서울회생법원 접수 사건 전수 분석 기반
 // 대한민국 법원 개인회생 14단계 정식 편철 표준 순서 규격
 // ══════════════════════════════════════════════════════════════════
 export const REHAB_14_STANDARD_ORDER: Omit<FilingDocumentSlot, 'file' | 'files' | 'status'>[] = [

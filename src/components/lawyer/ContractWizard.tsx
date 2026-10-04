@@ -2817,8 +2817,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/70">
           {[
             { key: 'terms', label: '① 필수 약관 동의', icon: Shield, done: agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect },
-            { key: 'documents', label: '② 계약 서식 관리', icon: FileText, done: includedDocs.length > 0 },
-            { key: 'signature', label: '③ 변호사 서명·의뢰인 발송', icon: PenTool, done: Boolean(c.documents.find(d => d.lawyerSignature)?.lawyerSignature) },
+            { key: 'documents', label: '② 계약 서식 관리', icon: FileText, done: (c.documents ?? []).some(d => d.included) },
+            { key: 'signature', label: '③ 변호사 서명·의뢰인 발송', icon: PenTool, done: Boolean((c.documents ?? []).find(d => d.lawyerSignature)?.lawyerSignature) },
             { key: 'preview', label: '④ 계약서 전문 미리보기', icon: Eye, done: false },
           ].map((sub) => {
             const isActive = finalizeSubTab === sub.key;

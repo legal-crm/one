@@ -7,10 +7,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
-  ConsultRequest, User as UserType, StaffMember, Proposal 
+  ConsultRequest, ConsultProposal, FinancialProfile, User as UserType, StaffMember 
 } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
-import { localDateStr } from '../../../utils/localDate';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 
 interface ConsultRequestManagementViewProps {
@@ -63,7 +62,7 @@ export default function ConsultRequestManagementView({
       message: '이 상담 요청을 목록에서 숨기시겠습니까?\n(필터에서 "숨긴 요청"을 선택해 언제든지 다시 복원할 수 있습니다)',
       confirmText: '숨기기',
       cancelText: '취소',
-      variant: 'default',
+      variant: 'primary',
     });
     if (!confirmed) return;
 
@@ -150,7 +149,7 @@ export default function ConsultRequestManagementView({
   // 위험 태그 추출 헬퍼 (최대 2개 + n)
   const getRiskTags = (req: ConsultRequest) => {
     const tags: string[] = [];
-    const fp = req.financialProfile || {};
+    const fp: Partial<FinancialProfile> = req.financialProfile || {};
     const debtTotal = fp.debtTotal || 0;
     const assetsTotal = fp.assetsTotal || 0;
     const speculative = (fp.debtTypes?.coinCrypto || 0) + (fp.debtTypes?.recentLoans || 0);
@@ -187,7 +186,7 @@ export default function ConsultRequestManagementView({
         const q = searchQuery.toLowerCase();
         const clientName = (req.clientName || '').toLowerCase();
         const stealth = (req.stealthNickname || '').toLowerCase();
-        const memo = (req.summary || '').toLowerCase();
+        const memo = (req.content || '').toLowerCase();
         if (!clientName.includes(q) && !stealth.includes(q) && !memo.includes(q)) {
           return false;
         }
@@ -205,7 +204,7 @@ export default function ConsultRequestManagementView({
         return workflowState === 'proposal_sent' || workflowState === 'contact_shared';
       }
       if (activeFilter === 'urgent') {
-        const fp = req.financialProfile || {};
+        const fp: Partial<FinancialProfile> = req.financialProfile || {};
         return fp.harassmentLevel === 'SEIZURE' || fp.harassmentLevel === 'LAWSUIT' || (fp.debtTypes?.recentLoans || 0) > 3000;
       }
 
@@ -223,7 +222,7 @@ export default function ConsultRequestManagementView({
 
   React.useEffect(() => {
     if (activeRequest) {
-      const fp = activeRequest.financialProfile || {};
+      const fp: Partial<FinancialProfile> = activeRequest.financialProfile || {};
       const debt = fp.debtTotal || 5000;
       const income = fp.income || 250;
       const dependents = fp.dependents || 1;
@@ -237,7 +236,7 @@ export default function ConsultRequestManagementView({
         setProposalDuration(currentMyProposal.duration || 36);
         setProposalReductionRate(currentMyProposal.reductionRate || calculatedReduction);
         setProposalMonthlyPayment(currentMyProposal.monthlyPayment || available);
-        setProposalMessage(currentMyProposal.message || '');
+        setProposalMessage(currentMyProposal.remark || '');
       } else {
         setProposalFee(200);
         setProposalInstallment('3회 분납');
@@ -270,7 +269,7 @@ export default function ConsultRequestManagementView({
   // AI 분석 결과 제안서 자동 반영
   const handleApplyAiToProposal = () => {
     if (!activeRequest) return;
-    const fp = activeRequest.financialProfile || {};
+    const fp: Partial<FinancialProfile> = activeRequest.financialProfile || {};
     const debt = fp.debtTotal || 5000;
     const income = fp.income || 250;
     const dependents = fp.dependents || 1;
@@ -297,19 +296,24 @@ export default function ConsultRequestManagementView({
 
     setIsSubmittingProposal(true);
     try {
-      const newProposal: Proposal = {
+      const proposalDebtTotal = activeRequest.financialProfile?.debtTotal || 0;
+      const newProposal: ConsultProposal = {
         id: `prop-${Date.now()}`,
         lawyerId: activeLawyer.id,
         lawyerName: activeLawyer.name,
+        lawyerAvatar: activeLawyer.avatar || '',
+        firmName: activeLawyer.firmName || activeLawyer.firm || '',
+        feasibility: '',
         fee: proposalFee,
         installment: proposalInstallment,
         duration: proposalDuration,
         reductionRate: proposalReductionRate,
+        totalReduction: Math.round(proposalDebtTotal * (proposalReductionRate / 100)),
         monthlyPayment: proposalMonthlyPayment,
-        message: proposalMessage,
+        remark: proposalMessage,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: isConfirmRequest ? 'draft' : 'sent',
+        // 대표 변호사 컨펌 요청이면 승인 대기 (이전: ConsultProposal에 없는 status/message/updatedAt 필드 사용)
+        approvalStatus: isConfirmRequest ? 'pending' : 'approved',
       };
 
       setRequests(prev => prev.map(r => {
@@ -427,7 +431,7 @@ export default function ConsultRequestManagementView({
                 const isSelected = activeRequest?.id === req.id;
                 const client = getClientDisplay(req);
                 const workflow = getRequestWorkflowState(req);
-                const fp = req.financialProfile || {};
+                const fp: Partial<FinancialProfile> = req.financialProfile || {};
                 const tags = getRiskTags(req);
                 const isHidden = hiddenRequestIds.has(req.id);
 
@@ -628,7 +632,7 @@ export default function ConsultRequestManagementView({
                     <div className="space-y-1.5">
                       <span className="text-xs font-bold text-slate-700 block">채무 발생 경위 및 사연</span>
                       <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap font-sans">
-                        {activeRequest.summary || (activeRequest as any).userStory || '고객이 작성한 추가 사연 내용이 없습니다.'}
+                        {activeRequest.content || '고객이 작성한 추가 사연 내용이 없습니다.'}
                       </p>
                     </div>
                   </div>

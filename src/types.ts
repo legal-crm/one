@@ -941,6 +941,21 @@ export interface CrmClientExtension {
   contractDate?: string;
   contractAmount?: number;
   contractMethod?: 'electronic' | 'in_person' | 'postal';
+  paperContractInfo?: {
+    method: 'in_person' | 'postal';
+    signedDate: string;
+    scannedFiles?: Array<{ id: string; name: string; url: string; size?: number; uploadedAt: string }>;
+    postalInfo?: {
+      recipientAddress: string;
+      recipientDetailAddress?: string;
+      postcode?: string;
+      carrier?: string;
+      trackingNumber?: string;
+      sentDate?: string;
+      returnedSignedDate?: string;
+    };
+    notes?: string;
+  };
   lastActivityAt: string;
   // ── 다채널 CRM 확장 ──
   intakeChannel?: IntakeChannel;
@@ -997,6 +1012,8 @@ export interface CrmClientExtension {
   incomeExpenseD5103?: import('./types/incomeExpenseTypes').IncomeExpenseD5103Data;
   // ── 대법원 전산양식 D5102 재산목록 (11대 자산 가치 평가) ──
   propertyListD5102?: import('./types/propertyTypes').PropertyListD5102Data;
+  // ── 3단계 서류 허브 상태 스냅샷 (Stage3DocumentsHubView에서 저장) ──
+  stage3DocsState?: Record<string, unknown>;
   // ── 의뢰인 제출: 통장 거래내역 소명표 / 부채증명서 발급용 채권기관 세부정보 ──
   bankStatementAudit?: import('./types/bankAuditTypes').BankStatementAuditData;
   debtIntake?: import('./services/repayment/debtIntakeRuleService').ClientDebtIntakePayload;
@@ -2404,6 +2421,8 @@ export interface ElectronicContract {
   title?: string;
   signedAt?: string;
   contractUrl?: string;
+  lawyerPhone?: string;         // 원격 서명 화면 '사무소 전화' 버튼용 담당 변호사 연락처
+  lawFirmPhone?: string;        // 사무소 대표번호
 
   // ── 온·오프라인 하이브리드 체결 방식 (전자계약 / 방문 서면 / 우편 등기) ──
   contractMethod?: 'electronic' | 'in_person' | 'postal';

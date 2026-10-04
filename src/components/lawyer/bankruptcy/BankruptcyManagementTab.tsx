@@ -94,7 +94,7 @@ export default function BankruptcyManagementTab({
       finalEducation: '',
       pastJobHistory: [],
       livingHistory: '',
-      debtorStoryRaw: clientRequest.memo || '',
+      debtorStoryRaw: clientRequest.content || '',
       debtorStoryPolished: '',
       disallowanceScreening: {
         gamblingOrSpeculation: false,
@@ -316,7 +316,7 @@ export default function BankruptcyManagementTab({
   // 모바일 의뢰인 진술서 CRM 로드 핸들러
   const handleLoadClientStory = () => {
     // 상담 접수 메모만 불러옴 (이전: 선호 연락시간을 사연으로 쓰거나, 메모가 없으면 가공 사연을 채움)
-    const clientStory = clientRequest.memo || '';
+    const clientStory = clientRequest.content || '';
     if (!clientStory) {
       toast.info('의뢰인의 접수 메모가 없습니다. 의뢰인 진술 내용을 직접 입력해 주세요.');
       return;

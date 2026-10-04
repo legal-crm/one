@@ -189,7 +189,9 @@ export default function Stage2ContractRetainerView({
   };
 
   const [isContractSigned, setIsContractSigned] = useState(() => {
-    return crmExt?.crmStatus === 'contracted' || crmExt?.crmStatus === 'preparing' || crmExt?.crmStatus === 'completed' || !!crmExt?.contractDate;
+    // 수임 계약 이후 단계면 체결된 것으로 본다 (이전: CrmStatus에 없는 'preparing'/'completed' 비교)
+    const signedStatuses = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
+    return (!!crmExt?.crmStatus && signedStatuses.includes(crmExt.crmStatus)) || !!crmExt?.contractDate;
   });
 
   // ── 2. 계약서 인스턴스 및 모달 상태 ──
@@ -263,6 +265,7 @@ export default function Stage2ContractRetainerView({
             clientAddress: clientRequest.financialProfile?.residenceRegion || '',
             lawyerName,
             lawFirmName,
+            lawFirmPhone: activeLawyer.officePhone || undefined,
             assignedLawyerId: crmExt?.assigneeId || activeLawyer.id,
             totalFee: Math.round(totalLawyerFee / 10000),
             courtCosts: {
@@ -299,6 +302,7 @@ export default function Stage2ContractRetainerView({
       clientAddress: clientRequest.financialProfile?.residenceRegion || '',
       lawyerName,
       lawFirmName,
+      lawFirmPhone: activeLawyer.officePhone || undefined,
       assignedLawyerId: crmExt?.assigneeId || activeLawyer.id,
       totalFee: Math.round(totalLawyerFee / 10000),
       courtCosts: {
@@ -332,7 +336,7 @@ export default function Stage2ContractRetainerView({
         dueDate: todayStr,
         amount: depositFee,
         status: 'pending',
-        label: '계약금 (가계약금)',
+        itemTitle: '계약금 (가계약금)',
         memo: '계약 체결 시 즉시 납부',
         itemType: 'down_payment',
         paymentMethod: '계좌이체',
@@ -346,7 +350,7 @@ export default function Stage2ContractRetainerView({
       dueDate: todayStr,
       amount: retainerFee,
       status: 'pending',
-      label: '착수금',
+      itemTitle: '착수금',
       memo: '사건 착수 시 납부',
       itemType: hasDeposit ? 'installment' : 'down_payment',
       paymentMethod: '계좌이체',
@@ -361,7 +365,7 @@ export default function Stage2ContractRetainerView({
           dueDate: item.dueDate,
           amount: item.amount,
           status: 'pending',
-          label: `${item.round}회차 분납`,
+          itemTitle: `${item.round}회차 분납`,
           memo: `월 잔금 분납 (${item.round}회차)`,
           itemType: 'installment',
           paymentMethod: '계좌이체',
@@ -386,7 +390,7 @@ export default function Stage2ContractRetainerView({
           dueDate: `${yyyy}-${mm}-${dd}`,
           amount: monthlyFee,
           status: 'pending',
-          label: `${i}회차 분납`,
+          itemTitle: `${i}회차 분납`,
           memo: `월 잔금 분납 (${i}회차)`,
           itemType: 'installment',
           paymentMethod: '계좌이체',
@@ -568,7 +572,7 @@ export default function Stage2ContractRetainerView({
         installmentMode,
         monthlyFee,
         installmentMonths,
-        customInstallments,
+        customInstallments: customInstallments.map(i => ({ ...i, label: i.label || `${i.round}회차 분납` })),
         paymentDayType,
         contractStyle,
       });
@@ -760,12 +764,14 @@ ${d.content}
 
       const newActivity = {
         id: `act-paper-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        clientId: clientRequest.id,
+        actorId: actor.id,
         actorName: actor.name,
         actorRole: actor.role,
-        type: 'contract' as const,
-        title: `[서면 계약 체결 완료] ${methodLabel} 방식으로 수임계약 체결 등록${postalTracking}${noteText}`,
-        content: `체결일자: ${data.signedDate}, 증빙 파일: ${data.scannedFiles?.length || 0}건 첨부`,
+        type: 'contract_signed' as const,
+        createdAt: new Date().toISOString(),
+        description: `[서면 계약 체결 완료] ${methodLabel} 방식으로 수임계약 체결 등록${postalTracking}${noteText}`,
+        metadata: { detail: `체결일자: ${data.signedDate}, 증빙 파일: ${data.scannedFiles?.length || 0}건 첨부` },
       };
 
       if (onUpdateCrmExt) {

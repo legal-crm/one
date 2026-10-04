@@ -1347,7 +1347,7 @@ export default function RepaymentPlanEditor({
                         1차 ({plan.presentValueBreakdown.stage1Months}개월)
                       </span>
                       <div className="font-mono text-white text-xs">
-                        월 {plan.presentValueBreakdown.stage1MonthlyPayment.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage1LeibnizFactor.toFixed(4)}
+                        월 {plan.presentValueBreakdown.stage1MonthlyAmount.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage1LeibnizFactor.toFixed(4)}
                       </div>
                       <div className="text-emerald-400 font-mono font-bold text-sm pt-0.5">
                         = {plan.presentValueBreakdown.stage1PresentValue.toLocaleString()}원
@@ -1361,7 +1361,7 @@ export default function RepaymentPlanEditor({
                           2차 ({plan.presentValueBreakdown.stage2Months}개월)
                         </span>
                         <div className="font-mono text-white text-xs">
-                          월 {plan.presentValueBreakdown.stage2MonthlyPayment.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage2LeibnizFactor.toFixed(4)}
+                          월 {plan.presentValueBreakdown.stage2MonthlyAmount.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage2LeibnizFactor.toFixed(4)}
                         </div>
                         <div className="text-emerald-400 font-mono font-bold text-sm pt-0.5">
                           = {plan.presentValueBreakdown.stage2PresentValue.toLocaleString()}원
@@ -2572,11 +2572,15 @@ export default function RepaymentPlanEditor({
         crmExt={crmExt}
         onUpdateCrmExt={onUpdateCrmExt}
         onStatementSynced={(statement) => {
-          if (statement.reasons && statement.reasons.length > 0) {
-            setDebtGrowthReasons(statement.reasons);
+          // 진술서 실제 구조(story) 기준 (이전: 존재하지 않는 reasons/detailedNarrative 참조로 동기화가 반영되지 않음)
+          const keywords = statement.story?.initialCauseKeywords || [];
+          if (keywords.length > 0) {
+            setDebtGrowthReasons(keywords);
           }
-          if (statement.detailedNarrative) {
-            setDebtGrowthNarrative(statement.detailedNarrative);
+          const narrative = statement.story?.aiDraftStatement
+            || [statement.story?.initialCauseDetail, statement.story?.growthProcessDetail, statement.story?.insolvencyTriggerDetail].filter(Boolean).join('\n\n');
+          if (narrative) {
+            setDebtGrowthNarrative(narrative);
           }
         }}
       />

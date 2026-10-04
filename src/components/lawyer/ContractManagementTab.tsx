@@ -4,7 +4,7 @@ import {
   RefreshCw, FolderKanban, Download, AlertTriangle, Send, 
   ExternalLink, ShieldCheck, Printer, ArrowRight, User, Building2, 
   Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3, Settings2,
-  MoreHorizontal
+  MoreHorizontal, PackageCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { localYmd } from '../../utils/localDate';
@@ -772,12 +772,16 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 </div>
               )}
 
-              <HighlightedDocumentViewer 
-                contract={viewingContract} 
-                lawyerName={lawyerName} 
-                lawFirmName={lawFirmName} 
-                revealFullName={true}
-              />
+              {/* 계약 문서 본문 (이전: 뷰어가 받지 않는 contract prop을 넘겨 본문이 빈 화면으로 표시됨) */}
+              {(viewingContract.documents ?? [])
+                .filter(doc => doc.included)
+                .sort((a, b) => a.order - b.order)
+                .map(doc => (
+                  <div key={doc.id} className="mb-6">
+                    <h4 className="text-sm font-bold text-slate-800 mb-2">{doc.title}</h4>
+                    <HighlightedDocumentViewer content={doc.content} />
+                  </div>
+                ))}
               <AuditTrailCertificate contract={viewingContract} />
             </div>
           </div>
@@ -790,7 +794,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
           contract={reminderTargetContract}
           isOpen={!!reminderTargetContract}
           onClose={() => setReminderTargetContract(null)}
-          onConfirmSend={handleConfirmSendReminder}
+          onSend={handleConfirmSendReminder}
         />
       )}
 

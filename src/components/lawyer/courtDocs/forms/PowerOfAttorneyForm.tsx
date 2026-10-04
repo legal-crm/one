@@ -12,7 +12,7 @@ interface CourtFormProps {
  * 테이블 없이 단순 텍스트 필드 형식
  */
 export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
-  const { debtor, court } = data;
+  const { debtor, court, lawyer } = data;
   const caseNumber = court?.caseNumber || '20    개회        ';
   const applicationDate = court?.applicationDate || '20  .   .   .';
 
@@ -30,7 +30,7 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
           <span className="tracking-[0.5em]">성      명</span>: <F k="debtor.name">{debtor?.name || ''}</F>
         </p>
         <p>
-          <span className="tracking-[0.5em]">주      소</span>: <F k="debtor.currentAddress">{debtor?.address || ''}</F>
+          <span className="tracking-[0.5em]">주      소</span>: <F k="debtor.currentAddress">{debtor?.currentAddress || ''}</F>
         </p>
         <p>
           주민등록번호: <F k="debtor.residentNumber">{debtor?.residentNumber || ''}</F>
@@ -54,7 +54,7 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
           신청인 (<F k="debtor.name">{debtor?.name || ''}</F>)
         </p>
         <p className="ml-4">
-          (<F k="lawyer.firmName">{court?.lawyerFirm || ''}</F> <F k="lawyer.lawyerName">{court?.lawyerName || ''}</F> 변호사)
+          (<F k="lawyer.firmName">{lawyer?.firmName || ''}</F> <F k="lawyer.lawyerName">{lawyer?.lawyerName || ''}</F> 변호사)
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export const PowerOfAttorneyForm: React.FC<CourtFormProps> = ({ data }) => {
           {'                    '}(서명 또는 날인)
         </p>
         <p className="ml-16">
-          <span className="tracking-[0.5em]">주      소</span>{'  '}<F k="debtor.currentAddress">{debtor?.address || ''}</F>
+          <span className="tracking-[0.5em]">주      소</span>{'  '}<F k="debtor.currentAddress">{debtor?.currentAddress || ''}</F>
         </p>
         <p className="ml-16">
           주민등록번호{'  '}<F k="debtor.residentNumber">{debtor?.residentNumber || ''}</F>

@@ -26,7 +26,7 @@ import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 interface Props {
   client: ConsultRequest;
   crmExt: CrmClientExtension;
-  activeLawyer: { id: string; name: string; lawFirmName?: string; lawFirmId?: string };
+  activeLawyer: { id: string; name: string; lawFirmName?: string; lawFirmId?: string; officePhone?: string };
   activeStaff: StaffMember | null;
   onUpdateCrmExt: (patch: Partial<CrmClientExtension>) => Promise<void>;
 }
@@ -88,6 +88,7 @@ export default function ClientContractSubTab({
       clientAddress: client.financialProfile?.residenceRegion || '',
       lawyerName,
       lawFirmName,
+      lawFirmPhone: activeLawyer.officePhone || undefined,
       assignedLawyerId: crmExt.assigneeId || activeLawyer.id,
       totalFee: initialFeeManwon,
       courtCosts: {

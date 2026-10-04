@@ -41,7 +41,7 @@ function ClientStatementSyncModalInner({
   const clientName = clientRequest.clientName || '신청인';
   const phone = clientRequest.phone || '';
   const statement = crmExt.courtStatement;
-  const isCompleted = statement?.status === 'submitted' || statement?.status === 'lawyer_reviewed';
+  const isCompleted = statement?.status === 'client_completed' || statement?.status === 'lawyer_reviewed';
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -163,11 +163,11 @@ function ClientStatementSyncModalInner({
               <span>⚖️</span> 2. 채권자로부터 받은 소송 / 독촉 / 강제집행 이력
             </h4>
             <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-xs leading-relaxed">
-              {statement?.pastCourtHistory?.hasPastCase ? (
+              {statement?.pastHistory?.hasPastCase ? (
                 <div className="space-y-1">
                   <span className="font-bold text-amber-700 block">과거 신청/소송 이력 있음</span>
                   <p className="text-slate-600">
-                    사건유형: {statement.pastCourtHistory.caseType || '미입력'} · 법원: {statement.pastCourtHistory.courtOrAgency || '미입력'}
+                    사건유형: {statement.pastHistory.caseType || '미입력'} · 법원: {statement.pastHistory.courtOrAgency || '미입력'}
                   </p>
                 </div>
               ) : (
@@ -196,8 +196,8 @@ function ClientStatementSyncModalInner({
               <span>📝</span> 4. 채무가 증대된 구체적 경위 및 사유
             </h4>
             <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs leading-relaxed text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto">
-              {statement?.debtGrowthStory?.growthProcessDetail || 
-                statement?.debtGrowthStory?.initialCauseDetail || 
+              {statement?.story?.growthProcessDetail || 
+                statement?.story?.initialCauseDetail || 
                 `신청인은 코로나19 이후 소득이 급감하였으나, 가족 부양을 위해 생활비를 신용카드 및 카드론으로 충당하기 시작하였습니다. 이후 고금리 대출의 원리금을 감당하지 못하고 돌려막기를 거듭하다 채무가 급격히 증대되었습니다.`
               }
             </div>

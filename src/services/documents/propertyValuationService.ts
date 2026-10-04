@@ -267,10 +267,10 @@ export function convertConsultRequestToD5102(
     return recalculateD5102Totals(crmExt.propertyListD5102);
   }
 
-  const clientName = request.userName || request.clientName || '신청인';
+  const clientName = request.clientName || '신청인';
   const fp = request.financialProfile;
   const assetsTotal = (fp?.assetsTotal || 0) * 10000;
-  const region: RegionType = (fp?.region as RegionType) || 'SEOUL';
+  const region: RegionType = ((request.region || fp?.residenceRegion) as RegionType) || 'SEOUL';
 
   // 금융 프로필 자산 파싱
   const realEstates: RealEstateItem[] = [];

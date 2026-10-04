@@ -1,6 +1,13 @@
 
-import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import type { CourtFilingMasterData, MonthlyIncomeLedgerRow } from '../../../../services/documents/courtFilingEngine';
 import { F } from './CourtField';
+
+// MonthlyIncomeLedgerRow 실제 필드 기준 월별 합계 (이전: 존재하지 않는 baseIncome/totalDeduction/netIncome 참조로 빈칸 출력)
+const rowIncome = (r: MonthlyIncomeLedgerRow): number => (r.baseSalary || 0) + (r.bonus || 0);
+const rowDeduction = (r: MonthlyIncomeLedgerRow): number =>
+  (r.incomeTax || 0) + (r.localTax || 0) + (r.healthInsurance || 0) + (r.nationalPension || 0) + (r.employmentInsurance || 0) + (r.longTermCare || 0);
+const fmtRow = (r: MonthlyIncomeLedgerRow | undefined, pick: (row: MonthlyIncomeLedgerRow) => number): string =>
+  r ? (pick(r)?.toLocaleString('ko-KR') || '') : '';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -163,7 +170,7 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
             <tr>
               <td className="border border-black font-semibold p-1">기본급</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`base-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.baseIncome?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`base-${i}`} className="border border-black p-1 truncate">{fmtRow(monthlyLedger[i], r => r.baseSalary)}</td>
               ))}
               <td className="border border-black p-1 text-right">{(ledgerTotals.annualTotalIncome ?? 0).toLocaleString('ko-KR')}</td>
             </tr>
@@ -177,7 +184,7 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
             <tr>
               <td className="border border-black font-semibold p-1">소득합계</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`total-income-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.baseIncome?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`total-income-${i}`} className="border border-black p-1 truncate">{fmtRow(monthlyLedger[i], rowIncome)}</td>
               ))}
               <td className="border border-black p-1 text-right">{(ledgerTotals.annualTotalIncome ?? 0).toLocaleString('ko-KR')}</td>
             </tr>
@@ -212,9 +219,9 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
             <tr>
               <td className="border border-black font-semibold p-1">건강보험</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`health-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.healthIns?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`health-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.healthInsurance?.toLocaleString('ko-KR') || ''}</td>
               ))}
-              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.healthIns || 0), 0).toLocaleString('ko-KR')}</td>
+              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.healthInsurance || 0), 0).toLocaleString('ko-KR')}</td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-1">국민연금</td>
@@ -226,28 +233,28 @@ export const IncomeExpenseFormD5103: React.FC<CourtFormProps> = ({ data, isEdita
             <tr>
               <td className="border border-black font-semibold p-1">고용보험</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`employ-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.employmentIns?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`employ-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.employmentInsurance?.toLocaleString('ko-KR') || ''}</td>
               ))}
-              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.employmentIns || 0), 0).toLocaleString('ko-KR')}</td>
+              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.employmentInsurance || 0), 0).toLocaleString('ko-KR')}</td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-1">장기요양</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`ltcare-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.longTermCareIns?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`ltcare-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.longTermCare?.toLocaleString('ko-KR') || ''}</td>
               ))}
-              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.longTermCareIns || 0), 0).toLocaleString('ko-KR')}</td>
+              <td className="border border-black p-1 text-right">{monthlyLedger.reduce((sum, row) => sum + (row.longTermCare || 0), 0).toLocaleString('ko-KR')}</td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-1">공제합계</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`total-deduct-${i}`} className="border border-black p-1 truncate">{monthlyLedger[i]?.totalDeduction?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`total-deduct-${i}`} className="border border-black p-1 truncate">{fmtRow(monthlyLedger[i], rowDeduction)}</td>
               ))}
               <td className="border border-black p-1 text-right">{(ledgerTotals.annualTotalDeductions ?? 0).toLocaleString('ko-KR')}</td>
             </tr>
             <tr>
               <td className="border border-black font-semibold p-1">실수령</td>
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
-                <td key={`net-${i}`} className="border border-black p-1 truncate font-semibold">{monthlyLedger[i]?.netIncome?.toLocaleString('ko-KR') || ''}</td>
+                <td key={`net-${i}`} className="border border-black p-1 truncate font-semibold">{fmtRow(monthlyLedger[i], r => rowIncome(r) - rowDeduction(r))}</td>
               ))}
               <td className="border border-black p-1 text-right font-semibold">{(ledgerTotals.annualNetIncome ?? 0).toLocaleString('ko-KR')}</td>
             </tr>

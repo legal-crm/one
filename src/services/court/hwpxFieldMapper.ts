@@ -10,6 +10,7 @@
  */
 
 import type { CourtFilingMasterData } from '../documents/courtFilingEngine';
+import { creditorPrincipal, creditorInterest, creditorTotal, creditorDebtLabel } from '../documents/courtFilingEngine';
 import type { HwpxFieldData } from './hwpxTemplateEngine';
 
 /** 대법원 공식 전산양식 코드 */
@@ -53,7 +54,7 @@ export function mapMasterDataToHwpxFields(
     '변제개시일': masterData.court.firstRepaymentDate,
 
     // 금액 정보 (공통)
-    '총채무액': formatCurrency(masterData.creditors.reduce((sum, c) => sum + (c.currentPrincipal || 0) + (c.currentInterest || 0), 0)),
+    '총채무액': formatCurrency(masterData.creditors.reduce((sum, c) => sum + creditorTotal(c), 0)),
     '채권자수': String(masterData.creditors.length),
     '월변제액': formatCurrency(masterData.repaymentSummary.monthlyDisposableIncome),
     '변제기간': `${masterData.repaymentSummary.repaymentMonths}개월`,
@@ -176,8 +177,8 @@ function mapD5105Fields(data: CourtFilingMasterData): HwpxFieldData {
 
 function mapD5106Fields(data: CourtFilingMasterData): HwpxFieldData {
   const fields: HwpxFieldData = {};
-  const totalPrincipal = data.creditors.reduce((sum, c) => sum + (c.currentPrincipal || 0), 0);
-  const totalInterest = data.creditors.reduce((sum, c) => sum + (c.currentInterest || 0), 0);
+  const totalPrincipal = data.creditors.reduce((sum, c) => sum + creditorPrincipal(c), 0);
+  const totalInterest = data.creditors.reduce((sum, c) => sum + creditorInterest(c), 0);
 
   fields['원금합계'] = formatCurrency(totalPrincipal);
   fields['이자합계'] = formatCurrency(totalInterest);
@@ -186,13 +187,13 @@ function mapD5106Fields(data: CourtFilingMasterData): HwpxFieldData {
   data.creditors.forEach((c, idx) => {
     const n = idx + 1;
     fields[`채권자${n}_성명`] = c.name;
-    fields[`채권자${n}_원금`] = formatCurrency(c.currentPrincipal || 0);
-    fields[`채권자${n}_이자`] = formatCurrency(c.currentInterest || 0);
-    fields[`채권자${n}_합계`] = formatCurrency((c.currentPrincipal || 0) + (c.currentInterest || 0));
-    fields[`채권자${n}_유형`] = c.debtType?.includes('CARD') ? '신용카드 사용대금' : '대여금(신용대출)';
-    fields[`채권자${n}_이율`] = `연 ${c.interestRate || 10}%`;
-    fields[`채권자${n}_주소`] = c.creditorAddress || '';
-    fields[`채권자${n}_전화`] = c.creditorPhone || '고객센터';
+    fields[`채권자${n}_원금`] = formatCurrency(creditorPrincipal(c));
+    fields[`채권자${n}_이자`] = formatCurrency(creditorInterest(c));
+    fields[`채권자${n}_합계`] = formatCurrency(creditorTotal(c));
+    fields[`채권자${n}_유형`] = creditorDebtLabel(c);
+    fields[`채권자${n}_이율`] = c.interestRate != null ? `연 ${c.interestRate}%` : '';
+    fields[`채권자${n}_주소`] = c.address || '';
+    fields[`채권자${n}_전화`] = c.phone || '고객센터';
   });
 
   return fields;

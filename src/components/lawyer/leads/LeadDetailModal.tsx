@@ -145,9 +145,9 @@ export default function LeadDetailModal({
     }
 
     const updatedLead = addLeadReminder(formData.id, {
-      dueTime: callbackDate,
-      memo: callbackMemo.trim() || '고객 요청 재통화 약속',
-      type: 'callback',
+      datetime: callbackDate,
+      content: callbackMemo.trim() || '고객 요청 재통화 약속',
+      type: '통화',
     });
 
     if (updatedLead) {

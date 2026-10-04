@@ -37,7 +37,7 @@ function persistEnabledTools(ids: QuickToolId[]) {
   }
 }
 
-export default function LegalQuickDock({ onOpenAlimtok }: LegalQuickDockProps) {
+export default function LegalQuickDock({ onOpenAlimtok, onOpenFeedback }: LegalQuickDockProps) {
   // 드래그 훅
   const {
     position,

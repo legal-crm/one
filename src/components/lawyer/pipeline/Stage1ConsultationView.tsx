@@ -7,7 +7,7 @@ import {
   TrendingUp, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
+import type { ConsultRequest, CrmClientExtension, FinancialProfile, User } from '../../../types';
 import { addClientNotification } from '../../../services/clientNotificationService';
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
@@ -42,7 +42,7 @@ export default function Stage1ConsultationView({
   activeSection,
   onSelectSection,
 }: Stage1ConsultationViewProps) {
-  const fp = clientRequest.financialProfile || {};
+  const fp: Partial<FinancialProfile> = clientRequest.financialProfile || {};
   const debtTotal = fp.debtTotal || (clientRequest as any)?.totalDebt || 0; // 만원
   const income = fp.income || (clientRequest as any)?.income || 0; // 만원
   const assetsTotal = fp.assetsTotal ?? ((fp.myAssets || 0) + (fp.spouseAsset ? Math.round(fp.spouseAsset * 0.5) : 0)); // 만원
@@ -192,13 +192,13 @@ export default function Stage1ConsultationView({
                 </div>
               </div>
               <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
-                {stealthName} ({clientRequest.clientType === 'individual' ? '개인' : '영업/사업자'})
+                {stealthName} ({fp.jobType === 'BUSINESS' || fp.employmentType === 'business' ? '영업/사업자' : '개인'})
               </span>
             </div>
 
             {/* 사연 내용 */}
             <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/90 text-slate-800 leading-relaxed text-[13px] whitespace-pre-wrap min-h-[90px]">
-              {clientRequest.summary || clientRequest.story || (clientRequest as any)?.content || (
+              {clientRequest.content || (
                 <span className="text-slate-400 italic">
                   작성된 상담 사연이 없습니다. 우측 소통창 또는 상담 메모를 통해 사연을 기록해 주세요.
                 </span>
@@ -291,7 +291,7 @@ export default function Stage1ConsultationView({
                 AI 분석 총평
               </span>
               <p className="text-xs text-slate-700 leading-relaxed">
-                {(clientRequest as any)?.aiAnalysis?.summary || clientRequest.summary || (
+                {(clientRequest as any)?.aiAnalysis?.summary || (
                   `신청인은 총 채무 ${debtTotal.toLocaleString()}만원 중 무담보 채무가 대부분을 차지하고 있으며, 월 가용소득은 약 ${availableIncome.toLocaleString()}만원으로 산출됩니다. 36개월 기준 예상 변제율은 약 ${myProposal?.reductionRate || Math.max(20, Math.round((1 - (availableIncome * 36) / Math.max(1, debtTotal)) * 100))}%로 회생 신청에 적합한 조건을 갖추고 있습니다.`
                 )}
               </p>
@@ -556,10 +556,10 @@ export default function Stage1ConsultationView({
                     ✓ 1단계(상담·제안) 완료 · 수임 체결
                   </span>
                   <span className="text-xs text-emerald-700/80 font-mono">
-                    {crmExt?.contractSignedAt 
-                      ? new Date(crmExt.contractSignedAt).toLocaleDateString('ko-KR')
-                      : myProposal?.updatedAt 
-                        ? new Date(myProposal.updatedAt).toLocaleDateString('ko-KR')
+                    {crmExt?.contractDate
+                      ? new Date(crmExt.contractDate).toLocaleDateString('ko-KR')
+                      : (myProposal?.approvedAt || myProposal?.createdAt)
+                        ? new Date(myProposal.approvedAt || myProposal.createdAt).toLocaleDateString('ko-KR')
                         : '수임 체결 완료'}
                   </span>
                 </div>
@@ -599,7 +599,7 @@ export default function Stage1ConsultationView({
             <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
               <span className="text-xs font-bold text-slate-500 block">담당 전문가</span>
               <span className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 block truncate">
-                {crmExt?.assignedLawyerName || activeLawyer.name || '김수현 변호사'}
+                {activeLawyer.name || '김수현 변호사'}
               </span>
             </div>
             <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
@@ -641,7 +641,7 @@ export default function Stage1ConsultationView({
                 )}
               </div>
               <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed whitespace-pre-wrap">
-                {myProposal?.message || myProposal?.content || '맞춤 제안서가 등록되어 의뢰인과 수임 체결이 완료되었습니다.'}
+                {myProposal?.remark || '맞춤 제안서가 등록되어 의뢰인과 수임 체결이 완료되었습니다.'}
               </p>
             </div>
           )}

@@ -20,7 +20,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
   const creditorCount = creditors?.length || 10;
   
   // 인지: 기본 30,000원 + 금지명령 2,000원 = 32,000원
-  const stampFee = court?.stampFee ?? 32000;
+  const stampFee = data.fees?.totalStamp || 32000;
   // 송달료: 10회분 + (1회분 × 채권자수 × 8회)
   const serviceFeePer = DELIVERY_UNIT_FEE_KRW;
   const serviceFeeRounds = 8;
@@ -28,7 +28,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
   const serviceFeeTotal = serviceFeeBase + (serviceFeePer * creditorCount * serviceFeeRounds);
 
   // 변호사명 중복 방지 (예: '김우진 변호사' -> '김우진')
-  const rawLawyerName = lawyer?.lawyerName || court?.lawyerName || '';
+  const rawLawyerName = lawyer?.lawyerName || '';
   const cleanLawyerName = rawLawyerName.replace(/변호사/g, '').trim();
 
   // 서울회생법원 실무준칙 표지 양식 여부
@@ -59,7 +59,7 @@ export const PetitionCoverPage: React.FC<CourtFormProps> = ({ data, isEditable }
             <div className="flex items-baseline">
               <span className="w-[72px] shrink-0 font-normal">대리인</span>
               <div className="space-y-1">
-                <div className="font-semibold text-[15px]">{lawyer?.firmName || court?.lawyerFirm || ''}</div>
+                <div className="font-semibold text-[15px]">{lawyer?.firmName || ''}</div>
                 <div className="font-semibold text-[15px]">변호사 {cleanLawyerName}</div>
               </div>
             </div>

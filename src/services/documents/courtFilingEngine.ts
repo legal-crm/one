@@ -4,7 +4,7 @@
  * (실무 분할형 및 대법원/대전/강릉/청주 4대 관할법원 제출목록 전수 분석 기반)
  */
 
-import type { ConsultRequest, CrmClientExtension } from '../../types';
+import type { ConsultRequest, CrmClientExtension, FinancialProfile } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
 import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
 import { DELIVERY_UNIT_FEE_KRW } from '../court/courtFees';
@@ -396,6 +396,28 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
 export const MEDIAN_INCOMES_2026: Record<number, number> = MEDIAN_INCOME_100_2026;
 export const STATUTORY_LIVING_COST_60_2026: Record<number, number> = MIN_LIVING_EXPENSE_60_2026;
 
+// ── 채권자(RepaymentCreditor) 실제 필드 기준 공통 헬퍼 ──
+// (이전: 존재하지 않는 currentPrincipal/currentInterest/debtType/annexDocTypes 참조 →
+//  금액이 0원으로 찍히거나 debtType.includes()에서 화면 오류 발생)
+export const creditorPrincipal = (c: RepaymentCreditor): number => c.principal || 0;
+export const creditorInterest = (c: RepaymentCreditor): number => c.interest || 0;
+export const creditorTotal = (c: RepaymentCreditor): number => creditorPrincipal(c) + creditorInterest(c);
+export const isCardDebt = (c: RepaymentCreditor): boolean => /카드|card/i.test(`${c.debtCauseDetail || ''} ${c.name || ''}`);
+export const creditorDebtLabel = (c: RepaymentCreditor): string =>
+  c.debtCauseDetail || (isCardDebt(c) ? '신용카드 사용대금' : '대여금(신용대출)');
+export const isDisputedCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isDisputed) || c.annexDocType === 'ANNEX_4_DISPUTED';
+export const isAssignmentCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGarnished) || c.annexDocType === 'ANNEX_3_ASSIGNMENT_ORDER';
+export const isGuarantyCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGuarantorClaim || c.isGuaranteedDebt || c.isGuarantor);
+/** 채권자목록 '부속서류' 칸 표기용 번호 목록 (1: 별제권, 2: 다툼, 3: 전부명령, 4: 보증) */
+export const creditorAnnexNumbers = (c: RepaymentCreditor): string[] => {
+  const nums: string[] = [];
+  if (c.isSecured) nums.push('1');
+  if (isDisputedCreditor(c)) nums.push('2');
+  if (isAssignmentCreditor(c)) nums.push('3');
+  if (isGuarantyCreditor(c)) nums.push('4');
+  return nums;
+};
+
 /**
  * 마스터 데이터 전체 재계산 함수
  */
@@ -425,7 +447,7 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
   const months = prev.repaymentSummary.repaymentMonths || 36;
   const totalRepaymentAmount = monthlyDisposableIncome * months;
 
-  const totalDebtAmount = prev.creditors.reduce((sum, c) => sum + (c.totalDebt || c.currentPrincipal || 0), 0) || 1;
+  const totalDebtAmount = prev.creditors.reduce((sum, c) => sum + creditorTotal(c), 0) || 1;
   const repaymentRatio = Math.round((totalRepaymentAmount / totalDebtAmount) * 100);
 
   // 3. 제614조 제2항 제3호 인가요건 검증
@@ -480,15 +502,14 @@ export function buildCourtFilingMasterData(
   crmExt?: CrmClientExtension,
   activeLawyerName: string = ''
 ): CourtFilingMasterData {
-  const profile = request.financialProfile || {};
-  const crmClient = crmExt?.clientInfo;
+  const profile: Partial<FinancialProfile> = request.financialProfile || {};
   const courtInfo = crmExt?.courtCase;
   const repaymentPlan = crmExt?.repaymentPlan;
 
   const debtorName = request.clientName || '신청인';
   // 미입력 항목은 빈 값으로 둔다 (이전: 가짜 주민번호·주소·전화번호로 채움)
-  const residentNumber = crmClient?.residentNumber || '';
-  const address = crmClient?.address || '';
+  const residentNumber = ''; // CRM에 주민번호 저장 필드 없음 — 서식에서 직접 입력
+  const address = crmExt?.courtStatement?.applicantAddress || '';
   const phone = request.phone && !request.phone.includes('*') ? request.phone : '';
   const office = getOfficeProfile(activeLawyerName);
 
@@ -511,7 +532,7 @@ export function buildCourtFilingMasterData(
   // 중지명령 대상 강제집행 사건은 CRM에 등록된 것만 (이전: 무작위 타채 번호·가상 제3채무자 '주식회사 위노스'를 확정 사건으로 생성)
   const stayCases: StayExecutionCase[] = Array.isArray((crmExt as any)?.stayCases) ? (crmExt as any).stayCases : [];
 
-  const monthlyNetIncome = ((profile as any).income || 0) * 10000;
+  const monthlyNetIncome = (profile.income || 0) * 10000;
   const householdSize = (profile.dependents || 0) + 1;
   const baseMedian = MEDIAN_INCOMES_2026[householdSize] || MEDIAN_INCOMES_2026[Math.min(8, Math.max(1, householdSize))] || 0;
   const monthlyLivingCost = STATUTORY_LIVING_COST_60_2026[householdSize] || Math.round(baseMedian * 0.6);
@@ -602,14 +623,14 @@ export function buildCourtFilingMasterData(
     specialClauses: DEFAULT_SPECIAL_CLAUSES,
     creditors,
     annexFlags: {
-      hasSecured: creditors.some(c => c.debtType.includes('SECURED')),
-      hasDisputed: creditors.some(c => c.annexDocTypes?.includes('ANNEX_2_DISPUTED')),
-      hasAssignment: creditors.some(c => c.annexDocTypes?.includes('ANNEX_3_ASSIGNMENT') || stayCases.length > 0),
-      hasGuaranty: creditors.some(c => c.annexDocTypes?.includes('ANNEX_4_GUARANTOR'))
+      hasSecured: creditors.some(c => c.isSecured),
+      hasDisputed: creditors.some(isDisputedCreditor),
+      hasAssignment: creditors.some(isAssignmentCreditor) || stayCases.length > 0,
+      hasGuaranty: creditors.some(isGuarantyCreditor)
     },
-    disputedCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_2_DISPUTED')),
-    assignmentCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_3_ASSIGNMENT')),
-    guarantyCreditors: creditors.filter(c => c.annexDocTypes?.includes('ANNEX_4_GUARANTOR')),
+    disputedCreditors: creditors.filter(isDisputedCreditor),
+    assignmentCreditors: creditors.filter(isAssignmentCreditor),
+    guarantyCreditors: creditors.filter(isGuarantyCreditor),
     // 재산은 재산목록(D5102) 입력 전에는 0원·빈 항목 (이전: 아반떼 차량·삼성생명 보험·임차보증금·퇴직금 등 가공 재산)
     assets: {
       cash: 0,

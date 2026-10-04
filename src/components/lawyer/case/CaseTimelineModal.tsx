@@ -3,7 +3,7 @@ import {
   Calendar, CheckCircle2, User, FileText, ArrowRight, 
   Search, X, Clock, Filter, ShieldCheck
 } from 'lucide-react';
-import type { CrmActivity, ConsultRequest, CrmClientExtension } from '../../../types';
+import type { CrmActivityLog, ConsultRequest, CrmClientExtension } from '../../../types';
 import ModalPortal from '../../common/ModalPortal';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
 
@@ -25,7 +25,7 @@ export default function CaseTimelineModal({
 
   if (!isOpen) return null;
 
-  const activities: CrmActivity[] = crmExt?.activities || [];
+  const activities: CrmActivityLog[] = crmExt?.activities || [];
   const clientDisplayName = getDisplayClientName(clientRequest, crmExt);
 
   const filteredActivities = activities

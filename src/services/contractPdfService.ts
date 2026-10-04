@@ -278,10 +278,10 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             <tbody>
               ${(contract.feeSchedule || []).map(f => `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 6px; font-weight: bold;">${f.label || (f.round === 0 ? '착수금' : `${f.round}회차`)}</td>
+                  <td style="padding: 6px; font-weight: bold;">${f.itemTitle || (f.round === 0 ? '착수금' : `${f.round}회차`)}</td>
                   <td style="padding: 6px; font-family: monospace;">${f.dueDate}</td>
                   <td style="padding: 6px; font-weight: bold; color: #1e3a8a;">${feeAmountWon(f).toLocaleString('ko-KR')}원</td>
-                  <td style="padding: 6px; color: #64748b;">${f.memo || f.label || '수임료 납부'}</td>
+                  <td style="padding: 6px; color: #64748b;">${f.memo || f.itemTitle || '수임료 납부'}</td>
                 </tr>
               `).join('')}
             </tbody>

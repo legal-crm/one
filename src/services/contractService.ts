@@ -33,6 +33,8 @@ function contractExtensionColumns(c: ElectronicContract): Record<string, unknown
   if (c.realNameConversionPending !== undefined) ext.real_name_conversion_pending = c.realNameConversionPending;
   if (c.consultRequestId) ext.consult_request_id = c.consultRequestId;
   if (c.sourceProposalId) ext.source_proposal_id = c.sourceProposalId;
+  // migration 031: 원격 서명 화면 '사무소 전화' 버튼용 사무소 대표번호
+  if (c.lawFirmPhone) ext.law_firm_phone = c.lawFirmPhone;
   return ext;
 }
 
@@ -84,6 +86,7 @@ function rowToContract(row: any): ElectronicContract {
     clientAddress: row.client_address,
     lawyerName: row.lawyer_name,
     lawFirmName: row.law_firm_name,
+    lawFirmPhone: row.law_firm_phone || undefined,
     assignedLawyerId: row.assigned_lawyer_id,
     totalFee: row.total_fee,
     courtCosts: row.court_costs,
@@ -190,7 +193,7 @@ export async function saveContracts(contracts: ElectronicContract[]): Promise<vo
       let { error } = await supabase.from('electronic_contracts').upsert(rows, { onConflict: 'id' });
       // migration 015 미적용 시 확장 컬럼 제외 후 재시도
       if (error && (error.code === 'PGRST204' || /column/i.test(error.message || ''))) {
-        const extKeys = ['client_ref_id', 'real_name_conversion_pending', 'consult_request_id', 'source_proposal_id'];
+        const extKeys = ['client_ref_id', 'real_name_conversion_pending', 'consult_request_id', 'source_proposal_id', 'law_firm_phone'];
         const baseRows = rows.map(r => {
           const copy: Record<string, unknown> = { ...r };
           for (const k of extKeys) delete copy[k];
@@ -421,6 +424,8 @@ export function createContract(data: {
   clientAddress?: string;
   lawyerName: string;
   lawFirmName: string;
+  /** 사무소 대표번호 (변호사 프로필 officePhone) — 원격 서명 화면 '사무소 전화' 버튼에 사용 */
+  lawFirmPhone?: string;
   assignedLawyerId?: string;
   totalFee?: number;
   courtCosts?: CourtCosts;
@@ -461,6 +466,7 @@ export function createContract(data: {
     clientAddress: data.clientAddress,
     lawyerName: data.lawyerName,
     lawFirmName: data.lawFirmName,
+    lawFirmPhone: data.lawFirmPhone?.trim() || undefined,
     assignedLawyerId: data.assignedLawyerId,
     totalFee: data.totalFee ?? 0,
     courtCosts: data.courtCosts ? {

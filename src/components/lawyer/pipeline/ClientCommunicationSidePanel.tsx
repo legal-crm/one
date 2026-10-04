@@ -805,7 +805,7 @@ export default function ClientCommunicationSidePanel({
                       <span className="font-bold text-slate-600">{n.authorName}</span>
                       <span>{new Date(n.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-slate-800">{n.text}</p>
+                    <p className="text-slate-800">{n.content}</p>
                   </div>
                 ))}
               </div>

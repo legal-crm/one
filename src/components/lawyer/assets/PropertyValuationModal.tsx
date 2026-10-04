@@ -318,28 +318,28 @@ export default function PropertyValuationModal({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => handleOpenPortal('kb_realestate', data.realEstates[0]?.address || clientRequest.address || '마포구 공덕동')}
+                    onClick={() => handleOpenPortal('kb_realestate', data.realEstates[0]?.address || clientRequest.financialProfile?.address || '마포구 공덕동')}
                     className="px-3 py-2 text-xs font-bold text-yellow-900 bg-yellow-50 border border-yellow-200 rounded-xl hover:bg-yellow-100 transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>🏢 KB부동산 시세 (아파트 1순위)</span>
                     <ExternalLink className="w-3 h-3 text-yellow-700" />
                   </button>
                   <button
-                    onClick={() => handleOpenPortal('realty_price', data.realEstates[0]?.address || clientRequest.address)}
+                    onClick={() => handleOpenPortal('realty_price', data.realEstates[0]?.address || clientRequest.financialProfile?.address || '')}
                     className="px-3 py-2 text-xs font-bold text-blue-900 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>🏠 공시가격 알리미 (빌라·주택 130%)</span>
                     <ExternalLink className="w-3 h-3 text-blue-700" />
                   </button>
                   <button
-                    onClick={() => handleOpenPortal('eum_land', data.realEstates[0]?.address || clientRequest.address)}
+                    onClick={() => handleOpenPortal('eum_land', data.realEstates[0]?.address || clientRequest.financialProfile?.address || '')}
                     className="px-3 py-2 text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>🌄 토지이음 (개별공시지가 130%)</span>
                     <ExternalLink className="w-3 h-3 text-emerald-700" />
                   </button>
                   <button
-                    onClick={() => handleOpenPortal('molit_real_trade', data.realEstates[0]?.address || clientRequest.address)}
+                    onClick={() => handleOpenPortal('molit_real_trade', data.realEstates[0]?.address || clientRequest.financialProfile?.address || '')}
                     className="px-3 py-2 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                   >
                     <span>📊 국토부 실거래가 (상가/나홀로)</span>
