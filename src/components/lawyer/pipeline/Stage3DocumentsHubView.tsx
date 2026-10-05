@@ -116,6 +116,9 @@ export default function Stage3DocumentsHubView({
 
   const [activeAgency, setActiveAgency] = useState<AgencyTab>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState('auto');
 
   // 채권자 수 및 인감증명서 부수 계산
   const creditorCount = Number(
@@ -619,21 +622,244 @@ export default function Stage3DocumentsHubView({
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto text-slate-800 text-xs">
       
-      {/* ══════════════════════════════════════════════════════════════
+            {/* ══════════════════════════════════════════════════════════════
           SECTION 1: 발급 서류 (docs)
           ══════════════════════════════════════════════════════════════ */}
       {currentSection === 'docs' && (
         <div className="space-y-5 animate-fadeIn">
-          {/* 스마트 자동 분류 투입함 */}
-          <SmartDocumentDropzone
-            clientId={clientRequest.id}
-            clientName={clientRequest.clientName || '의뢰인'}
-          />
+          {/* 체크리스트 우선 뷰 카드 */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+            {/* 상단 진행률 및 헤더 */}
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <FolderArchive className="w-4 h-4 text-indigo-600" />
+                  {clientRequest.clientName} · 신청서류
+                </h3>
+                
+                <div className="flex items-center gap-3 flex-1 max-w-md">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 whitespace-nowrap">
+                    <span className="text-emerald-600">{stats.approvedCount}</span>
+                    <span className="text-slate-400">/</span>
+                    <span>{stats.total} 받음</span>
+                  </div>
+                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      style={{ width: `${stats.total > 0 ? (stats.approvedCount / stats.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  {stats.submittedCount > 0 && (
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold whitespace-nowrap">
+                      확인 필요 {stats.submittedCount}건
+                    </span>
+                  )}
+                </div>
+              </div>
 
-          {/* 상단 2열 요약 카드 (1차 서류 배송 및 보관 & 인증서 금고) */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBatchModal(true)}
+                  className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 press-scale whitespace-nowrap min-h-[44px]"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>의뢰인에게 요청 보내기</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 필터 툴바 */}
+            <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 bg-white">
+              <select
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:border-indigo-400 min-h-[44px]"
+              >
+                <option value="auto">급여소득자 기본 ▾</option>
+                <option value="manual1">영업소득자 기본 ▾</option>
+              </select>
+
+              <div className="relative flex-1 max-w-xs">
+                <input
+                  type="text"
+                  placeholder="서류명 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:border-indigo-400 min-h-[44px]"
+                />
+                <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+
+              <button className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all press-scale whitespace-nowrap min-h-[44px]">
+                + 추가
+              </button>
+              
+              <div className="ml-auto flex items-center gap-2">
+                 <button
+                  type="button"
+                  onClick={() => setShowPublicDocGuide(true)}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 press-scale min-h-[44px]"
+                  title="8대 공공기관별 필수 발급 옵션 및 의뢰인 전송용 문자 템플릿 확인"
+                >
+                  <Landmark className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">공공기관 발급 가이드</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 체크리스트 테이블 */}
+            <div className="divide-y divide-slate-100 bg-white">
+              <div className="grid grid-cols-12 gap-3 px-5 py-2 bg-slate-50/50 text-xs font-bold text-slate-500">
+                <div className="col-span-1 text-center">번호</div>
+                <div className="col-span-6">서류명</div>
+                <div className="col-span-3 text-center">발급 안내</div>
+                <div className="col-span-2 text-center">수령 상태</div>
+              </div>
+
+              {filteredDocs.filter(d => d.name.includes(searchQuery)).map((doc, idx) => {
+                const isExpanded = expandedDocId === doc.id;
+                
+                return (
+                  <div key={doc.id} className="flex flex-col border-b border-slate-100 last:border-b-0">
+                    <div 
+                      className={`grid grid-cols-12 gap-3 px-5 py-3 items-center cursor-pointer hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}
+                      onClick={() => setExpandedDocId(isExpanded ? null : doc.id)}
+                    >
+                      <div className="col-span-1 text-center text-slate-400 font-mono text-xs font-medium">
+                        {idx + 1}
+                      </div>
+                      
+                      <div className="col-span-6 flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-sm">{doc.name}</span>
+                          {doc.isRequired && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold">
+                              필수
+                            </span>
+                          )}
+                          {doc.phase === 1 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                              실물 등기
+                            </span>
+                          )}
+                        </div>
+                        {doc.status !== 'APPROVED' && doc.status !== 'NOT_REQUESTED' && (
+                          <div className="flex items-center gap-1.5 text-xs mt-0.5">
+                            <ArrowUpRight className="w-3 h-3 text-slate-400" />
+                            <span className={`font-medium ${
+                              doc.status === 'SUBMITTED' ? 'text-blue-600' :
+                              doc.status === 'SUPPLEMENT_NEEDED' ? 'text-amber-600' :
+                              doc.status === 'REQUESTED' ? 'text-indigo-600' : 'text-slate-500'
+                            }`}>
+                              {doc.status === 'SUBMITTED' ? '업로드됨 · 확인 필요' :
+                               doc.status === 'SUPPLEMENT_NEEDED' ? '보완 필요' :
+                               doc.status === 'REQUESTED' ? '요청함 (미제출)' : ''}
+                            </span>
+                            {doc.supplementReason && (
+                              <span className="text-slate-500 truncate max-w-[200px]">- {doc.supplementReason}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="col-span-3 text-center">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowPublicDocGuide(true); }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          안내 보기 <HelpCircle className="w-3 h-3" />
+                        </button>
+                      </div>
+                      
+                      <div className="col-span-2 flex justify-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (doc.status === 'APPROVED') {
+                              setDocList(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'NOT_REQUESTED' } : d));
+                            } else {
+                              handleApproveDoc(doc.id);
+                            }
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                            doc.status === 'APPROVED' ? 'bg-emerald-500' : 'bg-slate-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              doc.status === 'APPROVED' ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 행 확장 시 보이는 세부 정보 패널 */}
+                    {isExpanded && (
+                      <div className="px-12 py-4 bg-slate-50/80 border-t border-slate-100 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <h5 className="font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                                <Info className="w-3.5 h-3.5" /> 상세 정보
+                              </h5>
+                              <div className="space-y-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-slate-500 w-16 shrink-0">발급처</span>
+                                  <span className="font-medium text-slate-800">{doc.agency}</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <span className="text-slate-500 w-16 shrink-0">메모</span>
+                                  <span className="text-slate-700">{doc.notes || '-'}</span>
+                                </div>
+                                {doc.isThirdPartyMaskingRequired && (
+                                  <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-100">
+                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold shrink-0">
+                                      마스킹 필수
+                                    </span>
+                                    <span className="text-slate-600 text-[11px]">제3자 주민등록번호 뒷자리 마스킹 처리 요망</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {doc.status === 'SUBMITTED' && (
+                               <button
+                                  type="button"
+                                  onClick={() => setShowSpeedReviewModal(true)}
+                                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer press-scale"
+                                >
+                                  <FileCheck2 className="w-4 h-4" />
+                                  <span>제출된 파일 검토하기</span>
+                                </button>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <h5 className="font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                              <Upload className="w-3.5 h-3.5" /> 파일 직접 업로드
+                            </h5>
+                            <div className="bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                              <SmartDocumentDropzone
+                                clientId={clientRequest.id}
+                                clientName={clientRequest.clientName || '의뢰인'}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 하단 2열 요약 카드 (1차 서류 배송 및 보관 & 인증서 금고) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* 카드 A: 1차 실물 서류 & 인감 수령 상태 */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -647,7 +873,7 @@ export default function Stage3DocumentsHubView({
                       <p className="text-[12px] text-slate-500">인감도장 및 인감증명서 원본 수령</p>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                     stats.isPhase1Done
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -748,7 +974,7 @@ export default function Stage3DocumentsHubView({
                 <button
                   type="button"
                   onClick={handleApproveAllPhase1}
-                  className={`flex-1 py-2 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale ${
+                  className={`flex-1 py-2 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale min-h-[44px] ${
                     stats.isPhase1Done
                       ? 'bg-slate-100 text-emerald-800 border border-emerald-200'
                       : 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -760,8 +986,8 @@ export default function Stage3DocumentsHubView({
               </div>
             </div>
 
-            {/* 카드 B: 인증서 금고 연동 카드 (기획서 309행) */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            {/* 카드 B: 인증서 금고 연동 카드 */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col">
               <CertificateVaultCard
                 clientId={clientRequest.id}
                 clientRequest={clientRequest}
@@ -772,362 +998,8 @@ export default function Stage3DocumentsHubView({
             </div>
           </div>
 
-          {/* 발급 서류 테이블 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-            {/* ── 1줄 통합 상태 및 필터 툴바 ── */}
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
-              {/* 상태 칩 한 줄 */}
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-slate-500 font-bold text-xs mr-1 flex items-center gap-1 shrink-0">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" /> 서류 상태:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    statusFilter === 'all' ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  전체 ({stats.total})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('review')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    statusFilter === 'review' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  검토 대기 ({stats.submittedCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('supplement')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    statusFilter === 'supplement' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  보완 필요 ({stats.supplementCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('approved')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    statusFilter === 'approved' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  승인 완료 ({stats.approvedCount})
-                </button>
-              </div>
-
-              {/* 우측 공공기관 발급 가이드 & 묶음 재요청 액션 */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowPublicDocGuide(true)}
-                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 press-scale"
-                  title="8대 공공기관별 필수 발급 옵션 및 의뢰인 전송용 문자 템플릿 확인"
-                >
-                  <Landmark className="w-3.5 h-3.5 text-blue-600" />
-                  <span>8대 공공기관 발급 가이드</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowBatchModal(true)}
-                  className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 press-scale"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>미제출 묶음 재요청</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 발급처별 필터 탭 & 모두 접기/펼치기 */}
-            <div className="px-4 py-2 border-b border-slate-200 bg-slate-100/60 flex items-center justify-between gap-1.5 overflow-x-auto text-xs font-semibold">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveAgency('all')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    activeAgency === 'all' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  전체 발급처 ({agencyCounts.all})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAgency('gov')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                    activeAgency === 'gov' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Home className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>주민센터·정부24 ({agencyCounts.gov})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAgency('tax')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                    activeAgency === 'tax' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                  <span>국세청·홈택스 ({agencyCounts.tax})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAgency('work')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                    activeAgency === 'work' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>직장·사업장 ({agencyCounts.work})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveAgency('finance')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                    activeAgency === 'finance' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-                  <span>금융·재산 ({agencyCounts.finance})</span>
-                </button>
-              </div>
-
-              {/* 아코디언 일괄 컨트롤 */}
-              <div className="flex items-center gap-1 shrink-0 ml-auto pl-2">
-                <button
-                  type="button"
-                  onClick={() => setAllCategoriesOpen(true)}
-                  className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 rounded font-medium text-[11px] transition-colors"
-                >
-                  모두 펼치기
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  onClick={() => setAllCategoriesOpen(false)}
-                  className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 rounded font-medium text-[11px] transition-colors"
-                >
-                  모두 접기
-                </button>
-              </div>
-            </div>
-
-            {/* 서류 목록 스마트 아코디언 */}
-            <div className="divide-y divide-slate-200">
-              {categoryGroups.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">
-                  조건에 일치하는 서류가 없습니다.
-                </div>
-              ) : (
-                categoryGroups.map((group) => {
-                  const isOpen = isCategoryOpen(group.id, group.isAllApproved);
-                  const remainCount = group.totalCount - group.approvedCount;
-
-                  return (
-                    <div key={group.id} className="border-b border-slate-200 last:border-b-0">
-                      {/* 카테고리 아코디언 헤더 */}
-                      <button
-                        type="button"
-                        onClick={() => toggleCategoryOpen(group.id, group.isAllApproved)}
-                        className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors cursor-pointer ${
-                          group.isAllApproved 
-                            ? 'bg-slate-50/70 hover:bg-slate-100/80' 
-                            : 'bg-blue-50/30 hover:bg-blue-50/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                            group.isAllApproved
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-white border border-blue-200 text-blue-600 shadow-2xs'
-                          }`}>
-                            {group.isAllApproved ? (
-                              <CheckCircle2 className="w-4 h-4" />
-                            ) : (
-                              group.icon
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-xs sm:text-sm text-slate-900">{group.title}</span>
-                              {group.isAllApproved ? (
-                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                  ✓ 승인 완료 ({group.approvedCount}/{group.totalCount})
-                                </span>
-                              ) : (
-                                <>
-                                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                    {group.approvedCount}/{group.totalCount} 승인
-                                  </span>
-                                  {remainCount > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                      {remainCount}건 조치 필요
-                                    </span>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">{group.desc}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0 ml-3">
-                          <span className="text-[11px] text-slate-400 hidden sm:inline">
-                            {isOpen ? '접기' : '펼쳐보기'}
-                          </span>
-                          {isOpen ? (
-                            <ChevronUp className="w-4 h-4 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* 카테고리 내부 서류 행 목록 */}
-                      {isOpen && (
-                        <div className="divide-y divide-slate-100 bg-white">
-                          {group.docs.map((doc) => {
-                            return (
-                              <div 
-                                key={doc.id}
-                                className="p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-                              >
-                                <div className="flex items-start gap-3 min-w-0">
-                                  <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
-                                    doc.status === 'APPROVED'
-                                      ? 'bg-emerald-100 text-emerald-700'
-                                      : doc.status === 'SUBMITTED'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : doc.status === 'SUPPLEMENT_NEEDED'
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                    {doc.status === 'APPROVED' ? (
-                                      <CheckCircle2 className="w-4 h-4" />
-                                    ) : (
-                                      <FileText className="w-4 h-4" />
-                                    )}
-                                  </div>
-
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-bold text-xs text-slate-900">{doc.name}</span>
-                                      {doc.isRequired ? (
-                                        <span className="text-xs px-1.5 py-0.2 rounded font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                          필수
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600">
-                                          선택
-                                        </span>
-                                      )}
-                                      {doc.isCreditorMultiplier && (
-                                        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                          총 {requiredSealCount}부 필수
-                                        </span>
-                                      )}
-                                      {doc.phase === 1 && (
-                                        <span className="text-xs px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                                          실물 등기
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <div className="text-[12px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                                      <span className="text-slate-600 font-medium">{doc.agency}</span>
-                                      <span className="text-slate-300">•</span>
-                                      <span className="truncate max-w-md">{doc.notes}</span>
-                                      {doc.supplementReason && (
-                                        <span className="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
-                                          보완 사유: {doc.supplementReason}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* ── 행당 단일 액션 버튼 (기획서 3-1: 행 버튼 1개 원칙) ── */}
-                                <div className="shrink-0">
-                                  {doc.status === 'SUBMITTED' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (doc.phase === 1) {
-                                          handleApproveDoc(doc.id);
-                                          toast.success(`'${doc.name}' 수령이 확인되었습니다.`);
-                                        } else {
-                                          setShowSpeedReviewModal(true);
-                                        }
-                                      }}
-                                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                      <span>검토하기</span>
-                                    </button>
-                                  )}
-
-                                  {doc.status === 'APPROVED' && (
-                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1 whitespace-nowrap">
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      <span>승인 완료</span>
-                                    </span>
-                                  )}
-
-                                  {doc.status === 'NOT_REQUESTED' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setDocList(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'REQUESTED', requestedAt: localYmd() } : d));
-                                        toast.success(`'${doc.name}' 요청 상태로 전환되었습니다.`);
-                                      }}
-                                      className="px-3 py-1.5 text-slate-700 hover:text-slate-900 border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                                    >
-                                      요청하기
-                                    </button>
-                                  )}
-
-                                  {doc.status === 'REQUESTED' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSendSingleReminder(doc.name)}
-                                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                                      title="고객에게 알림톡 다시 알림"
-                                    >
-                                      다시 알림
-                                    </button>
-                                  )}
-
-                                  {doc.status === 'SUPPLEMENT_NEEDED' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        toast.info(`'${doc.name}' 보완 가이드 알림톡을 발송합니다.`);
-                                        handleSendSingleReminder(doc.name);
-                                      }}
-                                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                                    >
-                                      보완 재요청
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* ── 하단 라이트 단계 완료 조건 바 (기획서 3-1 & 5.1 라이트 캔버스 규칙) ── */}
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          {/* 하단 라이트 단계 완료 조건 바 */}
+          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full ${stats.isReadyForStage4 ? 'bg-emerald-600' : 'bg-amber-500'}`} />
               <span className="font-bold text-slate-900">3단계 완료 조건:</span>
@@ -1140,7 +1012,7 @@ export default function Stage3DocumentsHubView({
               <button
                 type="button"
                 onClick={onAdvanceToNextStage}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap min-h-[44px]"
               >
                 <span>다음: 4단계 (신청·접수)로 이동</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1149,7 +1021,7 @@ export default function Stage3DocumentsHubView({
               <button
                 type="button"
                 onClick={() => setShowSpeedReviewModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap min-h-[44px]"
               >
                 <FileCheck2 className="w-3.5 h-3.5" />
                 <span>제출 서류 {stats.submittedCount}건 빠른 검토</span>
@@ -1158,7 +1030,7 @@ export default function Stage3DocumentsHubView({
               <button
                 type="button"
                 onClick={() => setShowBatchModal(true)}
-                className="px-4 py-2 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                className="px-4 py-2 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap min-h-[44px]"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>미제출 서류 묶음 요청</span>
@@ -1168,7 +1040,7 @@ export default function Stage3DocumentsHubView({
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════
+{/* ══════════════════════════════════════════════════════════════
           SECTION 2: 부채증명서 (debt-cert)
           ══════════════════════════════════════════════════════════════ */}
       {currentSection === 'debt-cert' && (

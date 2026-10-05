@@ -45,9 +45,11 @@ interface Props {
 }
 
 const STEPS = [
-  { key: 'client', label: '1. 계약 정보 (위임인·사건)', icon: User },
-  { key: 'fee', label: '2. 비용 (수임료·실비·분납)', icon: CreditCard },
-  { key: 'finalize', label: '3. 확인·서명 (약관·서명·발송)', icon: ShieldCheck },
+  { key: 'client', label: '① 위임인', icon: User },
+  { key: 'fee', label: '② 수임료·납부일정', icon: CreditCard },
+  { key: 'terms', label: '③ 약관', icon: Shield },
+  { key: 'signature', label: '④ 서명', icon: PenTool },
+  { key: 'finalize', label: '⑤ 미리보기·발송', icon: Eye },
 ];
 
 export default function ContractWizard({ contract: initialContract, onClose, onSave }: Props) {
@@ -170,8 +172,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const [agreeLegalEffect, setAgreeLegalEffect] = useState(false);
   const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
-  // 3단계(확인·서명) 내부 서브탭 상태 (약관동의 -> 문서관리 -> 서명/발송 -> 최종미리보기)
-  const [finalizeSubTab, setFinalizeSubTab] = useState<'terms' | 'documents' | 'signature' | 'preview'>('terms');
+  // 3단계(확인·서명) 내부 서브탭 → 5탭 위저드로 승격하여 더 이상 사용하지 않음
+  // const [finalizeSubTab, ...] 는 제거됨 — step 2,3,4가 직접 약관/서명/미리보기를 렌더링
   const [isSaving, setIsSaving] = useState(false);
 
   const update = (patch: Partial<ElectronicContract>) => setC(prev => ({ ...prev, ...patch, updatedAt: new Date().toISOString() }));
@@ -2809,60 +2811,52 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     );
   };
 
-  // ─── Step 3: 확인·서명 (약관 동의 · 서식 관리 · 서명/발송 · 미리보기 통합) ───
-  const renderFinalize = () => {
+  // ─── Tab ③: 약관 (약관 동의 + 계약 서식 관리 통합) ───
+  const renderTermsTab = () => {
     return (
-      <div className="space-y-6">
-        {/* 3단계 내부 서브 모드 탭 바 */}
-        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/70">
-          {[
-            { key: 'terms', label: '① 필수 약관 동의', icon: Shield, done: agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect },
-            { key: 'documents', label: '② 계약 서식 관리', icon: FileText, done: (c.documents ?? []).some(d => d.included) },
-            { key: 'signature', label: '③ 변호사 서명·의뢰인 발송', icon: PenTool, done: Boolean((c.documents ?? []).find(d => d.lawyerSignature)?.lawyerSignature) },
-            { key: 'preview', label: '④ 계약서 전문 미리보기', icon: Eye, done: false },
-          ].map((sub) => {
-            const isActive = finalizeSubTab === sub.key;
-            const SubIcon = sub.icon;
-            return (
-              <button
-                key={sub.key}
-                type="button"
-                onClick={() => setFinalizeSubTab(sub.key as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer press-scale ${
-                  isActive 
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                }`}
-              >
-                <SubIcon className="w-3.5 h-3.5" />
-                <span>{sub.label}</span>
-                {sub.done && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                )}
-              </button>
-            );
-          })}
+      <div className="space-y-8">
+        {renderTerms()}
+        <div className="border-t border-slate-200 pt-6">
+          <h3 className="text-base font-black text-slate-800 flex items-center gap-2 mb-4">
+            <FileText className="w-5 h-5 text-brand" />
+            <span>계약 서식 관리</span>
+          </h3>
+          <p className="text-xs text-slate-500 mb-4">위임계약서에 포함할 부속서류를 선택하세요. 체크된 문서가 최종 계약서에 포함됩니다.</p>
+          {renderDocuments()}
         </div>
-
-        {/* 선택된 서브 영역 렌더링 */}
-        {finalizeSubTab === 'terms' && renderTerms()}
-        {finalizeSubTab === 'documents' && renderDocuments()}
-        {finalizeSubTab === 'signature' && renderSignature()}
-        {finalizeSubTab === 'preview' && renderPreview()}
       </div>
     );
   };
 
-  const stepContent = [renderClientInfo, renderFeeSchedule, renderFinalize];
+  // ─── Tab ⑤: 미리보기·발송 (기존 미리보기 + 발송 방식 선택) ───
+  const renderFinalizeTab = () => {
+    return (
+      <div className="space-y-6">
+        {/* 발송 방식 안내 */}
+        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200">
+          <p className="text-xs font-bold text-blue-900 flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span>계약서 최종 확인 후 아래에서 발송 방식을 선택하세요</span>
+          </p>
+          <p className="text-xs text-blue-700 mt-1">
+            전자서명(스마트폰 발송)이 기본입니다. 대면 방문이나 우편 체결의 경우 상단 헤더의 "서면 계약 등록" 버튼을 사용하세요.
+          </p>
+        </div>
+        {renderPreview()}
+      </div>
+    );
+  };
 
-  // 단계 건너뛰기 방지 검증 핸들러 (기획서 4.3: 단계 탭을 눌러 검증을 건너뛰지 못하게 함)
+  const stepContent = [renderClientInfo, renderFeeSchedule, renderTermsTab, renderSignature, renderFinalizeTab];
+
+  // 단계 건너뛰기 방지 검증 핸들러
   const handleStepClick = (targetIndex: number) => {
     if (targetIndex > step) {
       if (step === 0 && !c.clientName?.trim()) {
         toast.warning('위임인 성명을 먼저 입력해 주세요.');
         return;
       }
-      if (targetIndex === 2 && step === 1) {
+      if (targetIndex >= 2 && step <= 1) {
         const hasFees = (c.feeSchedule && c.feeSchedule.length > 0) || (c.totalFee && c.totalFee > 0);
         if (!hasFees) {
           toast.warning('수임료 및 분납 일정을 먼저 확인해 주세요.');
@@ -2877,7 +2871,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     ? Boolean(c.clientName?.trim())
     : step === 1 
       ? Boolean((c.feeSchedule && c.feeSchedule.length > 0) || (c.totalFee && c.totalFee > 0))
-      : (agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect);
+      : step === 2
+        ? (agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect)
+        : step === 3
+          ? Boolean(c.documents.some(d => d.included && d.lawyerSignature))
+          : true;
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -2897,7 +2895,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleSave} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl cursor-pointer whitespace-nowrap transition-colors">💾 임시 저장</button>
-            {step === 2 && (
+            {step >= 3 && (
               <button
                 type="button"
                 onClick={async () => {
@@ -2916,20 +2914,20 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <span>{downloadingPdf ? 'PDF 생성중...' : '📄 법원제출용 PDF'}</span>
               </button>
             )}
-            {step === 2 && (
+            {step === 4 && (
               <button 
                 onClick={async () => {
                   const lawyerSig = c.documents.find(d => d.lawyerSignature)?.lawyerSignature;
                   const clientSig = c.documents.find(d => d.clientSignature)?.clientSignature;
 
                   if (!lawyerSig) {
-                    toast.error('수임인(담당 변호사) 서명이 필요합니다. 3단계 서명 탭에서 서명을 먼저 진행해 주세요.');
-                    setFinalizeSubTab('signature');
+                    toast.error('수임인(담당 변호사) 서명이 필요합니다. ④ 서명 탭에서 서명을 먼저 진행해 주세요.');
+                    setStep(3);
                     return;
                   }
                   if (!clientSig) {
-                    toast.error('위임인(고객) 스마트폰 서명이 완료되지 않았습니다. 고객에게 서명 링크를 먼저 발송해 주세요.');
-                    setFinalizeSubTab('signature');
+                    toast.error('위임인(고객) 스마트폰 서명이 완료되지 않았습니다. ④ 서명 탭에서 서명 링크를 먼저 발송해 주세요.');
+                    setStep(3);
                     return;
                   }
 
@@ -2986,7 +2984,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         <div className="flex items-center gap-2">
           {STEPS.map((_, i) => <span key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i === step ? 'bg-[#1E3A5F]' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
         </div>
-        {step < 2 ? (
+        {step < 4 ? (
           <button 
             onClick={() => {
               if (step === 0 && !c.clientName?.trim()) {
@@ -3003,7 +3001,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         ) : (
           <button
             type="button"
-            onClick={() => setFinalizeSubTab('preview')}
+            onClick={() => setStep(4)}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl cursor-pointer whitespace-nowrap shadow-xs transition-colors"
           >
             <Eye className="w-4 h-4" />
