@@ -14,6 +14,7 @@ import {
   STANDARD_LEGAL_TEMPLATES 
 } from '../../services/contractTemplateService';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
+import { A4DocumentPreview } from '../common/A4DocumentPreview';
 import ModalPortal from '../common/ModalPortal';
 
 interface Props {
@@ -450,73 +451,74 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
               />
             </div>
           ) : (
-            <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-200 max-h-[420px] overflow-y-auto">
-              <div className="mb-4 pb-3 border-b border-slate-200 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500">실제 고객 열람 및 서명 시 렌더링 형태:</span>
-                <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                  형광펜 마킹 적용됨
-                </span>
-              </div>
-              <HighlightedDocumentViewer
-                content={applyTemplatePlaceholders(content, contractContext)}
-                requiredConfirmationText={requireConfirmation ? confirmationText : undefined}
-              />
-            </div>
+            <A4DocumentPreview
+              title={title}
+              docType={type}
+              content={applyTemplatePlaceholders(content, contractContext)}
+              contractContext={contractContext}
+              signatureRequired={signatureRequired}
+              requiredConfirmationText={requireConfirmation ? confirmationText.trim() : undefined}
+              clientSignature={doc.clientSignature}
+              lawyerSignature={doc.lawyerSignature}
+              orderIndex={doc.order}
+            />
           )}
 
-          {/* 4. [핵심] 고객 직접 타이핑 확약 문구 설정 (금융·보험사 벤치마킹) */}
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={requireConfirmation}
-                  onChange={e => setRequireConfirmation(e.target.checked)}
-                  className="w-4 h-4 rounded accent-amber-600 cursor-pointer"
-                />
-                <div>
-                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                    <ShieldAlert className="w-4 h-4 text-amber-600" />
-                    <span>고객 직접 확약 문구 타이핑(덧쓰기) 필수 요구</span>
-                    <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.2 rounded font-bold">
-                      법적 부인방지
-                    </span>
-                  </span>
-                  <p className="text-xs text-amber-800/90 mt-0.5">
-                    의뢰인이 스마트폰 서명 시, 아래 지정한 문구를 직접 자필로 타이핑해야만 서명이 완료됩니다.
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            {requireConfirmation && (
-              <div className="space-y-2 pt-2 border-t border-amber-200/60">
-                <div className="flex items-center gap-2">
+          {/* 4. [핵심] 고객 직접 타이핑 확약 문구 설정 (에디터 모드 전용) */}
+          {viewMode === 'edit' && (
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
                   <input
-                    type="text"
-                    value={confirmationText}
-                    onChange={e => setConfirmationText(e.target.value)}
-                    placeholder="예: 총 수임료 및 분납 일정을 확인하였습니다"
-                    className="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-950 focus:outline-amber-600"
+                    type="checkbox"
+                    checked={requireConfirmation}
+                    onChange={e => setRequireConfirmation(e.target.checked)}
+                    className="w-4 h-4 rounded accent-amber-600 cursor-pointer"
                   />
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-amber-800">추천 문구:</span>
-                  {confirmationPresets.map(preset => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setConfirmationText(preset)}
-                      className="text-xs px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md cursor-pointer transition-colors"
-                    >
-                      "{preset}"
-                    </button>
-                  ))}
-                </div>
+                  <div>
+                    <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-600" />
+                      <span>고객 직접 확약 문구 타이핑(덧쓰기) 필수 요구</span>
+                      <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.2 rounded font-bold">
+                        법적 부인방지
+                      </span>
+                    </span>
+                    <p className="text-xs text-amber-800/90 mt-0.5">
+                      의뢰인이 스마트폰 서명 시, 아래 지정한 문구를 직접 자필로 타이핑해야만 서명이 완료됩니다.
+                    </p>
+                  </div>
+                </label>
               </div>
-            )}
-          </div>
+
+              {requireConfirmation && (
+                <div className="space-y-2 pt-2 border-t border-amber-200/60">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={confirmationText}
+                      onChange={e => setConfirmationText(e.target.value)}
+                      placeholder="예: 총 수임료 및 분납 일정을 확인하였습니다"
+                      className="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-950 focus:outline-amber-600"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-amber-800">추천 문구:</span>
+                    {confirmationPresets.map(preset => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setConfirmationText(preset)}
+                        className="text-xs px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md cursor-pointer transition-colors"
+                      >
+                        "{preset}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
