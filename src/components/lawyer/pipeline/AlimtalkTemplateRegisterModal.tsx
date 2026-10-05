@@ -1,3 +1,4 @@
+import ModalPortal from '../../common/ModalPortal';
 import React, { useState } from 'react';
 import { 
   X, Send, Sparkles, ExternalLink, ShieldCheck, 
@@ -130,8 +131,9 @@ export default function AlimtalkTemplateRegisterModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[88vh] my-auto">
         {/* 헤더 */}
         <div className="p-4.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -336,6 +338,7 @@ export default function AlimtalkTemplateRegisterModal({
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

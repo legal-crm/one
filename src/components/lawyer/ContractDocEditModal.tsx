@@ -116,16 +116,56 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
     setShowSnippets(false);
   };
 
-  // 기본 표준 양식으로 복원
-  const handleResetToDefault = () => {
-    const std = STANDARD_LEGAL_TEMPLATES.find(t => t.type === doc.type);
+  // 문서 유형 분류 변경 시 해당 유형의 표준 서식으로 제목, 본문, 서명대상, 확약문구 동기화
+  const handleTypeChange = (newType: ContractDocType) => {
+    setType(newType);
+    const docCfg = CONTRACT_DOC_TYPES[newType];
+    const std = STANDARD_LEGAL_TEMPLATES.find(t => t.type === newType);
+
+    // 문서 제목 자동 갱신
+    const newTitle = docCfg?.label || std?.title || '문서';
+    setTitle(newTitle);
+
+    // 서명 필요 대상 자동 갱신
+    const newSig = std?.signatureRequired || docCfg?.signatureRequired || 'client';
+    setSignatureRequired(newSig as any);
+
+    // 본문 내용 자동 갱신 (의뢰인 실데이터 플레이스홀더 치환)
     if (std) {
-      setContent(std.content);
+      const replacedContent = applyTemplatePlaceholders(std.content, contractContext);
+      setContent(replacedContent);
       if (std.requiredConfirmationText) {
         setRequireConfirmation(true);
         setConfirmationText(std.requiredConfirmationText);
+      } else {
+        setRequireConfirmation(false);
+        setConfirmationText('');
       }
-      toast.info(`[${std.title}] 표준 양식으로 복원되었습니다.`);
+    } else {
+      setContent(`${newTitle}\n\n본 문서의 내용을 확인하고 동의합니다.`);
+      setRequireConfirmation(false);
+      setConfirmationText('');
+    }
+
+    toast.success(`[${newTitle}] 표준 서식 및 내용으로 변경되었습니다.`);
+  };
+
+  // 기본 표준 양식으로 복원
+  const handleResetToDefault = () => {
+    const std = STANDARD_LEGAL_TEMPLATES.find(t => t.type === type);
+    if (std) {
+      const replacedContent = applyTemplatePlaceholders(std.content, contractContext);
+      setContent(replacedContent);
+      setTitle(CONTRACT_DOC_TYPES[type]?.label || std.title);
+      setSignatureRequired(std.signatureRequired || CONTRACT_DOC_TYPES[type]?.signatureRequired || 'client');
+      if (std.requiredConfirmationText) {
+        setRequireConfirmation(true);
+        setConfirmationText(std.requiredConfirmationText);
+      } else {
+        setRequireConfirmation(false);
+        setConfirmationText('');
+      }
+      toast.info(`[${CONTRACT_DOC_TYPES[type]?.label || std.title}] 표준 양식으로 복원되었습니다.`);
     } else {
       toast.error('해당 문서의 기본 표준 양식을 찾을 수 없습니다.');
     }
@@ -182,8 +222,8 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn">
-        <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[calc(100vh-2.5rem)] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+        <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[min(90vh,calc(100vh-2.5rem))] my-auto flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
         
         {/* 모달 상단 헤더 */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
@@ -272,8 +312,8 @@ const ContractDocEditModalInner: React.FC<Props & { doc: ContractDocument }> = (
               <label className="text-xs font-bold text-slate-600 block mb-1">문서 유형 분류</label>
               <select
                 value={type}
-                onChange={e => setType(e.target.value as any)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-brand"
+                onChange={e => handleTypeChange(e.target.value as ContractDocType)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-brand cursor-pointer"
               >
                 {Object.entries(CONTRACT_DOC_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{v.emoji} {v.label}</option>

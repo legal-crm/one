@@ -1,3 +1,4 @@
+import ModalPortal from '../../common/ModalPortal';
 import React, { useState, useEffect } from 'react';
 import { 
   X, Check, AlertTriangle, ShieldCheck, Eye, 
@@ -86,8 +87,9 @@ export default function SpeedDocReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 md:p-6 animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full h-[85vh] max-h-[740px] overflow-hidden flex flex-col">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full max-h-[88vh] my-auto overflow-hidden flex flex-col">
         {/* 헤더 바 */}
         <div className="px-6 py-3.5 bg-[#1E3A5F] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -354,6 +356,7 @@ export default function SpeedDocReviewModal({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

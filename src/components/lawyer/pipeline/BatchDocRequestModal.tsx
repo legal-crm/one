@@ -1,3 +1,4 @@
+import ModalPortal from '../../common/ModalPortal';
 import React, { useState, useRef } from 'react';
 import { 
   X, Send, CheckSquare, Square, Calendar, ShieldCheck, 
@@ -117,10 +118,11 @@ export default function BatchDocRequestModal({
   const officeAddress = office.address || '사무소 주소 미설정 — [알림 및 설정 > 사업자 정보]에서 입력';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-        {/* 헤더 */}
-        <div className="px-6 py-4 bg-[#1E3A5F] text-white flex items-center justify-between">
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 sm:p-6 animate-fadeIn overflow-y-auto">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[88vh] my-auto">
+          {/* 헤더 */}
+          <div className="px-6 py-4 bg-[#1E3A5F] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-white/10 text-white">
               <Send className="w-4 h-4" />
@@ -351,7 +353,7 @@ ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니
         </div>
 
         {/* 푸터 */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -370,6 +372,7 @@ ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }
