@@ -189,17 +189,17 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
           </button>
           <div id="client-footer-business-info" className={cn('space-y-5 md:block', infoOpen ? 'block' : 'hidden')}>
           <div className="space-y-2 text-xs sm:text-sm text-slate-400 leading-relaxed">
-            <p className="text-base font-bold text-slate-200">몬스터랩</p>
+            <p className="text-base font-bold text-slate-200">my김변컴퍼니</p>
             <p className="flex flex-wrap gap-x-4 gap-y-0.5">
-              <span>상호: 몬스터랩</span>
+              <span>상호: my김변컴퍼니</span>
               <span>대표: 진성호</span>
-              <span>사업자등록번호: 521-39-01355</span>
             </p>
             <p className="flex flex-wrap gap-x-4 gap-y-0.5">
               <span>사업장 주소지: 서울특별시 서초구 강남대로53길 8</span>
               <span>전화번호: 070-4187-2882</span>
               <span>고객문의: support@mykim.kr</span>
             </p>
+            <p className="text-xs text-slate-400">Founded April 2026</p>
           </div>
 
           <div className="space-y-2 text-xs text-slate-400 leading-relaxed">
