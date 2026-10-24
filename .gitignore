@@ -26,3 +26,6 @@ __pycache__/
 _work/
 assets/cardnews/
 assets/kakao-moment-ads/
+
+리걸플로/
+scripts/canva-auth.mjs

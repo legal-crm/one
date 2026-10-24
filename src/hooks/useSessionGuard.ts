@@ -35,6 +35,7 @@ export function useSessionGuard({
     // 1. 세션 유효성 즉각 검증 함수
     const verifyCurrentSession = async () => {
       if (isHandlingLogout.current) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
 
       const currentId = getCurrentSessionId();
       if (!currentId) return;
@@ -62,8 +63,10 @@ export function useSessionGuard({
     const events = ['mousedown', 'keydown', 'touchstart'];
     events.forEach(e => window.addEventListener(e, handleUserActivity, { passive: true }));
 
-    // 3. 15초 주기 정기 세션 상태 폴링 검증
-    const pollTimer = setInterval(verifyCurrentSession, 15_000);
+    // 3. 정기 세션 상태 검증 (활성 탭 60초 주기, 포커스 복귀 시 즉시 확인)
+    const pollTimer = setInterval(verifyCurrentSession, 60_000);
+    const handleFocus = () => { if (typeof document !== 'undefined' && !document.hidden) verifyCurrentSession(); };
+    window.addEventListener('focus', handleFocus);
 
     // 4. BroadcastChannel 수신 (다른 탭에서 원격 로그아웃 즉각 감지)
     let channel: BroadcastChannel | null = null;
@@ -102,6 +105,7 @@ export function useSessionGuard({
 
     return () => {
       clearInterval(pollTimer);
+      window.removeEventListener("focus", handleFocus);
       events.forEach(e => window.removeEventListener(e, handleUserActivity));
       if (channel) {
         channel.close();

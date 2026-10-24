@@ -36,6 +36,7 @@ const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
 const AdminRole = React.lazy(() => import('./components/AdminRole'));
 const HoneypotAdminLogin = React.lazy(() => import('./components/admin/HoneypotAdminLogin'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { openSharedReport } from './services/sharedReportService';
 import SharedReportViewer from './components/client/SharedReportViewer';
 // 원격 전자서명(?view=sign)은 문자 링크로만 여는 독립 화면이라 첫 화면 번들에서 뺀다
@@ -477,15 +478,51 @@ export default function App() {
       } catch {}
     };
 
-    // 초기 로드
-    syncFromDb();
+    // 1. 초기 로드 (단, 비활성 탭이 아닐 때만)
+    if (typeof document === "undefined" || !document.hidden) {
+      syncFromDb();
+    }
 
-    // 5초 간격 폴링 (변호사 ↔ 고객 실시간 동기화)
-    const intervalId = setInterval(syncFromDb, 5000);
+    // 2. 탭 활성화/포커스 복귀 시 1회 즉시 동기화
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        syncFromDb();
+      }
+    };
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    // 3. Supabase Realtime 웹소켓 채널 구독 (데이터 변경 시에만 즉각 반응하여 Egress 낭비 차단)
+    let channel = null;
+    if (isSupabaseConfigured) {
+      try {
+        channel = supabase
+          .channel("app-sync-listener")
+          .on("postgres_changes", { event: "*", schema: "public", table: "consult_requests" }, () => {
+            if (typeof document === "undefined" || !document.hidden) syncFromDb();
+          })
+          .on("postgres_changes", { event: "*", schema: "public", table: "consult_messages" }, () => {
+            if (typeof document === "undefined" || !document.hidden) syncFromDb();
+          })
+          .subscribe();
+      } catch {}
+    }
+
+    // 4. 완화된 백업 폴링 (60초 주기, 단 탭이 활성 상태일 때만 실행)
+    const intervalId = setInterval(() => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        syncFromDb();
+      }
+    }, 60000);
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      if (channel && isSupabaseConfigured) {
+        try { supabase.removeChannel(channel); } catch {}
+      }
     };
   }, [mergeConsultRequests, mergeConsultMessages, currentRole]);
 

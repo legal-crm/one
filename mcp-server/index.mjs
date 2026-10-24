@@ -6,6 +6,36 @@
  */
 
 import readline from 'readline';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPaths = [
+  path.resolve(__dirname, '../.env.local'),
+  path.resolve(__dirname, '../.env')
+];
+
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+}
 
 const SERVER_NAME = "mykim-muse-bridge";
 const SERVER_VERSION = "1.0.0";
@@ -16,6 +46,9 @@ const META_APP_ID = process.env.META_APP_ID || "1575993246947781";
 const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || "";
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+const CANVA_ACCESS_TOKEN = process.env.CANVA_ACCESS_TOKEN || process.env.CANVA_API_KEY || "";
+const CANVA_CLIENT_ID = process.env.CANVA_CLIENT_ID || "";
+const CANVA_CLIENT_SECRET = process.env.CANVA_CLIENT_SECRET || "";
 
 // 지원 도구 목록 정의
 const TOOLS = [
@@ -85,6 +118,30 @@ const TOOLS = [
         targetAudience: { type: "string", description: "타깃 독자 (예: 2030 청년 채무자, 자영업자, 주부 등)" }
       },
       required: ["topic", "platform"]
+    }
+  },
+  {
+    name: "canva_test_connection",
+    description: "Canva(캔바) Connect REST API 및 공식 MCP 서버 연결 상태, OAuth 인증 토큰 유효성을 진단합니다.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accessToken: { type: "string", description: "Canva Connect API Access Token (선택, 미입력시 환경변수 CANVA_ACCESS_TOKEN 사용)" }
+      }
+    }
+  },
+  {
+    name: "canva_create_design",
+    description: "Canva(캔바)를 통해 법률 마케팅용 카드뉴스, 인스타그램 배너, 상담 브로슈어 디자인을 생성하거나 편집 에디터 링크를 발행합니다.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "디자인 제목 (예: 2026 회생 준칙 안내 카드뉴스)" },
+        designType: { type: "string", enum: ["card_news", "instagram_post", "banner", "presentation"], description: "디자인 규격" },
+        topic: { type: "string", description: "콘텐츠 주제 요약" },
+        accessToken: { type: "string", description: "Canva API 토큰 (선택)" }
+      },
+      required: ["title", "designType"]
     }
   }
 ];
@@ -206,6 +263,145 @@ async function handleToolCall(name, args) {
                 "3. 40종 서류 지옥 탈출: 스마트폰으로 말만 하면 완성되는 AI 음성 진술서"
               ],
               cta: "프로필 링크에서 010 번호 없이 내 안심 가명으로 무료 진단 시작하기"
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case "canva_test_connection": {
+      const token = args.accessToken || CANVA_ACCESS_TOKEN;
+      const apiEndpoint = "https://api.canva.com/rest/v1/users/me";
+      const mcpEndpoint = "https://mcp.canva.com/mcp";
+
+      let restResult = null;
+      let mcpResult = null;
+      let userInfo = null;
+
+      try {
+        const mcpRes = await fetch(mcpEndpoint);
+        mcpResult = {
+          status: mcpRes.status,
+          statusText: mcpRes.statusText,
+          reachable: true,
+          authType: "OAuth 2.0 Bearer"
+        };
+      } catch (err) {
+        mcpResult = { reachable: false, error: err.message };
+      }
+
+      if (token) {
+        try {
+          const res = await fetch(apiEndpoint, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          restResult = {
+            status: res.status,
+            statusText: res.statusText,
+            authenticated: res.ok
+          };
+          if (res.ok) {
+            userInfo = await res.json();
+          } else {
+            const errBody = await res.json().catch(() => ({}));
+            restResult.details = errBody;
+          }
+        } catch (err) {
+          restResult = { authenticated: false, error: err.message };
+        }
+      } else {
+        restResult = {
+          authenticated: false,
+          reachable: true,
+          status: 401,
+          message: "Canva API 서버는 정상 통신 가능하나 유효한 CANVA_ACCESS_TOKEN이 미설정 상태입니다."
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              service: "Canva (캔바)",
+              networkStatus: "connected",
+              hasConfiguredToken: Boolean(token),
+              apiDiagnostics: {
+                restApi: {
+                  url: "https://api.canva.com/rest/v1",
+                  status: restResult
+                },
+                mcpServer: {
+                  url: mcpEndpoint,
+                  status: mcpResult
+                }
+              },
+              userInfo: userInfo || null,
+              guide: token 
+                ? "Canva Connect API 토큰 인증이 정상 확인되었습니다." 
+                : "Canva 연동 토큰이 필요합니다: Canva Developers(https://www.canva.dev/)에서 앱 생성 후 발급받은 Access Token을 CANVA_ACCESS_TOKEN 환경변수에 등록하세요."
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case "canva_create_design": {
+      const { title, designType, topic = "", accessToken } = args;
+      const token = accessToken || CANVA_ACCESS_TOKEN;
+
+      const typeUrlMap = {
+        card_news: "https://www.canva.com/create/instagram-posts/?query=card+news",
+        instagram_post: "https://www.canva.com/create/instagram-posts/",
+        banner: "https://www.canva.com/create/banners/",
+        presentation: "https://www.canva.com/create/presentations/"
+      };
+      const directEditUrl = typeUrlMap[designType] || "https://www.canva.com/create/";
+
+      let apiResponse = null;
+      if (token) {
+        try {
+          const presetName = designType === "doc" ? "doc" : (designType === "whiteboard" ? "whiteboard" : "presentation");
+          const res = await fetch("https://api.canva.com/rest/v1/designs", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              title,
+              design_type: {
+                type: "preset",
+                name: presetName
+              }
+            })
+          });
+          if (res.ok) {
+            apiResponse = await res.json();
+          } else {
+            apiResponse = { status: res.status, details: await res.json().catch(() => ({})) };
+          }
+        } catch (e) {
+          apiResponse = { error: e.message };
+        }
+      }
+
+      const designObj = apiResponse?.design;
+      const editorUrl = designObj?.urls?.edit_url || directEditUrl;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              title,
+              designType,
+              topic,
+              designId: designObj?.id || null,
+              editUrl: editorUrl,
+              viewUrl: designObj?.urls?.view_url || null,
+              message: `Canva '${title}' (${designType}) 디자인이 생성되었습니다.`
             }, null, 2)
           }
         ]

@@ -341,7 +341,7 @@ export function ContextPanel({
                 </span>
               </div>
 
-              {/* 연락처 & 안심번호 */}
+              {/* 연락처 */}
               <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-slate-600">
                 <span className="font-mono text-slate-800">{displayPhone}</span>
                 <button

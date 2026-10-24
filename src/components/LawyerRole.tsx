@@ -2156,12 +2156,12 @@ export default function LawyerRole({
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 md:p-10 space-y-6">
                   <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-bold px-4 py-1.5 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    초기 비용 0원
+                    가입비·CRM 이용료 0원
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">가입비·월정액 없음. 수임 성공 시에만 과금.</h3>
+                  <h3 className="text-xl font-bold text-slate-900">가입비와 월 이용료 없이 CRM을 쓰실 수 있습니다.</h3>
                   <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                    사건을 수임하지 않으면 비용이 발생하지 않습니다.<br />
-                    변호사님의 리스크를 최소화하는 성과 기반 과금 구조입니다.
+                    플랫폼 비용은 원하실 때 신청하는 정액 광고 상품뿐입니다.<br />
+                    상담 건수, 수임 건수, 수임료와 연동된 수수료는 받지 않습니다.
                   </p>
                   <div className="grid grid-cols-3 gap-4 pt-4">
                     <div className="text-center">
@@ -2170,11 +2170,11 @@ export default function LawyerRole({
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-black text-brand">0원</div>
-                      <div className="text-xs text-slate-500 mt-1">월정액</div>
+                      <div className="text-xs text-slate-500 mt-1">CRM 이용료</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-black text-emerald-600">성과형</div>
-                      <div className="text-xs text-slate-500 mt-1">수임 시 과금</div>
+                      <div className="text-2xl font-black text-emerald-600">정액</div>
+                      <div className="text-xs text-slate-500 mt-1">광고 상품 (선택)</div>
                     </div>
                   </div>
                 </div>
@@ -2188,7 +2188,7 @@ export default function LawyerRole({
                 <div className="space-y-3">
                   {[
                     { q: '어떤 분야의 변호사가 가입할 수 있나요?', a: '현재 개인회생·파산·신용회복 전문 변호사님을 대상으로 운영하고 있습니다. 향후 다른 법률 분야로 확장 예정입니다.' },
-                    { q: '의뢰인은 어떻게 유입되나요?', a: '온라인 광고, SEO, SNS 마케팅을 통해 채무 문제로 고민하는 의뢰인이 플랫폼에 유입됩니다. AI 자가진단을 거쳐 채무 데이터가 정리된 상태로 상담을 요청합니다.' },
+                    { q: '의뢰인은 어떻게 유입되나요?', a: '온라인 광고, SEO, SNS 마케팅을 통해 채무 문제로 고민하는 의뢰인이 플랫폼에 유입됩니다. 의뢰인이 \'내 채무 진단하기\'로 채무 정보를 정리한 뒤, 직접 선택한 변호사에게 상담을 요청합니다.' },
                     { q: '한 건에 여러 변호사가 제안할 수 있나요?', a: '네, 최대 3명의 변호사가 솔루션 제안서를 보낼 수 있습니다. 의뢰인이 제안서를 비교하고 최종 선택합니다.' },
                     { q: '계정 승인은 얼마나 걸리나요?', a: '변호사 등록증 확인 후 평균 1~2 영업일 이내에 승인됩니다.' },
                     { q: '기존 사무소 홈페이지와 병행 사용이 가능한가요?', a: '물론입니다. 기존 채널은 유지하시면서 추가 사건 수임 채널로 활용하시면 됩니다.' }
