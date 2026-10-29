@@ -29,3 +29,6 @@ assets/kakao-moment-ads/
 
 리걸플로/
 scripts/canva-auth.mjs
+카카오자동화/
+보정/
+.playwright-mcp/
