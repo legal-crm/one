@@ -55,6 +55,7 @@ const InquiryPopupModal = React.lazy(() => import('./client/InquiryPopupModal'))
 
 import ClientFooter from './client/ClientFooter';
 import PendingCaseLinkBanner from './client/mypage/PendingCaseLinkBanner';
+import { useServerNotifications } from '../hooks/useServerNotifications';
 import ClientHeader from './client/ClientHeader';
 import MobileGNB from './client/MobileGNB';
 import LandingView from './client/landing/LandingView';
@@ -345,8 +346,9 @@ export default function ClientRole({
   // 탭 ID·경로 매핑은 client/clientTabs.ts 한 곳에서 관리한다
   const [activeTab, setActiveTab] = useState<ClientTab>(readInitialClientTab);
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
-  const [clientNotifications, setClientNotifications] = useState<ClientNotification[]>(() => { seedInitialNotifications(); return loadClientNotifications(); });
-  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
+  // 이 기기 알림(안내용). 서버 알림(user_notifications)은 아래 useServerNotifications로 합친다
+  const [localNotifications, setClientNotifications] = useState<ClientNotification[]>(() => { seedInitialNotifications(); return loadClientNotifications(); });
+  const [localUnreadCount, setUnreadCount] = useState(() => getUnreadCount());
   // 마이페이지 안에서 처음 보여 줄 탭. 비워 두면 마이페이지가 사건 상태로 정한다(계약 전 → 내 사건, 계약 후 → 회생동행)
   const [mypageSubTab, setMypageSubTab] = useState<MyPageSection | undefined>(undefined);
 
@@ -2015,8 +2017,28 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isLoggedIn]);
 
+  // 서버 알림 (변호사 메시지·제안서 도착·서류 다시 요청) — 로그인한 의뢰인만
+  const serverNotif = useServerNotifications('client', isLoggedIn);
+  const clientNotifications: ClientNotification[] = React.useMemo(() => {
+    const server: ClientNotification[] = serverNotif.items.map(n => ({
+      id: `srv:${n.id}`,
+      type: n.kind === 'lawyer_message' ? 'new_message' : n.kind === 'document_rejected' ? 'document_request' : 'status_change',
+      title: n.count > 1 ? `${n.title} ${n.count}건` : n.title,
+      body: n.body || '',
+      createdAt: n.updatedAt,
+      isRead: !!n.readAt,
+      linkTab: n.kind === 'document_rejected' ? 'mypage' : 'chat',
+      emoji: n.kind === 'lawyer_message' ? '💬' : n.kind === 'document_rejected' ? '📄' : '📨',
+    }));
+    return [...server, ...localNotifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
+  }, [serverNotif.items, localNotifications]);
+  const unreadCount = localUnreadCount + serverNotif.unreadCount;
+
   const handleNotificationClick = (n: ClientNotification) => {
-    if (!n.isRead) markAsRead(n.id);
+    if (!n.isRead) {
+      if (n.id.startsWith('srv:')) void serverNotif.markRead(n.id.slice(4));
+      else markAsRead(n.id);
+    }
     refreshNotifications();
     if (n.type === 'document_request') {
       setMypageSubTab('diagnosis');
@@ -2027,6 +2049,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
   };
   const handleMarkAllNotificationsRead = () => {
     markAllAsRead();
+    if (isLoggedIn) void serverNotif.markAllRead();
     refreshNotifications();
   };
   // 상담 관련(메시지·진행 상태) 읽지 않은 알림이 있을 때만 '내 관리방'에 점 표시

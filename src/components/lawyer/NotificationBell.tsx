@@ -5,12 +5,21 @@ import {
 } from '../../services/notificationCenterService';
 import type { InAppNotification } from '../../types/communication';
 import { NOTIFICATION_TYPE_CONFIG } from '../../types/communication';
+import { useServerNotifications } from '../../hooks/useServerNotifications';
 
 interface NotificationBellProps {
   tenantId: string;
   userId: string;
   onNavigate?: (linkType: string, linkId: string) => void;
+  /** 서버 알림(user_notifications: 새 상담 요청·의뢰인 채팅·서류·입금 알림)도 함께 보여 줄지 */
+  serverEnabled?: boolean;
 }
+
+// 화면 한 줄 (옛 앱 안 알림 + 서버 알림)
+type BellItem = { id: string; source: 'legacy' | 'server'; title: string; body?: string; count?: number; isRead: boolean; at: string; emoji: string; linkType?: string; linkId?: string };
+const SERVER_EMOJI: Record<string, string> = {
+  consult_request_new: '📥', client_message: '💬', client_document: '📄', fee_client_report: '💳',
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -23,11 +32,23 @@ function timeAgo(dateStr: string): string {
   return `${days}일 전`;
 }
 
-export default function NotificationBell({ tenantId, userId, onNavigate }: NotificationBellProps) {
+export default function NotificationBell({ tenantId, userId, onNavigate, serverEnabled = false }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [legacyUnread, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const server = useServerNotifications('office', serverEnabled);
+  const unreadCount = legacyUnread + server.unreadCount;
+  const items: BellItem[] = [
+    ...server.items.map(n => ({
+      id: n.id, source: 'server' as const, title: n.title, body: n.body, count: n.count, isRead: !!n.readAt, at: n.updatedAt,
+      emoji: SERVER_EMOJI[n.kind] || '🔔', linkType: n.linkType, linkId: n.linkId,
+    })),
+    ...notifications.map(n => ({
+      id: n.id, source: 'legacy' as const, title: n.title, body: n.body, isRead: n.isRead, at: n.createdAt,
+      emoji: NOTIFICATION_TYPE_CONFIG[n.type]?.emoji || '🔔', linkType: n.linkType, linkId: n.linkId,
+    })),
+  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 30);
 
   const refresh = useCallback(async () => {
     const [notifs, count] = await Promise.all([
@@ -62,19 +83,19 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const handleRead = async (notif: InAppNotification) => {
-    if (!notif.isRead) {
-      await markAsRead(tenantId, notif.id, userId);
-      refresh();
+  const handleRead = async (item: BellItem) => {
+    if (!item.isRead) {
+      if (item.source === 'server') await server.markRead(item.id);
+      else { await markAsRead(tenantId, item.id, userId); refresh(); }
     }
-    if (onNavigate) {
-      onNavigate(notif.linkType, notif.linkId);
+    if (onNavigate && item.linkType) {
+      onNavigate(item.linkType, item.linkId || '');
     }
     setOpen(false);
   };
 
   const handleReadAll = async () => {
-    await markAllAsRead(tenantId, userId);
+    await Promise.all([markAllAsRead(tenantId, userId), serverEnabled ? server.markAllRead() : Promise.resolve()]);
     refresh();
   };
 
@@ -112,41 +133,34 @@ export default function NotificationBell({ tenantId, userId, onNavigate }: Notif
 
           {/* 알림 목록 */}
           <div className="overflow-y-auto max-h-[360px]">
-            {notifications.length === 0 ? (
+            {items.length === 0 ? (
               <div className="p-8 text-center">
-                <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                <p className="text-xs text-slate-400 font-bold">새 알림이 없습니다</p>
+                <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-500 font-bold">새 알림이 없습니다</p>
               </div>
             ) : (
-              notifications.map(notif => {
-                const cfg = NOTIFICATION_TYPE_CONFIG[notif.type];
-                return (
-                  <button
-                    key={notif.id}
-                    onClick={() => handleRead(notif)}
-                    className={`w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors border-b border-slate-50 ${
-                      notif.isRead ? 'opacity-60' : ''
-                    }`}
-                  >
-                    {/* 읽지 않음 표시 */}
-                    <div className="pt-1 shrink-0">
-                      {!notif.isRead ? (
-                        <span className="block w-2 h-2 bg-brand rounded-full" />
-                      ) : (
-                        <span className="block w-2 h-2" />
-                      )}
-                    </div>
-                    {/* 아이콘 */}
-                    <span className="text-base shrink-0">{cfg?.emoji || '🔔'}</span>
-                    {/* 내용 */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">{notif.title}</p>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">{notif.body}</p>
-                      <p className="text-xs text-slate-400 mt-1">{timeAgo(notif.createdAt)}</p>
-                    </div>
-                  </button>
-                );
-              })
+              items.map(item => (
+                <button
+                  key={`${item.source}-${item.id}`}
+                  onClick={() => handleRead(item)}
+                  className={`w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors border-b border-slate-50 ${
+                    item.isRead ? 'opacity-60' : ''
+                  }`}
+                >
+                  {/* 읽지 않음 표시 */}
+                  <div className="pt-1 shrink-0">
+                    {!item.isRead ? <span className="block w-2 h-2 bg-brand rounded-full" /> : <span className="block w-2 h-2" />}
+                  </div>
+                  <span className="text-base shrink-0" aria-hidden="true">{item.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      {item.title}{item.count && item.count > 1 ? ` ${item.count}건` : ''}
+                    </p>
+                    {item.body && <p className="text-xs text-slate-600 truncate mt-0.5">{item.body}</p>}
+                    <p className="text-xs text-slate-500 mt-1">{timeAgo(item.at)}</p>
+                  </div>
+                </button>
+              ))
             )}
           </div>
         </div>

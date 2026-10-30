@@ -2649,7 +2649,11 @@ export default function LawyerRole({
             <NotificationBell
               tenantId={firmTenantId}
               userId={activeStaffMember?.id || activeLawyer.id}
+              serverEnabled={!!currentOfficeId}
               onNavigate={(linkType, linkId) => {
+                // 서버 알림(user_notifications) 링크: 사건 서류·수납
+                if (linkType === 'case_documents') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
+                if (linkType === 'case_fees') { if (linkId) openCase(linkId, 'fees'); else openCase(); return; }
                 if (linkType === 'proposal_review') {
                   const pending = pendingProposals.find(p => p.id === linkId);
                   if (pending) {
