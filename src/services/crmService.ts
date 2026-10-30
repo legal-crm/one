@@ -60,6 +60,31 @@ export function getCrmExt(clientId: string): CrmClientExtension {
   return store[clientId] || createDefaultCrmExtension(clientId);
 }
 
+/**
+ * 의뢰인 화면: 담당 사무소가 정리한 진행 상태·서류 체크리스트·서류 요청을 서버에서 읽어 화면 캐시에 합친다.
+ * (crm_clients는 사무소 전용이라 의뢰인은 client_case_view 함수로 필요한 칸만 받는다, 20261031000400)
+ * @returns 받은 요약이 있으면 true
+ */
+export async function refreshClientCaseView(requestId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !requestId) return false;
+  const { data, error } = await supabase.rpc('client_case_view', { p_request_id: requestId });
+  if (error || !data) return false;
+  const v = data as any;
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const cur = store[requestId] || createDefaultCrmExtension(requestId);
+  store[requestId] = {
+    ...cur,
+    crmStatus: v.crmStatus || cur.crmStatus,
+    contractDate: v.contractDate ?? cur.contractDate,
+    totalFee: v.totalFee ?? cur.totalFee,
+    dischargeRequestedAt: v.dischargeRequestedAt ?? (cur as any).dischargeRequestedAt,
+    documents: Array.isArray(v.documents) ? v.documents : cur.documents,
+    documentRequests: Array.isArray(v.documentRequests) ? v.documentRequests : cur.documentRequests,
+  } as CrmClientExtension;
+  setLocalData(CRM_STORAGE_KEY, store);
+  return true;
+}
+
 /** 특정 고객의 CRM 데이터 부분 업데이트 (단축 alias) */
 export async function updateCrmExt(clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> {
   return updateCrmClientExtension(clientId, updates);
