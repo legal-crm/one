@@ -44,6 +44,7 @@ import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../s
 import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
+import { setCrmOfficeScope } from '../services/crmService';
 import ServerFeeOverview from './lawyer/fees/ServerFeeOverview';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
@@ -406,6 +407,7 @@ export default function LawyerRole({
   const permissionCtx = usePermissions(activeStaffMember, officeCtx.office, legacyPermissionFallback);
   // 사무소 정보(법원 서식·계약서·안내문 대리인 기본값)는 서버 사업자 정보에서 한 번 읽어 둔다
   const currentOfficeId = officeCtx.office?.officeId;
+  setCrmOfficeScope(currentOfficeId);
   useEffect(() => {
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);

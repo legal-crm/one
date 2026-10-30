@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
@@ -15,6 +16,20 @@ import { thirteenStageAfterStatusChange } from '../components/lawyer/pipeline/jo
 // ============================================================
 
 const CRM_STORAGE_KEY = 'legal_crm_data';
+
+// 사건 관리 데이터의 원본은 서버 crm_clients (20261031000100: 사무소 권한 RLS). 이 기기 사본은 화면 캐시다.
+let crmOfficeScope = '';
+/** 로그인한 사무소 ID (저장할 때 office_id로 보낸다. 비어 있으면 서버가 내 사무소로 채운다) */
+export function setCrmOfficeScope(officeId: string | undefined | null): void {
+  crmOfficeScope = (officeId || '').trim();
+}
+let lastSaveErrorToastAt = 0;
+function notifySaveFailure(message: string) {
+  // 같은 실패가 연달아 나면 30초에 한 번만 알린다
+  if (Date.now() - lastSaveErrorToastAt < 30_000) return;
+  lastSaveErrorToastAt = Date.now();
+  toast.error('사건 정보를 서버에 저장하지 못했습니다. 이 화면에는 남아 있지만 다른 기기에는 보이지 않습니다.', { description: message });
+}
 const STAFF_STORAGE_KEY = 'legal_crm_staff';
 
 // ── 유틸리티 (단말 보호: sessionStorage 격리 및 탭 종료 시 자동 소멸) ──
@@ -136,11 +151,13 @@ async function fetchServerCrmData(): Promise<CrmDataStore | null> {
             totalFee: row.total_fee,
             totalPaid: row.total_paid,
             feeSchedule: row.fee_schedule || [],
-            uploadedFiles: row.uploaded_files || [],
-            documentRequests: row.document_requests || [],
-            correctionOrders: row.correction_orders || [],
-            courtCase: row.court_case,
-            alimtokLogs: row.alimtok_logs || [],
+            // 아래 항목은 별도 칸이 없어 extension_data에 함께 저장된다 (이전: 없는 칸을 읽어 빈 값으로 덮어씀)
+            uploadedFiles: row.extension_data?.uploadedFiles || [],
+            documentRequests: row.extension_data?.documentRequests || [],
+            correctionOrders: row.extension_data?.correctionOrders || [],
+            courtCase: row.extension_data?.courtCase,
+            alimtokLogs: row.extension_data?.alimtokLogs || [],
+            deletedAt: row.deleted_at || undefined,
           };
         });
         return store;
@@ -211,26 +228,22 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
         total_fee: mergedExt.totalFee,
         total_paid: mergedExt.totalPaid,
         fee_schedule: mergedExt.feeSchedule,
-        uploaded_files: mergedExt.uploadedFiles,
-        document_requests: mergedExt.documentRequests,
-        correction_orders: mergedExt.correctionOrders,
-        court_case: mergedExt.courtCase,
-        alimtok_logs: mergedExt.alimtokLogs,
+        deleted_at: mergedExt.deletedAt || null,
         updated_at: new Date().toISOString(),
+        ...(crmOfficeScope ? { office_id: crmOfficeScope } : {}),
       };
-      let { error } = await supabase
+      // 파일 본문(uploadedFiles)은 서버 jsonb에 넣지 않는다 (서류는 비공개 저장소로 옮길 예정, DP 트랙)
+      const { error } = await supabase
         .from('crm_clients')
         .upsert({ ...baseRow, extension_data: extensionData }, { onConflict: 'client_id' });
-      // migration 016 미적용(extension_data 컬럼 없음) → 기존 컬럼만으로 재시도
-      if (error && (error.code === 'PGRST204' || /extension_data/i.test(error.message || ''))) {
-        ({ error } = await supabase.from('crm_clients').upsert(baseRow, { onConflict: 'client_id' }));
-      }
       if (error) {
         console.warn('[CRM] Supabase save failed', error.message);
+        notifySaveFailure(/row-level security|permission|office required/i.test(error.message || '') ? '이 사건을 고칠 권한이 없거나 사무소 정보를 확인하지 못했습니다.' : (error.message || ''));
         return false;
       }
     } catch (e) {
       console.warn('[CRM] Supabase save failed', e);
+      notifySaveFailure('서버에 연결하지 못했습니다.');
       return false;
     }
   }
