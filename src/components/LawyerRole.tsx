@@ -43,6 +43,7 @@ import { useOfficeContext } from '../hooks/useOfficeContext';
 import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../services/office/officeService';
 import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission, scopeOf as officeScopeOf } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
+import ServerNotificationSettings from './lawyer/settings/ServerNotificationSettings';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
 import ServerFeeTab from './lawyer/fees/ServerFeeTab';
@@ -1937,8 +1938,10 @@ export default function LawyerRole({
   // 로그인 직후 이미 있던 요청은 알리지 않고, 이후 새로 '신규 상담'이 된 요청만 1회 발송.
   // 비교 상담 중 의뢰인이 나를 추가로 요청한 경우도 포함한다 (isNewRequestForLawyer, 이전: status 'requested'만).
   // CRM이 열려 있는 브라우저에서만 동작한다 (서버 푸시 아님).
+  // 서버 사무소가 있으면 서버가 알림을 보낸다(user_notifications → notification_deliveries, 채무·소득 없음) → 여기서는 보내지 않는다.
   const notifiedRequestIdsRef = useRef<Set<string> | null>(null);
   useEffect(() => {
+    if (currentOfficeId) return;
     if (!isLoggedIn || !activeLawyer.id) {
       notifiedRequestIdsRef.current = null;
       return;
@@ -1964,7 +1967,7 @@ export default function LawyerRole({
       }).then(() => setNotifLogs(loadNotificationLogs())).catch(() => {});
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, isLoggedIn, activeLawyer.id]);
+  }, [requests, isLoggedIn, activeLawyer.id, currentOfficeId]);
 
   const currentChatRequest = requests.find(r => r.id === activeChatReqId);
   const currentChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
@@ -3310,7 +3313,7 @@ export default function LawyerRole({
               </div>
             )}
 
-            {settingsCategory === 'notifications' && (
+            {settingsCategory === 'notifications' && !currentOfficeId && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {[
                   { key: 'channels', label: '⚡ 실시간 알림 및 보안 연동' },
@@ -3524,7 +3527,16 @@ export default function LawyerRole({
               );
             })()}
 
-            {settingsSub === 'channels' && (<>
+            {settingsCategory === 'notifications' && currentOfficeId && (
+              <ServerNotificationSettings
+                officeId={currentOfficeId}
+                canViewTeam={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.view')}
+                canEditTeam={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')}
+              />
+            )}
+
+            {/* 옛 브라우저 알림 설정(텔레그램·이메일 직접 발송)은 서버 사무소가 없는 개발 환경에서만 */}
+            {settingsSub === 'channels' && !currentOfficeId && (<>
             {/* ── 단일 통합 헤더 ── */}
             <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="space-y-0.5">
@@ -3903,7 +3915,7 @@ export default function LawyerRole({
             </div>
             </>)}
 
-            {settingsSub === 'logs' && (
+            {settingsSub === 'logs' && !currentOfficeId && (
             <>
             {/* 알림 발송 이력 */}
             {/* ══════════════════════════════════════════ */}
