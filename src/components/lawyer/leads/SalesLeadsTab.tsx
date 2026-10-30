@@ -30,6 +30,7 @@ import ImportLeadsModal from './ImportLeadsModal';
 import LeadConversionModal from './LeadConversionModal';
 import StatusVisibilityModal from './StatusVisibilityModal';
 import SalesSettingsModal from './SalesSettingsModal';
+import LeadIntakeSourcesModal from './LeadIntakeSourcesModal';
 
 /** 가장 최근 '재통화 예약' 통화 기록의 예약 일시 (SalesLead에 callbackTime 필드가 없어 통화 이력에서 도출) */
 const getCallbackTime = (lead: SalesLead): string | undefined =>
@@ -102,6 +103,7 @@ export default function SalesLeadsTab({
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
   const [conversionTargetLead, setConversionTargetLead] = useState<SalesLead | null>(null);
 
   // 통화 결과 등록 모달 상태 (기획서: 행의 '통화 결과' 버튼 하나로 기록)
@@ -280,6 +282,15 @@ export default function SalesLeadsTab({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {officeId && canAssignLeads && (
+            <button
+              type="button"
+              onClick={() => setIsIntakeModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
+            >
+              자동 접수 주소
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsSettingsModalOpen(true)}
@@ -710,6 +721,14 @@ export default function SalesLeadsTab({
         existingLeads={leads}
         existingRequests={requests}
       />
+
+      {isIntakeModalOpen && officeId && (
+        <LeadIntakeSourcesModal
+          officeId={officeId}
+          onClose={() => setIsIntakeModalOpen(false)}
+          onReceived={() => void syncSalesLeadsFromServer()}
+        />
+      )}
 
       {/* ── 7. 영업 설정 모달 ── */}
       <SalesSettingsModal
