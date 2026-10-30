@@ -50,6 +50,7 @@ import { secureGetItem, secureSetItem } from './utils/secureStorage';
 import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
 import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
 import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
+import { useAccountStatusGuard } from './hooks/useAccountStatusGuard';
 import { useServerCollection, useServerConfig } from './hooks/useServerContent';
 import { clearLegacyContentCache } from './services/cms/contentService';
 
@@ -700,6 +701,9 @@ export default function App() {
 
   // 변호사 프로필 DB 동기화 (localStorage는 오프라인 캐시로만 사용)
   useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds: SEED_LAWYER_IDS });
+
+  // 정지된 계정이면 로그인을 끝내고 사유를 알린다 (관리자 화면 제외, OP-10)
+  useAccountStatusGuard(currentRole === 'client' || currentRole === 'lawyer');
 
   useEffect(() => {
     if (members.length > 0) {

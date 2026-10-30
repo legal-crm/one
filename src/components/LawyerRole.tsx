@@ -45,6 +45,7 @@ import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission, scopeOf as office
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import ServerNotificationSettings from './lawyer/settings/ServerNotificationSettings';
 import ProfileListingNotice from './lawyer/settings/ProfileListingNotice';
+import ReviewStateBanner from './lawyer/settings/ReviewStateBanner';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
 import ServerFeeTab from './lawyer/fees/ServerFeeTab';
@@ -2357,11 +2358,13 @@ export default function LawyerRole({
             <p className="text-slate-600 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
 
+          <ReviewStateBanner />
+
           <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
             <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
             <p>안녕하세요, <strong>{activeLawyer?.name || '변호사'}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
-            <p>{platformConfig.siteLogoText || "my김변"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
+            <p>{platformConfig.siteLogoText || "my김변"}는 변호사 등록번호와 제출 서류를 관리자가 직접 확인한 뒤 활동을 승인합니다. 보통 1~2영업일이 걸려요.</p>
             <p className="text-[13px] text-slate-600">* 관리자(Admin Portal)가 자격을 확인한 후 정식 승인 처리됩니다.</p>
           </div>
 

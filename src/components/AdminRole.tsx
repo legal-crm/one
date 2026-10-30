@@ -4,8 +4,11 @@ import { useDialog } from './common/DialogProvider';
 import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout, auditAdminAccessDenied, auditMfaEnrolled, auditViewClient } from '../services/auditService';
 import { evaluateAdminAuth, startTotpEnrollment, verifyTotpCode, isValidTotpCode, signOutAdmin, type AdminAuthState, type TotpEnrollment } from '../services/adminAuthService';
 import { ADMIN_PORTAL_PATH, readAdminMarker, writeAdminMarker, touchAdminMarker, clearAdminMarker } from '../utils/adminPortal';
-import { supabase } from '../supabaseClient';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
+import AdminTodayPanel from './admin/AdminTodayPanel';
+import LawyerReviewQueue from './admin/LawyerReviewQueue';
+import AccountsPanel from './admin/AccountsPanel';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -1391,7 +1394,11 @@ export default function AdminRole({
           </div>
 
           {/* TAB 1: PLATFORM DASHBOARD */}
-          {activeTab === 'dashboard' && (
+          {/* 서버 기준 처리할 일·지표 (OP-3). 옛 대시보드(브라우저 사본 기준)는 서버가 없는 개발 환경에서만 */}
+          {activeTab === 'dashboard' && isSupabaseConfigured && (
+            <AdminTodayPanel onNavigate={(tab) => setActiveTab(tab as any)} />
+          )}
+          {activeTab === 'dashboard' && !isSupabaseConfigured && (
             <PlatformDashboard
               requests={requests}
               lawyers={lawyers}
@@ -1882,6 +1889,9 @@ export default function AdminRole({
           {/* TAB 3: LAWYER DIRECTORY & APPROVAL */}
           {activeTab === 'lawyers' && (
             <div className="space-y-6 animate-fadeIn">
+              {/* 심사 대기열 (서버 기준, OP-8): 승인·보완 요청·반려·정지·복구·등록번호 대조 */}
+              {isSupabaseConfigured && <LawyerReviewQueue />}
+              {isSupabaseConfigured && <h2 className="text-sm font-extrabold text-slate-300 pt-2">변호사 프로필 관리</h2>}
               {/* Search Control */}
               <div className="bg-[#111622] p-4 rounded-xl border border-[#1E293B]/60 flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full sm:max-w-xs">
@@ -5649,7 +5659,9 @@ export default function AdminRole({
           )}
 
           {/* TAB 7: MEMBER MANAGEMENT & ACTIVITY MONITORING */}
-          {activeTab === 'members' && (() => {
+          {/* 계정 관리 (서버 기준, OP-9·OP-10). 옛 회원 모니터링(관리자 브라우저 사본)은 서버가 없는 개발 환경에서만 */}
+          {activeTab === 'members' && isSupabaseConfigured && <AccountsPanel />}
+          {activeTab === 'members' && !isSupabaseConfigured && (() => {
             const totalClientsCount = members.filter(m => m.role === 'CLIENT').length;
             const totalPartnersCount = members.filter(m => m.role === 'LAWYER' || m.role === 'STAFF').length;
             const totalActiveCount = members.filter(m => m.status === 'active').length;
