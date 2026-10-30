@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner';
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, History, RefreshCw, Scale } from 'lucide-react';
 import {
-  CLOSE_REASON_LABELS, createCase, findCaseByConsultRequest, listCaseEvents, loadStageDefinitions, recordMilestone, stageDef,
+  CLOSE_REASON_LABELS, createCase, findCaseByWorkspaceKey, isCaseWorkspaceKey, listCaseEvents, loadStageDefinitions, recordMilestone, stageDef,
   type CaseEvent, type CaseRecord, type CaseType, type CloseReason, type StageDefinition,
 } from '../../../services/cases/caseCoreService';
 import { availableMilestones, serverStageToCrmStatus, type MilestoneAction } from '../../../services/cases/caseStageMapping';
@@ -49,14 +49,15 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [defs, found] = await Promise.all([loadStageDefinitions(), findCaseByConsultRequest(officeId, consultRequestId)]);
+    const [defs, found] = await Promise.all([loadStageDefinitions(), findCaseByWorkspaceKey(officeId, consultRequestId)]);
     if (defs.ok) setStages(defs.data);
     if (!found.ok) {
       setError(found.message);
       setLoading(false);
       return;
     }
-    if (!found.data && autoStart && canEdit && !autoTriedRef.current) {
+    // 직접 등록·이관 사건('case-…' 키)은 이미 서버 사건이라 자동 생성 대상이 아니다
+    if (!found.data && autoStart && canEdit && !autoTriedRef.current && !isCaseWorkspaceKey(consultRequestId)) {
       // 한 번만 시도 (실패하면 아래 '사건 기록 시작' 버튼으로 다시 할 수 있다)
       autoTriedRef.current = true;
       const created = await createCase(officeId, { caseType, source: 'consult_request', consultRequestId });
@@ -142,6 +143,14 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
         <button type="button" onClick={() => void load()} className="min-h-[44px] px-3 rounded-xl border border-rose-300 bg-white text-sm font-bold text-rose-700 whitespace-nowrap active:scale-[0.98]">
           <RefreshCw className="w-4 h-4 inline mr-1" aria-hidden="true" />다시 시도
         </button>
+      </section>
+    );
+  }
+
+  if (!record && isCaseWorkspaceKey(consultRequestId)) {
+    return (
+      <section role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        이 사건의 서버 기록을 찾지 못했어요. 휴지통으로 옮겨졌거나 볼 권한이 없을 수 있어요.
       </section>
     );
   }

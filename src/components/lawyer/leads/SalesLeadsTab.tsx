@@ -219,7 +219,8 @@ export default function SalesLeadsTab({
 
   // 고객 승격 완료 콜백
   const handleConverted = (newRequest: ConsultRequest, newExt: CrmClientExtension, updatedLead: SalesLead) => {
-    setRequests(prev => [newRequest, ...prev]);
+    // 서버 사건('case-…')은 사건 관리 목록이 서버에서 다시 읽는다 — 화면 메모리 상담 요청을 만들지 않는다
+    if (!newRequest.id.startsWith('case-')) setRequests(prev => [newRequest, ...prev]);
     setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...updatedLead } : l));
   };
 

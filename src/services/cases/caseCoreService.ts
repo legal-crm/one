@@ -185,6 +185,53 @@ export async function listCases(f: CaseListFilter): Promise<RpcResult<CaseRecord
   return { ok: true, data: (data || []).map(mapCase) };
 }
 
+// ── 사건 작업 공간 키 ─────────────────────────────────────────────────────
+// 사건 관리 화면·crm_clients·case_files는 문자열 키 하나로 사건을 가리킨다.
+// 상담 요청 사건 = 상담 요청 ID, 그 밖의 사건(직접 등록·영업 리드 이관) = 'case-' + 사건 ID (서버 crm_client_case_id와 같은 규칙)
+const CASE_KEY_RE = /^case-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+export const workspaceKeyForCase = (c: Pick<CaseRecord, 'id' | 'consultRequestId'>): string => c.consultRequestId || `case-${c.id}`;
+export const caseIdFromWorkspaceKey = (key: string): string | null => CASE_KEY_RE.exec(key)?.[1] ?? null;
+export const isCaseWorkspaceKey = (key: string): boolean => CASE_KEY_RE.test(key);
+
+/** 작업 공간 키 → 우리 사무소 사건 (없으면 null) */
+export async function findCaseByWorkspaceKey(officeId: string, key: string): Promise<RpcResult<CaseRecord | null>> {
+  const caseId = caseIdFromWorkspaceKey(key);
+  if (!caseId) return findCaseByConsultRequest(officeId, key);
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('cases').select('*').eq('office_id', officeId).eq('id', caseId).is('deleted_at', null).maybeSingle();
+  if (error) return toRpcError(error);
+  return { ok: true, data: data ? mapCase(data) : null };
+}
+
+/** 상담 요청이 없는 사건(직접 등록·영업 리드 이관)과 의뢰인 — 사건 관리 목록에 넣는다 */
+export async function listOfficeWorkspaceCases(officeId: string): Promise<RpcResult<Array<{ case: CaseRecord; client: OfficeClient | null }>>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('cases').select('*, office_clients(*)')
+    .eq('office_id', officeId).is('consult_request_id', null).is('deleted_at', null).eq('is_test', false)
+    .order('created_at', { ascending: false }).limit(1000);
+  if (error) return toRpcError(error);
+  return { ok: true, data: (data || []).map((r: any) => ({ case: mapCase(r), client: r.office_clients ? mapClient(r.office_clients) : null })) };
+}
+
+/** 영업 리드 → 사건 이관 (서버가 권한·중복 이관 확인, 리드 '이관 완료' 표시까지 한 번에) */
+export async function convertSalesLeadToCase(leadId: string, input: { caseType: CaseType; title?: string; officeClientId?: string; displayName?: string }): Promise<RpcResult<{ caseId: string; workspaceKey: string }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const p: Record<string, unknown> = { case_type: input.caseType, title: input.title, office_client_id: input.officeClientId, display_name: input.displayName };
+  Object.keys(p).forEach(k => p[k] === undefined && delete p[k]);
+  const { data, error } = await supabase.rpc('convert_sales_lead_to_case', { p_lead_id: leadId, p });
+  if (error) {
+    if (/already converted/i.test(error.message)) return { ok: false, code: 'conflict', message: '이미 사건 관리로 이관한 리드예요.' };
+    if (/sales\.convert/i.test(error.message)) return { ok: false, code: 'forbidden', message: '리드를 사건 관리로 이관할 권한이 없어요.' };
+    if (/lead not found/i.test(error.message)) return { ok: false, code: 'not_found', message: '리드를 찾지 못했어요. 영업 DB를 새로 불러온 뒤 다시 시도해 주세요.' };
+    return toRpcError(error);
+  }
+  return { ok: true, data: { caseId: data.case_id, workspaceKey: data.workspace_key } };
+}
+
+/** 사건 목록이 바뀌었음을 화면에 알림 (직접 등록·이관 뒤) */
+export const OFFICE_CASES_CHANGED_EVENT = 'mykim:office-cases-changed';
+export const notifyOfficeCasesChanged = () => window.dispatchEvent(new Event(OFFICE_CASES_CHANGED_EVENT));
+
 /** 상담 요청에 연결된 우리 사무소 사건 (없으면 null) */
 export async function findCaseByConsultRequest(officeId: string, consultRequestId: string): Promise<RpcResult<CaseRecord | null>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;

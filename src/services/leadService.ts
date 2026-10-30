@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { diffContent, snapshotOf } from './cms/contentDiff';
 import { createDefaultCrmExtension, saveCrmClient } from './crmService';
+import { convertSalesLeadToCase, notifyOfficeCasesChanged } from './cases/caseCoreService';
 import { createTask } from './taskTicketService';
 import { localYmd } from '../utils/localDate';
 import { getDisplayClientName, getDisplayPhoneNumber } from '../utils/clientDisplay';
@@ -448,8 +449,17 @@ export async function convertLeadToClient(
   if (cleanPhone.length >= 10 && (options?.existingRequests || []).some(r => (r.phone || '').replace(/\D/g, '') === cleanPhone)) {
     throw new Error('같은 전화번호의 고객이 이미 CRM에 있습니다. 기존 고객을 확인해 주세요.');
   }
-  const newReqId = `req-conv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const nowIso = new Date().toISOString();
+  // 서버 사무소가 있으면 서버가 사건을 만들고 리드를 '이관 완료'로 표시한다 (권한·중복 이관도 서버가 확인)
+  // 사건 관리 키 = 'case-' + 사건 ID (이전: 화면 메모리에만 'req-conv-…' 가짜 상담 요청을 만들어 새로고침하면 사라졌다)
+  const useServer = isSupabaseConfigured && !!salesLeadScope;
+  let newReqId = `req-conv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  if (useServer) {
+    const caseType = (options?.caseType || (lead.caseType === '개인파산' ? '개인파산' : '개인회생')) === '개인파산' ? 'bankruptcy' : 'rehab';
+    const res = await convertSalesLeadToCase(lead.id, { caseType, displayName: lead.customerName });
+    if (res.ok === false) throw new Error(res.message);
+    newReqId = res.data.workspaceKey;
+  }
 
   // 1. ConsultRequest 생성
   const newRequest: ConsultRequest = {
@@ -579,6 +589,10 @@ export async function convertLeadToClient(
     createdAt: nowIso,
   });
 
+  // 재무 요약은 사건 관리 데이터에 함께 둔다 (상담 요청이 없는 사건의 화면용)
+  (newExt as any).externalProfile = newRequest.financialProfile;
+  if (useServer) newRequest.createdByLawyerId = operator.id;
+
   // CRM 저장 (서버 저장 결과 반환 — 이전: 결과 무시)
   const serverSaved = await saveCrmClient(newReqId, newExt);
 
@@ -588,7 +602,15 @@ export async function convertLeadToClient(
   lead.convertedAt = nowIso;
   lead.convertedBy = operator.name;
   lead.updatedAt = nowIso;
-  saveSalesLead(lead);
+  if (useServer) {
+    // 서버가 이미 '이관 완료'로 바꿨다 → 서버 값으로 다시 읽고(옛 사본으로 덮어쓰지 않게), 이관한 사람 이름만 더한다
+    await syncSalesLeadsFromServer();
+    const fresh = leadCache.find(l => l.id === lead.id);
+    if (fresh) saveSalesLead({ ...fresh, convertedBy: operator.name });
+    notifyOfficeCasesChanged();
+  } else {
+    saveSalesLead(lead);
+  }
 
   return { newRequest, newExt, updatedLead: lead, serverSaved };
 }

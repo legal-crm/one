@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronDown, ChevronUp, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { useDialog } from '../../common/DialogProvider';
-import { findCaseByConsultRequest } from '../../../services/cases/caseCoreService';
+import { findCaseByWorkspaceKey } from '../../../services/cases/caseCoreService';
 import DepositAccountEditor from '../fees/DepositAccountEditor';
 import {
   INSTALLMENT_STATUS_LABEL,
@@ -64,7 +64,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const found = await findCaseByConsultRequest(officeId, consultRequestId);
+    const found = await findCaseByWorkspaceKey(officeId, consultRequestId);
     if (found.ok === false) { setError(found.message); setLoading(false); return; }
     if (!found.data) { setCaseId(null); setLoading(false); return; }
     const id = found.data.id;

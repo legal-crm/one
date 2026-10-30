@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
 import { parseLocalYmd } from '../utils/localDate';
@@ -46,6 +46,8 @@ import AdBillingTab from './lawyer/billing/AdBillingTab';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
 import ServerFeeTab from './lawyer/fees/ServerFeeTab';
+import { useOfficeWorkspaceCases, workspaceCaseToRequest, emptyFinancialProfile } from '../hooks/useOfficeWorkspaceCases';
+import { createCase, findClientsByPhone, notifyOfficeCasesChanged, workspaceKeyForCase } from '../services/cases/caseCoreService';
 import { loadFeeOverview } from '../services/fees/feeService';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
@@ -338,55 +340,7 @@ export default function LawyerRole({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // ── 외부 고객 등록 핸들러 ──
-  const handleExternalClientRegister = useCallback((data: {
-    clientName: string; phone: string; debtTotal: number; income: number;
-    intakeChannel: IntakeChannel; channelDetail?: string; initialStatus: CrmStatus;
-    caseType?: string; gender?: string; region?: string; birth?: string;
-    jobTypes?: string[]; maritalStatus?: string; childrenCount?: number;
-    housingType?: string; deposit?: number; rent?: number; ownHousePrice?: number; ownHouseLoan?: number;
-    loanMonthlyPay?: number; specialMemo?: string;
-  }) => {
-    const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const newRequest: ConsultRequest = {
-      id: newId, clientId: newId, clientName: data.clientName, phone: data.phone,
-      requestType: 'direct', maxParticipants: 1, status: 'counseling',
-      createdAt: new Date().toISOString(), title: `[외부] ${data.clientName} 상담`,
-      content: data.channelDetail || '',
-      financialProfile: {
-        clientName: data.clientName, age: 0,
-        gender: data.gender === '여' ? 'female' : 'male',
-        maritalStatus: data.maritalStatus === '기혼' ? 'MARRIED' : data.maritalStatus === '이혼' ? 'DIVORCED' : 'SINGLE',
-        dependents: data.childrenCount || 0, minorChildren: data.childrenCount || 0,
-        income: data.income, debtTotal: data.debtTotal,
-        priorityDebt: 0, assetsTotal: 0, creditorCount: 0,
-        jobType: (data.jobTypes?.[0] === '직장인' ? 'SALARIED' : data.jobTypes?.[0] === '개인사업자' ? 'SELF_EMPLOYED' : 'SALARIED') as any,
-        companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: data.region || '',
-        workLocation: '', housingType: (data.housingType === '전세' ? 'jeonse' : data.housingType === '자가' ? 'owned' : 'rent') as any,
-        housingContractHolder: 'self',
-        debtCause: 'LIVING', harassmentLevel: 'NONE',
-        debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
-        legalActions: [], myAssets: 0, spouseAsset: 0, spouseIncome: 0,
-        rentalDeposit: data.deposit || 0, depositLoan: 0, rentCost: data.rent || 0, medicalCost: 0,
-        educationCost: 0, monthlyFixedExpenses: data.loanMonthlyPay || 0, retirementPay: 0,
-        retirementPensionType: 'none', specialCondition: 'none', riskFlags: [],
-        clientNotes: [], debts: [], assets: [],
-      },
-    };
-    setRequests(prev => [newRequest, ...prev]);
-    import('../services/crmService').then(({ saveCrmClient, createDefaultCrmExtension }) => {
-      const ext = createDefaultCrmExtension(newId);
-      ext.crmStatus = data.initialStatus;
-      ext.intakeChannel = data.intakeChannel;
-      ext.intakeChannelDetail = data.channelDetail;
-      ext.isExternalClient = true;
-      ext.caseType = data.caseType as any;
-      ext.region = data.region;
-      if (data.specialMemo) ext.preInfo = data.specialMemo;
-      saveCrmClient(newId, ext);
-    });
-    setIsExternalClientModalOpen(false);
-  }, [setRequests]);
+  // (외부 고객 등록 핸들러는 사무소 정보 아래로 옮김 — handleExternalClientRegister)
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
@@ -413,6 +367,102 @@ export default function LawyerRole({
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);
   }, [currentOfficeId]);
+
+  // ── 상담 요청이 없는 사건(직접 등록·영업 리드 이관): 서버 사건을 사건 관리 목록에 넣는다 (CM·SL) ──
+  const officeWorkspaceCases = useOfficeWorkspaceCases(currentOfficeId);
+  const workspaceRequests = useMemo(() => {
+    if (!currentOfficeId) return requests;
+    // 서버 사무소가 있으면 예전 화면 메모리 전용 외부 의뢰인('ext-'·'req-conv-')은 빼고 서버 사건으로 대신한다
+    const base = requests.filter(r => !/^(ext-|req-conv-)/.test(r.id));
+    const ids = new Set(base.map(r => r.id));
+    const extra = officeWorkspaceCases.rows
+      .map(x => workspaceCaseToRequest(x.case, x.client, activeLawyer.id))
+      .filter(r => !ids.has(r.id));
+    return [...base, ...extra];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, currentOfficeId, officeWorkspaceCases.rows, officeWorkspaceCases.profileSig, activeLawyer.id]);
+
+  // ── 외부(직접) 의뢰인 등록: 서버 사건을 먼저 만들고, 상담 정보는 사건 관리 데이터에 저장 ──
+  const handleExternalClientRegister = async (data: {
+    clientName: string; phone: string; debtTotal: number; income: number;
+    intakeChannel: IntakeChannel; channelDetail?: string; initialStatus: CrmStatus;
+    caseType?: string; gender?: string; region?: string; birth?: string;
+    jobTypes?: string[]; maritalStatus?: string; childrenCount?: number;
+    housingType?: string; deposit?: number; rent?: number; ownHousePrice?: number; ownHouseLoan?: number;
+    loanMonthlyPay?: number; specialMemo?: string;
+  }) => {
+    const profile = {
+      ...emptyFinancialProfile(data.clientName),
+      gender: (data.gender === '여' ? 'female' : data.gender === '남' ? 'male' : undefined) as any,
+      maritalStatus: (data.maritalStatus === '기혼' ? 'MARRIED' : data.maritalStatus === '이혼' ? 'DIVORCED' : data.maritalStatus === '미혼' ? 'SINGLE' : undefined) as any,
+      dependents: data.childrenCount || 0,
+      income: data.income || 0,
+      debtTotal: data.debtTotal || 0,
+      jobType: (data.jobTypes?.[0] === '직장인' ? 'SALARIED' : data.jobTypes?.[0] === '개인사업자' ? 'SELF_EMPLOYED' : undefined) as any,
+      residenceRegion: data.region || '',
+      housingType: (data.housingType === '전세' ? 'jeonse' : data.housingType === '자가' ? 'owned' : data.housingType === '월세' ? 'rent' : undefined) as any,
+      rentalDeposit: data.deposit || 0,
+      rentCost: data.rent || 0,
+    };
+    const { saveCrmClient, createDefaultCrmExtension } = await import('../services/crmService');
+    const buildExt = (key: string) => {
+      const ext = createDefaultCrmExtension(key);
+      ext.crmStatus = data.initialStatus;
+      ext.intakeChannel = data.intakeChannel;
+      ext.intakeChannelDetail = data.channelDetail;
+      ext.isExternalClient = true;
+      ext.caseType = data.caseType as any;
+      ext.region = data.region;
+      ext.loanMonthlyPay = data.loanMonthlyPay;
+      if (data.specialMemo) ext.preInfo = data.specialMemo;
+      (ext as any).externalProfile = profile;
+      return ext;
+    };
+
+    if (!currentOfficeId) {
+      // 서버 사무소가 없는 개발 환경: 예전처럼 이 화면에만
+      const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setRequests(prev => [{
+        id: newId, clientId: newId, clientName: data.clientName, phone: data.phone, requestType: 'direct', maxParticipants: 1,
+        status: 'counseling', createdAt: new Date().toISOString(), title: `[외부] ${data.clientName} 상담`, content: data.channelDetail || '',
+        financialProfile: profile, createdByLawyerId: activeLawyer.id,
+      } as ConsultRequest, ...prev]);
+      void saveCrmClient(newId, buildExt(newId));
+      setIsExternalClientModalOpen(false);
+      return;
+    }
+
+    // 같은 번호 의뢰인 확인 (자동 합치기 없음, 사람이 고른다)
+    let officeClientId: string | undefined;
+    if (data.phone) {
+      const dup = await findClientsByPhone(currentOfficeId, data.phone);
+      if (dup.ok && dup.data.length > 0) {
+        const d0 = dup.data[0];
+        const same = await dialog.confirm({
+          title: '같은 전화번호의 의뢰인이 있어요',
+          message: `'${d0.displayName}' 의뢰인(사건 ${d0.caseCount}건)과 전화번호가 같아요. 같은 사람으로 보고 새 사건을 그 의뢰인 아래에 만들까요?\n'다른 사람'을 누르면 새 의뢰인으로 등록합니다.`,
+          confirmText: '같은 사람',
+          cancelText: '다른 사람',
+        });
+        if (same) officeClientId = d0.officeClientId;
+      }
+    }
+    const created = await createCase(currentOfficeId, {
+      caseType: data.caseType === '개인파산' ? 'bankruptcy' : 'rehab',
+      source: 'direct',
+      displayName: data.clientName,
+      realName: data.clientName,
+      phone: data.phone || undefined,
+      officeClientId,
+    });
+    if (created.ok === false) { toast.error(`사건을 등록하지 못했습니다: ${created.message}`); return; }
+    const key = workspaceKeyForCase(created.data);
+    const saved = await saveCrmClient(key, buildExt(key));
+    notifyOfficeCasesChanged();
+    setIsExternalClientModalOpen(false);
+    if (saved) toast.success(`${data.clientName} 사건을 등록했습니다. 사건 관리에서 이어서 진행하세요.`);
+    else toast.error('사건은 만들었지만 상담 정보를 저장하지 못했습니다. 사건 화면에서 다시 입력해 주세요.');
+  };
 
   // 사이드바 '수임료 수납' 배지 = 서버 기준 기한 지난 사건 + 확인할 입금 알림 (이전: 사건 관리 사본의 회차로 셈)
   const canViewFees = !!officeCtx.office && canUseOfficePermission(officeCtx.office.permissions, 'fee.view');
@@ -2916,7 +2966,7 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             activeStaff={activeStaffMember}
             isLawyerOrOwner={isLawyerOrOwner}
-            requests={requests}
+            requests={workspaceRequests}
             pendingProposals={pendingProposals}
             staffMembers={staffMembers}
             onNavigateTab={(tabId) => setActiveTab(tabId as any)}
@@ -3007,7 +3057,7 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             staffMembers={staffMembers}
             lawyers={lawyers}
-            requests={requests}
+            requests={workspaceRequests}
             setRequests={setRequests}
             onNavigateToCrm={(clientId) => openCase(clientId, 'info')}
             officeId={officeCtx.office?.officeId}
@@ -3018,7 +3068,7 @@ export default function LawyerRole({
         {/* TAB 6: CLIENT CRM (고객 관리) — CrmTab 컴포넌트 */}
         {activeTab === 'client-crm' && (
           <CrmTab
-            requests={requests}
+            requests={workspaceRequests}
             lawyers={lawyers}
             activeLawyer={activeLawyer}
             currentStaff={activeStaffMember}
@@ -4158,7 +4208,7 @@ export default function LawyerRole({
       {/* ── 신규 케이스 등록 모달 ── */}
       <React.Suspense fallback={null}>
         {isExternalClientModalOpen && (
-          <NewCaseModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={handleExternalClientRegister} existingRequests={requests} />
+          <NewCaseModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={(d) => { void handleExternalClientRegister(d); }} existingRequests={workspaceRequests} />
         )}
       </React.Suspense>
 

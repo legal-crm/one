@@ -62,7 +62,7 @@ import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimeli
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
 import ServerFeePanel from './case/ServerFeePanel';
 import ServerCaseFilesPanel from './case/ServerCaseFilesPanel';
-import { listCases, loadStageDefinitions, stageDef } from '../../services/cases/caseCoreService';
+import { listCases, loadStageDefinitions, stageDef, workspaceKeyForCase } from '../../services/cases/caseCoreService';
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
@@ -535,7 +535,9 @@ export default function CrmTab({
                         (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
                         (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id)) ||
                         // 이 변호사가 CRM에서 직접 등록한 외부 의뢰인
-                        (r.id.startsWith('ext-') && Boolean(crmData[r.id]));
+                        (r.id.startsWith('ext-') && Boolean(crmData[r.id])) ||
+                        // 서버 사무소 사건(직접 등록·이관) — 서버가 이미 사무소·권한 범위로 골라 준 사건
+                        r.id.startsWith('case-');
     const sameFirmMatch = Boolean(activeLawyer.lawFirmId) && r.selectedLawyerIds?.some(id => {
       const targetLawyer = lawyers.find(l => l.id === id);
       return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
@@ -645,9 +647,9 @@ export default function CrmTab({
       if (cancelled || cs.ok === false) return;
       const map: Record<string, string> = {};
       cs.data.forEach(c => {
-        if (!c.consultRequestId) return;
+        // 상담 요청 사건 = 요청 ID, 직접 등록·이관 사건 = 'case-' + 사건 ID
         const d = defs.ok ? stageDef(defs.data, c.caseType, c.stage) : undefined;
-        map[c.consultRequestId] = c.closeReason ? '종결' : (d?.officeLabel || c.stage);
+        map[workspaceKeyForCase(c)] = c.closeReason ? '종결' : (d?.officeLabel || c.stage);
       });
       setServerStageLabels(map);
     })();
