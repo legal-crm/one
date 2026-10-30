@@ -137,6 +137,30 @@ export async function listClientSubmittedFiles(officeId: string): Promise<Record
   return out;
 }
 
+/** 휴지통으로 옮기기 (30일 뒤 서버가 파일 본문을 지운다) */
+export async function trashCaseFile(id: string, reason?: string): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: '서버가 설정되지 않았어요.' };
+  const { error } = await supabase.from('case_files')
+    .update({ deleted_at: new Date().toISOString(), delete_reason: reason ? reason.slice(0, 200) : null })
+    .eq('id', id).is('deleted_at', null);
+  return error ? { ok: false, message: /permission|row-level|privilege/i.test(error.message) ? '서류를 지울 권한이 없어요.' : '휴지통으로 옮기지 못했어요.' } : { ok: true };
+}
+
+/** 휴지통에서 되돌리기 (파기 전까지만) */
+export async function restoreCaseFile(id: string): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: '서버가 설정되지 않았어요.' };
+  const { error } = await supabase.from('case_files').update({ deleted_at: null }).eq('id', id).is('purged_at', null);
+  return error ? { ok: false, message: /privilege|purged/i.test(error.message) ? '이미 파기된 파일은 되돌릴 수 없어요.' : '되돌리지 못했어요.' } : { ok: true };
+}
+
+/** 사무소 화면: 휴지통·파기된 파일 ID (사건 자료함 사본에서 빼기 위해) */
+export async function listDeletedCaseFileIds(officeId: string): Promise<Set<string>> {
+  if (!isSupabaseConfigured || !officeId) return new Set();
+  const { data, error } = await supabase.from('case_files').select('id').eq('office_id', officeId).not('deleted_at', 'is', null).limit(5000);
+  if (error || !data) return new Set();
+  return new Set((data as { id: string }[]).map(r => r.id));
+}
+
 /** 의뢰인 화면: 내가 제출한 파일 (상담 요청별) */
 export async function listMySubmittedFiles(clientKey: string): Promise<DocumentFile[]> {
   if (!isSupabaseConfigured || !clientKey) return [];

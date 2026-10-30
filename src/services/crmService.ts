@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { uploadCaseFile, listClientSubmittedFiles } from './files/caseFileService';
+import { uploadCaseFile, listClientSubmittedFiles, listDeletedCaseFileIds } from './files/caseFileService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
@@ -151,9 +151,10 @@ function loadLocalCrmData(): CrmDataStore {
 /** 서버(crm_clients) 조회. 오류·예외면 null */
 async function fetchServerCrmData(): Promise<CrmDataStore | null> {
     try {
-      const [{ data, error }, clientFiles] = await Promise.all([
+      const [{ data, error }, clientFiles, deletedFileIds] = await Promise.all([
         supabase.from('crm_clients').select('*'),
         listClientSubmittedFiles(crmOfficeScope),
+        listDeletedCaseFileIds(crmOfficeScope),
       ]);
       if (!error && data) {
         const store: CrmDataStore = {};
@@ -179,7 +180,8 @@ async function fetchServerCrmData(): Promise<CrmDataStore | null> {
             totalPaid: row.total_paid,
             feeSchedule: row.fee_schedule || [],
             // 아래 항목은 별도 칸이 없어 extension_data에 함께 저장된다 (이전: 없는 칸을 읽어 빈 값으로 덮어씀)
-            uploadedFiles: row.extension_data?.uploadedFiles || [],
+            // 휴지통으로 옮긴 파일은 자료함 사본에서 뺀다
+            uploadedFiles: ((row.extension_data?.uploadedFiles || []) as DocumentFile[]).filter(f => !deletedFileIds.has(f.id)),
             documentRequests: row.extension_data?.documentRequests || [],
             correctionOrders: row.extension_data?.correctionOrders || [],
             courtCase: row.extension_data?.courtCase,

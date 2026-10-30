@@ -4,11 +4,14 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, ChevronDown, ChevronUp, FileText, FolderOpen, RefreshCw, Upload } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, FileText, FolderOpen, RefreshCw, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { useDialog } from '../../common/DialogProvider';
 import { supabase } from '../../../supabaseClient';
-import { getCaseFileUrl, uploadCaseFile } from '../../../services/files/caseFileService';
+import { getCaseFileUrl, restoreCaseFile, trashCaseFile, uploadCaseFile } from '../../../services/files/caseFileService';
+import { getCrmExt, updateCrmExt } from '../../../services/crmService';
 import { writeAuditLog } from '../../../services/auditService';
+
+const TRASH_DAYS = 30;
 
 interface Row {
   id: string;
@@ -21,6 +24,9 @@ interface Row {
   storagePath: string;
   createdAt: string;
   note?: string;
+  deletedAt?: string;
+  deleteReason?: string;
+  purgedAt?: string;
 }
 
 const REVIEW_LABEL: Record<string, { label: string; cls: string }> = {
@@ -38,18 +44,60 @@ export default function ServerCaseFilesPanel({ officeId, clientKey, canManage, v
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trash, setTrash] = useState<Row[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setError(null);
     const { data, error: e } = await supabase.from('case_files').select('*')
-      .eq('office_id', officeId).eq('client_key', clientKey).is('deleted_at', null).order('created_at', { ascending: false });
+      .eq('office_id', officeId).eq('client_key', clientKey).order('created_at', { ascending: false });
     if (e) { setError(/permission|row-level/i.test(e.message) ? '이 사건 서류를 볼 권한이 없습니다.' : '서류 목록을 불러오지 못했습니다.'); return; }
-    setRows((data || []).map((r: any) => ({
+    const all: Row[] = (data || []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, mimeType: r.mime_type || undefined, sizeBytes: r.size_bytes ?? undefined,
       uploadSource: r.upload_source, reviewStatus: r.review_status, storagePath: r.storage_path, createdAt: r.created_at, note: r.note || undefined,
-    })));
+      deletedAt: r.deleted_at || undefined, deleteReason: r.delete_reason || undefined, purgedAt: r.purged_at || undefined,
+    }));
+    setRows(all.filter(r => !r.deletedAt));
+    setTrash(all.filter(r => r.deletedAt && !r.purgedAt));
   }, [officeId, clientKey]);
+
+  const moveToTrash = async (r: Row) => {
+    const reason = await dialog.prompt({
+      title: '휴지통으로 옮기기',
+      message: `'${r.name}'을(를) 휴지통으로 옮깁니다. ${TRASH_DAYS}일 안에는 되돌릴 수 있고, 그 뒤에는 파일이 서버에서 지워집니다.${r.uploadSource === 'client' ? ' 의뢰인 화면에서도 사라집니다.' : ''} 사유를 적어 주세요. (선택)`,
+      placeholder: '예: 잘못 올림, 같은 파일 중복',
+    });
+    if (reason === null || reason === undefined) return;
+    setBusyId(r.id);
+    const res = await trashCaseFile(r.id, reason.trim() || undefined);
+    if (res.ok) {
+      // 이 탭의 사건 자료함 사본에서도 뺀다
+      const ext = getCrmExt(clientKey);
+      if ((ext.uploadedFiles || []).some(f => f.id === r.id)) {
+        void updateCrmExt(clientKey, { uploadedFiles: (ext.uploadedFiles || []).filter(f => f.id !== r.id) });
+      }
+      toast.success(`휴지통으로 옮겼습니다. ${TRASH_DAYS}일 안에 되돌릴 수 있습니다.`);
+    } else toast.error(res.message || '휴지통으로 옮기지 못했습니다.');
+    setBusyId(null);
+    void load();
+  };
+
+  const restore = async (r: Row) => {
+    setBusyId(r.id);
+    const res = await restoreCaseFile(r.id);
+    setBusyId(null);
+    if (res.ok) toast.success('서류를 되돌렸습니다. 사건 자료함에는 새로 불러올 때 다시 보입니다.');
+    else toast.error(res.message || '되돌리지 못했습니다.');
+    void load();
+  };
+
+  const daysLeft = (iso?: string) => {
+    if (!iso) return TRASH_DAYS;
+    const left = TRASH_DAYS - Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    return Math.max(0, left);
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -137,6 +185,11 @@ export default function ServerCaseFilesPanel({ officeId, clientKey, canManage, v
                       {canManage && r.uploadSource === 'client' && r.reviewStatus !== 'rejected' && (
                         <button onClick={() => setReview(r, 'rejected')} className="text-xs font-bold text-rose-600 hover:underline whitespace-nowrap cursor-pointer">다시 요청</button>
                       )}
+                      {canManage && (
+                        <button onClick={() => moveToTrash(r)} disabled={busyId === r.id} aria-label={`${r.name} 휴지통으로`} title="휴지통으로" className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </span>
                     {r.reviewStatus === 'rejected' && r.note && <p className="w-full text-xs text-rose-700">사유: {r.note}</p>}
                   </li>
@@ -152,6 +205,32 @@ export default function ServerCaseFilesPanel({ officeId, clientKey, canManage, v
               </button>
               <p className="text-xs text-slate-500">PDF·사진만, 파일당 20MB까지. 서류를 열면 열람 기록이 남습니다.</p>
             </>
+          )}
+          {!error && trash.length > 0 && (
+            <div className="pt-1">
+              <button type="button" onClick={() => setShowTrash(v => !v)} aria-expanded={showTrash} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5" />휴지통 {trash.length}개 {showTrash ? '접기' : '보기'}
+              </button>
+              {showTrash && (
+                <ul className="mt-2 divide-y divide-slate-100 border border-dashed border-slate-300 rounded-xl bg-slate-50">
+                  {trash.map(r => (
+                    <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                      <span className="min-w-0">
+                        <span className="block truncate font-bold text-slate-700">{r.name}</span>
+                        <span className="block text-xs text-slate-500">
+                          {r.uploadSource === 'client' ? '의뢰인 제출' : '사무소'} · {daysLeft(r.deletedAt)}일 뒤 파기{r.deleteReason ? ` · 사유: ${r.deleteReason}` : ''}
+                        </span>
+                      </span>
+                      {canManage && (
+                        <button onClick={() => restore(r)} disabled={busyId === r.id} className="inline-flex items-center gap-1 px-3 min-h-[36px] rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 whitespace-nowrap disabled:opacity-40 cursor-pointer active:scale-[0.98]">
+                          <RotateCcw className="w-3.5 h-3.5" />되돌리기
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       )}
