@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, MessageSquare, Clock, Calendar, AlertTriangle, 
   CheckCircle2, ChevronDown, ChevronUp, ChevronRight, 
@@ -9,6 +9,7 @@ import {
 import type { ConsultRequest, User, StaffMember, CrmClientExtension } from '../../../types';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
 import { loadCrmExtMap } from '../../../services/crmService';
+import { loadFeeOverviewByRequest, type FeeOverviewRow } from '../../../services/fees/feeService';
 import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import { daysUntil, formatYmdWithDow } from '../../../services/court/deadlineCalculator';
 import PublicDocGuideModal from '../documents/PublicDocGuideModal';
@@ -38,6 +39,8 @@ export interface LawyerDashboardViewProps {
   onOpenCase: (caseId: string, options?: { stage?: number; section?: string }) => void;
   onOpenChat: (client: ConsultRequest) => void;
   onNewCase: () => void;
+  /** 서버 사무소 ID — 있으면 수납 수치·업무함을 서버 수납 기록으로 계산한다 */
+  officeId?: string;
 }
 
 interface ActionQueueItem {
@@ -78,7 +81,16 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
   onOpenCase,
   onOpenChat,
   onNewCase,
+  officeId,
 }) => {
+  // 서버 수납 현황 (상담 요청 ID 기준). null = 아직 못 읽음/권한 없음 → 수납 항목을 만들지 않는다
+  const [feeByReq, setFeeByReq] = useState<Record<string, FeeOverviewRow> | null>(null);
+  useEffect(() => {
+    if (!officeId) { setFeeByReq(null); return; }
+    let cancelled = false;
+    void loadFeeOverviewByRequest(officeId).then(m => { if (!cancelled) setFeeByReq(m); });
+    return () => { cancelled = true; };
+  }, [officeId, requests]);
   // 범위 토글: 내 담당 vs 사무소 전체
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   // 업무함 그룹 접힘 상태
@@ -176,21 +188,19 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
   }, [targetRequests, crmStore, todayStr]);
 
   // (4) 연체 수납 금액 & 건수
+  // 서버 수납 기록 기준 (이전: 사건 관리 사본의 회차 '만원/원' 금액을 그대로 더해 단위가 섞였다)
   const overdueFeeStats = useMemo(() => {
     let totalWon = 0;
     let count = 0;
+    if (!feeByReq) return { totalWon, count };
     targetRequests.forEach(r => {
-      const ext = crmStore[r.id];
-      if (!ext?.feeSchedule) return;
-      ext.feeSchedule.forEach(f => {
-        if (f.status === 'overdue' || (f.status === 'pending' && f.dueDate && f.dueDate < todayStr)) {
-          totalWon += (f.amount || 0);
-          count++;
-        }
-      });
+      const f = feeByReq[r.id];
+      if (!f || f.overdueCount === 0) return;
+      totalWon += f.overdueWon;
+      count += f.overdueCount;
     });
     return { totalWon, count };
-  }, [targetRequests, crmStore, todayStr]);
+  }, [targetRequests, feeByReq]);
 
   // 2. 통합 업무함(Action Queue) 아이템 생성
   const actionItems = useMemo(() => {
@@ -224,27 +234,41 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
         });
       }
 
-      // B. 착수금/분납금 미납
-      if (ext?.feeSchedule) {
-        ext.feeSchedule.forEach((f, idx) => {
-          if (f.status === 'overdue' || (f.status === 'pending' && f.dueDate && f.dueDate < todayStr)) {
-            const diff = f.dueDate ? (daysUntil(f.dueDate) ?? 0) : -1;
-            list.push({
-              id: `fee-${r.id}-${idx}`,
-              type: 'fee_overdue',
-              title: `${f.round || idx + 1}회차 분납금 미납 (${(f.amount || 0).toLocaleString()}원)`,
-              clientName: cName,
-              caseId: r.id,
-              stage: 2,
-              stageName: '2단계 계약·수납',
-              timeOrDday: diff < 0 ? `D+${Math.abs(diff)}` : 'D-Day',
-              isOverdue: diff < 0,
-              isToday: diff === 0,
-              isThisWeek: false,
-              actionLabel: '수납 열기',
-              onAction: () => onOpenCase(r.id, { stage: 2, section: 'retainer' }),
-            });
-          }
+      // B. 수임료 납부 기한 지남 · 입금 알림 확인 (서버 수납 기록)
+      const fee = feeByReq?.[r.id];
+      if (fee && fee.overdueCount > 0) {
+        const diff = fee.nextDueOn ? (daysUntil(fee.nextDueOn) ?? -1) : -1;
+        list.push({
+          id: `fee-${r.id}`,
+          type: 'fee_overdue',
+          title: `수임료 기한 지남 ${fee.overdueCount}회차 (${fee.overdueWon.toLocaleString()}원)`,
+          clientName: cName,
+          caseId: r.id,
+          stage: 2,
+          stageName: '수임료 수납',
+          timeOrDday: diff < 0 ? `D+${Math.abs(diff)}` : 'D-Day',
+          isOverdue: diff < 0,
+          isToday: diff === 0,
+          isThisWeek: false,
+          actionLabel: '수납 열기',
+          onAction: () => onOpenCase(r.id, { stage: 2, section: 'fees' }),
+        });
+      }
+      if (fee && fee.pendingReports > 0) {
+        list.push({
+          id: `fee-report-${r.id}`,
+          type: 'fee_overdue',
+          title: `의뢰인 입금 알림 ${fee.pendingReports}건 확인`,
+          clientName: cName,
+          caseId: r.id,
+          stage: 2,
+          stageName: '수임료 수납',
+          timeOrDday: 'D-Day',
+          isOverdue: false,
+          isToday: true,
+          isThisWeek: false,
+          actionLabel: '입금 확인',
+          onAction: () => onOpenCase(r.id, { stage: 2, section: 'fees' }),
         });
       }
 
@@ -315,7 +339,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
     }
 
     return list;
-  }, [targetRequests, crmStore, todayStr, isLawyerOrOwner, pendingProposals, scope, activeLawyer, onOpenCase, onOpenProposalReview]);
+  }, [targetRequests, crmStore, feeByReq, todayStr, isLawyerOrOwner, pendingProposals, scope, activeLawyer, onOpenCase, onOpenProposalReview]);
 
   // 업무함 그룹 분류
   const overdueItems = useMemo(() => actionItems.filter(i => i.isOverdue), [actionItems]);

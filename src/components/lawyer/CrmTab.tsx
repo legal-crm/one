@@ -10,6 +10,7 @@ import {
   Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { loadFeeOverviewByRequest, type FeeOverviewRow } from '../../services/fees/feeService';
 import { useDialog } from '../common/DialogProvider';
 import NewCaseModal from './NewCaseModal';
 import type { NewCaseData } from './NewCaseModal';
@@ -393,8 +394,20 @@ export default function CrmTab({
   }, [initialClientId, initialDetailTab, onClearInitialTarget]);
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
+  // '분납 2회+ 기한 지남' 대상은 서버 수납 기록으로 고른다 (이전: 사건 관리 사본의 회차 상태)
+  const [bulkFeeByReq, setBulkFeeByReq] = useState<Record<string, FeeOverviewRow> | null>(null);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
+  useEffect(() => {
+    if (bulkFilter !== 'fee_overdue' || !officeId) return;
+    let cancelled = false;
+    void loadFeeOverviewByRequest(officeId).then(m => {
+      if (cancelled) return;
+      setBulkFeeByReq(m);
+      if (!m) toast.error('수납 기록을 불러오지 못해 기한 지난 의뢰인을 고르지 못했습니다.');
+    });
+    return () => { cancelled = true; };
+  }, [bulkFilter, officeId]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [bulkSendModalConfig, setBulkSendModalConfig] = useState<{
     isOpen: boolean;
@@ -2530,7 +2543,7 @@ export default function CrmTab({
             const bulkFilteredClients = requests.filter(r => {
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
-              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+              if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
               if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
               if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
               return false;
@@ -2684,7 +2697,7 @@ export default function CrmTab({
           targetClients={requests.filter(r => {
             const ext = getCrmExt(r.id);
             if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
-            if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+            if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
             if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
             if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
             return false;
@@ -2700,7 +2713,7 @@ export default function CrmTab({
             const targets = requests.filter(r => {
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
-              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+              if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
               if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
               if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
               return false;

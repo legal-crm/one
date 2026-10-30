@@ -45,7 +45,8 @@ import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission } from '../service
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
-import ServerFeeOverview from './lawyer/fees/ServerFeeOverview';
+import ServerFeeTab from './lawyer/fees/ServerFeeTab';
+import { loadFeeOverview } from '../services/fees/feeService';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
 import { validateInviteToken, acceptStaffInvite } from '../services/inviteService';
@@ -412,6 +413,23 @@ export default function LawyerRole({
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);
   }, [currentOfficeId]);
+
+  // 사이드바 '수임료 수납' 배지 = 서버 기준 기한 지난 사건 + 확인할 입금 알림 (이전: 사건 관리 사본의 회차로 셈)
+  const canViewFees = !!officeCtx.office && canUseOfficePermission(officeCtx.office.permissions, 'fee.view');
+  const [serverFeeAlertCount, setServerFeeAlertCount] = useState(0);
+  useEffect(() => {
+    if (!currentOfficeId || !canViewFees) { setServerFeeAlertCount(0); return; }
+    let cancelled = false;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const r = await loadFeeOverview(currentOfficeId);
+      if (!cancelled && r.ok) setServerFeeAlertCount(r.data.filter(x => x.overdueCount > 0).length + r.data.reduce((s, x) => s + x.pendingReports, 0));
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [currentOfficeId, canViewFees]);
 
   // ── Browser history & URL synchronization (기획서 1-6 & 3.6) ──
   // 이전: tab 상태만 history.state에 기록하고 URL 동기화가 없어 새로고침·뒤로가기 시 view/case/stage 유실
@@ -2647,17 +2665,7 @@ export default function LawyerRole({
                   return r.status === 'responding' && acceptedMe;
                 }).length;
 
-                const crmMap = loadCrmExtMap();
-                let feeAlertCount = 0;
-                const todayStr = localDateStr();
-                ownRequests.forEach(r => {
-                  const ext = crmMap[r.id] || getCrmExt(r.id);
-                  (ext.feeSchedule || []).forEach(inst => {
-                    if (inst.status === 'overdue' || (inst.status === 'pending' && inst.dueDate <= todayStr)) {
-                      feeAlertCount++;
-                    }
-                  });
-                });
+                const feeAlertCount = serverFeeAlertCount;
 
                 const salesNewCount = loadSalesLeads().filter(l => l.status === 'new').length;
                 const qnaWaitingCount = qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0;
@@ -2935,6 +2943,7 @@ export default function LawyerRole({
               setActiveTab('chat');
             }}
             onNewCase={() => setIsExternalClientModalOpen(true)}
+            officeId={canViewFees ? currentOfficeId : undefined}
           />
         )}
 
@@ -3143,20 +3152,31 @@ export default function LawyerRole({
 
         {/* TAB: 수임료 분납 종합 정산 관리 센터 */}
         {activeTab === 'fee-settlement' && (
-          <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
-            {officeCtx.office?.officeId && canUseOfficePermission(officeCtx.office.permissions, 'fee.view') && (
-              <ServerFeeOverview
-                officeId={officeCtx.office.officeId}
-                onOpenCase={(reqId) => openCase(reqId, 'fees')}
-                accountAccess={canUseOfficePermission(officeCtx.office.permissions, 'office.settings.edit') ? 'edit'
-                  : (canUseOfficePermission(officeCtx.office.permissions, 'office.settings.view') || canUseOfficePermission(officeCtx.office.permissions, 'fee.record')) ? 'view' : 'none'}
+          <React.Suspense fallback={<div className="space-y-3 py-6" aria-busy="true"><div className="h-16 rounded-xl bg-slate-100 animate-pulse" /><div className="h-64 rounded-2xl bg-slate-100 animate-pulse" /></div>}>
+            {officeCtx.office?.officeId ? (
+              canUseOfficePermission(officeCtx.office.permissions, 'fee.view') ? (
+                // 서버 수납 기록이 유일한 원본 (이전: 사건 관리 사본으로 그리던 옛 수납 탭이 아래에 함께 보였다)
+                <ServerFeeTab
+                  officeId={officeCtx.office.officeId}
+                  onOpenCase={(reqId) => openCase(reqId, 'fees')}
+                  canExport={canUseOfficePermission(officeCtx.office.permissions, 'fee.export')}
+                  accountAccess={canUseOfficePermission(officeCtx.office.permissions, 'office.settings.edit') ? 'edit'
+                    : (canUseOfficePermission(officeCtx.office.permissions, 'office.settings.view') || canUseOfficePermission(officeCtx.office.permissions, 'fee.record')) ? 'view' : 'none'}
+                />
+              ) : (
+                <div className="text-center py-12 px-4 rounded-2xl border border-slate-200 bg-white space-y-2">
+                  <p className="font-bold text-slate-800">수임료를 볼 권한이 없습니다.</p>
+                  <p className="text-sm text-slate-600">사무소 대표에게 '수임료 보기' 권한을 요청해 주세요.</p>
+                </div>
+              )
+            ) : (
+              // 서버 사무소 정보가 없는 개발 환경에서만
+              <FeeSettlementTab
+                requests={requests}
+                activeLawyer={activeLawyer}
+                onNavigateToClientCrm={(clientId, targetDetailTab) => openCase(clientId, targetDetailTab || 'fees')}
               />
             )}
-            <FeeSettlementTab
-              requests={requests}
-              activeLawyer={activeLawyer}
-              onNavigateToClientCrm={(clientId, targetDetailTab) => openCase(clientId, targetDetailTab || 'fees')}
-            />
           </React.Suspense>
         )}
 

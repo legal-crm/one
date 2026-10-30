@@ -34,6 +34,8 @@ DO $$ DECLARE v_case cases; r jsonb; s record; n int; BEGIN
     IF s.seq = 2 AND (s.status <> 'overdue' OR s.allocated_won <> 100000) THEN RAISE EXCEPTION 'FAIL seq2 %', s; END IF;
     IF s.seq = 3 AND s.status <> 'scheduled' THEN RAISE EXCEPTION 'FAIL seq3 %', s; END IF;
   END LOOP;
+  -- 기한 지난 금액 = 2회차 남은 250,000원
+  IF (SELECT overdue_won FROM fee_office_overview('test-lawyer-e1') WHERE case_id = v_case.id) <> 250000 THEN RAISE EXCEPTION 'FAIL overdue_won'; END IF;
 
   BEGIN
     UPDATE fee_payments SET amount_won = 1 WHERE case_id = v_case.id;

@@ -63,6 +63,9 @@ export interface FeeOverviewRow {
   nextDueOn?: string;
   nextDueWon?: number;
   pendingReports: number;
+  /** 기한 지난 회차의 남은 금액 합계 */
+  overdueWon: number;
+  consultRequestId?: string;
 }
 
 export interface InstallmentInput {
@@ -163,6 +166,7 @@ export async function loadFeeOverview(officeId: string): Promise<RpcResult<FeeOv
       caseId: r.case_id, caseTitle: r.case_title || '', clientDisplayName: r.client_display_name || '', totalFeeWon: r.total_fee_won,
       paidWon: Number(r.paid_won) || 0, remainingWon: Number(r.remaining_won) || 0, overdueCount: r.overdue_count || 0,
       nextDueOn: r.next_due_on || undefined, nextDueWon: r.next_due_won ?? undefined, pendingReports: r.pending_reports || 0,
+      overdueWon: Number(r.overdue_won) || 0, consultRequestId: r.consult_request_id || undefined,
     })),
   };
 }
@@ -220,6 +224,16 @@ export async function clientReportPayment(caseId: string, p: { paidOn: string; a
   });
   if (error) return { ok: false, code: 'save_failed', message: msg(error) };
   return { ok: true, data: null };
+}
+
+/** 상담 요청 ID → 서버 수납 현황 (대시보드·사이드바·일괄 발송 대상처럼 상담 요청 기준 화면용). 실패면 null */
+export async function loadFeeOverviewByRequest(officeId: string): Promise<Record<string, FeeOverviewRow> | null> {
+  if (!isSupabaseConfigured || !officeId) return null;
+  const o = await loadFeeOverview(officeId);
+  if (o.ok === false) return null;
+  const out: Record<string, FeeOverviewRow> = {};
+  o.data.forEach(r => { if (r.consultRequestId) out[r.consultRequestId] = r; });
+  return out;
 }
 
 // ── 입금 계좌 (사무소 기본 + 사건별) ─────────────────────────────────────────
