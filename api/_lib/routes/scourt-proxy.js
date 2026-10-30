@@ -4,7 +4,6 @@
 
 import { handleCorsPreflight } from '../cors-helper.js';
 import { verifyAuth } from '../auth-middleware.js';
-import { verifyTurnstileToken } from '../turnstile-validator.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 
 let cachedToken = {
@@ -213,35 +212,11 @@ async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
-  // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
-  const authHeader = req.headers.authorization;
-  const cfToken = req.body?.turnstileToken || req.headers['x-turnstile-token'];
-
-  let isAuthorized = false;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const user = await verifyAuth(req);
-      if (user) isAuthorized = true;
-    } catch (_) {}
-  }
-
-  if (!isAuthorized && cfToken) {
-    const forwarded = req.headers['x-forwarded-for'];
-    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
-    const cfCheck = await verifyTurnstileToken(cfToken, ip);
-    if (cfCheck.success) isAuthorized = true;
-  }
-
-  // 개발 환경 로컬 테스트 편의 지원
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
-    isAuthorized = true;
-  }
-
-  if (!isAuthorized) {
-    return res.status(401).json({
-      ok: false,
-      error: '인증 토큰(Bearer) 또는 보안 인증(Turnstile)이 필요합니다.'
-    });
+  // [SECURITY] 로그인한 사무소 사용자만 (이전: 비로그인 Turnstile로도 호출 가능, 개발 우회가 배포 환경에서도 열릴 수 있었음)
+  let user = null;
+  try { user = await verifyAuth(req); } catch (_) { user = null; }
+  if (!user && !(process.env.NODE_ENV === 'development' && !process.env.VERCEL)) {
+    return res.status(401).json({ ok: false, error: '로그인이 필요해요.' });
   }
 
   const {
@@ -345,7 +320,7 @@ async function handler(req, res) {
 
   // 2. 실시간 조회 불가(키 미설정·호출 실패):
   //    운영에서는 시연 데이터를 사용자 사건처럼 반환하지 않는다 (기존: 가짜 판사·기일·보정·납부내역을 실제 사건처럼 표시·3일 캐시)
-  if (process.env.NODE_ENV !== 'development' && process.env.SCOURT_ALLOW_MOCK !== 'true') {
+  if (process.env.VERCEL || (process.env.NODE_ENV !== 'development' && process.env.SCOURT_ALLOW_MOCK !== 'true')) {
     return res.status(200).json({
       ok: false,
       isB2BLive: false,

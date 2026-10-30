@@ -77,6 +77,8 @@ export interface CaseRecord {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** 보관 기간이 지나 자료를 지운 사건 (CM-9) */
+  purgedAt?: string | null;
 }
 
 export interface CaseEvent {
@@ -135,7 +137,7 @@ export const mapCase = (r: any): CaseRecord => ({
   filedOn: r.filed_on ?? null, commencedOn: r.commenced_on ?? null, creditorsMeetingOn: r.creditors_meeting_on ?? null,
   confirmedOn: r.confirmed_on ?? null, dischargeDecidedOn: r.discharge_decided_on ?? null, closeReason: r.close_reason ?? null,
   closedOn: r.closed_on ?? null, purgeAfter: r.purge_after ?? null, isTest: r.is_test === true, version: r.version,
-  createdAt: r.created_at, updatedAt: r.updated_at, deletedAt: r.deleted_at ?? null,
+  createdAt: r.created_at, updatedAt: r.updated_at, deletedAt: r.deleted_at ?? null, purgedAt: r.purged_at ?? null,
 });
 
 const mapClient = (r: any): OfficeClient => ({
@@ -428,4 +430,27 @@ export async function loadMyCases(): Promise<RpcResult<MyCaseSummary[]>> {
       workspaceKey: r.workspace_key || `case-${r.case_id}`, hasConsultRequest: r.has_consult_request === true,
     })),
   };
+}
+
+// ── 변제 장부 요약 (CM-8, 20261031001900) ──
+export interface PlanPaymentOverview { rounds: number; confirmed: number; reported: number; overdue: number; streak: number; paidWon: number; totalWon: number; nextDue: string | null }
+export async function loadPlanPaymentOverview(caseId: string): Promise<RpcResult<PlanPaymentOverview>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('case_plan_payment_overview', { p_case_id: caseId });
+  if (error) return toRpcError(error);
+  const d = (data || {}) as any;
+  return { ok: true, data: { rounds: Number(d.rounds) || 0, confirmed: Number(d.confirmed) || 0, reported: Number(d.reported) || 0, overdue: Number(d.overdue) || 0, streak: Number(d.streak) || 0, paidWon: Number(d.paid_won) || 0, totalWon: Number(d.total_won) || 0, nextDue: d.next_due || null } };
+}
+
+/** 월 변제 회차표 만들기 (첫 납부일부터 매달 같은 날, 말일 보정) */
+export function buildMonthlyRounds(firstDue: string, months: number, amount: number, startRound = 1, kind: PlanPayment['kind'] = 'plan') {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(firstDue);
+  if (!m || months < 1) return [];
+  const y = Number(m[1]); const mo = Number(m[2]) - 1; const day = Number(m[3]);
+  return Array.from({ length: Math.min(120, Math.floor(months)) }, (_, i) => {
+    const last = new Date(y, mo + i + 1, 0).getDate();
+    const d = new Date(y, mo + i, Math.min(day, last));
+    const dueOn = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { roundNo: startRound + i, dueOn, amount: Math.max(0, Math.round(amount)), kind };
+  });
 }

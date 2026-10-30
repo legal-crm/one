@@ -84,7 +84,9 @@ import { formatVaultDday } from '../../services/vault/certificateVaultService';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
 import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
-import { createTask } from '../../services/taskTicketService';
+import { createTask, createTaskBatch } from '../../services/taskTicketService';
+import { templateForMilestone, tasksFromTemplate } from '../../services/cases/stageTaskTemplates';
+import ClosedCasesArchive from './case/ClosedCasesArchive';
 import { STAGE_TEST_REQUEST_IDS } from '../../data';
 
 /**
@@ -1887,6 +1889,7 @@ export default function CrmTab({
               <button type="button" onClick={() => setShowTrash(false)} className="min-h-[44px] px-4 rounded-xl bg-white border border-amber-300 font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer">사건 목록으로 돌아가기</button>
             </div>
           )}
+          {officeId && !showTrash && <ClosedCasesArchive officeId={officeId} onOpen={(key) => setSelectedId(key)} />}
         <CaseListView
           requests={listScopeRequests}
           serverStageLabels={serverStageLabels}
@@ -2200,6 +2203,27 @@ export default function CrmTab({
                   canEdit={currentPermissions.changeStatus}
                   canCloseOrReopen={isOfficeLawyer}
                   autoStart={!['requested', 'consulting', 'cancelled'].includes(getCrmExt(selectedId).crmStatus)}
+                  onMilestoneRecorded={async (kind, rec) => {
+                    // 단계 할 일 템플릿 제안 (CM-4): 넣을지는 사람이 고른다
+                    const tpl = templateForMilestone(kind, rec.caseType);
+                    if (!tpl) return;
+                    const items = tasksFromTemplate(tpl);
+                    const ok = await dialog.confirm({
+                      title: `'${tpl.name}' 할 일을 넣을까요?`,
+                      message: `${items.length}개 할 일을 기한과 함께 업무함에 넣어요. 담당은 나로 정하고, 업무함에서 다른 직원에게 넘길 수 있어요.`,
+                      confirmText: '할 일 넣기',
+                      cancelText: '넣지 않음',
+                    });
+                    if (!ok) return;
+                    const me = { id: currentStaff?.id || activeLawyer.id, name: currentStaff?.name || activeLawyer.name };
+                    const { created, failed } = await createTaskBatch(firmTenantId || 'default-firm', items.map(it => ({
+                      targetType: 'case' as const, targetId: selectedId, assignerId: me.id, assignerName: me.name, assigneeId: me.id, assigneeName: me.name,
+                      title: it.title, description: it.description, priority: it.priority, dueDate: it.dueDate, subtasks: it.subtasks,
+                      requiresApproval: false, templateId: it.templateId, caseStage: rec.stage,
+                    })));
+                    if (created.length) toast.success(`할 일 ${created.length}개를 넣었어요.${failed ? ` (${failed}개는 실패)` : ''}`);
+                    else toast.error('할 일을 넣지 못했어요. 업무함에서 다시 시도해 주세요.');
+                  }}
                   onStageSynced={(crmStatus, rec) => {
                     const ext = getCrmExt(selectedId);
                     const courtCase = rec.caseNumber

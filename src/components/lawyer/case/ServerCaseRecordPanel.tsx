@@ -13,6 +13,7 @@ import {
 import { availableMilestones, serverStageToCrmStatus, type MilestoneAction } from '../../../services/cases/caseStageMapping';
 import type { CrmStatus } from '../../../types';
 import ClientLinkSection from './ClientLinkSection';
+import PlanPaymentsPanel from './PlanPaymentsPanel';
 
 interface Props {
   officeId: string;
@@ -26,6 +27,8 @@ interface Props {
   autoStart?: boolean;
   /** 서버 단계가 바뀌면 기존 화면 상태를 맞춘다 */
   onStageSynced?: (crmStatus: CrmStatus, record: CaseRecord) => void;
+  /** 기록을 저장한 뒤 (단계 할 일 템플릿 제안, CM-4) */
+  onMilestoneRecorded?: (kind: MilestoneAction['kind'], record: CaseRecord) => void;
 }
 
 const today = () => {
@@ -35,7 +38,7 @@ const today = () => {
 
 const fmtDateTime = (iso: string) => new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-export default function ServerCaseRecordPanel({ officeId, consultRequestId, caseType, canCloseOrReopen, canEdit, autoStart, onStageSynced }: Props) {
+export default function ServerCaseRecordPanel({ officeId, consultRequestId, caseType, canCloseOrReopen, canEdit, autoStart, onStageSynced, onMilestoneRecorded }: Props) {
   const autoTriedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +117,7 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
     setAction(null);
     toast.success(`${action.label}을(를) 저장했어요.`);
     onStageSynced?.(serverStageToCrmStatus(res.data.stage, res.data.closeReason), res.data);
+    onMilestoneRecorded?.(action.kind, res.data);
     await load();
   };
 
@@ -207,6 +211,11 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
       </dl>
 
       {record.stage !== 'closed' && <ClientLinkSection officeId={officeId} officeClientId={record.officeClientId} canEdit={canEdit} />}
+
+      {/* 변제 수행 장부 (CM-8): 개시결정·파산선고 이후 */}
+      {record.caseType === 'rehab' && (record.commencedOn || (stageInfo?.groupNo ?? 0) >= 5) && (
+        <PlanPaymentsPanel caseId={record.id} canEdit={canEdit && record.stage !== 'closed'} commencedOn={record.commencedOn} confirmedOn={record.confirmedOn} />
+      )}
 
       {canEdit && actions.length > 0 && (
         <div className="flex flex-wrap gap-2">
