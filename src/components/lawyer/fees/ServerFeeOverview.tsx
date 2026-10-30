@@ -3,10 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw, Wallet } from 'lucide-react';
 import { loadFeeOverview, type FeeOverviewRow } from '../../../services/fees/feeService';
 import { listCases } from '../../../services/cases/caseCoreService';
+import DepositAccountEditor from './DepositAccountEditor';
 
 const won = (n?: number) => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : '-');
 
-export default function ServerFeeOverview({ officeId, onOpenCase }: { officeId: string; onOpenCase: (consultRequestId: string) => void }) {
+export default function ServerFeeOverview({ officeId, onOpenCase, accountAccess = 'none' }: {
+  officeId: string;
+  onOpenCase: (consultRequestId: string) => void;
+  /** 사무소 기본 입금 계좌: 바꾸기(office.settings.edit) / 보기(office.settings.view·fee.record) / 숨김 */
+  accountAccess?: 'edit' | 'view' | 'none';
+}) {
   const [rows, setRows] = useState<FeeOverviewRow[] | null>(null);
   const [requestIdByCase, setRequestIdByCase] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +44,7 @@ export default function ServerFeeOverview({ officeId, onOpenCase }: { officeId: 
         <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2"><Wallet className="w-5 h-5 text-slate-700" />수납 현황 (서버 기록)</h3>
         <button onClick={() => void load()} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 whitespace-nowrap cursor-pointer"><RefreshCw className="w-3.5 h-3.5" />새로고침</button>
       </div>
+      {accountAccess !== 'none' && <DepositAccountEditor officeId={officeId} caseId={null} canEdit={accountAccess === 'edit'} />}
       {error && (
         <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3"><AlertTriangle className="w-4 h-4" />{error}</p>
       )}

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from '../../common/DialogProvider';
-import { loadFeeNotificationSettings } from '../../../services/alimtokService';
 import { loadCertificateVault } from '../../../services/vault/certificateVaultService';
 import { loadContractsLocal } from '../../../services/contractService';
 import { getCrmClientSync } from '../../../services/crmService';
@@ -14,7 +13,7 @@ import type { ClientNotification } from '../../../services/clientNotificationSer
 import { startContractFromProposal } from '../../../services/proposalContractService';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
 import { formatKoreanWon } from '../ui/form';
-import type { CertificateVaultData, ConsultProposal, ConsultRequest, DocumentCheckItem, DocumentRequest, ElectronicContract, FeeInstallment, User } from '../../../types';
+import type { CertificateVaultData, ConsultProposal, ConsultRequest, DocumentCheckItem, DocumentRequest, ElectronicContract, User } from '../../../types';
 import type { RehabCalculationResult } from '../../../rehab-chatbot-package/services/calculationService';
 
 export interface MyPageViewProps {
@@ -124,7 +123,6 @@ export function useMyPageModel(props: MyPageViewProps) {
   // 서류함 1차(착수등기)/2차(소득재산) 단계 필터 탭
   const [docPhaseTab, setDocPhaseTab] = useState<'all' | 'phase1' | 'phase2'>('all');
   
-  const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
   // 프리미엄 제안서/7p 리포트 모달 열림 상태
   const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
@@ -207,15 +205,9 @@ export function useMyPageModel(props: MyPageViewProps) {
   // ── '지금 할 일' (사건 상태 하나로 맨 위 카드와 첫 탭을 정한다) ──
   const openDocRequestCount = (Array.isArray(crmExt?.documentRequests) ? crmExt.documentRequests : [])
     .filter((r: DocumentRequest) => r && !r.fulfilled).length;
-  const nextFeeInstallment = (() => {
-    const schedule: FeeInstallment[] = (Array.isArray(crmExt?.feeSchedule) && crmExt.feeSchedule.length > 0)
-      ? crmExt.feeSchedule
-      : (clientContract?.feeSchedule || []);
-    const next = schedule
-      .filter((f: FeeInstallment) => f && f.status !== 'paid' && f.dueDate)
-      .sort((a: FeeInstallment, b: FeeInstallment) => a.dueDate.localeCompare(b.dueDate))[0];
-    return next ? { round: next.round, dueDate: next.dueDate.slice(0, 10), overdue: next.status === 'overdue' } : null;
-  })();
+  // 납부 일정·납부 여부는 서버(사무소 수납 기록)만 안다 → '내 사건' 사건 카드의 수임료 칸(MyCaseFeeSection)에서 보여 준다.
+  // (이전: 이 기기 사본·계약서 일정으로 계산해 이미 낸 회차도 '납부일 지남'으로 안내할 수 있었다)
+  const nextFeeInstallment: { round: number; dueDate: string; overdue: boolean } | null = null;
   const rejectedDocCount = (Array.isArray(crmExt?.documents) ? crmExt.documents : [])
     .filter((d: DocumentCheckItem) => d && d.reviewStatus === 'rejected').length;
   const nextAction = getMyPageNextAction({
@@ -492,7 +484,6 @@ export function useMyPageModel(props: MyPageViewProps) {
     setIsBankAuditModalOpen,
     docPhaseTab,
     setDocPhaseTab,
-    feeSettings,
     selectedProposalForReport,
     setSelectedProposalForReport,
     isCreditorMeetingModalOpen,

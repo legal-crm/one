@@ -5,7 +5,9 @@ import {
   INSTALLMENT_STATUS_LABEL,
   clientReportPayment,
   loadClientReports,
+  loadDepositAccount,
   loadFeeStatus,
+  type DepositAccount,
   type FeeClientReport,
   type FeeInstallmentStatus,
 } from '../../../services/fees/feeService';
@@ -23,14 +25,26 @@ export default function MyCaseFeeSection({ caseId }: { caseId: string }) {
   const [payer, setPayer] = useState('');
   const [formError, setFormError] = useState('');
   const [sending, setSending] = useState(false);
+  const [account, setAccount] = useState<DepositAccount | null>(null);
 
   const load = useCallback(async () => {
-    const [s, r] = await Promise.all([loadFeeStatus(caseId), loadClientReports(caseId)]);
+    const [s, r, a] = await Promise.all([loadFeeStatus(caseId), loadClientReports(caseId), loadDepositAccount(caseId)]);
     if (s.ok === false) { setError(s.message); return; }
     setError(null);
     setRows(s.data);
     setReports(r.ok ? r.data : []);
+    setAccount(a.ok ? a.data : null);
   }, [caseId]);
+
+  const copyAccount = async () => {
+    if (!account) return;
+    try {
+      await navigator.clipboard.writeText(`${account.bankName} ${account.accountNumber}`);
+      toast.success('계좌번호를 복사했어요.');
+    } catch {
+      toast.error('복사하지 못했어요. 계좌번호를 직접 적어 주세요.');
+    }
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -70,6 +84,18 @@ export default function MyCaseFeeSection({ caseId }: { caseId: string }) {
           </li>
         ))}
       </ul>
+      {account ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+          <div className="min-w-0 text-sm">
+            <p className="text-xs font-bold text-emerald-800">입금 계좌 (담당 사무소 등록)</p>
+            <p className="break-all font-bold text-slate-900">{account.bankName} <span className="font-mono">{account.accountNumber}</span> <span className="font-normal text-slate-600">({account.accountHolder})</span></p>
+          </div>
+          <button onClick={copyAccount} className="min-h-[44px] px-3 rounded-xl border border-emerald-300 bg-white text-sm font-bold text-emerald-800 whitespace-nowrap active:scale-[0.98] cursor-pointer">계좌번호 복사</button>
+        </div>
+      ) : (
+        <p className="text-xs text-slate-600">입금 계좌는 담당 사무소가 직접 안내한 계좌를 확인해 주세요.</p>
+      )}
+      <p className="text-[11px] text-slate-500">사무소 안내와 다른 계좌로 입금을 요청받으면 입금하기 전에 사무소에 먼저 확인해 주세요.</p>
       {pending.length > 0 && <p className="text-xs text-amber-800">사무소 확인을 기다리는 입금 알림 {pending.length}건이 있어요.</p>}
       {lastRejected && pending.length === 0 && <p className="text-xs text-slate-600">최근 입금 알림이 확인되지 않았어요: {lastRejected.rejectReason}</p>}
       {!formOpen ? (

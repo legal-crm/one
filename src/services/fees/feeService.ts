@@ -222,6 +222,45 @@ export async function clientReportPayment(caseId: string, p: { paidOn: string; a
   return { ok: true, data: null };
 }
 
+// ── 입금 계좌 (사무소 기본 + 사건별) ─────────────────────────────────────────
+export interface DepositAccount { bankName: string; accountNumber: string; accountHolder: string; scope: 'case' | 'office' }
+
+const accountMsg = (e: { message?: string } | null | undefined) => {
+  const m = e?.message || '';
+  if (/all required/i.test(m)) return '은행·계좌번호·예금주를 모두 입력해 주세요.';
+  if (/invalid account number/i.test(m)) return '계좌번호는 숫자와 - 만 입력해 주세요.';
+  if (/no permission|privilege/i.test(m)) return '입금 계좌를 바꿀 권한이 없어요.';
+  return msg(e);
+};
+
+/** 사건에 안내할 입금 계좌 (사건 계좌 → 사무소 기본 계좌). 없으면 null */
+export async function loadDepositAccount(caseId: string): Promise<RpcResult<DepositAccount | null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('fee_deposit_account', { p_case_id: caseId });
+  if (error) return { ok: false, code: 'load_failed', message: accountMsg(error) };
+  const r = (data as any[] | null)?.[0];
+  return { ok: true, data: r ? { bankName: r.bank_name, accountNumber: r.account_number, accountHolder: r.account_holder, scope: r.scope } : null };
+}
+
+/** 사무소 기본 입금 계좌 */
+export async function loadOfficeDepositAccount(officeId: string): Promise<RpcResult<Omit<DepositAccount, 'scope'> | null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('fee_office_account', { p_office_id: officeId });
+  if (error) return { ok: false, code: 'load_failed', message: accountMsg(error) };
+  const r = (data as any[] | null)?.[0];
+  return { ok: true, data: r ? { bankName: r.bank_name, accountNumber: r.account_number, accountHolder: r.account_holder } : null };
+}
+
+/** 입금 계좌 저장. caseId가 없으면 사무소 기본 계좌. 세 칸을 모두 비우면 삭제 */
+export async function saveDepositAccount(officeId: string, caseId: string | null, a: { bankName: string; accountNumber: string; accountHolder: string }): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { error } = await supabase.rpc('set_fee_deposit_account', {
+    p_office_id: officeId, p_case_id: caseId, p_bank_name: a.bankName, p_account_number: a.accountNumber, p_account_holder: a.accountHolder,
+  });
+  if (error) return { ok: false, code: 'save_failed', message: accountMsg(error) };
+  return { ok: true, data: null };
+}
+
 /** 공통 회차 생성기 (FE-4): 착수금 + 균등 분할, 끝전은 마지막 회차. 날짜는 매월 같은 날(말일 보정) */
 export function buildInstallments(opts: { totalFeeWon: number; downPaymentWon: number; downPaymentOn: string; count: number; firstDueOn: string }): InstallmentInput[] {
   const total = Math.max(0, Math.round(opts.totalFeeWon));

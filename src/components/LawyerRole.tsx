@@ -3145,7 +3145,12 @@ export default function LawyerRole({
         {activeTab === 'fee-settlement' && (
           <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
             {officeCtx.office?.officeId && canUseOfficePermission(officeCtx.office.permissions, 'fee.view') && (
-              <ServerFeeOverview officeId={officeCtx.office.officeId} onOpenCase={(reqId) => openCase(reqId, 'fees')} />
+              <ServerFeeOverview
+                officeId={officeCtx.office.officeId}
+                onOpenCase={(reqId) => openCase(reqId, 'fees')}
+                accountAccess={canUseOfficePermission(officeCtx.office.permissions, 'office.settings.edit') ? 'edit'
+                  : (canUseOfficePermission(officeCtx.office.permissions, 'office.settings.view') || canUseOfficePermission(officeCtx.office.permissions, 'fee.record')) ? 'view' : 'none'}
+              />
             )}
             <FeeSettlementTab
               requests={requests}

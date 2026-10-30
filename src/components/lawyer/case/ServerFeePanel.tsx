@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, ChevronDown, ChevronUp, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { useDialog } from '../../common/DialogProvider';
 import { findCaseByConsultRequest } from '../../../services/cases/caseCoreService';
+import DepositAccountEditor from '../fees/DepositAccountEditor';
 import {
   INSTALLMENT_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
@@ -331,6 +332,8 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                   </ul>
                 </div>
               )}
+
+              {caseId && <DepositAccountEditor officeId={officeId} caseId={caseId} canEdit={canRecord} />}
             </>
           )}
         </div>

@@ -6,7 +6,6 @@ import FinancialBlueprintCard from './FinancialBlueprintCard';
 import CaseProgressCard from './CaseProgressCard';
 import DocumentSubmissionCard from './DocumentSubmissionCard';
 import ContractCard from './ContractCard';
-import FeePaymentCard from './FeePaymentCard';
 import CertificateVaultCard from './CertificateVaultCard';
 import CaseActivityTimeline from './CaseActivityTimeline';
 
@@ -47,8 +46,7 @@ export default function MyCaseDetails({ vm }: { vm: MyPageModel }) {
         {/* 공인 전자계약서 카드 */}
         <ContractCard vm={vm} />
 
-        {/* 수임료 납부 현황 (읽기 전용) */}
-        <FeePaymentCard vm={vm} cd={cd} />
+        {/* 수임료 납부 현황은 위 '사무소가 기록한 진행 상황' 사건 카드에서 서버 기록으로 보여 준다 (이전: 이 기기 사본) */}
 
         {/* 🔐 의뢰인 공동인증서·금융인증서 안전 금고 (Zero-Knowledge E2EE) */}
         <CertificateVaultCard vm={vm} />
