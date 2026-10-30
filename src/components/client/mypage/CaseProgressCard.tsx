@@ -190,88 +190,16 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
           </div>
         )}
 
-        {/* ═══ [기능 2] 법원 보정권고 (14일 기한) 긴급 소명자료 협업 창구 ═══ */}
-        {(crmExt?.thirteenStage === 'correction_period' || (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0) || (crmExt?.corrections && crmExt.corrections.length > 0)) && (() => {
-          const firstOrder = crmExt?.correctionOrders?.[0] || crmExt?.corrections?.[0];
-          // 기한이 기록되지 않았으면 임의 D-Day를 보여주지 않는다(이전: 'D-10' 고정)
-          let dDayText = '';
-          if (firstOrder?.deadline) {
-            const diff = Math.ceil((new Date(firstOrder.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-            dDayText = diff > 0 ? `제출 기한 D-${diff}` : (diff === 0 ? '오늘 제출 마감' : `제출 기한 ${Math.abs(diff)}일 지남`);
-          }
-          // 내용이 없으면 임의 요청 목록을 만들지 않는다
-          const orderNotice = firstOrder?.detail || firstOrder?.content || firstOrder?.title || '담당 변호사가 보정 요청 내용을 정리해 안내할 예정입니다.';
-
-          return (
-            <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 space-y-4 animate-fadeIn">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-base text-amber-950">
-                        보정 요청 대응 중
-                      </h4>
-                      {dDayText ? (
-                        <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-600 text-white">
-                          {dDayText}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                          기한 확인 필요
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                      {orderNotice}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCorrectionUploadOpen(prev => !prev)}
-                  aria-expanded={isCorrectionUploadOpen}
-                  aria-controls="mypage-correction-upload"
-                  className="min-h-11 px-4 bg-amber-700 hover:bg-amber-800 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0 whitespace-nowrap"
-                >
-                  <Upload className="w-4 h-4" aria-hidden="true" />
-                  <span>{isCorrectionUploadOpen ? '제출 창 닫기' : '소명자료 제출'}</span>
-                </button>
-              </div>
-
-              {isCorrectionUploadOpen && (
-                <div id="mypage-correction-upload" className="p-4 rounded-xl bg-white border border-amber-200 space-y-3 animate-fadeIn">
-                  <p className="text-sm font-bold text-slate-800">
-                    변호사가 요청한 소명 자료를 올려 주세요 (영수증, 통장 사본, 메모 등)
-                  </p>
-                  {/* 파일 입력은 화면에서 숨기되(sr-only) 키보드로 초점을 받을 수 있게 한다 (이전: hidden이라 키보드로 열 수 없었음) */}
-                  <label className="flex min-h-12 items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 rounded-xl hover:bg-amber-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2">
-                    <Upload className="w-4 h-4 text-amber-700" aria-hidden="true" />
-                    <span className="text-sm font-bold text-amber-800">소명 파일 선택 (사진 또는 PDF)</span>
-                    <input
-                      type="file"
-                      className="sr-only"
-                      accept="image/*,.pdf"
-                      multiple
-                      onChange={(e) => {
-                        // 성공/실패 안내는 handleFileUpload가 실제 제출 완료 후 표시
-                        handleFileUpload(e.target.files, 'correction_proof');
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    올린 자료는 담당 변호사가 검토한 뒤 보정서 작성에 활용합니다.
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
+        {/* ═══ [기능 2] 보정 안내 — 항목별 요청·제출은 사건 카드의 '보정 할 일'(서버 기록, CR-5)에서 한다 ═══ */}
+        {/* 이전: 소명자료 올리기 1칸이 있었지만 사무소 화면이 읽지 않아 올린 자료가 전달되지 않았다 */}
+        {crmExt?.thirteenStage === 'correction_period' && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-sm text-amber-900 break-keep">
+              법원에서 보정 요청이 왔어요. 사무소가 정리한 항목은 이 화면의 사건 카드 <strong>'보정 할 일'</strong>에 차례로 올라와요. 항목마다 서류를 올리거나 표·질문에 답해 주세요.
+            </p>
+          </div>
+        )}
         {/* ═══ [기능 5] 채권자집회 출석 안내 카드 ═══ */}
         {(crmExt?.thirteenStage === 'creditor_meeting') && (
           <div className="p-5 rounded-2xl bg-brand-light border border-brand/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">

@@ -2385,6 +2385,11 @@ export default function CrmTab({
                             officeName={activeLawyer.firmName}
                             canManage={officeCan('correction.manage')}
                             canFinalize={officeCan('correction.finalize')}
+                            courtEvents={selectedExt?.courtCase?.events}
+                            onOpenEditor={(tab) => {
+                              setCourtDocSuiteInitialTab(tab);
+                              setShowCourtDocSuite(true);
+                            }}
                           />
                         ) : undefined}
                       />

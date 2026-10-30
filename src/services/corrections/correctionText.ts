@@ -114,3 +114,35 @@ export function detectPhotoCount(text: string): number | undefined {
   if (nums.length === 0) return undefined;
   return Math.min(20, nums.reduce((a, b) => a + b, 0));
 }
+
+// ── 원문 파일 읽기 결과 → 항목 초안 (CR-3) ──
+export interface OcrItem { itemNumber?: string | number | null; instruction?: string | null; category?: string | null; requiredEvidence?: string | null }
+
+/** 읽기 결과 분류(영문 코드) → 라이브러리 항목. 본문 키워드가 먼저, 맞는 것이 없을 때만 쓴다 */
+const OCR_CATEGORY_LIBRARY: Record<string, string> = {
+  LOAN: 'lib-loan-use', WITHDRAWAL: 'lib-bank', SPECULATION: 'lib-stock', SPOUSE: 'lib-family', INCOME: 'lib-income', INSURANCE: 'lib-insurance',
+};
+
+export interface OcrDraft {
+  seq: number; label?: string; originalText: string; category?: string; libraryId?: string; owner: ItemOwner;
+  clientTitle?: string; clientGuide?: string; neededDocs: string[]; tableType?: TableType; questions: string[]; answerText?: string; photoCount?: number;
+}
+
+export function ocrItemsToDrafts(items: OcrItem[], library: LibraryEntry[], startSeq: number): OcrDraft[] {
+  return items
+    .map(it => ({ label: it.itemNumber === null || it.itemNumber === undefined ? undefined : String(it.itemNumber).slice(0, 30), text: String(it.instruction || '').trim(), cat: String(it.category || ''), ev: String(it.requiredEvidence || '').trim() }))
+    .filter(x => x.text.length > 0)
+    .map((x, idx) => {
+      let s = suggestFromLibrary(x.text, library);
+      if (!s.libraryId && OCR_CATEGORY_LIBRARY[x.cat]) {
+        const e = library.find(l => l.id === OCR_CATEGORY_LIBRARY[x.cat]);
+        if (e) s = { libraryId: e.id, category: e.category, owner: e.owner, clientTitle: e.clientTitle, clientGuide: e.clientGuide, neededDocs: [...e.neededDocs], tableType: e.tableType, questions: [...e.questions], answerText: e.answerTemplate };
+      }
+      const neededDocs = s.neededDocs.length ? s.neededDocs : x.ev ? x.ev.split(/[,·\n]/).map(v => v.trim()).filter(Boolean).slice(0, 10) : [];
+      return {
+        seq: startSeq + idx + 1, label: x.label || String(startSeq + idx + 1), originalText: x.text.slice(0, 6000), category: s.category, libraryId: s.libraryId,
+        owner: s.owner, clientTitle: s.owner === 'office' ? undefined : s.clientTitle, clientGuide: s.clientGuide, neededDocs,
+        tableType: s.tableType, questions: s.questions, answerText: s.answerText, photoCount: detectPhotoCount(x.text),
+      };
+    });
+}

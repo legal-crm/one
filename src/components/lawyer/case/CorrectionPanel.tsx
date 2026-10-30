@@ -13,6 +13,10 @@ import { CORRECTION_TABLES, TABLE_OPTIONS, cleanRows, formatMoneyCell } from '..
 import { buildCorrectionBrief, renderCorrectionBriefHtml } from '../../../services/corrections/correctionBrief';
 import { getCaseFileUrl, uploadCaseFile } from '../../../services/files/caseFileService';
 import { localYmd } from '../../../utils/localDate';
+import type { CourtEvent } from '../../../types';
+import { BriefFileUpload, BundleButton, ExtensionSection, OcrFoundNotice, OcrReadButton, RevisedDocsSection, type EditorTab } from './CorrectionOrderTools';
+import { CorrectionStatsCard, CourtCorrectionHint, PrecedentTools, T2ImportButton, usePrecedents } from './CorrectionExtras';
+import type { CorrectionPrecedent } from '../../../services/corrections/correctionService';
 
 /**
  * 보정 대응 (CR, 서버 기록): 회차 등록 → 원문 나누기 → 의뢰인 요청 → 받기·검토 → 요약보정서 → 제출 기록.
@@ -28,6 +32,10 @@ interface Props {
   officeName?: string;
   canManage: boolean;
   canFinalize: boolean;
+  /** 사건 조회 기록 (보정 감지 안내, CR-11) */
+  courtEvents?: CourtEvent[];
+  /** 고쳐 낼 목록 편집기 열기 (CR-8) */
+  onOpenEditor?: (tab: EditorTab) => void;
 }
 
 const OWNER_LABEL: Record<ItemOwner, string> = { client: '의뢰인', office: '사무소', both: '함께' };
@@ -56,6 +64,7 @@ export default function CorrectionPanel(props: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [busy, setBusy] = useState(false);
+  const precedents = usePrecedents(officeId);
 
   const load = useCallback(async () => {
     const r = await loadCaseCorrections(officeId, caseKey);
@@ -104,6 +113,8 @@ export default function CorrectionPanel(props: Props) {
         </div>
       </div>
 
+      {!showNew && <CourtCorrectionHint events={props.courtEvents} orders={orders} canManage={canManage} onRegister={() => setShowNew(true)} />}
+
       {showNew && canManage && (
         <NewOrderForm officeId={officeId} caseKey={caseKey} defaultCourt={props.courtName}
           onDone={(o) => { setShowNew(false); setActiveId(o.id); void load(); }} onCancel={() => setShowNew(false)} />
@@ -139,8 +150,12 @@ export default function CorrectionPanel(props: Props) {
           setBusy={setBusy}
           reload={load}
           dialog={dialog}
+          precedents={precedents.list}
+          reloadPrecedents={precedents.reload}
         />
       )}
+
+      {canManage && <CorrectionStatsCard officeId={officeId} />}
     </section>
   );
 }
@@ -232,6 +247,7 @@ function NewOrderForm({ officeId, caseKey, defaultCourt, onDone, onCancel }: { o
 type DetailProps = Props & {
   order: CorrectionOrder; items: CorrectionItem[]; exhibits: CaseExhibit[]; library: LibraryEntry[]; locked: boolean;
   busy: boolean; setBusy: (b: boolean) => void; reload: () => Promise<void>; dialog: ReturnType<typeof useDialog>;
+  precedents: CorrectionPrecedent[] | null; reloadPrecedents: () => Promise<void>;
 };
 
 function OrderDetail(p: DetailProps) {
@@ -352,27 +368,39 @@ function OrderDetail(p: DetailProps) {
           제출한 보정서 사본 공개 (제출 뒤)
         </label>
         {order.sourceFileId && <SourceFileLink fileId={order.sourceFileId} label="원문 파일 열기" />}
+        {order.briefFileId && <SourceFileLink fileId={order.briefFileId} label="보정서 PDF 열기" />}
       </div>
 
+      <OcrFoundNotice order={order} caseNumber={p.caseNumber} />
+
       <div className="flex flex-wrap gap-2">
+        <OcrReadButton order={order} items={items} library={library} editable={editable} dialog={dialog} reload={reload} />
         {editable && <button type="button" disabled={busy} onClick={() => void split()} className={`${btn} border border-slate-200 text-slate-700 hover:bg-slate-50`}><Scissors className="w-3.5 h-3.5" /> 원문 번호대로 나누기</button>}
         {editable && <button type="button" disabled={busy} onClick={() => void addItem()} className={`${btn} border border-slate-200 text-slate-700 hover:bg-slate-50`}>항목 추가</button>}
         {editable && <button type="button" disabled={busy || draftClientCount === 0} onClick={() => void requestClient()} className={`${btn} bg-blue-600 text-white hover:bg-blue-500`}><Send className="w-3.5 h-3.5" /> 의뢰인에게 요청 ({draftClientCount})</button>}
         <button type="button" onClick={printBrief} disabled={items.length === 0} className={`${btn} border border-slate-200 text-slate-700 hover:bg-slate-50`}><Printer className="w-3.5 h-3.5" /> 요약보정서 미리보기·인쇄</button>
+        <BriefFileUpload order={order} officeId={p.officeId} caseKey={p.caseKey} editable={editable} reload={reload} />
+        <BundleButton order={order} items={items} exhibits={p.exhibits} disabled={items.length === 0 && !order.briefFileId} />
         {canFinalize && !locked && <button type="button" disabled={busy} onClick={() => void submit()} className={`${btn} bg-emerald-600 text-white hover:bg-emerald-500`}>법원 제출 기록</button>}
         {canFinalize && !locked && <button type="button" disabled={busy} onClick={() => void removeOrder()} className={`${btn} border border-rose-200 text-rose-700 hover:bg-rose-50`}><Trash2 className="w-3.5 h-3.5" /> 회차 지우기</button>}
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-slate-500 border border-dashed border-slate-200 rounded-xl p-4">항목이 없어요. 원문을 번호대로 나누거나 항목을 직접 추가하세요.</p>
+        <p className="text-sm text-slate-500 border border-dashed border-slate-200 rounded-xl p-4">항목이 없어요. 원문 파일을 읽거나, 원문을 번호대로 나누거나, 항목을 직접 추가하세요.</p>
       ) : (
         <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
           {items.map(it => (
             <ItemRow key={it.id} item={it} open={openId === it.id} onToggle={() => setOpenId(v => (v === it.id ? null : it.id))}
-              library={library} editable={editable} reload={reload} dialog={dialog} />
+              library={library} editable={editable} reload={reload} dialog={dialog}
+              precedents={p.precedents} reloadPrecedents={p.reloadPrecedents} canFinalize={canFinalize}
+              maskTerms={[p.applicantName || ''].filter(Boolean)} />
           ))}
         </ul>
       )}
+
+      <RevisedDocsSection order={order} items={items} officeId={p.officeId} caseKey={p.caseKey} editable={editable} onOpenEditor={p.onOpenEditor} reload={reload} />
+      <ExtensionSection order={order} items={items} editable={canManage && !locked} dialog={dialog} reload={reload}
+        header={{ caseNumber: p.caseNumber, applicantName: p.applicantName, courtName: p.courtName, lawyerName: p.lawyerName, officeName: p.officeName }} />
     </div>
   );
 }
@@ -397,9 +425,10 @@ function SourceFileLink({ fileId, label }: { fileId: string; label: string }) {
   return <button type="button" onClick={() => void open()} className="min-h-[44px] text-xs font-bold text-blue-700 underline underline-offset-2 cursor-pointer">{label}</button>;
 }
 
-function ItemRow({ item, open, onToggle, library, editable, reload, dialog }: {
+function ItemRow({ item, open, onToggle, library, editable, reload, dialog, precedents, reloadPrecedents, canFinalize, maskTerms }: {
   item: CorrectionItem; open: boolean; onToggle: () => void; library: LibraryEntry[]; editable: boolean;
   reload: () => Promise<void>; dialog: ReturnType<typeof useDialog>;
+  precedents: CorrectionPrecedent[] | null; reloadPrecedents: () => Promise<void>; canFinalize: boolean; maskTerms: string[];
 }) {
   const [draft, setDraft] = useState(item);
   const [saving, setSaving] = useState(false);
@@ -504,7 +533,16 @@ function ItemRow({ item, open, onToggle, library, editable, reload, dialog }: {
             </div>
           )}
 
+          {canEditSetup && <T2ImportButton item={item} onDone={() => void reload()} />}
+          {!clientSide && item.tableType && item.tableRows.length > 0 && <p className="text-xs text-slate-600">표에 미리 넣은 줄 {item.tableRows.length}개 — 의뢰인에게 요청하면 의뢰인이 사용처를 채워요.</p>}
+
           {clientSide && <ClientResponseView item={item} />}
+
+          {editable && (
+            <PrecedentTools item={item} precedents={precedents} canFinalize={canFinalize} maskTerms={maskTerms}
+              onPick={(text) => setDraft(d => ({ ...d, answerText: d.answerText ? `${d.answerText}\n${text}` : text }))}
+              onSaved={() => void reloadPrecedents()} />
+          )}
 
           <label className="block space-y-1 text-xs font-bold text-slate-700">보정서 답변 문안 (변호사 확정, '별지 ○'·'소갑 제○호증'은 출력 때 번호로 바뀌어요)
             <textarea value={draft.answerText || ''} disabled={!editable} rows={4} onChange={e => setDraft(d => ({ ...d, answerText: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />

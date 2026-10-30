@@ -65,3 +65,24 @@ describe('buildCorrectionBrief', () => {
     expect(m.attachments).toEqual(['소갑 제3호증 해약환급금 증명서']);
   });
 });
+
+import { ocrItemsToDrafts } from './correctionText';
+
+describe('ocrItemsToDrafts', () => {
+  it('본문 키워드가 먼저, 없으면 읽기 분류로 라이브러리 연결, 빈 항목은 버림', () => {
+    const lib: any[] = [
+      { id: 'lib-insurance', category: '보험', title: '보험', clientTitle: '보험 자료', neededDocs: ['해약환급금 증명서'], questions: [], owner: 'client', keywords: ['해약환급금'] },
+      { id: 'lib-loan-use', category: '채무 증대 경위', title: '대출금', clientTitle: '대출금 사용처', neededDocs: [], questions: [], owner: 'client', keywords: ['사용처 소명'] },
+    ];
+    const d = ocrItemsToDrafts([
+      { itemNumber: '가', instruction: '보험 해약환급금 자료를 제출할 것', category: 'OTHER' },
+      { itemNumber: 2, instruction: '최근 대출의 용도를 밝힐 것', category: 'LOAN' },
+      { itemNumber: 3, instruction: '  ', category: 'DOCUMENT' },
+      { itemNumber: null, instruction: '회생위원과 면담할 것', category: 'OTHER', requiredEvidence: '면담 일정' },
+    ], lib, 2);
+    expect(d.map(x => [x.seq, x.label, x.libraryId, x.owner])).toEqual([
+      [3, '가', 'lib-insurance', 'client'], [4, '2', 'lib-loan-use', 'client'], [5, '5', undefined, 'office'],
+    ]);
+    expect(d[2].neededDocs).toEqual(['면담 일정']);
+  });
+});

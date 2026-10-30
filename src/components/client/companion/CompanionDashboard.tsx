@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { RehabCompanionCase, RepaymentRoundItem, RepaymentVerificationStatus } from '../../../types';
 import {
   Award, CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, FileSpreadsheet, FileText, HeartHandshake,
-  Layers, LifeBuoy, Pencil, Search, Users, CircleAlert, Wallet
+  Layers, LifeBuoy, Pencil, Search, Users, CircleAlert, Wallet, ClipboardList
 } from 'lucide-react';
 import { evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
 import { updateCrmClientExtension } from '../../../services/crmService';
@@ -20,6 +20,7 @@ const Fast2ndDocHubModal = React.lazy(() => import('../Fast2ndDocHubModal'));
 const ClientStatementModal = React.lazy(() => import('../statement/ClientStatementModal'));
 const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('../incomeExpense/ClientMonthlyIncomeExpenseModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('../property/ClientPropertyIntakeModal'));
+const SelfCorrectionNotebookModal = React.lazy(() => import('./SelfCorrectionNotebookModal'));
 
 interface CompanionDashboardProps {
   caseData: RehabCompanionCase;
@@ -178,6 +179,7 @@ export default function CompanionDashboard({
 
   // 서류 준비 허브 및 서류 모달 상태
   const [isDocHubOpen, setIsDocHubOpen] = useState(false);
+  const [isSelfCorrectionOpen, setIsSelfCorrectionOpen] = useState(false);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [isIncomeExpenseModalOpen, setIsIncomeExpenseModalOpen] = useState(false);
   const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
@@ -241,9 +243,11 @@ export default function CompanionDashboard({
         : '마이김변 담당 변호사';
 
   // ── 도구와 안내: 사건 단계에 맞는 도구를 앞에 둔다 ──
-  type ToolId = 'docs' | 'audit' | 'overdue' | 'meeting' | 'court' | 'support';
+  type ToolId = 'docs' | 'audit' | 'correction' | 'overdue' | 'meeting' | 'court' | 'support';
   const toolDefs: Record<ToolId, { icon: React.ReactNode; title: string; desc: string; onClick: () => void } | null> = {
     docs: { icon: <Layers className="w-5 h-5" />, title: '회생 서류 준비', desc: '진술서·수지표·재산 기초자료 초안을 만들고 담당자에게 보내요', onClick: () => setIsDocHubOpen(true) },
+    // 마이김변 변호사 사건은 '내 사건 › 보정 할 일'로 사무소 요청을 받는다. 그 밖의 사건은 본인용 정리 (CR-12)
+    correction: caseData.sourceType === 'mykim_lawyer' ? null : { icon: <ClipboardList className="w-5 h-5" />, title: '내 보정 정리', desc: '법원 보정 항목을 옮겨 적고 낼 서류·표를 정리해요', onClick: () => setIsSelfCorrectionOpen(true) },
     audit: { icon: <FileSpreadsheet className="w-5 h-5" />, title: '통장·카드 거래 소명', desc: '큰 금액 거래의 사용처를 정리해 법원 제출 양식으로 만들어요', onClick: () => setIsBankAuditModalOpen(true) },
     overdue: { icon: <LifeBuoy className="w-5 h-5" />, title: '변제금이 밀렸을 때', desc: '분납·변제계획 변경 등 대처 방법을 알려 드려요', onClick: () => setIsDefenseGuideModalOpen(true) },
     meeting: { icon: <Users className="w-5 h-5" />, title: '채권자집회 안내', desc: '출석 전에 준비할 것과 진행 순서', onClick: () => setIsCreditorMeetingModalOpen(true) },
@@ -254,7 +258,7 @@ export default function CompanionDashboard({
   };
   const toolOrder: ToolId[] =
     caseData.caseStage === 'submitted' || caseData.caseStage === 'correction' || caseData.caseStage === 'preparing'
-      ? ['audit', 'docs', 'court', 'meeting', 'overdue', 'support']
+      ? ['correction', 'audit', 'docs', 'court', 'meeting', 'overdue', 'support']
       : caseData.caseStage === 'started'
         ? ['meeting', 'docs', 'audit', 'court', 'overdue', 'support']
         : ['overdue', 'court', 'support', 'docs', 'audit', 'meeting'];
@@ -704,6 +708,13 @@ export default function CompanionDashboard({
         courtName={caseData.courtName}
         caseNumber={caseData.caseNumber}
       />
+
+      {/* 내 보정 정리 (나홀로·다른 사무소 사건, CR-12) */}
+      {isSelfCorrectionOpen && (
+        <React.Suspense fallback={null}>
+          <SelfCorrectionNotebookModal onClose={() => setIsSelfCorrectionOpen(false)} defaultCourt={caseData.courtName} />
+        </React.Suspense>
+      )}
 
       {/* 서류 준비 허브 */}
       {isDocHubOpen && (

@@ -33,8 +33,25 @@ export interface CorrectionOrder {
   receiptFileId?: string;
   briefFileId?: string;
   extensionNote?: string;
+  /** 원문 파일 읽기(CR-3): 읽은 파일·찾은 값(참고용) */
+  ocrStatus: 'none' | 'done' | 'failed';
+  ocrAt?: string;
+  ocrFileId?: string;
+  ocrFound: { courtName?: string; caseNumber?: string; dueDate?: string; itemCount?: number };
+  /** 수정본 연결(CR-8) */
+  revisedDocs: RevisedDoc[];
+  /** 회생위원 보수·양육비 조항 등 확인 기록(CR-8) */
+  checks: Record<string, { done: boolean; note?: string; at?: string }>;
+  /** 연장(CR-11) */
+  extensionRequestedOn?: string;
+  extensionDays?: number;
+  extensionDecision?: 'granted' | 'denied';
+  extensionDecidedOn?: string;
+  originalCourtDue?: string;
   createdAt: string;
 }
+
+export interface RevisedDoc { kind: 'plan' | 'creditors' | 'property' | 'income' | 'statement' | 'other'; label: string; fileId?: string; unchanged?: boolean; at?: string }
 
 export interface CorrectionItem {
   id: string;
@@ -96,6 +113,11 @@ function msg(error: any, fallback: string): string {
   if (m.includes('nothing submitted yet')) return '의뢰인이 아직 보내지 않은 항목이에요.';
   if (m.includes('submitted date must be')) return '제출일은 송달일과 오늘 사이여야 해요.';
   if (m.includes('already confirmed')) return '사무소가 이미 확인한 항목이에요.';
+  if (m.includes('extension days')) return '연장 일수는 1~90일로 적어 주세요.';
+  if (m.includes('new due must be')) return '새 기한은 지금 기한보다 뒤여야 해요.';
+  if (m.includes('request date must be')) return '신청일은 송달일과 오늘 사이여야 해요.';
+  if (m.includes('answer text required')) return '답변 문안이 있는 항목만 선례로 저장할 수 있어요.';
+  if (m.includes('precedent limit')) return '선례는 500개까지 저장할 수 있어요. 안 쓰는 선례를 지워 주세요.';
   if (m.includes('not allowed') || m.includes('row-level security')) return '이 사건의 보정을 다룰 권한이 없어요.';
   return fallback;
 }
@@ -108,6 +130,11 @@ const mapOrder = (r: any): CorrectionOrder => ({
   clientCanViewSource: r.client_can_view_source !== false, clientCanViewBrief: r.client_can_view_brief !== false,
   brief: r.brief && typeof r.brief === 'object' ? r.brief : {}, submittedOn: r.submitted_on || undefined,
   receiptFileId: r.receipt_file_id || undefined, briefFileId: r.brief_file_id || undefined, extensionNote: r.extension_note || undefined,
+  ocrStatus: r.ocr_status || 'none', ocrAt: r.ocr_at || undefined, ocrFileId: r.ocr_file_id || undefined,
+  ocrFound: r.ocr_found && typeof r.ocr_found === 'object' ? r.ocr_found : {},
+  revisedDocs: Array.isArray(r.revised_docs) ? r.revised_docs : [], checks: r.checks && typeof r.checks === 'object' ? r.checks : {},
+  extensionRequestedOn: r.extension_requested_on || undefined, extensionDays: r.extension_days ?? undefined,
+  extensionDecision: r.extension_decision || undefined, extensionDecidedOn: r.extension_decided_on || undefined, originalCourtDue: r.original_court_due || undefined,
   createdAt: r.created_at,
 });
 
@@ -177,7 +204,8 @@ export async function createCorrectionOrder(officeId: string, caseKey: string, i
 
 export async function updateCorrectionOrder(id: string, patch: Partial<Pick<CorrectionOrder,
   'courtName' | 'servedOn' | 'periodKind' | 'periodDays' | 'fixedDue' | 'officeDue' | 'officeDueManual' | 'sourceText' | 'sourceFileId'
-  | 'clientCanViewSource' | 'clientCanViewBrief' | 'brief' | 'receiptFileId' | 'briefFileId' | 'extensionNote' | 'kind' | 'issuer'>> & { status?: 'itemized' | 'drafting' | 'review' | 'extension' }): Promise<R<CorrectionOrder>> {
+  | 'clientCanViewSource' | 'clientCanViewBrief' | 'brief' | 'receiptFileId' | 'briefFileId' | 'extensionNote' | 'kind' | 'issuer'
+  | 'revisedDocs' | 'checks' | 'ocrStatus' | 'ocrFileId' | 'ocrFound'>> & { status?: 'itemized' | 'drafting' | 'review' | 'extension' }): Promise<R<CorrectionOrder>> {
   const row: Record<string, unknown> = {};
   if ('courtName' in patch) row.court_name = patch.courtName || null;
   if ('servedOn' in patch) row.served_on = patch.servedOn;
@@ -196,6 +224,11 @@ export async function updateCorrectionOrder(id: string, patch: Partial<Pick<Corr
   if ('extensionNote' in patch) row.extension_note = patch.extensionNote || null;
   if ('kind' in patch) row.kind = patch.kind;
   if ('issuer' in patch) row.issuer = patch.issuer;
+  if ('revisedDocs' in patch) row.revised_docs = patch.revisedDocs || [];
+  if ('checks' in patch) row.checks = patch.checks || {};
+  if ('ocrStatus' in patch) { row.ocr_status = patch.ocrStatus; row.ocr_at = new Date().toISOString(); }
+  if ('ocrFileId' in patch) row.ocr_file_id = patch.ocrFileId || null;
+  if ('ocrFound' in patch) row.ocr_found = patch.ocrFound || {};
   if (patch.status) row.status = patch.status;
   const { data, error } = await supabase.from('correction_orders').update(row).eq('id', id).select('*').single();
   if (error) return { ok: false, message: msg(error, '회차를 저장하지 못했어요.') };
@@ -359,4 +392,55 @@ export async function loadCaseFilesByIds(ids: string[]): Promise<Array<{ id: str
 export const CORRECTIONS_CHANGED_EVENT = 'mykim:corrections-changed';
 export function notifyCorrectionsChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(CORRECTIONS_CHANGED_EVENT));
+}
+
+// ── 연장 신청·결정 (CR-11) ──
+export async function recordCorrectionExtension(orderId: string, action: 'request' | 'granted' | 'denied', p: { days?: number; note?: string; requestedOn?: string; newDue?: string; decidedOn?: string } = {}): Promise<R<CorrectionOrder>> {
+  const { data, error } = await supabase.rpc('record_correction_extension', {
+    p_order_id: orderId, p_action: action,
+    p: { days: p.days ?? null, note: p.note ?? null, requested_on: p.requestedOn ?? null, new_due: p.newDue ?? null, decided_on: p.decidedOn ?? null },
+  });
+  if (error) return { ok: false, message: msg(error, '연장 기록을 저장하지 못했어요.') };
+  notifyCorrectionsChanged();
+  return { ok: true, data: mapOrder(data) };
+}
+
+// ── 사무소 보정 통계 (CR-12, 개인정보 없음) ──
+export interface CorrectionStats {
+  byCourt: Array<{ court: string; orders: number; submitted: number; avgDays: number | null; extensions: number }>;
+  byCategory: Array<{ court: string; category: string; items: number; cannot: number; needsFix: number }>;
+}
+export async function loadCorrectionStats(officeId: string): Promise<R<CorrectionStats>> {
+  const { data, error } = await supabase.rpc('office_correction_stats', { p_office_id: officeId });
+  if (error) return { ok: false, message: msg(error, '보정 통계를 불러오지 못했어요.') };
+  const d = (data || {}) as any;
+  return {
+    ok: true,
+    data: {
+      byCourt: (d.by_court || []).map((x: any) => ({ court: x.court, orders: Number(x.orders) || 0, submitted: Number(x.submitted) || 0, avgDays: x.avg_days === null || x.avg_days === undefined ? null : Number(x.avg_days), extensions: Number(x.extensions) || 0 })),
+      byCategory: (d.by_category || []).map((x: any) => ({ court: x.court, category: x.category, items: Number(x.items) || 0, cannot: Number(x.cannot) || 0, needsFix: Number(x.needs_fix) || 0 })),
+    },
+  };
+}
+
+// ── 선례 문안 보관함 (CR-12, 변호사가 확정한 문안만, 이름·사건번호 가림) ──
+export interface CorrectionPrecedent { id: string; category?: string; title: string; answerText: string; courtName?: string; createdAt: string }
+const mapPrecedent = (r: any): CorrectionPrecedent => ({ id: r.id, category: r.category || undefined, title: r.title, answerText: r.answer_text, courtName: r.court_name || undefined, createdAt: r.created_at });
+
+export async function loadPrecedents(officeId: string): Promise<R<CorrectionPrecedent[]>> {
+  const { data, error } = await supabase.from('correction_precedents').select('*').eq('office_id', officeId).order('created_at', { ascending: false }).limit(500);
+  if (error) return { ok: false, message: msg(error, '선례를 불러오지 못했어요.') };
+  return { ok: true, data: (data || []).map(mapPrecedent) };
+}
+
+export async function savePrecedent(itemId: string, title: string, maskTerms: string[]): Promise<R<CorrectionPrecedent>> {
+  const { data, error } = await supabase.rpc('save_correction_precedent', { p_item_id: itemId, p_title: title, p_mask_terms: maskTerms.filter(s => s && s.trim().length >= 2) });
+  if (error) return { ok: false, message: msg(error, '선례로 저장하지 못했어요.') };
+  return { ok: true, data: mapPrecedent(data) };
+}
+
+export async function deletePrecedent(id: string): Promise<R<true>> {
+  const { error, count } = await supabase.from('correction_precedents').delete({ count: 'exact' }).eq('id', id);
+  if (error || !count) return { ok: false, message: msg(error, '선례를 지우지 못했어요. 변호사만 지울 수 있어요.') };
+  return { ok: true, data: true };
 }
