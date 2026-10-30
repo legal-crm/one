@@ -5,7 +5,8 @@
   "outputDirectory": "dist",
   "functions": {
     "api/generate-statement.js": { "maxDuration": 60 },
-    "api/popbill.js": { "maxDuration": 60 }
+    "api/popbill.js": { "maxDuration": 60 },
+    "api/pdf.js": { "maxDuration": 60, "memory": 2048 }
   },
   "crons": [
     { "path": "/api/generate-statement?cron=marketing-daily", "schedule": "30 22 * * *" }

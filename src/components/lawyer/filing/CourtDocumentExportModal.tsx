@@ -3,7 +3,7 @@
 // [리걸플로 벤치마킹] 법원문서 8종 일괄출력 센터 & 모바일 의뢰인 제출동의 (STEP 8)
 // 매뉴얼 p.68 ~ p.69 그림 7-34, 7-35, 7-36 완벽 대응
 // 0. 개시 신청서
-// 1. 채권자 목록 (PDF 및 대법원 전자소송 UTF-8 BOM CSV)
+// 1. 채권자 목록 (PDF 및 전자소송 채권자 CSV (CP949))
 // 2. 재산 목록
 // 3. 수입 및 지출에 관한 목록
 // 4. 진술서
@@ -87,7 +87,7 @@ function CourtDocumentExportModalInner({
       action: () => {
         const csv = CourtBatchFilingService.generateCourtCreditorCsv(plan.creditors, clientName);
         CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송]_${clientName}_채권자목록_등록양식.csv`);
-        toast.success('대법원 전자소송 UTF-8 BOM CSV 파일이 다운로드되었습니다.');
+        toast.success('전자소송 채권자 CSV(CP949)를 내려받았어요.');
       }
     },
     {
@@ -269,7 +269,7 @@ function CourtDocumentExportModalInner({
                       type="button"
                       onClick={doc.action}
                       className="px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1 press-scale transition-colors"
-                      title="대법원 전자소송 UTF-8 BOM CSV 다운로드"
+                      title="전자소송 채권자 CSV (CP949) 다운로드"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
                       <span>CSV</span>

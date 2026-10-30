@@ -100,6 +100,12 @@ export default function ServerCaseFilesPanel({ officeId, clientKey, canManage, v
   };
 
   useEffect(() => { void load(); }, [load]);
+  // 서식 허브에서 PDF를 저장하면 다시 읽는다 (H-13)
+  useEffect(() => {
+    const h = (e: Event) => { const k = (e as CustomEvent).detail?.caseKey; if (!k || k === clientKey) void load(); };
+    window.addEventListener('mykim:case-files-changed', h);
+    return () => window.removeEventListener('mykim:case-files-changed', h);
+  }, [load, clientKey]);
 
   const openFile = async (r: Row) => {
     const url = await getCaseFileUrl({ storagePath: r.storagePath });

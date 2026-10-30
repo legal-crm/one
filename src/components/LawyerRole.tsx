@@ -2665,6 +2665,7 @@ export default function LawyerRole({
                 if (linkType === 'case_documents') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
                 if (linkType === 'case_fees') { if (linkId) openCase(linkId, 'fees'); else openCase(); return; }
                 if (linkType === 'case_correction') { if (linkId) openCase(linkId, 'corrections'); else openCase(); return; }
+                if (linkType === 'case_forms') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
                 if (linkType === 'proposal_review') {
                   const pending = pendingProposals.find(p => p.id === linkId);
                   if (pending) {

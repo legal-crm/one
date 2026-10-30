@@ -13,7 +13,8 @@ import { estimatedCreditorCount } from '../../../services/debt/debtLedgerRules';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import ModalPortal from '../../common/ModalPortal';
 import { 
-  CourtBatchFilingService, 
+  CourtBatchFilingService,
+  getLastMergeMissing, 
   REHAB_14_STANDARD_ORDER, 
   BANKRUPTCY_10_STANDARD_ORDER,
   REHAB_7_BUNDLE_SPEC,
@@ -122,15 +123,15 @@ function BatchFilingPackagingModalInner({
         }
       });
 
-      // 시스템 서식도 만든 PDF를 이 칸에 올려야 준비 완료 (이전: 파일 없이도 '준비 완료'로 보였지만 묶음엔 빈 간지만 들어갔다)
+      // 시스템 서식은 올린 파일이 없으면 묶을 때 작성기 데이터로 글자 PDF를 만든다 (H-7, 서버 /api/pdf)
       const hasUploadedFiles = matchedFiles.length > 0;
-      const isReady = hasUploadedFiles;
+      const isReady = hasUploadedFiles || isSystemCoreForm;
 
       return {
         ...t,
         status: isReady ? 'READY' : (t.isRequired ? 'MISSING' : 'OPTIONAL_SKIPPED'),
         files: matchedFiles,
-        notes: !hasUploadedFiles && isSystemCoreForm ? '서식 미작성' : undefined,
+        notes: !hasUploadedFiles && isSystemCoreForm ? '작성기 데이터로 생성' : undefined,
         file: hasUploadedFiles ? matchedFiles[0] : undefined
       };
     });
@@ -175,7 +176,7 @@ function BatchFilingPackagingModalInner({
         order: 0,
         code: 'CSV',
         fileName: `00_대법원전자소송_${clientName}_채권자목록.csv`,
-        title: '대법원 전자소송 채권자목록 일괄등록 CSV (UTF-8 BOM)',
+        title: '전자소송 채권자 CSV (CP949)',
         category: 'CORE_FORM',
         isCore: true,
         fileCount: 1,
@@ -222,7 +223,7 @@ function BatchFilingPackagingModalInner({
         isDigital: isCore,
         isOver20MB,
         status: isReady ? 'READY' : 'MISSING',
-        notes: fileCount > 0 ? `${fileCount}개 파일 결합` : (isCore ? '서식 미작성 — 서식 작성기에서 PDF를 만들어 올려 주세요' : '의뢰인 업로드 필요')
+        notes: fileCount > 0 ? `${fileCount}개 파일 결합` : (isCore ? '작성기 데이터로 글자 PDF 생성 (내용 확인 필요)' : '의뢰인 업로드 필요')
       });
     });
 
@@ -270,9 +271,9 @@ function BatchFilingPackagingModalInner({
       CourtBatchFilingService.downloadZip(result.zipBlob, filename);
 
       if (result.hasSplitFiles) {
-        toast.success(`🎉 전자소송 패키지 다운로드 완료! (20MB 초과 서류는 _part1, _part2로 자동 분할되었습니다)`);
+        toast.success('전자소송 묶음 ZIP을 내려받았어요. 20MB가 넘는 서류는 _part1·_part2로 나눴어요.');
       } else {
-        toast.success(`🎉 회생위원 뷰어 최적화 표준 ZIP 패키지(총 ${result.totalFiles}개 파일, ${result.totalSizeFormatted}) 다운로드 완료!`);
+        toast.success(`전자소송 묶음 ZIP(파일 ${result.totalFiles}개, ${result.totalSizeFormatted})을 내려받았어요. '비어있음' 안내 파일은 올리지 마세요.`);
       }
     } catch (err: any) {
       console.error(err);
@@ -307,7 +308,11 @@ function BatchFilingPackagingModalInner({
       );
       const filename = `[사무실보관용]_${caseTypeTitle}_${clientName}_14단계_단일통합본.pdf`;
       CourtBatchFilingService.downloadPdf(bytes, filename);
-      toast.success('사무실 보관용 14단계 단일 PDF 결합 다운로드가 완료되었습니다.');
+      {
+        const miss = getLastMergeMissing();
+        if (miss.length) toast.warning(`통합 PDF를 내려받았어요. 빠진 칸 ${miss.length}개: ${miss.slice(0, 3).join(' / ')}`);
+        else toast.success('사무실 보관용 통합 PDF를 내려받았어요.');
+      }
     } catch (err: any) {
       console.error(err);
       toast.error('PDF 결합 중 오류가 발생했습니다: ' + (err?.message || ''));
@@ -326,7 +331,7 @@ function BatchFilingPackagingModalInner({
       const zipBlob = await CourtBatchFilingService.createFilingZip(await hydrateSlots(slots), clientName);
       const filename = `[전자소송업로드용]_${caseTypeTitle}_${clientName}_번호순정렬.zip`;
       CourtBatchFilingService.downloadZip(zipBlob, filename);
-      toast.success('📦 전자소송 등록용 번호순 ZIP 파일이 성공적으로 다운로드되었습니다!');
+      toast.success('번호순 서류 ZIP을 내려받았어요.');
     } catch (err: any) {
       console.error(err);
       toast.error('ZIP 압축 중 오류가 발생했습니다: ' + (err?.message || ''));
@@ -342,10 +347,12 @@ function BatchFilingPackagingModalInner({
       if (missingAddressCount > 0) {
         toast.warning(`⚠️ 주의: 채권자 ${missingAddressCount}곳의 송달주소가 미입력 상태입니다.`);
       }
-      const csv = CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
+      const csv = isBankruptcy ? CourtBatchFilingService.generateBankruptcyCourtCreditorCsv(creditors, clientName) : CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
       const filename = `[대법원전자소송]_${clientName}_채권자목록_일괄등록양식.csv`;
       CourtBatchFilingService.downloadCsv(csv, filename);
-      toast.success('📊 대법원 전자소송 호환 채권자목록 CSV(UTF-8 BOM) 파일이 다운로드되었습니다!');
+      const csvWarn = CourtBatchFilingService.creditorCsvWarnings(creditors, isBankruptcy);
+      if (csvWarn.length) toast.warning(`채권자 CSV에 빈 칸 ${csvWarn.length}개: ${csvWarn.slice(0, 3).join(' / ')}`);
+      else toast.success('전자소송 채권자 CSV(CP949)를 내려받았어요. 엑셀로 열었다 저장하면 형식이 깨질 수 있어 그대로 올려 주세요.');
     } catch (err: any) {
       toast.error('CSV 생성 실패: ' + (err?.message || ''));
     }
@@ -364,7 +371,7 @@ function BatchFilingPackagingModalInner({
       );
       const filename = `[전자소송7대묶음]_개인회생_${clientName}.zip`;
       CourtBatchFilingService.downloadZip(zipBlob, filename);
-      toast.success('🎉 법원 매뉴얼(7-1) 규격 전자소송 7대 묶음 ZIP 파일이 다운로드되었습니다!');
+      toast.success('7묶음 ZIP을 내려받았어요. 자료가 없는 묶음은 넣지 않았어요.');
     } catch (err: any) {
       console.error(err);
       toast.error('7대 묶음 ZIP 생성 중 오류가 발생했습니다: ' + (err?.message || ''));
@@ -794,7 +801,7 @@ function BatchFilingPackagingModalInner({
                         {isCore ? (
                           <span className={`text-xs font-bold px-1.5 py-0.2 rounded border flex items-center gap-1 ${isReady ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-800 bg-amber-50 border-amber-200'}`}>
                             <CheckCheck className="w-2.5 h-2.5" />
-                            <span>{isReady ? '작성한 서식 첨부됨' : '서식 미작성'}</span>
+                            <span>{fileCount > 0 ? '올린 서식 사용' : '작성기 데이터로 생성'}</span>
                           </span>
                         ) : (
                           <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
@@ -810,10 +817,10 @@ function BatchFilingPackagingModalInner({
                       </div>
 
                       <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 truncate">
-                        {isCore && !isReady ? (
-                          <span className="text-amber-700 font-medium truncate flex items-center gap-1">
+                        {isCore && fileCount === 0 ? (
+                          <span className="text-blue-700 font-medium truncate flex items-center gap-1">
                             <FileText className="w-3 h-3 shrink-0" />
-                            서식 작성기에서 PDF를 만들어 이 칸에 올려 주세요
+                            묶을 때 작성기 입력값으로 글자 PDF를 만들어요 — 작성기에서 내용을 먼저 확인해 주세요
                           </span>
                         ) : slot.files && slot.files.length > 0 ? (
                           <span className="text-emerald-700 font-medium truncate flex items-center gap-1">

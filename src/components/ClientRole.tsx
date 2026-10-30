@@ -2045,13 +2045,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     const server: ClientNotification[] = serverNotif.items.map(n => ({
       id: `srv:${n.id}`,
       // 보정 요청·보완 요청·제출 안내는 '내 사건'(마이페이지) 보정 할 일로
-      type: n.kind === 'lawyer_message' ? 'new_message' : (n.kind === 'document_rejected' || n.linkType === 'case_correction') ? 'document_request' : 'status_change',
+      type: n.kind === 'lawyer_message' ? 'new_message' : (n.kind === 'document_rejected' || n.linkType === 'case_correction' || n.linkType === 'case_forms') ? 'document_request' : 'status_change',
       title: n.count > 1 ? `${n.title} ${n.count}건` : n.title,
       body: n.body || '',
       createdAt: n.updatedAt,
       isRead: !!n.readAt,
-      linkTab: (n.kind === 'document_rejected' || n.linkType === 'case_correction') ? 'mypage' : 'chat',
-      emoji: n.kind === 'lawyer_message' ? '💬' : n.kind === 'document_rejected' ? '📄' : n.linkType === 'case_correction' ? '📝' : '📨',
+      linkTab: (n.kind === 'document_rejected' || n.linkType === 'case_correction' || n.linkType === 'case_forms') ? 'mypage' : 'chat',
+      emoji: n.kind === 'lawyer_message' ? '💬' : n.kind === 'document_rejected' ? '📄' : n.linkType === 'case_correction' || n.linkType === 'case_forms' ? '📝' : '📨',
     }));
     return [...server, ...localNotifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
   }, [serverNotif.items, localNotifications]);

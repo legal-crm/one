@@ -13,6 +13,7 @@ import MyCaseDocsSection from './MyCaseDocsSection';
 import MyCorrectionTodo from './MyCorrectionTodo';
 import MyDebtCertProgress from './MyDebtCertProgress';
 import MyPlanPaymentsSection from './MyPlanPaymentsSection';
+import MyCaseFormsSection from './MyCaseFormsSection';
 
 const CASE_TYPE_LABEL = { rehab: '개인회생', bankruptcy: '개인파산·면책' } as const;
 const GROUP_LABELS = ['상담', '계약', '서류 준비', '신청·접수', '법원 심사', '변제·면책'];
@@ -105,6 +106,8 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
             {c.stage === 'closed' && <p className="mt-2 text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
             {/* 법원 보정 할 일 (CR-5): 진행 중 회차가 있으면 맨 위에 */}
             {c.stage !== 'closed' && <MyCorrectionTodo caseKey={c.workspaceKey} />}
+            {/* 사무소가 작성을 요청한 서식 (H-14) */}
+            {c.stage !== 'closed' && <MyCaseFormsSection caseKey={c.workspaceKey} />}
             {/* 부채증명서 진행 (DC-10): 받은 곳 수와 발급 중 주의사항 */}
             {c.stage !== 'closed' && <MyDebtCertProgress caseKey={c.workspaceKey} />}
             {/* 법원 변제금 회차 (CM-8): 개시결정 뒤 사무소가 회차표를 만들면 보인다 */}

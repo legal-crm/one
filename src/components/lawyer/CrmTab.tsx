@@ -2964,9 +2964,10 @@ export default function CrmTab({
           onOpenBatchFiling={() => {
             setShowBatchFilingModal(true);
           }}
-          onAttachDocToPackage={async (docTitle) => {
-            // 이전: 내용 없는 가짜 PDF(data:...mock_)를 '완성본'으로 저장 → 제거
-            toast.info(`'${docTitle}' 서식을 인쇄 → PDF로 저장한 뒤 [문서] 탭의 '직접 업로드'로 첨부해 주세요.`);
+          officeId={officeId}
+          onCaseFilesChanged={() => {
+            // 서류 자료함·묶음이 저장소 목록을 다시 읽도록
+            window.dispatchEvent(new CustomEvent('mykim:case-files-changed', { detail: { caseKey: selectedId } }));
           }}
         />
       )}

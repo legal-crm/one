@@ -16,8 +16,10 @@ import {
   generateAiLegalDraftPrompt, 
   type BoundDocumentData 
 } from '../../../services/documents/documentTemplateEngine';
-import { ClientMobileDocService } from '../../../services/documents/clientMobileDocService';
-import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import { findCaseByWorkspaceKey, loadFormDraft, saveFormDraft } from '../../../services/cases/caseCoreService';
+import { renderTextPdf, courtPdfFileName } from '../../../services/court/courtPdfService';
+import { uploadCaseFile } from '../../../services/files/caseFileService';
+import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
 import ModalPortal from '../../common/ModalPortal';
 
 interface CourtFormEntry {
@@ -36,8 +38,12 @@ interface DocFormEditorModalProps {
   clientRequest: ConsultRequest;
   crmExt?: CrmClientExtension;
   activeLawyerName?: string;
-  onAttachToFilingPackage?: (docName: string, textContent: string) => void;
-  onOpenMobileFillModal?: (token: string) => void;
+  /** 서버 사무소 ID — 있으면 작성 내용 저장(H-12)·PDF 사건 서류함 저장(H-13)을 쓴다 */
+  officeId?: string;
+  /** 의뢰인에게 작성 요청 (H-14, 의뢰인 작성 서식만) */
+  onRequestClientForm?: () => void;
+  /** PDF를 사건 서류함에 저장한 뒤 (묶음·자료함 새로고침) */
+  onSavedToCase?: (file: DocumentFile) => void;
 }
 
 function DocFormEditorModalInner({
@@ -47,8 +53,9 @@ function DocFormEditorModalInner({
   clientRequest,
   crmExt,
   activeLawyerName = '',
-  onAttachToFilingPackage,
-  onOpenMobileFillModal
+  officeId,
+  onRequestClientForm,
+  onSavedToCase
 }: DocFormEditorModalProps) {
 
   const [boundData, setBoundData] = useState<BoundDocumentData>(() => {
@@ -57,7 +64,6 @@ function DocFormEditorModalInner({
 
   const [purposeInput, setPurposeInput] = useState(boundData.purpose);
   const [reasonInput, setReasonInput] = useState(boundData.reason);
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [showPrecedentModal, setShowPrecedentModal] = useState(false);
 
   // docItem이나 의뢰인 정보 변경 시 boundData, 취지, 이유 동기화
@@ -87,21 +93,13 @@ function DocFormEditorModalInner({
       .then(res => res.json())
       .then((data: CourtFormEntry[]) => {
         const targetFile = docItem.hwpxFileName;
-        const targetTitle = docItem.title.replace(/\s+/g, '');
 
-        // 스마트 매칭 알고리즘:
-        // 1. hwpxFileName 완전 일치
-        // 2. fileName 확장자 제외 명칭 일치
-        // 3. dCode 일치
-        // 4. 서식 명칭 정규화 일치
-        const matched = data.find(f => {
-          if (targetFile && f.fileName === targetFile) return true;
-          if (targetFile && f.name === targetFile.replace(/\.hwpx$/, '')) return true;
-          if (docItem.docCode && f.dCode && f.dCode === docItem.docCode) return true;
-          if (f.name.replace(/\s+/g, '') === targetTitle) return true;
-          if (f.name.includes(docItem.title) || docItem.title.includes(f.name)) return true;
-          return false;
-        });
+        // 원본 양식은 파일 이름 또는 서식 번호가 정확히 같을 때만 연결한다.
+        // (이전: 이름 일부만 같아도 연결해 '파산신청서'에 다른 파산 서식이 붙는 일이 있었음)
+        const matched =
+          (targetFile && data.find(f => f.fileName === targetFile || f.name === targetFile.replace(/\.hwpx$/, ''))) ||
+          (docItem.docCode && data.find(f => f.dCode && f.dCode === docItem.docCode)) ||
+          undefined;
 
         if (matched) {
           setHwpxEntry(matched);
@@ -165,60 +163,72 @@ function DocFormEditorModalInner({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [totalPages]);
 
-  // AI 사유서 보강 생성기 (서식 유형별 전문 법률 문안)
-  const handleAiDraft = () => {
-    setIsAiGenerating(true);
-    setTimeout(() => {
-      let enrichedReason = reasonInput;
-      if (docItem.title.includes('부동산')) {
-        enrichedReason = `1. 신청인(채무자 겸 소유자)은 귀원에 개인회생절차 개시신청을 접수하여 성실히 변제계획을 준비 중에 있습니다.\n2. 그러나 채권자의 부동산 강제경매(또는 임의경매) 절차가 계속 진행될 경우, 신청인 및 부양가족의 유일한 주거지가 매각되어 생계유지가 불가능해지고 변제계획의 정상적 수행이 원천적으로 차단됩니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 따라 경매절차의 긴급한 중지를 구하오니 신속히 인용하여 주시기 바랍니다.`;
-      } else if (docItem.title.includes('유체동산')) {
-        enrichedReason = `1. 신청인은 귀원에 개인회생절차 개시신청을 접수하고 성실히 절차를 이행하고 있습니다.\n2. 채권자의 신청에 기한 가재도구 및 집기비품에 대한 유체동산 경매 매각이 임박하여, 기본 일상생활 유지가 위태로운 상황입니다.\n3. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 따라 유체동산 집행 절차의 즉시 중지를 신청합니다.`;
-      } else if (docItem.title.includes('급여')) {
-        enrichedReason = `1. 신청인은 직장에 성실히 재직 중이나, 채권자들의 급여채권 압류 및 추심명령으로 인하여 최저생계비 보장이 곤란하여 회생절차 변제계획 수행이 심각하게 위협받고 있습니다.\n2. 이에 채무자 회생 및 파산에 관한 법률 제593조 제1항 제2호에 따라 급여 압류집행 절차의 중지를 신청하오니 인용하여 주시기 바랍니다.`;
-      } else if (docItem.category === 'RELEASE') {
-        enrichedReason = `1. 신청인에 대한 귀원 개인회생사건에 관하여 변제계획인가결정이 확정되었습니다.\n2. 채무자 회생 및 파산에 관한 법률 제615조 제3항에 따라 인가 전 행하여진 강제집행 및 가압류는 그 효력을 상실하였으므로, 그 집행을 즉시 해제하여 주시기 바랍니다.`;
-      } else if (docItem.category === 'CORRECTION') {
-        enrichedReason = `1. 귀원의 보정명령 지적사항을 엄숙히 수용하며, 사실관계와 금융소명자료를 바탕으로 상세히 소명합니다.\n2. 본 사안의 채무 증대 및 지출 과정에는 일체의 재산 은닉이나 사해행위가 없었음을 입증자료와 함께 명백히 밝힙니다.\n3. 이에 성실한 변제계획 이행을 다짐하오니 관대한 처분을 간청드립니다.`;
-      }
-      setReasonInput(enrichedReason);
-      setIsAiGenerating(false);
-      toast.success('사건 유형별 전문 실무 문안으로 보강되었습니다.');
-    }, 150);
+  // ── 작성 내용 서버 저장 (H-12) ──
+  // 이전: 취지·이유를 고쳐도 창을 닫으면 사라졌다. 사건(cases)마다 서식별로 case_form_drafts에 저장한다(주민번호 형태 값은 서버가 거절).
+  const formKey = `doc.${docItem.docCode.toLowerCase().replace(/[^a-z0-9_.-]/g, '-')}`.slice(0, 60);
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const [draftVersion, setDraftVersion] = useState<number | undefined>();
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !officeId) return;
+    let cancelled = false;
+    void (async () => {
+      const found = await findCaseByWorkspaceKey(officeId, clientRequest.id);
+      if (cancelled || found.ok === false || !found.data) return;
+      setCaseId(found.data.id);
+      const d = await loadFormDraft<{ purpose?: string; reason?: string; editedHtml?: string }>(found.data.id, formKey);
+      if (cancelled || d.ok === false || !d.data) return;
+      setDraftVersion(d.data.version);
+      if (typeof d.data.data.purpose === 'string') setPurposeInput(d.data.data.purpose);
+      if (typeof d.data.data.reason === 'string') setReasonInput(d.data.data.reason);
+      if (typeof d.data.data.editedHtml === 'string') setHwpxEditedHtml(d.data.data.editedHtml);
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, officeId, clientRequest.id, formKey]);
+
+  const handleSaveDraft = async () => {
+    if (!caseId) {
+      toast.error('서버 사건 기록이 아직 없어 저장할 수 없어요. 사건 화면에서 사건 기록을 먼저 시작해 주세요.');
+      return;
+    }
+    const editedHtml = hwpxEditedHtml && hwpxEditedHtml.length < 300_000 ? hwpxEditedHtml : undefined;
+    setSaving(true);
+    const r = await saveFormDraft(caseId, formKey, { purpose: purposeInput, reason: reasonInput, ...(editedHtml ? { editedHtml } : {}) }, draftVersion);
+    setSaving(false);
+    if (r.ok === false) { toast.error(r.message); return; }
+    setDraftVersion(r.data.version);
+    setSavedAt(new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+    toast.success('작성 내용을 사건에 저장했어요.');
   };
 
-  // 인쇄 기능: 미리보기 축소와 무관하게 원본 본문을 A4 규격 새 창에서 인쇄
-  const handlePrint = () => {
+  // 인쇄·PDF에 쓰는 본문 (미리보기 축소와 무관하게 원본 본문)
+  const buildDocumentHtml = (forServer: boolean): string | null => {
     const isHwpx = viewMode === 'HWPX_OFFICIAL' && !!hwpxEntry;
     const bodyHtml = isHwpx
       ? `<div class="court-hwpx-render">${activeHwpxHtml}</div>`
       : printSourceRef.current?.innerHTML || '';
-    if (!bodyHtml) {
-      toast.error('인쇄할 내용을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-      return;
-    }
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.');
-      return;
-    }
-    const appStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map(n => n.outerHTML)
-      .join('\n');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
+    if (!bodyHtml) return null;
+    // 서버 PDF는 외부 요청을 막으므로 화면 스타일을 글로 넣는다(같은 출처 스타일만 읽힘)
+    const appStyles = forServer
+      ? `<style>${Array.from(document.styleSheets).map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).filter(t => !t.startsWith('@font-face')).join('\n'); } catch { return ''; } }).join('\n')}</style>`
+      : Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).map(n => n.outerHTML).join('\n');
+    const title = docItem.title.replace(/[<>&"]/g, '');
+    return `<!DOCTYPE html>
+      <html lang="ko">
         <head>
-          <title>${docItem.title}</title>
+          <title>${title}</title>
           <meta charset="utf-8" />
-          <base href="${window.location.origin}/" />
+          ${forServer ? '' : `<base href="${window.location.origin}/" />`}
           ${appStyles}
           <style>
             @page { size: A4 portrait; margin: 20mm; }
             html, body { background: #fff !important; overflow: visible !important; height: auto !important; }
             body {
               margin: 0; padding: 0;
-              font-family: 'Batang', 'BatangChe', '바탕', serif;
+              font-family: 'NanumMyeongjo', 'Batang', 'BatangChe', '바탕', serif;
               font-size: 15px; line-height: 1.9; color: #000;
               -webkit-print-color-adjust: exact; print-color-adjust: exact;
             }
@@ -230,8 +240,21 @@ function DocFormEditorModalInner({
           </style>
         </head>
         <body>${bodyHtml}</body>
-      </html>
-    `);
+      </html>`;
+  };
+
+  const handlePrint = () => {
+    const html = buildDocumentHtml(false);
+    if (!html) {
+      toast.error('인쇄할 내용을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.');
+      return;
+    }
+    printWindow.document.write(html);
     printWindow.document.close();
     setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
   };
@@ -248,39 +271,40 @@ function DocFormEditorModalInner({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`'${docItem.title}' 원본 서식 파일을 다운로드했습니다.`);
+    toast.success(`'${docItem.title}' 빈 공식 양식(HWPX)을 내려받았어요. 이 파일에는 사건 내용이 채워져 있지 않아요.`);
   };
 
-  // 모바일 작성 링크 생성 및 알림톡 복사
-  const handleSendMobileRequest = () => {
-    const req = ClientMobileDocService.createRequest(
-      clientRequest.id,
-      clientRequest.clientName || '신청인',
-      clientRequest.phone || '',
-      docItem.docCode,
-      docItem.title
-    );
-    const msg = ClientMobileDocService.generateNotificationMessage(req);
-    navigator.clipboard.writeText(msg).then(
-      () => toast.success('모바일 작성 안내문이 복사되었습니다. 카카오톡·문자로 전달해 주세요.'),
-      () => toast.error('클립보드 복사에 실패했습니다.'),
-    );
-
-    if (onOpenMobileFillModal) {
-      onOpenMobileFillModal(req.token);
-    }
-  };
-
-  // 전자소송 패키지에 첨부
-  const handleAttach = () => {
-    if (!onAttachToFilingPackage) {
-      toast.error('이 화면에서는 전자소송 패키지 첨부가 연결되어 있지 않습니다.');
+  // 글자 PDF로 만들어 사건 서류함에 저장 (H-13) → 전자소송 묶음·자료함에서 바로 쓴다
+  // 이전: '전자소송 패키지에 첨부'를 누르면 아무것도 저장하지 않고 성공 안내만 보였다.
+  const handleSavePdfToCase = async () => {
+    if (!officeId) {
+      toast.error('사무소 정보가 없어 사건 서류함에 저장할 수 없어요. [양식 인쇄]에서 PDF로 저장해 주세요.');
       return;
     }
-    const fullText = `[${docItem.title}]\n\n사건: ${boundData.caseNumber}\n신청인: ${boundData.debtorName}\n\n[신청취지]\n${purposeInput}\n\n[신청이유]\n${reasonInput}`;
-    onAttachToFilingPackage(docItem.title, fullText);
-    toast.success(`'${docItem.title}'을(를) 전자소송 패키지 목록에 추가했습니다.`);
-    onClose();
+    const html = buildDocumentHtml(true);
+    if (!html) { toast.error('서식 내용을 불러오지 못했어요.'); return; }
+    setPdfBusy(true);
+    const pdf = await renderTextPdf(html, { title: docItem.title });
+    if (pdf.ok === false) { setPdfBusy(false); toast.error(pdf.message); return; }
+    const caseType = docItem.caseScope === 'BANKRUPTCY' ? 'bankruptcy' : 'rehab';
+    const name = courtPdfFileName(clientRequest.clientName || '신청인', caseType, docItem.title);
+    const dataUrl = await new Promise<string>((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result));
+      fr.onerror = () => rej(fr.error);
+      fr.readAsDataURL(new Blob([pdf.bytes], { type: 'application/pdf' }));
+    });
+    const up = await uploadCaseFile({
+      source: 'office', clientKey: clientRequest.id, officeId,
+      file: {
+        id: '', name, category: 'court_filing', uploadedAt: new Date().toISOString(), uploadedBy: activeLawyerName || '사무소',
+        mimeType: 'application/pdf', dataUrl, uploadSource: 'office', reviewStatus: 'approved', notes: `서식 ${docItem.docCode}`,
+      } as any,
+    });
+    setPdfBusy(false);
+    if (!up.ok || !up.file) { toast.error(up.message || 'PDF를 저장하지 못했어요.'); return; }
+    toast.success(`'${docItem.title}' PDF를 사건 서류함에 저장했어요. 전자소송 묶음에서 쓸 수 있어요.`);
+    if (up.file) onSavedToCase?.({ ...up.file, dataUrl: undefined });
   };
 
   return (
@@ -364,7 +388,7 @@ function DocFormEditorModalInner({
                 </span>
                 {docItem.hwpxFileName && (
                   <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-bold border border-blue-400/30">
-                    🏛️ HWPX 법원서식 연동됨
+                    🏛️ 법원 공식 양식 있음
                   </span>
                 )}
                 {docItem.isClientMobileSupport && (
@@ -385,20 +409,32 @@ function DocFormEditorModalInner({
                 type="button"
                 onClick={handleDownloadHwpxFile}
                 className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl flex items-center gap-1.5 press-scale cursor-pointer border border-slate-700"
-                title="원본 HWPX 파일 다운로드"
+                title="사건 내용이 채워지지 않은 법원 공식 양식 파일"
               >
                 <Download className="w-3.5 h-3.5 text-blue-400" />
-                <span>HWPX 다운로드</span>
+                <span>빈 양식 (HWPX)</span>
               </button>
             )}
-            {docItem.isClientMobileSupport && (
+            {onRequestClientForm && (
               <button
                 type="button"
-                onClick={handleSendMobileRequest}
-                className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-1.5 press-scale cursor-pointer shadow-xs"
+                onClick={onRequestClientForm}
+                className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-1.5 press-scale cursor-pointer shadow-xs whitespace-nowrap"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>의뢰인 모바일 요청</span>
+                <span>의뢰인에게 작성 요청</span>
+              </button>
+            )}
+            {officeId && (
+              <button
+                type="button"
+                onClick={() => void handleSaveDraft()}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl flex items-center gap-1.5 press-scale cursor-pointer whitespace-nowrap disabled:opacity-50"
+                title={savedAt ? `${savedAt}에 저장함` : '취지·이유·편집 내용을 사건에 저장'}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{saving ? '저장 중…' : savedAt ? `저장됨 ${savedAt}` : '작성 내용 저장'}</span>
               </button>
             )}
             <button
@@ -409,14 +445,17 @@ function DocFormEditorModalInner({
               <Printer className="w-3.5 h-3.5" />
               <span>양식 인쇄</span>
             </button>
-            <button
-              type="button"
-              onClick={handleAttach}
-              className="px-3.5 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-1.5 press-scale cursor-pointer shadow-xs"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>전자소송 패키지에 첨부</span>
-            </button>
+            {officeId && (
+              <button
+                type="button"
+                onClick={() => void handleSavePdfToCase()}
+                disabled={pdfBusy}
+                className="px-3.5 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-1.5 press-scale cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-50"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{pdfBusy ? 'PDF 만드는 중…' : 'PDF로 사건 서류함에 저장'}</span>
+              </button>
+            )}
             <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
               <X className="w-5 h-5" />
             </button>
@@ -441,7 +480,7 @@ function DocFormEditorModalInner({
                 >
                   <span>📁 과거 선례 참고</span>
                 </button>
-                <span className="text-[11px] text-slate-600 font-mono">CRM 자동 바인딩 완료</span>
+                <span className="text-[11px] text-slate-600 font-mono">사건 정보 반영</span>
               </div>
             </div>
 
@@ -453,11 +492,11 @@ function DocFormEditorModalInner({
               </div>
               <div>
                 <span className="text-slate-600">주민번호:</span>
-                <span className="font-mono text-slate-700 ml-1.5">{boundData.debtorRrn || '미등록'}</span>
+                <span className="text-slate-700 ml-1.5">저장 안 함 · 출력본에 직접 기재</span>
               </div>
               <div>
                 <span className="text-slate-600">관할법원:</span>
-                <span className="font-bold text-slate-900 ml-1.5">{boundData.courtName || '서울회생법원'}</span>
+                <span className="font-bold text-slate-900 ml-1.5">{boundData.courtName || '관할 법원 미정'}</span>
               </div>
               <div>
                 <span className="text-slate-600">사건번호:</span>
@@ -489,14 +528,14 @@ function DocFormEditorModalInner({
                 <label className="text-xs font-bold text-slate-800">
                   <span>신청이유 / 소명사유</span>
                 </label>
+                {/* 이전 'AI 사유 자동 보강'은 AI가 아니라 고정 문장(과장 표현 포함)이라 삭제. 기본 문안으로 되돌리기만 둔다 */}
                 <button
                   type="button"
-                  onClick={handleAiDraft}
-                  disabled={isAiGenerating}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/80 flex items-center gap-1 cursor-pointer press-scale"
+                  onClick={() => { setPurposeInput(boundData.purpose); setReasonInput(boundData.reason); }}
+                  className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
                 >
-                  <Sparkles className="w-3 h-3 text-indigo-500" />
-                  <span>{isAiGenerating ? '법률 사유 작성 중...' : 'AI 사유 자동 보강'}</span>
+                  <RotateCcw className="w-3 h-3" />
+                  <span>기본 문안으로 되돌리기</span>
                 </button>
               </div>
               <textarea
@@ -562,7 +601,7 @@ function DocFormEditorModalInner({
                     className="text-xs text-blue-700 font-bold flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-xl border border-blue-200 hover:bg-blue-50 cursor-pointer whitespace-nowrap press-scale"
                   >
                     <Download className="w-3 h-3 text-blue-600" />
-                    <span>HWPX 받기</span>
+                    <span>빈 양식 받기</span>
                   </button>
                 )}
               </div>

@@ -2,12 +2,15 @@
  * 법원 전자소송 순서정렬 일괄 PDF 결합 및 대법원 규격 채권자 CSV 추출 서비스
  * 서울회생법원 및 대법원 전자소송 포털 실제 접수본(14단계 표준 편철 순서) 100% 일치
  */
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import type { RepaymentCreditor, RepaymentPlanData } from '../repayment/repaymentTypes';
 import { 
   type CourtFormDataContext 
 } from './CourtFormHtmlBuilder';
+import { buildBankruptcyCreditorCsv, buildRehabCreditorCsv } from './eFilingCsv';
+import { encodeCp949 } from '../../utils/cp949';
+import { generateCourtOfficialFormPdf } from './CourtFormPdfGenerator';
 import { 
   splitPdfIfNeeded, 
   formatFileSize, 
@@ -269,6 +272,10 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   return bytes;
 }
 
+/** 마지막 단일 PDF 결합에서 빠진 칸 (화면 안내용) */
+let lastMergeMissing: string[] = [];
+export function getLastMergeMissing(): string[] { return lastMergeMissing; }
+
 export class CourtBatchFilingService {
   /**
    * 1. 전자소송 정규 14단계 순서 단일 PDF 일괄 결합 (Merge PDF)
@@ -283,7 +290,7 @@ export class CourtBatchFilingService {
     formDataContext?: CourtFormDataContext
   ): Promise<Uint8Array> {
     const mergedPdf = await PDFDocument.create();
-    const font = await mergedPdf.embedFont(StandardFonts.Helvetica);
+    const missing: string[] = [];
 
     for (const slot of slots) {
       let slotMerged = false;
@@ -345,109 +352,31 @@ export class CourtBatchFilingService {
         }
       }
 
-      // 2. 시스템 서식은 여기서 만들지 않는다. 이전: 서식마다 인쇄 창을 띄우고(빈 결과) 간지만 넣었다.
-      //    서식 작성기에서 만든 PDF를 이 칸에 올려야 묶음에 들어간다 (H-7에서 서버 글자 PDF로 교체 예정)
-
-      // 3. 소명자료 미첨부 또는 예외 시: 대한민국 법원 제출용 표준 한글 간지(Separator Sheet) 삽입
-      if (!slotMerged) {
-        const page = mergedPdf.addPage([595.28, 841.89]); // A4
-        const { width, height } = page.getSize();
-
-        // 상단 헤더 박스
-        page.drawRectangle({
-          x: 40,
-          y: height - 110,
-          width: width - 80,
-          height: 65,
-          borderColor: rgb(0.12, 0.23, 0.37),
-          borderWidth: 1.5,
-          color: rgb(0.96, 0.98, 1.0),
-        });
-
-        page.drawText(`[COURT ELECTRONIC FILING - SLOT #${slot.order}]`, {
-          x: 55,
-          y: height - 70,
-          size: 10,
-          font,
-          color: rgb(0.15, 0.3, 0.55),
-        });
-
-        page.drawText(`${slot.code}: ${slot.title}`, {
-          x: 55,
-          y: height - 92,
-          size: 13,
-          font,
-          color: rgb(0.08, 0.12, 0.2),
-        });
-
-        // 본문 안내 영역
-        page.drawRectangle({
-          x: 40,
-          y: 200,
-          width: width - 80,
-          height: 480,
-          borderColor: rgb(0.85, 0.88, 0.92),
-          borderWidth: 1,
-          color: rgb(1, 1, 1),
-        });
-
-        page.drawText(`CASE: ${caseTitle}`, {
-          x: 60,
-          y: 640,
-          size: 12,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-
-        page.drawText(`DEBTOR (APPLICANT): ${clientName}`, {
-          x: 60,
-          y: 615,
-          size: 11,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-
-        page.drawText(`SLOT CODE: ${slot.code} (${slot.category})`, {
-          x: 60,
-          y: 590,
-          size: 10,
-          font,
-          color: rgb(0.3, 0.3, 0.3),
-        });
-
-        page.drawText(`STATUS: ${slot.status === 'READY' ? 'ATTACHED / SYSTEM COMPILED' : 'SEPARATE EVIDENCE FILING REQUIRED'}`, {
-          x: 60,
-          y: 565,
-          size: 10,
-          font,
-          color: slot.status === 'READY' ? rgb(0.05, 0.6, 0.3) : rgb(0.8, 0.2, 0.1),
-        });
-
-        page.drawText(`* This cover certifies that Document Slot #${slot.order} is packaged in standard court sequence.`, {
-          x: 60,
-          y: 540,
-          size: 9,
-          font,
-          color: rgb(0.4, 0.4, 0.4),
-        });
-
-        page.drawText(`Republic of Korea Court Electronic Filing Packaging System`, {
-          x: width / 2 - 140,
-          y: 40,
-          size: 9,
-          font,
-          color: rgb(0.6, 0.6, 0.6),
-        });
+      // 2. 올린 파일이 없는 시스템 서식은 작성기 데이터로 글자 PDF를 만들어 넣는다 (H-7, 서버 /api/pdf)
+      if (!slotMerged && formDataContext && (slot.category === 'CORE_FORM' || slot.category === 'POWER_OF_ATTORNEY')) {
+        const bytes = await generateCourtOfficialFormPdf(slot.code, formDataContext);
+        if (bytes && bytes.length > 0) {
+          try {
+            const formPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const pages = await mergedPdf.copyPages(formPdf, formPdf.getPageIndices());
+            pages.forEach(pg => mergedPdf.addPage(pg));
+            slotMerged = true;
+          } catch (e) {
+            console.warn(`[BatchFiling] 서식 PDF 결합 실패: ${slot.code}`, e);
+          }
+        }
       }
+      // 3. 그래도 없는 칸은 빈 간지를 넣지 않는다 (이전: 영문 Helvetica 간지 'COURT ELECTRONIC FILING'을 끼워 넣었다)
+      if (!slotMerged) missing.push(slot.title);
     }
-
+    lastMergeMissing = missing;
     return await mergedPdf.save();
   }
 
   /**
    * 2. 대법원 전자소송 순서별 개별 PDF ZIP 일괄 압축 (회생위원 전자기록 뷰어 1:1 매칭 표준 패키지)
    * - 20MB 초과 파일은 _part1.pdf, _part2.pdf 등으로 자동 분할하여 업로드 오류 방지
-   * - 대법원 전자소송 채권자목록 UTF-8 BOM CSV 자동 동봉
+   * - 전자소송 채권자 CSV(CP949) 동봉
    * - 회생위원 뷰어 좌측 목차와 1:1 일치하는 01~14번 번호순 정렬
    */
   static async buildFilingPackage(
@@ -471,11 +400,11 @@ export class CourtBatchFilingService {
         ? this.generateBankruptcyCourtCreditorCsv(options.creditors, clientName)
         : this.generateCourtCreditorCsv(options.creditors, clientName);
       const csvName = `00_대법원전자소송_${clientName}_채권자목록_일괄등록양식.csv`;
-      folder.file(csvName, csvContent);
+      folder.file(csvName, encodeCp949(csvContent).bytes);
       manifest.push({
         order: 0,
         code: 'CSV',
-        title: '대법원 규격 채권자목록 CSV (UTF-8 BOM)',
+        title: options.isBankruptcy ? '전자소송 채권자목록 CSV (파산 18열, CP949)' : '전자소송 채권자(기본정보) CSV (13열, CP949)',
         category: 'CORE_FORM',
         fileName: csvName,
         sizeBytes: new Blob([csvContent]).size,
@@ -623,15 +552,24 @@ export class CourtBatchFilingService {
           }
         }
       } else {
-        // 미첨부 슬롯인 경우 안내 간지 생성
-        const txtContent = `[대법원 전자소송 제출용 서류 슬롯]
+        // 올린 파일이 없는 시스템 서식: 작성기 데이터로 글자 PDF를 만든다 (H-7)
+        if (formDataContext && (slot.category === 'CORE_FORM' || slot.category === 'POWER_OF_ATTORNEY')) {
+          const bytes = await generateCourtOfficialFormPdf(slot.code, formDataContext);
+          if (bytes && bytes.length > 0) {
+            const fileName = `_${cleanTitle}_${clientName}.pdf`;
+            folder.file(fileName, bytes);
+            manifest.push({ order: slot.order, code: slot.code, title: slot.title, category: slot.category, fileName, sizeBytes: bytes.byteLength, sizeFormatted: formatFileSize(bytes.byteLength), isDigitalPdf: true, status: 'GENERATED' });
+            continue;
+          }
+        }
+        // 자료가 없는 칸: 안내 메모만 (전자소송에는 올리지 않음)
+        const txtContent = `[이 칸은 비어 있어요 — 전자소송에 올리지 마세요]
 서류번호: ${slot.order}
 서류명: ${slot.title}
-슬롯코드: ${slot.code} (${slot.category})
 신청인: ${clientName}
-상태: ${slot.status === 'READY' ? '전산 데이터 연동 완료' : '미첨부 / 별도 소명 필요'}
+할 일: ${slot.category === 'CORE_FORM' || slot.category === 'POWER_OF_ATTORNEY' ? '서식 작성기에서 PDF를 만들어 이 칸에 올려 주세요.' : '의뢰인 서류를 받아 이 칸에 올려 주세요.'}
 `;
-        const txtName = `${paddedOrder}_${cleanTitle}_안내간지.txt`;
+        const txtName = `${paddedOrder}_${cleanTitle}_비어있음_안내.txt`;
         folder.file(txtName, txtContent);
         manifest.push({
           order: slot.order,
@@ -652,7 +590,7 @@ export class CourtBatchFilingService {
     const isWithinCourtLimit = totalSizeBytes <= COURT_TOTAL_SIZE_LIMIT;
 
     const manifestText = `===================================================================
-대한민국 법원 전자기록 뷰어 1:1 표준 매칭 전자소송 제출 패키지
+전자소송 제출 묶음 (번호순)
 ===================================================================
 신청인: ${clientName}
 패키지 생성시각: ${new Date().toISOString()}
@@ -660,14 +598,14 @@ export class CourtBatchFilingService {
 총 용량: ${formatFileSize(totalSizeBytes)} (전자소송 첨부 총용량 기준: ${isWithinCourtLimit ? '정상 접수 가능' : '한도 초과 주의'})
 20MB 초과 자동분할: ${hasSplitFiles ? '적용됨 (20MB 미만 자동분할 완료)' : '미발생 (전체 20MB 이내)'}
 
-[회생위원 전산 뷰어 좌측 목차 1:1 반영 서류 목록]
+[서류 목록]
 -------------------------------------------------------------------
 ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.sizeFormatted}]${m.isSplit ? ` (자동분할: ${m.pageRange})` : ''}`).join('\r\n')}
 -------------------------------------------------------------------
-※ 법원 실무 유의사항:
-1. 본 패키지는 회생위원이 사용하는 법원 전자기록 뷰어 목차에 맞추어 번호순으로 정렬되었습니다.
-2. 모든 서류를 1개 대용량 PDF로 결합하지 않고 항목별로 분리 제출하여 목차 접근성을 극대화했습니다.
-3. 개별 파일 20MB 한도를 엄격히 준수하여 전자소송 업로드 거부를 사전에 방지합니다.
+※ 안내:
+1. 번호순으로 정렬했어요. '비어있음' 안내 파일은 올리지 마세요.
+2. 서식과 증빙은 서로 다른 파일로 나눠 냅니다(전자문서 규칙 제8조③).
+3. 파일당 20MB, 첨부 총 100MB(전자소송포털 안내)를 넘으면 나눠 제출해야 해요.
 `;
 
     folder.file('00_법원전자기록뷰어_제출목록_안내표.txt', manifestText);
@@ -726,168 +664,21 @@ ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.
   }
 
   /**
-   * 3. 대법원 전자소송 채권자목록 엑셀/CSV 일괄등록 변환 (UTF-8 BOM 지원)
-   * - 전국대표번호(1588 등)는 자동으로 '02-' 국번을 붙여 전자소송 업로드 오류 방지
-   * - 부속서류 1~4 플래그 비고 자동 반영
+   * 3. 전자소송 채권자 CSV (H-9): 회생 = 채권자(기본정보) 13열 당사자형, 파산 = 18열. 파일은 CP949로 저장한다(downloadCsv·묶음).
+   * 이전: 자체 16열·17열 + UTF-8 BOM, 차용원인 '생활비 및 대여금'·차용일 '2023-01-01'을 지어 넣고 주민번호 칸이 있었다.
    */
-  static generateCourtCreditorCsv(
-    creditors: RepaymentCreditor[],
-    debtorName: string
-  ): string {
-    const headers = [
-      '순번',
-      '채권자명',
-      '사업자/주민번호',
-      '대표자',
-      '우편번호',
-      '주소',
-      '송달장소',
-      '전화번호',
-      '차용원인',
-      '차용일자',
-      '원금(원)',
-      '개시전이자(원)',
-      '합계(원)',
-      '우선권여부',
-      '별제권_담보여부',
-      '비고'
-    ];
-
-    const rows = creditors.map((c, idx) => {
-      const seq = idx + 1;
-      const name = `"${(c.name || '').replace(/"/g, '""')}"`;
-      const bizNo = `"${(c.bizNumber || '').replace(/"/g, '""')}"`;
-      const rep = `"${(c.representative || '').replace(/"/g, '""')}"`;
-      const zip = `"${(c.zipCode || '').replace(/"/g, '""')}"`;
-      const addr = `"${(c.address || '').replace(/"/g, '""')}"`;
-      const serviceAddr = `"${(c.serviceAddress || c.address || '').replace(/"/g, '""')}"`;
-      const normalizedPhone = `"${this.normalizeCourtPhoneNumber(c.phone)}"`;
-      const cause = `"${(c.debtCauseDetail || '생활비 및 대여금').replace(/"/g, '""')}"`;
-      const borrowedDate = `"${c.borrowedDate || '2023-01-01'}"`;
-      const principal = Math.round(c.principal || 0);
-      const interest = Math.round(c.interest || 0);
-      const total = principal + interest;
-      const priority = c.isPriority ? 'Y' : 'N';
-      const secured = c.isSecured ? 'Y' : 'N';
-
-      // 투더코어 벤치마킹: 부속서류 및 특약 비고 상세화
-      const noteParts: string[] = [];
-      if (c.isUnconfirmed) noteParts.push('미확정채권');
-      if (c.isTrustUnconfirmed) noteParts.push('담보신탁');
-      if (c.isGuarantorClaim) noteParts.push('장래구상권');
-      if (c.isGuaranteedDebt) noteParts.push(`보증채무(주채무자:${c.principalDebtorName || '외'})`);
-      if (c.isDisputed) noteParts.push('다툼채권(부속2호)');
-      if (c.isGarnished) noteParts.push('전부명령(부속3호)');
-      if (c.unsecuredExpectedShortage && c.unsecuredExpectedShortage > 0) {
-        noteParts.push(`예정부족액:${Math.round(c.unsecuredExpectedShortage).toLocaleString()}원`);
-      }
-      const notes = `"${noteParts.join(', ')}"`;
-
-      return [
-        seq,
-        name,
-        bizNo,
-        rep,
-        zip,
-        addr,
-        serviceAddr,
-        normalizedPhone,
-        cause,
-        borrowedDate,
-        principal,
-        interest,
-        total,
-        priority,
-        secured,
-        notes
-      ].join(',');
-    });
-
-    const bom = '\uFEFF';
-    return bom + [headers.join(','), ...rows].join('\r\n');
+  static generateCourtCreditorCsv(creditors: RepaymentCreditor[], _debtorName?: string): string {
+    return buildRehabCreditorCsv(creditors).text;
   }
 
-  /**
-   * 3-1. 대법원 전자소송 개인파산 채권자목록 엑셀/CSV 일괄등록 변환 (UTF-8 BOM)
-   * - 파산 필수 기재사항: 최초원금, 잔존원금, 차용원인, 차용일자, 사용처, 보증인
-   */
-  static generateBankruptcyCourtCreditorCsv(
-    creditors: RepaymentCreditor[],
-    debtorName: string
-  ): string {
-    const headers = [
-      '순번',
-      '채권자명',
-      '사업자/주민번호',
-      '대표자',
-      '우편번호',
-      '주소',
-      '송달장소',
-      '전화번호',
-      '최초원금(원)',
-      '잔존원금(원)',
-      '개시전이자(원)',
-      '합계(원)',
-      '차용일자',
-      '발생원인',
-      '사용처',
-      '보증인_구상권자',
-      '비고'
-    ];
-
-    const rows = creditors.map((c, idx) => {
-      const seq = idx + 1;
-      const name = `"${(c.name || '').replace(/"/g, '""')}"`;
-      const bizNo = `"${(c.bizNumber || '').replace(/"/g, '""')}"`;
-      const rep = `"${(c.representative || '').replace(/"/g, '""')}"`;
-      const zip = `"${(c.zipCode || '').replace(/"/g, '""')}"`;
-      const addr = `"${(c.address || '').replace(/"/g, '""')}"`;
-      const serviceAddr = `"${(c.serviceAddress || c.address || '').replace(/"/g, '""')}"`;
-      const phone = `"${this.normalizeCourtPhoneNumber(c.phone)}"`;
-      const initialPrincipal = Math.round(c.initialPrincipal || c.principal || 0);
-      const remainingPrincipal = Math.round(c.principal || 0);
-      const interest = Math.round(c.interest || 0);
-      const total = remainingPrincipal + interest;
-      const borrowedDate = `"${c.borrowedDate || '2023-01-01'}"`;
-      const cause = `"${(c.debtCauseDetail || '대출금').replace(/"/g, '""')}"`;
-      
-      // 사용처: 파산 필수항목
-      // 보증채무인 경우 피보증인명, 대위변제 후인 경우 원채권자 사용처 승계
-      let usage = c.debtUsage || ''; // 비어 있으면 '확인 필요' (이전: '생계비 및 생활비'를 지어 넣음)
-      if (c.isGuaranteedDebt && c.principalDebtorName) {
-        usage = `피보증인(${c.principalDebtorName}) 채무보증`;
-      }
-      const usageFormatted = `"${usage.replace(/"/g, '""')}"`;
-
-      // 보증인 / 구상권자
-      const guarantor = `"${(c.guarantorName || c.principalDebtorName || (c.isGuarantorClaim ? '보증기관' : '')).replace(/"/g, '""')}"`;
-      const notes = `"${c.isSecured ? '담보부' : c.isPriority ? '우선권' : '일반채권'}"`;
-
-      return [
-        seq,
-        name,
-        bizNo,
-        rep,
-        zip,
-        addr,
-        serviceAddr,
-        phone,
-        initialPrincipal,
-        remainingPrincipal,
-        interest,
-        total,
-        borrowedDate,
-        cause,
-        usageFormatted,
-        guarantor,
-        notes
-      ].join(',');
-    });
-
-    const bom = '\uFEFF';
-    return bom + [headers.join(','), ...rows].join('\r\n');
+  static generateBankruptcyCourtCreditorCsv(creditors: RepaymentCreditor[], _debtorName?: string): string {
+    return buildBankruptcyCreditorCsv(creditors).text;
   }
 
+  /** 출력 전 확인할 빈 칸 (인격구분·우편번호·파산 필수 칸 등) */
+  static creditorCsvWarnings(creditors: RepaymentCreditor[], isBankruptcy = false): string[] {
+    return (isBankruptcy ? buildBankruptcyCreditorCsv(creditors) : buildRehabCreditorCsv(creditors)).warnings;
+  }
   /**
    * 4. 매뉴얼 7-1 준용: 법원 전자소송 7대 묶음 PDF 일괄 ZIP 압축 다운로드
    */
@@ -902,7 +693,6 @@ ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.
 
     for (const spec of REHAB_7_BUNDLE_SPEC) {
       const bundlePdf = await PDFDocument.create();
-      const font = await bundlePdf.embedFont(StandardFonts.Helvetica);
 
       let hasPage = false;
 
@@ -946,27 +736,8 @@ ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.
         }
       }
 
-      // 3. 파일이 없는 경우 안내 간지 삽입
-      if (!hasPage) {
-        const coverPage = bundlePdf.addPage([595.28, 841.89]);
-        const { width, height } = coverPage.getSize();
-        coverPage.drawText(`[COURT BUNDLE ${spec.bundleOrder}] ${spec.bundleFileName}`, {
-          x: 50,
-          y: height - 100,
-          size: 14,
-          font,
-          color: rgb(0.1, 0.2, 0.4),
-        });
-        coverPage.drawText(`Title: ${spec.title}`, { x: 50, y: height - 130, size: 11, font, color: rgb(0.3, 0.3, 0.3) });
-        coverPage.drawText(`Status: Separate upload required or verified via physical certificate.`, {
-          x: 50,
-          y: height - 160,
-          size: 10,
-          font,
-          color: rgb(0.6, 0.2, 0.2),
-        });
-      }
-
+      // 3. 파일이 없는 묶음은 만들지 않는다 (이전: 영문 간지 한 장짜리 PDF를 넣었다)
+      if (!hasPage) continue;
       const bundleBytes = await bundlePdf.save();
       rootFolder.file(spec.bundleFileName, bundleBytes);
     }
@@ -1007,7 +778,8 @@ ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.
    * CSV 다운로드 트리거
    */
   static downloadCsv(csvContent: string, filename: string): void {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // 전자소송 양식은 CP949 — 엑셀로 열었다 저장하면 깨질 수 있어 그대로 올린다
+    const blob = new Blob([encodeCp949(csvContent).bytes], { type: 'text/csv;charset=euc-kr' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

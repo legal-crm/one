@@ -4,7 +4,7 @@
 // - 채권자 목록 테이블 (우선권/담보부/신용 구분)
 // - 50대 금융기관 프리셋 검색을 통한 원클릭 채권자 추가
 // - 채권 원금, 발생이자, 송달장소 즉시 수정 및 삭제
-// - 대법원 전자소송 UTF-8 BOM CSV 즉시 다운로드
+// - 전자소송 채권자 CSV (CP949) 즉시 다운로드
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
@@ -309,7 +309,7 @@ function CreditorManagementModalInner({
     }
     const csv = CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
     CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송_회생]_${clientName}_채권자목록.csv`);
-    toast.success('대법원 전자소송 UTF-8 BOM CSV 파일이 다운로드되었습니다.');
+    { const w = CourtBatchFilingService.creditorCsvWarnings(creditors, false); if (w.length) toast.warning(`빈 칸 ${w.length}개: ${w.slice(0, 2).join(' / ')}`); else toast.success('전자소송 채권자 CSV(CP949)를 내려받았어요.'); }
   };
 
   // 대법원 전자소송 규격 파산 CSV 다운로드
@@ -320,7 +320,7 @@ function CreditorManagementModalInner({
     }
     const csv = CourtBatchFilingService.generateBankruptcyCourtCreditorCsv(creditors, clientName);
     CourtBatchFilingService.downloadCsv(csv, `[대법원전자소송_파산]_${clientName}_채권자목록.csv`);
-    toast.success('대법원 전자소송 파산용 CSV 파일이 다운로드되었습니다.');
+    { const w = CourtBatchFilingService.creditorCsvWarnings(creditors, true); if (w.length) toast.warning(`빈 칸 ${w.length}개: ${w.slice(0, 2).join(' / ')}`); else toast.success('파산 채권자목록 CSV(CP949)를 내려받았어요.'); }
   };
 
   // 클립보드 복사
@@ -471,7 +471,7 @@ function CreditorManagementModalInner({
               <button
                 type="button"
                 onClick={handleDownloadCsv}
-                title="회생 전자소송 채권자목록 UTF-8 BOM CSV"
+                title="회생 전자소송 채권자(기본정보) CSV (CP949)"
                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer press-scale"
               >
                 <Download className="w-3.5 h-3.5" />

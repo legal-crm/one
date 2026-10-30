@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@sparticuz/chromium": "^153.0.0",
     "@supabase/supabase-js": "^2.106.2",
     "@types/jszip": "^3.4.0",
     "canvas-confetti": "^1.9.4",
@@ -29,6 +30,7 @@
     "motion": "^12.23.24",
     "pdf-lib": "^1.17.1",
     "popbill": "^1.64.2",
+    "puppeteer-core": "^25.16.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

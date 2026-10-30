@@ -3,6 +3,7 @@
  * 법원 실무준칙 및 대법원 전자소송 분류 체계 준용
  */
 import type { ConsultRequest, CrmClientExtension } from '../../types';
+import { deriveDocFacts } from './docRules';
 
 export type DocCategory = 
   | 'CORE'           // 본신청 및 필수 서식
@@ -128,18 +129,34 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
   },
   {
     docCode: 'D5106',
-    title: '파산 및 면책신청서',
-    caseScope: 'BANKRUPTCY',
+    title: '개인회생채권자목록',
+    caseScope: 'REHAB',
     category: 'CORE',
     subCategoryText: '자동작성',
-    courtOrderSlot: 'B01',
-    
+    courtOrderSlot: 'R03',
     isOfficialCourtForm: true,
     hasOfficialFormFile: true,
     isPendingUpload: false,
     hwpxFileName: '개인회생채권자목록(D5106).hwpx',
     downloadUrl: '/court-forms/hwpx/%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%83%9D%EC%B1%84%EA%B6%8C%EC%9E%90%EB%AA%A9%EB%A1%9D(D5106).hwpx',
     officialSourceNote: '대법원 전산양식 D5106 (개인회생채권자목록)',
+    priorityLevel: 'CRITICAL',
+    description: '채권자별 원금·이자·산정기준일과 부속서류(별제권부·다툼·전부명령·기타)를 적는 채권자목록. 부채증명 장부에서 확인한 값이 들어갑니다.'
+  },
+  {
+    // 이전에는 이 카드가 'D5106'(회생 채권자목록 파일)을 가리켜 파산 신청서를 내려받으면 회생 채권자목록이 나왔다
+    docCode: '100002',
+    title: '파산 및 면책신청서',
+    caseScope: 'BANKRUPTCY',
+    category: 'CORE',
+    subCategoryText: '자동작성',
+    courtOrderSlot: 'B01',
+    isOfficialCourtForm: true,
+    hasOfficialFormFile: true,
+    isPendingUpload: false,
+    hwpxFileName: '1.파산및면책신청서.hwpx',
+    downloadUrl: '/court-forms/hwpx/1.%ED%8C%8C%EC%82%B0%EB%B0%8F%EB%A9%B4%EC%B1%85%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
+    officialSourceNote: '대법원 개인파산 공식 서식 1호 (파산 및 면책 동시신청서)',
     priorityLevel: 'CRITICAL',
     description: '파산선고 및 면책결정을 동시에 구하는 기본 신청서',
     defaultPurpose: '1. 신청인을 파산자로 한다.\n2. 신청인을 면책한다. 라는 결정을 구합니다.'
@@ -877,7 +894,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
   },
   {
     docCode: '112192',
-    title: '송달장소변경신청서 (회생/파산 공통)',
+    title: '송달장소 및 송달영수인 신고서 (회생/파산 공통)',
     caseScope: 'COMMON',
     category: 'SERVICE',
     subCategoryText: '기타',
@@ -1924,7 +1941,8 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     officialSourceNote: '소장 [민사]',
     priorityLevel: 'HIGH',
     description: '누락 채권 또는 비면책 채권 다툼 시 면책되었음을 법적으로 확인 구하는 소송'
-  },
+  }
+,
   // ══════════════════════════════════════════════════════════════════
   // ── [신규 추가] 법원양식 폴더 대법원 정식 서식 전수 연동 (34종) ──
   // ══════════════════════════════════════════════════════════════════
@@ -2498,7 +2516,8 @@ export function getSmartRecommendedDocs(
   const status = crmExt?.crmStatus || request.status;
   const reasonMap: Record<string, string> = {};
 
-  const isBankruptcy = (profile?.income || 0) === 0 || (profile?.debtTotal || 0) > 50000;
+  // 사건 종류는 사건 기록에서 읽는다 (이전: 소득 0원이거나 채무 5억 원을 넘으면 파산으로 짐작)
+  const isBankruptcy = deriveDocFacts(request, crmExt).caseType === 'bankruptcy';
   const jobType = profile?.jobType || profile?.employmentType || '';
   const isSalaried = jobType.includes('SALARIED') || jobType.includes('salary');
   const isBusiness = jobType.includes('BUSINESS') || jobType.includes('business');
@@ -2519,8 +2538,8 @@ export function getSmartRecommendedDocs(
     criticalCodes.add('100002');
     reasonMap['100002'] = '개인파산 및 면책 기본 사건 신청 필수 서식';
   } else {
-    criticalCodes.add('100001');
-    reasonMap['100001'] = '개인회생절차 개시 기본 필수 서식';
+    criticalCodes.add('D5100');
+    reasonMap['D5100'] = '개인회생절차 개시 기본 필수 서식';
   }
   criticalCodes.add('111390');
   reasonMap['111390'] = '변호사 대리인 선임 및 제출 위임 필수 서식 (모바일 서명 가능)';
@@ -2529,8 +2548,8 @@ export function getSmartRecommendedDocs(
   // 2. 직업 및 압류 상태에 따른 금지/중지명령
   if (!isBankruptcy) {
     if (isSalaried) {
-      criticalCodes.add('121150');
-      reasonMap['121150'] = '급여소득자: 개시 전 월급 압류 및 불법 독촉 방어를 위해 즉시 신청 권장';
+      criticalCodes.add('D5114-1');
+      reasonMap['D5114-1'] = '급여소득자: 개시 전 월급 압류 및 불법 독촉 방어를 위해 즉시 신청 권장';
       if (hasSeizure) {
         criticalCodes.add('121203');
         reasonMap['121203'] = '현재 급여 압류 진행 중: 직장 추심금 지급 중지를 위한 긴급 서식';
@@ -2538,8 +2557,8 @@ export function getSmartRecommendedDocs(
         reasonMap['121120'] = '급여압류 적립금 확인: 1회차 변제 투입 소명 필요';
       }
     } else if (isBusiness) {
-      criticalCodes.add('121140');
-      reasonMap['121140'] = '영업소득자: 사업장 집기 및 카드매출 압류 방지 필수 신청';
+      criticalCodes.add('D5114-2');
+      reasonMap['D5114-2'] = '영업소득자: 사업장 집기 및 카드매출 압류 방지 필수 신청';
       conditionalCodes.add('122050');
       reasonMap['122050'] = '영업소득자 평균소득 소명표 (부가세 및 필요경비 공제)';
     }
@@ -2620,7 +2639,7 @@ export function getDocumentTier(doc: LegalDocItem): 'HOT' | 'WARM' | 'COLD' {
 
   // 2. HOT: 상시 사용 본신청, 핵심 보정 14종, 금지/중지, 대표 압류해제
   const hotCodes = new Set([
-    '100001', '100002', '111390', '121150', '121140', '121170', '121203',
+    'D5100', 'D5106', 'D5101', 'D5102', 'D5103', 'D5105', '100002', '111390', 'D5114-1', 'D5114-2', 'D5113-1', 'D5113-2', '121203',
     '122010', '122011', '122012', '122013', '122020', '122030', '122040',
     '122050', '122060', '122070', '122080', '122090', '122100', '122110',
     '121320', '121420'
