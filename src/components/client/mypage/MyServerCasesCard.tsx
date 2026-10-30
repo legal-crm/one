@@ -5,10 +5,11 @@
 // - 판단·가능성 표현 없이 진행 사실만 보여 준다(제109조)
 // ============================================================
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { AlertTriangle, Briefcase, RefreshCw } from 'lucide-react';
-import { acceptClientLinkInvite, loadMyCases, type MyCaseSummary } from '../../../services/cases/caseCoreService';
+import { loadMyCases, type MyCaseSummary } from '../../../services/cases/caseCoreService';
+import { MY_CASES_CHANGED_EVENT } from '../../../services/cases/pendingCaseLink';
 import MyCaseFeeSection from './MyCaseFeeSection';
+import MyCaseDocsSection from './MyCaseDocsSection';
 
 const CASE_TYPE_LABEL = { rehab: '개인회생', bankruptcy: '개인파산·면책' } as const;
 const GROUP_LABELS = ['상담', '계약', '서류 준비', '신청·접수', '법원 심사', '변제·면책'];
@@ -26,22 +27,13 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
     setState('ready');
   }, []);
 
+  // 연결 링크 수락은 PendingCaseLinkBanner가 한다 (로그인 전후 모두). 여기서는 목록만 다시 읽는다
   useEffect(() => {
     if (!isLoggedIn) return;
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('caseLink');
-    const run = async () => {
-      if (token) {
-        const res = await acceptClientLinkInvite(token);
-        const url = new URL(window.location.href);
-        url.searchParams.delete('caseLink');
-        window.history.replaceState({}, '', url.toString());
-        if (res.ok) toast.success(`${res.data.officeName || '사무소'} 사건 ${res.data.caseCount}건을 내 계정에 연결했어요.`);
-        else toast.error(res.message);
-      }
-      await load();
-    };
-    void run();
+    void load();
+    const onChange = () => { void load(); };
+    window.addEventListener(MY_CASES_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(MY_CASES_CHANGED_EVENT, onChange);
   }, [isLoggedIn, load]);
 
   if (!isLoggedIn) return null;
@@ -109,6 +101,8 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
             </dl>
             {c.stage === 'closed' && <p className="mt-2 text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
             <MyCaseFeeSection caseId={c.caseId} />
+            {/* 상담 요청에서 시작한 사건은 아래 '필수 서류 제출' 카드에서 받는다 */}
+            {!c.hasConsultRequest && c.stage !== 'closed' && <MyCaseDocsSection caseKey={c.workspaceKey} />}
           </li>
         ))}
       </ul>

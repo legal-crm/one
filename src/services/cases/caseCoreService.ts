@@ -121,6 +121,10 @@ export interface MyCaseSummary {
   closedOn: string | null;
   closeReason: CloseReason | null;
   updatedAt: string;
+  /** 사건 작업 공간 키 (상담 요청 ID 또는 'case-' + 사건 ID) */
+  workspaceKey: string;
+  /** 마이김변 상담 요청에서 시작한 사건인지 (아니면 '내 사건'에서 따로 서류를 받는다) */
+  hasConsultRequest: boolean;
 }
 
 export const mapCase = (r: any): CaseRecord => ({
@@ -421,6 +425,7 @@ export async function loadMyCases(): Promise<RpcResult<MyCaseSummary[]>> {
       groupNo: r.group_no, courtName: r.court_name, caseNumber: r.case_number, filedOn: r.filed_on, commencedOn: r.commenced_on,
       creditorsMeetingOn: r.creditors_meeting_on, confirmedOn: r.confirmed_on, dischargeDecidedOn: r.discharge_decided_on,
       closedOn: r.closed_on, closeReason: r.close_reason, updatedAt: r.updated_at,
+      workspaceKey: r.workspace_key || `case-${r.case_id}`, hasConsultRequest: r.has_consult_request === true,
     })),
   };
 }

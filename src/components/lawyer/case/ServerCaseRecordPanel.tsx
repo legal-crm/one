@@ -12,6 +12,7 @@ import {
 } from '../../../services/cases/caseCoreService';
 import { availableMilestones, serverStageToCrmStatus, type MilestoneAction } from '../../../services/cases/caseStageMapping';
 import type { CrmStatus } from '../../../types';
+import ClientLinkSection from './ClientLinkSection';
 
 interface Props {
   officeId: string;
@@ -204,6 +205,8 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
           </div>
         ))}
       </dl>
+
+      {record.stage !== 'closed' && <ClientLinkSection officeId={officeId} officeClientId={record.officeClientId} canEdit={canEdit} />}
 
       {canEdit && actions.length > 0 && (
         <div className="flex flex-wrap gap-2">

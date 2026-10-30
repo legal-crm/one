@@ -54,6 +54,7 @@ const InquiryView = React.lazy(() => import('./client/InquiryView'));
 const InquiryPopupModal = React.lazy(() => import('./client/InquiryPopupModal'));
 
 import ClientFooter from './client/ClientFooter';
+import PendingCaseLinkBanner from './client/mypage/PendingCaseLinkBanner';
 import ClientHeader from './client/ClientHeader';
 import MobileGNB from './client/MobileGNB';
 import LandingView from './client/landing/LandingView';
@@ -2066,6 +2067,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
       {/* Main Content Area */}
       <main id="client-main" tabIndex={-1} className="flex-1 w-full outline-none">
+
+        {/* 사무소 사건 연결 링크(?caseLink=): 로그인 전 안내, 로그인 후 한 번 연결 */}
+        <PendingCaseLinkBanner
+          isLoggedIn={isLoggedIn}
+          onLogin={() => setShowAuthModal(true)}
+          onLinked={() => { setMypageSubTab('diagnosis'); setActiveTab('mypage'); }}
+        />
 
         {/* 홈(랜딩) */}
         {activeTab === 'landing' && (
