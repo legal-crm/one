@@ -18,6 +18,8 @@ import {
 import { loadInboundPaths } from '../../../services/settingsService';
 import { sendQuickSmsOrCopy } from '../../../services/communicationService';
 import { useDialog } from '../../common/DialogProvider';
+import { listOfficeMembers, type OfficeMember } from '../../../services/office/officeService';
+import { supabase, isSupabaseConfigured } from '../../../supabaseClient';
 import { localYmd } from '../../../utils/localDate';
 
 import SalesDashboardWidget from './SalesDashboardWidget';
@@ -42,6 +44,10 @@ interface SalesLeadsTabProps {
   requests: ConsultRequest[];
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   onNavigateToCrm?: (clientId: string) => void;
+  /** 서버 사무소 ID (담당자 목록·배정) */
+  officeId?: string;
+  /** 리드 배정 권한 (sales.manage) */
+  canAssignLeads?: boolean;
 }
 
 // 기획서 4.7 5대 상태 탭 + 전체
@@ -54,6 +60,8 @@ export default function SalesLeadsTab({
   requests,
   setRequests,
   onNavigateToCrm,
+  officeId,
+  canAssignLeads = false,
 }: SalesLeadsTabProps) {
   const dialog = useDialog();
   const [leads, setLeads] = useState<SalesLead[]>(() => loadSalesLeads());
@@ -71,6 +79,24 @@ export default function SalesLeadsTab({
   const [selectedStatus, setSelectedStatus] = useState<SalesLeadTabStatus>('all');
   const [selectedPath, setSelectedPath] = useState<string>('all');
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  // 담당자 (SL-3): 사무소 구성원 중 배정, '내 담당만' 보기
+  const [members, setMembers] = useState<OfficeMember[]>([]);
+  const [myUserId, setMyUserId] = useState<string>('');
+  const [onlyMine, setOnlyMine] = useState(false);
+  useEffect(() => {
+    if (!officeId || !isSupabaseConfigured) return;
+    let cancelled = false;
+    listOfficeMembers(officeId).then(r => { if (!cancelled && r.ok) setMembers(r.data.filter(m => m.status === 'active')); });
+    supabase.auth.getUser().then(({ data }) => { if (!cancelled) setMyUserId(data.user?.id || ''); });
+    return () => { cancelled = true; };
+  }, [officeId]);
+  const assignLead = (lead: SalesLead, userId: string) => {
+    const m = members.find(x => x.userId === userId);
+    const updated: SalesLead = { ...lead, assigneeUserId: userId || undefined, assigneeId: m?.id || undefined, assigneeName: m?.displayName || undefined, updatedAt: new Date().toISOString() };
+    saveSalesLead(updated);
+    setLeads(prev => prev.map(l => (l.id === lead.id ? updated : l)));
+    toast.success(m ? `${lead.customerName}님 담당을 ${m.displayName}님으로 정했습니다.` : '담당자를 비웠습니다.');
+  };
 
   // 모달 상태
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -106,6 +132,9 @@ export default function SalesLeadsTab({
         if (!matchName && !matchPhone && !matchRegion && !matchMemo) return false;
       }
 
+      // 1-1. 내 담당만
+      if (onlyMine && myUserId && l.assigneeUserId !== myUserId) return false;
+
       // 2. 인입 경로 필터
       if (selectedPath !== 'all' && l.inboundPath !== selectedPath) {
         return false;
@@ -120,7 +149,7 @@ export default function SalesLeadsTab({
 
       return true;
     });
-  }, [leads, searchTerm, selectedStatus, selectedPath]);
+  }, [leads, searchTerm, selectedStatus, selectedPath, onlyMine, myUserId]);
 
   // 상태 카운트 집계
   const statusCounts = useMemo(() => {
@@ -328,6 +357,9 @@ export default function SalesLeadsTab({
             />
           </div>
 
+          {myUserId && members.length > 0 && (
+            <button type="button" onClick={() => setOnlyMine(v => !v)} aria-pressed={onlyMine} className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap cursor-pointer active:scale-[0.98] ${onlyMine ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>내 담당만</button>
+          )}
           <select
             value={selectedPath}
             onChange={e => setSelectedPath(e.target.value)}
@@ -388,6 +420,21 @@ export default function SalesLeadsTab({
                         <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
                           <span>{lead.phone}</span>
                         </div>
+                        {members.length > 0 && (
+                          canAssignLeads ? (
+                            <select
+                              aria-label={`${lead.customerName} 담당자`}
+                              value={lead.assigneeUserId || ''}
+                              onChange={(e) => assignLead(lead, e.target.value)}
+                              className="mt-1 max-w-[180px] text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700"
+                            >
+                              <option value="">담당자 없음</option>
+                              {members.map(m => <option key={m.id} value={m.userId}>{m.displayName}</option>)}
+                            </select>
+                          ) : (
+                            <span className="mt-1 inline-block text-xs text-slate-500">담당: {lead.assigneeName || '없음'}</span>
+                          )
+                        )}
                       </td>
 
                       {/* 2. 유입 경로 / 등록일 */}

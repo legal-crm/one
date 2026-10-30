@@ -2999,6 +2999,8 @@ export default function LawyerRole({
             requests={requests}
             setRequests={setRequests}
             onNavigateToCrm={(clientId) => openCase(clientId, 'info')}
+            officeId={officeCtx.office?.officeId}
+            canAssignLeads={!!officeCtx.office && canUseOfficePermission(officeCtx.office.permissions, 'sales.manage')}
           />
         )}
 

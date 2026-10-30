@@ -60,7 +60,7 @@ export function syncSalesLeadsFromServer(): Promise<void> {
   if (syncing) return syncing;
   const scope = salesLeadScope;
   syncing = (async () => {
-    const { data, error } = await supabase.from('sales_leads').select('id, data').eq('office_id', scope).is('deleted_at', null).order('updated_at', { ascending: false }).limit(5000);
+    const { data, error } = await supabase.from('sales_leads').select('id, data, assignee_user_id').eq('office_id', scope).is('deleted_at', null).order('updated_at', { ascending: false }).limit(5000);
     if (scope !== salesLeadScope) return;
     if (error) {
       lastSyncError = /permission|row-level/i.test(error.message) ? '영업 DB를 볼 권한이 없어요.' : '영업 DB를 서버에서 불러오지 못했어요.';
@@ -69,7 +69,7 @@ export function syncSalesLeadsFromServer(): Promise<void> {
       return;
     }
     lastSyncError = null;
-    leadCache = (data || []).map((r: any) => ({ ...(r.data || {}), id: r.id }) as SalesLead);
+    leadCache = (data || []).map((r: any) => ({ ...(r.data || {}), id: r.id, assigneeUserId: r.assignee_user_id || undefined }) as SalesLead);
     leadSnapshot = snapshotOf(leadCache);
     loadedScope = scope;
     clearLegacyLeadCopies();
@@ -250,7 +250,7 @@ export function saveSalesLeads(leads: SalesLead[]): boolean {
   leadSnapshot = snapshotOf(leadCache);
   void (async () => {
     if (diff.upserts.length > 0) {
-      const rows = diff.upserts.map(l => ({ id: l.id, office_id: scope, data: l }));
+      const rows = diff.upserts.map(l => ({ id: l.id, office_id: scope, data: l, assignee_user_id: l.assigneeUserId || null }));
       const { error } = await supabase.from('sales_leads').upsert(rows, { onConflict: 'id' });
       if (error) {
         toast.error('영업 DB 저장 실패: 서버의 마지막 저장 상태로 되돌립니다.', { description: /permission|row-level/i.test(error.message) ? '이 리드를 고칠 권한이 없어요.' : error.message });

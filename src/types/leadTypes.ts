@@ -82,6 +82,8 @@ export interface LeadStatusLog {
 }
 
 export interface SalesLead {
+  /** 담당 구성원 로그인 ID (서버 sales_leads.assignee_user_id, 범위 판정에 씀) */
+  assigneeUserId?: string;
   id: string;                         // lead-xxx
   customerName: string;               // 고객명
   phone: string;                      // 연락처
