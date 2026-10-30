@@ -8,6 +8,8 @@ import {
   Sparkles, Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../../common/DialogProvider';
+import { estimatedCreditorCount } from '../../../services/debt/debtLedgerRules';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import ModalPortal from '../../common/ModalPortal';
 import { 
@@ -234,8 +236,17 @@ function BatchFilingPackagingModalInner({
     return { ...slot, files, file } as FilingDocumentSlot;
   }));
 
+  // 증명서 없이 넣은(추정) 채권자 경고 (DC-7·DC-Q6): 확인을 받은 뒤에 묶는다
+  const dialog = useDialog();
+  const confirmEstimated = async (): Promise<boolean> => {
+    const n = estimatedCreditorCount(creditors);
+    if (n === 0) return true;
+    return dialog.confirm({ title: `추정 채권 ${n}곳`, message: `부채증명서로 확인하지 않은 채권자가 ${n}곳 있어요. 금액이 실제와 다를 수 있어요. 그래도 만들까요?`, confirmText: '확인하고 만들기' });
+  };
+
   // 0. 대한민국 법원 전자소송 표준 ZIP 패키지 다운로드 (회생위원 뷰어 1:1 최적화 - 추천)
   const handleDownloadCourtStandardZip = async () => {
+    if (!(await confirmEstimated())) return;
     setIsProcessing(true);
     setProcessLabel('회생위원 전자기록 뷰어 1:1 표준 패키지(개별 PDF + 20MB 자동분할 + CSV) 생성 중...');
     try {
@@ -274,6 +285,7 @@ function BatchFilingPackagingModalInner({
 
   // 1. 단일 PDF 일괄 결합 다운로드 (사무실 보관용)
   const handleDownloadMergedPdf = async () => {
+    if (!(await confirmEstimated())) return;
     setIsProcessing(true);
     setProcessLabel('사무실 보관용 14단계 단일 PDF 결합 중...');
     try {
@@ -307,6 +319,7 @@ function BatchFilingPackagingModalInner({
 
   // 2. 번호순 개별 PDF ZIP 압축 다운로드
   const handleDownloadZip = async () => {
+    if (!(await confirmEstimated())) return;
     setIsProcessing(true);
     setProcessLabel('번호순 개별 서류 ZIP 패키징 중...');
     try {
@@ -340,6 +353,7 @@ function BatchFilingPackagingModalInner({
 
   // 4. 전자소송 7대 묶음 ZIP
   const handleDownload7BundleZip = async () => {
+    if (!(await confirmEstimated())) return;
     setIsProcessing(true);
     setProcessLabel('매뉴얼 7-1 규격 전자소송 7대 묶음 PDF 결합 및 압축 중...');
     try {

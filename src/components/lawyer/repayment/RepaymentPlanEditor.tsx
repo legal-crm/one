@@ -23,7 +23,7 @@ import type {
   ChildSupportInfo,
   AdultChildTransitionInfo
 } from '../../../services/repayment/repaymentTypes';
-import { ANNEX_DOC_CONFIG } from '../../../services/repayment/repaymentTypes';
+import { ANNEX_DOC_CONFIG, normalizeAnnexType } from '../../../services/repayment/repaymentTypes';
 import { 
   buildRepaymentPlan,
   calculateLivingExpenseAndDisposableIncome,
@@ -1716,33 +1716,27 @@ export default function RepaymentPlanEditor({
                             {/* [신규: 매뉴얼 7-3 준용] 부속서류 1~4 법원 표준 분류 선택기 */}
                             <div className="flex items-center gap-1.5 mt-1">
                               <select
-                                value={c.annexDocType || 'NONE'}
+                                value={normalizeAnnexType(c.annexDocType)}
                                 onChange={(e) => {
                                   const val = e.target.value as CreditorAnnexDocType;
                                   handleUpdateCreditorField(c.id, 'annexDocType', val);
-                                  if (val !== 'NONE' && !c.annexDetail) {
-                                    const defaultHint = val === 'ANNEX_1_DEPOSIT' ? '변제공탁 채권 (유보금)'
-                                      : val === 'ANNEX_2_STATUTE_OF_LIMITATIONS' ? '소멸시효 완성 의심 채권'
-                                      : val === 'ANNEX_3_ASSIGNMENT_ORDER' ? '급여/예금 압류 전부명령 확정'
-                                      : '보증인 구상권 또는 채권액 다툼';
-                                    handleUpdateCreditorField(c.id, 'annexDetail', defaultHint);
-                                  }
+                                  // 사유 칸은 비워 둔다 (이전: 고른 번호마다 지어낸 사유 문장을 미리 넣었다)
                                 }}
                                 className={`text-xs font-bold px-1.5 py-0.5 rounded-lg border outline-none cursor-pointer transition-colors ${
-                                  c.annexDocType && c.annexDocType !== 'NONE'
-                                    ? ANNEX_DOC_CONFIG[c.annexDocType].badgeColor
+                                  normalizeAnnexType(c.annexDocType) !== 'NONE'
+                                    ? ANNEX_DOC_CONFIG[normalizeAnnexType(c.annexDocType)].badgeColor
                                     : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
                                 }`}
                                 title="매뉴얼 7-3 준용: 개인회생 채권자목록 부속서류 1~4 지정"
                               >
                                 <option value="NONE">부속서류 없음</option>
-                                <option value="ANNEX_1_DEPOSIT">부속 1호: 변제공탁</option>
-                                <option value="ANNEX_2_STATUTE_OF_LIMITATIONS">부속 2호: 시효완성</option>
-                                <option value="ANNEX_3_ASSIGNMENT_ORDER">부속 3호: 전부명령</option>
-                                <option value="ANNEX_4_DISPUTED">부속 4호: 다툼/보증</option>
+                                <option value="ANNEX_1_SECURED">부속 1: 별제권부</option>
+                                <option value="ANNEX_2_DISPUTED">부속 2: 다툼(예상 포함)</option>
+                                <option value="ANNEX_3_ASSIGNMENT_ORDER">부속 3: 전부명령</option>
+                                <option value="ANNEX_4_OTHER">부속 4: 기타(보증인 등)</option>
                               </select>
 
-                              {c.annexDocType && c.annexDocType !== 'NONE' && (
+                              {normalizeAnnexType(c.annexDocType) !== 'NONE' && (
                                 <input
                                   type="text"
                                   value={c.annexDetail || ''}

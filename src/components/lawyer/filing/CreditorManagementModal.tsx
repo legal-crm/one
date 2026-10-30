@@ -95,7 +95,7 @@ function CreditorManagementModalInner({
       id: `creditor-${Date.now()}`,
       creditorNumber: creditors.length + 1,
       name: '',
-      principal: 10000000,
+      principal: 0, // 증명서·진술로 채운다 (이전: 1,000만 원 기본값)
       interest: 0,
       isSecured: false,
       isPriority: false,
@@ -110,8 +110,8 @@ function CreditorManagementModalInner({
       securedMaxAmount: 0,
       priorSecuredAmount: 0,
       unsecuredExpectedShortage: 0,
-      initialPrincipal: 10000000,
-      debtUsage: '생계비 및 생활비',
+      initialPrincipal: 0,
+      debtUsage: '',
       phone: '',
       fax: '',
       debtCauseDetail: '신용대출',
@@ -253,7 +253,7 @@ function CreditorManagementModalInner({
       subrogationStatus: editingCreditor.subrogationStatus || 'BEFORE',
 
       initialPrincipal: editingCreditor.initialPrincipal || principalNum,
-      debtUsage: editingCreditor.debtUsage || '생계비 및 생활비',
+      debtUsage: editingCreditor.debtUsage || '',
       phone: editingCreditor.phone || '',
       fax: editingCreditor.fax || '',
 

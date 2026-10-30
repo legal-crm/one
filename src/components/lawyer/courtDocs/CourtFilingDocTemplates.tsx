@@ -6,6 +6,7 @@
 
 import type { CourtFilingMasterData } from '../../../services/documents/courtFilingEngine';
 import { COURT_JURISDICTIONS, creditorPrincipal, creditorInterest, creditorDebtLabel, creditorAnnexNumbers } from '../../../services/documents/courtFilingEngine';
+import { dotDate, headerBaseDate } from '../../../services/debt/debtLedgerRules';
 
 interface DocTemplateProps {
   data: CourtFilingMasterData;
@@ -328,7 +329,7 @@ export const CreditorListDoc: React.FC<DocTemplateProps> = ({ data, isEditable }
       <div className="flex justify-between items-end border-b border-black pb-1">
         <span className="text-xs">{court.caseNumber} 호 채무자 {debtor.name}</span>
         <h2 className="text-xl font-bold tracking-wider">개인회생채권자목록</h2>
-        <span className="text-xs">산정기준일: {court.applicationDate}</span>
+        <span className="text-xs">산정기준일: {headerBaseDate(creditors) ? dotDate(headerBaseDate(creditors)) : court.applicationDate}</span>
       </div>
 
       {/* 요약 박스 */}

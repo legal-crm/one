@@ -23,6 +23,7 @@ import FilingChecklistPanel from './FilingChecklistPanel';
 import { localYmd } from '../../../utils/localDate';
 import { computePipelineGates } from './pipelineGates';
 import { getDisplayClientName } from '../../../utils/clientDisplay';
+import { baseDateSpread, estimatedCreditorCount } from '../../../services/debt/debtLedgerRules';
 
 export type Stage4SectionTab = 'petition' | 'ancillary' | 'filing';
 
@@ -640,8 +641,22 @@ export default function Stage4FilingBundleView({
     );
   };
 
+  // 증명서 없이 넣은(추정) 채권·기준일 없는 채권 (DC-7·DC-8): 서식을 만들기 전에 알린다
+  const planCreditors = (crmExt?.repaymentPlan?.creditors || []) as any[];
+  const estimatedCount = estimatedCreditorCount(planCreditors);
+  const noBaseDate = planCreditors.filter(c => !c.baseDate).length;
+  const spread = baseDateSpread(planCreditors);
+
   return (
     <div className="p-6 space-y-6 w-full max-w-[1440px] mx-auto">
+      {planCreditors.length > 0 && (estimatedCount > 0 || noBaseDate > 0 || (spread !== null && spread > 30)) && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-0.5" role="status">
+          <p className="font-bold">채권자목록 확인</p>
+          {estimatedCount > 0 && <p>부채증명서로 확인하지 않은(추정) 채권자 {estimatedCount}곳 — 3단계 '부채증명서' 장부에서 반영하면 사라져요.</p>}
+          {noBaseDate > 0 && <p>산정기준일이 없는 채권자 {noBaseDate}곳</p>}
+          {spread !== null && spread > 30 && <p>채권자별 산정기준일 차이가 {spread}일이에요.</p>}
+        </div>
+      )}
       {/* ── 1. 상단 라이트 헤더 & 3대 섹션 내비게이션 ── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 relative">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-5 border-b border-slate-100">

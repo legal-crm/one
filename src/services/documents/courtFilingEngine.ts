@@ -6,6 +6,7 @@
 
 import type { ConsultRequest, CrmClientExtension, FinancialProfile } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
+import { normalizeAnnexType } from '../repayment/repaymentTypes';
 import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
 import { DELIVERY_UNIT_FEE_KRW } from '../court/courtFees';
 import { getOfficeProfile } from '../lawyer/officeProfile';
@@ -463,14 +464,15 @@ export const creditorInterest = (c: RepaymentCreditor): number => c.interest || 
 export const creditorTotal = (c: RepaymentCreditor): number => creditorPrincipal(c) + creditorInterest(c);
 export const isCardDebt = (c: RepaymentCreditor): boolean => /카드|card/i.test(`${c.debtCauseDetail || ''} ${c.name || ''}`);
 export const creditorDebtLabel = (c: RepaymentCreditor): string =>
-  c.debtCauseDetail || (isCardDebt(c) ? '신용카드 사용대금' : '대여금(신용대출)');
-export const isDisputedCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isDisputed) || c.annexDocType === 'ANNEX_4_DISPUTED';
-export const isAssignmentCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGarnished) || c.annexDocType === 'ANNEX_3_ASSIGNMENT_ORDER';
-export const isGuarantyCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGuarantorClaim || c.isGuaranteedDebt || c.isGuarantor);
-/** 채권자목록 '부속서류' 칸 표기용 번호 목록 (1: 별제권, 2: 다툼, 3: 전부명령, 4: 보증) */
+  c.claimCause || c.debtCauseDetail || (isCardDebt(c) ? '신용카드 이용대금' : ''); // 모르면 빈칸 (이전: '대여금(신용대출)')
+export const isDisputedCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isDisputed) || normalizeAnnexType(c.annexDocType) === 'ANNEX_2_DISPUTED';
+export const isAssignmentCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGarnished) || normalizeAnnexType(c.annexDocType) === 'ANNEX_3_ASSIGNMENT_ORDER';
+/** 부속서류 4(기타): 신청인이 보증인인 채무 등. 장래구상권(보증기관)은 가지번호(4-1 등)로 적고 부속서류 4가 아니다 */
+export const isGuarantyCreditor = (c: RepaymentCreditor): boolean => Boolean(c.isGuaranteedDebt) || normalizeAnnexType(c.annexDocType) === 'ANNEX_4_OTHER';
+/** 채권자목록 '부속서류' 칸 표기용 번호 목록 (1 별제권부 · 2 다툼 · 3 전부명령 · 4 기타) */
 export const creditorAnnexNumbers = (c: RepaymentCreditor): string[] => {
   const nums: string[] = [];
-  if (c.isSecured) nums.push('1');
+  if (c.isSecured || normalizeAnnexType(c.annexDocType) === 'ANNEX_1_SECURED') nums.push('1');
   if (isDisputedCreditor(c)) nums.push('2');
   if (isAssignmentCreditor(c)) nums.push('3');
   if (isGuarantyCreditor(c)) nums.push('4');

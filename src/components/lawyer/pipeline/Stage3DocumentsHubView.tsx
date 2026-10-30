@@ -32,6 +32,7 @@ import { localYmd } from '../../../utils/localDate';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
 import SmartDocumentDropzone from './SmartDocumentDropzone';
 import CorrectionPrepCard from './CorrectionPrepCard';
+import DebtLedgerPanel from '../debt/DebtLedgerPanel';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
 import { won } from '../quickdock/ui/money';
 
@@ -45,6 +46,10 @@ interface Stage3DocumentsHubViewProps {
   onUpdateCrmExt?: (patch: Partial<CrmClientExtension>) => Promise<void>;
   activeSection?: string;
   onSelectSection?: (section: string) => void;
+  /** 서버 사무소 (있으면 부채증명서는 서버 장부로) */
+  officeId?: string;
+  /** 서류·부채증명 고치기 권한 (documents.manage) */
+  canEditDocs?: boolean;
 }
 
 export type DocLifecycleStatus = 
@@ -104,6 +109,8 @@ export default function Stage3DocumentsHubView({
   onUpdateCrmExt,
   activeSection = 'docs',
   onSelectSection,
+  officeId,
+  canEditDocs = true,
 }: Stage3DocumentsHubViewProps) {
   const dialog = useDialog();
   // 현재 활성 섹션 매핑
@@ -1134,7 +1141,29 @@ export default function Stage3DocumentsHubView({
 {/* ══════════════════════════════════════════════════════════════
           SECTION 2: 부채증명서 (debt-cert)
           ══════════════════════════════════════════════════════════════ */}
-      {currentSection === 'debt-cert' && (
+      {currentSection === 'debt-cert' && officeId && (
+        <DebtLedgerPanel
+          officeId={officeId}
+          caseKey={clientRequest.id}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          canEdit={canEditDocs}
+          onUpdateCrmExt={onUpdateCrmExt}
+          onOpenAgencyApplication={(rows) => {
+            // 장부 줄로 의뢰서·위임장을 만든다 (인쇄·엑셀용, 브라우저에 저장하지 않음)
+            setDebtOrder({
+              orderId: `ledger_${clientRequest.id}`, clientId: clientRequest.id, clientName: clientRequest.clientName || '의뢰인', clientPhone: '',
+              agencyName: '', orderStatus: 'draft', createdAt: new Date().toISOString(), totalAgencyCost: 0,
+              items: rows.filter(r => r.method === 'agency').map(r => ({
+                id: r.id, creditorName: r.creditorName, branchName: r.branch, expectedPrincipal: r.claimedPrincipal || 0, issueStatus: 'pending', agencyFee: 0, issuanceFee: 0,
+              })) as any,
+            });
+            setIsAgencyAppModalOpen(true);
+          }}
+        />
+      )}
+      {/* 옛 화면(브라우저 저장)은 서버 사무소가 없는 개발 환경에서만 */}
+      {currentSection === 'debt-cert' && !officeId && (
         <div className="space-y-5 animate-fadeIn">
           {/* 부채증명서 대행 종합 관리 카드 */}
           <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
@@ -1401,9 +1430,10 @@ export default function Stage3DocumentsHubView({
           clientRequest={clientRequest}
           crmExt={crmExt}
           order={debtOrder}
+          persist={!officeId}
           onSaveOrder={(newOrder) => {
             setDebtOrder(newOrder);
-            saveDebtCertificateOrder(newOrder);
+            if (!officeId) saveDebtCertificateOrder(newOrder);
           }}
           activeLawyerName={(clientRequest as any).assignedLawyerName || ''}
         />

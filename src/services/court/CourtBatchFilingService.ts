@@ -853,7 +853,7 @@ ${manifest.map((m, i) => `${String(i + 1).padStart(2, '0')}. ${m.fileName} [${m.
       
       // 사용처: 파산 필수항목
       // 보증채무인 경우 피보증인명, 대위변제 후인 경우 원채권자 사용처 승계
-      let usage = c.debtUsage || '생계비 및 생활비';
+      let usage = c.debtUsage || ''; // 비어 있으면 '확인 필요' (이전: '생계비 및 생활비'를 지어 넣음)
       if (c.isGuaranteedDebt && c.principalDebtorName) {
         usage = `피보증인(${c.principalDebtorName}) 채무보증`;
       }

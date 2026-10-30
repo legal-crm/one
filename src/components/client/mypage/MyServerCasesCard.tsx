@@ -11,6 +11,7 @@ import { MY_CASES_CHANGED_EVENT } from '../../../services/cases/pendingCaseLink'
 import MyCaseFeeSection from './MyCaseFeeSection';
 import MyCaseDocsSection from './MyCaseDocsSection';
 import MyCorrectionTodo from './MyCorrectionTodo';
+import MyDebtCertProgress from './MyDebtCertProgress';
 
 const CASE_TYPE_LABEL = { rehab: '개인회생', bankruptcy: '개인파산·면책' } as const;
 const GROUP_LABELS = ['상담', '계약', '서류 준비', '신청·접수', '법원 심사', '변제·면책'];
@@ -103,6 +104,8 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
             {c.stage === 'closed' && <p className="mt-2 text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
             {/* 법원 보정 할 일 (CR-5): 진행 중 회차가 있으면 맨 위에 */}
             {c.stage !== 'closed' && <MyCorrectionTodo caseKey={c.workspaceKey} />}
+            {/* 부채증명서 진행 (DC-10): 받은 곳 수와 발급 중 주의사항 */}
+            {c.stage !== 'closed' && <MyDebtCertProgress caseKey={c.workspaceKey} />}
             <MyCaseFeeSection caseId={c.caseId} />
             {/* 상담 요청에서 시작한 사건은 아래 '필수 서류 제출' 카드에서 받는다 */}
             {!c.hasConsultRequest && c.stage !== 'closed' && <MyCaseDocsSection caseKey={c.workspaceKey} />}

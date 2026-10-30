@@ -29,6 +29,17 @@ import { getMinimumRepaymentThreshold } from './rehabLegalCore';
 import { localYmd } from '../../utils/localDate';
 
 /**
+ * 별제권부 채권의 예정부족액 (담보로 변제받지 못할 것으로 보이는 금액, 원).
+ * 안분에는 이 금액만 넣고 그 몫은 유보한다(DC-Q8). 값이 없으면 0 — 화면에서 '예정부족액 확인 필요'로 알린다.
+ * B-3에서 실제 접수본 정답 데이터로 다시 검증한다.
+ */
+export function securedShortageOf(c: Pick<RepaymentCreditor, 'isSecured' | 'unsecuredExpectedShortage' | 'securedShortageInfo'>): number {
+  if (!c.isSecured) return 0;
+  const v = c.unsecuredExpectedShortage ?? c.securedShortageInfo?.calculatedShortage ?? 0;
+  return Number.isFinite(v) ? Math.max(0, Math.round(v)) : 0;
+}
+
+/**
  * 최대잉여법(largest remainder) 안분: 각 몫을 원 단위로 내림한 뒤
  * 남은 원을 소수점 이하가 큰 순서대로 1원씩 배정해 합계를 total과 정확히 맞춘다.
  */
@@ -268,10 +279,11 @@ export function allocateCreditorRepayments(
   totalRepayment: number;
   roundingDifference: number;
 } {
-  const unsecuredCreditors = creditors.filter((c) => !c.isSecured);
   const isSimultaneous = interestRepaymentMode === 'simultaneous_all';
   const getClaimBasis = (c: RepaymentCreditor) => isSimultaneous ? (c.principal + (c.interest || 0)) : c.principal;
-  const totalBase = unsecuredCreditors.reduce((sum, c) => sum + getClaimBasis(c), 0);
+  // 별제권부 채권은 예정부족액만큼 안분에 넣고 유보한다 (DC-Q8, 이전: 통째로 빠져 다른 채권자 몫이 커졌다)
+  const weightOf = (c: RepaymentCreditor) => (c.isSecured ? securedShortageOf(c) : getClaimBasis(c));
+  const totalBase = creditors.reduce((sum, c) => sum + weightOf(c), 0);
 
   if (totalBase <= 0 || monthlyDisposableIncome <= 0) {
     const zeroed = creditors.map((c) => ({
@@ -294,12 +306,12 @@ export function allocateCreditorRepayments(
   // 합계가 월 가용소득과 정확히 일치하도록 최대잉여법으로 원 단위 안분
   const shares = apportionByWeights(
     monthlyDisposableIncome,
-    creditors.map((c) => (c.isSecured ? 0 : getClaimBasis(c)))
+    creditors.map((c) => weightOf(c))
   );
 
   for (let idx = 0; idx < creditors.length; idx++) {
     const creditor = creditors[idx];
-    if (creditor.isSecured) {
+    if (creditor.isSecured && securedShortageOf(creditor) <= 0) {
       resultCreditors.push({
         ...creditor,
         allocationRatio: 0,
@@ -310,7 +322,7 @@ export function allocateCreditorRepayments(
       continue;
     }
 
-    const claim = getClaimBasis(creditor);
+    const claim = weightOf(creditor);
     const ratio = claim / totalBase;
     const monthlyRepay = shares[idx];
     calculatedMonthlyTotal += monthlyRepay;
@@ -327,6 +339,7 @@ export function allocateCreditorRepayments(
       monthlyRepayment: monthlyRepay,
       totalRepayment: totalRepay,
       repaymentRate,
+      ...(creditor.isSecured ? { isUnconfirmedReserve: true } : {}),
     });
   }
 
@@ -436,10 +449,11 @@ export function allocateTwoStageRepayments(
   const stage2Months = Math.max(0, totalMonths - s1);
   const unsecured = creditors.filter((c) => !c.isSecured);
   const priorityList = unsecured.filter((c) => c.isPriority);
-  const generalList = unsecured.filter((c) => !c.isPriority);
+  // 일반 채권 몫: 무담보 일반 채권 원금 + 별제권부 채권 예정부족액(유보, DC-Q8)
+  const generalWeight = (c: RepaymentCreditor) => (c.isSecured ? securedShortageOf(c) : (!c.isPriority ? c.principal : 0));
 
   const totalPriorityPrincipal = priorityList.reduce((s, c) => s + c.principal, 0);
-  const totalGeneralPrincipal = generalList.reduce((s, c) => s + c.principal, 0);
+  const totalGeneralPrincipal = creditors.reduce((s, c) => s + generalWeight(c), 0);
 
   // 1단계 우선권 채권 월 필요 변제액 (T_priority / s1)
   const reqPriorityMonthly = totalPriorityPrincipal > 0 
@@ -452,14 +466,14 @@ export function allocateTwoStageRepayments(
 
   // 원 단위 최대잉여법 안분 (합계 = 투입액)
   const prioShares = apportionByWeights(actualPriorityMonthly, creditors.map((c) => (!c.isSecured && c.isPriority ? c.principal : 0)));
-  const genS1Shares = apportionByWeights(surplusForGeneralStage1, creditors.map((c) => (!c.isSecured && !c.isPriority ? c.principal : 0)));
-  const genS2Shares = apportionByWeights(monthlyDisposableIncome, creditors.map((c) => (!c.isSecured && !c.isPriority ? c.principal : 0)));
+  const genS1Shares = apportionByWeights(surplusForGeneralStage1, creditors.map((c) => generalWeight(c)));
+  const genS2Shares = apportionByWeights(monthlyDisposableIncome, creditors.map((c) => generalWeight(c)));
 
   let stage1CalculatedTotal = 0;
   let stage2CalculatedTotal = 0;
 
   const resultCreditors: RepaymentCreditor[] = creditors.map((creditor, idx) => {
-    if (creditor.isSecured) {
+    if (creditor.isSecured && securedShortageOf(creditor) <= 0) {
       return {
         ...creditor,
         allocationRatio: 0,
@@ -471,7 +485,7 @@ export function allocateTwoStageRepayments(
       };
     }
 
-    if (creditor.isPriority) {
+    if (creditor.isPriority && !creditor.isSecured) {
       // 우선권 채권자: 1단계에서 전액 우선 변제, 2단계는 0원
       const ratio = totalPriorityPrincipal > 0 ? creditor.principal / totalPriorityPrincipal : 0;
       const stage1Monthly = prioShares[idx];
@@ -492,11 +506,12 @@ export function allocateTwoStageRepayments(
       };
     } else {
       // 일반 채권자: 1단계 잔여분 안분 + 2단계 전액 안분
-      const ratio = totalGeneralPrincipal > 0 ? creditor.principal / totalGeneralPrincipal : 0;
+      const base = generalWeight(creditor);
+      const ratio = totalGeneralPrincipal > 0 ? base / totalGeneralPrincipal : 0;
       const stage1Monthly = genS1Shares[idx];
       const stage2Monthly = stage2Months > 0 ? genS2Shares[idx] : 0;
       const totalRepay = (stage1Monthly * s1) + (stage2Monthly * stage2Months);
-      const repaymentRate = creditor.principal > 0 ? Math.round((totalRepay / creditor.principal) * 1000) / 10 : 0;
+      const repaymentRate = base > 0 ? Math.round((totalRepay / base) * 1000) / 10 : 0;
 
       stage1CalculatedTotal += stage1Monthly;
       stage2CalculatedTotal += stage2Monthly;
@@ -509,6 +524,7 @@ export function allocateTwoStageRepayments(
         monthlyRepayment: stage2Monthly,
         totalRepayment: totalRepay,
         repaymentRate,
+        ...(creditor.isSecured ? { isUnconfirmedReserve: true } : {}),
       };
     }
   });
@@ -676,7 +692,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   const totalLiquidationValue = calculateTotalLiquidationValue(assets, incomeExpense.region);
 
   // 3. 총 채권 원금 및 총 채무
-  const totalPrincipal = creditors.reduce((sum, c) => sum + (c.isSecured ? 0 : c.principal), 0);
+  // 별제권부 채권은 예정부족액만 변제 대상에 넣는다 (DC-Q8)
+  const totalPrincipal = creditors.reduce((sum, c) => sum + (c.isSecured ? securedShortageOf(c) : c.principal), 0);
   const totalInterest = creditors.reduce((sum, c) => sum + (c.isSecured ? 0 : c.interest), 0);
   const totalDebt = totalPrincipal + totalInterest;
 

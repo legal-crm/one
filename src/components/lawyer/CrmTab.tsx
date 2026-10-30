@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { loadFeeOverviewByRequest, type FeeOverviewRow, type FeeInstallmentStatus } from '../../services/fees/feeService';
 import { useServerCaseFee } from '../../hooks/useServerCaseFee';
+import { useDebtLedgerStatus } from '../../hooks/useDebtLedgerStatus';
 
 /** 서버 회차 → 알림톡 창이 쓰는 회차 모양 (금액은 남은 금액, 원 단위) */
 function serverInstallmentToFee(r: FeeInstallmentStatus): FeeInstallment {
@@ -47,7 +48,6 @@ import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import InternalThreadTab from './InternalThreadTab';
 import CourtCaseTab from './CourtCaseTab';
-import DebtCertificateTab from './repayment/DebtCertificateTab';
 import RepaymentPlanEditor from './repayment/RepaymentPlanEditor';
 import ComprehensiveCorrectionCenter from './correction/ComprehensiveCorrectionCenter';
 import BatchFilingPackagingModal from './filing/BatchFilingPackagingModal';
@@ -446,6 +446,8 @@ export default function CrmTab({
   const [feeAlimtokModalConfig, setFeeAlimtokModalConfig] = useState<{ isOpen: boolean; installment?: FeeInstallment; initialMilestone?: AlimtokMilestone }>({ isOpen: false });
   // 선택한 사건의 서버 수납 요약 (사건 화면 수납 현황·안내 알림톡·2단계 완료 조건)
   const serverFee = useServerCaseFee(officeId, selectedId || undefined);
+  // 선택한 사건의 부채증명 장부 완료 여부 (3단계 c2, DC-10)
+  const debtLedger = useDebtLedgerStatus(officeId, selectedId || undefined);
   const serverFeeRef = React.useRef(serverFee);
   serverFeeRef.current = serverFee;
   const [dropOffTargetId, setDropOffTargetId] = useState('');
@@ -2069,7 +2071,8 @@ export default function CrmTab({
             case 3:
               return [
                 { id: 'c1', label: '기본 관공서 서류 수합', isMet: (selectedExt.documents || []).length > 0 },
-                { id: 'c2', label: '채권기관별 부채증명서 발급', isMet: (selectedExt.debtCertificateOrders || []).every(o => o.orderStatus === 'completed') },
+                // 서버 장부: 모든 채권자가 '반영' 또는 '발급 불가 + 대체 소명'이어야 완료, 빈 장부는 미완료 (이전: 빈 목록이면 완료)
+                { id: 'c2', label: '채권기관별 부채증명서 반영', isMet: officeId ? debtLedger.complete : ((selectedExt.debtCertificateOrders || []).length > 0 && (selectedExt.debtCertificateOrders || []).every(o => o.orderStatus === 'completed')) },
                 { id: 'c3', label: '필수 서류 승인 80% 이상', isMet: gates.isDocCompleted },
               ];
             case 4:
@@ -2298,6 +2301,8 @@ export default function CrmTab({
                           await updateCrmExt(selectedId, patch);
                         }}
                         onAdvanceToNextStage={() => advancePipelineStage(4)}
+                        officeId={officeId}
+                        canEditDocs={officeId ? officeCan('documents.manage') : true}
                         onOpenDocScanner={() => setShowDocScanner(true)}
                         onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
                         onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}

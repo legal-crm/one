@@ -401,16 +401,8 @@ export function convertDebtItemsToRepaymentCreditors(
 
     const interest = item.confirmedInterest || 0;
 
-    // 조세, 4대보험 등 우선권 키워드 감지
-    const name = item.creditorName.toLowerCase();
-    const isPriority = 
-      name.includes('세무서') || 
-      name.includes('구청') || 
-      name.includes('시청') || 
-      name.includes('국세') || 
-      name.includes('지방세') || 
-      name.includes('건강보험') || 
-      name.includes('국민연금');
+    // 우선권은 채권 종류로 정한다(공용 채권자 정보 기본값). 이름 글자로 추측하지 않는다 (DC-7)
+    const isPriority = false;
 
     // 주소 정보 매칭 (직접 입력값 우선, 없으면 디렉토리 프리셋 매칭)
     const preset = matchCreditorPreset(item.creditorName);
@@ -419,8 +411,8 @@ export function convertDebtItemsToRepaymentCreditors(
     const serviceAddress = item.serviceAddress || preset?.serviceAddress || address;
     const representative = item.representative || preset?.representative || '';
     const bizNumber = item.bizNumber || preset?.bizNumber || '';
-    const debtCauseDetail = item.debtCauseDetail || (isPriority ? '조세 및 공과금 체납' : '대여금 / 신용대출');
-    const borrowedDate = item.borrowedDate || item.issueDate || '2024-01-01';
+    const debtCauseDetail = item.debtCauseDetail || ''; // 모르면 빈칸 (이전: '대여금 / 신용대출')
+    const borrowedDate = item.borrowedDate || ''; // 모르면 빈칸 (이전: 발급일 또는 '2024-01-01')
 
     return {
       id: item.id || `cred_${idx + 1}`,
@@ -431,6 +423,8 @@ export function convertDebtItemsToRepaymentCreditors(
       isSecured: item.isSecured ?? false,
       isUnconfirmed: item.issueStatus !== 'issued' && item.issueStatus !== 'confirmed',
       isPriority: isPriority || (preset?.isPriorityDefault ?? false),
+      // 증명서 확정 원금이 없으면 상담 때 추정 원금 → '추정'으로 표시 (DC-Q6)
+      isEstimated: !(item.confirmedPrincipal !== undefined && item.confirmedPrincipal > 0),
       allocationRatio: 0,
       monthlyRepayment: 0,
       totalRepayment: 0,

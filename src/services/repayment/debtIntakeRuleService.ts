@@ -361,7 +361,8 @@ export class DebtIntakeRuleService {
    * 고객에게 발송할 카카오톡 알림톡 안내문 생성
    */
   static generateIntakeNotificationMessage(clientName: string, lawFirmName: string = '법률사무소', intakeUrl?: string): string {
-    const safeUrl = intakeUrl || 'https://legal-crm-xi.vercel.app/client/debt-intake';
+    // 예전 미리보기 주소(없는 화면) 대신 의뢰인 '내 사건' 화면으로 보낸다
+    const safeUrl = intakeUrl || 'https://mykim.kr/?tab=mypage';
     return `[${lawFirmName}] 부채증명서 신속 발급을 위한 금융사 세부 확인 요청
 
 ${clientName}님, 보내주신 1차 서류(인감 등) 수령 후 각 금융기관 부채증명서 발급 대행을 준비 중입니다.

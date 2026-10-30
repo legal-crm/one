@@ -837,7 +837,7 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
                           totalRepayment: 0,
                           repaymentRate: 0,
                           principalCalculationBasis: '부채증명서 참조',
-                          interestCalculationBasis: '연체이자 계산서 참조'
+                          interestCalculationBasis: '부채증명서 참조'
                         }
                       ]
                     }));

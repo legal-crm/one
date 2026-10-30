@@ -1,5 +1,7 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { creditorAnnexNumbers } from '../../../../services/documents/courtFilingEngine';
+import { basisWithDate, dotDate, headerBaseDate } from '../../../../services/debt/debtLedgerRules';
 import { F } from './CourtField';
 
 interface CourtFormProps {
@@ -47,7 +49,8 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
         <h1 className="text-center text-[24px] font-bold mb-8 tracking-widest">개인회생채권자목록</h1>
         
         <div className="text-right text-[14px] mb-4">
-          <p>채권현재액 산정기준일: <F k="court.applicationDate">{court.applicationDate || '20    .    .    .'}</F></p>
+          {/* 머리 산정기준일: 채권자별 기준일 중 가장 늦은 날 (DC-Q4). 기준일이 하나도 없을 때만 신청일 칸 */}
+          <p>채권현재액 산정기준일: {headerBaseDate(creditors) ? dotDate(headerBaseDate(creditors)) : <F k="court.applicationDate">{court.applicationDate || '20    .    .    .'}</F>}</p>
           <p>목록 작성일: <F k="court.applicationDate">{court.applicationDate || '20    .    .    .'}</F></p>
         </div>
 
@@ -127,8 +130,8 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
               <tr>
                 <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권의 내용</td>
                 <td className="border border-black p-2 text-left" colSpan={3}>
-                  {creditor.debtCauseDetail || creditor.debtType || '대출금'}
-                  {creditor.annexDocType ? ` (부속서류: ${creditor.annexDocType})` : ''}
+                  {creditor.claimContent || creditor.claimCause || creditor.debtCauseDetail || creditor.debtType || ''}
+                  {creditorAnnexNumbers(creditor).length > 0 ? ` (부속서류 ${creditorAnnexNumbers(creditor).join(', ')} 참조)` : ''}
                 </td>
               </tr>
               {/* 채권현재액(원금) */}
@@ -136,14 +139,14 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
                 <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권현재액(원금)</td>
                 <td className="border border-black p-2 text-right">{fmt(getPrincipal(creditor))}원</td>
                 <td className="border border-black p-2 font-semibold text-center">산정근거</td>
-                <td className="border border-black p-2 text-left">{creditor.principalCalculationBasis || '부채증명서 참조'}</td>
+                <td className="border border-black p-2 text-left">{creditor.principalCalculationBasis || basisWithDate(creditor)}</td>
               </tr>
               {/* 채권현재액(이자) */}
               <tr>
                 <td className="border border-black p-2 font-semibold text-center" colSpan={2}>채권현재액(이자)</td>
                 <td className="border border-black p-2 text-right">{fmt(getInterest(creditor))}원</td>
                 <td className="border border-black p-2 font-semibold text-center">산정근거</td>
-                <td className="border border-black p-2 text-left">{creditor.interestCalculationBasis || '연체이자 계산서 참조'}</td>
+                <td className="border border-black p-2 text-left">{creditor.interestCalculationBasis || basisWithDate(creditor)}</td>
               </tr>
               {/* 보증인 */}
               <tr>

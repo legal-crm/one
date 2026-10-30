@@ -247,49 +247,56 @@ export interface RepaymentCreditor {
   interestRate?: number;             // 약정 이율 (연 %, 미입력 시 서식에 미표시)
   principalCalculationBasis?: string;// 원금 산정 근거 (예: 부채증명서 참조)
   interestCalculationBasis?: string; // 이자 산정 근거
+
+  // ── 부채증명 장부 연결 (DC-6·DC-7) ──
+  /** 이 채권 값을 채운 부채증명 장부 줄 */
+  certificateId?: string;
+  /** 산정기준일 (YYYY-MM-DD, 증명서 기준) */
+  baseDate?: string;
+  /** 채권의 원인 표준 문장 (예: 2023. 4. 3.자 대출거래약정에 따른 최초 대출금 10,000,000원) */
+  claimCause?: string;
+  /** 채권의 내용 문장 */
+  claimContent?: string;
+  /** 채권의 내용을 사람이 직접 고쳤으면 자동 문장으로 덮어쓰지 않는다 */
+  claimContentManual?: boolean;
+  /** 증명서 없이 진술·추정으로 넣은 채권 (서식·제안서 전에 경고) */
+  isEstimated?: boolean;
+  /** 인격 구분 (전자소송 CSV) */
+  personType?: 'natural' | 'corporation' | 'unincorporated' | 'state' | 'local_gov';
 }
 
 // ══════════════════════════════════════════════════════════════════
 // 개인회생 채권자목록 부속서류 1~4 법원 표준 분류 규격
 // ══════════════════════════════════════════════════════════════════
-export type CreditorAnnexDocType = 
+// 번호 뜻은 법원 양식·실제 접수본·경쟁 3사가 같음: 1 별제권부 · 2 다툼(예상 포함) · 3 전부명령 · 4 기타(보증인인 경우 등) (DC-6)
+// 이전: 1 변제공탁 · 2 시효완성 · 3 전부명령 · 4 다툼으로 정의돼 서식 엔진과 번호 뜻이 달랐다.
+export type CreditorAnnexDocType =
   | 'NONE'
-  | 'ANNEX_1_DEPOSIT'               // 부속서류 1: 변제공탁 채권
-  | 'ANNEX_2_STATUTE_OF_LIMITATIONS' // 부속서류 2: 시효완성 채권
-  | 'ANNEX_3_ASSIGNMENT_ORDER'      // 부속서류 3: 전부명령 채권
-  | 'ANNEX_4_DISPUTED';             // 부속서류 4: 다툼이 있는 채권 (보증인/주채무자 등)
+  | 'ANNEX_1_SECURED'               // 부속서류 1: 별제권부 채권 및 이에 준하는 채권
+  | 'ANNEX_2_DISPUTED'              // 부속서류 2: 다툼이 있거나 예상되는 채권
+  | 'ANNEX_3_ASSIGNMENT_ORDER'      // 부속서류 3: 전부명령의 내역
+  | 'ANNEX_4_OTHER';                // 부속서류 4: 기타 (신청인이 보증인인 경우의 주채무 등)
+
+/** 예전에 저장된 값 → 지금 번호 (예전 2 시효완성·4 다툼 → 2 다툼, 1 변제공탁 → 4 기타) */
+export function normalizeAnnexType(v: unknown): CreditorAnnexDocType {
+  switch (String(v || 'NONE')) {
+    case 'ANNEX_1_SECURED': return 'ANNEX_1_SECURED';
+    case 'ANNEX_2_DISPUTED':
+    case 'ANNEX_2_STATUTE_OF_LIMITATIONS':
+    case 'ANNEX_4_DISPUTED': return 'ANNEX_2_DISPUTED';
+    case 'ANNEX_3_ASSIGNMENT_ORDER': return 'ANNEX_3_ASSIGNMENT_ORDER';
+    case 'ANNEX_4_OTHER':
+    case 'ANNEX_1_DEPOSIT': return 'ANNEX_4_OTHER';
+    default: return 'NONE';
+  }
+}
 
 export const ANNEX_DOC_CONFIG: Record<CreditorAnnexDocType, { label: string; shortLabel: string; badgeColor: string; description: string }> = {
-  NONE: { 
-    label: '해당없음 (일반채권)', 
-    shortLabel: '일반', 
-    badgeColor: 'bg-slate-100 text-slate-600',
-    description: '부속서류 작성이 불필요한 통상 채권' 
-  },
-  ANNEX_1_DEPOSIT: { 
-    label: '부속서류 1: 변제공탁 채권', 
-    shortLabel: '부속 1호(공탁)', 
-    badgeColor: 'bg-purple-100 text-purple-700 border-purple-300',
-    description: '변제공탁 채권 (채권자목록 기재 시 자동 반영)' 
-  },
-  ANNEX_2_STATUTE_OF_LIMITATIONS: { 
-    label: '부속서류 2: 시효완성 채권', 
-    shortLabel: '부속 2호(시효)', 
-    badgeColor: 'bg-amber-100 text-amber-700 border-amber-300',
-    description: '채권자와 채무액 다툼 또는 소멸시효 완성 채권' 
-  },
-  ANNEX_3_ASSIGNMENT_ORDER: { 
-    label: '부속서류 3: 전부명령 채권', 
-    shortLabel: '부속 3호(전부)', 
-    badgeColor: 'bg-rose-100 text-rose-700 border-rose-300',
-    description: '급여·예금에 유효한 전부명령 확정 압류 채권' 
-  },
-  ANNEX_4_DISPUTED: { 
-    label: '부속서류 4: 다툼이 있는 채권', 
-    shortLabel: '부속 4호(다툼/보증)', 
-    badgeColor: 'bg-blue-100 text-blue-700 border-blue-300',
-    description: '보증인 구상금, 손해배상 등 1~3호 외 분쟁 채권' 
-  },
+  NONE: { label: '해당없음 (일반채권)', shortLabel: '일반', badgeColor: 'bg-slate-100 text-slate-600', description: '부속서류 작성이 필요 없는 채권' },
+  ANNEX_1_SECURED: { label: '부속서류 1: 별제권부 채권', shortLabel: '부속 1(별제권)', badgeColor: 'bg-purple-100 text-purple-700 border-purple-300', description: '담보권이 있는 채권과 예정부족액' },
+  ANNEX_2_DISPUTED: { label: '부속서류 2: 다툼이 있거나 예상되는 채권', shortLabel: '부속 2(다툼)', badgeColor: 'bg-amber-100 text-amber-700 border-amber-300', description: '채권 존부·금액을 다투거나 다툼이 예상되는 채권' },
+  ANNEX_3_ASSIGNMENT_ORDER: { label: '부속서류 3: 전부명령', shortLabel: '부속 3(전부)', badgeColor: 'bg-rose-100 text-rose-700 border-rose-300', description: '전부명령의 내역' },
+  ANNEX_4_OTHER: { label: '부속서류 4: 기타', shortLabel: '부속 4(기타)', badgeColor: 'bg-blue-100 text-blue-700 border-blue-300', description: '신청인이 보증인인 경우의 주채무 내용 등' },
 };
 
 export type AssetCategory = 

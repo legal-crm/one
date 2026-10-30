@@ -31,6 +31,8 @@ interface DebtAgencyApplicationModalProps {
   order: DebtCertificateOrder;
   onSaveOrder: (newOrder: DebtCertificateOrder) => void;
   activeLawyerName?: string;
+  /** false면 브라우저에 저장하지 않는다 (서버 장부에서 열 때: 인쇄·엑셀용으로만 씀) */
+  persist?: boolean;
 }
 
 const LEGACY_SEED_HASHES = new Set(['9o6ght', '9o6s70', '2eybw8', '2dgkas', '1yzvn3', 'eki609', '1fy3b86']);
@@ -50,6 +52,7 @@ export default function DebtAgencyApplicationModal({
   order,
   onSaveOrder,
   activeLawyerName,
+  persist = true,
 }: DebtAgencyApplicationModalProps) {
   // 과거 데모 시드로 저장된 특정 사무소·직원 정보(이름·전화번호)를 걸러낸다.
   // 실제 개인정보 문자열이 번들에 남지 않도록 해시값으로만 비교한다.
@@ -119,6 +122,7 @@ export default function DebtAgencyApplicationModal({
       agencyApplication: appData,
     };
     onSaveOrder(updatedOrder);
+    if (!persist) return; // 서버 장부 모드: 신청서는 인쇄·엑셀로만 내보내고 저장하지 않는다(주민번호 등 개인정보 보관 안 함)
     saveDebtCertificateOrder(updatedOrder);
     toast.success('대행 신청서 정보를 저장했습니다 (이 브라우저에 저장).');
   };
