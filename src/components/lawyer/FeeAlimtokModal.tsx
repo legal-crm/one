@@ -35,6 +35,8 @@ interface Props {
   lawyerName: string;
   onSent?: (milestone: AlimtokMilestone) => void;
   initialMilestone?: AlimtokMilestone;
+  /** 서버에 등록된 입금 계좌 문구 (있으면 브라우저 설정 대신 사용). 빈 문자열 = 등록된 계좌 없음 */
+  bankAccountText?: string;
 }
 
 const MILESTONE_CONFIGS: { value: AlimtokMilestone; label: string; templateCode: string; desc: string }[] = [
@@ -57,6 +59,7 @@ export default function FeeAlimtokModal({
   lawyerName,
   onSent,
   initialMilestone = 'fee_upcoming',
+  bankAccountText,
 }: Props) {
   const [templates, setTemplates] = useState<PopbillAlimtokTemplate[]>([]);
   const [selectedMilestone, setSelectedMilestone] = useState<AlimtokMilestone>(initialMilestone);
@@ -70,9 +73,11 @@ export default function FeeAlimtokModal({
   const settings = loadFeeNotificationSettings();
   const hasBank = Boolean(settings.bankInfo.bankName?.trim() && settings.bankInfo.accountNumber?.trim());
   // 계좌 미설정 시 빈칸 표시 (이전: 가짜 기본 계좌가 채워짐)
-  const bankAccountStr = hasBank
-    ? `${settings.bankInfo.bankName} ${settings.bankInfo.accountNumber}${settings.bankInfo.accountHolder ? ` (예금주: ${settings.bankInfo.accountHolder})` : ''}`
-    : '';
+  const bankAccountStr = bankAccountText !== undefined
+    ? bankAccountText
+    : hasBank
+      ? `${settings.bankInfo.bankName} ${settings.bankInfo.accountNumber}${settings.bankInfo.accountHolder ? ` (예금주: ${settings.bankInfo.accountHolder})` : ''}`
+      : '';
   const amountWon = feeAmountWon(installment);
   const feeWon = totalFeeWon !== undefined ? totalFeeWon : totalFeeManwon * 10000;
   const paidWon = totalPaidWon !== undefined ? totalPaidWon : totalPaidManwon * 10000;

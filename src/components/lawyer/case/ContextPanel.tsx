@@ -12,6 +12,7 @@ import type { CommunicationLog } from '../../../types/leadTypes';
 import { getDisplayClientName, getDisplayPhoneNumber, isClientContactDisclosed } from '../../../utils/clientDisplay';
 import { feeTotalWon, feeAmountWon } from '../../../utils/feeUnits';
 import { detectClientIncomeType } from '../../../utils/incomeTypeHelper';
+import { MIN_LIVING_EXPENSE_60_2026, MIN_LIVING_EXPENSE_60_2027 } from '../../../services/repayment/repaymentConstants2026';
 
 export interface ContextPanelProps {
   clientRequest: ConsultRequest;
@@ -28,6 +29,11 @@ export interface ContextPanelProps {
   onAddNote?: (content: string, type: 'note' | 'thread' | 'task') => Promise<void> | void;
   onUpdateExt?: (updated: Partial<CrmClientExtension>) => Promise<void> | void;
   onOpenFeeTab?: () => void;
+  /**
+   * 서버 수납 요약 (서버 사무소일 때). undefined = 서버 없음(예전 사본으로 계산), null = 읽는 중
+   * 납부 상태는 서버 기록만 원본이다 (사건 관리 사본의 회차 상태는 서버와 따로 놀 수 있다)
+   */
+  serverFee?: { hasAgreement: boolean; totalFeeWon: number; paidWon: number; overdueCount: number; nextDueOn?: string; nextDueWon?: number } | null;
   className?: string;
 }
 
@@ -53,6 +59,7 @@ export function ContextPanel({
   onAddNote,
   onUpdateExt,
   onOpenFeeTab,
+  serverFee,
   className = '',
 }: ContextPanelProps) {
   const [internalTab, setInternalTab] = useState<'client' | 'comm' | 'notes'>('client');
@@ -86,7 +93,10 @@ export function ContextPanel({
   const income = fp.income || 0;
   const debtTotal = fp.debtTotal || 0;
   const depCount = fp.dependents || 0;
-  const minLivingCost = depCount === 0 ? 133 : depCount === 1 ? 220 : depCount === 2 ? 282 : 343;
+  // 기준 중위소득 60% (만원, 반올림) — 법정 기준표 한 곳에서 읽는다 (이전: 133·220·282·343만원 고정값, 2026 기준과 다름)
+  const livingTable = new Date().getFullYear() >= 2027 ? MIN_LIVING_EXPENSE_60_2027 : MIN_LIVING_EXPENSE_60_2026;
+  const householdSize = Math.min(Math.max(1, depCount + 1), Math.max(...Object.keys(livingTable).map(Number)));
+  const minLivingCost = Math.round((livingTable[householdSize] || 0) / 10000);
   const monthlyDisposable = Math.max(0, income - minLivingCost);
   const isYouthSpecial = Boolean((fp.age && fp.age < 30) || (fp.specialCondition && fp.specialCondition !== 'none'));
   const termMonths = isYouthSpecial ? 24 : 36;
@@ -100,18 +110,24 @@ export function ContextPanel({
   // 수임료 계산
   const feeSchedule = crmExt?.feeSchedule || [];
   const rawTotalFee = crmExt?.totalFee || crmExt?.contractAmount || 0;
-  const totalFeeWon = rawTotalFee > 0 ? feeTotalWon(rawTotalFee) : feeSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0);
+  const legacyTotalWon = rawTotalFee > 0 ? feeTotalWon(rawTotalFee) : feeSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0);
   const paidSchedule = feeSchedule.filter(f => f.status === 'paid');
   const overdueSchedule = feeSchedule.filter(f => f.status === 'overdue');
   const pendingSchedule = feeSchedule.filter(f => f.status === 'pending');
-  const totalPaidWon = feeSchedule.length > 0
+  const legacyPaidWon = feeSchedule.length > 0
     ? paidSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0)
     : feeTotalWon(crmExt?.totalPaid);
+  const useServerFee = serverFee !== undefined;
+  const totalFeeWon = useServerFee ? (serverFee?.totalFeeWon ?? 0) : legacyTotalWon;
+  const totalPaidWon = useServerFee ? (serverFee?.paidWon ?? 0) : legacyPaidWon;
   const unpaidWon = Math.max(0, totalFeeWon - totalPaidWon);
   const paymentRate = totalFeeWon > 0 ? Math.min(100, Math.round((totalPaidWon / totalFeeWon) * 100)) : 0;
   const isFullyPaid = totalFeeWon > 0 && unpaidWon === 0;
-  const isOverdue = overdueSchedule.length > 0;
-  const nextInst = overdueSchedule[0] || pendingSchedule[0] || null;
+  const isOverdue = useServerFee ? (serverFee?.overdueCount ?? 0) > 0 : overdueSchedule.length > 0;
+  const legacyNext = overdueSchedule[0] || pendingSchedule[0] || null;
+  const nextInst = useServerFee
+    ? (serverFee?.nextDueOn ? { dueDate: serverFee.nextDueOn, amount: serverFee.nextDueWon ?? 0, amountUnit: 'won' as const, status: (serverFee.overdueCount > 0 ? 'overdue' : 'pending') as 'overdue' | 'pending' } : null)
+    : legacyNext;
 
   // 메모 / 스레드 / 지시 통합 목록
   const notesList = useMemo(() => {
@@ -398,7 +414,7 @@ export function ContextPanel({
                   <span className="font-mono font-bold text-slate-900">{income.toLocaleString()}만원</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>생계비 ({depCount + 1}인)</span>
+                  <span>생계비 ({householdSize}인, 중위 60%)</span>
                   <span className="font-mono text-slate-700">{minLivingCost}만원</span>
                 </div>
                 <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
@@ -446,13 +462,13 @@ export function ContextPanel({
                   <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
                     <span className="text-xs text-slate-500 block">약정 총액</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {totalFeeWon > 0 ? `${(totalFeeWon / 10000).toLocaleString()}만원` : '미약정'}
+                      {totalFeeWon > 0 ? `${totalFeeWon.toLocaleString('ko-KR')}원` : (useServerFee ? '일정 없음' : '미약정')}
                     </span>
                   </div>
                   <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
                     <span className="text-xs text-slate-500 block">수납 완료</span>
                     <span className="font-mono font-bold text-emerald-600">
-                      {totalPaidWon > 0 ? `${(totalPaidWon / 10000).toLocaleString()}만원` : '0원'}
+                      {`${totalPaidWon.toLocaleString('ko-KR')}원`}
                     </span>
                   </div>
                 </div>
@@ -469,7 +485,7 @@ export function ContextPanel({
                       />
                     </div>
                     <div className="flex justify-between text-xs text-slate-500">
-                      <span>{isFullyPaid ? '완납 완료' : `잔액 ${(unpaidWon / 10000).toLocaleString()}만원`}</span>
+                      <span>{isFullyPaid ? '완납 완료' : `잔액 ${unpaidWon.toLocaleString('ko-KR')}원`}</span>
                       <span className="font-mono font-semibold">{paymentRate}%</span>
                     </div>
                   </div>
@@ -479,7 +495,7 @@ export function ContextPanel({
                   <div className="pt-1.5 border-t border-slate-100 flex justify-between items-center text-xs">
                     <span className="text-slate-500">다음 납부 예정</span>
                     <span className="font-mono font-bold text-slate-800">
-                      {nextInst.dueDate} ({(feeAmountWon(nextInst) / 10000).toLocaleString()}만)
+                      {nextInst.dueDate} ({feeAmountWon(nextInst).toLocaleString('ko-KR')}원)
                     </span>
                   </div>
                 )}

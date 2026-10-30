@@ -18,6 +18,8 @@ export type SavedViewTab = 'all' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | '
 export interface CaseListViewProps {
   /** 서버 사건 기록 단계 (상담 요청 ID → 사무소용 단계 이름). 없으면 '서버 기록 없음' */
   serverStageLabels?: Record<string, string>;
+  /** 서버 수납 다음 납부 (사건 키 → 날짜·남은 금액). 있으면 캘린더 '분납'은 이것만 쓴다 */
+  serverFeeNext?: Record<string, { dueOn: string; amountWon: number; overdue: boolean }>;
   requests: ConsultRequest[];
   getCrmExt: (id: string) => CrmClientExtension;
   selectedId: string;
@@ -88,6 +90,7 @@ export function CaseListView({
   onOpenTrash,
   onOpenSettings,
   serverStageLabels,
+  serverFeeNext,
 }: CaseListViewProps) {
   // 보기 모드 (리스트 vs 칸반 vs 캘린더)
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'calendar'>('list');
@@ -500,7 +503,27 @@ export function CaseListView({
         }
       });
 
-      // 5. 분납 약정일
+      // 5. 분납 약정일 — 서버 수납 기록이 있으면 다음 납부 한 건만 (이전: 사건 관리 사본 회차라 이미 낸 회차도 보였다)
+      if (serverFeeNext) {
+        const nx = serverFeeNext[r.id];
+        if (nx) {
+          events.push({
+            id: `${r.id}-fee-next`,
+            caseId: r.id,
+            clientName: displayName,
+            caseTypeLabel,
+            stageNum: stage,
+            dateStr: nx.dueOn.slice(0, 10),
+            type: 'fee',
+            title: `${nx.overdue ? '기한 지난 수임료' : '수임료 납부'} (${formatWonShort(nx.amountWon)})`,
+            badgeLabel: nx.overdue ? '기한 지남' : '분납',
+            isUrgent: nx.overdue,
+            request: r,
+            ext,
+          });
+        }
+        return;
+      }
       ext.feeSchedule?.forEach((f, idx) => {
         if (f.dueDate && f.status !== 'paid') {
           const dStr = f.dueDate.slice(0, 10);
@@ -523,7 +546,7 @@ export function CaseListView({
     });
 
     return events;
-  }, [filteredRequests, getCrmExt]);
+  }, [filteredRequests, getCrmExt, serverFeeNext]);
 
   // 캘린더 매트릭스 계산 (5~6주)
   const calendarDays = useMemo(() => {

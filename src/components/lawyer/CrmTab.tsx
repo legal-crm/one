@@ -10,7 +10,21 @@ import {
   Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { loadFeeOverviewByRequest, type FeeOverviewRow } from '../../services/fees/feeService';
+import { loadFeeOverviewByRequest, type FeeOverviewRow, type FeeInstallmentStatus } from '../../services/fees/feeService';
+import { useServerCaseFee } from '../../hooks/useServerCaseFee';
+
+/** 서버 회차 → 알림톡 창이 쓰는 회차 모양 (금액은 남은 금액, 원 단위) */
+function serverInstallmentToFee(r: FeeInstallmentStatus): FeeInstallment {
+  return {
+    id: r.installmentId,
+    round: r.seq,
+    amount: r.remainingWon,
+    amountUnit: 'won',
+    dueDate: r.dueOn,
+    status: r.status === 'overdue' ? 'overdue' : 'pending',
+    memo: r.label,
+  } as FeeInstallment;
+}
 import { useDialog } from '../common/DialogProvider';
 import NewCaseModal from './NewCaseModal';
 import type { NewCaseData } from './NewCaseModal';
@@ -424,6 +438,10 @@ export default function CrmTab({
   // ── 수임료 자동 발송 및 모달 상태 ──
   const [isFeeSettingsModalOpen, setIsFeeSettingsModalOpen] = useState(false);
   const [feeAlimtokModalConfig, setFeeAlimtokModalConfig] = useState<{ isOpen: boolean; installment?: FeeInstallment; initialMilestone?: AlimtokMilestone }>({ isOpen: false });
+  // 선택한 사건의 서버 수납 요약 (사건 화면 수납 현황·안내 알림톡·2단계 완료 조건)
+  const serverFee = useServerCaseFee(officeId, selectedId || undefined);
+  const serverFeeRef = React.useRef(serverFee);
+  serverFeeRef.current = serverFee;
   const [dropOffTargetId, setDropOffTargetId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -639,11 +657,19 @@ export default function CrmTab({
 
   // 서버 사건 기록 단계 (CM-1): 목록에서 어떤 사건이 서버에 기록돼 있는지 보이게 한다
   const [serverStageLabels, setServerStageLabels] = useState<Record<string, string> | undefined>(undefined);
+  const [serverFeeNext, setServerFeeNext] = useState<Record<string, { dueOn: string; amountWon: number; overdue: boolean }> | undefined>(undefined);
   useEffect(() => {
     if (!officeId || selectedId) return;
     let cancelled = false;
     (async () => {
-      const [defs, cs] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 })]);
+      const [defs, cs, fees] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 }), loadFeeOverviewByRequest(officeId)]);
+      if (!cancelled && fees) {
+        const next: Record<string, { dueOn: string; amountWon: number; overdue: boolean }> = {};
+        Object.entries(fees).forEach(([k, f]) => {
+          if (f.nextDueOn && f.remainingWon > 0) next[k] = { dueOn: f.nextDueOn, amountWon: f.nextDueWon ?? 0, overdue: f.overdueCount > 0 };
+        });
+        setServerFeeNext(next);
+      }
       if (cancelled || cs.ok === false) return;
       const map: Record<string, string> = {};
       cs.data.forEach(c => {
@@ -895,6 +921,21 @@ export default function CrmTab({
           return true;
         },
         onOpenAlimtok: () => {
+          // 서버 사무소: 서버 수납 일정의 다음 회차로만 안내 (이전: 사건 관리 사본 회차 또는 가짜 50만 원 회차)
+          if (officeId) {
+            const sf = serverFeeRef.current;
+            const next = sf.nextUnpaid;
+            if (!next) {
+              toast.info(sf.hasAgreement ? '남은 회차가 없습니다 (완납).' : "먼저 사건 화면 '수임료 수납 (서버 기록)'에서 수납 일정을 만들어 주세요.");
+              return;
+            }
+            setFeeAlimtokModalConfig({
+              isOpen: true,
+              installment: serverInstallmentToFee(next),
+              initialMilestone: next.status === 'overdue' ? 'fee_overdue' : next.dueOn === localYmd() ? 'fee_due' : 'fee_upcoming',
+            });
+            return;
+          }
           if (selectedExt.feeSchedule && selectedExt.feeSchedule.length > 0) {
             const firstPending = selectedExt.feeSchedule.find(f => f.status !== 'paid') || selectedExt.feeSchedule[0];
             setFeeAlimtokModalConfig({
@@ -1820,6 +1861,7 @@ export default function CrmTab({
         <CaseListView
           requests={listScopeRequests}
           serverStageLabels={serverStageLabels}
+          serverFeeNext={officeId ? (serverFeeNext || {}) : undefined}
           getCrmExt={getCrmExt}
           selectedId={selectedId}
           onSelectCase={(id) => setSelectedId(id)}
@@ -1993,7 +2035,8 @@ export default function CrmTab({
             case 2:
               return [
                 { id: 'c1', label: '전자 사건위임계약 체결', isMet: gates.isContractCompleted },
-                { id: 'c2', label: '착수금 / 1회차 수납', isMet: totalPaidWon > 0 },
+                // 서버 사무소면 서버 납부 기록 기준 (이전: 사건 관리 사본 회차의 'paid')
+                { id: 'c2', label: '착수금 / 1회차 수납', isMet: officeId ? serverFee.paidWon > 0 : totalPaidWon > 0 },
                 { id: 'c3', label: '소송위임장 날인 및 보관', isMet: Boolean(selectedExt.isSealKeptInSafe || selectedExt.contractDate) },
               ];
             case 3:
@@ -2333,6 +2376,10 @@ export default function CrmTab({
                       onClose={() => setIsContextPanelOpen(false)}
                       onOpenChat={() => { if (setActiveTab) setActiveTab('chat'); }}
                       onOpenFeeTab={() => { advancePipelineStage(2); setDetailTab('fees'); }}
+                      serverFee={officeId ? (serverFee.loaded ? {
+                        hasAgreement: serverFee.hasAgreement, totalFeeWon: serverFee.totalFeeWon, paidWon: serverFee.paidWon,
+                        overdueCount: serverFee.overdueCount, nextDueOn: serverFee.nextUnpaid?.dueOn, nextDueWon: serverFee.nextUnpaid?.remainingWon,
+                      } : null) : undefined}
                       onUpdateExt={async (patch) => { await saveOrThrow(selectedId, patch); }}
                     />
                   </div>
@@ -2661,12 +2708,15 @@ export default function CrmTab({
           onClose={() => setFeeAlimtokModalConfig({ isOpen: false })}
           client={selectedClient}
           installment={feeAlimtokModalConfig.installment}
-          totalFeeWon={feeTotalWon(selectedExt.totalFee || selectedExt.contractAmount)}
-          totalPaidWon={(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + feeAmountWon(f), 0)}
+          totalFeeWon={officeId ? serverFee.totalFeeWon : feeTotalWon(selectedExt.totalFee || selectedExt.contractAmount)}
+          totalPaidWon={officeId ? serverFee.paidWon : (selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + feeAmountWon(f), 0)}
+          bankAccountText={officeId ? (serverFee.account ? `${serverFee.account.bankName} ${serverFee.account.accountNumber} (예금주: ${serverFee.account.accountHolder})` : '') : undefined}
           firmName={activeLawyer.firmName || (activeLawyer as any).firm || ''}
           lawyerName={activeLawyer.name}
           initialMilestone={feeAlimtokModalConfig.initialMilestone}
           onSent={(milestone) => {
+             // 서버 사무소: 보낸 기록은 알림톡 기록(alimtok_logs)에 남는다. 사건 관리 사본 회차는 고치지 않는다
+             if (officeId) return;
              // 알림 기록 업데이트
              const latestExt = getCrmExt(selectedClient.id);
              const updated = {

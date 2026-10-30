@@ -8,6 +8,7 @@ import { AlertTriangle, ChevronDown, ChevronUp, Plus, RefreshCw, Wallet } from '
 import { useDialog } from '../../common/DialogProvider';
 import { findCaseByWorkspaceKey } from '../../../services/cases/caseCoreService';
 import DepositAccountEditor from '../fees/DepositAccountEditor';
+import { notifyFeeChanged } from '../../../hooks/useServerCaseFee';
 import {
   INSTALLMENT_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
@@ -131,7 +132,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     if (r.ok === false) { setFormError(r.message); return; }
     toast.success(agreement ? `수납 일정을 바꿨습니다 (v${r.data.version}).` : '수납 일정을 만들었습니다.');
     setEditing(false);
-    void load();
+    void load(); notifyFeeChanged();
   };
 
   // ── 납부 기록 ──
@@ -168,7 +169,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     if (r.ok === false) { setPayError(r.message); return; }
     toast.success('납부를 기록했습니다.');
     setPayOpen(false);
-    void load();
+    void load(); notifyFeeChanged();
   };
 
   const voidPayment = async (p: FeePayment) => {
@@ -177,7 +178,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     const r = await voidFeePayment(p.id, reasonText.trim());
     if (r.ok === false) { toast.error(r.message); return; }
     toast.success('납부 기록을 취소했습니다.');
-    void load();
+    void load(); notifyFeeChanged();
   };
 
   const rejectReport = async (rep: FeeClientReport) => {
@@ -186,7 +187,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     const r = await rejectClientReport(rep.id, reasonText.trim());
     if (r.ok === false) { toast.error(r.message); return; }
     toast.success('입금 알림을 반려했습니다.');
-    void load();
+    void load(); notifyFeeChanged();
   };
 
   const paidTotal = payments.filter(p => !p.voidedAt).reduce((s, p) => s + p.amountWon, 0);
