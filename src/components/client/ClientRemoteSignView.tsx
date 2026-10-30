@@ -347,7 +347,17 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           } : undefined,
         },
       };
-      await saveContract(updated);
+      if (isRemoteSignServerEnabled) {
+        // 서버가 서명 링크 토큰을 확인한 뒤 감사 기록만 추가한다 (브라우저의 계약서 직접 쓰기 없음)
+        const res = await submitRemoteSignStage({
+          stage: 'offline_request', contractId: contract.id, remoteSignToken: token,
+          method: offlineReqType, detail: detailInfo,
+        });
+        if (!('contract' in res)) throw new Error('error' in res ? res.error : '요청을 저장하지 못했어요.');
+        updated = { ...res.contract, contractMethod: updated.contractMethod, paperContractInfo: updated.paperContractInfo };
+      } else {
+        await saveContract(updated);
+      }
       setContract(updated);
       setOfflineReqDone(modeLabel);
       setOfflineReqType(null);

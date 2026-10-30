@@ -738,7 +738,7 @@ export default function DebtDiscoveryModal({
                         onChange={(e) => setImportDepositAsset(e.target.checked)}
                         className="rounded accent-emerald-600"
                       />
-                      <span>185만 원 초과분({(discoveryData.summary.excessDepositLiquidation / 10000).toLocaleString()}만) 청산가치 재산목록에 반영</span>
+                      <span>250만 원 초과분({(discoveryData.summary.excessDepositLiquidation / 10000).toLocaleString()}만) 청산가치 재산목록에 반영</span>
                     </label>
                   </div>
 

@@ -451,7 +451,7 @@ export const AssetInventoryDoc: React.FC<DocTemplateProps> = ({ data, isEditable
             <td className="border border-black p-1 font-semibold text-center">보 험</td>
             <td className="border border-black p-1 text-right pr-2">623,281원</td>
             <td className="border border-black p-1 text-center">무</td>
-            <td className="border border-black p-1 text-xs pl-2">예상해약환급금 합계 (150만원 이하 소액 면제)</td>
+            <td className="border border-black p-1 text-xs pl-2">예상해약환급금 합계 (합산 250만 원 이하 면제)</td>
           </tr>
           <tr>
             <td className="border border-black p-1 font-semibold text-center">자동차 / 오토바이</td>

@@ -51,7 +51,7 @@ export interface FinancialProfile {
   priorityDebt?: number;    // 우선변제채무 (만 원 단위)
 
   // ── 챗봇 수집 항목 완전 동기화 필드 ──
-  age?: number;             // 나이 (24개월 특례 확인용)
+  age?: number;             // 나이 (3년 미만 단축 검토 확인용)
   gender?: 'male' | 'female'; // 성별
   employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily'; // 고용 형태
   minorChildren?: number;   // 미성년 자녀 수
@@ -63,7 +63,7 @@ export interface FinancialProfile {
   educationCost?: number;   // 월 교육비 (만 원)
   specialEducationCost?: number; // 월 특수교육비 (만 원)
   myAssets?: number;        // 본인 재산 총액 (만 원)
-  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud'; // 24개월 특례
+  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud'; // 3년 미만 단축 검토
   monthlyFixedExpenses?: number; // 월 고정지출 (통신비, 보험료 등)
   address?: string;         // 거주지 주소
   workLocation?: string;    // 근무지/사업장 주소
@@ -1868,7 +1868,7 @@ export interface CourtConfig {
   description: string;
   includeSpouseProperty: boolean;
   includeCryptoStock: boolean;
-  allow24Month: boolean;
+  shortPlanRule: boolean;
   allowAdditionalLivingCost: boolean;
   allowOtherLivingCost: boolean;
 }
@@ -1955,6 +1955,8 @@ export interface ClientQA {
   /** 첫 답변 변호사 ID (동명이인 구분) */
   lawyerId?: string;
   answeredAt?: string;
+  /** 금지 표현이 걸려 관리자 검토를 기다리는 변호사 답변 (공개 화면에 표시하지 않음) */
+  pendingAnswers?: Array<QAAnswer & { flaggedTerms?: string[] }>;
 }
 
 export interface SuccessReview {
@@ -2040,6 +2042,17 @@ export interface AdOrder {
   buyerCEOName?: string;
   buyerEmail?: string;
   buyerTaxEmail2?: string;
+  // 서버 주문 칸 (20261030000700_ad_billing)
+  officeId?: string;
+  placement?: 'main_banner' | 'top_exposure' | 'regional';
+  supplyAmount?: number;
+  vatAmount?: number;
+  startsOn?: string;
+  endsOn?: string;
+  reservedUntil?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  refundAmount?: number;
 }
 
 export interface Notice {
@@ -2378,7 +2391,7 @@ export interface CourtCosts {
   miscFee: number;
   debtCertFee?: number;        // 부채증명서 발급 대행비 (채권자수 * 단가)
   debtCertUnitFee?: number;    // 채권자 1곳당 발급 단가 (기본: 15,000원)
-  deliveryUnitFee?: number;    // 송달료 1회분 단가 (2026 기본: 5,200원) — 회차 = 10 + 채권자수×8
+  deliveryUnitFee?: number;    // 송달료 1회분 단가 (2026-07-01부터 5,640원) — 회차 = 10 + 채권자수×8
   provisionalDeposit?: number; // 법원 변제예납금
   isCustomized?: boolean;      // 사무실 수기 수정 여부
 }

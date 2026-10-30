@@ -12,6 +12,8 @@ export interface ProposalDraftState {
   includeFinancialAnalysis: boolean;
   includeRiskReport: boolean;
   includeCourtNotes: boolean;
+  /** 변호사가 직접 정한 월 변제금·기간 (없으면 계산값) */
+  planOverride?: { monthlyPayment: number; months: number } | null;
 }
 
 export function useProposalDraft(clientId: string) {

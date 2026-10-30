@@ -381,8 +381,8 @@ export default function CaseRegistrationModal({
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">마이김변 전담 변호사</span>
-                    <span className="text-xs text-slate-500 mt-0.5 block">마이김변 플랫폼 매칭 수임</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">마이김변에서 상담한 변호사</span>
+                    <span className="text-xs text-slate-500 mt-0.5 block">마이김변에서 직접 고른 변호사와 계약</span>
                   </div>
                 </button>
               </div>

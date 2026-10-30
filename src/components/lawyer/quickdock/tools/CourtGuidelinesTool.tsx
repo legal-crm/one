@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Landmark, AlertTriangle, ExternalLink } from 'lucide-react';
-import { courtAllows24Months } from '../../../../services/repayment/rehabLegalCore';
+import { courtHasShortPlanRule } from '../../../../services/repayment/rehabLegalCore';
 import { useCopyFeedback } from '../clipboard';
 import CopyButton from '../ui/CopyButton';
 
@@ -8,7 +8,7 @@ import CopyButton from '../ui/CopyButton';
  * 관할 법원별 실무 확인 메모 (참고용 · 비공식)
  * - 이전 버전은 법원별 '관대/엄격', 금지명령 소요일, 인가율·기각률 같은 근거 없는 평가를
  *   사실처럼 표시·복사했음 → 제거. 확인된 공개 준칙만 남기고 나머지는 '확인 필요'로 표시.
- * - 24개월 단축 특례 운영 여부는 플랫폼 산식 기준(rehabLegalCore.COURTS_ALLOWING_24_MONTHS)과 같게 표시한다.
+ * - 3년 미만 단축 사유 운영 여부는 플랫폼 산식 기준(rehabLegalCore.COURTS_WITH_SHORT_PLAN_RULE)과 같게 표시한다.
  * - 준칙은 개정되므로 사건 진행 전 해당 법원 공고를 직접 확인해야 한다.
  */
 interface CourtInfo {
@@ -41,8 +41,8 @@ const QUICK_LINKS: { label: string; desc: string; url: string }[] = [
   { label: '대한민국 법원', desc: '법원별 공고·안내', url: 'https://www.scourt.go.kr' },
 ];
 
-function special24Text(courtName: string): string {
-  return courtAllows24Months(courtName)
+function shortPlanText(courtName: string): string {
+  return courtHasShortPlanRule(courtName)
     ? '운영 (플랫폼 기준) — 만 30세 미만·고령자·기초수급·중증장애·한부모·전세사기 피해 등 요건 확인'
     : '플랫폼 기준 미운영 — 관할 법원 확인 필요';
 }
@@ -54,12 +54,12 @@ export default function CourtGuidelinesTool() {
   const handleCopy = () => {
     const text = `[${selectedCourt.name} 실무 참고]
 • 주식·코인 투자손실금: ${selectedCourt.cryptoRule}
-• 24개월 단축 특례: ${special24Text(selectedCourt.name)}
+• 3년 미만 단축 사유: ${shortPlanText(selectedCourt.name)}
 ※ 참고용 정리이며 법원의 공식 안내가 아닙니다. 사건 진행 전 관할 법원 공고와 재판부 기준을 확인하세요.`;
     copy(text, `${selectedCourt.name} 실무 참고가 복사되었습니다.`);
   };
 
-  const allows24 = courtAllows24Months(selectedCourt.name);
+  const hasShortPlanRule = courtHasShortPlanRule(selectedCourt.name);
 
   return (
     <div className="space-y-3 p-4 text-slate-800 text-xs">
@@ -100,8 +100,8 @@ export default function CourtGuidelinesTool() {
           <span className="font-bold text-slate-900">{selectedCourt.cryptoRule}</span>
         </div>
         <div className="text-xs">
-          <span className="text-slate-600 block text-xs">24개월 단축 특례</span>
-          <span className={`font-bold ${allows24 ? 'text-emerald-800' : 'text-slate-700'}`}>{special24Text(selectedCourt.name)}</span>
+          <span className="text-slate-600 block text-xs">3년 미만 단축 사유</span>
+          <span className={`font-bold ${hasShortPlanRule ? 'text-emerald-800' : 'text-slate-700'}`}>{shortPlanText(selectedCourt.name)}</span>
         </div>
         <a
           href={selectedCourt.url}

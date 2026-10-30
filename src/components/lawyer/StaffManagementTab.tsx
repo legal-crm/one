@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, Briefcase, Activity, Mail, Phone, RotateCcw,
   Trash2, ShieldCheck
 } from 'lucide-react';
-import { generateInviteToken, buildInviteUrl, loadInviteTokens, expireInviteToken } from '../../services/inviteService';
+import { generateInviteToken, buildInviteUrl, loadInviteTokens, expireInviteToken, SERVER_INVITE_PREFIX } from '../../services/inviteService';
 import type { InviteToken, CustomStaffRole } from '../../types';
 import type {
   ConsultRequest, User, StaffMember, StaffRole, StaffMemberStatus,
@@ -26,6 +26,8 @@ import {
 } from '../../services/crmService';
 import { computeBulkTransfer, isAssignedTo } from '../../services/staffTransfer';
 import { revokeAllUserSessionsByAdmin } from '../../services/sessionService';
+import { isSupabaseConfigured } from '../../supabaseClient';
+import OfficeMembersPanel from './staff/OfficeMembersPanel';
 
 // ── 활동 타입 한글 라벨 ──
 const ACTIVITY_TYPE_LABELS: Record<StaffActivityType, { label: string; emoji: string; color: string }> = {
@@ -505,9 +507,9 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         <div className="space-y-1">
           <h3 className="font-extrabold text-xl text-slate-900 flex items-center gap-2.5">
             <Shield className="w-6 h-6 text-slate-700" />
-            <span>사용자 관리 (Admin)</span>
+            <span>직원·권한</span>
           </h3>
-          <p className="text-sm text-slate-500">사무실 직원의 접속 권한을 관리합니다.</p>
+          <p className="text-sm text-slate-500">직원을 초대하고 역할·권한 범위를 정해요. 바꾼 내용은 활동 기록에 남아요.</p>
         </div>
         <button
           onClick={() => { setShowInviteModal(true); setShowInviteLinkMode(true); }}
@@ -579,7 +581,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 섹션 1: 구성원 및 권한 (기획서 4.7: 승인 대기 상단 배너 + 권한표) */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'members' && (
+      {/* 서버 구성원·권한·활동 기록 (RB-3·RB-4·RB-5) — 서버 환경에서는 이것이 원본 */}
+      {isSupabaseConfigured && (activeSection === 'members' || activeSection === 'logs') && (
+        <OfficeMembersPanel officeId={activeLawyer.id} canManage />
+      )}
+      {!isSupabaseConfigured && activeSection === 'members' && (
         <div className="space-y-6 animate-fadeIn">
           {/* ── 승인 대기 상단 배너 (대기자 있을 때 즉시 노출) ── */}
           {pendingStaff.length > 0 && (
@@ -948,7 +954,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 섹션 4: 활동 이력 */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'logs' && (
+      {!isSupabaseConfigured && activeSection === 'logs' && (
         <div className="space-y-4">
           {/* 필터 */}
           <div className="flex flex-col sm:flex-row gap-2">
@@ -1324,7 +1330,8 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                             <div className="flex gap-1.5">
                               {status === 'active' && (
                                 <>
-                                  <button
+                                  {/* 서버 초대는 링크 원문을 저장하지 않아(해시만) 만들 때 한 번만 복사할 수 있다 */}
+                                  {!token.token.startsWith(SERVER_INVITE_PREFIX) && <button
                                     onClick={() => {
                                       navigator.clipboard.writeText(buildInviteUrl(token.token))
                                         .then(() => toast.success('초대 링크가 복사되었습니다.'))
@@ -1333,7 +1340,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                     className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                                   >
                                     복사
-                                  </button>
+                                  </button>}
                                   <button
                                     onClick={async () => {
                                       const confirmed = await dialog.confirm({

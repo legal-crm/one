@@ -2,6 +2,10 @@ import React, { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { LawyerInquiry, LawyerInquiryCategory, InquiryAttachment } from '../../types';
+import { submitLawyerInquiry } from '../../services/cms/contentService';
+
+// 첨부는 문의 행에 함께 저장되므로 작게 제한 (비공개 저장소 전환 전까지)
+const MAX_ATTACHMENT_BYTES = 1024 * 1024;
 
 interface LawyerInquiryTabProps {
   lawyerInquiries: LawyerInquiry[];
@@ -29,6 +33,8 @@ export default function LawyerInquiryTab({
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<InquiryAttachment[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +50,8 @@ export default function LawyerInquiryTab({
     }
 
     files.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`'${file.name}' 파일이 5MB를 초과합니다.`);
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        toast.error(`'${file.name}' 파일이 1MB를 넘습니다. 1MB 이하 파일만 첨부할 수 있습니다.`);
         return;
       }
       
@@ -74,12 +80,14 @@ export default function LawyerInquiryTab({
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     if (!title.trim() || !content.trim()) {
-      toast.error('제목과 내용을 모두 입력해 주세요.');
+      setSubmitError('제목과 내용을 모두 입력해 주세요.');
       return;
     }
+    if (submitting) return;
 
     const newInquiry: LawyerInquiry = {
       id: `lawyer-inq-${Date.now()}`,
@@ -93,6 +101,13 @@ export default function LawyerInquiryTab({
       createdAt: new Date().toISOString()
     };
 
+    setSubmitting(true);
+    const res = await submitLawyerInquiry(newInquiry);
+    setSubmitting(false);
+    if (res.ok === false) {
+      setSubmitError(`문의를 보내지 못했습니다: ${res.message}`);
+      return;
+    }
     setLawyerInquiries(prev => [newInquiry, ...prev]);
     
     setTitle('');
@@ -100,8 +115,7 @@ export default function LawyerInquiryTab({
     setCategory('platform_usage');
     setAttachments([]);
     
-    // 주의: 변호사 문의는 아직 서버에 저장되지 않는다(App 상태 + 이 브라우저 저장소). 사실대로 안내.
-    toast.success('문의를 저장했습니다. 현재는 이 브라우저에만 저장되어 운영팀에 자동 전달되지 않습니다.');
+    toast.success('문의를 보냈습니다. 운영팀이 확인한 뒤 이 화면에 답변을 남깁니다.');
   };
 
   const toggleExpand = (id: string) => {
@@ -168,7 +182,7 @@ export default function LawyerInquiryTab({
               >
                 <Paperclip className="w-5 h-5 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 font-medium">
-                  파일 첨부 (이미지, PDF · 최대 3개 · 각 5MB)
+                  파일 첨부 (이미지, PDF · 최대 3개 · 각 1MB)
                 </p>
                 <input
                   type="file"
@@ -207,12 +221,16 @@ export default function LawyerInquiryTab({
               )}
             </div>
 
+            {submitError && (
+              <p className="text-sm text-red-600" role="alert">{submitError}</p>
+            )}
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-xs active:scale-[0.98] cursor-pointer"
+              disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 bg-[#1E3A5F] hover:bg-[#163152] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-xs active:scale-[0.98] cursor-pointer whitespace-nowrap"
             >
               <Send className="w-4 h-4" />
-              문의 등록하기
+              {submitting ? '보내는 중…' : '문의 등록하기'}
             </button>
           </form>
         </div>

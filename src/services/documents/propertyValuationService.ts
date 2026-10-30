@@ -24,7 +24,7 @@ import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentAsset } from '../repayment/repaymentTypes';
 
 // 예금 압류금지 공제액 — 단일 기준값(repaymentConstants2026.EXEMPT_DEPOSIT_LIMIT)을 사용해 챗봇·CRM 엔진과 일치시킨다.
-// ※ 기존 이 파일만 250만 원을 사용해 다른 엔진(185만 원)과 청산가치가 달랐음. 기준 변경 시 상수 한 곳만 수정.
+// ※ 기존 이 파일만 250만 원을 사용해 다른 엔진(250만 원)과 청산가치가 달랐음. 기준 변경 시 상수 한 곳만 수정.
 export const EXEMPT_DEPOSIT_LIMIT_2026 = EXEMPT_DEPOSIT_LIMIT;
 
 // ── 1. 자산별 개별 평가 및 청산가치 연산 ──
@@ -369,7 +369,7 @@ export function syncD5102ToRepaymentAssets(d5102: PropertyListD5102Data): Repaym
       encumbrance: ins.policyLoanBalance,
       statutoryDeduction: ins.statutoryDeduction,
       liquidationValue: ins.liquidationValue,
-      note: ins.isSecurityInsurance ? '보장성 150만 원 공제' : '저축성보험',
+      note: ins.isSecurityInsurance ? '보장성 합산 250만 원 공제' : '저축성보험',
     });
   });
 

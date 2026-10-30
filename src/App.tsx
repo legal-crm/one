@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Toaster, toast } from 'sonner';
 import { DialogProvider } from './components/common/DialogProvider';
 import { 
@@ -48,6 +48,8 @@ import { secureGetItem, secureSetItem } from './utils/secureStorage';
 import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/adminPortal';
 import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
 import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
+import { useServerCollection, useServerConfig } from './hooks/useServerContent';
+import { clearLegacyContentCache } from './services/cms/contentService';
 
 // [SECURITY] 관리자 포털 경로는 utils/adminPortal.ts (VITE_ADMIN_SECRET_PATH, 운영 미설정 시 비활성).
 // 뻔한 ?role=admin은 허니팟으로 유인. 실제 인가는 서버(JWT role=admin + MFA aal2)가 판정.
@@ -56,16 +58,16 @@ import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
 // 운영 빌드에서는 과거 가상 상담 요청(req-mock-*, req-amjone-*)·가상 제안서·가상 사건을 주입하지 않는다.
 // 단, 변호사 어드민 사건관리 단계별 테스트 케이스(STAGE_TEST_REQUEST_IDS: Stage 1~6 및 개인파산)는
 // 변호사가 기능 테스트를 원활히 진행할 수 있도록 항상 제공한다.
-const initialConsultRequests: ConsultRequest[] = import.meta.env.DEV 
-  ? SEED_CONSULT_REQUESTS 
-  : SEED_CONSULT_REQUESTS.filter(r => STAGE_TEST_REQUEST_IDS.has(r.id));
+// 10-30 변경(연동 원칙 7 '운영 시험 데이터 0', HM-1·OP-1): 운영 빌드에는 단계별 시험 사건도 넣지 않는다.
+// (이전: 시험 사건 9건이 운영 화면 숫자·배지·통합어드민 KPI에 실제 데이터처럼 섞였음)
+const initialConsultRequests: ConsultRequest[] = import.meta.env.DEV ? SEED_CONSULT_REQUESTS : [];
 const mockTestProposals = import.meta.env.DEV ? SEED_TEST_PROPOSALS : [];
 const initialConsultMessages: ConsultMessage[] = import.meta.env.DEV ? SEED_CONSULT_MESSAGES : [];
 const initialCases: Case[] = import.meta.env.DEV ? SEED_CASES : [];
 const SEED_REQUEST_IDS = new Set(SEED_CONSULT_REQUESTS.map(r => r.id));
 const SEED_CASE_IDS = new Set(SEED_CASES.map(c => c.id));
 /** 운영 환경에서 과거에 저장된 시연 데이터 식별 (사건관리 단계별 테스트 케이스는 보존) */
-const isProdSeedRequest = (id: string) => import.meta.env.PROD && SEED_REQUEST_IDS.has(id) && !STAGE_TEST_REQUEST_IDS.has(id);
+const isProdSeedRequest = (id: string) => import.meta.env.PROD && (SEED_REQUEST_IDS.has(id) || STAGE_TEST_REQUEST_IDS.has(id));
 const isProdSeedCase = (id: string) => import.meta.env.PROD && SEED_CASE_IDS.has(id);
 
 // [PART 3-2] 가상 회원 18명·가상 활동 로그 16건(가짜 IP·가짜 상담 대화)도 DEV 전용.
@@ -565,133 +567,67 @@ export default function App() {
       return SEED_ACTIVITY_LOGS;
     }
   });
-  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
-    const savedNews = secureGetItem('legal_crm_news');
-    return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
+  // ── 콘텐츠·플랫폼 설정: 원본은 서버 (CT-1). 관리자 화면에서만 쓰기, 실패는 알림 후 서버 값으로 되돌림 ──
+  // 시드(가상 칼럼·Q&A·후기·배너·공지)는 서버가 설정되지 않은 로컬 개발에서만 쓴다
+  const canWriteContent = currentRole === 'admin';
+  const [newsArticles, setNewsArticles] = useServerCollection<NewsArticle>({ table: 'news_articles', label: '칼럼', canWrite: canWriteContent, devFallback: mockNewsArticles });
+  const [qas, setQas] = useServerCollection<ClientQA>({ table: 'client_qas', label: '상담사례 Q&A', canWrite: canWriteContent, devFallback: initialQAs });
+  const [reviews, setReviews] = useServerCollection<SuccessReview>({ table: 'success_reviews', label: '후기', canWrite: canWriteContent, devFallback: initialReviews });
+  const [banners, setBanners] = useServerCollection<MainBanner>({ table: 'main_banners', label: '메인 배너', canWrite: canWriteContent, devFallback: initialBanners });
+  const [notices, setNotices] = useServerCollection<Notice>({ table: 'notices', label: '공지사항', canWrite: canWriteContent, devFallback: initialNotices });
+  // 변호사 문의: 변호사는 본인 것만 읽고 등록은 LawyerInquiryTab이 서버에 직접, 관리자는 답변(수정)만
+  const [lawyerInquiries, setLawyerInquiries] = useServerCollection<LawyerInquiry>({ table: 'lawyer_inquiries', label: '변호사 문의', canWrite: canWriteContent, devFallback: initialLawyerInquiries });
+
+  const [cooldownConfig, setCooldownConfig] = useServerConfig<{ hours: number }>({
+    table: 'matching_config',
+    label: '상담 요청 간격',
+    canWrite: canWriteContent,
+    defaults: { hours: 24 },
+    merge: (d, sv) => {
+      const raw = typeof sv === 'number' ? sv : Number(sv?.hours);
+      return Number.isFinite(raw) && raw >= 0 ? { hours: raw } : d;
+    },
+  });
+  const matchingCooldownHours = cooldownConfig.hours;
+  const setMatchingCooldownHours: React.Dispatch<React.SetStateAction<number>> = useCallback((next) => {
+    setCooldownConfig(prev => {
+      const raw = Number(typeof next === 'function' ? (next as (h: number) => number)(prev.hours) : next);
+      if (!Number.isFinite(raw)) return prev;
+      return { hours: Math.min(168, Math.max(0, Math.round(raw))) };
+    });
+  }, [setCooldownConfig]);
+
+  // 의뢰인 1:1 문의는 /api/inquiry가 원본 — 여기는 화면 메모리만 (첨부를 브라우저에 남기지 않음)
+  const [inquiries, setInquiries] = useState<ClientInquiry[]>(() => (import.meta.env.DEV && !isSupabaseConfigured ? initialInquiries : []));
+
+  // 회사 정보·약관 요약은 코드 값이 기준 (사업자등록증 기준, 약관 본문은 외부 자문 뒤 legal_documents로 이전)
+  const [platformConfig, setPlatformConfig] = useServerConfig<PlatformConfig>({
+    table: 'platform_config',
+    label: '플랫폼 설정',
+    canWrite: canWriteContent,
+    defaults: initialPlatformConfig,
+    merge: (d, sv) => ({
+      ...d,
+      ...(sv && typeof sv === 'object' ? sv : {}),
+      companyRepresentative: d.companyRepresentative,
+      companyBusinessNumber: d.companyBusinessNumber,
+      companyAddress: d.companyAddress,
+      termsOfService: d.termsOfService,
+      privacyPolicy: d.privacyPolicy,
+    }),
   });
 
-  const [qas, setQas] = useState<ClientQA[]>(() => {
-    const saved = secureGetItem('legal_crm_qas');
-    if (saved) {
-      const parsed: ClientQA[] = JSON.parse(saved);
-      const existingIds = new Set(parsed.map(q => q.id));
-      const newEntries = initialQAs.filter(q => !existingIds.has(q.id));
-      return newEntries.length > 0 ? [...parsed, ...newEntries] : parsed;
-    }
-    return initialQAs;
+  const [popupConfig, setPopupConfig] = useServerConfig<PopupConfig>({
+    table: 'popup_config',
+    label: '팝업 설정',
+    canWrite: canWriteContent,
+    defaults: initialPopupConfig,
   });
 
-  const [reviews, setReviews] = useState<SuccessReview[]>(() => {
-    const saved = secureGetItem('legal_crm_reviews');
-    if (!saved) return initialReviews;
-    try {
-      const parsed: SuccessReview[] = JSON.parse(saved);
-      // 예전 기본 데이터(rev-1~rev-20: 결과 수치가 들어간 가상 후기)가 저장돼 있으면 걷어내고 절차 예시로 대체
-      const LEGACY_SEED_REVIEW_ID = /^rev-([1-9]|1\d|20)$/;
-      const cleaned = Array.isArray(parsed) ? parsed.filter(r => !LEGACY_SEED_REVIEW_ID.test(r.id)) : [];
-      if (cleaned.length === 0) return initialReviews;
-      return cleaned;
-    } catch {
-      return initialReviews;
-    }
-  });
-
-  const [banners, setBanners] = useState<MainBanner[]>(() => {
-    const saved = secureGetItem('legal_crm_banners');
-    return saved ? JSON.parse(saved) : initialBanners;
-  });
-
-  const [notices, setNotices] = useState<Notice[]>(() => {
-    const saved = secureGetItem('legal_crm_notices');
-    return saved ? JSON.parse(saved) : initialNotices;
-  });
-
-  const [matchingCooldownHours, setMatchingCooldownHours] = useState<number>(() => {
-    const saved = secureGetItem('legal_crm_matching_cooldown_hours');
-    return saved ? Number(saved) : 24;
-  });
-
-  const [inquiries, setInquiries] = useState<ClientInquiry[]>([]);
-  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(() => {
-    const saved = secureGetItem('legal_crm_platform_config');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          ...parsed,
-          companyRepresentative: initialPlatformConfig.companyRepresentative,
-          companyBusinessNumber: initialPlatformConfig.companyBusinessNumber,
-          companyAddress: initialPlatformConfig.companyAddress,
-          termsOfService: initialPlatformConfig.termsOfService,
-          privacyPolicy: initialPlatformConfig.privacyPolicy,
-        };
-      } catch (e) {
-        return initialPlatformConfig;
-      }
-    }
-    return initialPlatformConfig;
-  });
-
-  const [popupConfig, setPopupConfig] = useState<PopupConfig>(() => {
-    const saved = secureGetItem('legal_crm_popup_config');
-    return saved ? JSON.parse(saved) : initialPopupConfig;
-  });
-
-  // 시연용 변호사 문의(가상 변호사 '김민수'·'이서연')는 DEV에서만 — 운영에서는 과거 저장분도 제거
-  const [lawyerInquiries, setLawyerInquiries] = useState<LawyerInquiry[]>(() => {
-    const seedIds = new Set(initialLawyerInquiries.map(i => i.id));
-    const saved = secureGetItem('legal_crm_lawyer_inquiries');
-    if (saved) {
-      try {
-        const parsed: LawyerInquiry[] = JSON.parse(saved);
-        return import.meta.env.PROD ? parsed.filter(i => !seedIds.has(i.id)) : parsed;
-      } catch { /* 손상된 저장값은 무시 */ }
-    }
-    return import.meta.env.DEV ? initialLawyerInquiries : [];
-  });
-
-  // Sync states to localStorage
+  // 예전 버전이 브라우저에 남긴 콘텐츠 사본 정리 (서버가 원본)
   useEffect(() => {
-    secureSetItem('legal_crm_news', JSON.stringify(newsArticles));
-  }, [newsArticles]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_qas', JSON.stringify(qas));
-  }, [qas]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_reviews', JSON.stringify(reviews));
-  }, [reviews]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_banners', JSON.stringify(banners));
-  }, [banners]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_notices', JSON.stringify(notices));
-  }, [notices]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_matching_cooldown_hours', String(matchingCooldownHours));
-  }, [matchingCooldownHours]);
-
-  useEffect(() => {
-    if (inquiries.length > 0) {
-      secureSetItem('legal_crm_inquiries', JSON.stringify(inquiries));
-    }
-  }, [inquiries]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_platform_config', JSON.stringify(platformConfig));
-  }, [platformConfig]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_popup_config', JSON.stringify(popupConfig));
-  }, [popupConfig]);
-
-  useEffect(() => {
-    secureSetItem('legal_crm_lawyer_inquiries', JSON.stringify(lawyerInquiries));
-  }, [lawyerInquiries]);
+    if (isSupabaseConfigured) clearLegacyContentCache();
+  }, []);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -726,15 +662,6 @@ export default function App() {
       setActivityLogs(SEED_ACTIVITY_LOGS);
     }
 
-    // [PART 3-6] 시연 문의('파란고래_38' 등)는 DEV 전용. 실제 문의는 관리자 화면이 서버(/api/inquiry admin-list)에서 불러온다
-    const seedInquiryIds = new Set(['inquiry-1', 'inquiry-2']); // data.ts initialInquiries (운영 번들에 본문 미포함)
-    const savedInquiries = secureGetItem('legal_crm_inquiries');
-    if (savedInquiries) {
-      const parsed: ClientInquiry[] = JSON.parse(savedInquiries);
-      setInquiries(import.meta.env.PROD ? parsed.filter(i => !seedInquiryIds.has(i.id)) : parsed);
-    } else {
-      setInquiries(import.meta.env.DEV ? initialInquiries : []);
-    }
   }, []);
 
 

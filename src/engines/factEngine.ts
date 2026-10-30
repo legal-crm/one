@@ -36,8 +36,8 @@ export interface AssetSummary {
   hasStock: boolean;
   spouseAssetCount: number;
   // 민사집행법 제246조 압류금지 바스켓 필드
-  exemptDepositTotal: number;       // 예금 185만 원 통합 공제액
-  exemptInsuranceTotal: number;     // 보장성 보험 150만 원 한도 공제액
+  exemptDepositTotal: number;       // 예금 250만 원 통합 공제액
+  exemptInsuranceTotal: number;     // 보장성 보험 합산 250만 원 한도 공제액
   exemptHousingDeposit: number;     // 주거용 소액임차보증금 공제액
   totalExemptDeductions: number;    // 총 압류금지 공제액
   effectiveLiquidationValue: number; // 압류금지 공제 후 최종 청산가치
@@ -241,9 +241,9 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
   });
 
   // 민사집행법 제246조 압류금지 바스켓 공제 계산
-  // 1) 예금 185만 원 일괄 공제
+  // 1) 예금 250만 원 일괄 공제
   const exemptDepositTotal = Math.min(bankDepositTotal, DEPOSIT_EXEMPTION_KRW);
-  // 2) 보장성 보험 해약환급금 150만 원 한도 공제
+  // 2) 보장성 보험 해약·만기환급금 합산 250만 원 한도 공제
   const exemptInsuranceTotal = Math.min(insuranceTotal, EXEMPT_INSURANCE_REFUND_LIMIT);
   // 3) 주거용 소액임차보증금 공제 (rawComputeResponse의 exemptions 참조 또는 서울 기본 5,500만 원 적용)
   let exemptHousingDeposit = 0;

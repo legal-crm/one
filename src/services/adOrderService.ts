@@ -1,52 +1,103 @@
 // src/services/adOrderService.ts
-// 광고 주문(AdOrder) 영속화 및 브라우저/탭 간 실시간 동기화 서비스
-
+// 광고 주문 — 원본은 서버(ad_orders). 가격·구좌·예약·사업자 정보 사본은 서버 함수가 정한다 (20261030000700_ad_billing)
+// 브라우저 저장소(crm_ad_orders)·탭 간 방송은 쓰지 않는다. 실패는 문장으로 돌려 화면에 알린다.
 import type { AdOrder } from '../types';
-import { mockAdOrders } from '../data';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { NOT_CONFIGURED, type RpcResult } from './office/rpcResult';
+import { secureRemoveItem } from '../utils/secureStorage';
 
-// [PART 3-4] 가상 광고 주문 5건(김우진·이소민 등, 가짜 입금일)은 DEV 전용.
-// (이전: 운영에서도 목록이 비면 다시 채워져 매출·입금 대기·TOP5에 섞였음)
-const SEED_ORDERS: AdOrder[] = import.meta.env.DEV ? mockAdOrders : [];
-const SEED_ORDER_IDS = new Set(['ado-1', 'ado-2', 'ado-3', 'ado-4', 'ado-6']);
-const stripProdSeedOrders = (list: AdOrder[]) =>
-  import.meta.env.PROD ? list.filter(o => o && !SEED_ORDER_IDS.has(o.id)) : list;
-
-const STORAGE_KEY = 'crm_ad_orders';
-const CHANNEL_NAME = 'crm_ad_orders_channel';
-
-// BroadcastChannel (지원 브라우저인 경우 브라우저 탭 간 실시간 통신)
-let broadcastChannel: BroadcastChannel | null = null;
-if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-  try {
-    broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
-  } catch (e) {
-    console.warn('[AdOrderService] BroadcastChannel init failed:', e);
-  }
+export interface AdProduct {
+  id: string;
+  name: string;
+  placement: 'main_banner' | 'top_exposure' | 'regional';
+  monthlyPriceWon: number;
+  maxSlots: number;
+  perRegion: boolean;
+  termDiscounts: Record<string, number>;
+  sortOrder: number;
 }
 
-/**
- * 광고 주문 목록 로드 (localStorage 우선, 없으면 mockAdOrders)
- */
-export function loadAdOrders(): AdOrder[] {
-  if (typeof window === 'undefined') return SEED_ORDERS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return stripProdSeedOrders(parsed);
-    }
-  } catch (e) {
-    console.error('[AdOrderService] loadAdOrders parse error:', e);
-  }
-  // 저장된 목록이 없을 때만 시드(DEV) — 빈 목록([])은 그대로 유지
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_ORDERS));
-  } catch { /* ignore */ }
-  return SEED_ORDERS;
+export interface AdPromotion {
+  id: string;
+  name: string;
+  rate: number;
+  startsOn?: string;
+  endsOn?: string;
+  active: boolean;
+  note?: string;
 }
 
-function rowToAdOrder(r: any): AdOrder {
+export interface AdPriceQuote {
+  productId: string;
+  productName: string;
+  months: number;
+  listMonthly: number;
+  supply: number;
+  vat: number;
+  total: number;
+  monthsDetail: Array<{ month: number; startsOn: string; rate: number; supply: number }>;
+}
+
+export interface OfficeBillingProfile {
+  officeId: string;
+  corpNum?: string;
+  corpName?: string;
+  ceoName?: string;
+  address?: string;
+  bizType?: string;
+  bizClass?: string;
+  email?: string;
+  email2?: string;
+  contactName?: string;
+  contactPhone?: string;
+  updatedAt?: string;
+}
+
+export interface ActivePlacement {
+  lawyerId: string;
+  placement: AdProduct['placement'];
+  region?: string;
+  endsOn: string;
+}
+
+const MESSAGE_RULES: Array<[RegExp, string]> = [
+  [/permission denied: ads\.manage|permission denied/i, '광고를 신청할 권한이 없어요. 사무소 대표에게 권한을 확인해 주세요.'],
+  [/lawyer is not approved/i, '마이김변 승인을 받은 변호사만 광고를 신청할 수 있어요.'],
+  [/ad product not found/i, '판매 중인 광고 상품이 아니에요. 새로고침 후 다시 골라 주세요.'],
+  [/invalid contract months/i, '계약 기간은 1·3·6·12개월 중에서 골라 주세요.'],
+  [/invalid start date/i, '노출 시작일은 오늘부터 90일 안에서 골라 주세요.'],
+  [/region required/i, '지역 광고는 노출 지역을 입력해 주세요.'],
+  [/duplicate ad order/i, '같은 기간에 이미 신청한 같은 광고가 있어요.'],
+  [/no ad slots available/i, '선택한 기간에 남은 구좌가 없어요. 시작일을 바꿔 보세요.'],
+  [/only pending orders/i, '입금 대기 중인 주문만 입금 확인할 수 있어요.'],
+  [/order already closed/i, '이미 끝난 주문이에요.'],
+  [/invalid refund amount/i, '환불액은 0원 이상, 결제 금액 이하로 입력해 주세요.'],
+  [/reason required/i, '사유를 입력해 주세요.'],
+  [/authentication required/i, '로그인이 필요해요.'],
+  [/Failed to fetch|NetworkError/i, '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'],
+];
+
+function adError(error: { message?: string } | null | undefined): string {
+  const msg = error?.message || '';
+  for (const [re, text] of MESSAGE_RULES) if (re.test(msg)) return text;
+  return '처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
+}
+
+function rowToProduct(r: any): AdProduct {
+  return {
+    id: r.id,
+    name: r.name,
+    placement: r.placement,
+    monthlyPriceWon: Number(r.monthly_price_won) || 0,
+    maxSlots: Number(r.max_slots) || 0,
+    perRegion: !!r.per_region,
+    termDiscounts: r.term_discounts || {},
+    sortOrder: Number(r.sort_order) || 0,
+  };
+}
+
+export function rowToAdOrder(r: any): AdOrder {
+  const total = Number(r.total_amount ?? r.total_price) || 0;
   return {
     id: r.id,
     lawyerId: r.lawyer_id,
@@ -55,7 +106,7 @@ function rowToAdOrder(r: any): AdOrder {
     productName: r.product_name || '',
     contractMonths: Number(r.contract_months) || 1,
     monthlyPrice: Number(r.monthly_price) || 0,
-    totalPrice: Number(r.total_price) || 0,
+    totalPrice: total,
     status: r.status,
     requestedAt: r.requested_at,
     paidAt: r.paid_at || undefined,
@@ -69,187 +120,189 @@ function rowToAdOrder(r: any): AdOrder {
     buyerCorpName: r.buyer_corp_name || undefined,
     buyerCEOName: r.buyer_ceo_name || undefined,
     buyerEmail: r.buyer_email || undefined,
+    officeId: r.office_id || undefined,
+    placement: r.placement || undefined,
+    supplyAmount: r.supply_amount ?? undefined,
+    vatAmount: r.vat_amount ?? undefined,
+    startsOn: r.starts_on || undefined,
+    endsOn: r.ends_on || undefined,
+    reservedUntil: r.reserved_until || undefined,
+    cancelledAt: r.cancelled_at || undefined,
+    cancelReason: r.cancel_reason || undefined,
+    refundAmount: r.refund_amount ?? undefined,
   };
 }
 
-/**
- * 관리자: 서버(ad_orders, 024 RLS)의 전체 주문을 불러와 이 브라우저 목록과 병합
- * (이전: 각 브라우저 localStorage만 사용해 다른 기기에서 신청한 광고를 관리자가 볼 수 없었음)
- */
-export async function syncAdOrdersFromServer(): Promise<{ orders: AdOrder[]; error?: string }> {
-  const local = loadAdOrders();
-  if (!isSupabaseConfigured) return { orders: local, error: '서버 미설정' };
-  try {
-    const { data, error } = await supabase.from('ad_orders').select('*').order('requested_at', { ascending: false }).limit(1000);
-    if (error) return { orders: local, error: error.message };
-    const server = (data || []).map(rowToAdOrder);
-    const serverIds = new Set(server.map(o => o.id));
-    const merged = [...server, ...local.filter(o => !serverIds.has(o.id))];
-    saveAllAdOrders(merged);
-    return { orders: merged };
-  } catch (e) {
-    return { orders: local, error: e instanceof Error ? e.message : '서버 조회 실패' };
-  }
+/** 예전 버전이 남긴 브라우저 사본 정리 */
+export function clearLegacyAdOrderCache(): void {
+  try { secureRemoveItem('crm_ad_orders'); secureRemoveItem('legal_crm_lawyer_biz_info'); } catch { /* ignore */ }
 }
 
-/**
- * 전체 광고 주문 목록 저장
- */
-export function saveAllAdOrders(orders: AdOrder[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-  } catch (e) {
-    console.error('[AdOrderService] saveAllAdOrders error:', e);
-  }
+export async function fetchAdProducts(): Promise<RpcResult<AdProduct[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('ad_products').select('*').order('sort_order');
+  if (error) return { ok: false, code: 'load_failed', message: adError(error) };
+  return { ok: true, data: (data || []).map(rowToProduct) };
 }
 
-/**
- * 변호사가 신규 광고 주문 신청 시 저장 및 실시간 브로드캐스트
- */
-export function saveNewAdOrder(newOrder: AdOrder): void {
-  const current = loadAdOrders();
-  const updated = [newOrder, ...current.filter(o => o.id !== newOrder.id)];
-  saveAllAdOrders(updated);
+export async function fetchActivePromotions(): Promise<RpcResult<AdPromotion[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('ad_promotions').select('*');
+  if (error) return { ok: false, code: 'load_failed', message: adError(error) };
+  return {
+    ok: true,
+    data: (data || []).map((r: any) => ({ id: r.id, name: r.name, rate: r.rate, startsOn: r.starts_on || undefined, endsOn: r.ends_on || undefined, active: !!r.active, note: r.note || undefined })),
+  };
+}
 
-  // 1. 같은 윈도우 커스텀 이벤트
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('crm_ad_order_created', { detail: newOrder }));
-  }
+export async function quoteAdPrice(productId: string, months: number, startsOn: string): Promise<RpcResult<AdPriceQuote>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('ad_price_quote', { p_product_id: productId, p_months: months, p_starts_on: startsOn });
+  if (error) return { ok: false, code: 'quote_failed', message: adError(error) };
+  const q = data as any;
+  return {
+    ok: true,
+    data: {
+      productId: q.product_id,
+      productName: q.product_name,
+      months: q.months,
+      listMonthly: q.list_monthly,
+      supply: q.supply,
+      vat: q.vat,
+      total: q.total,
+      monthsDetail: (q.months_detail || []).map((m: any) => ({ month: m.month, startsOn: m.starts_on, rate: m.rate, supply: m.supply })),
+    },
+  };
+}
 
-  // 2. 다른 탭/창 BroadcastChannel 전송
-  if (broadcastChannel) {
-    try {
-      broadcastChannel.postMessage({ type: 'AD_ORDER_CREATED', order: newOrder });
-    } catch (e) {
-      console.warn('[AdOrderService] broadcast error:', e);
+export async function createAdOrder(input: {
+  lawyerId: string;
+  productId: string;
+  months: number;
+  startsOn: string;
+  region?: string;
+  depositorName?: string;
+}): Promise<RpcResult<AdOrder>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('create_ad_order', {
+    p_lawyer_id: input.lawyerId,
+    p_product_id: input.productId,
+    p_months: input.months,
+    p_starts_on: input.startsOn,
+    p_region: input.region || null,
+    p_depositor_name: input.depositorName || null,
+  });
+  if (error) return { ok: false, code: error.code || 'create_failed', message: adError(error) };
+  return { ok: true, data: rowToAdOrder(data) };
+}
+
+/** 내가 볼 수 있는 주문 (RLS: 본인·사무소 권한·관리자) */
+export async function fetchAdOrders(limit = 500): Promise<RpcResult<AdOrder[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('ad_orders').select('*').order('requested_at', { ascending: false }).limit(limit);
+  if (error) return { ok: false, code: 'load_failed', message: adError(error) };
+  return { ok: true, data: (data || []).map(rowToAdOrder) };
+}
+
+export async function adminConfirmAdPayment(orderId: string, paidOn?: string): Promise<RpcResult<AdOrder>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('admin_confirm_ad_payment', { p_order_id: orderId, p_paid_on: paidOn || null });
+  if (error) return { ok: false, code: error.code || 'confirm_failed', message: adError(error) };
+  return { ok: true, data: rowToAdOrder(data) };
+}
+
+export async function adminCancelAdOrder(orderId: string, reason: string, refundAmount?: number | null): Promise<RpcResult<AdOrder>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('admin_cancel_ad_order', {
+    p_order_id: orderId,
+    p_reason: reason,
+    p_refund_amount: refundAmount ?? null,
+  });
+  if (error) return { ok: false, code: error.code || 'cancel_failed', message: adError(error) };
+  return { ok: true, data: rowToAdOrder(data) };
+}
+
+/** 관리자: 입금 기한 지난 예약 취소·시작·만료를 바로 실행 (매일 자동 실행과 같은 함수) */
+export async function adminRunAdLifecycle(): Promise<RpcResult<{ cancelled: number; started: number; expired: number }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('run_ad_order_lifecycle');
+  if (error) return { ok: false, code: 'lifecycle_failed', message: adError(error) };
+  return { ok: true, data: data as any };
+}
+
+/** 관리자: 세금계산서 발행 기록 저장 (발행 자체는 /api/popbill) */
+export async function adminSaveAdOrderInvoice(orderId: string, patch: { taxInvoice?: AdOrder['taxInvoice'] | null; modifiedTaxInvoice?: AdOrder['modifiedTaxInvoice'] | null }): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const row: Record<string, unknown> = {};
+  if (patch.taxInvoice !== undefined) row.tax_invoice = patch.taxInvoice;
+  if (patch.modifiedTaxInvoice !== undefined) row.modified_tax_invoice = patch.modifiedTaxInvoice;
+  const { data, error } = await supabase.from('ad_orders').update(row).eq('id', orderId).select('id');
+  if (error) return { ok: false, code: 'save_failed', message: adError(error) };
+  if (!data || data.length === 0) return { ok: false, code: 'not_found', message: '주문을 찾지 못했거나 권한이 없어요.' };
+  return { ok: true, data: null };
+}
+
+export async function fetchBillingProfile(officeId: string): Promise<RpcResult<OfficeBillingProfile | null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('office_billing_profiles').select('*').eq('office_id', officeId).maybeSingle();
+  if (error) return { ok: false, code: 'load_failed', message: adError(error) };
+  if (!data) return { ok: true, data: null };
+  return {
+    ok: true,
+    data: {
+      officeId: data.office_id,
+      corpNum: data.corp_num || undefined,
+      corpName: data.corp_name || undefined,
+      ceoName: data.ceo_name || undefined,
+      address: data.address || undefined,
+      bizType: data.biz_type || undefined,
+      bizClass: data.biz_class || undefined,
+      email: data.email || undefined,
+      email2: data.email2 || undefined,
+      contactName: data.contact_name || undefined,
+      contactPhone: data.contact_phone || undefined,
+      updatedAt: data.updated_at || undefined,
+    },
+  };
+}
+
+export async function saveBillingProfile(p: OfficeBillingProfile): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const blank = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const { error } = await supabase.from('office_billing_profiles').upsert({
+    office_id: p.officeId,
+    corp_num: blank(p.corpNum?.replace(/[^0-9]/g, '')),
+    corp_name: blank(p.corpName),
+    ceo_name: blank(p.ceoName),
+    address: blank(p.address),
+    biz_type: blank(p.bizType),
+    biz_class: blank(p.bizClass),
+    email: blank(p.email),
+    email2: blank(p.email2),
+    contact_name: blank(p.contactName),
+    contact_phone: blank(p.contactPhone),
+  }, { onConflict: 'office_id' });
+  if (error) {
+    if (/check constraint|violates check/i.test(error.message || '')) {
+      return { ok: false, code: 'invalid', message: '입력값 형식을 확인해 주세요. (사업자번호 10자리, 이메일 형식)' };
     }
+    return { ok: false, code: 'save_failed', message: adError(error) };
   }
-
-  // 3. (백그라운드) Supabase DB 테이블이 존재하는 경우 비동기 저장 시도
-  try {
-    supabase.from('ad_orders').insert([{
-      id: newOrder.id,
-      lawyer_id: newOrder.lawyerId,
-      lawyer_name: newOrder.lawyerName,
-      product_id: newOrder.productId,
-      product_name: newOrder.productName,
-      contract_months: newOrder.contractMonths,
-      monthly_price: newOrder.monthlyPrice,
-      total_price: newOrder.totalPrice,
-      status: newOrder.status,
-      requested_at: newOrder.requestedAt,
-      depositor_name: newOrder.depositorName,
-      region: newOrder.region,
-      buyer_corp_num: newOrder.buyerCorpNum,
-      buyer_corp_name: newOrder.buyerCorpName,
-      buyer_ceo_name: newOrder.buyerCEOName,
-      buyer_email: newOrder.buyerEmail,
-    }]).then(({ error }) => {
-      if (error && error.code !== '42P01') { // 42P01은 테이블 미존재 에러
-        console.warn('[AdOrderService] Supabase insert note:', error.message);
-      }
-    });
-  } catch { /* ignore */ }
+  return { ok: true, data: null };
 }
 
-/**
- * 관리자가 입금 확인/승인 또는 취소 처리 시 업데이트
- */
-export async function updateAdOrder(updatedOrder: AdOrder): Promise<{ serverOk: boolean; error?: string }> {
-  const current = loadAdOrders();
-  const updated = current.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-  saveAllAdOrders(updated);
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('crm_ad_order_updated', { detail: updatedOrder }));
-  }
-
-  if (broadcastChannel) {
-    try {
-      broadcastChannel.postMessage({ type: 'AD_ORDER_UPDATED', order: updatedOrder });
-    } catch { /* ignore */ }
-  }
-
-  // 서버 반영 (024: 관리자만 UPDATE 가능). 이전: 결과를 버려 실패해도 알 수 없었음
-  if (!isSupabaseConfigured) return { serverOk: false, error: '서버 미설정' };
-  try {
-    const { data, error } = await supabase.from('ad_orders').update({
-      status: updatedOrder.status,
-      paid_at: updatedOrder.paidAt || null,
-      activated_at: updatedOrder.activatedAt || null,
-      expires_at: updatedOrder.expiresAt || null,
-      tax_invoice: updatedOrder.taxInvoice || null,
-      modified_tax_invoice: updatedOrder.modifiedTaxInvoice || null,
-      buyer_corp_num: updatedOrder.buyerCorpNum || null,
-      buyer_corp_name: updatedOrder.buyerCorpName || null,
-      buyer_ceo_name: updatedOrder.buyerCEOName || null,
-      buyer_email: updatedOrder.buyerEmail || null,
-    }).eq('id', updatedOrder.id).select('id');
-    if (error) return { serverOk: false, error: error.message };
-    if (!data || data.length === 0) return { serverOk: false, error: '서버에 주문이 없거나 권한이 없습니다.' };
-    return { serverOk: true };
-  } catch (e) {
-    return { serverOk: false, error: e instanceof Error ? e.message : '서버 반영 실패' };
-  }
+/** 고객 사이트: 지금 노출 중인 광고 (금액 없음) */
+export async function fetchActivePlacements(): Promise<RpcResult<ActivePlacement[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('public_active_ad_placements');
+  if (error) return { ok: false, code: 'load_failed', message: adError(error) };
+  return { ok: true, data: (data || []).map((r: any) => ({ lawyerId: r.lawyer_id, placement: r.placement, region: r.region || undefined, endsOn: r.ends_on })) };
 }
 
-/**
- * 실시간 주문 수신 리스너 등록
- */
-export function subscribeToAdOrders(
-  onCreated: (order: AdOrder) => void,
-  onUpdated?: (order: AdOrder) => void
-): () => void {
-  if (typeof window === 'undefined') return () => {};
-
-  // 1. CustomEvent 핸들러 (동일 탭 내)
-  const handleCreated = (e: any) => {
-    if (e.detail) onCreated(e.detail);
-  };
-  const handleUpdated = (e: any) => {
-    if (e.detail && onUpdated) onUpdated(e.detail);
-  };
-
-  window.addEventListener('crm_ad_order_created', handleCreated);
-  window.addEventListener('crm_ad_order_updated', handleUpdated);
-
-  // 2. BroadcastChannel 핸들러 (다른 탭 간)
-  const handleBroadcast = (event: MessageEvent) => {
-    if (event.data?.type === 'AD_ORDER_CREATED' && event.data.order) {
-      onCreated(event.data.order);
-    } else if (event.data?.type === 'AD_ORDER_UPDATED' && event.data.order && onUpdated) {
-      onUpdated(event.data.order);
-    }
-  };
-
-  if (broadcastChannel) {
-    broadcastChannel.addEventListener('message', handleBroadcast);
-  }
-
-  // 3. Storage 이벤트 핸들러 (구형 브라우저 호환)
-  // 이전: 키가 바뀔 때마다(상태 변경 포함) 첫 주문을 '신규'로 알려 같은 알림이 반복됐음 → 새 ID만 신규로 처리
-  let knownIds = new Set(loadAdOrders().map(o => o.id));
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY && e.newValue) {
-      try {
-        const fresh: AdOrder[] = JSON.parse(e.newValue);
-        const added = fresh.filter(o => !knownIds.has(o.id));
-        knownIds = new Set(fresh.map(o => o.id));
-        if (added.length > 0) added.forEach(o => onCreated(o));
-        else if (onUpdated && fresh[0]) onUpdated(fresh[0]);
-      } catch { /* ignore */ }
-    }
-  };
-  window.addEventListener('storage', handleStorage);
-
-  // 클린업 함수
-  return () => {
-    window.removeEventListener('crm_ad_order_created', handleCreated);
-    window.removeEventListener('crm_ad_order_updated', handleUpdated);
-    window.removeEventListener('storage', handleStorage);
-    if (broadcastChannel) {
-      broadcastChannel.removeEventListener('message', handleBroadcast);
-    }
-  };
-}
+export const AD_STATUS_LABEL: Record<string, string> = {
+  pending: '입금 대기',
+  paid: '시작 예정',
+  active: '노출 중',
+  expired: '기간 끝남',
+  cancelled: '취소',
+};

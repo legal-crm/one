@@ -383,7 +383,7 @@ export function ContextPanel({
                 </span>
                 {isYouthSpecial && (
                   <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                    청년특례 24개월
+                    3년 미만 단축 검토(만 30세 미만)
                   </span>
                 )}
               </div>
@@ -415,7 +415,7 @@ export function ContextPanel({
                 </div>
                 {estimatedDischargeRate > 0 && (
                   <div className="flex justify-between items-center text-slate-600">
-                    <span>예상 탕감률</span>
+                    <span>감면 비율(참고)</span>
                     <span className="font-mono font-bold text-emerald-600">약 {estimatedDischargeRate}%</span>
                   </div>
                 )}

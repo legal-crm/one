@@ -1197,10 +1197,10 @@ ${new Date().getFullYear()}.  .  .
               </div>
             )}
 
-            {/* 5. 보험 해약환급금 및 150만 공제 */}
+            {/* 5. 보험 해약환급금 및 압류금지 공제(합산 250만) */}
             {explanationSubTab === 'insurance' && (
               <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-700">보장성 보험 해약환급금 및 압류금지 150만 원 공제</span>
+                <span className="text-xs font-bold text-slate-700">보장성 보험 해약환급금 및 압류금지 공제(합산 250만 원)</span>
                 <div className="p-4 bg-slate-50 rounded-2xl text-xs space-y-2 border border-slate-200">
                   {insurances.map(ins => (
                     <div key={ins.id} className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">

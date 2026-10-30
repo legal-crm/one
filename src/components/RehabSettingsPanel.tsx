@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchSettings, updateSettings } from '../services/settingsService';
+import { loadCalcStandard, publishCalcStandard, saveCourtOverride, type CalcStandardMeta } from '../services/settingsService';
 import { 
   AppSettings, LeibnizTable, CourtRegionMapItem, RegionKey, 
   CourtConfig, YearlyPolicy, HousingCostRule 
@@ -23,7 +23,9 @@ import { DEFAULT_SETTINGS } from '../constants';
 type SettingsTab = 'policy' | 'income' | 'coeffs' | 'region' | 'housing' | 'deductions' | 'court_char';
 
 interface RehabSettingsPanelProps {
-  mode?: 'admin' | 'lawyer';  // 'admin' = full edit (default), 'lawyer' = read-only except court_char
+  mode?: 'admin' | 'lawyer';  // 'admin' = 통합어드민 기준표 게시, 'lawyer' = 확인 + 법원 성격만 사무소 값(LS-Q4)
+  /** lawyer 모드: 사무소 ID (법원 성격 변경값 저장 위치) */
+  officeId?: string;
 }
 
 const formatNumberWithComma = (value: number | undefined): string => {
@@ -35,7 +37,7 @@ const parseCommaToNumber = (str: string): number => {
   return Number(str.replace(/,/g, '')) || 0;
 };
 
-const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' }) => {
+const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin', officeId }) => {
   const dialog = useDialog();
   const isReadOnly = mode === 'lawyer';
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -47,58 +49,28 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
   const [courtSearch, setCourtSearch] = useState<string>('');
   const availableYears = [2025, 2026, 2027, 2028, 2029, 2030];
 
+  const [meta, setMeta] = useState<CalcStandardMeta | null>(null);
+  const [baseCourts, setBaseCourts] = useState<Record<string, CourtConfig>>({});
+  const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
+
   useEffect(() => {
     loadSettings();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [officeId]);
 
+  // 서버 게시본(없으면 코드 기본값)을 그대로 보여 준다.
+  // (이전: 불러올 때 2025·2026 값이 기본값과 다르면 강제로 덮어쓰고 저장했음 — 관리자가 고친 값이 사라짐)
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const data = await fetchSettings();
-      
-      let changed = false;
-      const updatedConfigs = { ...data.courtConfigs };
-      for (const [court, defaultConfig] of Object.entries(DEFAULT_SETTINGS.courtConfigs)) {
-        if (!updatedConfigs[court]) {
-          updatedConfigs[court] = { ...defaultConfig };
-          changed = true;
-        } else if (!updatedConfigs[court].description && defaultConfig.description) {
-          updatedConfigs[court].description = defaultConfig.description;
-          changed = true;
-        }
-      }
-
-      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션
-      const needs2026Sync = !data.yearlyPolicies[2026] 
-        || data.yearlyPolicies[2026].medianIncome.values[1] !== 2564238 
-        || data.yearlyPolicies[2026].housingCostLimits?.Seoul?.[1]?.additionalLimit !== 589208
-        || data.yearlyPolicies[2026].medicalCostIncludedInMedian?.[1] !== 64619
-        || data.yearlyPolicies[2026].educationCost?.includedInMedian !== 89627;
-      const needs2025Sync = !data.yearlyPolicies[2025] || data.yearlyPolicies[2025].medianIncome.values[5] !== 7108192;
-      if (needs2026Sync || needs2025Sync) {
-        data.yearlyPolicies[2025] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2025]));
-        data.yearlyPolicies[2026] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2026]));
-        for (const yearStr of Object.keys(data.yearlyPolicies)) {
-          const yr = Number(yearStr);
-          if (yr > 2026 && DEFAULT_SETTINGS.yearlyPolicies[yr]) {
-            data.yearlyPolicies[yr].housingCostLimits = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].housingCostLimits));
-            data.yearlyPolicies[yr].medicalCostIncludedInMedian = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].medicalCostIncludedInMedian));
-            data.yearlyPolicies[yr].educationCost = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].educationCost));
-            data.yearlyPolicies[yr].specialEducationCost = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].specialEducationCost));
-          }
-        }
-        changed = true;
-      }
-      
-      const migratedData = changed ? { ...data, courtConfigs: updatedConfigs } : data;
-      if (changed) {
-        await updateSettings(migratedData);
-      }
-      
-      setSettings(migratedData);
-      if (!availableYears.includes(selectedYear)) {
-        setSelectedYear(availableYears[0]);
-      }
+      const base = await loadCalcStandard({ force: true });
+      const withOffice = mode === 'lawyer' && officeId ? await loadCalcStandard({ officeId }) : base;
+      if (base.error) toast.error(`기준표를 서버에서 불러오지 못해 기본값을 보여 드려요. (${base.error})`);
+      setBaseCourts(JSON.parse(JSON.stringify(base.settings.courtConfigs)));
+      setOverrideReasons(Object.fromEntries(withOffice.overrides.map(o => [o.courtName, o.reason])));
+      setSettings(withOffice.settings);
+      setMeta(base.meta);
+      if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
     } catch (e) {
       console.error(e);
       toast.error('설정을 불러오는데 실패했습니다.');
@@ -109,10 +81,52 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
 
   const handleSave = async () => {
     if (!settings) return;
+    if (mode === 'lawyer') {
+      if (!officeId) { toast.error('사무소 정보를 확인하지 못해 저장할 수 없어요.'); return; }
+      const changed = Object.entries(settings.courtConfigs).filter(([court, cfg]) => {
+        const b = baseCourts[court];
+        return b && (['includeSpouseProperty', 'includeCryptoStock', 'shortPlanRule', 'allowAdditionalLivingCost', 'allowOtherLivingCost'] as const).some(k => b[k] !== cfg[k]);
+      });
+      const cleared = Object.keys(overrideReasons).filter(c => !changed.some(([court]) => court === c));
+      if (changed.length === 0 && cleared.length === 0) { toast.info('바꾼 법원 성격이 없어요.'); return; }
+      const reason = await dialog.prompt({
+        title: '사무소 법원 성격 변경 근거',
+        message: '바꾼 값은 우리 사무소 계산에만 적용돼요. 근거(예: 재판부 안내, 보정권고 내용)를 적어 주세요.',
+        confirmText: '저장',
+      });
+      if (!reason || reason.trim().length < 2) { toast.error('근거를 2자 이상 적어 주세요.'); return; }
+      setSaving(true);
+      try {
+        for (const [court, cfg] of changed) {
+          const b = baseCourts[court];
+          const fields: Record<string, boolean> = {};
+          (['includeSpouseProperty', 'includeCryptoStock', 'shortPlanRule', 'allowAdditionalLivingCost', 'allowOtherLivingCost'] as const).forEach(k => { if (b[k] !== cfg[k]) fields[k] = cfg[k]; });
+          const res = await saveCourtOverride(officeId, court, fields, reason.trim());
+          if (!res.ok) { toast.error(`${court}: ${res.message}`); return; }
+        }
+        for (const court of cleared) {
+          const res = await saveCourtOverride(officeId, court, {}, reason.trim());
+          if (!res.ok) { toast.error(`${court}: ${res.message}`); return; }
+        }
+        toast.success('우리 사무소 법원 성격을 저장했어요.');
+        await loadSettings();
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    const note = await dialog.prompt({
+      title: '새 기준표 버전 게시',
+      message: '게시하면 모든 계산(제안서·챗봇·계산기)에 바로 적용되고, 게시한 버전은 고칠 수 없어요. 바꾼 내용과 근거(고시·실무준칙 번호 등)를 적어 주세요.',
+      confirmText: '게시',
+    });
+    if (!note || note.trim().length < 2) { toast.error('바꾼 내용과 근거를 적어 주세요.'); return; }
     setSaving(true);
     try {
-      await updateSettings(settings);
-      toast.success('회생/파산 계산 정책이 성공적으로 저장되었습니다.');
+      const res = await publishCalcStandard(settings, note.trim());
+      if (!res.ok) { toast.error(res.message); return; }
+      toast.success(`기준표 v${res.data.version}을 게시했어요.`);
+      await loadSettings();
     } catch (e) {
       console.error(e);
       toast.error('저장에 실패했습니다.');
@@ -162,7 +176,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
           description: '',
           includeSpouseProperty: true,
           includeCryptoStock: true,
-          allow24Month: false,
+          shortPlanRule: false,
           allowAdditionalLivingCost: true,
           allowOtherLivingCost: false
         }
@@ -179,7 +193,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
         description: '',
         includeSpouseProperty: true,
         includeCryptoStock: true,
-        allow24Month: false,
+        shortPlanRule: false,
         allowAdditionalLivingCost: true,
         allowOtherLivingCost: false
       };
@@ -1034,16 +1048,17 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
               <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">사무소 설정 가능</span>
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              각 법원별 배우자 재산 반영률, 주식/코인 청산가치 반영 여부, 24개월 단축 적용 여부를 관리합니다.
+              각 법원별 배우자 재산 반영률, 주식/코인 청산가치 반영 여부, 3년 미만 단축 사유(실무준칙 제424호) 적용 여부를 관리합니다.
             </p>
           </div>
-          <button 
+          {/* 법원 목록은 통합어드민만 바꾼다 (LS-Q4) */}
+          {!isReadOnly && <button 
             onClick={handleAddCourt} 
             className="px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-[0.98] whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             새 법원 추가
-          </button>
+          </button>}
         </div>
         
         {/* Desktop Table View */}
@@ -1054,8 +1069,8 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                 <th className="py-3.5 px-4 w-44">법원명</th>
                 <th className="py-3.5 px-4">특징 및 실무 메모</th>
                 <th className="py-3.5 px-2 text-center text-xs w-24">배우자 재산<br/>50% 반영</th>
-                <th className="py-3.5 px-2 text-center text-xs w-24">코인/주식<br/>청산가치</th>
-                <th className="py-3.5 px-2 text-center text-xs w-24">24개월<br/>단축 가능</th>
+                <th className="py-3.5 px-2 text-center text-xs w-24">투자 손실금<br/>가산</th>
+                <th className="py-3.5 px-2 text-center text-xs w-24">3년 미만<br/>단축 사유</th>
                 <th className="py-3.5 px-2 text-center text-xs w-24">추가 생계비<br/>인정</th>
                 <th className="py-3.5 px-2 text-center text-xs w-24">기타 생계비<br/>인정</th>
               </tr>
@@ -1066,7 +1081,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                   description: '',
                   includeSpouseProperty: true,
                   includeCryptoStock: true,
-                  allow24Month: false,
+                  shortPlanRule: false,
                   allowAdditionalLivingCost: true,
                   allowOtherLivingCost: false
                 };
@@ -1103,8 +1118,8 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                       <input 
                         type="checkbox" 
                         className="w-4 h-4 rounded text-brand focus:ring-brand/20 border-slate-300 cursor-pointer" 
-                        checked={config.allow24Month} 
-                        onChange={e => updateCourtConfig(court, 'allow24Month', e.target.checked)}
+                        checked={config.shortPlanRule} 
+                        onChange={e => updateCourtConfig(court, 'shortPlanRule', e.target.checked)}
                       />
                     </td>
                     <td className="py-3 px-2 text-center">
@@ -1137,7 +1152,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
               description: '',
               includeSpouseProperty: true,
               includeCryptoStock: true,
-              allow24Month: false,
+              shortPlanRule: false,
               allowAdditionalLivingCost: true,
               allowOtherLivingCost: false
             };
@@ -1178,10 +1193,10 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                   </label>
                   <label className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer">
                     <input type="checkbox" className="w-3.5 h-3.5 rounded text-brand border-slate-300" 
-                      checked={config.allow24Month} 
-                      onChange={e => updateCourtConfig(court, 'allow24Month', e.target.checked)}
+                      checked={config.shortPlanRule} 
+                      onChange={e => updateCourtConfig(court, 'shortPlanRule', e.target.checked)}
                     />
-                    <span className="text-[11px] font-bold text-slate-700">24개월 단축</span>
+                    <span className="text-[11px] font-bold text-slate-700">3년 미만 단축 사유</span>
                   </label>
                   <label className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer">
                     <input type="checkbox" className="w-3.5 h-3.5 rounded text-brand border-slate-300" 
@@ -1224,7 +1239,12 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
           <p className="text-xs text-slate-500 mt-1">
             {isReadOnly 
               ? '개인회생 변제금 산출 및 AI 분석에 적용되는 플랫폼 기본 정책값입니다. 법원 성격 탭에서 개별 사무실 실무 기준을 설정할 수 있습니다.' 
-              : '챗봇 상담 및 보고서 산출에 사용되는 핵심 정책 기준값을 관리합니다.'}
+              : '챗봇 상담 및 보고서 산출에 사용되는 핵심 정책 기준값을 관리합니다. 저장하면 새 버전으로 게시돼요.'}
+          </p>
+          <p className="text-xs font-bold text-slate-600 mt-1">
+            {meta?.source === 'server'
+              ? `적용 중: 기준표 v${meta.version} · ${meta.publishedAt ? new Date(meta.publishedAt).toLocaleDateString('ko-KR') : ''} 게시${meta.note ? ` · ${meta.note}` : ''}`
+              : '적용 중: 코드 기본값 (아직 게시한 기준표가 없어요)'}
           </p>
         </div>
         {(!isReadOnly || activeTab === 'court_char') && (
@@ -1234,7 +1254,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
             className="flex items-center gap-2 px-5 py-2.5 bg-brand text-white rounded-xl hover:bg-brand-hover font-bold shadow-sm transition-all text-xs sm:text-sm disabled:opacity-50 active:scale-[0.98] whitespace-nowrap cursor-pointer"
           >
             <Save size={15} /> 
-            <span>{saving ? '저장 중...' : '설정 저장'}</span>
+            <span>{saving ? '저장 중...' : isReadOnly ? '우리 사무소 값 저장' : '새 버전 게시'}</span>
           </button>
         )}
       </div>

@@ -332,9 +332,12 @@ export const isRemoteSignServerEnabled = isSupabaseConfigured;
  *   서명 토큰을 검증한 뒤 허용된 필드만 갱신한다.
  */
 export async function submitRemoteSignStage(params: {
-  stage: 'identity' | 'signature';
+  stage: 'identity' | 'signature' | 'offline_request';
   contractId: string;
   remoteSignToken: string;
+  /** offline_request: 방문(in_person)·우편(postal) 체결 전환 요청 */
+  method?: 'in_person' | 'postal';
+  detail?: string;
   identityVerificationId?: string;
   provider?: string;
   providerName?: string;

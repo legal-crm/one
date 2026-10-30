@@ -167,7 +167,7 @@ type ChatStep =
     | 'prior_credit_recovery_amount' // 신용회복 잔액 (NEW)
     | 'risk'
     | 'speculative_loss_amount' // 1년 이내 주식/코인 손실 또는 도박 채무 금액 확인 (NEW)
-    | 'special_24_months'    // 24개월 특례 적용 여부 (기초수급자, 장애 등)
+    | 'short_plan_reason'    // 3년 미만 단축 사유 해당 여부 (기초수급자, 장애 등)
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
     | 'debt_types'            // V2.1: 채무 유형 분류
@@ -3325,8 +3325,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'prior_rehab':
                 if (value === 'none' || value === 'fresh_start') {
-                    // 24개월 특례 적용 가능 여부 확인으로 이동
-                    goToStep('special_24_months');
+                    // 3년 미만 단축 검토 적용 가능 여부 확인으로 이동
+                    goToStep('short_plan_reason');
                     addBotMessage(
                         '24개월 단기 변제 특례 적용 가능 여부를 확인합니다.\n\n다음 중 해당하는 항목이 있으신가요?',
                         [
@@ -3359,8 +3359,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 break;
 
-            case 'special_24_months':
-                // 24개월 특례 조건 저장
+            case 'short_plan_reason':
+                // 3년 미만 단축 사유 저장
                 const updatedInputWithSpecial = { ...userInput, specialCondition: value as any };
                 setUserInput(updatedInputWithSpecial);
                 goToClientNote(updatedInputWithSpecial as any);
@@ -3985,7 +3985,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95, 'speculative_loss_amount': 95.1,
             'legal_actions': 95.2, 'monthly_expenses': 62,
-            'special_24_months': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
+            'short_plan_reason': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
             'result': 100
         };
         return stepOrder[currentStep] || 0;

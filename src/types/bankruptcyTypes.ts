@@ -235,7 +235,7 @@ export interface MonthlyBudgetLedger {
   isDisposableZeroOrNegative: boolean;
 }
 
-// 6. 기본 파산 재산목록 (1,110만 원 면제재산 계산기)
+// 6. 기본 파산 재산목록 (1,558만 원(2026년) 면제재산 계산기)
 export interface BankruptcyAssetItem {
   id: string;
   assetName: string;            // 예: 서울 보증금 4,500만, 신한은행 잔고 80만
@@ -244,7 +244,7 @@ export interface BankruptcyAssetItem {
   seniorLien: number;           // 담보 채무 (원)
   
   // 법정 면제재산 및 압류금지 공제
-  statutoryExemption: number;   // 소액임차보증금(서울 5,500만 등) 또는 6개월 생계비(1,110만 원)
+  statutoryExemption: number;   // 소액임차보증금(서울 5,500만 등) 또는 6개월 생계비(1,558만 원(2026년))
   appliedExemptionType: 'SMALL_HOUSING_DEPOSIT' | 'SIX_MONTH_LIVING_1110' | 'DEPOSIT_185' | 'INSURANCE_150' | 'NONE';
   
   liquidationValue: number;     // 최종 환가대상 가액 = max(0, 시가 - 담보 - 면제액)

@@ -1,6 +1,8 @@
 import type { SalesLead, LeadStatus, CallLog, ReminderItem, CustomerBriefingData, CommissionRule, Partner } from '../types/leadTypes';
 import type { ConsultRequest, CrmClientExtension, CaseType } from '../types';
-import { secureGetItem, secureSetItem } from '../utils/secureStorage';
+import { toast } from 'sonner';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { diffContent, snapshotOf } from './cms/contentDiff';
 import { createDefaultCrmExtension, saveCrmClient } from './crmService';
 import { createTask } from './taskTicketService';
 import { localYmd } from '../utils/localDate';
@@ -8,15 +10,72 @@ import { getDisplayClientName, getDisplayPhoneNumber } from '../utils/clientDisp
 
 const LEGACY_SALES_LEADS_KEY = 'legal_sales_leads';
 
-// ── 저장 범위(테넌트) ──
-// 이전: 모든 변호사·사무소가 브라우저 전역 키 하나('legal_sales_leads')를 공유 → 같은 기기의 다른 계정에 리드가 노출됨
+// ── 저장 위치: 서버(sales_leads, 20261030000900) ──
+// 화면은 기존처럼 동기 함수(loadSalesLeads/saveSalesLead…)를 쓰고, 이 모듈이 메모리 사본과 서버를 맞춘다.
+// 브라우저 저장소에는 리드를 두지 않는다 (예전 사본은 처음 불러올 때 지움). 서버 저장 실패는 알림 후 서버 값으로 되돌린다.
 let salesLeadScope = '';
-/** 로그인한 사무소(또는 변호사) 기준으로 리드 저장소를 분리 */
+/** 로그인한 사무소 기준 (사무소 ID = 대표 변호사 ID) */
 export function setSalesLeadScope(tenantId: string | undefined | null): void {
-  salesLeadScope = (tenantId || '').trim();
+  const next = (tenantId || '').trim();
+  if (next !== salesLeadScope) {
+    salesLeadScope = next;
+    leadCache = [];
+    leadSnapshot = new Map();
+    loadedScope = '';
+  }
 }
-function leadsKey(): string {
-  return salesLeadScope ? `${LEGACY_SALES_LEADS_KEY}::${salesLeadScope}` : LEGACY_SALES_LEADS_KEY;
+
+let leadCache: SalesLead[] = [];
+let leadSnapshot = new Map<string, string>();
+let loadedScope = '';
+let syncing: Promise<void> | null = null;
+let lastSyncError: string | null = null;
+const leadListeners = new Set<() => void>();
+
+/** 서버에서 새로 읽거나 저장 실패로 되돌렸을 때 알림 */
+export function subscribeSalesLeads(fn: () => void): () => void {
+  leadListeners.add(fn);
+  return () => { leadListeners.delete(fn); };
+}
+function emitLeads() { leadListeners.forEach(fn => { try { fn(); } catch { /* ignore */ } }); }
+
+export function getSalesLeadSyncState(): { loaded: boolean; error: string | null } {
+  return { loaded: !isSupabaseConfigured || (loadedScope !== '' && loadedScope === salesLeadScope), error: lastSyncError };
+}
+
+function clearLegacyLeadCopies() {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k === LEGACY_SALES_LEADS_KEY || k.startsWith(`${LEGACY_SALES_LEADS_KEY}::`))) keys.push(k);
+    }
+    keys.forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+}
+
+/** 서버에서 사무소 리드를 다시 읽는다 */
+export function syncSalesLeadsFromServer(): Promise<void> {
+  if (!isSupabaseConfigured || !salesLeadScope) return Promise.resolve();
+  if (syncing) return syncing;
+  const scope = salesLeadScope;
+  syncing = (async () => {
+    const { data, error } = await supabase.from('sales_leads').select('id, data').eq('office_id', scope).is('deleted_at', null).order('updated_at', { ascending: false }).limit(5000);
+    if (scope !== salesLeadScope) return;
+    if (error) {
+      lastSyncError = /permission|row-level/i.test(error.message) ? '영업 DB를 볼 권한이 없어요.' : '영업 DB를 서버에서 불러오지 못했어요.';
+      loadedScope = scope;
+      emitLeads();
+      return;
+    }
+    lastSyncError = null;
+    leadCache = (data || []).map((r: any) => ({ ...(r.data || {}), id: r.id }) as SalesLead);
+    leadSnapshot = snapshotOf(leadCache);
+    loadedScope = scope;
+    clearLegacyLeadCopies();
+    emitLeads();
+  })().finally(() => { syncing = null; });
+  return syncing;
 }
 
 /** DEV 체험용 시드 ID (운영에서 기존 저장분 정리용) */
@@ -164,52 +223,52 @@ const INITIAL_MOCK_LEADS: SalesLead[] = [
 ];
 
 export function loadSalesLeads(): SalesLead[] {
-  const key = leadsKey();
-  try {
-    let raw = secureGetItem(key);
-    // 전역 키에 남은 기존 데이터는 처음 로그인한 범위로 1회 이전 후 삭제
-    if (raw === null && key !== LEGACY_SALES_LEADS_KEY) {
-      const legacy = localStorage.getItem(LEGACY_SALES_LEADS_KEY);
-      if (legacy !== null) {
-        localStorage.setItem(key, legacy);
-        localStorage.removeItem(LEGACY_SALES_LEADS_KEY);
-        raw = legacy;
-      }
+  if (!isSupabaseConfigured) {
+    // 서버가 없는 로컬 개발: 메모리 체험 데이터
+    if (loadedScope !== '__local__') {
+      leadCache = import.meta.env.DEV ? INITIAL_MOCK_LEADS.map(l => ({ ...l })) : [];
+      leadSnapshot = snapshotOf(leadCache);
+      loadedScope = '__local__';
     }
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        // 운영: 이전에 저장된 체험용 시드 리드 제거
-        if (!import.meta.env.DEV && parsed.some((l: SalesLead) => SEED_LEAD_IDS.has(l?.id))) {
-          const cleaned = parsed.filter((l: SalesLead) => !SEED_LEAD_IDS.has(l?.id));
-          saveSalesLeads(cleaned);
-          return cleaned;
-        }
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('[leadService] loadSalesLeads failed', e);
-    return [];
+    return [...leadCache];
   }
-  // 처음 사용: 개발 환경에서만 체험용 시드 적재 (이전: 목록이 비면 운영에서도 가짜 리드를 매번 다시 채움)
-  if (import.meta.env.DEV) {
-    saveSalesLeads(INITIAL_MOCK_LEADS);
-    return INITIAL_MOCK_LEADS.map(l => ({ ...l }));
-  }
-  return [];
+  if (loadedScope !== salesLeadScope) void syncSalesLeadsFromServer();
+  return [...leadCache];
 }
 
-/** @returns 저장 성공 여부 */
+/** 화면 목록 전체를 반영 (바뀐 리드만 서버에 저장, 빠진 리드는 휴지통). @returns 접수 여부 */
 export function saveSalesLeads(leads: SalesLead[]): boolean {
-  try {
-    // 이전: secureSetItem + localStorage.setItem 이중 저장 (같은 localStorage에 중복 기록)
-    localStorage.setItem(leadsKey(), JSON.stringify(leads));
-    return true;
-  } catch (e) {
-    console.warn('[leadService] saveSalesLeads failed', e);
+  leadCache = [...leads];
+  if (!isSupabaseConfigured) { leadSnapshot = snapshotOf(leadCache); return true; }
+  if (!salesLeadScope) {
+    toast.error('사무소 정보를 확인하지 못해 영업 DB를 저장하지 않았어요. 다시 로그인해 주세요.');
     return false;
   }
+  const diff = diffContent(leadSnapshot, leadCache);
+  if (diff.upserts.length === 0 && diff.deletes.length === 0) return true;
+  const scope = salesLeadScope;
+  leadSnapshot = snapshotOf(leadCache);
+  void (async () => {
+    if (diff.upserts.length > 0) {
+      const rows = diff.upserts.map(l => ({ id: l.id, office_id: scope, data: l }));
+      const { error } = await supabase.from('sales_leads').upsert(rows, { onConflict: 'id' });
+      if (error) {
+        toast.error('영업 DB 저장 실패: 서버의 마지막 저장 상태로 되돌립니다.', { description: /permission|row-level/i.test(error.message) ? '이 리드를 고칠 권한이 없어요.' : error.message });
+        loadedScope = '';
+        await syncSalesLeadsFromServer();
+        return;
+      }
+    }
+    if (diff.deletes.length > 0) {
+      const { error } = await supabase.from('sales_leads').update({ deleted_at: new Date().toISOString() }).eq('office_id', scope).in('id', diff.deletes);
+      if (error) {
+        toast.error('리드 삭제 실패: 삭제는 영업 DB 관리 권한이 있어야 해요.');
+        loadedScope = '';
+        await syncSalesLeadsFromServer();
+      }
+    }
+  })();
+  return true;
 }
 
 export function saveSalesLead(lead: SalesLead): void {
@@ -228,7 +287,7 @@ export function deleteSalesLead(leadId: string): void {
   saveSalesLeads(list.filter(l => l.id !== leadId));
 }
 
-/** @returns 저장된 건수 (저장 실패 시 0) */
+/** @returns 접수한 건수 (사무소 정보가 없으면 0) */
 export function bulkInsertLeads(newLeads: SalesLead[]): number {
   const current = loadSalesLeads();
   const merged = [...newLeads, ...current];

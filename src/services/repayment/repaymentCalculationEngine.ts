@@ -157,7 +157,8 @@ type AssetRegion = 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS';
 
 /**
  * 재산 종류별 기본 법정 공제액 (단일 출처: repaymentConstants2026)
- * - 예금 185만(민사집행법 시행령 제7조), 보장성보험 150만, 주거용 임차보증금은 지역별 소액보증금 요건 충족 시
+ * - 현금·예금 250만, 보장성보험 합산 250만(민사집행법 시행령, 2026-02-01), 주거용 임차보증금은 지역별 소액보증금 요건 충족 시
+ *   (예금·보험은 computeAssetBreakdown 이 합계 1회로 나눠 적용한다)
  * - 퇴직금(연금 아님)은 1/2 공제
  */
 export function getDefaultStatutoryDeduction(asset: Pick<RepaymentAsset, 'category' | 'marketValue'>, region: AssetRegion = 'SEOUL'): number {
@@ -217,21 +218,24 @@ export function calculateAssetLiquidationValue(
 
 /**
  * 재산 목록 전체의 공제액·청산가치를 행별로 산출.
- * 예금 압류금지 공제(185만)는 **채무자 1인의 예금 합계**에 1회만 적용되므로,
+ * 예금 압류금지 공제(250만)는 **채무자 1인의 예금 합계**에 1회만 적용되므로,
  * 공제액을 직접 입력하지 않은 본인 명의 예금 행들에 앞에서부터 잔여 한도를 나눠 적용한다.
  */
 export function computeAssetBreakdown(
   assets: RepaymentAsset[],
   region: AssetRegion = 'SEOUL'
 ): RepaymentAsset[] {
-  let depositPool = EXEMPT_DEPOSIT_LIMIT;
+  // 예금·보장성보험 모두 '채무자 1인 합계 1회' 공제 (민사집행법 시행령, LS-Q8)
+  // (이전: 보험은 행마다 150만 원씩 공제돼 보험이 여러 개면 청산가치가 낮게 나왔음)
+  const pools: Record<'DEPOSIT' | 'INSURANCE', number> = { DEPOSIT: EXEMPT_DEPOSIT_LIMIT, INSURANCE: EXEMPT_INSURANCE_REFUND_LIMIT };
   return assets.map((a) => {
-    const isAutoDeposit =
-      a.category === 'DEPOSIT' && !a.deductionOverridden && (a.ownerType || 'DEBTOR') === 'DEBTOR';
-    if (isAutoDeposit) {
+    const pooled = (a.category === 'DEPOSIT' || a.category === 'INSURANCE')
+      && !a.deductionOverridden && (a.ownerType || 'DEBTOR') === 'DEBTOR';
+    if (pooled) {
+      const key = a.category as 'DEPOSIT' | 'INSURANCE';
       const net = Math.max(0, a.marketValue - (a.encumbrance || 0));
-      const used = Math.min(depositPool, net);
-      depositPool -= used;
+      const used = Math.min(pools[key], net);
+      pools[key] -= used;
       return { ...a, statutoryDeduction: used, liquidationValue: Math.max(0, net - used) };
     }
     return {
@@ -586,8 +590,8 @@ export interface BuildPlanOptions {
   incomeExpense: IncomeAndExpenseInput;
   assets: RepaymentAsset[];
   creditors: RepaymentCreditor[];
-  /** 청년(만 30세 미만)·취약계층 24개월 단축 특례 대상 여부 (rehabLegalCore.checkSpecial24Eligibility) */
-  special24Eligible?: boolean;
+  /** 청년(만 30세 미만)·취약계층 3년 미만 단축 사유 대상 여부 (rehabLegalCore.checkShortPlanReason) */
+  shortPlanReview?: boolean;
   
   // 담당자 수동 미세 조정 옵션 (제공 시 자동 계산 대신 우선 반영)
   manualOverride?: {
@@ -659,7 +663,7 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     assets,
     creditors: rawCreditors,
     manualOverride,
-    special24Eligible = false,
+    shortPlanReview = false,
   } = options;
 
   // 번호 및 가지번호 정렬 처리
@@ -710,8 +714,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     }
   } else {
     // ── 자동 판정 알고리즘 (2026 Engine, rehabLegalCore와 동일 순서) ──
-    // Step 0: 24개월 단축 특례 (청년·취약계층, 관할 허용 시)
-    const alloc24 = special24Eligible ? allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 24) : null;
+    // Step 0: 3년 미만 단축 사유 (청년·취약계층, 관할 허용 시)
+    const alloc24 = shortPlanReview ? allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 24) : null;
     const check24 = alloc24
       ? verifyLiquidationGuaranteeAndMinRepayment(totalPrincipal, alloc24.monthlyTotal, 24, totalLiquidationValue)
       : null;

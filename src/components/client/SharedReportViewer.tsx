@@ -60,13 +60,13 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     {/* 주요 수치 */}
                     <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                         <div className="space-y-0.5">
-                            <span className="text-xs text-slate-600">예상 감면율</span>
+                            <span className="text-xs text-slate-600">총 변제액(예상)</span>
                             <div className="text-xl font-extrabold text-emerald-700">
-                                {hasValue(result.debtReductionRate) ? `${result.debtReductionRate}%` : missing}
+                                {hasValue(result.monthlyPayment) && hasValue(result.repaymentMonths) ? amountOrMissing(result.monthlyPayment * result.repaymentMonths) : missing}
                             </div>
                         </div>
                         <div className="space-y-0.5">
-                            <span className="text-xs text-slate-600">예상 감면액</span>
+                            <span className="text-xs text-slate-600">갚지 않아도 되는 금액(예상)</span>
                             <div className="text-xl font-extrabold text-brand">
                                 {amountOrMissing(result.totalDebtReduction)}
                             </div>

@@ -632,16 +632,19 @@ export async function saveAllConsultMessages(messages: ConsultMessage[]): Promis
 
 // ── 마이그레이션 ──
 
-export async function migrateAnonymousRequests(newClientId: string, newClientName: string): Promise<ConsultRequest[]> {
-  const requests = await loadConsultRequests('client-temp');
-  if (requests.length === 0) return [];
-
-  const updatedRequests = requests.map(req => ({
-    ...req,
-    clientId: newClientId,
-    clientName: req.clientName === '익명 의뢰인' ? newClientName : req.clientName,
-  }));
-
-  await saveAllConsultRequests(updatedRequests);
-  return updatedRequests;
+/**
+ * 로그인 전에 이 기기에서 만든 상담 요청(client-temp)을 로그인한 계정 소유로 서버에 저장한다.
+ * 서버의 'client-temp' 행은 조회하지 않는다(다른 사람의 익명 요청을 가져가던 문제, 익명 전체 권한 삭제와 함께 정리).
+ * @param localRequests 이미 새 clientId·이름으로 바꾼 이 기기의 요청
+ * @returns 서버 저장 성공 여부
+ */
+export async function migrateAnonymousRequests(localRequests: ConsultRequest[]): Promise<boolean> {
+  if (localRequests.length === 0) return true;
+  if (!isSupabaseConfigured) return true;
+  try {
+    const results = await Promise.all(localRequests.map(r => saveConsultRequest(r).then(() => true).catch(() => false)));
+    return results.every(Boolean);
+  } catch {
+    return false;
+  }
 }

@@ -10,6 +10,7 @@ import MyPageCompactView from './mypage/MyPageCompactView';
 import MyPageNotificationsPanel from './mypage/MyPageNotificationsPanel';
 import MyCaseDetails from './mypage/MyCaseDetails';
 import MyPageModals from './mypage/MyPageModals';
+import MyServerCasesCard from './mypage/MyServerCasesCard';
 
 /**
  * 마이페이지 (탭: 내 사건 · 회생동행 · 알림·설정)
@@ -98,6 +99,8 @@ export default function MyPageView(props: MyPageViewProps) {
       {/* ═══ 탭 2: 채무 진단 & 맞춤 제안서 / 법원 서류 제출 ═══ */}
       {mypageTab === 'diagnosis' && (
         <div role="tabpanel" id="mypage-panel-diagnosis" aria-labelledby="mypage-tab-diagnosis" className="space-y-6 animate-fadeIn">
+          {/* 서버 사건 기록 (사무소가 기록한 단계·날짜, CM-11) */}
+          <MyServerCasesCard isLoggedIn={vm.isLoggedIn} />
           {/* ═══ [제안서 중심 Proposal-First 트래커] ═══ */}
           {/* 계약 전 단계(!isContracted)일 때는 제안서 작성 중/도착 상태를 최우선 센터피스로 렌더링 */}
           {/* 요청을 보낸 뒤에만 진행을 보여 준다 (아무에게도 요청하지 않았는데 '검토 중'으로 보이지 않게) */}

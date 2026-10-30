@@ -19,8 +19,8 @@ import {
 } from '../config/PolicyConfig';
 import {
     determineRepaymentPlan,
-    checkSpecial24Eligibility,
-    special24FromCondition,
+    checkShortPlanReason,
+    shortPlanInputFromCondition,
     type CorePlanStatus,
 } from '../../services/repayment/rehabLegalCore';
 
@@ -33,7 +33,7 @@ export interface RehabUserInput {
     // 기본 정보
     address: string;           // 거주지 주소
     workLocation?: string;     // 근무지/사업장 지역 (관할 법원용)
-    age?: number;              // 나이 (24개월 특례 확인용)
+    age?: number;              // 나이 (3년 미만 단축 검토 확인용)
     gender?: 'male' | 'female'; // 성별
 
     employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily' | 'basic_recipient'; // 고용 형태
@@ -85,7 +85,7 @@ export interface RehabUserInput {
     gamblingDebt?: number;     // 도박/투자 채무 별칭 (호환성)
     riskFactor?: 'none' | 'recent_loan' | 'investment' | 'gambling'; // 채무 유형
 
-    // 24개월 특례 조건
+    // 3년 미만 단축 사유
     specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud';
 
     // 부양가족 호환성
@@ -540,10 +540,10 @@ export function calculateRepayment(
     // 5~7. 변제기간·월 변제금·총 변제액 — 법률 산식 단일 기준(rehabLegalCore) 위임
     //  · 라이프니츠 현가(36개월 33.3657)로 청산가치 보장 검증
     //  · 최저변제액(5% / 3%+100만), 조세 우선채권 1/2 기간 내 완납
-    //  · 청년(만 30세 미만)·취약계층 24개월 특례 (관할 허용 시)
-    const special24 = checkSpecial24Eligibility({
-        ...special24FromCondition(courtName, input.age, input.specialCondition),
-        courtAllows24: courtTrait.allow24Months,
+    //  · 청년(만 30세 미만)·취약계층 3년 미만 단축 검토 (관할 허용 시)
+    const shortPlan = checkShortPlanReason({
+        ...shortPlanInputFromCondition(courtName, input.age, input.specialCondition),
+        courtHasRule: courtTrait.shortPlanRule,
     });
     const corePlan = determineRepaymentPlan({
         monthlyIncome: input.monthlyIncome,
@@ -551,7 +551,7 @@ export function calculateRepayment(
         liquidationValue,
         generalDebt: Math.max(0, input.totalDebt),
         priorityDebt: Math.max(0, input.priorityDebt || 0),
-        allow24: special24.eligible,
+        allowShortPlan: shortPlan.eligible,
     });
     const repaymentMonths = corePlan.months;
     const monthlyPayment = corePlan.monthlyPayment;
@@ -559,10 +559,10 @@ export function calculateRepayment(
     const totalRepayment = corePlan.generalRepayment;
     corePlan.warnings.forEach(w => riskWarnings.push(w));
 
-    if (special24.eligible && repaymentMonths === 24) {
-        aiAdvice.push(`📅 **24개월 단축 특례** 요건(${special24.reason})을 충족해 24개월 변제로 계산했습니다.`);
-    } else if (special24.eligible) {
-        aiAdvice.push(`💡 24개월 단축 특례 대상(${special24.reason})이지만 청산가치·최저변제액 요건 때문에 ${repaymentMonths}개월로 계산했습니다.`);
+    if (shortPlan.eligible && repaymentMonths === 24) {
+        aiAdvice.push(`📅 **3년 미만 단축 사유** 요건(${shortPlan.reason})을 충족해 24개월 변제로 계산했습니다.`);
+    } else if (shortPlan.eligible) {
+        aiAdvice.push(`💡 3년 미만 단축 사유 대상(${shortPlan.reason})이지만 청산가치·최저변제액 요건 때문에 ${repaymentMonths}개월로 계산했습니다.`);
     }
     if (corePlan.status === 'EXTENDED') {
         aiAdvice.push('📅 36개월로는 청산가치(현재가치 기준)를 충족하지 못해 변제기간을 **60개월**로 연장했습니다.');
@@ -617,7 +617,7 @@ export function calculateRepayment(
         statusReason = '입력값 기준으로 개인회생 신청 요건을 충족하는 것으로 계산됩니다.';
     }
 
-    // 9. AI 조언 생성 (업데이트) — 24개월 특례 안내는 5~7단계에서 처리
+    // 9. AI 조언 생성 (업데이트) — 3년 미만 단축 검토 안내는 5~7단계에서 처리
     if (courtTrait.spousePropertyRate === 0 && input.isMarried) {
         aiAdvice.push('이 법원 실무 기준에 따라 배우자 재산을 반영하지 않고 계산했습니다.');
     }

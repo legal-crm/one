@@ -79,7 +79,7 @@ export default function ExemptAssetBasket({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {/* 1. 예금 185만 원 일괄 공제 */}
+            {/* 1. 예금 250만 원 일괄 공제 */}
             <tr className="hover:bg-slate-50/50">
               <td className="py-2.5 px-3 font-bold text-slate-800">
                 🏦 예금·적금 바스켓
@@ -92,7 +92,7 @@ export default function ExemptAssetBasket({
               <td className="py-2.5 px-3 text-center text-xs text-slate-500">민사집행법 §246①(8), 시행령 §7</td>
             </tr>
 
-            {/* 2. 보장성 보험 150만 원 한도 공제 */}
+            {/* 2. 보장성 보험 합산 250만 원 한도 공제 */}
             <tr className="hover:bg-slate-50/50">
               <td className="py-2.5 px-3 font-bold text-slate-800">
                 🛡️ 보장성 보험 해약환급금

@@ -43,7 +43,7 @@ export interface RehabPolicyConfig {
 
 export interface CourtTrait {
     name: string;
-    allow24Months: boolean;      // 24개월 단축 가능 여부
+    shortPlanRule: boolean;      // 실무준칙 제424호 3년 미만 단축 사유 목록 운영 (6개 회생법원)
     spousePropertyRate: number;  // 배우자 재산 반영률 (0.0 ~ 1.0)
     investLossInclude: boolean;  // 투기성 손실금 청산가치 반영 여부 (신규)
     processingMonths: number;    // 개시결정까지 소요기간 (개월) - 2025년 상반기 기준
@@ -67,13 +67,13 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         5: 7556719,   // 5인 가구
         6: 8555952,   // 6인 가구
     },
-    medianIncomeIncrement: 999233, // 6인 초과 시 1인당 추가분 (6인 - 5인 차액)
-    // 2026년 확정 인정 생계비 (중위소득 60%)
+    medianIncomeIncrement: 959198, // 7인부터 1인당 추가분 (고시 7인 − 6인, 이전 999,233은 틀림)
+    // 2026년 확정 인정 생계비 (중위소득 60%, 원 단위 반올림 — LS-Q2)
     recognizedLivingCost: {
-        1: 1538542,     // 1인 가구 (법원 공시 원 단위 절사)
+        1: 1538543,     // 1인 가구
         2: 2519575,     // 2인 가구
-        3: 3215421,     // 3인 가구
-        4: 3896842,     // 4인 가구
+        3: 3215422,     // 3인 가구
+        4: 3896843,     // 4인 가구
         5: 4534031,     // 5인 가구
         6: 5133571,     // 6인 가구
     } as Record<number, number>,
@@ -152,7 +152,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
     courtTraits: {
         '서울회생법원': {
             name: '서울회생법원',
-            allow24Months: true,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 5.1,
@@ -160,7 +160,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '수원회생법원': {
             name: '수원회생법원',
-            allow24Months: true,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 4.4,
@@ -168,7 +168,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '부산회생법원': {
             name: '부산회생법원',
-            allow24Months: true,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 7.8,
@@ -176,7 +176,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '인천지방법원': {
             name: '인천지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 3.3,
@@ -184,7 +184,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '의정부지방법원': {
             name: '의정부지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 12.0,
@@ -192,7 +192,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '춘천지방법원': {
             name: '춘천지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 2.2,
@@ -200,7 +200,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '청주지방법원': {
             name: '청주지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 5.7,
@@ -208,7 +208,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '대전회생법원': {
             name: '대전회생법원',
-            allow24Months: false,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 6.0,
@@ -216,7 +216,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '대구회생법원': {
             name: '대구회생법원',
-            allow24Months: false,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 7.0,
@@ -224,7 +224,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '광주회생법원': {
             name: '광주회생법원',
-            allow24Months: false,
+            shortPlanRule: true,
             spousePropertyRate: 0.0,
             investLossInclude: false,
             processingMonths: 7.0,
@@ -232,7 +232,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '전주지방법원': {
             name: '전주지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 7.0,
@@ -240,7 +240,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '제주지방법원': {
             name: '제주지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 9.3,
@@ -248,7 +248,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '울산지방법원': {
             name: '울산지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 4.8,
@@ -256,7 +256,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         '창원지방법원': {
             name: '창원지방법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 6.7,
@@ -264,7 +264,7 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         },
         'Default': {
             name: '기타 법원',
-            allow24Months: false,
+            shortPlanRule: false,
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 6.0,
@@ -424,12 +424,19 @@ export const POLICY_CONFIG_BY_YEAR: Record<number, RehabPolicyConfig> = {
     2026: DEFAULT_POLICY_CONFIG_2026
 };
 
-// 2027년부터 2035년까지 기본값 생성 (2026년 복사)
+// 2027년: 기준 중위소득·인정 생계비는 고시 제2026-157호 실제값.
+// 주거비·의료비·교육비 등 아직 발표되지 않은 항목은 전년(2026) 값을 그대로 쓴다(LS-Q3, 추정 인상 금지).
+// 2028년 이후: 발표 전까지 2027년 값 그대로.
+// (이전: 2027년 이후를 2026년 중위소득 그대로 복사)
+const POLICY_2027: RehabPolicyConfig = {
+    ...DEFAULT_POLICY_CONFIG_2026,
+    baseYear: 2027,
+    medianIncome: { 1: 2736042, 2: 4480645, 3: 5718091, 4: 6929885, 5: 8063019, 6: 9129201 },
+    medianIncomeIncrement: 1023464,
+    recognizedLivingCost: { 1: 1641625, 2: 2688387, 3: 3430855, 4: 4157931, 5: 4837811, 6: 5477521 },
+};
 for (let year = 2027; year <= 2035; year++) {
-    POLICY_CONFIG_BY_YEAR[year] = {
-        ...DEFAULT_POLICY_CONFIG_2026,
-        baseYear: year
-    };
+    POLICY_CONFIG_BY_YEAR[year] = { ...POLICY_2027, baseYear: year };
 }
 
 /**

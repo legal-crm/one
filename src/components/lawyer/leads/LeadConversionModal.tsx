@@ -231,7 +231,7 @@ export default function LeadConversionModal({
                   </span>
                   <ul className="text-slate-600 space-y-1 pl-4 list-disc">
                     <li>사건 워크스페이스 1단계(상담·제안) 배정</li>
-                    <li>지정된 전담 변호사 및 사무장 매핑</li>
+                    <li>담당 변호사·담당 직원 연결</li>
                     <li>사건번호는 법원 정식 접수 시 부여</li>
                     <li>CRM 사건 ID 신규 발급</li>
                   </ul>

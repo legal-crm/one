@@ -293,8 +293,8 @@ export const ANNEX_DOC_CONFIG: Record<CreditorAnnexDocType, { label: string; sho
 };
 
 export type AssetCategory = 
-  | 'DEPOSIT'              // 예금 / 적금 (185만 원 공제)
-  | 'INSURANCE'            // 보장성 보험 해약환급금 (150만 원 공제)
+  | 'DEPOSIT'              // 예금 / 적금 (250만 원 공제)
+  | 'INSURANCE'            // 보장성 보험 해약환급금 (합산 250만 원 공제)
   | 'HOUSING_DEPOSIT'      // 주거용 임차보증금 (지역별 소액보증금 공제)
   | 'CAR'                  // 자동차 (시가 - 담보대출)
   | 'REAL_ESTATE'          // 부동산 (시가 - 근저당권)

@@ -68,7 +68,7 @@ function buildCheckItems(fp: FinancialProfile): CheckItem[] {
   notes.filter(Boolean).forEach(n => items.push({ tone: 'caution', text: `의뢰인 요청: ${n}` }));
 
   if (fp.specialCondition && fp.specialCondition !== 'none') {
-    items.push({ tone: 'positive', text: `24개월 특례 검토 대상: ${lookupLabel(SPECIAL_COND_SHORT_LABELS, fp.specialCondition, fp.specialCondition)}` });
+    items.push({ tone: 'positive', text: `3년 미만 단축 검토 대상: ${lookupLabel(SPECIAL_COND_SHORT_LABELS, fp.specialCondition, fp.specialCondition)}` });
   }
   return items;
 }
@@ -164,11 +164,11 @@ export default function SummaryTab({ request, simulation, getDisplayPhoneNumber,
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[12px] text-slate-500">예상 탕감률</div>
+                  <div className="text-[12px] text-slate-500">감면 비율(참고)</div>
                   <div className="mt-0.5 text-xl font-bold text-emerald-700 tabular-nums">{rate}%</div>
                 </div>
               </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden" role="img" aria-label={`예상 탕감률 ${rate}%`}>
+              <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden" role="img" aria-label={`감면 비율(참고) ${rate}%`}>
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${rate}%` }} />
               </div>
               <p className="mt-2.5 text-[12px] leading-5 text-slate-600 tabular-nums">

@@ -8,6 +8,18 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { InviteToken, StaffRole } from '../types';
 import { randomMixedToken } from '../utils/secureToken';
 
+import { createOfficeInvite, listOfficeInvites, revokeOfficeInvite } from './office/officeService';
+import type { OfficeMemberRole } from './office/officePermissions';
+
+const STAFF_TO_OFFICE_ROLE: Record<Exclude<StaffRole, 'OWNER'>, Exclude<OfficeMemberRole, 'owner' | 'custom'>> = {
+  LAWYER: 'lawyer', CONSULTANT: 'consultant', STAFF: 'clerk', ACCOUNTING: 'accounting',
+};
+const OFFICE_TO_STAFF_ROLE: Record<string, StaffRole> = {
+  lawyer: 'LAWYER', consultant: 'CONSULTANT', clerk: 'STAFF', accounting: 'ACCOUNTING', custom: 'STAFF', owner: 'OWNER',
+};
+/** 서버 초대 목록 항목은 토큰 원문이 없어(해시만 저장) 'id:<초대 ID>'로 구분한다 */
+export const SERVER_INVITE_PREFIX = 'id:';
+
 const INVITE_STORAGE_KEY = 'legal_crm_invite_tokens';
 const INVITE_EXPIRY_HOURS = 48; // 초대 링크 기본 만료 시간
 
@@ -49,6 +61,18 @@ export async function generateInviteToken(
   expiryHours: number = INVITE_EXPIRY_HOURS
 ): Promise<InviteToken> {
   if (role === 'OWNER') throw new Error('대표 변호사 역할로는 초대할 수 없습니다.');
+
+  // 서버 사무소 초대 (RB-2): 토큰은 서버가 만들고 해시만 저장한다. 수락해도 변호사 가입 신청이 생기지 않는다.
+  if (isSupabaseConfigured) {
+    const ttl = (expiryHours <= 24 ? 24 : expiryHours <= 48 ? 48 : 168) as 24 | 48 | 168;
+    const res = await createOfficeInvite({ officeId: createdBy, role: STAFF_TO_OFFICE_ROLE[role], email, ttlHours: ttl });
+    if (!res.ok) throw new Error(res.message);
+    return {
+      token: res.data.token, role, email: email || undefined, expiresAt: res.data.expiresAt,
+      createdBy, createdAt: new Date().toISOString(), isUsed: false,
+    };
+  }
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiryHours * 60 * 60 * 1000);
 
@@ -223,23 +247,18 @@ export async function acceptStaffInvite(tokenString: string, profile: AcceptInvi
  */
 export async function loadInviteTokens(createdBy: string): Promise<InviteToken[]> {
   if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('invite_tokens')
-      .select('token, role, email, expires_at, created_by, created_at, used_by, used_at, is_used')
-      .eq('created_by', createdBy)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (error) throw new Error('초대 링크 목록을 불러오지 못했습니다.');
-    return (data || []).map((r: any) => ({
-      token: r.token,
-      role: r.role,
+    // 서버 사무소 초대 목록 (createdBy = 사무소 ID = 대표 변호사 ID)
+    const res = await listOfficeInvites(createdBy);
+    if (!res.ok) throw new Error(res.message);
+    return res.data.map(r => ({
+      token: `${SERVER_INVITE_PREFIX}${r.id}`,
+      role: OFFICE_TO_STAFF_ROLE[r.role] || 'STAFF',
       email: r.email || undefined,
-      expiresAt: r.expires_at,
-      createdBy: r.created_by,
-      createdAt: r.created_at,
-      usedBy: r.used_by || undefined,
-      usedAt: r.used_at || undefined,
-      isUsed: !!r.is_used,
+      expiresAt: r.revokedAt || r.expiresAt,
+      createdBy,
+      createdAt: r.createdAt,
+      usedAt: r.usedAt || undefined,
+      isUsed: !!r.usedAt,
     }));
   }
   return getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []).filter(t => t.createdBy === createdBy);
@@ -249,6 +268,8 @@ export async function loadInviteTokens(createdBy: string): Promise<InviteToken[]
 
 export function buildInviteUrl(token: string): string {
   const base = window.location.origin + window.location.pathname;
+  // 서버 사무소 초대는 officeInvite, 로컬 개발용(서버 미설정)만 예전 invite 파라미터
+  if (isSupabaseConfigured) return `${base}?role=lawyer&officeInvite=${encodeURIComponent(token)}`;
   return `${base}?role=lawyer&invite=${token}`;
 }
 
@@ -267,9 +288,9 @@ export function cleanupExpiredTokens(): void {
 
 export async function expireInviteToken(token: string): Promise<void> {
   if (isSupabaseConfigured) {
-    const { data, error } = await supabase.from('invite_tokens')
-      .update({ expires_at: new Date().toISOString() }).eq('token', token).select('token');
-    if (error || !data || data.length === 0) throw new Error('초대 링크 만료 처리에 실패했습니다.');
+    if (!token.startsWith(SERVER_INVITE_PREFIX)) throw new Error('초대 링크 만료 처리에 실패했습니다.');
+    const res = await revokeOfficeInvite(token.slice(SERVER_INVITE_PREFIX.length));
+    if (!res.ok) throw new Error(res.message);
     return;
   }
   const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);

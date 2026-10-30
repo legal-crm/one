@@ -8,7 +8,7 @@
  *  1) 인정 생계비   : 2026 기준 중위소득 60% (법원 공시 원 단위 절사값)
  *  2) 라이프니츠    : 연 5%(월 5/12%) 복리 현가 계수, 36개월 = 33.3657
  *  3) 변제기간      : [24(특례)] → 36 → 60개월 순으로 청산가치·최저변제액·우선채권 요건 검증
- *  4) 청년·취약계층 : 관할 법원 허용 시 24개월 단축 특례
+ *  4) 청년·취약계층 : 관할 법원 허용 시 3년 미만 단축 사유
  *  5) 조세 우선변제 : 우선권 채권은 변제기간의 1/2 이내 완납 (2단계 변제)
  *  6) 최저변제액    : 채무 5천만 원 미만 5%, 이상 3% + 100만 원
  */
@@ -35,54 +35,64 @@ export function getMinimumRepaymentThreshold(totalPrincipal: number): number {
     : Math.round(totalPrincipal * 0.03) + 1_000_000;
 }
 
-// ── 4. 24개월 단축 특례 ──────────────────────────────────────────
-export interface Special24Input {
-  courtAllows24: boolean;
+// ── 4. 3년 미만 단축 사유 ──────────────────────────────────────────
+// 근거: 6개 회생법원 실무준칙 제424호 '변제기간 3년 미만 사유' (27 기획서 10장, 10-29 원문 확인·사용자 확정)
+// - 이전 '24개월 특례 3곳(서울·수원·부산)'·기초생활수급자 사유는 원문과 달라 폐기
+// - 사유가 있어도 자동으로 24개월이 되지 않는다: '3년 미만 검토안'(24개월 계산)을 만들어 변호사가 판단
+// - 지방법원(회생법원 아닌 관할)은 '확인 필요' → 자동 검토안 없음
+export interface ShortPlanInput {
+  courtHasRule: boolean;
   age?: number;
-  basicRecipient?: boolean;
   severeDisability?: boolean;
   singleParent?: boolean;
   rentFraud?: boolean;
+  /** 부양하는 미성년 자녀 수 (2명 이상이면 사유) */
+  minorChildren?: number;
+  /** 만 65세 이상 (age 로도 판정) */
   elderly?: boolean;
+  /** 서울회생법원 2026-10-01 제7호 취약채무자 (변호사가 요건 확인 후 입력) */
+  vulnerableDebtorSeoul?: boolean;
 }
 
-/** 24개월 단축 특례를 운영하는 관할 — 3대 회생법원으로 확정 (2026-09-28 사용자 확인)
- *  (PolicyConfig.courtTraits.allow24Months, constants.generateCourtConfigs와 동일) */
-export const COURTS_ALLOWING_24_MONTHS = ['서울회생법원', '수원회생법원', '부산회생법원'] as const;
+/** 제424호 사유 목록을 운영하는 6개 회생법원 */
+export const COURTS_WITH_SHORT_PLAN_RULE = ['서울회생법원', '수원회생법원', '부산회생법원', '대전회생법원', '대구회생법원', '광주회생법원'] as const;
 
-export function courtAllows24Months(courtName?: string): boolean {
-  return !!courtName && (COURTS_ALLOWING_24_MONTHS as readonly string[]).includes(courtName);
+export function courtHasShortPlanRule(courtName?: string): boolean {
+  return !!courtName && (COURTS_WITH_SHORT_PLAN_RULE as readonly string[]).includes(courtName);
 }
 
-/** 챗봇·인테이크의 specialCondition 값을 특례 입력으로 변환 */
-export function special24FromCondition(
+/** 챗봇·인테이크의 specialCondition 값을 단축 사유 입력으로 변환 */
+export function shortPlanInputFromCondition(
   courtName: string | undefined,
   age: number | undefined,
   condition?: string | null,
-): Special24Input {
+  minorChildren?: number,
+): ShortPlanInput {
   return {
-    courtAllows24: courtAllows24Months(courtName),
+    courtHasRule: courtHasShortPlanRule(courtName),
     age,
-    basicRecipient: condition === 'basic_recipient',
     severeDisability: condition === 'severe_disability',
     singleParent: condition === 'single_parent',
     rentFraud: condition === 'rent_fraud',
     elderly: condition === 'elderly',
+    minorChildren,
   };
 }
 
-export function checkSpecial24Eligibility(input: Special24Input): { eligible: boolean; reason: string } {
-  if (!input.courtAllows24) return { eligible: false, reason: '관할 법원이 24개월 단축 특례를 운영하지 않음' };
+export function checkShortPlanReason(input: ShortPlanInput): { eligible: boolean; reason: string } {
+  if (!input.courtHasRule) return { eligible: false, reason: '관할 법원의 3년 미만 단축 사유는 확인이 필요함' };
   const reasons: string[] = [];
-  if (typeof input.age === 'number' && input.age > 0 && input.age < 30) reasons.push('만 30세 미만 청년');
-  if (input.basicRecipient) reasons.push('기초생활수급자');
+  const age = typeof input.age === 'number' && input.age > 0 ? input.age : undefined;
+  if (input.elderly || (age !== undefined && age >= 65)) reasons.push('만 65세 이상');
   if (input.severeDisability) reasons.push('장애의 정도가 심한 장애인');
+  if (age !== undefined && age < 30) reasons.push('만 30세 미만');
+  if ((input.minorChildren || 0) >= 2) reasons.push('미성년 자녀 2명 이상 부양');
   if (input.singleParent) reasons.push('한부모 가족');
   if (input.rentFraud) reasons.push('전세사기 피해자');
-  if (input.elderly) reasons.push('고령자');
+  if (input.vulnerableDebtorSeoul) reasons.push('취약채무자(서울회생법원)');
   return reasons.length > 0
     ? { eligible: true, reason: reasons.join(', ') }
-    : { eligible: false, reason: '특례 대상 요건 없음' };
+    : { eligible: false, reason: '3년 미만 단축 사유 없음' };
 }
 
 // ── 3·5. 기간별 요건 검증 ────────────────────────────────────────
@@ -130,7 +140,7 @@ export function evaluatePlanAt(months: number, monthlyPayment: number, ctx: Plan
 
 // ── 통합 변제계획 판정 ──────────────────────────────────────────
 export type CorePlanStatus =
-  | 'SPECIAL_24'          // 24개월 단축 특례
+  | 'SHORT_PLAN'          // 3년 미만 단축 사유
   | 'STANDARD'            // 36개월 표준
   | 'EXTENDED'            // 60개월 연장
   | 'FULL_PAYOFF'         // 가용소득으로 원금 조기 완제
@@ -145,7 +155,7 @@ export interface CorePlanInput {
   liquidationValue: number;
   generalDebt: number;      // 우선권 제외 일반 회생채권 원금
   priorityDebt?: number;    // 조세 등 우선권 채권
-  allow24?: boolean;        // checkSpecial24Eligibility 결과
+  allowShortPlan?: boolean;        // checkShortPlanReason 결과
 }
 
 export interface CorePlanResult extends PlanCheck {
@@ -194,7 +204,7 @@ export function determineRepaymentPlan(input: CorePlanInput): CorePlanResult {
   }
 
   // 1) 가용소득 그대로 [24] → 36 → 60 순차 검증 (법원 엔진 Step A·B)
-  const candidates = input.allow24 ? [24, 36, 60] : [36, 60];
+  const candidates = input.allowShortPlan ? [24, 36, 60] : [36, 60];
   for (const m of candidates) {
     const check = evaluatePlanAt(m, disposable, ctx);
     if (disposable > 0 && check.satisfiesLiquidation && check.satisfiesMinimum && check.satisfiesPriority) {
@@ -204,9 +214,9 @@ export function determineRepaymentPlan(input: CorePlanInput): CorePlanResult {
         const payoff = evaluatePlanAt(payoffMonths, disposable, ctx);
         return finish({ ...payoff, totalRepayment: principal }, 'FULL_PAYOFF', `가용소득으로 ${payoffMonths}개월 내 원금 전액 변제 가능`);
       }
-      const status: CorePlanStatus = m === 24 ? 'SPECIAL_24' : m === 36 ? 'STANDARD' : 'EXTENDED';
+      const status: CorePlanStatus = m === 24 ? 'SHORT_PLAN' : m === 36 ? 'STANDARD' : 'EXTENDED';
       const why = m === 24
-        ? '24개월 단축 특례 요건 충족 (청산가치·최저변제액 충족)'
+        ? '3년 미만 단축 사유 요건 충족 (청산가치·최저변제액 충족)'
         : m === 36
           ? '36개월 표준 변제 (청산가치·최저변제액·우선채권 요건 충족)'
           : '36개월로 요건 미충족 → 60개월 연장';

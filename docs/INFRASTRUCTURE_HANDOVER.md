@@ -83,11 +83,14 @@ npm run clean    # dist 및 server.js 삭제
 
 ### 배포 규칙 (`.agents/AGENTS.md`)
 ```powershell
-# "배포해" 명령 시 GitHub + Vercel 동시 배포
-$env:GITHUB_TOKEN = ""; git add . && git commit -m "메시지" && git push
-vercel --prod
+# "배포해" 명령 시 (2026-10-30 변경): GitHub push만 하고 Vercel 자동 배포를 확인
+git add <커밋할 파일>; git commit -m "메시지"
+$env:GITHUB_TOKEN = ""; git push origin main
+# → Vercel 프로젝트 `one`(mykim.kr)이 GitHub 연동으로 자동 배포. 배포 READY·사이트 열림 확인
 ```
 > ⚠️ `$env:GITHUB_TOKEN = "";`를 반드시 앞에 붙여 Antigravity 더미 토큰이 gh CLI 인증을 덮어쓰는 문제를 방지
+> ⚠️ `vercel --prod`(CLI 업로드) 쓰지 않음: CLI는 `.gitignore`를 읽지 않아 `.env`·`실제서류/`까지 올린다. 2026-10-30 확인 후 `legal-crm` 프로젝트의 CLI 배포 32건 삭제, `.vercelignore` 추가.
+> Vercel 프로젝트: `one` = `mykim.kr`(운영), `legal-crm`·`dist` = 같은 저장소에 연결된 중복 프로젝트(푸시마다 함께 빌드됨). 로컬 `.vercel/project.json`은 `legal-crm`에 연결.
 
 ---
 

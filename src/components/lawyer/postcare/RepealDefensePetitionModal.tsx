@@ -318,7 +318,7 @@ ${courtLabel} 귀중`;
         {/* 푸터 */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
           <div>
-            신청인: <strong className="text-slate-800">{clientName}</strong> | 전담 변호사: <strong className="text-slate-800">{activeLawyerName}</strong>
+            신청인: <strong className="text-slate-800">{clientName}</strong> | 담당 변호사: <strong className="text-slate-800">{activeLawyerName}</strong>
           </div>
           <button
             type="button"

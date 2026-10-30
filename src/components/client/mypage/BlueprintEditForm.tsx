@@ -1023,7 +1023,7 @@ export default function BlueprintEditForm({ vm }: { vm: MyPageModel }) {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">24개월 특례 조건</label>
+          <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">해당하는 상황 (변호사 참고용)</label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
               { label: '해당 없음', value: 'none' },
@@ -1049,7 +1049,7 @@ export default function BlueprintEditForm({ vm }: { vm: MyPageModel }) {
           </div>
           {profile.specialCondition && profile.specialCondition !== 'none' && (
             <span className="text-xs font-bold text-emerald-700 block mt-1">
-              24개월 특례 조건 해당: 변제기간이 36개월에서 24개월로 단축될 수 있어요.
+              입력한 내용은 상담하는 변호사가 변제기간을 검토할 때 참고해요.
             </span>
           )}
         </div>

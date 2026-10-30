@@ -3,7 +3,7 @@ import { detectJurisdiction } from './utils';
 import {
   determineRepaymentPlan,
   evaluatePlanAt,
-  checkSpecial24Eligibility,
+  checkShortPlanReason,
   getLeibnizFactor,
   getMinimumRepaymentThreshold,
   getRecognizedLivingCost2026,
@@ -20,7 +20,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   const courtConfig = settings.courtConfigs[data.selectedCourt] || {
     includeSpouseProperty: true,
     includeCryptoStock: true,
-    allow24Month: data.selectedCourt === '서울회생법원',
+    shortPlanRule: String(data.selectedCourt || '').endsWith('회생법원'),
     allowAdditionalLivingCost: true,
     allowOtherLivingCost: false
   };
@@ -72,6 +72,8 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
 
   // 4. Calculate Total Liquidation Value (총 청산가치)
   let totalLiquidationValue = 0;
+  // 보장성보험 압류금지는 모든 보험 합산 1회 (LS-Q8, 이전: 보험마다 공제)
+  let insurancePool = yearPolicy.assetExemptions.insurance;
 
   data.assets.forEach(asset => {
     if (asset.isExempt) return; // Skip if marked exempt
@@ -88,11 +90,9 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
       return;
     }
 
-    // 코인/주식(stock): 법원별 설정에 따라 청산가치 포함/제외
-    // 서울/수원/부산/대전/대구/광주 회생법원은 코인·주식 청산가치 제외
-    if (asset.type === 'stock' && !courtConfig.includeCryptoStock) {
-      return;
-    }
+    // 코인/주식(stock): 지금 갖고 있는 평가액은 언제나 청산가치에 넣는다.
+    // 회생법원 실무준칙 제408호의 '투자 손실금 미가산'은 이미 잃은 돈을 더하지 않는다는 뜻이지
+    // 보유 자산을 빼라는 뜻이 아님 (27 기획서 10장). (이전: includeCryptoStock=false면 보유 주식을 통째로 뺐음)
 
     let value = asset.marketValue;
     
@@ -110,9 +110,10 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
           value = Math.max(0, value - depositRule.deduct);
         }
       }
-    } else if (asset.type === 'insurance') {
-      const insuranceExempt = yearPolicy.assetExemptions.insurance;
-      value = Math.max(0, value - insuranceExempt);
+    } else if (asset.type === 'insurance' && asset.owner !== 'spouse') {
+      const used = Math.min(insurancePool, value);
+      insurancePool -= used;
+      value = Math.max(0, value - used);
     }
 
     // Apply spouse asset inclusion (usually 50% in Korea)
@@ -302,20 +303,21 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   // ─── [단일 기준] 변제계획 판정은 rehabLegalCore(법원 정밀 엔진 산식)에 위임 ───
   //  · 인정 생계비는 임의 조정하지 않음 (기존 "소득의 70%를 생계비로 재조정" 규칙 제거)
   //  · 라이프니츠 현가(36개월 33.3657) 청산가치 보장, 최저변제액, 조세 우선채권 1/2 기간 완납
-  //  · 청년(만 30세 미만)·취약계층 24개월 특례
+  //  · 청년(만 30세 미만)·취약계층 3년 미만 단축 검토
   const disposable = Math.max(0, totalMonthlyIncome - totalLivingCost);
 
-  // 7. 24개월 단축 특례 판정 (청년 포함)
-  const special24 = checkSpecial24Eligibility({
-    courtAllows24: courtConfig.allow24Month,
+  // 7. 3년 미만 단축 사유 판정 (청년 포함)
+  const shortPlan = checkShortPlanReason({
+    courtHasRule: courtConfig.shortPlanRule,
     age: data.age,
-    basicRecipient: data.specialCircumstances.basicLivelihood || data.specialCondition === 'basic_recipient',
+    // 기초생활수급자는 제424호 사유가 아님 → 사유에서 뺌 (파산 검토 정보로만, LS-5a)
+    minorChildren: data.minorChildren,
     severeDisability: data.specialCircumstances.severeDisability || data.specialCondition === 'severe_disability',
     singleParent: data.specialCircumstances.singleParent || data.specialCondition === 'single_parent',
     rentFraud: data.specialCircumstances.rentFraud || data.specialCondition === 'rent_fraud',
     elderly: data.specialCondition === 'elderly',
   });
-  const allow2435 = special24.eligible;
+  const allow2435 = shortPlan.eligible;
 
   // 조세·우선권 채권은 우선변제(1/2 기간 내 완납) 대상으로 분리
   const generalDebtForPlan = unsecuredDebt + securedDeficit;
@@ -374,8 +376,8 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     let label = `${row.m}개월 기본안`;
     let why = '청산가치 보장(라이프니츠 현가) 및 가용소득 전액 변제';
     if (row.m <= 24) {
-      label = '24개월 특례 단기 플랜';
-      why = `24개월 단축 특례 (${special24.reason})`;
+      label = '3년 미만 단축 검토 단기 플랜';
+      why = `3년 미만 단축 사유 (${shortPlan.reason})`;
     } else if (row.m <= 36) {
       label = `${row.m}개월 ${row.m < 36 ? '단축' : '표준'} 플랜`;
       why = row.m < 36 ? `채무 전액 변제로 ${row.m}개월 단축` : '법정 표준 개인회생 변제 기간';
@@ -406,7 +408,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     liquidationValue: totalLiquidationValue,
     generalDebt: generalDebtForPlan,
     priorityDebt: priorityDebtForPlan,
-    allow24: allow2435,
+    allowShortPlan: allow2435,
   });
   const preferred: PreferredPlan | null = corePlan.status === 'NO_DEBT' ? null : {
     m: corePlan.months,
@@ -564,6 +566,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   let retirementContrib = 0;
   let retirementRule = '해당 없음';
   let totalBeforeExempt = 0;
+  let insurancePoolDetail = yearPolicy.assetExemptions.insurance;
   data.assets.forEach(asset => {
     if (asset.isExempt) return;
     let val = asset.marketValue;
@@ -582,10 +585,8 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
         return;
       }
     }
-    if (asset.type === 'stock' && !courtConfig.includeCryptoStock) {
-      rule = '법원 정책: 코인/주식 청산가치 제외';
-      liqItems.push({ label: '코인/주식', amount: 0, rule });
-      return;
+    if (asset.type === 'stock') {
+      rule = '보유 주식·코인 평가액 (투자 손실금은 법원 실무에 따라 따로 판단)';
     }
     if (asset.hasPledge) val = Math.max(0, val - asset.loanBalance);
     let exemptAmt = 0;
@@ -596,10 +597,11 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
         val = Math.max(0, val - dr.deduct);
         rule = `소액임차보증금 면제(${region}): ${dr.deduct.toLocaleString()}원 공제`;
       }
-    } else if (asset.type === 'insurance') {
-      exemptAmt = Math.min(val, yearPolicy.assetExemptions.insurance);
-      val = Math.max(0, val - yearPolicy.assetExemptions.insurance);
-      rule = `보험 면제: ${yearPolicy.assetExemptions.insurance.toLocaleString()}원 공제`;
+    } else if (asset.type === 'insurance' && asset.owner !== 'spouse') {
+      exemptAmt = Math.min(val, insurancePoolDetail);
+      insurancePoolDetail -= exemptAmt;
+      val = Math.max(0, val - exemptAmt);
+      rule = `보험 면제: 합산 ${yearPolicy.assetExemptions.insurance.toLocaleString()}원 중 ${exemptAmt.toLocaleString()}원 공제`;
     }
     if (exemptAmt > 0) liqExemptions.push({ label: asset.type, amount: exemptAmt });
     totalBeforeExempt += asset.marketValue;

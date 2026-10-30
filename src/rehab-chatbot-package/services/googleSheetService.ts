@@ -80,7 +80,7 @@ function convertToRehabPolicyConfig(
     const defaultTrait = defaultTraits[courtName] || defaultTraits['Default'];
     courtTraits[courtName] = {
       name: defaultTrait?.name || courtName,
-      allow24Months: config.allow24Month,
+      shortPlanRule: config.shortPlanRule,
       spousePropertyRate: config.includeSpouseProperty ? 0.5 : 0.0,
       investLossInclude: config.includeCryptoStock,
       processingMonths: defaultTrait?.processingMonths || 6.0,

@@ -106,7 +106,8 @@ export function clientSystemMessageText(raw: string | undefined): string | null 
   const text = String(raw || '').replace(/^\[System\]\s*/, '').trim();
   if (!text) return null;
   if (text.startsWith(LAWYER_REQUEST_RECEIVED_NOTICE.slice(0, 20))) return null;
-  if (text.includes('의뢰인이 귀하를 전담 변호사로 선임하였습니다')) {
+  // 예전 메시지('전담 변호사로')와 새 메시지('담당 변호사로') 모두 인식
+  if (/의뢰인이 귀하를 (전담|담당) 변호사로 선임하였습니다/.test(text)) {
     return '이 변호사와 상담을 이어가기로 했습니다. 수임 계약은 제안서의 전자계약에서 진행합니다.';
   }
   if (text.includes('의뢰인이 다른 변호사를 전담으로 선임하였습니다')) {

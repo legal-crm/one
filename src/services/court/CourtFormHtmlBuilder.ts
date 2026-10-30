@@ -1012,7 +1012,7 @@ export function buildCourtRequiredDocumentChecklistHtml(ctx: CourtFormDataContex
           <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">6</td>
           <td style="padding: 4px 10px; border-right: 1px solid #000000;">보험계약 조회결과서 및 해약환급금 확인서</td>
           <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전 보험사 계약 현황 및 150만원 공제 적용</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전 보험사 계약 현황 및 합산 250만 원 공제 적용</td>
         </tr>
         <tr style="border-bottom: 1px solid #000000; height: 30px;">
           <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">7</td>

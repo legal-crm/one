@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "lint:copy": "node scripts/copy-lint.mjs"
+    "lint:copy": "node scripts/copy-lint.mjs",
+    "test": "vitest --run --dir src --passWithNoTests",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -19,7 +21,7 @@
     "@types/jszip": "^3.4.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.17",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
@@ -37,6 +39,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.14.0",
@@ -51,6 +54,7 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^5.0.5"
   }
 }

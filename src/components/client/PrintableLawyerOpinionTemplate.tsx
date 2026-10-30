@@ -275,9 +275,9 @@ export default function PrintableLawyerOpinionTemplate({
           marginBottom: '20px'
         }}>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #93c5fd', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 700 }}>예상 원금 감면율</div>
-            <div style={{ fontSize: '17px', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>{debtReductionRate}%</div>
-            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>원금 감면안</div>
+            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 700 }}>변제 기간</div>
+            <div style={{ fontSize: '17px', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>{repaymentMonths}개월</div>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{years}</div>
           </div>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #86efac', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>월 예상 변제금</div>
@@ -285,7 +285,7 @@ export default function PrintableLawyerOpinionTemplate({
             <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{repaymentMonths}개월 기준</div>
           </div>
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>예상 감면액</div>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>갚지 않아도 되는 금액(예상)</div>
             <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginTop: '3px' }}>{formatCurrency(estimatedReduction)}</div>
             <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>변제 완료·면책 시</div>
           </div>
@@ -436,13 +436,7 @@ export default function PrintableLawyerOpinionTemplate({
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>총 채무 원금</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: '#dc2626' }}>{formatCurrency(totalDebt)}</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(totalRepayment)}</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>▲ {formatCurrency(estimatedReduction)} 감면</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                <td style={{ padding: '8px 12px', fontWeight: 600 }}>예상 원금 감면율</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right' }}>0% (전액 상환 의무)</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>{debtReductionRate}%</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>인가·면책 시 예상</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1e40af', fontWeight: 700 }}>{formatCurrency(estimatedReduction)} (예상, 면책 시)</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>월 변제 부담금</td>

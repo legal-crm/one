@@ -848,7 +848,7 @@ export default function CaseReviewCopilot({
                                 </span>
                               </div>
                               <div className="text-right">
-                                <span className="text-xs text-slate-500 font-bold block">예상 탕감률</span>
+                                <span className="text-xs text-slate-500 font-bold block">감면 비율(참고)</span>
                                 <span className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight tabular-nums block mt-0.5">
                                   {rehabCalcResult.debtReductionRate}%
                                 </span>
@@ -1259,7 +1259,7 @@ export default function CaseReviewCopilot({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                         {[
-                          { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
+                          { label: '3년 미만 단축 검토', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
                           // 원문 코드('direct_multi' 등) 대신 대시보드·고객관리와 같은 이름으로 표시
                           { label: '상담 유형', value: (() => {
                             const type = consultRequest.requestType || consultRequest.request_type || consultRequest.consultType;

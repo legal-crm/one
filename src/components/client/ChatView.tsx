@@ -59,8 +59,6 @@ interface ChatViewProps {
   onRetryMessage?: (messageId: string) => Promise<boolean>;
   /** 고른 변호사에게 상담을 요청한다 (상담 정보 제공 동의 → 기존 요청 유지·한도 적용·새 변호사에게만 안내) */
   onRequestLawyers: (request: ConsultRequest, lawyerIds: string[]) => void;
-  /** 공개 요청으로 제안 받기 (상담 정보 제공 동의 후 등록·승인된 변호사가 확인) */
-  onRequestOpenMatching?: (request: ConsultRequest) => void;
   /** 변호사 찾기를 '여러 명 골라 요청하기' 모드로 열어 이 상담 요청에 변호사를 더한다 */
   onBrowseLawyersToRequest?: (requestId: string) => void;
 
@@ -88,7 +86,7 @@ export default function ChatView({
   requests, messages, activeChatReqId, chatInput,
   userAlias,
   onSetActiveChatReqId, onSetChatInput,
-  onSetActiveTab, onSetRequests, onSendChat, onAddMessage, onRetryMessage, onRequestLawyers, onRequestOpenMatching,
+  onSetActiveTab, onSetRequests, onSendChat, onAddMessage, onRetryMessage, onRequestLawyers,
   onBrowseLawyersToRequest,
   activeRequest,
   activeResult,
@@ -302,7 +300,6 @@ export default function ChatView({
   const chatAvailable = isChatStage(stage);
   const consultStatus = getConsultRoomBadge(stage, currentRequest?.status);
   const isOpenRequest = currentRequest?.requestType === 'open' && currentRequest?.status === 'requested';
-  const canRequestOpenMatching = !!onRequestOpenMatching && !!currentRequest && !!activeResult && !isOpenRequest && requestedLawyerIds.length === 0;
   const slotsLeft = Math.max(0, LAWYER_REQUEST_LIMIT - new Set(requestedLawyerIds).size);
   const proposalLawyerIds = new Set(proposals.map(p => p.lawyerId));
   const waitingLawyers = requestedLawyerIds
@@ -401,7 +398,7 @@ export default function ChatView({
     // 변호사 화면 문구는 변호사 대화 목록 필터(chatSelectors)가 문장으로 구분하므로 그대로 둔다
     onAddMessage(
       currentRequest.id,
-      `[System] 🎉 의뢰인이 귀하를 전담 변호사로 선임하였습니다!`,
+      `[System] 의뢰인이 귀하를 담당 변호사로 선임하였습니다.`,
       'system', 'system', '시스템 안내', chosenId
     );
     const otherLawyers = (currentRequest.acceptedLawyerIds || []).filter(id => id !== chosenId);
@@ -502,9 +499,6 @@ export default function ChatView({
         return (
           <>
             <Button onClick={browseLawyersForRequest} leftIcon={<ListChecks className="w-4 h-4" aria-hidden="true" />}>변호사 고르기</Button>
-            {canRequestOpenMatching && currentRequest && (
-              <Button variant="ghost" onClick={() => onRequestOpenMatching?.(currentRequest)}>공개 요청으로 제안 받기</Button>
-            )}
           </>
         );
       case 'open_waiting':
@@ -629,7 +623,7 @@ export default function ChatView({
             <p className="flex-1 min-w-0 text-sm text-slate-700 truncate">
               <span className="font-bold text-slate-900">제안서</span>
               <span className="text-slate-400 mx-1.5" aria-hidden="true">·</span>
-              월 {currentChatProposal.monthlyPayment}만원 · 감면율 {currentChatProposal.reductionRate}%{currentChatProposal.fee ? ` · 수임료 ${currentChatProposal.fee}만원` : ''}
+              월 {currentChatProposal.monthlyPayment}만원{currentChatProposal.fee ? ` · 수임료 ${currentChatProposal.fee}만원` : ''}
             </p>
             <Button variant="ghost" size="md" onClick={() => setSelectedProposalForReport(currentChatProposal)} className="shrink-0 -mr-3 px-3">
               제안서 보기

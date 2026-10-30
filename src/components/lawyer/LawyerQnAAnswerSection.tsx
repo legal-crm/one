@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { MessageSquare, Send, Lock, Eye, ChevronDown, ChevronUp, Search, X, HelpCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ClientQA, QAAnswer, User } from '../../types';
 import { toast } from 'sonner';
+import { answerClientQa } from '../../services/cms/contentService';
+import { DEFAULT_PROHIBITED_EXPRESSIONS, findProhibitedExpressions } from '../../services/proposalCompliance';
+
+// 서버 함수 qna_flagged_terms 와 같은 목록 (20261030000500_cms_server_content.sql)
+const QNA_EXTRA_TERMS = ['전액 탕감', '탕감 보장', '최대 90%', '성공률', '승소율', '전담 변호사', '변호사 배정', '매칭'];
+const QNA_TERMS = [...DEFAULT_PROHIBITED_EXPRESSIONS, ...QNA_EXTRA_TERMS];
 
 const ANSWER_MAX_LENGTH = 3000;
 const ANSWER_MIN_LENGTH = 10;
@@ -22,6 +28,10 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
   const [expandedQaId, setExpandedQaId] = useState<string | null>(null);
   const [answerTexts, setAnswerTexts] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  // 금지 표현 경고를 본 답변 (같은 내용으로 한 번 더 누르면 검토 대기로 보냄)
+  const [warned, setWarned] = useState<Record<string, { text: string; terms: string[] }>>({});
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
 
   const handleFilterModeChange = (mode: 'all' | 'waiting' | 'answered' | 'secret') => {
     setFilterMode(mode);
@@ -73,60 +83,46 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
     // Check primary answer (ID가 있으면 ID로, 과거 데이터는 이름으로)
     if (qa.answer && (qa.lawyerId ? qa.lawyerId === currentLawyer.id : qa.lawyerName === currentLawyer.name)) return true;
     // Check additional answers
+    if ((qa.pendingAnswers || []).some(a => a.lawyerId === currentLawyer.id)) return true;
     return (qa.additionalAnswers || []).some(a => a.lawyerId === currentLawyer.id || a.lawyerName === currentLawyer.name);
   };
 
-  const handleSubmitAnswer = (qaId: string) => {
+  const handleSubmitAnswer = async (qaId: string) => {
     const text = (answerTexts[qaId] || '').trim();
+    setAnswerErrors(prev => ({ ...prev, [qaId]: '' }));
     if (text.length < ANSWER_MIN_LENGTH) {
-      toast.error(`답변은 최소 ${ANSWER_MIN_LENGTH}자 이상 입력해주세요.`);
+      setAnswerErrors(prev => ({ ...prev, [qaId]: `답변은 최소 ${ANSWER_MIN_LENGTH}자 이상 입력해 주세요.` }));
       return;
     }
-    if (!setQas) return;
-    // 같은 질문에 한 변호사가 답변을 여러 번 달지 않도록 (이전: 안내 문구만 바뀌고 계속 추가 가능)
+    if (!setQas || submittingId) return;
     const target = qas.find(q => q.id === qaId);
     if (target && hasAlreadyAnswered(target)) {
-      toast.error('이미 답변한 질문입니다.');
+      setAnswerErrors(prev => ({ ...prev, [qaId]: '이미 답변한 질문입니다.' }));
+      return;
+    }
+    // 광고 규정 금지 표현: 처음엔 경고만, 같은 내용으로 다시 누르면 관리자 검토 대기로 보낸다
+    const terms = findProhibitedExpressions(text, undefined, QNA_TERMS);
+    if (terms.length > 0 && warned[qaId]?.text !== text) {
+      setWarned(prev => ({ ...prev, [qaId]: { text, terms } }));
       return;
     }
 
-    const newAnswer: QAAnswer = {
-      lawyerName: currentLawyer.name,
-      lawyerAvatar: currentLawyer.avatar || currentLawyer.avatarData || '',
-      answer: text,
-      badge: '전문가 답변',
-      createdAt: new Date().toISOString(),
-      lawyerId: currentLawyer.id,
-    };
-
-    setQas(prev => prev.map(qa => {
-      if (qa.id !== qaId) return qa;
-
-      // If this is the first answer, set it as the primary answer
-      if (!qa.answer) {
-        return {
-          ...qa,
-          answer: text,
-          lawyerName: currentLawyer.name,
-          lawyerAvatar: currentLawyer.avatar || currentLawyer.avatarData || '',
-          lawyerId: currentLawyer.id,
-          answeredAt: new Date().toISOString(),
-          badge: '전문가 답변',
-          status: 'answered' as const,
-        };
-      }
-
-      // Otherwise add as additional answer
-      return {
-        ...qa,
-        additionalAnswers: [...(qa.additionalAnswers || []), newAnswer],
-        status: 'answered' as const,
-      };
-    }));
-
+    setSubmittingId(qaId);
+    const res = await answerClientQa(qaId, text);
+    setSubmittingId(null);
+    if (res.ok === false) {
+      setAnswerErrors(prev => ({ ...prev, [qaId]: res.message }));
+      return;
+    }
+    const nextData = res.data.data;
+    if (nextData) setQas(prev => prev.map(qa => (qa.id === qaId ? { ...qa, ...nextData, id: qa.id } : qa)));
     setAnswerTexts(prev => ({ ...prev, [qaId]: '' }));
-    // Q&A는 아직 서버에 저장되지 않는다(App 상태 + 이 브라우저 저장소) — 사실대로 안내
-    toast.success('답변을 저장했습니다. 현재는 이 브라우저에만 저장되어 다른 기기의 의뢰인에게는 보이지 않습니다.');
+    setWarned(prev => { const n = { ...prev }; delete n[qaId]; return n; });
+    if (res.data.held) {
+      toast.info('관리자 검토 뒤 게시됩니다.', { description: `검토가 필요한 표현: ${res.data.flaggedTerms.join(', ')}` });
+    } else {
+      toast.success('답변을 게시했습니다.');
+    }
   };
 
   const mockDate = (createdAt?: string) => {
@@ -330,24 +326,33 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
                           onChange={e => setAnswerTexts(prev => ({ ...prev, [qa.id]: e.target.value }))}
                           maxLength={ANSWER_MAX_LENGTH}
                           rows={4}
+                          disabled={alreadyAnswered}
                           placeholder={alreadyAnswered
-                            ? "이미 답변을 작성하셨습니다. 추가 답변을 남기실 수 있습니다."
-                            : "고객의 질문에 대한 전문적인 법률 답변을 작성해주세요.\n답변 품질이 높을수록 고객의 상담 신청으로 이어질 가능성이 높습니다."
+                            ? "이미 답변한 질문입니다."
+                            : "질문에 대한 일반적인 법률 정보를 작성해 주세요.\n결과를 보장하거나 단정하는 표현은 관리자 검토 뒤 게시됩니다."
                           }
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 font-medium text-slate-900 leading-relaxed resize-none placeholder:text-slate-400"
                         />
+                        {warned[qa.id] && warned[qa.id].text === currentAnswerText.trim() && (
+                          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-left">
+                            광고 규정상 검토가 필요한 표현이 있습니다: <b>{warned[qa.id].terms.join(', ')}</b>. 고쳐서 등록하면 바로 게시되고, 그대로 한 번 더 누르면 관리자 검토 뒤 게시됩니다.
+                          </p>
+                        )}
+                        {answerErrors[qa.id] && (
+                          <p className="text-sm text-red-600 text-left" role="alert">{answerErrors[qa.id]}</p>
+                        )}
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-slate-400">
-                            답변 작성 시 변호사님의 프로필이 함께 노출되어 홍보 효과가 있습니다.
+                          <p className="text-xs text-slate-500">
+                            답변에는 변호사님의 이름과 사진이 함께 표시됩니다.
                           </p>
                           <button
                             type="button"
                             onClick={() => handleSubmitAnswer(qa.id)}
-                            disabled={currentAnswerText.trim().length < ANSWER_MIN_LENGTH}
+                            disabled={alreadyAnswered || submittingId === qa.id || currentAnswerText.trim().length < ANSWER_MIN_LENGTH}
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap shadow-xs"
                           >
                             <Send className="w-4 h-4" />
-                            답변 등록
+                            {submittingId === qa.id ? '등록 중…' : warned[qa.id] && warned[qa.id].text === currentAnswerText.trim() ? '검토 요청으로 등록' : '답변 등록'}
                           </button>
                         </div>
                       </div>

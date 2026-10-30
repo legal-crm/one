@@ -1,4 +1,4 @@
-import { DEPOSIT_EXEMPTION_KRW } from './services/repayment/repaymentConstants2026';
+import { DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from './services/repayment/repaymentConstants2026';
 import { AppSettings, CourtRegionMapItem, RegionKey, DepositRule, YearlyPolicy, CourtConfig, HousingCostRule, PermissionConfig, StatusConfig } from './types';
 
 export const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx_YOUR_SCRIPT_ID_HERE/exec'; 
@@ -43,7 +43,7 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             4: { additionalLimit: 418037, includedInMedian: 651242, totalLimit: 1069279 }
         }
     };
-    const baseAssetExemptions = { deposit: DEPOSIT_EXEMPTION_KRW, insurance: 1500000 };
+    const baseAssetExemptions = { deposit: DEPOSIT_EXEMPTION_KRW, insurance: EXEMPT_INSURANCE_REFUND_LIMIT };
     const baseEducationCost = { additionalLimit: 190000, includedInMedian: 84149, totalLimit: 274149 };
     const baseSpecialEducationCost = { additionalLimit: 500000, includedInMedian: 84149, totalLimit: 584149 };
     const baseMedicalCostIncluded = { 1: 60279, 2: 99103, 3: 126639, 4: 153664 };
@@ -119,23 +119,21 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
         let newMedianIncomeValues: Record<number, number> = {};
         let incrementOver7 = 0;
 
+        // 7인 이상 1인당 증가분 = 고시의 7인 − 6인 (이전 값 956,614·999,233은 틀림, 27 기획서 2장)
         if (year === 2025) {
             newMedianIncomeValues = { 1: 2392013, 2: 3932658, 3: 5025353, 4: 6097773, 5: 7108192, 6: 8064805 };
-            incrementOver7 = 956614;
+            incrementOver7 = 923623;
         } else if (year === 2026) {
             newMedianIncomeValues = { 1: 2564238, 2: 4199292, 3: 5359036, 4: 6494738, 5: 7556719, 6: 8555952 };
-            incrementOver7 = 999233;
+            incrementOver7 = 959198;
+        } else if (year === 2027) {
+            // 보건복지부고시 제2026-157호 (이전: 2026 × 1.035 추정치)
+            newMedianIncomeValues = { 1: 2736042, 2: 4480645, 3: 5718091, 4: 6929885, 5: 8063019, 6: 9129201 };
+            incrementOver7 = 1023464;
         } else {
-            const futureMultiplier = Math.pow(annualIncrease, year - 2026);
-            newMedianIncomeValues = {
-                1: Math.round(2564238 * futureMultiplier),
-                2: Math.round(4199292 * futureMultiplier),
-                3: Math.round(5359036 * futureMultiplier),
-                4: Math.round(6494738 * futureMultiplier),
-                5: Math.round(7556719 * futureMultiplier),
-                6: Math.round(8555952 * futureMultiplier)
-            };
-            incrementOver7 = Math.round(999233 * futureMultiplier);
+            // 2028년 이후 미발표: 전년(2027) 값 그대로 + '미발표' 표시 (LS-Q3, 추정 인상 금지)
+            newMedianIncomeValues = { 1: 2736042, 2: 4480645, 3: 5718091, 4: 6929885, 5: 8063019, 6: 9129201 };
+            incrementOver7 = 1023464;
         }
 
         // 소액임차보증금 최우선변제 기준은 주택임대차보호법 시행령 고정 금액(물가 연동 아님)
@@ -153,7 +151,7 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             newHousingLimits = JSON.parse(JSON.stringify(emptyHousingLimits));
         }
 
-        // 압류금지 예금(185만)·보장성보험(150만)은 민사집행법 시행령 고정 금액 → 연도별 인상 적용 금지
+        // 압류금지 예금(250만)·보장성보험(합산 250만)은 민사집행법 시행령 고정 금액 → 연도별 인상 적용 금지
         const newAssetExemptions = { ...baseAssetExemptions };
 
         // 교육비 및 의료비: 2025/2026 확정 데이터, 2027+ 미확정(0원)
@@ -453,7 +451,7 @@ const generateCourtConfigs = (): Record<string, CourtConfig> => {
                 court === '창원지방법원' ? '보통 속도, 부산회생법원 관할 권고' : '',
             includeSpouseProperty: !isSpecialized, 
             includeCryptoStock: !isSpecialized, 
-            allow24Month: court === '서울회생법원' || court === '수원회생법원' || court === '부산회생법원', 
+            shortPlanRule: court.endsWith('회생법원'), // 6개 회생법원 실무준칙 제424호 
             allowAdditionalLivingCost: true, 
             allowOtherLivingCost: isSpecialized 
         };

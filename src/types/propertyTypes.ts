@@ -73,7 +73,7 @@ export interface InsuranceItem {
   companyName: string;                     // 보험사명 (예: 삼성생명)
   policyName: string;                      // 보험상품명
   policyNumber?: string;                   // 증권번호
-  isSecurityInsurance: boolean;            // 보장성 보험 여부 (true시 150만원 공제)
+  isSecurityInsurance: boolean;            // 보장성 보험 여부 (true시 합산 250만 원 공제)
   surrenderValue: number;                  // 예상 해약환급금 전액
   policyLoanBalance: number;               // 약관대출 잔액
   statutoryDeduction: number;              // 법정 압류금지 공제액 (최대 150만 원)

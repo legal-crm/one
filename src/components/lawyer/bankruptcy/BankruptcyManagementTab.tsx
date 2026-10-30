@@ -154,7 +154,7 @@ export default function BankruptcyManagementTab({
     };
   });
 
-  // 5. 기본 파산 재산목록 (1,110만 원 면제재산 계산기)
+  // 5. 기본 파산 재산목록 (1,558만 원(2026년) 면제재산 계산기)
   const [assets, setAssets] = useState<BankruptcyAssetItem[]>(() => {
     if (savedBk?.assets && savedBk.assets.length > 0) return savedBk.assets;
     // 재산은 재산목록 입력 후 반영 (이전: 임차보증금 1,500만·보험 120만·예금 45만 원 가정)

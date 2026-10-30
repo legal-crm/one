@@ -653,7 +653,7 @@ for (const scenario of scenarios) {
   if (courtConfig) {
     console.log(`    배우자재산 반영: ${courtConfig.includeSpouseProperty ? '✅ 포함(50%)' : '❌ 미반영'}`);
     console.log(`    코인/주식 청산가치: ${courtConfig.includeCryptoStock ? '✅ 포함' : '❌ 제외'}`);
-    console.log(`    24개월 특례: ${courtConfig.allow24Month ? '✅ 가능' : '❌ 불가'}`);
+    console.log(`    3년 미만 단축 검토: ${courtConfig.shortPlanRule ? '✅ 가능' : '❌ 불가'}`);
   } else {
     console.log(`    ❗ 법원 설정 없음 (${scenario.intake.selectedCourt})`);
   }
@@ -669,7 +669,7 @@ for (const scenario of scenarios) {
     console.log(`    가용소득(월): ${formatMoney(rehabResult.base.disposable)}`);
     console.log(`    총 채무: ${formatMoney(rehabResult.base.debtTotal)}`);
     console.log(`    청산가치: ${formatMoney(rehabResult.base.liq)}`);
-    console.log(`    24개월 특례 적용: ${rehabResult.allow2435 ? '✅' : '❌'}`);
+    console.log(`    3년 미만 단축 검토 적용: ${rehabResult.allow2435 ? '✅' : '❌'}`);
     console.log('');
     console.log('    변제 시뮬레이션:');
     for (const row of rehabResult.rows) {

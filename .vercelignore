@@ -1,0 +1,31 @@
+# Vercel CLI 배포 때 올리지 않을 파일 (CLI는 .gitignore를 읽지 않는다)
+# 빌드에 필요한 것: package.json·package-lock.json·index.html·vite.config.ts·tsconfig.json·vercel.json·src/·public/·api/·scripts/
+# 환경변수는 Vercel 프로젝트 설정에 있으므로 로컬 .env 파일은 올리지 않는다.
+.env
+.env.*
+/.agents
+/.kiro
+/.github
+/.tmp-admin-work
+/.playwright-mcp
+/.vercel
+/dist
+/docs
+/supabase
+/mcp-server
+/scratch
+/assets
+/mypage_blueprint.md
+/patch_stage3.cjs
+/metadata.json
+# 실제 서류·경쟁사 자료·참고 자료 (개인정보·저작물)
+/실제서류
+/보정
+/references
+/로패스
+/오토로
+/리걸플로
+/카카오자동화
+/법원양식
+/test-results
+/playwright-report

@@ -11,7 +11,7 @@ import {
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
 } from '../types';
-import { adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices, STAGE_TEST_REQUEST_IDS } from '../data';
+import { mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices, STAGE_TEST_REQUEST_IDS } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
@@ -39,6 +39,11 @@ import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
 import DataBackupSection from './lawyer/DataBackupSection';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
+import { useOfficeContext } from '../hooks/useOfficeContext';
+import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../services/office/officeService';
+import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission } from '../services/office/officePermissions';
+import AdBillingTab from './lawyer/billing/AdBillingTab';
+import ServerFeeOverview from './lawyer/fees/ServerFeeOverview';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
 import { validateInviteToken, acceptStaffInvite } from '../services/inviteService';
@@ -46,7 +51,6 @@ import { loadStaffMembers, findStaffRecordForUser, loadCrmExtMap, getCrmExt } fr
 import { feeAmountWon } from '../services/alimtokService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { createNotification } from '../services/notificationCenterService';
-import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, getTaxInvoicePdfUrl, type LawyerBusinessInfo } from '../services/taxInvoiceService';
 import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
   testTelegramConnection, sendEmailNotification, formatEmailConsultHtml,
@@ -64,7 +68,6 @@ import { registerSession } from '../services/sessionService';
 const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 import ContractConversionModal from './lawyer/ContractConversionModal';
-import { loadAdOrders, saveNewAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 import LegalQuickDock from './lawyer/LegalQuickDock';
 import LawyerChatWorkspace from './lawyer/chat/LawyerChatWorkspace';
 import { clearDockSensitiveData } from './lawyer/quickdock/dockStorage';
@@ -193,32 +196,9 @@ export default function LawyerRole({
     setDismissedReqIds(new Set());
     localStorage.removeItem(`dismissed_reqs_${activeLawyer?.id}`);
   };
-  // Ad order modal states
-  const [adModalProduct, setAdModalProduct] = useState<any>(null);
-  const [adModalStep, setAdModalStep] = useState<'select' | 'done'>('select');
-  const [adModalMonths, setAdModalMonths] = useState(1);
-  const [adModalDepositor, setAdModalDepositor] = useState('');
-  const [adModalRegion, setAdModalRegion] = useState('');
-  const [adOrders, setAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [crmTargetClientId, setCrmTargetClientId] = useState<string>('');
   const [crmTargetDetailTab, setCrmTargetDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court'>('info');
 
-  // 관리자가 입금 확인/승인 또는 취소 처리 시 변호사 화면 실시간 동기화
-  useEffect(() => {
-    const unsub = subscribeToAdOrders(
-      () => setAdOrders(loadAdOrders()),
-      () => setAdOrders(loadAdOrders())
-    );
-    return unsub;
-  }, []);
-
-  // 세금계산서 / 사업자 정보 상태
-  const [bizInfo, setBizInfo] = useState<LawyerBusinessInfo | null>(() => loadLawyerBusinessInfo());
-  const [bizFormOpen, setBizFormOpen] = useState(false);
-  const [bizForm, setBizForm] = useState({ corpNum: '', corpName: '', ceoName: '', bizType: '전문서비스업', bizClass: '법률서비스', addr: '', taxEmail: '', taxEmail2: '' });
-  const [bizCheckResult, setBizCheckResult] = useState<string | null>(null);
-  const [bizSaving, setBizSaving] = useState(false);
-  const [lawyerPdfLoadingKey, setLawyerPdfLoadingKey] = useState<string | null>(null);
   const [tempFirmName, setTempFirmName] = useState('');
 
   // ── 전역 검색 & 외부 고객 등록 ──
@@ -417,7 +397,12 @@ export default function LawyerRole({
   // Active staff member (for RBAC)
   const [activeStaffMember, setActiveStaffMember] = useState<StaffMember | null>(null);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const permissionCtx = usePermissions(activeStaffMember);
+  // 서버 사무소 권한표 (RB-1·RB-4). 서버 판정이 없을 때 '대표'로 간주하지 않는다.
+  // 기존 직원 기록 기준 계산은 Supabase 미설정 환경·개발용 데모 세션에서만 쓴다.
+  const legacyPermissionFallback = !isSupabaseConfigured
+    || (import.meta.env.DEV && sessionStorage.getItem(DEV_LAWYER_SESSION_KEY) !== null);
+  const officeCtx = useOfficeContext(isLoggedIn && !legacyPermissionFallback);
+  const permissionCtx = usePermissions(activeStaffMember, officeCtx.office, legacyPermissionFallback);
 
   // ── Browser history & URL synchronization (기획서 1-6 & 3.6) ──
   // 이전: tab 상태만 history.state에 기록하고 URL 동기화가 없어 새로고침·뒤로가기 시 view/case/stage 유실
@@ -903,6 +888,24 @@ export default function LawyerRole({
 
         if (import.meta.env.DEV) console.log(`[LawyerRole] 세션 확인 (${source})`);
 
+        // 0. 사무소 초대 링크(officeInvite): 로그인한 계정으로 서버가 수락 처리 (RB-2: 변호사 가입 신청을 만들지 않음)
+        const officeInviteToken = new URLSearchParams(window.location.search).get('officeInvite');
+        if (officeInviteToken) {
+          const inviteName = user.user_metadata?.full_name || user.user_metadata?.name || (email ? email.split('@')[0] : '');
+          const peek = await peekOfficeInvite(officeInviteToken);
+          const accepted = peek.ok && peek.data?.valid
+            ? await acceptOfficeInvite(officeInviteToken, inviteName)
+            : null;
+          const url = new URL(window.location.href);
+          url.searchParams.delete('officeInvite');
+          window.history.replaceState({}, '', url.toString());
+          if (accepted?.ok) {
+            toast.success(`${peek.ok && peek.data?.officeName ? `${peek.data.officeName} ` : ''}사무소 초대를 수락했어요. 대표가 정한 권한으로 업무를 시작할 수 있어요.`);
+          } else {
+            toast.error(accepted && !accepted.ok ? accepted.message : '초대 링크가 만료됐거나 이미 사용됐어요. 대표에게 새 초대를 요청해 주세요.');
+          }
+        }
+
         // 1. 서버 매핑 조회 → 없고 사용자가 변호사 로그인을 직접 시작한 경우에만 신규 매핑 생성
         //    (의뢰인 세션이 변호사 화면에 들어와도 자동으로 변호사 계정이 만들어지지 않음)
         let account: LawyerAccount | null = null;
@@ -917,6 +920,32 @@ export default function LawyerRole({
         account = existing.account;
         let isNewAccount = false;
         if (!account) {
+          // 1-1. 변호사 계정은 없지만 사무소 구성원(직원)인 계정 → 직원으로 로그인 (변호사 가입 신청 안 만듦, RB-2)
+          const memberships = await loadMyOfficeContexts();
+          if (memberships.ok && memberships.data.length > 0) {
+            const office = memberships.data[0];
+            const ownerProfile = lawyers.find(l => l.id === office.officeId);
+            const staffName = user.user_metadata?.full_name || user.user_metadata?.name || (email ? email.split('@')[0] : '직원');
+            const staffProfile: User = {
+              ...(ownerProfile || EMPTY_LAWYER),
+              id: office.officeId,
+              name: `${staffName} (${OFFICE_ROLE_LABELS[office.role]})`,
+              email: email || undefined,
+              avatar: user.user_metadata?.avatar_url || '',
+              approved: true,
+              licenseStatus: ownerProfile?.licenseStatus || 'verified',
+            };
+            sessionStorage.removeItem('pending_lawyer_oauth');
+            sessionStorage.setItem('legal_crm_lawyer_session', office.officeId);
+            sessionStorage.removeItem('legal_crm_active_lawyer');
+            setActiveLawyer(staffProfile);
+            setLoginError('');
+            setIsAuthSuccess(true);
+            setTimeout(() => { setIsLoggedIn(true); setIsAuthenticating(false); setIsAuthSuccess(false); }, 280);
+            toast.success(`[인증 완료] ${office.officeName || '사무소'} ${OFFICE_ROLE_LABELS[office.role]} 계정으로 로그인했어요.`);
+            onLogActivity(user.id, staffProfile.name, 'STAFF', 'LOGIN', `${providerName} 소셜 로그인 (사무소 직원)`);
+            return;
+          }
           if (!userStartedLawyerLogin) {
             // 변호사로 로그인한 적 없는 세션(예: 의뢰인 로그인) → 로그인 화면 유지
             sessionStorage.removeItem('legal_crm_lawyer_session');
@@ -1459,7 +1488,7 @@ export default function LawyerRole({
     );
 
     const feeText = `${Math.round(proposalData.fees.totalFee / 10000)}만원`;
-    const reductionText = `${proposalData.diagnosis.debtReductionRate}%`;
+    // 의뢰인에게 가는 요약에는 감면율(%)을 넣지 않는다 (RP-Q1)
     const monthlyText = `${Math.round(proposalData.diagnosis.monthlyPayment / 10000)}만원/월`;
 
     // AI 프리미엄일 때 확장 메시지
@@ -1467,7 +1496,7 @@ export default function LawyerRole({
       ? `\n\n📊 정밀 분석 기반 진단입니다.\n• 채무 구조: 무담보 ${Math.round(proposalData.aiInsights.debtBreakdown.unsecured / 10000)}만원 / 담보 ${Math.round(proposalData.aiInsights.debtBreakdown.secured / 10000)}만원${proposalData.aiInsights.debtBreakdown.tax > 0 ? ` / 조세 ${Math.round(proposalData.aiInsights.debtBreakdown.tax / 10000)}만원` : ''}\n• 검토 등급: ${proposalData.aiInsights.reviewGrade === 'NORMAL_REVIEW' ? '일반 검토' : proposalData.aiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 검토' : '정밀 검토'}`
       : '';
 
-    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: ${reductionText}\n• 월 변제금: ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}${aiSuffix}\n\n자세한 사항은 편하게 문의해 주세요.`;
+    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 변호사 검토 제안서를 보내드렸습니다:\n• 월 변제금(예상): ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}${aiSuffix}\n\n자세한 사항은 편하게 문의해 주세요.`;
 
     onAddMessage(
       reqId,
@@ -1482,7 +1511,7 @@ export default function LawyerRole({
       activeLawyer.name,
       activeLawyer.role as MemberRole,
       'CONSULT_REQUEST',
-      `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%${isAIPremium ? ', AI 정밀 분석' : ''})`
+      `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 감면 비율(참고) ${proposalData.diagnosis.debtReductionRate}%${isAIPremium ? ', AI 정밀 분석' : ''})`
     );
 
     // 3) 대화는 의뢰인이 '상담 시작'을 누른 뒤 열리므로 채팅 탭으로 옮기지 않고, 작성 화면을 열기 전 탭으로 돌아간다
@@ -1802,7 +1831,8 @@ export default function LawyerRole({
   const isOwnRequest = (r: ConsultRequest) => {
     if (!activeLawyer.id) return false;
     return Boolean(
-      STAGE_TEST_REQUEST_IDS.has(r.id) ||
+      // 단계별 시험 사건은 개발 빌드에서만 모든 변호사 소유로 본다 (운영 시험 데이터 0)
+      (import.meta.env.DEV && STAGE_TEST_REQUEST_IDS.has(r.id)) ||
       r.selectedLawyerIds?.includes(activeLawyer.id) ||
       r.selectedLawyerId === activeLawyer.id ||
       r.acceptedLawyerIds?.includes(activeLawyer.id) ||
@@ -1813,7 +1843,7 @@ export default function LawyerRole({
   };
   const ownRequests = requests.filter(isOwnRequest);
   // 영업 리드 저장소를 로그인 사무소(변호사) 단위로 분리 — 아래 사이드바 배지·영업관리 탭이 이 범위를 사용
-  setSalesLeadScope(activeLawyer.lawFirmId || activeLawyer.id);
+  setSalesLeadScope(officeCtx.office?.officeId || (legacyPermissionFallback ? (activeLawyer.lawFirmId || activeLawyer.id) : ''));
   const ownRequestIds = new Set(ownRequests.map(r => r.id));
   // '신규 상담' — 내가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (requestScope 공용 판정, 상태와 무관)
   // 이전: status === 'requested'만 신규로 세어, 비교 상담 중 첫 제안서 뒤 나머지 변호사에게서 요청이 사라지고
@@ -2059,7 +2089,7 @@ export default function LawyerRole({
                   의뢰인이 <span className="text-brand-light">먼저 찾아오는</span><br />회생·파산 전문 플랫폼
                 </h1>
                 <p className="text-base md:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                  의뢰인이 AI 자가진단을 완료하고, 채무 구조 데이터를 정리한 상태로 변호사님께 상담을 요청합니다.<br />
+                  의뢰인이 '내 상황 체크하기'로, 채무 구조 데이터를 정리한 상태로 변호사님께 상담을 요청합니다.<br />
                   더 이상 기초 상담에 시간을 낭비하지 마세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
@@ -2078,13 +2108,13 @@ export default function LawyerRole({
               <div className="max-w-5xl mx-auto px-4">
                 <div className="text-center space-y-3 mb-12">
                   <h2 className="text-2xl md:text-3xl font-black text-slate-900">왜 {platformConfig.siteLogoText || 'my김변'}인가요?</h2>
-                  <p className="text-sm text-slate-500 max-w-lg mx-auto">단순 사건 중개가 아닙니다. 의뢰인의 채무 데이터를 사전 정리해서 변호사님의 업무 효율을 극대화합니다.</p>
+                  <p className="text-sm text-slate-500 max-w-lg mx-auto">변호사 광고·정보 플랫폼과 사무소 업무 도구를 함께 씁니다. 사건을 중개하거나 배정하지 않습니다.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                    { icon: '📊', title: 'AI 사전 진단 데이터', desc: '의뢰인이 상담 전 AI 챗봇으로 채무 구조를 입력합니다. 총 채무, 소득, 자산, 부양가족 등 핵심 데이터가 정리된 상태로 전달됩니다.', color: 'from-indigo-500/10 to-violet-500/10' },
-                    { icon: '⚖️', title: '정밀 시뮬레이션 리포트', desc: '2026년 법원 기준 생계비, 청산가치, 변제금을 자동 계산한 리포트와 함께 의뢰인이 도착합니다. 기초 상담 시간이 70% 절감됩니다.', color: 'from-emerald-500/10 to-teal-500/10' },
-                    { icon: '💼', title: '솔루션 제안 경쟁 입찰', desc: '최대 3명의 변호사가 의뢰인에게 솔루션과 비용을 제안합니다. 전문성으로 승부하세요. 실력 있는 변호사가 더 많은 사건을 수임합니다.', color: 'from-amber-500/10 to-orange-500/10' }
+                    { icon: '📊', title: '상담 전에 정리된 정보', desc: "의뢰인이 '내 상황 체크하기'로 채무·소득·재산·부양가족을 직접 정리하고, 정보 제공에 동의한 뒤 고른 변호사에게 상담을 요청합니다.", color: 'from-indigo-500/10 to-violet-500/10' },
+                    { icon: '⚖️', title: '사무소 업무 도구', desc: '2026년 법원 기준 생계비·청산가치 계산, 전자계약, 법원 서식, 서류·보정 관리를 한 화면에서 씁니다. 판단과 제안은 변호사님이 합니다.', color: 'from-emerald-500/10 to-teal-500/10' },
+                    { icon: '💼', title: '정액 광고 · 의뢰인 직접 선택', desc: '의뢰인이 프로필을 보고 최대 3명의 변호사에게 직접 상담을 요청합니다. 플랫폼은 배정·추천하지 않고, 광고비는 정액이라 상담 건수·수임과 연동되지 않습니다.', color: 'from-amber-500/10 to-orange-500/10' }
                   ].map((item, i) => (
                     <div key={i} className={`rounded-2xl bg-gradient-to-br ${item.color} p-6 md:p-8 space-y-4 group hover:shadow-lg transition-all`}>
                       <div className="text-4xl group-hover:scale-110 transition-transform">{item.icon}</div>
@@ -2132,7 +2162,7 @@ export default function LawyerRole({
                   {[
                     { icon: '📋', title: '오픈/지정 상담 대시보드', desc: '의뢰인의 채무 구조, 소득, 리스크 플래그를 한눈에 파악' },
                     { icon: '💬', title: '실시간 채팅 상담', desc: '의뢰인과 1:1 채팅으로 추가 정보 확인 및 상담 진행' },
-                    { icon: '📑', title: '솔루션 제안서 발송', desc: '예상 변제금, 탕감률, 수임 비용을 정리한 제안서 전송' },
+                    { icon: '📑', title: '솔루션 제안서 발송', desc: '예상 월 변제금·기간·총 변제액과 수임 비용을 정리한 제안서 전송' },
                     { icon: '📊', title: '사건 진행 관리', desc: '수임 → 접수 → 보정 → 인가까지 단계별 사건 관리' },
                     { icon: '👥', title: '의뢰인 CRM', desc: '의뢰인 연락처, 상담 이력, 진행 상태를 통합 관리' },
                     { icon: '🔒', title: '개인정보 보호', desc: '의뢰인 익명성 및 민감 금융 정보 암호화 보호' }
@@ -2223,8 +2253,8 @@ export default function LawyerRole({
 
             {/* 푸터 */}
             <footer className="bg-slate-950 text-slate-500 text-xs text-center py-8 px-4">
-              <p>© 2026 {platformConfig.siteLogoText || 'my김변'}. 도산 전문 법률 대리인 통합 플랫폼.</p>
-              <p className="mt-1">문의: partner@mykim.law | 사업자등록번호: 000-00-00000</p>
+              <p>© 2026 {platformConfig.siteLogoText || 'my김변'}. 변호사 광고·정보 제공 플랫폼과 사무소 업무 도구.</p>
+              <p className="mt-1">몬스터랩 | 대표 진성호 | 사업자등록번호 521-39-01355 | 통신판매업 신고 제2026-진접오남-0565호 | 문의 support@mykim.kr</p>
             </footer>
           </div>
         )}
@@ -2940,566 +2970,17 @@ export default function LawyerRole({
 
 
 
-        {/* TAB 5: BILLING & SUBSCRIPTIONS */}
+        {/* TAB 5: 광고·결제 — 상품·가격·주문·사업자 정보는 서버 (AdBillingTab) */}
         {activeTab === 'billing' && (
-          <div className="space-y-8">
-            {/* 서브탭 */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
-              {([
-                { key: 'status' as const, label: '광고 현황' },
-                { key: 'products' as const, label: '광고 상품' },
-                { key: 'orders' as const, label: '내 광고 주문' },
-                { key: 'business' as const, label: '사업자 · 세금계산서' },
-              ]).map(t => (
-                <button key={t.key} onClick={() => setBillingSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${billingSub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {(billingSub === 'status') && (<>
-            {/* Section 1: Status */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950 p-6 md:p-8 shadow-xl">
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl sm:text-3xl font-black text-white">광고 · 빌링 현황</h2>
-                    {/* 이전: 가짜 '다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)'과 'Active · 정상 운영 중' 배지 */}
-                    <p className="text-sm text-slate-400">마이김변 이용료는 정액 광고비뿐입니다. 수임료는 의뢰인이 사무소에 직접 납부합니다.</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
-                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">활성 광고</span>
-                      <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">{adOrders.filter(o => o.status === 'active').length}건</strong>
-                    </div>
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
-                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">이달 광고비</span>
-                      <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">{(adOrders.filter(o => o.status === 'active').reduce((s, o) => s + o.monthlyPrice, 0) / 10000).toFixed(0)}만</strong>
-                    </div>
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
-                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">입금 대기</span>
-                      <strong className="text-2xl font-black text-white block mt-1 tracking-tight tabular-nums">{adOrders.filter(o => o.status === 'pending').length}건</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            </>)}
-
-            {(billingSub === 'products') && (<>
-            {/* Section 2: Ad Products */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5">
-                <Megaphone className="w-6 h-6 text-slate-700" />
-                <h3 className="font-extrabold text-xl text-slate-900">광고 상품</h3>
-                <span className="bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold px-3 py-1 rounded-full">노출 광고 전용</span>
-              </div>
-              <p className="text-sm text-slate-500 -mt-2">마이김변 플랫폼에서 변호사 프로필 노출을 강화하는 광고 상품입니다.</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {adProducts.map((product) => (
-                  <div key={product.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden hover:shadow-md transition-all duration-300 group shadow-xs flex flex-col justify-between">
-                    {/* Dark Deep Navy Header Box */}
-                    <div className="bg-[#1E3A5F] p-6 text-white relative overflow-hidden">
-                      <div className="relative z-10 flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-2xl">{product.icon}</span>
-                            <span className="font-extrabold text-lg text-white">{product.name}</span>
-                          </div>
-                          <p className="text-slate-300 text-xs mt-0.5">{product.location}</p>
-                        </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-white/10 text-white border border-white/20">{product.badge}</span>
-                      </div>
-                      <div className="relative z-10 mt-5 flex items-end justify-between">
-                        <div>
-                          <span className="text-3xl font-black text-white tracking-tight tabular-nums">{product.priceLabel}</span>
-                          <span className="text-slate-300 text-xs ml-1">(VAT 별도)</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-slate-300 block font-bold">{product.maxSlots ? '구좌 현황' : '구좌 제한'}</span>
-                          <span className="text-sm font-black text-white">{product.maxSlots ? `${product.usedSlots}/${product.maxSlots}` : '무제한'}</span>
-                        </div>
-                      </div>
-                      {product.maxSlots && (
-                        <div className="relative z-10 mt-2.5">
-                          <div className="w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-white rounded-full h-1.5 transition-all" style={{ width: `${((product.usedSlots || 0) / product.maxSlots) * 100}%` }} />
-                          </div>
-                          <span className="text-xs text-slate-300 mt-1 block font-medium">{product.maxSlots - (product.usedSlots || 0)}구좌 남음</span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Body */}
-                    <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
-                      <div className="space-y-4">
-                        <p className="text-sm text-slate-700 leading-relaxed">{product.description}</p>
-                        <ul className="space-y-2">
-                          {product.features.map((feat, i) => (
-                            <li key={i} className="flex gap-2 items-start text-sm text-slate-700">
-                              <Check className="w-4 h-4 text-[#1E3A5F] shrink-0 mt-0.5" />
-                              <span className="leading-tight">{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {product.discounts.length > 0 && (
-                          <div className="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-200/80">
-                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-slate-500" /> 장기 계약 할인</span>
-                            <div className="flex flex-wrap gap-2">
-                              {product.discounts.map((d, i) => (
-                                <span key={i} className="bg-white border border-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg shadow-xs font-medium">
-                                  {d.months}개월 <strong className="text-[#1E3A5F] font-bold">{d.rate}%↓</strong> {d.price}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-2 bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <span className="text-xs text-slate-600 leading-relaxed">본 상품은 고객에게 <strong className="text-slate-900">"광고"</strong> 라벨이 명확히 표시되며, 같은 등급 내 <strong className="text-slate-900">랜덤 셔플 정렬</strong>로 운영됩니다.</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => { setAdModalProduct(product); setAdModalMonths(1); setAdModalDepositor(''); setAdModalRegion(''); setAdModalStep('select'); }}
-                        className="w-full py-3.5 rounded-xl text-sm font-bold transition-all bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-xs cursor-pointer active:scale-[0.98] mt-4"
-                      >
-                        광고 신청하기
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 shadow-xs">
-              <div className="flex items-center gap-2.5">
-                <Eye className="w-5 h-5 text-slate-700" />
-                <h4 className="font-extrabold text-base text-slate-900">변호사 찾기 페이지 광고 노출 구조</h4>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs text-slate-700 space-y-2.5 overflow-x-auto">
-                <div className="border border-slate-200 rounded-xl p-3.5 bg-white">
-                  <span className="text-slate-900 font-bold flex items-center gap-1.5 mb-1.5">🔝 상단 노출 광고 (월 30만원)</span>
-                  <div className="flex gap-2.5 flex-wrap">
-                    <span className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800">[ 광고 ] 변호사A</span>
-                    <span className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800">[ 광고 ] 변호사B</span>
-                    <span className="bg-slate-50 border border-dashed border-slate-300 px-3 py-1.5 rounded-lg text-xs text-slate-400 font-medium">... 최대 6구좌</span>
-                  </div>
-                </div>
-                <div className="border border-slate-200 rounded-xl p-3.5 bg-white">
-                  <span className="text-slate-900 font-bold flex items-center gap-1.5 mb-1.5">📍 지역 상단 노출 (월 20만원)</span>
-                  <div className="flex gap-2.5 flex-wrap">
-                    <span className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800">[ 광고 ] 지역 변호사D</span>
-                    <span className="bg-slate-50 border border-dashed border-slate-300 px-3 py-1.5 rounded-lg text-xs text-slate-400 font-medium">... 지역당 최대 4구좌</span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium"><Info className="w-3.5 h-3.5" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 일반 회원 | 같은 등급 내 랜덤 셔플</p>
-            </div>
-            </>)}
-
-            {(billingSub === 'orders') && (<>
-            {/* Section 3: My Ad Orders */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-6 h-6 text-slate-700" />
-                <h3 className="font-extrabold text-xl text-slate-900">내 광고 신청 내역</h3>
-                <span className="bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">{adOrders.length}건</span>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
-                        <th className="p-3.5">신청일</th>
-                        <th className="p-3.5">상품명</th>
-                        <th className="p-3.5">계약기간</th>
-                        <th className="p-3.5">월 결제액</th>
-                        <th className="p-3.5">총 금액</th>
-                        <th className="p-3.5">상태</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {adOrders.length === 0 ? (
-                        <tr><td colSpan={6} className="p-10 text-center text-slate-400 text-sm font-medium">신청한 광고 상품이 없습니다.</td></tr>
-                      ) : adOrders.map(order => (
-                        <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-3.5 text-slate-600 font-mono text-xs">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
-                          <td className="p-3.5 font-bold text-slate-900">{order.productName}{order.region && <span className="text-slate-600 ml-1">({order.region})</span>}</td>
-                          <td className="p-3.5 text-slate-700 font-medium">{order.contractMonths}개월</td>
-                          <td className="p-3.5 font-bold text-slate-800 tracking-tight tabular-nums">{order.monthlyPrice.toLocaleString()}원</td>
-                          <td className="p-3.5 font-black text-slate-900 tracking-tight tabular-nums">{order.totalPrice.toLocaleString()}원</td>
-                          <td className="p-3.5"><span className={`text-xs font-bold px-3 py-1 rounded-full border inline-flex items-center gap-1.5 ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : order.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>{order.status === 'pending' ? '입금 대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            </>)}
-
-            {/* (이전: 월 30/80/150만 원 'SaaS CRM 요금제' 카드 — 플랫폼은 정액 광고비만 받으므로 삭제. docs/feature_expansion_plan.md 0장) */}
-
-            {(billingSub === 'business') && (<>
-            {/* Section 6: Legal & Payment */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 space-y-4 shadow-xs">
-                <span className="font-extrabold text-slate-900 text-base flex items-center gap-2"><Shield className="w-5 h-5 text-slate-700" /> 법적 안전장치 (변호사법 준수)</span>
-                <ul className="space-y-2.5 text-sm text-slate-700">
-                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>모든 광고 영역에 <strong className="text-slate-900">"광고" 라벨</strong> 상시 표시</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>같은 등급 내 <strong className="text-slate-900">랜덤 셔플 정렬</strong> (광고비 순 정렬 금지)</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span><strong className="text-slate-900">고객 직접 선택</strong> 구조만 운영 (매칭·배정 없음)</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>상담 건당 과금 · 수임 성공 수수료 <strong className="text-rose-600">절대 없음</strong></span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>고객 연락처 열람권 판매 <strong className="text-rose-600">절대 없음</strong></span></li>
-                </ul>
-                <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 mt-2"><Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" /><span className="text-xs text-slate-600 leading-relaxed">법무부 「변호사검색서비스 운영 가이드라인」(2025.05.27) 및 변호사법 제109조 준수</span></div>
-              </div>
-              <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 space-y-4 shadow-xs">
-                <span className="font-extrabold text-slate-900 text-base flex items-center gap-2"><CreditCard className="w-5 h-5 text-slate-700" /> 결제 및 환불 정책</span>
-                <div className="space-y-3.5 text-sm text-slate-700">
-                  <div>
-                    <span className="font-bold text-slate-900 block mb-1.5">결제 수단</span>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800">🏦 계좌이체 (현금 입금)</span>
-                      <span className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800">📄 세금계산서 발행</span>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-                    <span className="font-bold text-slate-800 text-xs block">💰 입금 안내 계좌</span>
-                    <div className="bg-white rounded-xl p-3 border border-slate-200">
-                      <span className="text-base font-black text-slate-900 block tracking-tight">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                      <span className="text-xs text-slate-500 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 block mb-1.5">결제 프로세스</span>
-                    <div className="flex flex-wrap gap-1.5 text-xs">
-                      <span className="bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-slate-800 font-bold">① 상품 선택</span><span className="text-slate-300">→</span>
-                      <span className="bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-slate-800 font-bold">② 기간 선택</span><span className="text-slate-300">→</span>
-                      <span className="bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-slate-800 font-bold">③ 계좌 입금</span><span className="text-slate-300">→</span>
-                      <span className="bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-slate-800 font-bold">④ 입금 확인</span><span className="text-slate-300">→</span>
-                      <span className="bg-[#1E3A5F] text-white px-2.5 py-1 rounded-lg font-bold">⑤ 광고 활성화</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 block mb-1.5">환불 정책</span>
-                    <ul className="space-y-1 text-xs text-slate-500">
-                      <li>• 결제 후 7일 이내 + 노출 100회 미만: <strong className="text-slate-900 font-bold">전액 환불</strong></li>
-                      <li>• 결제 후 7일 이후: 잔여 일수 일할 계산 환불</li>
-                      <li>• 광고 소재 심사 반려: <strong className="text-slate-900 font-bold">전액 환불</strong></li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AD ORDER MODAL */}
-            {adModalProduct && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAdModalProduct(null)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 mt-10" onClick={e => e.stopPropagation()}>
-                  {adModalStep === 'select' && (
-                    <>
-                      <div className="bg-gradient-to-br from-[#0F2440] via-[#163152] to-[#1E3A5F] p-6 text-white">
-                        <div className="flex items-center gap-2.5 mb-1"><span className="text-3xl">{adModalProduct.icon}</span><span className="font-extrabold text-xl">{adModalProduct.name}</span></div>
-                        <p className="text-slate-300 text-xs">{adModalProduct.location}</p>
-                      </div>
-                      <div className="p-6 md:p-8 space-y-5">
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-800">계약 기간 선택</label>
-                          <div className="grid grid-cols-4 gap-2">
-                            {[1, 3, 6, 12].map(m => {
-                              const disc = adModalProduct.discounts.find((d: any) => d.months === m);
-                              const price = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price;
-                              return (
-                                <button key={m} onClick={() => setAdModalMonths(m)} className={`p-3 rounded-xl border-2 text-center transition-all cursor-pointer ${adModalMonths === m ? 'border-[#1E3A5F] bg-[#1E3A5F]/5 ring-2 ring-[#1E3A5F]/20' : 'border-slate-200 hover:border-slate-300'}`}>
-                                  <span className="text-sm font-black text-slate-800 block">{m}개월</span>
-                                  {disc && <span className="text-xs text-[#1E3A5F] font-bold">{disc.rate}% 할인</span>}
-                                  <span className="text-xs text-slate-500 block mt-0.5">{(price / 10000).toFixed(0)}만/월</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        {adModalProduct.id === 'ad-regional-top' && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-800">구매 지역 선택</label>
-                            <select value={adModalRegion} onChange={e => setAdModalRegion(e.target.value)} className="w-full p-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-[#1E3A5F] outline-none">
-                              <option value="">지역을 선택해주세요</option>
-                              {['서울','경기','인천','부산','대구','대전','광주','울산','세종','강원','충북','충남','전북','전남','경북','경남','제주'].map(r => (<option key={r} value={r}>{r}</option>))}
-                            </select>
-                          </div>
-                        )}
-                        {(() => {
-                          const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths);
-                          const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price;
-                          const tp = mp * adModalMonths;
-                          return (
-                            <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200 space-y-2.5">
-                              <div className="flex justify-between text-sm"><span className="text-slate-600 font-medium">월 결제액</span><span className="font-bold text-slate-900">{mp.toLocaleString()}원</span></div>
-                              <div className="flex justify-between text-sm"><span className="text-slate-600 font-medium">계약 기간</span><span className="font-bold text-slate-900">{adModalMonths}개월</span></div>
-                              <div className="border-t border-slate-200 pt-2.5 flex justify-between"><span className="font-bold text-slate-800">총 결제 금액</span><span className="text-xl font-black text-slate-900">{tp.toLocaleString()}원</span></div>
-                            </div>
-                          );
-                        })()}
-                        <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200 space-y-2">
-                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">🏦 입금 안내 계좌</span>
-                          <div className="bg-white rounded-xl p-3.5 border border-slate-200 text-center">
-                            <span className="text-xl font-black text-slate-900 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                            <span className="text-xs text-slate-500 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-800">입금자명</label>
-                          <input type="text" value={adModalDepositor} onChange={e => setAdModalDepositor(e.target.value)} placeholder="입금자명을 입력해주세요" className="w-full p-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                        </div>
-                        <div className="flex gap-3">
-                          <button onClick={() => setAdModalProduct(null)} className="flex-1 py-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">취소</button>
-                          <button onClick={() => {
-                            if (!adModalDepositor.trim()) return;
-                            if (adModalProduct.id === 'ad-regional-top' && !adModalRegion) return;
-                            const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths);
-                            const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price;
-                            const newOrder: AdOrder = {
-                              id: `ado-${Date.now()}`,
-                              lawyerId: activeLawyer.id,
-                              lawyerName: activeLawyer.name,
-                              productId: adModalProduct.id,
-                              productName: adModalProduct.name,
-                              contractMonths: adModalMonths,
-                              monthlyPrice: mp,
-                              totalPrice: mp * adModalMonths,
-                              status: 'pending',
-                              requestedAt: new Date().toISOString(),
-                              depositorName: adModalDepositor.trim(),
-                              region: adModalRegion || undefined,
-                              buyerCorpNum: (activeLawyer as any).businessNumber || (activeLawyer as any).bizNumber || undefined,
-                              buyerCorpName: (activeLawyer as any).firmName || (activeLawyer as any).officeName || `${activeLawyer.name} 법률사무소`,
-                              buyerCEOName: activeLawyer.name,
-                              buyerEmail: activeLawyer.email,
-                            };
-                            // 스토리지 저장 및 브라우저/탭 간 실시간 전파
-                            saveNewAdOrder(newOrder);
-                            setAdOrders(loadAdOrders());
-                            // 관리자 실시간 알림 (텔레그램 / 슬랙 / 브라우저 푸시)
-                            notifyAdminNewAdOrder(newOrder);
-                            setAdModalStep('done');
-                          }} disabled={!adModalDepositor.trim() || (adModalProduct.id === 'ad-regional-top' && !adModalRegion)} className="flex-1 py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-md disabled:opacity-40 disabled:cursor-not-allowed">신청 완료</button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  {adModalStep === 'done' && (
-                    <div className="p-8 text-center space-y-4">
-                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle2 className="w-8 h-8 text-emerald-600" /></div>
-                      <h3 className="text-2xl font-black text-slate-900">광고 신청 완료!</h3>
-                      <p className="text-sm text-slate-600">아래 계좌로 입금해주시면 <strong className="text-slate-800">1영업일 이내</strong>에 입금 확인 후 광고가 활성화됩니다.</p>
-                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-center">
-                        <span className="text-xl font-black text-slate-900 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                        <span className="text-xs text-slate-500 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
-                      </div>
-                      <button onClick={() => setAdModalProduct(null)} className="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all cursor-pointer">확인</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-          {/* ========== 세금계산서 섹션 ========== */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-6 md:p-8 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center">
-                    <Receipt className="w-6 h-6 text-slate-700" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-slate-900">전자세금계산서</h3>
-                    <p className="text-sm text-slate-500">광고비 입금 시 자동 발행 · 국세청 자동 전송</p>
-                  </div>
-                </div>
-                {bizInfo && (
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5" />사업자 등록 완료
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="p-6 md:p-8">
-              {/* 사업자 정보 미등록 시 등록 안내 */}
-              {!bizInfo && !bizFormOpen && (
-                <div className="text-center py-10">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-slate-300" />
-                  </div>
-                  <h4 className="text-base font-bold text-slate-800 mb-1">사업자 정보를 등록해주세요</h4>
-                  <p className="text-sm text-slate-500 mb-5">세금계산서 자동 발행을 위해 법률사무소 사업자 정보가 필요합니다.</p>
-                  <button onClick={() => setBizFormOpen(true)} className="bg-[#1E3A5F] hover:bg-[#163152] text-white text-sm font-bold px-7 py-3 rounded-xl transition-all shadow-xs cursor-pointer">
-                    🏢 사업자 정보 등록
-                  </button>
-                </div>
-              )}
-
-              {/* 사업자 정보 등록 폼 */}
-              {bizFormOpen && (
-                <div className="space-y-5">
-                  <h4 className="text-base font-bold text-slate-900 flex items-center gap-2"><Receipt className="w-5 h-5 text-slate-700" />사업자 정보 등록</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사업자등록번호 *</label>
-                      <div className="flex gap-2">
-                        <input type="text" value={bizForm.corpNum} onChange={e => setBizForm(p => ({...p, corpNum: e.target.value}))} placeholder="000-00-00000" maxLength={12} className="flex-1 p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); const st = (r.data as any)?.state; setBizCheckResult(!r.ok ? `❌ ${r.error || '확인 실패'}` : st === '1' || st === 1 ? '✅ 사업 중 (팝빌 휴폐업 조회)' : st === '2' || st === 2 ? '⚠️ 폐업' : st === '3' || st === 3 ? '⚠️ 휴업' : `조회 결과 상태: ${st ?? '확인 불가'}`); }} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-xl transition-colors whitespace-nowrap cursor-pointer">확인</button>
-                      </div>
-                      {bizCheckResult && <p className="text-xs mt-1.5 font-bold text-slate-500">{bizCheckResult}</p>}
-                    </div>
-                    <div>
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">상호 (법률사무소명) *</label>
-                      <input type="text" value={bizForm.corpName} onChange={e => setBizForm(p => ({...p, corpName: e.target.value}))} placeholder="법무법인 ○○" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">대표자명 *</label>
-                      <input type="text" value={bizForm.ceoName} onChange={e => setBizForm(p => ({...p, ceoName: e.target.value}))} placeholder="홍길동" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">세금계산서 수신 이메일 *</label>
-                      <input type="email" value={bizForm.taxEmail} onChange={e => setBizForm(p => ({...p, taxEmail: e.target.value}))} placeholder="tax@lawfirm.com" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사무장 / 회계담당자 이메일 (선택)</label>
-                      <input type="email" value={bizForm.taxEmail2 || ''} onChange={e => setBizForm(p => ({...p, taxEmail2: e.target.value}))} placeholder="accounting@lawfirm.com" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사업장 주소</label>
-                      <input type="text" value={bizForm.addr} onChange={e => setBizForm(p => ({...p, addr: e.target.value}))} placeholder="서울특별시 강남구..." className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
-                    </div>
-                  </div>
-                  <div className="flex gap-3 pt-3">
-                    <button onClick={() => { setBizFormOpen(false); setBizCheckResult(null); }} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors cursor-pointer">취소</button>
-                    <button
-                      disabled={!bizForm.corpNum || !bizForm.corpName || !bizForm.ceoName || !bizForm.taxEmail || bizSaving}
-                      onClick={() => {
-                        setBizSaving(true);
-                        const info: LawyerBusinessInfo = { ...bizForm };
-                        saveLawyerBusinessInfo(info);
-                        setBizInfo(info);
-                        setBizFormOpen(false);
-                        setBizSaving(false);
-                        setBizCheckResult(null);
-                        toast.success('사업자 정보가 저장되었습니다.');
-                      }}
-                      className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white text-sm font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Save className="w-4 h-4" />사업자 정보 저장
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 사업자 정보 등록 완료 시 */}
-              {bizInfo && !bizFormOpen && (
-                <div className="space-y-5">
-                  <div className="bg-slate-50 rounded-2xl p-5 space-y-3 border border-slate-200/80">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-700">등록된 사업자 정보</span>
-                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail, taxEmail2: bizInfo.taxEmail2 || ''}); setBizFormOpen(true); }} className="text-xs font-bold text-[#1E3A5F] hover:underline cursor-pointer">수정</button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div><span className="text-slate-500">사업자번호</span> <span className="font-bold text-slate-900 ml-1.5">{formatCorpNum(bizInfo.corpNum)}</span></div>
-                      <div><span className="text-slate-500">상호</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.corpName}</span></div>
-                      <div><span className="text-slate-500">대표자</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.ceoName}</span></div>
-                      <div><span className="text-slate-500">계산서 이메일</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.taxEmail}</span></div>
-                      {bizInfo.taxEmail2 && (
-                        <div className="col-span-2"><span className="text-slate-500">사무장/회계 이메일</span> <span className="font-bold text-indigo-700 ml-1.5">{bizInfo.taxEmail2}</span></div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 세금계산서 발행 이력 */}
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900 mb-3.5 flex items-center gap-2"><FileText className="w-5 h-5 text-slate-700" />발행 내역</h4>
-                    {adOrders.filter(o => o.taxInvoice).length === 0 ? (
-                      <div className="text-center py-8 text-sm text-slate-400 font-medium">
-                        아직 발행된 세금계산서가 없습니다.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {adOrders.filter(o => o.taxInvoice).map(order => (
-                          <div key={order.id} className="space-y-2">
-                            {/* 당초 정발행 건 */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 gap-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-bold text-slate-900">{order.productName}</p>
-                                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">정발행</span>
-                                </div>
-                                <p className="text-xs text-slate-500 font-medium">
-                                  {order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}
-                                  {order.taxInvoice?.ntsConfirmNum && <span className="ml-2 font-mono text-[11px] text-slate-400">승인번호: {order.taxInvoice.ntsConfirmNum}</span>}
-                                </p>
-                              </div>
-                              <div className="flex items-center justify-between sm:justify-end gap-3">
-                                <p className="text-sm font-black text-slate-900 tracking-tight tabular-nums">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={async () => {
-                                      if (!order.taxInvoice?.itemKey) return;
-                                      setLawyerPdfLoadingKey(order.id);
-                                      const res = await getTaxInvoicePdfUrl(order.taxInvoice.itemKey);
-                                      if (res.ok && res.data?.url) {
-                                        window.open(res.data.url, '_blank', 'width=900,height=800');
-                                      } else {
-                                        toast.error(res.error || 'PDF 뷰어 호출 실패');
-                                      }
-                                      setLawyerPdfLoadingKey(null);
-                                    }}
-                                    disabled={lawyerPdfLoadingKey === order.id}
-                                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                                  >
-                                    <Printer className="w-3 h-3 text-slate-500" />
-                                    {lawyerPdfLoadingKey === order.id ? '로딩...' : '계산서 PDF'}
-                                  </button>
-                                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 whitespace-nowrap">
-                                    {order.modifiedTaxInvoice ? '수정발행됨' : '발행완료'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* 수정발행(취소/환불) 내역이 있는 경우 차감 표시 */}
-                            {order.modifiedTaxInvoice && (
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-red-50/70 rounded-xl border border-red-200/80 gap-3 ml-2 border-l-4 border-l-red-500">
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-md">
-                                      수정발행: {order.modifiedTaxInvoice.modifyCode === 2 ? '공급가액 변동' : '계약의 해제'}
-                                    </span>
-                                    <p className="text-xs text-red-600 font-medium">사유: {order.modifiedTaxInvoice.modifyReason}</p>
-                                  </div>
-                                  <p className="text-[11px] text-red-500 font-mono">
-                                    {new Date(order.modifiedTaxInvoice.issuedAt).toLocaleDateString('ko-KR')} | 국세청 승인번호: {order.modifiedTaxInvoice.ntsConfirmNum || '승인완료'}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-black text-red-700 tracking-tight tabular-nums">{order.modifiedTaxInvoice.totalAmount.toLocaleString()}원</p>
-                                  <span className="text-[11px] font-bold text-red-600">국세청 차감 반영</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-        </div>
-        </div>
-        </>)}
-        </div>
+          <AdBillingTab
+            officeId={officeCtx.office?.officeId}
+            lawyerId={activeLawyer.id}
+            lawyerName={activeLawyer.name}
+            canManageAds={legacyPermissionFallback || canUseOfficePermission(officeCtx.office?.permissions, 'ads.manage')}
+            canViewBilling={legacyPermissionFallback || canUseOfficePermission(officeCtx.office?.permissions, 'billing.view')}
+            onOrderCreated={(order) => notifyAdminNewAdOrder(order)}
+          />
         )}
-
 
         {/* TAB 5.5: SALES LEADS (영업 관리 — 리드 DB 및 콜 워크스페이스) */}
         {activeTab === 'sales-leads' && (
@@ -3521,6 +3002,9 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             currentStaff={activeStaffMember}
             firmTenantId={firmTenantId}
+            permissionsOverride={officeCtx.office ? permissionCtx.permissions : undefined}
+            officeId={officeCtx.office?.officeId}
+            isOfficeLawyer={!!officeCtx.office && officeCtx.office.isVerifiedLawyer && (officeCtx.office.role === 'owner' || officeCtx.office.role === 'lawyer')}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
             getDisplayClientName={getDisplayClientName}
@@ -3648,6 +3132,9 @@ export default function LawyerRole({
         {/* TAB: 수임료 분납 종합 정산 관리 센터 */}
         {activeTab === 'fee-settlement' && (
           <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
+            {officeCtx.office?.officeId && canUseOfficePermission(officeCtx.office.permissions, 'fee.view') && (
+              <ServerFeeOverview officeId={officeCtx.office.officeId} onOpenCase={(reqId) => openCase(reqId, 'fees')} />
+            )}
             <FeeSettlementTab
               requests={requests}
               activeLawyer={activeLawyer}
@@ -4522,186 +4009,7 @@ export default function LawyerRole({
 
               </div>
 
-              {/* Right Column: Simulated Live Telegram Widget — Smartphone Frame */}
-              <div className="lg:col-span-6 flex flex-col items-center">
-                <span className="text-xs font-bold text-slate-600 block text-left uppercase tracking-wider flex items-center gap-1.5 w-full mb-3">
-                  <Smartphone className="w-4 h-4 text-brand" />
-                  텔레그램 실시간 알림방 시뮬레이터
-                </span>
-
-                {/* ── Smartphone Outer Frame ── */}
-                <div className="relative mx-auto w-full max-w-[360px]">
-                  {/* Phone body */}
-                  <div className="bg-[#1a1a1a] rounded-[44px] p-[10px] shadow-2xl border-[3px] border-[#2a2a2a] relative"
-                    style={{ boxShadow: '0 25px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05) inset' }}>
-                    
-                    {/* Side buttons (volume + power) */}
-                    <div className="absolute -left-[5px] top-[100px] w-[3px] h-[28px] bg-[#2a2a2a] rounded-l-sm"></div>
-                    <div className="absolute -left-[5px] top-[140px] w-[3px] h-[50px] bg-[#2a2a2a] rounded-l-sm"></div>
-                    <div className="absolute -left-[5px] top-[200px] w-[3px] h-[50px] bg-[#2a2a2a] rounded-l-sm"></div>
-                    <div className="absolute -right-[5px] top-[160px] w-[3px] h-[70px] bg-[#2a2a2a] rounded-r-sm"></div>
-
-                    {/* Inner screen area */}
-                    <div className="bg-[#182533] rounded-[36px] overflow-hidden flex flex-col" style={{ height: '620px' }}>
-                      
-                      {/* Dynamic Island / Notch */}
-                      <div className="flex justify-center pt-2 pb-0 bg-[#182533] relative z-20">
-                        <div className="bg-black rounded-full w-[120px] h-[28px] flex items-center justify-center gap-2">
-                          <div className="w-[8px] h-[8px] rounded-full bg-[#1a1a2e] border border-[#333] ring-1 ring-[#222]"></div>
-                          <div className="w-[5px] h-[5px] rounded-full bg-[#0a3d2a]"></div>
-                        </div>
-                      </div>
-
-                      {/* Status Bar */}
-                      <div className="flex items-center justify-between px-6 py-1 text-[12px] text-white/60 font-semibold bg-[#182533]">
-                        <span>10:27</span>
-                        <div className="flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M2 22h20V2z"/><path d="M12 12H2v10h10z" opacity="0.3"/></svg>
-                          <span>87%</span>
-                        </div>
-                      </div>
-
-                      {/* Telegram Header */}
-                      <div className="bg-[#22313F] px-4 py-2.5 flex items-center justify-between border-b border-[#141E28]">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex items-center gap-1 text-[#86959E]">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                          </div>
-                          <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white font-extrabold text-[13px] select-none">
-                            다
-                          </div>
-                          <div className="text-left leading-tight">
-                            <h4 className="font-extrabold text-[13px] text-white">다시시작 법률지부 알림방</h4>
-                            <span className="text-[11px] text-[#86959E] font-medium">멤버 5명, 봇 1개 등록됨</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 text-[#86959E]">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                          <span className="text-xs font-bold cursor-pointer">•••</span>
-                        </div>
-                      </div>
-
-                      {/* Telegram Message Area */}
-                      <div className="flex-1 p-3 overflow-y-auto space-y-3 flex flex-col-reverse justify-start scrollbar-hide bg-[#182533]">
-                        {tgMessages.slice().reverse().map((m) => {
-                          if (m.sender === 'system') {
-                            return (
-                              <div key={m.id} className="w-full flex justify-center py-1 select-none">
-                                <span className="bg-[#111A24]/60 text-[#86959E] text-[11px] font-bold px-3 py-1 rounded-full border border-[#1C2836]">
-                                  {m.text}
-                                </span>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div key={m.id} className="w-full flex items-start gap-2 text-left">
-                              <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center font-extrabold text-[11px] shrink-0 select-none">
-                                Bot
-                              </div>
-                              
-                              <div className="space-y-1 max-w-[88%] text-left">
-                                <div className="flex items-center gap-1.5 leading-none">
-                                  <span className="font-extrabold text-[12px] text-[#5288C1]">{m.name || '다시시작 알림봇'}</span>
-                                  <span className="bg-[#22313F] text-[#5288C1] text-[7px] px-1 py-px rounded font-extrabold uppercase">BOT</span>
-                                </div>
-
-                                {/* Alert Card Box */}
-                                {m.card && (
-                                  <div className="bg-[#22313F] border border-[#2B3E50] rounded-xl p-3 space-y-2.5 shadow-md text-left">
-                                    <div className="flex items-center justify-between border-b border-[#2C3B4B] pb-1.5 leading-none">
-                                      <span className="font-black text-[12px] text-white flex items-center gap-1">
-                                        {m.card.type === 'direct' ? '🔔' : '📢'} {m.card.type === 'direct' ? '신규 직접선택 상담 요청' : '참여형 상담 오픈'}
-                                      </span>
-                                      <span className="text-[#86959E] text-[10px]">{m.time}</span>
-                                    </div>
-
-                                    <div className="space-y-1 text-[12px] leading-relaxed text-[#86959E]">
-                                      <div>• <strong className="text-slate-500">수신 유형:</strong> {m.card.type === 'direct' ? '1:1 다이렉트 지정' : '선착순 오픈 배정'}</div>
-                                      <div>• <strong className="text-slate-500">관할 지역:</strong> {m.card.region} 법원 관할</div>
-                                      <div>• <strong className="text-slate-500">채무 구간:</strong> {m.card.debt}</div>
-                                      <div>• <strong className="text-slate-500">소득 구간:</strong> {m.card.income}</div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-1">
-                                      {m.card.tags.map(t => (
-                                        <span key={t} className="bg-brand/15 text-brand text-[10px] px-1.5 py-0.5 rounded font-bold">{t}</span>
-                                      ))}
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="pt-2 border-t border-[#2C3B4B] flex flex-col gap-1.5">
-                                      {m.card.assignedLawyer ? (
-                                        <div className="w-full py-2 bg-emerald-950/40 text-emerald-400 text-center rounded-lg border border-emerald-500/20 text-[11px] font-extrabold flex items-center justify-center gap-1 select-none">
-                                          <Check className="w-3 h-3" />
-                                          <span>{m.card.assignedLawyer} 수임 배정 완료</span>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          <button 
-                                            type="button"
-                                            onClick={() => handleTgAssign(m.id, m.card!.reqId)}
-                                            className="w-full py-2 bg-brand hover:bg-brand-hover text-white text-[11px] font-extrabold rounded-lg transition-colors flex items-center justify-center gap-1 select-none cursor-pointer"
-                                          >
-                                            🙋 내가 즉시 담당자로 배정
-                                          </button>
-                                          <div className="grid grid-cols-2 gap-1">
-                                            <button 
-                                              type="button"
-                                              onClick={() => {
-                                                setActiveChatReqId(m.card!.reqId);
-                                                setActiveTab('client-crm');
-                                                toast.info('플랫폼의 고객관리 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
-                                              }}
-                                              className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
-                                            >
-                                              💻 CRM 상세보기
-                                            </button>
-                                            <button 
-                                              type="button"
-                                              onClick={() => toast.info('30분 후 해당 채무자의 상담 응답 미결 상태를 텔레그램 그룹방에 다시 리마인드합니다.')}
-                                              className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
-                                            >
-                                              ⏰ 30분 후 리마인드
-                                            </button>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-
-                                  </div>
-                                )}
-
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Telegram Bottom Bar */}
-                      <div className="bg-[#22313F] px-3 py-2.5 flex items-center gap-2 border-t border-[#141E28] select-none">
-                        <div className="flex-1 bg-[#182533] border border-[#2D3E50] rounded-full px-3 py-1.5 text-[12px] text-[#86959E]">메시지 입력...</div>
-                        <div className="w-7 h-7 rounded-full bg-brand/20 flex items-center justify-center">
-                          <svg className="w-3.5 h-3.5 text-brand" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                        </div>
-                      </div>
-
-                      {/* Privacy notice */}
-                      <div className="bg-[#182533] px-3 py-1.5 text-[10px] text-[#86959E]/60 text-center font-medium">
-                        🔒 프라이버시 모드 · 봇은 명령어 액션만 수신
-                      </div>
-
-                      {/* Home Indicator Bar */}
-                      <div className="flex justify-center py-2 bg-[#182533]">
-                        <div className="w-[100px] h-[4px] bg-white/20 rounded-full"></div>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+              {/* 텔레그램 시뮬레이터 화면 삭제 (10-24 결정: 알선 오해 문구 '선착순 오픈 배정' 등 포함) */}
 
 
             </div>
@@ -4710,7 +4018,7 @@ export default function LawyerRole({
 
             {settingsSub === 'calc-rules' && (
               <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm">
-                <RehabSettingsPanel mode="lawyer" />
+                <RehabSettingsPanel mode="lawyer" officeId={officeCtx.office?.officeId} />
               </div>
             )}
 

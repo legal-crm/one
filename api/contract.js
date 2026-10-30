@@ -277,7 +277,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
     const body = req.body || {};
     const { contractId, remoteSignToken, stage } = body;
-    if (!contractId || !remoteSignToken || !['identity', 'signature'].includes(stage)) {
+    if (!contractId || !remoteSignToken || !['identity', 'signature', 'offline_request'].includes(stage)) {
       return res.status(400).json({ ok: false, error: '요청 형식이 올바르지 않습니다.' });
     }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -309,6 +309,23 @@ export default async function handler(req, res) {
     const now = new Date().toISOString();
     const ua = String(req.headers['user-agent'] || '').slice(0, 200);
     const audit = Array.isArray(row.audit_trail) ? row.audit_trail : [];
+
+    // stage='offline_request': 본인인증이 어려운 의뢰인의 방문·우편 체결 전환 요청을 감사 기록으로만 남긴다
+    // (이전: 브라우저가 익명 권한으로 계약서 행 전체를 upsert — 익명 전체 쓰기 정책 삭제로 서버 경로로 옮김)
+    if (stage === 'offline_request') {
+      const method = body.method === 'postal' ? 'postal' : body.method === 'in_person' ? 'in_person' : null;
+      const detail = typeof body.detail === 'string' ? body.detail.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 500) : '';
+      if (!method || !detail) return res.status(400).json({ ok: false, error: '요청 내용을 확인해 주세요.' });
+      const label = method === 'in_person' ? '방문 체결' : '우편 등기 계약';
+      const patch = {
+        updated_at: now,
+        audit_trail: [...audit, { action: `의뢰인이 휴대폰 본인인증 곤란으로 [${label}] 전환을 요청함 - ${detail}`, timestamp: now, actor: 'client', ip, userAgent: ua }],
+      };
+      const { data: updated, error: upErr } = await supabase
+        .from('electronic_contracts').update(patch).eq('id', contractId).select('*').maybeSingle();
+      if (upErr || !updated) return res.status(500).json({ ok: false, error: '요청을 저장하지 못했습니다.' });
+      return res.status(200).json({ ok: true, contract: updated });
+    }
 
     if (stage === 'identity') {
       const secret = process.env.PORTONE_API_SECRET;

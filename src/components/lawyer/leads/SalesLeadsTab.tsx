@@ -12,7 +12,8 @@ import { LEAD_STATUS_CONFIG } from '../../../types/leadTypes';
 import type { User, StaffMember, ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   loadSalesLeads, saveSalesLeads, saveSalesLead, deleteSalesLead, 
-  bulkInsertLeads, logLeadCall, extractBriefingData, formatPhone 
+  bulkInsertLeads, logLeadCall, extractBriefingData, formatPhone,
+  subscribeSalesLeads, syncSalesLeadsFromServer, getSalesLeadSyncState
 } from '../../../services/leadService';
 import { loadInboundPaths } from '../../../services/settingsService';
 import { sendQuickSmsOrCopy } from '../../../services/communicationService';
@@ -56,6 +57,16 @@ export default function SalesLeadsTab({
 }: SalesLeadsTabProps) {
   const dialog = useDialog();
   const [leads, setLeads] = useState<SalesLead[]>(() => loadSalesLeads());
+  // 리드 원본은 서버(sales_leads). 탭을 열 때 다시 읽고, 서버 값이 바뀌면 목록을 갈아 끼운다
+  const [syncState, setSyncState] = useState(() => getSalesLeadSyncState());
+  useEffect(() => {
+    const unsub = subscribeSalesLeads(() => {
+      setLeads(loadSalesLeads());
+      setSyncState(getSalesLeadSyncState());
+    });
+    void syncSalesLeadsFromServer();
+    return unsub;
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<SalesLeadTabStatus>('all');
   const [selectedPath, setSelectedPath] = useState<string>('all');
@@ -215,6 +226,15 @@ export default function SalesLeadsTab({
 
   return (
     <div className="space-y-5 animate-fadeIn pb-16">
+      {!syncState.loaded && (
+        <div className="h-16 rounded-2xl bg-slate-100 animate-pulse" aria-busy="true" aria-label="영업 DB 불러오는 중" />
+      )}
+      {syncState.error && (
+        <div role="alert" className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-sm text-rose-800">
+          <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{syncState.error}</span>
+          <button onClick={() => void syncSalesLeadsFromServer()} className="px-3 py-2 rounded-xl bg-white border border-rose-300 font-bold whitespace-nowrap cursor-pointer active:scale-[0.98]">다시 불러오기</button>
+        </div>
+      )}
       {/* ── 1. 헤더: 타이틀 + 주요 액션 버튼 (신규 등록, 엑셀 업로드, 설정) ── */}
       <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

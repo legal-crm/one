@@ -180,7 +180,7 @@ export const filterAndSanitizeMessagesForLawyer = (
       }
 
       // (3) 전담 선임 안내 — 선임된 변호사에게만 (이전: '변호사님' 규칙에 걸리지 않아 대화 중인 모든 변호사에게 보였다)
-      if (plain.includes('의뢰인이 귀하를 전담 변호사로 선임')) {
+      if (/의뢰인이 귀하를 (전담|담당) 변호사로 선임/.test(plain)) {
         if (!lawyer.id || request?.selectedLawyerId !== lawyer.id) continue;
         pushOnce(m, plain);
         continue;
@@ -434,7 +434,7 @@ export function classifySystemText(text: string | undefined): SystemTone {
   if (t.includes('다른 변호사를 전담으로 선임')) return 'neutral';
   if (t.includes('취소')) return 'neutral';
   if (t.includes('전화상담을 요청')) return 'attention';
-  if (/수락|전담 변호사로 선임|서명.{0,6}완료|계약.{0,6}(체결|완료)/.test(t)) return 'success';
+  if (/수락|(전담|담당) 변호사로 선임|서명.{0,6}완료|계약.{0,6}(체결|완료)/.test(t)) return 'success';
   return 'neutral';
 }
 

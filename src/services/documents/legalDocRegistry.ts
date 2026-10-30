@@ -431,14 +431,14 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%ED%8C%8C%EC%82%B0%EC%A4%91%EC%A7%80%EA%B8%88%EC%A7%80%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
     officialSourceNote: '면제재산 결정신청서 [개인파산/면책] 준용',
     priorityLevel: 'HIGH',
-    defaultPurpose: '신청인에 대한 파산선고가 있을 때까지 채권자들의 강제집행을 중지·금지하고, 신청인 소유 주택임차보증금 중 5,500만 원(또는 6개월 생계비 1,110만 원)을 파산재단에서 면제한다. 라는 결정을 구합니다.',
+    defaultPurpose: '신청인에 대한 파산선고가 있을 때까지 채권자들의 강제집행을 중지·금지하고, 신청인 소유 주택임차보증금 중 5,500만 원(또는 6개월 생계비 1,558만 원(2026년))을 파산재단에서 면제한다. 라는 결정을 구합니다.',
     defaultReasonTemplate: '1. 신청인은 귀원에 파산 및 면책을 동시 신청한 상태입니다.\n2. 채권자들의 급여 및 살림살이 압류를 중지시켜 생계를 보호하고, 법률상 압류금지 범위 내의 필수 임차보증금 및 생계비에 대해 면제재산 결정을 구합니다.',
     defaultEvidenceList: [
       '1. 파산신청 접수증명원 1통',
       '2. 임대차계약서 사본 1통',
       '3. 소송위임장 1통'
 ],
-    description: '파산선고 전 집행중지와 1,110만 원 면제재산 지정을 동시 신청'
+    description: '파산선고 전 집행중지와 1,558만 원(2026년) 면제재산 지정을 동시 신청'
   },
   {
     docCode: '133016',
@@ -567,7 +567,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0%20%EA%B2%B0%EC%A0%95%EC%8B%A0%EC%B2%AD%EC%84%9C(D5109).hwpx',
     officialSourceNote: '대법원 전산양식 D5109 (면제재산 결정신청서)',
     priorityLevel: 'HIGH',
-    description: '주택임차보증금(서울 5,500만 원 등) 또는 6개월 생계비(1,110만 원) 청산가치 제외 신청'
+    description: '주택임차보증금(서울 5,500만 원 등) 또는 6개월 생계비(1,558만 원(2026년)) 청산가치 제외 신청'
   },
   {
     docCode: '121030',
@@ -2477,7 +2477,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0%20%EA%B2%B0%EC%A0%95%EC%8B%A0%EC%B2%AD%EC%84%9C.hwpx',
     officialSourceNote: '대법원 면제재산 결정신청서 [개인파산/면책]',
     priorityLevel: 'HIGH',
-    description: '파산선고 전 주택임차보증금 및 6개월간 생계비(최대 1,110만 원)에 대해 파산재단 면제를 구하는 공식 신청서'
+    description: '파산선고 전 주택임차보증금 및 6개월간 생계비(2026년 1,558만 원)에 대해 파산재단 면제를 구하는 공식 신청서'
   }
 
 ];

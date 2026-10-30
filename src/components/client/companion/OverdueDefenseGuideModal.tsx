@@ -542,7 +542,7 @@ function OverdueDefenseGuideModalInner({
         {/* 하단 푸터 액션바 */}
         <div className="p-4 md:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            {caseData.assignedLawyerName ? `${caseData.assignedLawyerName} 전담 배정` : '담당 변호사 미배정'}
+            {caseData.assignedLawyerName ? `담당 변호사 ${caseData.assignedLawyerName}` : '담당 변호사 정보 없음'}
           </div>
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button

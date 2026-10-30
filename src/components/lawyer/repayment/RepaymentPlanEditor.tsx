@@ -2361,8 +2361,8 @@ export default function RepaymentPlanEditor({
                           onChange={(e) => handleUpdateAsset(a.id, { category: e.target.value as AssetCategory })}
                           className="w-full px-2 py-1.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
                         >
-                          <option value="DEPOSIT">예금/적금 (185만 공제)</option>
-                          <option value="INSURANCE">보험환급금 (150만 공제)</option>
+                          <option value="DEPOSIT">예금/적금 (250만 공제)</option>
+                          <option value="INSURANCE">보험환급금 (합산 250만 공제)</option>
                           <option value="HOUSING_DEPOSIT">주거 임차보증금</option>
                           <option value="CAR">자동차</option>
                           <option value="REAL_ESTATE">부동산</option>
@@ -2463,13 +2463,13 @@ export default function RepaymentPlanEditor({
               <div className="space-y-1">
                 <span className="font-bold text-slate-900 text-xs">💰 예금 압류금지 공제</span>
                 <p className="text-xs text-slate-500 leading-snug">
-                  민사집행법 제246조에 따라 금융기관별 개인 예금 총 185만 원까지 공제
+                  민사집행법 제246조에 따라 금융기관별 개인 예금 총 250만 원까지 공제
                 </p>
               </div>
               <div className="space-y-1">
                 <span className="font-bold text-slate-900 text-xs">🛡️ 보장성보험 환급금 공제</span>
                 <p className="text-xs text-slate-500 leading-snug">
-                  보장성 보험 해약환급금 중 150만 원 한도 내 면제재산 자동 공제
+                  보장성 보험 해약·만기환급금 합산 250만 원 한도 내 면제재산 자동 공제
                 </p>
               </div>
               <div className="space-y-1">

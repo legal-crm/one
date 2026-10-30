@@ -95,24 +95,20 @@ export const ProposalHeroCard: React.FC<ProposalHeroCardProps> = ({
 
         {/* 3대 핵심 수치 그리드 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {/* 1. 예상 감면율 */}
+          {/* 1. 총 변제액 (예상) — 감면율(%)은 보여 주지 않는다 (RP-Q1) */}
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-xs space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
                 <TrendingDown className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-                예상 원금 감면율
+                총 변제액
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">예상치</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
-              {proposal.reductionRate}%
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white pt-0.5">
+              {(Number(proposal.monthlyPayment) || 0) * (Number(proposal.duration) || 36)}만원
             </div>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              {proposal.totalReduction > 0 ? (
-                <>원금 중 약 <strong>{proposal.totalReduction}만원</strong> 감면 예상</>
-              ) : (
-                <>총 채무 {totalDebtManWon}만원 기준 시뮬레이션</>
-              )}
+              총 채무 {totalDebtManWon}만원 기준, 변호사 검토 예상치
             </p>
           </div>
 

@@ -10,6 +10,7 @@ import type {
   RepaymentAsset 
 } from '../repayment/repaymentTypes';
 import { getAuthHeaders } from '../../supabaseClient';
+import { DEPOSIT_EXEMPTION_KRW } from '../repayment/repaymentConstants2026';
 
 export type AuthProviderType = 'kakao' | 'pass' | 'toss';
 
@@ -284,13 +285,13 @@ export function convertDiscoveryToDebtItems(
 
 /**
  * 발굴된 계좌 잔액 합산액을 변제계획안 청산가치 예금 자산(RepaymentAsset)으로 변환
- * (법정 압류금지 최저한도 185만 원 자동 공제)
+ * (법정 압류금지 최저한도 250만 원 자동 공제)
  */
 export function convertDiscoveryToDepositAsset(
   bankAccounts: BankAccountItem[]
 ): RepaymentAsset {
   const totalBalance = bankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const STATUTORY_EXEMPT_DEPOSIT = 1850000; // 민사집행법 및 채무자회생법상 압류금지 예금
+  const STATUTORY_EXEMPT_DEPOSIT = DEPOSIT_EXEMPTION_KRW; // 민사집행법 시행령 압류금지 현금·예금 (단일 출처)
   const liquidation = Math.max(0, totalBalance - STATUTORY_EXEMPT_DEPOSIT);
 
   const bankSummaryNames = bankAccounts
@@ -306,6 +307,6 @@ export function convertDiscoveryToDepositAsset(
     encumbrance: 0,
     statutoryDeduction: STATUTORY_EXEMPT_DEPOSIT,
     liquidationValue: liquidation,
-    note: `어카운트인포 실시간 조회 합산: ${bankSummaryNames} (법정공제 185만 원 적용)`
+    note: `어카운트인포 실시간 조회 합산: ${bankSummaryNames} (법정공제 250만 원 적용)`
   };
 }

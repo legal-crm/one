@@ -269,7 +269,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
             </div>
           </div>
           <div className="bg-gradient-to-br from-[#1E3A5F]/10 to-[#1E3A5F]/20 rounded-xl p-2.5 border border-[#1E3A5F]/30">
-            <div className="text-xs text-[#1E3A5F] font-bold mb-0.5">예상 탕감률</div>
+            <div className="text-xs text-[#1E3A5F] font-bold mb-0.5">감면 비율(참고)</div>
             <div className="text-base font-extrabold text-[#1E3A5F] font-mono tracking-tight">
               약 {reductionRate}%
             </div>
@@ -281,7 +281,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
           {isYouthSpecial && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
               <Sparkles className="w-3 h-3 text-emerald-600" />
-              만 29세 이하 청년 24개월 특례
+              만 30세 미만 3년 미만 단축 검토
             </span>
           )}
           {specialCondLabel && (

@@ -51,7 +51,7 @@ export interface IncomeCalculationMonth {
   note?: string;                // 명절상여금, 야간수당 등 특이사항
 }
 
-// (5) 보장성 보험 해약환급금 및 150만 원 공제 소명표
+// (5) 보장성 보험 해약환급금 및 압류금지 공제(합산 250만 원) 소명표
 export interface InsuranceSurrenderItem {
   id: string;
   insurerName: string;          // 보험사명

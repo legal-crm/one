@@ -62,7 +62,7 @@ export const DEFAULT_OPINION_TEMPLATES: OpinionTemplate[] = [
   },
   {
     id: 'tpl-youth-special',
-    title: '청년 24개월 단축 특례형',
+    title: '청년 3년 미만 단축 사유형',
     category: 'youth_special',
     content: `의뢰인께서는 청년층(또는 취약계층)으로서 관할 법원의 변제기간 단축 기준 해당 여부를 검토할 수 있습니다.
 

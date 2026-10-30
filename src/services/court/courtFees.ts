@@ -4,8 +4,8 @@
 // ⚠️ 송달 회차는 법원 예납 안내의 일반적인 기준이며, 관할 법원·재판부에 따라 달라질 수 있음.
 // ============================================================
 
-/** 송달료 1회분 (원) — 법원 공지 기준, 변경 시 이 값만 수정 */
-export const DELIVERY_UNIT_FEE_KRW = 5200;
+/** 송달료 1회분 (원) — 2026-07-01 인상분 5,640원 (이전 5,200원). 변경 시 이 값만 수정 */
+export const DELIVERY_UNIT_FEE_KRW = 5640;
 
 /** 개인회생 신청 인지대 (원) */
 export const REHAB_STAMP_FEE_KRW = 30000;
@@ -50,8 +50,9 @@ export function calcCourtFees(input: CourtFeeInput): CourtFeeResult {
     if (input.withProhibition) stampFee += INJUNCTION_STAMP_FEE_KRW;
     if (input.withStay) stampFee += INJUNCTION_STAMP_FEE_KRW;
   } else {
-    // 파산·면책: 기본 8회 + 채권자수 × 6회
-    deliveryRounds = 8 + c * 6;
+    // 파산 (10 + 채권자수 × 4회) + 면책 (10 + 채권자수 × 3회) — 송달료규칙 처리예규 기준(10-29 확인)
+    // (이전: 8 + 채권자수 × 6회 한 줄로 계산해 근거가 없었음)
+    deliveryRounds = (10 + c * 4) + (10 + c * 3);
     stampFee = BANKRUPTCY_STAMP_FEE_KRW;
   }
 

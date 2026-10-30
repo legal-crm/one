@@ -275,12 +275,16 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   
   const defaultOpinion = useMemo(() => {
     if (aiAnalysis) {
-      return `개인회생 진행이 가능한 것으로 분석되었습니다.\n\n현재 월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 산출되며, 예상 변제 기간 ${rehabCalcResult.repaymentMonths}개월 동안 성실히 납부 시 총 채무의 약 ${rehabCalcResult.debtReductionRate}%를 법적으로 면책받으실 수 있습니다.\n\n${courtName ? `${courtName}의 ` : '관할 법원의 '}실무 기준에 맞추어 접수 시 금지명령을 함께 신청하고, 인가 결정까지 절차를 성실히 진행하겠습니다. (결정 여부와 시기는 법원 판단 사항입니다)`;
+      return `입력하신 정보 기준으로 개인회생 신청을 검토할 수 있는 사안입니다.\n\n현재 월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 계산되며, ${rehabCalcResult.repaymentMonths}개월 동안 월 ${formatCurrency(rehabCalcResult.monthlyPayment)}씩 변제하는 계획을 검토했습니다. 서류 확인 후 변제계획안을 확정하겠습니다.\n\n${courtName ? `${courtName}의 ` : '관할 법원의 '}실무 기준에 맞추어 접수 시 금지명령을 함께 신청하고, 인가 결정까지 절차를 성실히 진행하겠습니다. (결정 여부와 시기는 법원 판단 사항입니다)`;
     }
     return `입력하신 정보 기준으로 개인회생 신청을 검토할 수 있는 사안입니다.\n\n의뢰인님의 소득과 생계비를 종합 고려한 예상 월 변제금은 ${formatCurrency(rehabCalcResult.monthlyPayment)}이며, 서류 확인 후 변제계획안을 확정하겠습니다.\n\n접수 시 금지명령을 함께 신청하여 채권 추심에 대응하겠습니다. (인용 여부와 시기는 법원 판단 사항입니다)`;
   }, [aiAnalysis, rehabCalcResult, courtName]);
 
   const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? defaultOpinion);
+  // 변호사가 보고서·플랜에서 직접 정한 월 변제금·기간 (없으면 계산값)
+  const [planOverride, setPlanOverride] = useState<{ monthlyPayment: number; months: number } | null>(
+    initialDraft?.planOverride ?? null
+  );
 
   // Section 5: Client Q&A State
   const initialQuestions = useMemo(() => {
@@ -339,10 +343,16 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       const { monthlyPayment, months, reductionRate, name, opinion, specialNotes: incomingNotes } = e.detail || {};
       if (!monthlyPayment && !opinion) return;
 
+      const mp = Number(monthlyPayment);
+      const mo = Number(months);
+      if (Number.isFinite(mp) && mp > 0 && Number.isFinite(mo) && mo > 0) {
+        setPlanOverride({ monthlyPayment: Math.round(mp), months: Math.round(mo) });
+      }
+
       if (opinion) {
         setLawyerOpinion(opinion);
       } else if (monthlyPayment) {
-        const planSummary = `\n[적용 플랜: ${name || 'AI 추천안'}] 월 변제금 ${formatCurrency(monthlyPayment)}, 변제기간 ${months}개월 (예상 탕감률 약 ${reductionRate}%)`;
+        const planSummary = `\n[적용 플랜: ${name || '기본안'}] 월 변제금 ${formatCurrency(monthlyPayment)}, 변제기간 ${months}개월`;
         setLawyerOpinion(prev => {
           if (prev.includes(planSummary.trim())) return prev;
           return prev + '\n' + planSummary;
@@ -366,21 +376,25 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       onDraftChange({
         totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo,
         lawyerOpinion, specialNotes, clientAnswers,
-        includeFinancialAnalysis, includeRiskReport, includeCourtNotes,
+        includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride,
       });
     }
-  }, [totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes, onDraftChange]);
+  }, [totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride, onDraftChange]);
 
   // Derived Summary Values
   const totalDebt = rehabUserInput.totalDebt || 0;
-  const totalRepayment = rehabCalcResult.monthlyPayment * rehabCalcResult.repaymentMonths;
+  const effMonthlyPayment = planOverride?.monthlyPayment ?? rehabCalcResult.monthlyPayment;
+  const effRepaymentMonths = planOverride?.months ?? rehabCalcResult.repaymentMonths;
+  const totalRepayment = effMonthlyPayment * effRepaymentMonths;
   const estimatedReduction = Math.max(0, totalDebt - totalRepayment);
+  // 내부 참고값 (의뢰인 화면에는 표시하지 않음)
+  const effReductionRate = totalDebt > 0 ? Math.min(100, Math.max(0, Math.round((estimatedReduction / totalDebt) * 100))) : 0;
 
   const getProposalData = (): ProposalData => ({
     diagnosis: {
-      monthlyPayment: rehabCalcResult.monthlyPayment,
-      repaymentMonths: rehabCalcResult.repaymentMonths,
-      debtReductionRate: rehabCalcResult.debtReductionRate,
+      monthlyPayment: effMonthlyPayment,
+      repaymentMonths: effRepaymentMonths,
+      debtReductionRate: effReductionRate,
       totalDebt: totalDebt,
       totalRepayment: totalRepayment,
       estimatedReduction: estimatedReduction,
@@ -580,9 +594,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               },
               clientName,
               diagnosis: {
-                monthlyPayment: rehabCalcResult.monthlyPayment,
-                repaymentMonths: rehabCalcResult.repaymentMonths,
-                debtReductionRate: rehabCalcResult.debtReductionRate,
+                monthlyPayment: effMonthlyPayment,
+                repaymentMonths: effRepaymentMonths,
+                debtReductionRate: effReductionRate,
                 totalDebt,
                 totalRepayment,
                 estimatedReduction,
@@ -669,19 +683,28 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 text-xs">
             <div>
-              <span className="text-slate-400 block text-xs">진단 월 변제금</span>
-              <span className="font-mono font-extrabold text-slate-900 text-sm">{formatCurrency(rehabCalcResult.monthlyPayment)}</span>
+              <span className="text-slate-400 block text-xs">{planOverride ? '발송 월 변제금(변호사 수정)' : '계산 월 변제금'}</span>
+              <span className="font-mono font-extrabold text-slate-900 text-sm">{formatCurrency(effMonthlyPayment)}</span>
             </div>
             <div className="w-px h-6 bg-slate-200" />
             <div>
               <span className="text-slate-400 block text-xs">변제 기간</span>
-              <span className="font-mono font-bold text-slate-800 text-sm">{rehabCalcResult.repaymentMonths}개월</span>
+              <span className="font-mono font-bold text-slate-800 text-sm">{effRepaymentMonths}개월</span>
             </div>
             <div className="w-px h-6 bg-slate-200" />
             <div>
-              <span className="text-slate-400 block text-xs">예상 탕감률</span>
-              <span className="font-mono font-extrabold text-[#1E3A5F] text-sm">약 {rehabCalcResult.debtReductionRate}%</span>
+              <span className="text-slate-400 block text-xs">감면 비율(참고)</span>
+              <span className="font-mono font-extrabold text-[#1E3A5F] text-sm">약 {effReductionRate}%</span>
             </div>
+            {planOverride && (
+              <button
+                type="button"
+                onClick={() => setPlanOverride(null)}
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 underline underline-offset-2 whitespace-nowrap cursor-pointer"
+              >
+                계산값으로 되돌리기
+              </button>
+            )}
           </div>
 
           <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${

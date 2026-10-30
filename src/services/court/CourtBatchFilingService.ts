@@ -224,7 +224,7 @@ export const BANKRUPTCY_10_STANDARD_ORDER: Omit<FilingDocumentSlot, 'file' | 'fi
   { order: 3, code: 'B03', title: '03. 진술서 소명자료 (질병 진단서, 폐업증명서 등)', category: 'EVIDENCE', isRequired: false },
   { order: 4, code: 'B04', title: '04. 채권자목록 (비면책채권 구분 표기)', category: 'CORE_FORM', isRequired: true },
   { order: 5, code: 'B05', title: '05. 채권자목록 소명자료 (부채증명서 원본)', category: 'EVIDENCE', isRequired: true },
-  { order: 6, code: 'B06', title: '06. 재산목록 (1,110만 원 생계비 및 소액보증금 공제 반영)', category: 'CORE_FORM', isRequired: true },
+  { order: 6, code: 'B06', title: '06. 재산목록 (1,558만 원(2026년) 생계비 및 소액보증금 공제 반영)', category: 'CORE_FORM', isRequired: true },
   { order: 7, code: 'B07', title: '07. 현재의 생활상황표 (동거가족 및 필수 생활비)', category: 'CORE_FORM', isRequired: true },
   { order: 8, code: 'B08', title: '08. 수입 및 지출에 관한 목록 (가계수지표, 가용소득 0원 입증)', category: 'CORE_FORM', isRequired: true },
   { order: 9, code: 'B09', title: '09. 15개 필수자료제출목록 및 미제출 사유서', category: 'CORE_FORM', isRequired: true },

@@ -21,7 +21,7 @@ import { formatWonKorean, won } from '../ui/money';
 const REGION_KEYS = Object.keys(HOUSING_EXEMPT_DEPOSIT_LIMITS) as RegionType[];
 
 // 급여 압류금지 구간 경계 (단일 출처 상수에서 계산)
-const WAGE_MIN = WAGE_EXEMPTION_MIN_KRW;            // 185만
+const WAGE_MIN = WAGE_EXEMPTION_MIN_KRW;            // 250만
 const WAGE_HALF_FROM = WAGE_EXEMPTION_MIN_KRW * 2;  // 370만
 const WAGE_CAP_FROM = WAGE_EXEMPTION_CAP_BASE_KRW * 2; // 600만
 
@@ -134,7 +134,7 @@ ${housingLines}
               <span className="text-amber-800 font-extrabold">법정 보호</span>
             </span>
             <p className="text-xs text-slate-600">
-              • 사망보험금 1,000만 원 이하 / 보장성보험 해약환급금 {formatWonKorean(EXEMPT_INSURANCE_REFUND_LIMIT)} 이하<br />
+              • 사망보험금 1,500만 원 이하 / 보장성보험 해약·만기환급금 합산 {formatWonKorean(EXEMPT_INSURANCE_REFUND_LIMIT)} 이하<br />
               • 퇴직금: 1/2 압류 금지 / 퇴직연금 수급권: 원칙적으로 압류 금지 (근로자퇴직급여보장법 제7조)
             </p>
           </div>

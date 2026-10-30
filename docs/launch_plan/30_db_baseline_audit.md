@@ -75,3 +75,20 @@
 - 한도 초과 항목은 대시보드 **Organization → Usage**에서 확인 필요(데이터 34MB라 저장 용량보다 데이터 전송량·요청 수 초과 가능성이 큼).
 - 10-25 커밋 `6abe123`(탭을 안 볼 때 폴링 멈춤·Egress 최적화)은 GitHub·운영에 아직 안 올라감 → "배포해" 지시 때 반영. 반영 전 `vite build` 확인.
 - 출시 전 Pro 전환 결정(마스터 기획서)은 유지하고, 그 전까지는 무료 2개 프로젝트(운영·시험)로 진행.
+
+## 6. 보안 점검: 열려 있던 허용 정책 (10-30)
+
+- 운영 DB `pg_policies`에서 조건이 `true`인 허용 정책이 아래 테이블에 남아 있었어요. 허용 정책은 서로 OR로 합쳐지므로 012·008의 엄격한 정책이 사실상 효과가 없었어요.
+
+| 테이블 | 정책 | 대상 | 결과 |
+|:---|:---|:---|:---|
+| `consult_requests` | `allow_all_consult_requests`, `public_select/update/delete_consult_request`, `anon_insert_consult_request` | 누구나(익명 포함) | 모든 상담 요청(이름·전화·재무 정보) 읽기·수정·삭제 가능 |
+| `consult_messages` | `allow_all_consult_messages`, `public_*`, `anon_insert_*` | 누구나 | 모든 상담 메시지 읽기·수정·삭제 가능 |
+| `electronic_contracts` | `allow_anon_all_electronic_contracts` | 익명 | 계약서(주소·서명) 전체 권한 |
+| `alimtok_logs`·`lawyers` | `allow_anon_all_*` | 익명 | 전체 권한 |
+
+- 처리: `20261030000200_security_lockdown.sql`이 모두 삭제하고, 변호사 공개 프로필 읽기(`lawyers_public_select`)만 남겨요. 계약서는 담당 변호사 사무소 구성원(계약 권한)·의뢰인 본인 행만, 공개 요청('open')은 변호사에게 보이지 않게, 사무소 직원은 권한만큼 상담 요청·메시지를 봐요. 앱 경로(의뢰인 본인 행·변호사 뷰와 RPC·원격 서명 서버 API)는 확인했고, 익명 직접 쓰기를 하던 원격 서명 '오프라인 체결 요청'은 `/api/contract`의 `offline_request` 단계로 옮겼어요.
+- 같이 발견: 의뢰인 로그인 때 `migrateAnonymousRequests`가 서버의 `client_id='client-temp'` 행 전체(다른 사람의 익명 요청)를 그 의뢰인 소유로 바꾸려 했어요(허용 정책 때문에 가능했음). 이 기기에서 만든 요청만 옮기도록 고쳤어요.
+- 남은 열린 쓰기: `audit_logs` 익명 INSERT(OP 트랙), `diagnosis_results` 익명 INSERT·로그인 UPDATE(I 트랙).
+- 시험 DB에서 `supabase/tests/office_case_rls_test.sql` 19개 확인 통과. 운영 데이터는 시험 데이터(상담 요청 9건)뿐이라 노출된 실제 개인정보는 확인되지 않았어요.
+- **운영 반영 (10-30, 사용자 확인 "적용하고"):** 반영 전 백업 `D:\mykim_backup\2026-10-30\mykim_full_before_batch1.dump`. `db push`로 `20261030000000`·`000100`·`000200` 적용, 운영·시험 대조 1,418줄 대 1,418줄(차이는 CHECK 4개 표기뿐). 승인된 변호사 1명 → 사무소 1개·대표 1명 자동 생성. 공개 익명 키로 바깥에서 확인: `consult_requests`·`consult_messages`·`electronic_contracts`·`alimtok_logs` 읽기 0행, `cases`·`offices` 401, 상담 요청 INSERT·DELETE 401, `lawyers` 공개 프로필 4행만 읽힘.

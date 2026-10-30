@@ -80,19 +80,23 @@ export function pipelineLockReason(target: PipelineStageNo, g: PipelineGateState
   return '선행 절차가 아직 완료되지 않았습니다.';
 }
 
-/** crmStatus → 표시할 파이프라인 단계 */
+/**
+ * crmStatus → 표시할 파이프라인 단계 (CM-2 세부 단계표와 같은 묶음)
+ * 상태는 '이미 일어난 기록'이므로 그 다음 할 일이 있는 묶음을 보여 준다.
+ * (이전: consulting→2, contracted→2, filed→4, commenced→5 로 한 칸씩 늦어 접수 뒤에도 4단계에 머물렀음)
+ *  - 상담 신청·초기 상담 → 1 상담·제안
+ *  - 계약 체결 → 3 서류 준비 (계약 진행 중은 1에서 계약 위저드로)
+ *  - 서류 준비 → 3, 접수 → 5 보정·개시, 개시결정 이후 → 6 변제·면책
+ */
 export function stageForStatus(status?: string): PipelineStageNo {
   switch (status) {
-    case 'consulting':
     case 'contracted':
-      return 2;
     case 'document':
     case 'documents_pending':
       return 3;
     case 'filed':
-      return 4;
-    case 'commenced':
       return 5;
+    case 'commenced':
     case 'repaying':
     case 'discharged':
       return 6;

@@ -41,7 +41,7 @@ import { fetchPlatformActivity, type PlatformActivityLog } from '../services/pla
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
 import { notifyAdminAdConfirmed } from '../services/notificationService';
-import { loadAdOrders, updateAdOrder, subscribeToAdOrders, syncAdOrdersFromServer } from '../services/adOrderService';
+import { AD_STATUS_LABEL, fetchAdOrders, adminConfirmAdPayment, adminCancelAdOrder, adminSaveAdOrderInvoice, adminRunAdLifecycle, clearLegacyAdOrderCache } from '../services/adOrderService';
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
 import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
@@ -116,36 +116,10 @@ export default function AdminRole({
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing' | 'seo_geo'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
-  const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
+  const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>([]);
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
 
-  // 변호사의 실시간 광고 주문 신청/입금대기 이벤트 감지 및 관리자 토스트 알림
-  useEffect(() => {
-    const unsub = subscribeToAdOrders(
-      (newOrder) => {
-        setAdminAdOrders(loadAdOrders());
-        if (newOrder.status === 'pending') {
-          toast.info(
-            `🔔 [신규 광고 신청] ${newOrder.lawyerName} - ${newOrder.productName} (${newOrder.totalPrice.toLocaleString()}원 / 입금자: ${newOrder.depositorName || newOrder.lawyerName}) 입금 대기 중`,
-            {
-              duration: 8000,
-              action: {
-                label: '입금 확인하기',
-                onClick: () => {
-                  setActiveTab('billing');
-                  setBillingSubTab('adorders');
-                }
-              }
-            }
-          );
-        }
-      },
-      () => {
-        setAdminAdOrders(loadAdOrders());
-      }
-    );
-    return unsub;
-  }, []);
+  // 광고 주문 목록은 서버(ad_orders)가 원본 — 아래 refreshAdOrders가 로그인 뒤·60초마다 읽는다
   // 세금계산서 발행 확인 모달
   const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
   const [invoiceIssuing, setInvoiceIssuing] = useState(false);
@@ -470,16 +444,32 @@ export default function AdminRole({
   }, [isLoggedIn, refreshServerActivity]);
   // [PART 3-4] 광고 주문: 서버(ad_orders) 전체를 불러와 병합 — 다른 기기에서 신청한 주문도 표시
   const [adOrdersServerError, setAdOrdersServerError] = useState<string>('');
+  const knownAdOrderIdsRef = React.useRef<Set<string> | null>(null);
+  const refreshAdOrders = useCallback(async () => {
+    const res = await fetchAdOrders(1000);
+    if (res.ok === false) { setAdOrdersServerError(res.message); return; }
+    setAdOrdersServerError('');
+    // 새로 들어온 입금 대기 주문 알림 (첫 로딩은 알리지 않음)
+    const known = knownAdOrderIdsRef.current;
+    if (known) {
+      res.data.filter(o => !known.has(o.id) && o.status === 'pending').forEach(o => {
+        toast.info(`신규 광고 신청: ${o.lawyerName} · ${o.productName} (${o.totalPrice.toLocaleString()}원, 입금자 ${o.depositorName || '-'})`, {
+          duration: 8000,
+          action: { label: '입금 확인하기', onClick: () => { setActiveTab('billing'); setBillingSubTab('adorders'); } },
+        });
+      });
+    }
+    knownAdOrderIdsRef.current = new Set(res.data.map(o => o.id));
+    setAdminAdOrders(res.data);
+  }, []);
   useEffect(() => {
     if (!isLoggedIn) return;
-    let alive = true;
-    syncAdOrdersFromServer().then(res => {
-      if (!alive) return;
-      setAdminAdOrders(res.orders);
-      setAdOrdersServerError(res.error || '');
-    });
-    return () => { alive = false; };
-  }, [isLoggedIn]);
+    clearLegacyAdOrderCache();
+    // 들어올 때 입금 기한 지난 예약 정리·시작·만료를 한 번 실행 (매일 자동 실행과 같은 함수)
+    void adminRunAdLifecycle().finally(() => { void refreshAdOrders(); });
+    const t = window.setInterval(() => { if (!document.hidden) void refreshAdOrders(); }, 60_000);
+    return () => window.clearInterval(t);
+  }, [isLoggedIn, refreshAdOrders]);
   // [PART 3-6] 의뢰인 1:1 문의: 서버(/api/inquiry admin-list)에서 불러오고 답변도 서버에 저장
   // (이전: 이 브라우저의 시연 문의만 표시, 답변은 화면에만 저장되어 의뢰인에게 전달되지 않았음)
   const [inquiriesFromServer, setInquiriesFromServer] = useState<boolean>(false);
@@ -2564,15 +2554,51 @@ export default function AdminRole({
                               <td className="p-3 text-slate-400">{order.contractMonths}개월</td>
                               <td className="p-3 font-bold text-indigo-400">{order.totalPrice.toLocaleString()}원</td>
                               <td className="p-3 text-slate-300">{order.depositorName || '-'}</td>
-                              <td className="p-3"><span className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
+                              <td className="p-3"><span className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{AD_STATUS_LABEL[order.status] || order.status}</span>{order.startsOn && <span className="block text-[11px] text-slate-500 mt-1 whitespace-nowrap">{order.startsOn} ~ {order.endsOn}</span>}{order.status === 'pending' && order.reservedUntil && <span className="block text-[11px] text-amber-400/80 whitespace-nowrap">기한 {new Date(order.reservedUntil).toLocaleDateString('ko-KR')}</span>}</td>
                               <td className="p-3 text-right">
                                 {order.status === 'pending' && (
-                                  <button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 ml-auto">
-                                    <Receipt className="w-3 h-3" />입금 확인 + 발행
-                                  </button>
-                                )}
-                                {order.status === 'active' && (
                                   <div className="flex items-center gap-2 justify-end">
+                                    <button
+                                      onClick={async () => {
+                                        const reason = await dialog.prompt({ title: '입금 대기 주문 취소', message: '취소 사유를 입력해 주세요. (예: 변호사 요청, 입금 안 됨)', placeholder: '취소 사유' });
+                                        if (!reason || !String(reason).trim()) return;
+                                        const r = await adminCancelAdOrder(order.id, String(reason).trim(), null);
+                                        if (r.ok === false) { toast.error(r.message); return; }
+                                        onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `광고 주문 취소(입금 전): ${order.id}`);
+                                        toast.success('주문을 취소했습니다. 구좌 예약이 풀렸습니다.');
+                                        void refreshAdOrders();
+                                      }}
+                                      className="bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap cursor-pointer"
+                                    >
+                                      주문 취소
+                                    </button>
+                                    <button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 whitespace-nowrap">
+                                      <Receipt className="w-3 h-3" />입금 확인 + 발행
+                                    </button>
+                                  </div>
+                                )}
+                                {(order.status === 'active' || order.status === 'paid') && (
+                                  <div className="flex items-center gap-2 justify-end">
+                                    {!order.taxInvoice && (
+                                      <button
+                                        onClick={async () => {
+                                          const reason = await dialog.prompt({ title: '광고 취소·환불 기록', message: '취소 사유를 입력해 주세요. 노출 시작 전이면 전액, 시작 후면 남은 기간 일할 환불이 원칙입니다.', placeholder: '취소 사유' });
+                                          if (!reason || !reason.trim()) return;
+                                          const amountText = await dialog.prompt({ title: '환불액 (원)', message: `결제 금액 ${order.totalPrice.toLocaleString()}원 중 환불할 금액을 숫자로 입력해 주세요.`, placeholder: '예: 150000' });
+                                          if (amountText === null) return;
+                                          const refund = Number(String(amountText).replace(/[^0-9]/g, ''));
+                                          if (!Number.isFinite(refund)) { toast.error('환불액을 숫자로 입력해 주세요.'); return; }
+                                          const r = await adminCancelAdOrder(order.id, reason.trim(), refund);
+                                          if (r.ok === false) { toast.error(r.message); return; }
+                                          onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `광고 취소·환불 기록: ${order.id} (환불 ${refund.toLocaleString()}원)`);
+                                          toast.success('취소와 환불액을 기록했습니다. 환불 송금은 따로 진행해 주세요.');
+                                          void refreshAdOrders();
+                                        }}
+                                        className="bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap cursor-pointer"
+                                      >
+                                        취소·환불
+                                      </button>
+                                    )}
                                     {order.taxInvoice && !order.modifiedTaxInvoice && (
                                       <button 
                                         onClick={() => { 
@@ -2771,11 +2797,28 @@ export default function AdminRole({
                             onClick={async () => {
                               setInvoiceIssuing(true);
                               const order = invoiceConfirmOrder;
-                              const supplyCost = Math.round(order.totalPrice / 1.1);
-                              const tax = order.totalPrice - supplyCost;
+                              // 공급가·VAT는 주문 때 서버가 정한 값 (이전: 합계÷1.1로 다시 계산)
+                              const supplyCost = order.supplyAmount ?? Math.round(order.totalPrice / 1.1);
+                              const tax = order.vatAmount ?? (order.totalPrice - supplyCost);
                               let invoiceData: any = undefined;
 
-                              // 1. 세금계산서 발행 옵션이 켜져있을 경우
+                              if (confirmIssueTaxInvoice && (!confirmCorpNum.trim() || !confirmCorpName.trim() || !confirmCEOName.trim())) {
+                                setInvoiceResult({ ok: false, message: '공급받는자 사업자번호·상호·대표자명을 입력해 주세요.' });
+                                setInvoiceIssuing(false);
+                                return;
+                              }
+
+                              // 1. 입금 확인 (서버: 상태·노출 기간·구좌 확인·변호사 노출 등급)
+                              const confirmed = await adminConfirmAdPayment(order.id, confirmPaidDate || undefined);
+                              if (confirmed.ok === false) {
+                                setInvoiceResult({ ok: false, message: `입금 확인 실패: ${confirmed.message}` });
+                                setInvoiceIssuing(false);
+                                return;
+                              }
+                              onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `광고 입금 확인: ${order.id} (${order.totalPrice.toLocaleString()}원)`);
+                              notifyAdminAdConfirmed(confirmed.data);
+
+                              // 2. 세금계산서 (선택)
                               if (confirmIssueTaxInvoice) {
                                 if (!confirmCorpNum.trim() || !confirmCorpName.trim() || !confirmCEOName.trim()) {
                                   setInvoiceResult({ ok: false, message: '공급받는자 사업자번호·상호·대표자명을 입력해 주세요.' });
@@ -2806,47 +2849,21 @@ export default function AdminRole({
                                     status: 'issued' as const,
                                   };
                                 } else {
-                                  setInvoiceResult({ ok: false, message: `세금계산서 발행 오류: ${res.error || '실패'}` });
+                                  await refreshAdOrders();
+                                  setInvoiceResult({ ok: false, message: `입금 확인은 저장했지만 세금계산서 발행에 실패했습니다: ${res.error || '실패'}. 세금계산서 탭에서 다시 발행해 주세요.` });
                                   setInvoiceIssuing(false);
                                   return;
                                 }
+                                const savedInvoice = await adminSaveAdOrderInvoice(order.id, { taxInvoice: invoiceData });
+                                if (savedInvoice.ok === false) {
+                                  toast.error(`세금계산서는 발행됐지만 주문에 기록하지 못했습니다: ${savedInvoice.message}`);
+                                }
                               }
 
-                              // 2. 만료 일자 계산 (계약 개월 수)
-                              const now = new Date();
-                              const expDate = new Date();
-                              expDate.setMonth(expDate.getMonth() + order.contractMonths);
-
-                              // 입금일은 관리자가 통장에서 확인한 날짜 (이전: 버튼을 누른 시각을 입금 시각으로 기록)
-                              const paidAtIso = confirmPaidDate ? new Date(`${confirmPaidDate}T12:00:00`).toISOString() : now.toISOString();
-                              const updatedOrder: AdOrder = {
-                                ...order,
-                                status: 'active',
-                                paidAt: paidAtIso,
-                                activatedAt: now.toISOString(),
-                                expiresAt: expDate.toISOString(),
-                                taxInvoice: invoiceData,
-                                buyerCorpNum: confirmCorpNum || order.buyerCorpNum,
-                                buyerCorpName: confirmCorpName || order.buyerCorpName,
-                                buyerCEOName: confirmCEOName || order.buyerCEOName,
-                                buyerEmail: confirmEmail || order.buyerEmail,
-                              };
-
-                              // 3. 주문 목록 업데이트 (서버 반영 결과 확인)
-                              const saved = await updateAdOrder(updatedOrder);
-                              setAdminAdOrders(loadAdOrders());
-                              onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `광고 입금 확인·활성화: ${order.id} (${order.totalPrice.toLocaleString()}원)`);
-
-                              // 4. 관리자 알림 발송 (서버 관리자 봇)
-                              notifyAdminAdConfirmed(updatedOrder);
-
-                              if (saved.serverOk) {
-                                toast.success(`[${order.lawyerName}] 입금 확인을 저장했습니다.`);
-                                setInvoiceResult({ ok: true, message: '입금 확인과 주문 활성화를 저장했습니다. 공개 화면 노출은 광고 배너에서 따로 확인하세요.' });
-                              } else {
-                                toast.warning(`이 브라우저에만 저장했습니다: ${saved.error || '서버 반영 실패'}`);
-                                setInvoiceResult({ ok: true, message: `이 브라우저에만 저장했습니다. 서버 반영 실패: ${saved.error || ''}` });
-                              }
+                              await refreshAdOrders();
+                              const startNote = confirmed.data.status === 'active' ? '오늘부터 노출됩니다.' : `${confirmed.data.startsOn}부터 노출됩니다.`;
+                              toast.success(`[${order.lawyerName}] 입금 확인을 저장했습니다. ${startNote}`);
+                              setInvoiceResult({ ok: true, message: `입금 확인을 저장했습니다. 노출 기간 ${confirmed.data.startsOn} ~ ${confirmed.data.endsOn}. ${startNote}` });
                               setTimeout(() => {
                                 setInvoiceConfirmOrder(null);
                                 setInvoiceIssuing(false);
@@ -3005,6 +3022,7 @@ export default function AdminRole({
                               // 당초 승인번호·사업자번호가 없으면 수정발행 불가 (이전: 'MOCK-…'·'0000000000'으로 요청)
                               if (!order.taxInvoice?.ntsConfirmNum || !order.buyerCorpNum) {
                                 setModifyResult({ ok: false, message: '당초 국세청승인번호 또는 공급받는자 사업자번호가 없어 수정세금계산서를 발행할 수 없습니다.' });
+                                setIsModifying(false);
                                 return;
                               }
                               const res = await issueModifyTaxInvoice({
@@ -3023,10 +3041,7 @@ export default function AdminRole({
                               });
 
                               if (res.ok) {
-                                const cancelledOrder: AdOrder = {
-                                  ...order,
-                                  status: 'cancelled' as const,
-                                  modifiedTaxInvoice: {
+                                const modifiedInvoice: AdOrder['modifiedTaxInvoice'] = {
                                     itemKey: res.data?.itemKey || '', // 이전: 가짜 관리키 `mod-${Date.now()}` (팝빌 관리키와 불일치)
                                     ntsConfirmNum: res.data?.ntsConfirmNum || '',
                                     modifyCode,
@@ -3036,11 +3051,15 @@ export default function AdminRole({
                                     tax: -Math.abs(targetTax),
                                     totalAmount: -Math.abs(targetTotal),
                                     status: 'issued',
-                                  }
                                 };
-                                const cancelSaved = await updateAdOrder(cancelledOrder);
-                                setAdminAdOrders(loadAdOrders());
-                                if (!cancelSaved.serverOk) toast.warning(`취소 상태는 이 브라우저에만 저장했습니다: ${cancelSaved.error || '서버 반영 실패'}`);
+                                const invSaved = await adminSaveAdOrderInvoice(order.id, { modifiedTaxInvoice: modifiedInvoice });
+                                if (invSaved.ok === false) toast.error(`수정세금계산서 기록 저장 실패: ${invSaved.message}`);
+                                // 계약 해제(전액)면 주문 취소, 공급가액 변동(일부 환불)이면 노출은 유지하고 환불액만 기록하지 않는다
+                                if (modifyCode === 4 && ['pending', 'paid', 'active'].includes(order.status)) {
+                                  const cancelled = await adminCancelAdOrder(order.id, modifyReason || '계약의 해제', targetTotal);
+                                  if (cancelled.ok === false) toast.error(`주문 취소 기록 실패: ${cancelled.message}`);
+                                }
+                                await refreshAdOrders();
                                 // 발행 ≠ 국세청 전송 완료 (전송은 팝빌이 이후 처리)
                                 setModifyResult({ ok: true, message: '✅ 수정세금계산서가 발행되었습니다. 국세청 전송 상태는 팝빌에서 확인하세요.' });
                                 toast.success('광고 취소 및 수정세금계산서 발행이 완료되었습니다.');
@@ -3574,7 +3593,7 @@ export default function AdminRole({
                             setIsCreateMode(false);
                             setEditingArticle(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer whitespace-nowrap active:scale-[0.98]"
                         >
                           취소하기
                         </button>
@@ -3789,16 +3808,10 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">대표 집필 변호사</label>
-                          <select 
-                            value={qaLawyerId} 
-                            onChange={(e) => setQaLawyerId(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          >
-                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
-                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
-                            ))}
-                          </select>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">답변인</label>
+                          <p className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-300 text-sm leading-relaxed">
+                            마이김변 편집팀 (일반 정보). 변호사 답변은 변호사가 직접 등록하며, 관리자가 변호사 이름으로 쓰지 않습니다.
+                          </p>
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
@@ -3813,14 +3826,20 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">변호사 답변 상세 (Answer)</label>
-                          <textarea 
-                            rows={6}
-                            placeholder="변호사의 친절하고 논리정연한 법률 검토 답변을 입력하세요."
-                            value={qaAnswer}
-                            onChange={(e) => setQaAnswer(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed"
-                          />
+                          <label className="text-sm text-slate-450 block uppercase font-bold">편집팀 일반 정보 답변 (선택)</label>
+                          {editingQa?.lawyerId ? (
+                            <p className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-400 text-sm leading-relaxed">
+                              변호사({editingQa.lawyerName})가 단 답변은 관리자가 고칠 수 없습니다. 문제가 있으면 질문을 내림 처리해 주세요.
+                            </p>
+                          ) : (
+                            <textarea 
+                              rows={6}
+                              placeholder="비워 두면 변호사 답변을 기다리는 질문으로 게시됩니다. 쓰는 경우 제도 일반 정보만 적고 결과를 단정하지 마세요."
+                              value={qaAnswer}
+                              onChange={(e) => setQaAnswer(e.target.value)}
+                              className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed"
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -3836,47 +3855,97 @@ export default function AdminRole({
                         </button>
                         <button 
                           onClick={() => {
-                            if (!qaQuestion.trim() || !qaAnswer.trim() || !qaAuthor.trim()) {
-                              toast.error('질문, 답변 및 의뢰인 작성자 가명을 모두 기입해 주세요.');
+                            if (!qaQuestion.trim() || !qaAuthor.trim()) {
+                              toast.error('질문과 작성자 가명을 입력해 주세요.');
                               return;
                             }
-                            const targetLawyer = lawyers.find(l => l.id === qaLawyerId) || lawyers[0];
+                            const editorAnswer = qaAnswer.trim();
+                            const editorFields = editorAnswer
+                              ? { answer: editorAnswer, lawyerName: '마이김변 편집팀', lawyerAvatar: '', lawyerId: undefined, status: 'answered' as const }
+                              : { answer: '', lawyerName: '', lawyerAvatar: '', lawyerId: undefined, status: 'waiting' as const };
                             if (isQaCreateMode) {
                               const newQa: ClientQA = {
                                 id: `qa-${Date.now()}`,
                                 category: qaCategory,
                                 question: qaQuestion.trim(),
                                 author: qaAuthor.trim(),
-                                answer: qaAnswer.trim(),
-                                lawyerName: targetLawyer.name,
-                                lawyerAvatar: targetLawyer.avatar,
-                                badge: qaBadge.trim() || '실시간 답변'
+                                badge: qaBadge.trim() || '일반 정보',
+                                createdAt: new Date().toISOString(),
+                                ...editorFields,
                               };
                               setQas(prev => [newQa, ...prev]);
-                              toast.success('새로운 상담사례 Q&A가 정상 등록되었습니다');
+                              toast.success('상담사례 Q&A를 등록했습니다.');
                             } else if (editingQa) {
                               setQas(prev => prev.map(q => q.id === editingQa.id ? {
                                 ...q,
                                 category: qaCategory,
                                 question: qaQuestion.trim(),
                                 author: qaAuthor.trim(),
-                                answer: qaAnswer.trim(),
-                                lawyerName: targetLawyer.name,
-                                lawyerAvatar: targetLawyer.avatar,
-                                badge: qaBadge.trim() || q.badge
+                                badge: qaBadge.trim() || q.badge,
+                                ...(q.lawyerId ? {} : editorFields),
                               } : q));
-                              toast.success('상담사례 정보가 변경되었습니다');
+                              toast.success('상담사례 정보를 바꿨습니다.');
                             }
                             setIsQaCreateMode(false);
                             setEditingQa(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer whitespace-nowrap active:scale-[0.98]"
                         >
                           {isQaCreateMode ? '✍️ 상담사례 발행' : '💾 변경 사항 저장'}
                         </button>
                       </div>
                     </div>
                   )}
+
+                  {(() => {
+                    const pendingList = qas.flatMap(qa => (qa.pendingAnswers || []).map((ans, idx) => ({ qa, ans, idx })));
+                    if (pendingList.length === 0) return null;
+                    const approve = (qaId: string, idx: number) => {
+                      setQas(prev => prev.map(q => {
+                        if (q.id !== qaId) return q;
+                        const pending = [...(q.pendingAnswers || [])];
+                        const [ans] = pending.splice(idx, 1);
+                        if (!ans) return q;
+                        const { flaggedTerms: _flagged, ...clean } = ans;
+                        if (!q.answer) {
+                          return { ...q, pendingAnswers: pending, answer: clean.answer, lawyerId: clean.lawyerId, lawyerName: clean.lawyerName, lawyerAvatar: clean.lawyerAvatar, answeredAt: clean.createdAt, badge: clean.badge || '변호사 답변', status: 'answered' as const };
+                        }
+                        return { ...q, pendingAnswers: pending, additionalAnswers: [...(q.additionalAnswers || []), clean], status: 'answered' as const };
+                      }));
+                      onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `Q&A 검토 답변 게시 승인: ${qaId}`);
+                      toast.success('답변을 게시했습니다.');
+                    };
+                    const reject = async (qaId: string, idx: number) => {
+                      const ok = await dialog.confirm({ title: '검토 답변 반려', message: '이 답변을 게시하지 않고 지웁니다. 변호사는 고쳐서 다시 등록할 수 있습니다.', confirmText: '반려', variant: 'danger' });
+                      if (!ok) return;
+                      setQas(prev => prev.map(q => q.id === qaId ? { ...q, pendingAnswers: (q.pendingAnswers || []).filter((_, i) => i !== idx) } : q));
+                      onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `Q&A 검토 답변 반려: ${qaId}`);
+                      toast.success('답변을 반려했습니다.');
+                    };
+                    return (
+                      <div className="bg-amber-500/5 rounded-xl border border-amber-500/30 p-4 space-y-3">
+                        <h4 className="font-extrabold text-sm text-amber-300">검토 대기 변호사 답변 {pendingList.length}건</h4>
+                        <p className="text-xs text-slate-400">광고 규정상 검토가 필요한 표현이 들어간 답변입니다. 게시하거나 반려해 주세요.</p>
+                        <ul className="space-y-2">
+                          {pendingList.map(({ qa, ans, idx }) => (
+                            <li key={`${qa.id}-${idx}`} className="bg-[#111622] border border-[#1E293B]/60 rounded-xl p-3 space-y-2">
+                              <p className="text-xs text-slate-400">Q. {qa.question}</p>
+                              <p className="text-sm text-slate-200 whitespace-pre-wrap">{ans.answer}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs text-slate-400">{ans.lawyerName}</span>
+                                {(ans.flaggedTerms || []).map(t => (
+                                  <span key={t} className="text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-lg">{t}</span>
+                                ))}
+                                <span className="flex-1" />
+                                <button onClick={() => approve(qa.id, idx)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap active:scale-[0.98] cursor-pointer">게시</button>
+                                <button onClick={() => reject(qa.id, idx)} className="bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-400 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap active:scale-[0.98] cursor-pointer">반려</button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
 
                   {/* Q&A Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
@@ -4771,7 +4840,7 @@ export default function AdminRole({
                           <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-sm">
                             <div className="text-sm text-slate-600 font-mono">
                               등록일시: {new Date(selectedInq.createdAt).toLocaleString()}
-                              {selectedInq.category && <span className="ml-2 text-indigo-400">카테고리: {selectedInq.category === 'site_usage' ? '사이트 이용' : selectedInq.category === 'account' ? '회원가입·로그인' : selectedInq.category === 'diagnosis' ? '진단 결과' : selectedInq.category === 'lawyer_matching' ? '변호사 매칭' : '기타'}</span>}
+                              {selectedInq.category && <span className="ml-2 text-indigo-400">카테고리: {selectedInq.category === 'site_usage' ? '사이트 이용' : selectedInq.category === 'account' ? '회원가입·로그인' : selectedInq.category === 'diagnosis' ? '내 상황 체크' : selectedInq.category === 'lawyer_matching' ? '변호사 찾기' : '기타'}</span>}
                               {selectedInq.source && <span className="ml-2 text-slate-500">({selectedInq.source === 'popup_modal' ? '팝업 문의' : '문의 페이지'})</span>}
                             </div>
                             <h4 className="text-slate-100 font-extrabold text-sm mb-1">Q. {selectedInq.title}</h4>
@@ -5278,7 +5347,7 @@ export default function AdminRole({
 
                   <button
                     type="button"
-                    onClick={() => toast.success(`쿨다운 시간이 ${matchingCooldownHours === 0 ? '무제한(제한 없음)' : matchingCooldownHours + '시간'}으로 변경되었습니다.`)}
+                    onClick={() => toast.success(`상담 요청 간격 ${matchingCooldownHours === 0 ? '제한 없음' : matchingCooldownHours + '시간'}. 바꾼 값은 서버에 바로 저장되고 로그인한 의뢰인 계정 기준으로 적용됩니다.`)}
                     className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-extrabold transition-all cursor-pointer"
                   >
                     정책 저장

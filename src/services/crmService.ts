@@ -444,7 +444,7 @@ const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = 
     crmStatus: 'document',
     caseType: 'bankruptcy',
     intakeChannel: 'mykim',
-    preInfo: '무릎 관절염 수술 후 식당 일용직 근로 중단. 성인 자녀 명의 원룸에 친족 무상거주 중. 파산관재인 15대 필수서류 심사 및 1,110만 원 면제재산 동시폐지 신청 준비 중.',
+    preInfo: '무릎 관절염 수술 후 식당 일용직 근로 중단. 성인 자녀 명의 원룸에 친족 무상거주 중. 파산관재인 15대 필수서류 심사 및 1,558만 원(2026년) 면제재산 동시폐지 신청 준비 중.',
     contractDate: '2026-08-16',
     contractAmount: 2400000,
     totalFee: 2400000,
@@ -987,7 +987,8 @@ export function createDefaultCrmExtension(
   incomeType?: 'EMPLOYEE' | 'BUSINESS' | 'FREELANCER' | 'DAY_LABORER' | 'PART_TIME'
 ): CrmClientExtension {
   // 시연용 사전 프로필은 DEV 빌드에서만 적용 (운영에서는 가짜 사건번호·수임료·메모가 실제 고객처럼 저장되던 문제)
-  const predefined = PREDEFINED_AMJONE_PROFILES[clientId] || {};
+  // (10-30: 주석과 달리 운영에서도 병합되던 것을 실제로 DEV 전용으로)
+  const predefined: Partial<CrmClientExtension> = import.meta.env.DEV ? (PREDEFINED_AMJONE_PROFILES[clientId] || {}) : {};
   const effectiveCaseType = (predefined.caseType as any) || caseType;
   const docs = getStandardDocumentsForClient(effectiveCaseType, incomeType);
   

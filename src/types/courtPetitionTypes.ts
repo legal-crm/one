@@ -42,11 +42,11 @@ export interface ExemptPropertyPetition {
   // 면제 신청 재산 구분
   exemptCategory: 
     | 'HOUSING_LEASE_DEPOSIT'   // 주거용 건물 임차보증금 반환채권
-    | 'SIX_MONTHS_LIVING_COST'; // 6개월간의 생계비 (1,110만 원)
+    | 'SIX_MONTHS_LIVING_COST'; // 6개월간의 생계비 (1,558만 원(2026년))
   
   targetAssetName: string;      // 임차목적물 소재지 및 계약 정보 또는 계좌명
   totalAssetAmount: number;     // 자산 총액
-  requestedExemptAmount: number;// 면제 신청 금액 (서울 최대 5,500만 또는 생계비 1,110만)
+  requestedExemptAmount: number;// 면제 신청 금액 (서울 최대 5,500만 또는 6개월 생계비 = 4인 중위소득×40%×6)
   
   // 채무자회생법 제383조 제2항 / 제580조 제3항 신청 취지 및 이유
   petitionReason: string;       // 주거 안정 및 최소한의 인간다운 생활 유지 필요성

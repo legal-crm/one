@@ -769,7 +769,7 @@ export const OFFICIAL_SUPPORT_PROGRAMS: SupportProgram[] = [
     subtitle: '기초생활수급비, 긴급복지급여, 아동수당 등이 법적으로 원천 압류되지 않는 전용 계좌',
     organization: '시중은행 16개사 / 우체국 / 상호금융',
     eligibility: '기초생활수급자, 기초연금, 긴급복지 수급자 등 법정 급여 수급권자',
-    benefit: '법원 압류명령 대상에서 법률상 원천 제외, 생계비 185만 원 이하 법정 보호',
+    benefit: '법원 압류명령 대상에서 법률상 원천 제외, 생계비 250만 원 이하 법정 보호',
     contactNumber: '각 거래은행 고객센터',
     officialUrl: 'https://www.bokjiro.go.kr',
     targetStages: ['preparing', 'submitted', 'correction', 'started', 'approved']

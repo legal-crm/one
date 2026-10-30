@@ -341,7 +341,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
               </div>
             </div>
 
-            {/* 카드 3: 예상 탕감액 및 탕감률 */}
+            {/* 카드 3: 갚지 않아도 되는 금액(예상) — 감면율(%)은 표시하지 않는다 (RP-Q1) */}
             <div style={{
               backgroundColor: '#fff',
               border: '1px solid #c7d2fe',
@@ -352,13 +352,13 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>갚지 않아도 되는 돈</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#eef2ff', color: '#4338ca', fontWeight: 800 }}>내 빚 줄어드는 비율 약 {result.debtReductionRate}%</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#eef2ff', color: '#4338ca', fontWeight: 800 }}>예상</span>
               </div>
               <div style={{ fontSize: '23px', fontWeight: 900, color: '#4338ca', letterSpacing: '-0.5px' }}>
                 {formatCurrency(result.totalDebtReduction)}
               </div>
               <div style={{ fontSize: '10.5px', color: '#4f46e5', marginTop: '6px', fontWeight: 600 }}>
-                면책 시 원금의 약 <strong>{result.debtReductionRate}%</strong> 합법적 소멸
+                변제를 마치고 면책결정을 받는 경우의 예상치
               </div>
             </div>
 
@@ -854,17 +854,11 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             </div>
             <div>
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#166534' }}>
-                예상 원금 감면 요약
+                총 변제액 요약
               </div>
               <div style={{ fontSize: '10.5px', color: '#15803d' }}>
                 채무 원금 {formatCurrency(userInput.totalDebt)} 중 약 {formatCurrency(result.totalDebtReduction || (result as any).reductionAmount || 0)} 감면 예상 (변제 완료 후 면책 시)
               </div>
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '11px', color: '#166534', fontWeight: 700 }}>예상 감면율</span>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#15803d' }}>
-              약 {result.debtReductionRate || (result as any).reductionRate || 0}%
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarCheck, AlertCircle, Baby, HeartHandshake, Briefcase } from 'lucide-react';
 import { calculateKoreanAgeInfo } from '../../../../services/documents/familyParserService';
-import { checkSpecial24Eligibility, COURTS_ALLOWING_24_MONTHS } from '../../../../services/repayment/rehabLegalCore';
+import { checkShortPlanReason, COURTS_WITH_SHORT_PLAN_RULE } from '../../../../services/repayment/rehabLegalCore';
 import { localYmd, parseLocalYmd } from '../../../../utils/localDate';
 import { useCopyFeedback } from '../clipboard';
 import CopyButton from '../ui/CopyButton';
@@ -14,7 +14,7 @@ const SUBJECTS: { value: Subject; label: string }[] = [
   { value: 'debtor', label: '채무자 본인' },
 ];
 
-const COURTS_24_LABEL = COURTS_ALLOWING_24_MONTHS.map(c => c.replace('회생법원', '')).join('·') + '회생법원';
+const SHORT_PLAN_COURTS_LABEL = COURTS_WITH_SHORT_PLAN_RULE.map(c => c.replace('회생법원', '')).join('·') + '회생법원';
 
 /** 기준일부터 target까지 남은 개월 수 (지났으면 0) */
 function monthsUntil(target: Date, base: Date): number {
@@ -31,7 +31,7 @@ function addYears(d: Date, years: number): Date {
  * 만나이 & 부양자격 판정
  * - 나이 분류는 가족관계 서류 파서(calculateKoreanAgeInfo)와 같은 기준:
  *   만 19세 미만 미성년 / 만 19~20세 성년 자녀(서울회생법원 소명 대상) / 만 21세 이상 / 만 65세 이상
- * - 24개월 단축 특례는 rehabLegalCore.checkSpecial24Eligibility와 같은 기준(만 30세 미만·고령자, 운영 법원 한정)
+ * - 3년 미만 단축 사유는 rehabLegalCore.checkShortPlanReason와 같은 기준(만 30세 미만·고령자, 운영 법원 한정)
  * - 생년월일은 저장하지 않는다.
  */
 export default function KoreanAgeCalcTool() {
@@ -63,7 +63,7 @@ export default function KoreanAgeCalcTool() {
     : null;
   const nextBirthdayDday = nextBirthday ? Math.round((nextBirthday.getTime() - base.getTime()) / 86_400_000) : 0;
 
-  const special24 = checkSpecial24Eligibility({ courtAllows24: true, age: fullAge, elderly: fullAge >= 65 });
+  const shortPlan = checkShortPlanReason({ courtHasRule: true, age: fullAge, elderly: fullAge >= 65 });
   const monthsTo19 = birth ? monthsUntil(addYears(birth, 19), base) : 0;
   const monthsTo21 = birth ? monthsUntil(addYears(birth, 21), base) : 0;
   const monthsTo65 = birth ? monthsUntil(addYears(birth, 65), base) : 0;
@@ -102,10 +102,10 @@ export default function KoreanAgeCalcTool() {
         verdictBody = `중증 질환·장애 등 근로능력이 없다는 소명이 필요합니다. 만 65세까지 약 ${monthsTo65}개월.`;
       }
     } else {
-      if (special24.eligible) {
+      if (shortPlan.eligible) {
         verdictTone = 'good';
-        verdictTitle = `24개월 단축 특례 검토 대상 (${special24.reason})`;
-        verdictBody = `플랫폼 기준 특례 운영 법원: ${COURTS_24_LABEL}. 소득·재산 요건과 재판부 기준을 확인하세요.${
+        verdictTitle = `3년 미만 단축 사유 검토 대상 (${shortPlan.reason})`;
+        verdictBody = `플랫폼 기준 특례 운영 법원: ${SHORT_PLAN_COURTS_LABEL}. 소득·재산 요건과 재판부 기준을 확인하세요.${
           fullAge < 30 ? ` 만 30세가 되는 날: ${turns30}.` : ''
         }`;
       } else {

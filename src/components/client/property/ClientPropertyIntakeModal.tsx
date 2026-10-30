@@ -39,6 +39,7 @@ import {
   RegionType
 } from '../../../services/repayment/repaymentConstants2026';
 import PrintablePropertyIntakeModal from './PrintablePropertyIntakeModal';
+import { DEPOSIT_EXEMPTION_KRW } from '../../../services/repayment/repaymentConstants2026';
 
 interface ClientPropertyIntakeModalProps {
   isOpen: boolean;
@@ -307,7 +308,7 @@ export default function ClientPropertyIntakeModal({
                       은행 예금 및 적금 계좌
                     </h3>
                     <p className="mt-1 text-sm text-slate-600 leading-relaxed break-keep">
-                      민사집행법상 185만 원 이하의 예금은 법정 압류금지 채권으로 보호됩니다.
+                      민사집행법상 250만 원 이하의 예금은 법정 압류금지 채권으로 보호됩니다.
                     </p>
                   </div>
                   <Button
@@ -319,7 +320,7 @@ export default function ClientPropertyIntakeModal({
                         institutionName: '',
                         description: '',
                         marketValue: 0,
-                        statutoryDeduction: 1850000,
+                        statutoryDeduction: DEPOSIT_EXEMPTION_KRW,
                         liquidationValue: 0,
                       };
                       updateData(prev => ({
@@ -1383,7 +1384,7 @@ export default function ClientPropertyIntakeModal({
                 <ul className="mt-1 list-disc pl-5 space-y-1">
                   <li><strong>퇴직연금(DB/DC/IRP)</strong>: 근로자퇴직급여보장법에 따라 전액 압류가 금지되어 청산가치에 산입되지 않습니다.</li>
                   <li><strong>일반 퇴직금</strong>: 50%(1/2)만 법정 청산가치에 반영됩니다.</li>
-                  <li><strong>면제재산 신청</strong>: 6개월간 생계비(1,110만 원)를 면제재산으로 신청하여 청산가치에서 추가 차감할 수 있습니다.</li>
+                  <li><strong>면제재산 신청</strong>: 6개월간 생계비(1,558만 원(2026년))를 면제재산으로 신청하여 청산가치에서 추가 차감할 수 있습니다.</li>
                 </ul>
               </Callout>
 
@@ -1516,7 +1517,7 @@ export default function ClientPropertyIntakeModal({
                         id: `ep-${Date.now()}`,
                         type: 'living_expense_383_2',
                         appliedAmount: EXEMPT_PROPERTY_LIVING_LIMIT,
-                        description: '6개월간 생계비(1,110만 원) 면제재산 신청 희망 (법원 결정 전까지 신청액)',
+                        description: '6개월간 생계비(1,558만 원(2026년)) 면제재산 신청 희망 (법원 결정 전까지 신청액)',
                         note: ''
                       };
                       updateData(prev => ({
@@ -1533,7 +1534,7 @@ export default function ClientPropertyIntakeModal({
 
                 {(!data.exemptProperties || data.exemptProperties.length === 0) ? (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600 break-keep">
-                    신청 희망한 면제재산이 없습니다. (6개월 생계비 1,110만 원 보호 신청을 권장합니다)
+                    신청 희망한 면제재산이 없습니다. (6개월 생계비 1,558만 원(2026년) 보호 신청을 권장합니다)
                   </p>
                 ) : (
                   <ul className="space-y-3">

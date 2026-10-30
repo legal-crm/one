@@ -394,8 +394,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     if (speculativeLoss > 0 || gamblingLoss > 0 || riskFactor === 'investment' || riskFactor === 'gambling') {
       list.push({
         badge: { label: '📈 투자·코인 손실 맞춤', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-        q: '주식, 코인, 스포츠토토 등 투자나 도박으로 생긴 빚도 탕감받을 수 있나요?',
-        a: '네, 가능합니다! 개인파산과 달리 개인회생은 채무 발생 원인을 문제 삼지 않으므로 주식, 가상화폐, 도박 채무도 전액 탕감 대상에 포함됩니다. 특히 서울·수원·부산회생법원은 투자 손실금을 재산(청산가치)에 합산하지 않는 실무준칙을 적용하여 변제금을 매우 유리하게 낮출 수 있습니다.',
+        q: '주식, 코인 등 투자나 도박으로 생긴 빚도 개인회생 대상이 되나요?',
+        a: '개인회생은 채무 발생 원인만으로 신청을 막지 않으므로 투자·도박으로 생긴 채무도 변제계획에 포함할 수 있습니다. 다만 최근 채무나 낭비 정황은 법원이 자세히 묻습니다. 회생법원 실무준칙(제408호)은 투자 손실금을 청산가치에 더하지 않는 것을 원칙으로 하지만, 법원과 사건 사정에 따라 판단이 달라질 수 있습니다.',
         tip: '관할 법원에 따라 준칙 적용 여부가 다르므로, 관할 법원 맞춤 전략을 변호사와 상의하세요.'
       });
       list.push({
@@ -415,7 +415,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       list.push({
         badge: { label: '💼 사업자등록 유지 맞춤', color: 'bg-amber-50 text-amber-700 border-amber-200' },
         q: '사업자등록을 유지하면서 계속 가게나 영업을 운영할 수 있나요?',
-        a: '네, 100% 가능합니다! 개인회생은 영업을 계속 유지하여 얻는 소득으로 변제하는 제도이므로 사업자등록이 말소되지 않으며, 거래처와의 계약 및 사업 활동을 정상적으로 계속할 수 있습니다.'
+        a: '대부분 가능합니다. 개인회생은 영업을 계속해 얻는 소득으로 변제하는 제도이므로 사업자등록이 말소되지 않으며, 거래처와의 계약 및 사업 활동을 정상적으로 계속할 수 있습니다.'
       });
     }
 
@@ -423,7 +423,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     if (priorityDebt > 0) {
       list.push({
         badge: { label: '⚖️ 세금 체납 맞춤', color: 'bg-slate-100 text-slate-700 border-slate-300' },
-        q: '국세나 지방세, 국민건강보험료 체납액도 탕감받을 수 있나요?',
+        q: '국세나 지방세, 국민건강보험료 체납액도 줄어드나요?',
         a: '세금과 4대보험 체납액은 "우선권 있는 채권"으로 법률상 원금 감면은 불가능합니다. 하지만 36개월 변제기간 중 전반부(최대 18개월) 동안 세금을 최우선으로 전액 분할 상환하도록 계획안을 편성합니다. 법원 개시결정이 내려지면 세무서의 통장 압류나 급여 압류도 즉시 해제 신청을 할 수 있습니다.'
       });
     }
@@ -431,9 +431,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     // 7. 100% 변제율 판정
     if (debtReductionRate === 0 || (monthlyPayment * repaymentMonths >= totalDebt && totalDebt > 0)) {
       list.push({
-        badge: { label: '💰 100% 변제율 실익 맞춤', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-        q: '원금을 100% 다 갚아야 한다면, 굳이 개인회생을 할 이유가 있나요?',
-        a: '엄청난 실익이 있습니다! 첫째, 법정 최고금리(20%) 수준의 눈덩이처럼 불어나는 대출 이자와 연체이자가 100% 전액 면제됩니다 (예: 채무 6천만원 기준 3년간 약 2천~3천만원의 이자 절감). 둘째, 모든 채권추심과 통장 압류가 즉시 합법적으로 중단됩니다. 셋째, 3년만 성실히 납부하면 신용불량 정보가 완전 삭제되어 정상 금융생활이 회복됩니다.'
+        badge: { label: '💰 원금 전액 변제 계획', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+        q: '원금을 다 갚아야 한다면, 개인회생을 할 이유가 있나요?',
+        a: '원금을 모두 갚는 계획이라도 실익이 있을 수 있습니다. 개시결정 뒤에는 이자·연체이자가 더 붙지 않고, 금지·중지명령이 나오면 추심과 강제집행이 멈춥니다. 변제를 마치고 면책결정을 받으면 연체 정보가 정리됩니다. 사건마다 다르므로 담당 변호사와 확인해 주세요.'
       });
     }
 
@@ -451,7 +451,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       list.push({
         badge: { label: '🎯 맞춤 진단', color: 'bg-blue-50 text-blue-700 border-blue-200' },
         q: '급여소득자인데 회사 몰래 진행할 수 있나요?',
-        a: '네, 100% 비밀 보장됩니다! 법원에서 직장으로 일체의 서류나 통지서를 보내지 않으며, 모든 법원 우편물은 대리인인 변호사 사무실로만 송달됩니다. 회사 인사과나 동료는 전혀 알 수 없습니다.'
+        a: '대리인이 있으면 법원 우편물은 보통 변호사 사무실로 송달됩니다. 다만 급여 압류가 이미 있거나 재직·급여 자료를 회사에서 발급받아야 하는 경우 회사가 알 수 있으니, 자료 발급 방법을 변호사와 미리 상의해 주세요.'
       });
       list.push({
         badge: { label: '🎯 맞춤 진단', color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -512,7 +512,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     setEditLawyerComment(lawyerComment);
   }, [lawyerComment]);
 
-  // 계산된 수정 탕감률
+  // 변호사 직접 수정값으로 다시 계산한 총 변제액
   const editTotalRepayment = editMonthlyPayment * editRepaymentMonths;
   const editEstimatedReduction = Math.max(0, totalDebt - editTotalRepayment);
   const editDebtReductionRate = totalDebt > 0 
@@ -564,8 +564,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     isCourtKnown
       ? `${courtName} 실무준칙을 참고해 변제계획을 검토했습니다.`
       : '관할 법원이 확인되지 않아 일반적인 실무 기준으로 계산한 예상치입니다. 관할 법원이 정해지면 변제계획이 달라질 수 있습니다.',
-    `예상 월 변제금 ${formatCurrency(monthlyPayment)}원, ${repaymentMonths}개월 기준 원금 약 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면이 예상됩니다. 실제 금액은 법원 심리에 따라 달라질 수 있습니다.`
-  ], [isCourtKnown, courtName, monthlyPayment, repaymentMonths, debtReductionRate, estimatedReduction]);
+    `예상 월 변제금 ${formatCurrency(monthlyPayment)}원, ${repaymentMonths}개월 기준 총 변제액은 약 ${formatCurrency(totalRepaymentCalculated)}원입니다. 실제 금액은 법원 심리에 따라 달라질 수 있습니다.`
+  ], [isCourtKnown, courtName, monthlyPayment, repaymentMonths, totalRepaymentCalculated]);
   const fallbackCourtDescription = isCourtKnown ? `${courtName} 실무준칙 종합 적용` : UNKNOWN_COURT_LABEL;
 
   // 진단 상태는 변호사가 제안서에 남긴 값을 우선 사용한다 (없을 때만 기존 기본값)
@@ -1080,13 +1080,13 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               </span>
             </div>
             <div className="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium block">예상 원금 감면율</span>
+              <span className="text-[11px] text-slate-400 font-medium block">총 변제액(예상)</span>
               <span className="text-sm sm:text-base font-bold text-blue-300 mt-0.5 block font-mono">
-                {debtReductionRate}%
+                {formatCurrency(totalRepaymentCalculated)}
               </span>
             </div>
             <div className="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium block">예상 감면액</span>
+              <span className="text-[11px] text-slate-400 font-medium block">갚지 않아도 되는 금액(예상)</span>
               <span className="text-sm sm:text-base font-bold text-amber-300 mt-0.5 block font-mono">
                 {formatCurrency(estimatedReduction)}
               </span>
@@ -1106,7 +1106,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </h4>
                 </div>
                 <span className="text-[11px] text-indigo-300 font-mono font-bold bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">
-                  감면율 다시 계산: 약 {editDebtReductionRate}%
+                  총 변제액 다시 계산: {formatCurrency(editTotalRepayment)}
                 </span>
               </div>
 
@@ -1149,7 +1149,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <span className="text-[11px] text-slate-400 font-sans font-normal">감면</span>
                   </div>
                   <div className="text-[10px] text-emerald-400">
-                    예상 감면율: 약 {editDebtReductionRate}%
+                    총 변제액: {formatCurrency(editTotalRepayment)}
                   </div>
                 </div>
               </div>
@@ -1540,7 +1540,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                           </div>
                           <div className="flex justify-between items-center text-xs sm:text-sm">
                             <span className="text-slate-600 font-medium">이자 및 연체이자</span>
-                            <span className="font-bold text-emerald-700">100% 전액 면제 (0원)</span>
+                            <span className="font-bold text-emerald-700">개시결정 뒤 더 붙지 않음</span>
                           </div>
                           <div className="flex justify-between items-center text-xs sm:text-sm">
                             <span className="text-slate-600 font-medium">3년간 갚을 총 원금</span>
@@ -1551,7 +1551,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span className="text-sm font-black text-emerald-700 font-mono">{formatCurrency(estimatedReduction)}</span>
                           </div>
                           <div className="text-xs text-emerald-800 font-medium mt-1 flex items-center gap-1">
-                            <span>🛡️ 법적 금지명령으로 독촉 및 압류 즉시 전면 차단</span>
+                            <span>🛡️ 금지·중지명령이 나오면 추심·강제집행이 멈춥니다</span>
                           </div>
                         </div>
                       </div>
@@ -1756,7 +1756,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       <h3 className="text-base font-bold text-slate-900">
                         공개 통계 기준 참고 비교
                       </h3>
-                      <p className="text-xs text-slate-600">공개된 개인회생 통계와 입력하신 소득·채무·예상 감면율을 비교한 참고 자료입니다. 법원의 판단 기준이 아닙니다.</p>
+                      <p className="text-xs text-slate-600">공개된 개인회생 통계와 입력하신 소득·채무를 비교한 참고 자료입니다. 법원의 판단 기준이 아닙니다.</p>
                     </div>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
@@ -1785,33 +1785,10 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       unit="원"
                     />
                   )}
-                  <StatComparisonCard
-                    title="예상 감면율 비교"
-                    userValue={debtReductionRate}
-                    averageValue={AVERAGE_VALUES.debtReductionRate}
-                    percentile={calculateReductionRatePercentile(debtReductionRate)}
-                    icon={<Percent className="w-4 h-4" />}
-                    unit="%"
-                  />
                 </div>
 
-                <DistributionBar
-                  title="개인회생 원금 감면율 분포 내 예상 위치 (참고)"
-                  userValue={debtReductionRate}
-                  distribution={REHAB_STATISTICS_2025.debtReductionRateDistribution || []}
-                  highlightRange={(() => {
-                    const rate = debtReductionRate;
-                    if (rate < 10) return '10% 미만';
-                    if (rate >= 90) return '90% 이상';
-                    const lower = Math.floor(rate / 10) * 10;
-                    const upper = lower + 10;
-                    return `${lower}% 이상 ${upper}% 미만`;
-                  })()}
-                />
-
                 <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-200 text-xs text-purple-900 leading-relaxed">
-                  💡 <strong>참고</strong>: 예상 감면율({debtReductionRate}%)을 공개 통계 분포와 비교한 위치입니다. 
-                  통계 비교는 사건의 개시·인가 가능성을 보장하지 않으며, 실제 결과는 {courtPhrase}의 심리와 제출 서류에 따라 달라집니다.
+                  💡 <strong>참고</strong>: 통계 비교는 사건의 개시·인가 가능성을 보장하지 않으며, 실제 결과는 {courtPhrase}의 심리와 제출 서류에 따라 달라집니다.
                 </div>
               </div>
             </div>
@@ -2052,7 +2029,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
                       3
                     </div>
-                    <h4 className="text-xs font-bold text-slate-900">체크카드는 100% 정상 사용</h4>
+                    <h4 className="text-xs font-bold text-slate-900">체크카드는 보통 사용 가능</h4>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
                       신용카드는 사용이 중단되지만 새 통장의 체크카드는 자유롭게 발급받아 온라인 쇼핑, 배달, 교통카드까지 아무런 제약 없이 편하게 쓰실 수 있습니다.
                     </p>
@@ -2182,7 +2159,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     },
                     {
                       q: '해외여행이나 출국에 제한이 생기나요?',
-                      a: '개인회생은 출국 제한이 전혀 없습니다. 여권 발급과 해외 출입국 모두 100% 자유롭습니다.'
+                      a: '개인회생 절차 자체로 출국이 금지되지는 않습니다. 다만 채권자집회 등 법원 기일에는 반드시 출석해야 하니 일정을 맞춰 주세요.'
                     },
                     {
                       q: '채권자집회에 가면 채권자들이 저를 비난하나요?',

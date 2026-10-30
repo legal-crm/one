@@ -29,7 +29,7 @@ const ROWS: Row[] = [
       return months > 0 ? `${months}개월` : EMPTY;
     },
   },
-  { label: '예상 감면율', value: (p) => (Number(p.reductionRate) > 0 ? `${p.reductionRate}%` : EMPTY) },
+  // 감면율(%)은 비교표에서 뺀다 (RP-Q1: 월 변제금·기간·총 변제액 우선)
   {
     label: '수임료 총액',
     value: (p) => (Number(p.fee) > 0 ? `${p.fee}만원` : wonOrEmpty(p.proposalData?.fees?.totalFee)),

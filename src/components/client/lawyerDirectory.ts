@@ -20,7 +20,8 @@ export function isLicenseVerified(l: User): boolean {
 
 /** 광고 상품 이용 여부 (광고 표시는 전문성 인증이나 추천이 아님) */
 export function isAdLawyer(l: User): boolean {
-  return l.adTier === 'top' || l.adTier === 'regional' || l.adTier === 'basic';
+  // 'basic'(무료 기본 등록)은 광고가 아니다. ad_tier는 서버가 노출 중인 주문으로 자동 맞춤 (run_ad_order_lifecycle)
+  return l.adTier === 'top' || l.adTier === 'regional';
 }
 
 /** certYear 문자열에서 경력년수 계산 (예: "제8회 변호사시험 합격 (2019년)" → 7) */

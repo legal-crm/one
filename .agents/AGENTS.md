@@ -1,8 +1,11 @@
 # Project Rules
 
 ## 배포 규칙
-- 사용자가 "배포해"라고 하면 **Vercel 배포**와 **GitHub 배포(git add, commit, push)** 를 **둘 다** 수행한다.
-- 순서: GitHub push → Vercel 프로덕션 배포 (또는 동시 진행)
+- 사용자가 "배포해"라고 하면 **GitHub 배포(커밋할 파일을 골라 add, commit, push)** 를 수행하고, **Vercel 자동 배포가 끝났는지 확인**한다. (2026-10-30 변경)
+  - Vercel은 GitHub 연동으로 `main` 푸시마다 운영 배포를 만든다. `mykim.kr`은 Vercel 프로젝트 `one`(저장소 `legal-crm/one`)이 서비스한다.
+  - 확인: 해당 커밋의 `one` 프로젝트 배포가 READY인지, `mykim.kr`이 열리는지.
+  - **`vercel --prod`(CLI 업로드)는 쓰지 않는다.** CLI는 `.gitignore`를 읽지 않아 `.env`·`실제서류/` 등 작업 폴더 전체를 올린다. 꼭 필요하면 `.vercelignore`가 있는지 먼저 확인한다. (로컬 `.vercel/project.json`은 `mykim.kr`이 아닌 `legal-crm` 프로젝트에 연결돼 있다.)
+- 순서: 타입 검사·빌드 확인 → GitHub push → Vercel 배포 상태 확인
 - **git push 시 반드시** `$env:GITHUB_TOKEN = "";` 를 앞에 붙여 실행한다. (Antigravity 세션의 더미 토큰이 gh CLI 인증을 덮어쓰는 문제 방지)
 
 ---

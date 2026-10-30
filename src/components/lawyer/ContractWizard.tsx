@@ -478,7 +478,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <span className="text-xs bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 스마트 연동</span>
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              의뢰인의 AI 자가진단 리포트 및 CRM 상담 데이터(채권자 수, 채무액, 예상비용)를 1초 만에 프리필합니다.
+              의뢰인이 '내 상황 체크하기'로 정리한 내용과 CRM 상담 데이터(채권자 수, 채무액, 예상비용)를 1초 만에 프리필합니다.
             </p>
           </div>
         </div>

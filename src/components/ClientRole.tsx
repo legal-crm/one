@@ -7,6 +7,7 @@ import {
   Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass, Zap, Heart, Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchConsultCooldownRemaining } from '../services/cms/contentService';
 import { useDialog } from './common/DialogProvider';
 import { Client, FinancialProfile, ConsultRequest, ConsultStatus, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
 import { migrateAnonymousRequests, saveConsultRequest } from '../services/consultService';
@@ -59,7 +60,7 @@ import LandingView from './client/landing/LandingView';
 import { remedyData, renderRemedyIcon, SOLUTION_LABELS } from './client/remedyData';
 import { CLIENT_TAB_LABELS, isClientTab, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyPageSection } from './client/clientTabs';
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
-import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, OPEN_REQUEST_CLIENT_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
+import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
 import { getDisplayName as getLawyerDisplayName } from './client/lawyerDirectory';
 import { commitPendingLoginConsent, recordThirdPartyConsent } from '../services/clientConsentService';
 import ThirdPartyConsentModal from './client/ThirdPartyConsentModal';
@@ -641,8 +642,20 @@ export default function ClientRole({
   // 특정 변호사 프로필·글에서 '상담 요청'으로 시작한 진단: 결과 화면의 상담 요청 버튼에서 그 변호사에게 동의 후 요청
   const [directIntent, setDirectIntent] = useState<{ requestId: string; lawyerId: string } | null>(null);
 
+  // 로그인한 의뢰인은 서버 계정 기준 쿨다운 (CT-Q5): 마지막 새 상담 요청 시각은 서버가 판단
+  const [serverCooldownUntil, setServerCooldownUntil] = useState<number>(0);
   const checkCooldown = (): boolean => {
     if (matchingCooldownHours === 0) return true;
+
+    if (isLoggedIn) {
+      const remainMs = serverCooldownUntil - Date.now();
+      if (remainMs > 0) {
+        const remainingHours = Math.ceil(remainMs / (60 * 60 * 1000));
+        toast.info(`${remainingHours}시간 후에 새 상담 요청을 보낼 수 있습니다.`);
+        return false;
+      }
+      return true;
+    }
 
     const clientRequests = requests.filter(r => r.clientId === 'client-temp');
     if (clientRequests.length === 0) return true;
@@ -713,16 +726,7 @@ export default function ClientRole({
     return merge.addedLawyerIds.length;
   };
 
-  /** 공개 요청: 등록·승인된 변호사가 요청을 확인하고 제안서를 보낼 수 있게 연다 (DB 규칙: status=requested AND request_type=open) */
-  const openRequestForMatching = (request: ConsultRequest) => {
-    setRequests(prev => prev.map(r => (r.id === request.id
-      ? { ...r, requestType: 'open' as const, maxParticipants: LAWYER_REQUEST_LIMIT, status: 'requested' as const }
-      : r)));
-    const nextRequest: ConsultRequest = { ...request, requestType: 'open', maxParticipants: LAWYER_REQUEST_LIMIT, status: 'requested' };
-    void saveConsultRequest(nextRequest).catch(() => {}).finally(() => {
-      onAddMessage(request.id, OPEN_REQUEST_CLIENT_NOTICE, 'system', 'system', '시스템 안내', 'client-only');
-    });
-  };
+  // 공개 요청(누구나 보고 제안)은 변호사법 위배로 폐지(10-24 결정). 서버도 'open' 요청을 변호사에게 보여 주지 않는다(20261030000200).
 
   // ── 변호사에게 상담 정보 제공(개인정보 제3자 제공) 동의 ──
   // 로그인 때 받지 않고, 상담 정보를 실제로 보내는 순간마다 받는 변호사를 보여 주고 동의를 받는다.
@@ -745,11 +749,6 @@ export default function ClientRole({
       return;
     }
     setPendingConsent({ request, scope: 'selected', lawyerIds, isNew: options.isNew });
-  };
-
-  /** 공개 요청 전에 동의 창을 연다 */
-  const requestOpenMatchingWithConsent = (request: ConsultRequest) => {
-    setPendingConsent({ request, scope: 'open', lawyerIds: [] });
   };
 
   const consentRecipients = useMemo(() => {
@@ -777,10 +776,6 @@ export default function ClientRole({
       setLawyerSelectionMode(false);
       setLawyerSelectionTargetId(null);
       setPendingNewRequest(null);
-    } else {
-      await recordThirdPartyConsent({ requestId: latest.id, scope: 'open', lawyerIds: [] });
-      openRequestForMatching(latest);
-      toast.success('공개 요청을 올렸습니다. 제안서가 도착하면 알려 드릴게요.');
     }
     setActiveChatReqId(latest.id);
     setActiveTab('chat');
@@ -845,6 +840,14 @@ export default function ClientRole({
 
   // User Auth & Privacy States
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  useEffect(() => {
+    if (!isLoggedIn) { setServerCooldownUntil(0); return; }
+    let cancelled = false;
+    fetchConsultCooldownRemaining().then(sec => {
+      if (!cancelled && sec !== null) setServerCooldownUntil(Date.now() + sec * 1000);
+    });
+    return () => { cancelled = true; };
+  }, [isLoggedIn, requests.length]);
   const [userAlias, setUserAlias] = useState<string>('');
   const [isEditingAlias, setIsEditingAlias] = useState<boolean>(false);
   const [tempAlias, setTempAlias] = useState<string>('');
@@ -898,11 +901,17 @@ export default function ClientRole({
       secureSetItem('legal_crm_client_id', targetId);
     }
     
-    // 익명(client-temp) 상태에서 진행했던 진단/상담 요청을 로그인한 계정으로 이전
+    // 익명(client-temp) 상태에서 이 기기에서 진행했던 진단/상담 요청을 로그인한 계정으로 이전
+    // (서버의 'client-temp' 행을 조회하지 않는다 — 다른 사람의 익명 요청을 가져오는 문제 방지)
+    const anonymousLocal = requests
+      .filter(r => r.clientId === 'client-temp')
+      .map(r => ({ ...r, clientId: targetId!, clientName: alias }));
     setRequests(prev => prev.map(r => r.clientId === 'client-temp' ? { ...r, clientId: targetId!, clientName: alias } : r));
-    
-    // Supabase DB에서도 마이그레이션
-    migrateAnonymousRequests(targetId!, alias).catch(() => {});
+    if (anonymousLocal.length > 0) {
+      migrateAnonymousRequests(anonymousLocal).then(ok => {
+        if (!ok) toast.error('로그인 전에 작성한 상담 요청을 서버에 옮기지 못했어요. 잠시 후 다시 로그인해 주세요.');
+      });
+    }
     
     setMembers(prev => {
       const exists = prev.find(m => m.id === targetId || m.alias === alias);
@@ -2182,7 +2191,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onSendChat={handleSendChat} onAddMessage={onAddMessage}
                   onRetryMessage={onRetryMessage}
                   onRequestLawyers={(request, lawyerIds) => requestLawyersWithConsent(request, lawyerIds)}
-                  onRequestOpenMatching={requestOpenMatchingWithConsent}
                   onBrowseLawyersToRequest={(requestId) => {
                     setLawyerSelectionTargetId(requestId);
                     setLawyerSelectionMode(true);

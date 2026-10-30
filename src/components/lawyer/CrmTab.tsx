@@ -54,10 +54,13 @@ import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan, rebuildPlanWithAssets } from '../../services/repayment/repaymentCalculationEngine';
-import { checkSpecial24Eligibility, special24FromCondition } from '../../services/repayment/rehabLegalCore';
+import { checkShortPlanReason, shortPlanInputFromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
 import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
+import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
+import ServerFeePanel from './case/ServerFeePanel';
+import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
 import { formatVaultDday } from '../../services/vault/certificateVaultService';
@@ -175,6 +178,12 @@ interface CrmTabProps {
   currentStaff?: StaffMember | null;
   /** 업무·일정 공유 단위 (직원이면 초대한 대표의 ID) */
   firmTenantId?: string;
+  /** 서버 사무소 권한으로 계산한 화면 권한 (RB-4). 주어지면 직원 기록·대표 기본값보다 우선 */
+  permissionsOverride?: StaffPermissions;
+  /** 서버 사무소 ID (사건 기록 패널) */
+  officeId?: string;
+  /** 대표 또는 승인된 변호사 구성원 (종결·다시 열기) */
+  isOfficeLawyer?: boolean;
 }
 
 type CrmDetailTab = NonNullable<CrmTabProps['initialDetailTab']>;
@@ -251,7 +260,10 @@ export default function CrmTab({
   initialDetailTab,
   onClearInitialTarget,
   currentStaff = null,
-  firmTenantId
+  firmTenantId,
+  permissionsOverride,
+  officeId,
+  isOfficeLawyer = false,
 }: CrmTabProps) {
   const dialog = useDialog();
   // ── 기본 State ──
@@ -498,7 +510,7 @@ export default function CrmTab({
   // (이전: requestType === 'open'이면 누구의 요청이든 모든 변호사 CRM·엑셀 내보내기에 포함됨)
   const isMine = useCallback((r: ConsultRequest): boolean => {
     if (!activeLawyer.id) return false;
-    const isStageTestCase = STAGE_TEST_REQUEST_IDS.has(r.id);
+    const isStageTestCase = import.meta.env.DEV && STAGE_TEST_REQUEST_IDS.has(r.id);
     const directMatch = isStageTestCase ||
                         r.selectedLawyerIds?.includes(activeLawyer.id) ||
                         r.selectedLawyerId === activeLawyer.id ||
@@ -592,7 +604,8 @@ export default function CrmTab({
   }, []);
 
   // ── 현재 권한 확인 ──
-  const currentPermissions = activeStaff?.permissions || DEFAULT_PERMISSIONS.OWNER;
+  // 서버 사무소 권한(RB-4)이 있으면 그것을 쓴다. (이전: 직원 기록이 없으면 대표 권한으로 간주)
+  const currentPermissions = permissionsOverride || activeStaff?.permissions || DEFAULT_PERMISSIONS.OWNER;
 
   // ── 필터링 + 정렬 + 페이지네이션 ──
   const filteredRequests = useMemo(() => {
@@ -725,7 +738,7 @@ export default function CrmTab({
       },
       assets: [],
       creditors: [],
-      special24Eligible: checkSpecial24Eligibility(special24FromCondition(
+      shortPlanReview: checkShortPlanReason(shortPlanInputFromCondition(
         selectedExt?.courtCase?.courtName || '',
         selectedClient?.financialProfile?.age,
         selectedClient?.financialProfile?.specialCondition,
@@ -2045,6 +2058,45 @@ export default function CrmTab({
               activeSection={detailTab}
               onSelectSection={(secId) => setDetailTab(secId as any)}
             />
+
+            {/* ── 3-1. 서버 사건 기록 (CM-1·CM-3): 단계·기일·타임라인의 원본 ── */}
+            {officeId && (
+              <div className="px-4 pt-4">
+                <ServerCaseRecordPanel
+                  key={selectedId}
+                  officeId={officeId}
+                  consultRequestId={selectedId}
+                  caseType={isBankruptcyCase ? 'bankruptcy' : 'rehab'}
+                  canEdit={currentPermissions.changeStatus}
+                  canCloseOrReopen={isOfficeLawyer}
+                  onStageSynced={(crmStatus, rec) => {
+                    const ext = getCrmExt(selectedId);
+                    const courtCase = rec.caseNumber
+                      ? { ...(ext.courtCase || {}), caseNumber: rec.caseNumber, courtName: rec.courtName || ext.courtCase?.courtName || '' }
+                      : ext.courtCase;
+                    if (ext.crmStatus !== crmStatus || courtCase !== ext.courtCase) {
+                      void updateCrmExt(selectedId, { crmStatus, ...(courtCase ? { courtCase: courtCase as any } : {}) });
+                    }
+                    setPipelineStage(stageForStatus(crmStatus));
+                  }}
+                />
+              </div>
+            )}
+            {officeId && (
+              <div className="px-4 pt-3">
+                <ServerFeePanel
+                  key={`fee-${selectedId}`}
+                  officeId={officeId}
+                  consultRequestId={selectedId}
+                  canRecord={!!currentPermissions.manageBilling || !!isOfficeLawyer}
+                  contractTotalFeeWon={(() => {
+                    const t = Number(getCrmExt(selectedId).totalFee) || 0;
+                    // 예전 일정 생성기는 만원 단위로 저장했다
+                    return t > 0 && t < 100000 ? t * 10000 : t || undefined;
+                  })()}
+                />
+              </div>
+            )}
 
             {/* ── 4. 메인 워크스페이스 캔버스 + 우측 컨텍스트 패널 ── */}
             <div className="flex flex-col xl:flex-row min-h-[650px] bg-slate-50/40 relative">

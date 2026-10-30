@@ -37,6 +37,7 @@ import {
   RegionType
 } from '../../../services/repayment/repaymentConstants2026';
 import PrintablePropertyListModal from './PrintablePropertyListModal';
+import { EXEMPT_PROPERTY_LIVING_LIMIT } from '../../../services/repayment/repaymentConstants2026';
 
 interface PropertyValuationModalProps {
   clientId: string;
@@ -1096,7 +1097,7 @@ export default function PropertyValuationModal({
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="font-bold text-slate-900 flex items-center gap-1.5">
                       <Shield className="w-3.5 h-3.5 text-blue-600" />
-                      보험 해약환급금 (150만 원 공제)
+                      보험 해약환급금 (합산 250만 원 공제)
                     </span>
                     <button
                       onClick={() => {
@@ -1276,7 +1277,7 @@ export default function PropertyValuationModal({
                     <h3 className="text-sm font-black">사업자산·채권 평가 및 채무자회생법 제383조 면제재산</h3>
                   </div>
                   <p className="text-xs text-slate-300">
-                    사업장 설비(감가상각 잔존가치), 대여금/외상매출금(실제 회수가능액)을 평가하고, 6개월 생계비(최대 1,110만 원) 등 법정 면제재산을 적용하여 청산가치를 합법적으로 절감합니다.
+                    사업장 설비(감가상각 잔존가치), 대여금/외상매출금(실제 회수가능액)을 평가하고, 6개월 생계비(2026년 1,558만 원) 등 법정 면제재산을 적용하여 청산가치를 합법적으로 절감합니다.
                   </p>
                 </div>
               </div>
@@ -1477,7 +1478,7 @@ export default function PropertyValuationModal({
                       <span>법 제383조 제2항 면제재산 신청 (청산가치 추가 공제)</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      채무자 및 피부양자의 6개월간 생계비(최대 1,110만 원)를 면제재산으로 신청하여 청산가치에서 전액 차감할 수 있습니다.
+                      채무자 및 피부양자의 6개월간 생계비(2026년 1,558만 원)를 면제재산으로 신청하여 청산가치에서 전액 차감할 수 있습니다.
                     </p>
                   </div>
                   <button
@@ -1485,8 +1486,8 @@ export default function PropertyValuationModal({
                       const newEp = {
                         id: `ep-${Date.now()}`,
                         type: 'living_expense_383_2' as const,
-                        appliedAmount: 11100000,
-                        approvedAmount: 11100000,
+                        appliedAmount: EXEMPT_PROPERTY_LIVING_LIMIT,
+                        approvedAmount: EXEMPT_PROPERTY_LIVING_LIMIT,
                         description: '채무자회생법 제383조 제2항 제2호에 따른 6개월간 최저생계비 면제재산 신청',
                         note: '의뢰인 기본 생계 보호 신청'
                       };
@@ -1504,7 +1505,7 @@ export default function PropertyValuationModal({
 
                 {(!data.exemptProperties || data.exemptProperties.length === 0) ? (
                   <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-400">
-                    신청된 면제재산이 없습니다. (생계비 1,110만 원 면제재산 신청 시 청산가치를 크게 낮출 수 있습니다)
+                    신청된 면제재산이 없습니다. (생계비 1,558만 원(2026년) 면제재산 신청 시 청산가치를 크게 낮출 수 있습니다)
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1526,7 +1527,7 @@ export default function PropertyValuationModal({
                               }}
                               className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1"
                             >
-                              <option value="living_expense_383_2">법 제383조 제2항 제2호 (6개월간 생계비 1,110만 원)</option>
+                              <option value="living_expense_383_2">법 제383조 제2항 제2호 (6개월간 생계비 1,558만 원(2026년))</option>
                               <option value="housing_deposit_383_1">법 제383조 제2항 제1호 (주거용 보증금 면제신청)</option>
                               <option value="other">기타 법정 면제재산</option>
                             </select>

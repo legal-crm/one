@@ -104,7 +104,7 @@ export const STANDARD_CORRECTION_TEMPLATES: StandardCorrectionTemplate[] = [
   {
     id: 'TPL_07_INSURANCE_SURRENDER',
     category: 'INSURANCE',
-    title: '7. 보험 해약환급금 및 150만 원 공제 소명',
+    title: '7. 보험 해약환급금 및 압류금지 공제(합산 250만 원) 소명',
     badge: '보험환급금 공제',
     courtInstruction: '신청인 명의 모든 보장성 보험 해약환급금 내역을 제출하고, 압류금지액 150만 원을 초과하는 잔액을 청산가치에 반영할 것.',
     debtorResponseTemplate: () =>
