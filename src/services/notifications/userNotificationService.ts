@@ -73,6 +73,7 @@ export const OFFICE_NOTIFICATION_KINDS: Array<{ kind: string; label: string }> =
   { kind: 'client_message', label: '의뢰인 메시지' },
   { kind: 'client_document', label: '의뢰인 서류 제출' },
   { kind: 'fee_client_report', label: '의뢰인 입금 알림' },
+  { kind: 'correction_client_reply', label: '의뢰인 보정 자료 도착' },
   { kind: 'consult_request_due_soon', label: '상담 요청 응답 기한 하루 전' },
   { kind: 'consult_request_expired', label: '상담 요청 응답 기한 지남' },
 ];

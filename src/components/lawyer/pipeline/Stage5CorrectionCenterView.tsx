@@ -29,6 +29,8 @@ interface Stage5CorrectionCenterViewProps {
   onUpdateStatus?: (newStatus: CrmStatus) => Promise<boolean | void>;
   onUpdateCrmExt?: (patch: Partial<CrmClientExtension>) => Promise<void>;
   activeLawyerName?: string;
+  /** 서버 보정 대응 화면 (CorrectionPanel). 주어지면 '보정 센터' 섹션을 이것으로 바꾼다 */
+  serverCorrectionSlot?: React.ReactNode;
 }
 
 export default function Stage5CorrectionCenterView({
@@ -41,6 +43,7 @@ export default function Stage5CorrectionCenterView({
   onUpdateStatus,
   onUpdateCrmExt,
   activeLawyerName = '담당 변호사',
+  serverCorrectionSlot,
 }: Stage5CorrectionCenterViewProps) {
   const dialog = useDialog();
 
@@ -460,7 +463,7 @@ export default function Stage5CorrectionCenterView({
             }`}
           >
             <FileEdit className="w-4 h-4" />
-            <span>보정 센터 ({caseType === 'bankruptcy' ? '5대' : '7대'} 소명서 작성)</span>
+            <span>{serverCorrectionSlot ? '보정 대응' : `보정 센터 (${caseType === 'bankruptcy' ? '5대' : '7대'} 소명서 작성)`}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
               currentSection === 'corrections'
                 ? 'bg-amber-400 text-slate-900'
@@ -565,7 +568,9 @@ export default function Stage5CorrectionCenterView({
       )}
 
       {/* ── 3. 섹션 2: 보정 센터 (corrections) — 인라인 보정 작업 환경 ── */}
-      {currentSection === 'corrections' && (
+      {/* 서버 보정 기록(CR)이 있으면 그 화면을 쓴다. 아래 옛 작업 화면(브라우저 저장)은 서버 사무소가 없는 개발 환경에서만 */}
+      {currentSection === 'corrections' && serverCorrectionSlot}
+      {currentSection === 'corrections' && !serverCorrectionSlot && (
         <div className="space-y-6">
           {/* 보정 기한 계산기 & 차수 관리 바 (단일 deadlineCalculator 적용) */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 space-y-4">

@@ -48,7 +48,7 @@ async function handler(req, res) {
     if (cfCheck.success) isAuthorized = true;
   }
 
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+  if (!isAuthorized && process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
     isAuthorized = true;
   }
 

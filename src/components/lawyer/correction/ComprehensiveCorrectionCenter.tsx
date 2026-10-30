@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../../../supabaseClient';
 import React, { useState, useMemo } from 'react';
 import { 
   AlertTriangle, Calendar, Clock, Plus, Trash2, CheckCircle2, 
@@ -165,7 +166,7 @@ function CorrectionRoundEditor({
 
       const res = await fetch('/api/ocr?kind=correction', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ imageBase64: base64, fileName: file.name }),
       });
       const data = await res.json();

@@ -3,6 +3,7 @@
  * 대법원 보정명령 30만/50만/100만 원 이상 출금·결제 사용처 소명 및 위험거래 탐지 엔진
  */
 
+import { getAuthHeaders } from '../supabaseClient';
 import * as XLSX from 'xlsx-js-style';
 import type { 
   AuditTransactionItem, 
@@ -522,7 +523,7 @@ export async function parsePdfBankStatement(
   try {
     const res = await fetch('/api/ocr?kind=case', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({
         imageBase64: fileBase64,
         fileName,

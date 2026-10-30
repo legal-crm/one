@@ -33,7 +33,7 @@ async function handler(req, res) {
   }
 
   // 개발 환경 로컬 테스트 편의 지원
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+  if (!isAuthorized && process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
     isAuthorized = true;
   }
 

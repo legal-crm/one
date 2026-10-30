@@ -175,6 +175,9 @@ import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, S
 import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon } from '../../services/alimtokService';
 import { loadNotificationSettings } from '../../services/notificationService';
 import { addClientNotification } from '../../services/clientNotificationService';
+import { canUse as canUseOfficePermission } from '../../services/office/officePermissions';
+import CorrectionPanel from './case/CorrectionPanel';
+import { CORRECTIONS_CHANGED_EVENT, loadCorrectionOverview, type CorrectionOverviewRow } from '../../services/corrections/correctionService';
 
 interface CrmTabProps {
   requests: ConsultRequest[];
@@ -199,6 +202,8 @@ interface CrmTabProps {
   permissionsOverride?: StaffPermissions;
   /** 서버 사무소 ID (사건 기록 패널) */
   officeId?: string;
+  /** 서버 사무소 권한표 (권한 키 → 범위). 보정 대응처럼 화면 권한표에 없는 권한 확인용 */
+  officePermissionMap?: Record<string, string> | null;
   /** 대표 또는 승인된 변호사 구성원 (종결·다시 열기) */
   isOfficeLawyer?: boolean;
 }
@@ -280,6 +285,7 @@ export default function CrmTab({
   firmTenantId,
   permissionsOverride,
   officeId,
+  officePermissionMap,
   isOfficeLawyer = false,
 }: CrmTabProps) {
   const dialog = useDialog();
@@ -641,6 +647,27 @@ export default function CrmTab({
   // ── 현재 권한 확인 ──
   // 서버 사무소 권한(RB-4)이 있으면 그것을 쓴다. (이전: 직원 기록이 없으면 대표 권한으로 간주)
   const currentPermissions = permissionsOverride || activeStaff?.permissions || DEFAULT_PERMISSIONS.OWNER;
+  // 서버 권한 키 확인 (실제 대상 확인은 서버가 다시 한다)
+  const officeCan = (key: string) => canUseOfficePermission(officePermissionMap, key);
+
+  // 서버 보정 회차 요약 (CR-10): 단계 판정 c2·일괄 안내 '보정 임박'이 이 값을 읽는다 (이전: 채워지지 않는 사본 correctionOrders)
+  const [serverCorrections, setServerCorrections] = useState<Record<string, CorrectionOverviewRow[]>>({});
+  useEffect(() => {
+    if (!officeId) return;
+    let cancelled = false;
+    const load = () => void loadCorrectionOverview(officeId).then(rows => {
+      if (cancelled) return;
+      const map: Record<string, CorrectionOverviewRow[]> = {};
+      rows.forEach(r => { (map[r.caseKey] ||= []).push(r); });
+      setServerCorrections(map);
+    });
+    load();
+    window.addEventListener(CORRECTIONS_CHANGED_EVENT, load);
+    return () => { cancelled = true; window.removeEventListener(CORRECTIONS_CHANGED_EVENT, load); };
+  }, [officeId]);
+  const hasOpenCorrection = (caseKey: string, ext?: CrmClientExtension) => (officeId
+    ? (serverCorrections[caseKey] || []).some(r => r.status !== 'submitted')
+    : (ext?.correctionOrders || []).some((c: any) => c.status === 'pending'));
 
   // ── 필터링 + 정렬 + 페이지네이션 ──
   // 사건 목록 범위 (CM-1): 이전에는 CaseListView에 requests 전체를 넘겨 다른 변호사 건·삭제 건·권한 밖 건이 보였다
@@ -2054,7 +2081,7 @@ export default function CrmTab({
             case 5:
               return [
                 { id: 'c1', label: '금지·중지명령 인용 확인', isMet: Boolean(selectedExt.courtCase?.caseNumber) },
-                { id: 'c2', label: '법원 보정권고/명령 소명서 제출', isMet: !(selectedExt.correctionOrders || []).some(c => c.status === 'pending') },
+                { id: 'c2', label: '법원 보정권고/명령 보정서 제출', isMet: !hasOpenCorrection(selectedId, selectedExt) },
                 { id: 'c3', label: '개시결정 등록 및 가상계좌 확인', isMet: gates.isCommenced },
               ];
             case 6:
@@ -2346,6 +2373,20 @@ export default function CrmTab({
                         activeSection={detailTab as any}
                         onSelectSection={(sec) => setDetailTab(sec as any)}
                         activeLawyerName={assignedLawyerName}
+                        serverCorrectionSlot={officeId ? (
+                          <CorrectionPanel
+                            key={`corr-${selectedId}`}
+                            officeId={officeId}
+                            caseKey={selectedId}
+                            caseNumber={selectedExt?.courtCase?.caseNumber}
+                            applicantName={selectedClient?.clientName}
+                            courtName={selectedExt?.courtCase?.courtName}
+                            lawyerName={assignedLawyerName}
+                            officeName={activeLawyer.firmName}
+                            canManage={officeCan('correction.manage')}
+                            canFinalize={officeCan('correction.finalize')}
+                          />
+                        ) : undefined}
                       />
                     )}
                       {pipelineStage === 6 && (
@@ -2594,7 +2635,7 @@ export default function CrmTab({
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
               if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
               if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
-              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+              if (bulkFilter === 'correction_urgent') return hasOpenCorrection(r.id, ext);
               return false;
             }).map(r => ({
               id: r.id,
@@ -2751,7 +2792,7 @@ export default function CrmTab({
             if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
             if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
             if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
-            if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+            if (bulkFilter === 'correction_urgent') return hasOpenCorrection(r.id, ext);
             return false;
           }).map(r => ({
             id: r.id,
@@ -2767,7 +2808,7 @@ export default function CrmTab({
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
               if (bulkFilter === 'fee_overdue') return (bulkFeeByReq?.[r.id]?.overdueCount ?? 0) >= 2;
               if (bulkFilter === 'hearing_month') return String((ext as any).postCommencementPlan?.meetingPlan?.meetingDate || '').startsWith(localYmd().slice(0, 7));
-              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+              if (bulkFilter === 'correction_urgent') return hasOpenCorrection(r.id, ext);
               return false;
             });
             const channelName = channel === 'alimtok' ? '카카오 알림톡' : 'SMS';

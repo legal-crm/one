@@ -2661,6 +2661,7 @@ export default function LawyerRole({
                 // 서버 알림(user_notifications) 링크: 사건 서류·수납
                 if (linkType === 'case_documents') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
                 if (linkType === 'case_fees') { if (linkId) openCase(linkId, 'fees'); else openCase(); return; }
+                if (linkType === 'case_correction') { if (linkId) openCase(linkId, 'corrections'); else openCase(); return; }
                 if (linkType === 'proposal_review') {
                   const pending = pendingProposals.find(p => p.id === linkId);
                   if (pending) {
@@ -3097,6 +3098,7 @@ export default function LawyerRole({
             firmTenantId={firmTenantId}
             permissionsOverride={officeCtx.office ? permissionCtx.permissions : undefined}
             officeId={officeCtx.office?.officeId}
+            officePermissionMap={officeCtx.office?.permissions}
             isOfficeLawyer={!!officeCtx.office && officeCtx.office.isVerifiedLawyer && (officeCtx.office.role === 'owner' || officeCtx.office.role === 'lawyer')}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}

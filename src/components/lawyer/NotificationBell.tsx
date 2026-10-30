@@ -18,7 +18,7 @@ interface NotificationBellProps {
 // 화면 한 줄 (옛 앱 안 알림 + 서버 알림)
 type BellItem = { id: string; source: 'legacy' | 'server'; title: string; body?: string; count?: number; isRead: boolean; at: string; emoji: string; linkType?: string; linkId?: string };
 const SERVER_EMOJI: Record<string, string> = {
-  consult_request_new: '📥', client_message: '💬', client_document: '📄', fee_client_report: '💳',
+  consult_request_new: '📥', client_message: '💬', client_document: '📄', fee_client_report: '💳', correction_client_reply: '📝',
 };
 
 function timeAgo(dateStr: string): string {

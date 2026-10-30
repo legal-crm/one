@@ -13,6 +13,7 @@
  *  - BANK_STATEMENT (통장거래내역서) → 금융거래분석
  */
 
+import { getAuthHeaders } from '../../../supabaseClient';
 import React, { useState, useCallback, useRef } from 'react';
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -104,7 +105,7 @@ export default function SmartDocumentDropzone({
       // 서류 분류 전용 경량 호출 (분류만 하고 필드 추출은 별도)
       const res = await fetch('/api/ocr?kind=case', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ imageBase64: base64, fileName: file.name }),
       });
 
