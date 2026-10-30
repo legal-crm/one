@@ -303,7 +303,13 @@ export default function DocumentSubmissionCard({ vm, cd }: { vm: MyPageModel; cd
                     <p className="text-sm font-bold text-slate-800 truncate">{f.name}</p>
                     <p className="text-xs text-slate-500">{new Date(f.uploadedAt).toLocaleDateString('ko')}</p>
                   </div>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 shrink-0">제출됨</span>
+                  {f.reviewStatus === 'approved' ? (
+                    <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 shrink-0">확인 완료</span>
+                  ) : f.reviewStatus === 'rejected' ? (
+                    <span className="text-xs font-bold text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 shrink-0" title={f.notes || ''}>다시 내 주세요{f.notes ? `: ${f.notes}` : ''}</span>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">제출됨 · 확인 대기</span>
+                  )}
                 </div>
               ))}
             </div>

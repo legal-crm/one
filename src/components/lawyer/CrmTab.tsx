@@ -60,6 +60,7 @@ import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneySta
 import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
 import ServerFeePanel from './case/ServerFeePanel';
+import ServerCaseFilesPanel from './case/ServerCaseFilesPanel';
 import { listCases, loadStageDefinitions, stageDef } from '../../services/cases/caseCoreService';
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
@@ -2136,6 +2137,17 @@ export default function CrmTab({
                     // 예전 일정 생성기는 만원 단위로 저장했다
                     return t > 0 && t < 100000 ? t * 10000 : t || undefined;
                   })()}
+                />
+              </div>
+            )}
+            {officeId && (
+              <div className="px-4 pt-3">
+                <ServerCaseFilesPanel
+                  key={`files-${selectedId}`}
+                  officeId={officeId}
+                  clientKey={selectedId}
+                  canManage={!!currentPermissions.editClientInfo || !!isOfficeLawyer}
+                  viewerName={activeStaff?.name || activeLawyer.name}
                 />
               </div>
             )}

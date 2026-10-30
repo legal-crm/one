@@ -145,6 +145,6 @@ export async function listMySubmittedFiles(clientKey: string): Promise<DocumentF
   return (data as any[]).map(r => ({
     id: r.id, name: r.name, category: r.category, uploadedAt: r.created_at, uploadedBy: '의뢰인',
     fileSize: r.size_bytes ?? undefined, mimeType: r.mime_type ?? undefined, storagePath: r.storage_path,
-    uploadSource: 'client', linkedDocId: r.linked_doc_id ?? undefined, reviewStatus: r.review_status,
+    uploadSource: 'client', linkedDocId: r.linked_doc_id ?? undefined, reviewStatus: r.review_status, notes: r.note ?? undefined,
   } as DocumentFile));
 }
