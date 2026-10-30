@@ -1,3 +1,4 @@
+import { hydrateFileDataUrls } from '../../../services/files/caseFileService';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Printer, Download, Upload, FileSpreadsheet, Plus, Trash2, 
@@ -169,7 +170,7 @@ export default function DebtAgencyApplicationModal({
     try {
       const res = await exportDebtAgencyZipPackage(
         { ...order, agencyApplication: appData },
-        crmExt?.uploadedFiles || []
+        await hydrateFileDataUrls(crmExt?.uploadedFiles || [])
       );
       const missing = [!res.idIncluded && '신분증', !res.sealIncluded && '인감증명서'].filter(Boolean).join('·');
       toast.success(`ZIP(의뢰서+위임장${res.idIncluded ? '+신분증' : ''}${res.sealIncluded ? '+인감증명서' : ''})을 내려받았습니다.${missing ? ` ${missing}은 서류함에 없어 빠졌습니다.` : ''} 공동인증서는 보안상 포함하지 않습니다.`);

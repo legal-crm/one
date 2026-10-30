@@ -1,3 +1,4 @@
+import { hydrateFileDataUrls } from '../../../services/files/caseFileService';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Plus, Trash2, CheckCircle2, 
@@ -212,7 +213,7 @@ export default function DebtCertificateTab({
   const handleExportZip = async () => {
     setIsZipping(true);
     try {
-      const res = await exportDebtAgencyZipPackage(order, crmExt.uploadedFiles || [], agencyPreset);
+      const res = await exportDebtAgencyZipPackage(order, await hydrateFileDataUrls(crmExt.uploadedFiles || []), agencyPreset);
       const parts = ['의뢰서', '위임장'];
       if (res.idIncluded) parts.push('신분증');
       if (res.sealIncluded) parts.push('인감증명서');
