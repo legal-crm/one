@@ -24,7 +24,7 @@ import {
   COURT_JURISDICTIONS,
   STATUTORY_LIVING_COST_60_2026,
   MEDIAN_INCOMES_2026,
-  getEvidenceListForJurisdiction,
+  switchEvidenceJurisdiction,
   recalculateMasterData,
   DEFAULT_SPECIAL_CLAUSES
 } from '../../../services/documents/courtFilingEngine';
@@ -36,6 +36,7 @@ import {
   setFieldValue,
 } from '../../../services/documents/courtFieldRegistry';
 import { COURT_EDITOR_SHORTCUTS } from './useCourtEditorHotkeys';
+import { normalizeDebtCauses, STATEMENT_DEBT_CAUSES } from '../../../services/court/statementDebtCauses';
 
 export interface CourtFilingInputSidebarHandle {
   /** 필드가 있는 섹션을 열고 입력 칸으로 스크롤 (focus=true 면 포커스까지) */
@@ -285,7 +286,7 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
         ...prev.court,
         courtName: COURT_JURISDICTIONS[jurisdiction].courtNames[0]
       },
-      evidenceList: getEvidenceListForJurisdiction(jurisdiction)
+      evidenceList: switchEvidenceJurisdiction(prev.evidenceList, jurisdiction)
     }));
     toast.info(`관할 법원이 '${COURT_JURISDICTIONS[jurisdiction].title}'(으)로 변경되었습니다. 제출목록 서식이 동기화되었습니다.`);
   };
@@ -658,8 +659,8 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
               <div>
                 <label className="text-xs text-slate-400 block mb-1">채무 증대 사유 (복수 선택)</label>
                 <div className="grid grid-cols-2 gap-1.5 bg-slate-800/60 p-2.5 rounded-lg border border-slate-700 text-xs">
-                  {['생활비 부족', '병원비 과다지출', '교육비 과다지출', '점포 운영 실패', '주식·코인 손실', '사기 피해', '타인 채무 보증', '고금리 이자 누적'].map((cause) => {
-                    const isChecked = data.statement.debtCauses.includes(cause);
+                  {STATEMENT_DEBT_CAUSES.map((cause) => {
+                    const isChecked = normalizeDebtCauses(data.statement.debtCauses).includes(cause);
                     return (
                       <label key={cause} className="flex items-center gap-1.5 cursor-pointer hover:text-white">
                         <input
@@ -670,9 +671,9 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
                               ...prev,
                               statement: {
                                 ...prev.statement,
-                                debtCauses: isChecked 
-                                  ? prev.statement.debtCauses.filter(c => c !== cause)
-                                  : [...prev.statement.debtCauses, cause]
+                                debtCauses: isChecked
+                                  ? normalizeDebtCauses(prev.statement.debtCauses).filter(c => c !== cause)
+                                  : normalizeDebtCauses([...prev.statement.debtCauses, cause])
                               }
                             }));
                           }}

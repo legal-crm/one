@@ -9,6 +9,7 @@ import type { RepaymentCreditor } from '../repayment/repaymentTypes';
 import { MEDIAN_INCOME_100_2026, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
 import { DELIVERY_UNIT_FEE_KRW } from '../court/courtFees';
 import { getOfficeProfile } from '../lawyer/officeProfile';
+import { applyDocRules, deriveDocFacts } from './docRules';
 
 // 법원 송달료 1회분 — 퀵독·전자계약과 같은 단일 상수 사용 (이전: 5,500원으로 불일치)
 export const COURT_SERVICE_FEE_UNIT = DELIVERY_UNIT_FEE_KRW;
@@ -323,20 +324,20 @@ export interface CourtFilingMasterData {
  */
 export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction): EvidenceSubmissionItem[] {
   const commonItems: EvidenceSubmissionItem[] = [
-    { id: 'ev-1', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '가족관계증명서 (상세증명서)', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-2', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '혼인관계증명서 (상세증명서)', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-3', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '주민등록초본 [주소변동내역 전체 및 개명사항 포함]', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-4', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '주민등록등본', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-5', categoryNumber: 2, categoryTitle: '2. 재산 및 소득 관련 서류 - 주거지', name: '임대차계약서 사본 또는 무상거주사실확인서', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-6', categoryNumber: 2, categoryTitle: '2. 재산 및 소득 관련 서류 - 주거지', name: '부동산등기사항전부증명서 (임차/소유 주택)', isSubmitted: true, unsubmittedReason: '' },
-    { id: 'ev-7', categoryNumber: 3, categoryTitle: '3. 재산 및 소득 관련 서류 - 과세증명서', name: '지방세 세목별 과세증명서 (과거 5년치 전국단위)', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-8', categoryNumber: 4, categoryTitle: '4. 재산 및 소득 관련 서류 - 자동차', name: '자동차등록원부 (갑/을구) 및 시가확인자료', isSubmitted: false, unsubmittedReason: '차량 미소유' },
-    { id: 'ev-9', categoryNumber: 5, categoryTitle: '5. 재산 및 소득 관련 서류 - 재산처분', name: '과거 2년 내 처분한 부동산·자동차 등 매매계약서', isSubmitted: false, unsubmittedReason: '처분 재산 없음' },
-    { id: 'ev-10', categoryNumber: 6, categoryTitle: '6. 재산 및 소득 관련 서류 - 보험', name: '한국신용정보원 보험가입내역조회서 및 예상해약환급금증명서', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-11', categoryNumber: 7, categoryTitle: '7. 재산 및 소득 관련 서류 - 소득', name: '급여명세서(최근 1년), 근로소득원천징수영수증, 재직증명서', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-12', categoryNumber: 8, categoryTitle: '8. 재산 및 소득 관련 서류 - 계좌 등', name: jurisdiction === 'DAEJEON' ? '과거 2년간 모든 은행계좌 거래내역서 (금융결제원 어카운트인포)' : '과거 1년간 모든 은행계좌 거래내역서 (금융결제원 어카운트인포)', isSubmitted: true, unsubmittedReason: '', isRequired: true },
-    { id: 'ev-13', categoryNumber: 9, categoryTitle: '9. 재산 및 소득 관련 서류 - 이혼', name: '재판상 이혼 시 판결문·조정조서 및 확정증명원 (해당 시)', isSubmitted: false, unsubmittedReason: '해당사항 없음' },
-    { id: 'ev-14', categoryNumber: 10, categoryTitle: '10. 신용회복위원회, 한국자산관리공사 등 유관기관', name: '사적 채무조정(신복위/캠코) 열람서류 또는 신용상담보고서', isSubmitted: false, unsubmittedReason: '해당사항 없음', isCreditRehabSubmission: false }
+    { id: 'ev-1', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '가족관계증명서 (상세증명서)', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-2', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '혼인관계증명서 (상세증명서)', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-3', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '주민등록초본 [주소변동내역 전체 및 개명사항 포함]', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-4', categoryNumber: 1, categoryTitle: '1. 인적 사항 및 주거 관련 서류', name: '주민등록등본', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-5', categoryNumber: 2, categoryTitle: '2. 재산 및 소득 관련 서류 - 주거지', name: '임대차계약서 사본 또는 무상거주사실확인서', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-6', categoryNumber: 2, categoryTitle: '2. 재산 및 소득 관련 서류 - 주거지', name: '부동산등기사항전부증명서 (임차/소유 주택)', isSubmitted: false, unsubmittedReason: '' },
+    { id: 'ev-7', categoryNumber: 3, categoryTitle: '3. 재산 및 소득 관련 서류 - 과세증명서', name: '지방세 세목별 과세증명서 (과거 5년치 전국단위)', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-8', categoryNumber: 4, categoryTitle: '4. 재산 및 소득 관련 서류 - 자동차', name: '자동차등록원부 (갑/을구) 및 시가확인자료', isSubmitted: false, unsubmittedReason: '' },
+    { id: 'ev-9', categoryNumber: 5, categoryTitle: '5. 재산 및 소득 관련 서류 - 재산처분', name: '과거 2년 내 처분한 부동산·자동차 등 매매계약서', isSubmitted: false, unsubmittedReason: '' },
+    { id: 'ev-10', categoryNumber: 6, categoryTitle: '6. 재산 및 소득 관련 서류 - 보험', name: '한국신용정보원 보험가입내역조회서 및 예상해약환급금증명서', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-11', categoryNumber: 7, categoryTitle: '7. 재산 및 소득 관련 서류 - 소득', name: '급여명세서(최근 1년), 근로소득원천징수영수증, 재직증명서', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-12', categoryNumber: 8, categoryTitle: '8. 재산 및 소득 관련 서류 - 계좌 등', name: jurisdiction === 'DAEJEON' ? '과거 2년간 모든 은행계좌 거래내역서 (금융결제원 어카운트인포)' : '과거 1년간 모든 은행계좌 거래내역서 (금융결제원 어카운트인포)', isSubmitted: false, unsubmittedReason: '', isRequired: true },
+    { id: 'ev-13', categoryNumber: 9, categoryTitle: '9. 재산 및 소득 관련 서류 - 이혼', name: '재판상 이혼 시 판결문·조정조서 및 확정증명원 (해당 시)', isSubmitted: false, unsubmittedReason: '' },
+    { id: 'ev-14', categoryNumber: 10, categoryTitle: '10. 신용회복위원회, 한국자산관리공사 등 유관기관', name: '사적 채무조정(신복위/캠코) 열람서류 또는 신용상담보고서', isSubmitted: false, unsubmittedReason: '', isCreditRehabSubmission: false }
   ];
 
   if (jurisdiction === 'DAEJEON') {
@@ -347,7 +348,7 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
         categoryNumber: 10,
         categoryTitle: '10. 유관기관 서류 및 필수 신용교육',
         name: '★ 신용교육원(educredit.or.kr) 온라인 동영상 수료 이수증 (대전지법 필수)',
-        isSubmitted: true,
+        isSubmitted: false,
         unsubmittedReason: '',
         isRequired: true,
         noticeText: '대전지방법원 지침: 교육 수료 후 이수증을 개인파산·회생 채권자집회기일 전까지 반드시 제출'
@@ -357,7 +358,7 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
         categoryNumber: 11,
         categoryTitle: '11. 가족 관련 서류 (대전지방법원 필수)',
         name: '★ 배우자(2년 내 전배우자 포함), 부모, 자녀의 주민등록초본 (주소변동 전체 포함)',
-        isSubmitted: true,
+        isSubmitted: false,
         unsubmittedReason: '',
         isRequired: true
       },
@@ -366,7 +367,7 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
         categoryNumber: 11,
         categoryTitle: '11. 가족 관련 서류 (대전지방법원 필수)',
         name: '★ 배우자, 부모, 자녀의 지방세 세목별 과세증명서 (과거 5년치 전국단위)',
-        isSubmitted: true,
+        isSubmitted: false,
         unsubmittedReason: '',
         isRequired: true
       }
@@ -387,6 +388,64 @@ export function getEvidenceListForJurisdiction(jurisdiction: CourtJurisdiction):
   }
 
   return commonItems;
+}
+
+/**
+ * 자료제출목록 항목 ↔ 3단계 서류 체크리스트 항목 (DP-4)
+ * 체크리스트에서 승인된 서류만 '제출'로 표시한다. 이전: 모든 항목이 '제출'로 미리 체크돼 있었다.
+ */
+export const EVIDENCE_TO_CHECKLIST: Record<string, { ids: string[]; mode: 'all' | 'any' }> = {
+  'ev-1': { ids: ['rs-p1-3'], mode: 'all' },
+  'ev-2': { ids: ['rs-p1-4'], mode: 'all' },
+  'ev-3': { ids: ['rs-p1-2'], mode: 'all' },
+  'ev-4': { ids: ['rs-p1-1'], mode: 'all' },
+  'ev-5': { ids: ['rs-p2-10', 'rs-p2-11'], mode: 'any' },
+  'ev-6': { ids: ['rs-p2-12'], mode: 'all' },
+  'ev-7': { ids: ['rs-p1-8'], mode: 'all' },
+  'ev-8': { ids: ['rs-p1-9'], mode: 'all' },
+  'ev-9': { ids: ['rs-p2-24'], mode: 'all' },
+  'ev-10': { ids: ['rs-p2-2', 'rs-p2-3'], mode: 'all' },
+  'ev-11': { ids: ['rs-p2-13', 'rs-p2-15', 'rs-p2-17', 'rb-p2-1', 'rb-p2-5'], mode: 'any' },
+  'ev-12': { ids: ['rs-p2-1', 'rs-p2-7', 'rs-p2-28', 'rs-p2-29', 'rs-p2-30', 'rs-p2-31', 'rs-p2-32'], mode: 'all' },
+  'ev-14': { ids: ['rs-p2-26'], mode: 'all' },
+};
+
+/** 관할을 바꿀 때 새 목록에 같은 항목의 제출 여부·사유를 옮긴다 (이전: 바꾸면 모두 초기값으로 돌아갔다) */
+export function switchEvidenceJurisdiction(prev: EvidenceSubmissionItem[], jurisdiction: CourtJurisdiction): EvidenceSubmissionItem[] {
+  const old = new Map(prev.map(i => [i.id, i]));
+  return getEvidenceListForJurisdiction(jurisdiction).map(item => {
+    const o = old.get(item.id);
+    return o ? { ...item, isSubmitted: o.isSubmitted, unsubmittedReason: o.unsubmittedReason } : item;
+  });
+}
+
+/**
+ * 사건의 3단계 서류 상태로 자료제출목록 '제출' 여부를 채운다.
+ * - 연결된 체크리스트 서류가 승인되면 제출 (any: 하나라도 / all: 해당되는 것 전부)
+ * - 연결된 서류가 모두 '이 사건엔 해당 없음'이면 미제출 사유 '해당 없음'
+ * - 그 밖에는 미제출·사유 빈칸 (변호사가 서식에서 직접 적는다)
+ */
+export function applyChecklistToEvidence(
+  list: EvidenceSubmissionItem[],
+  request: ConsultRequest,
+  crmExt?: CrmClientExtension,
+): EvidenceSubmissionItem[] {
+  const st = ((crmExt as any)?.stage3DocsState || {}) as Record<string, { status?: string; override?: 'include' | 'exclude' }>;
+  const docs = crmExt?.documents || [];
+  const approved = (id: string) => st[id]?.status === 'APPROVED' || docs.some(d => d.id === id && (d.checked || d.reviewStatus === 'approved'));
+  const overrides: Record<string, 'include' | 'exclude' | undefined> = {};
+  Object.entries(st).forEach(([k, v]) => { if (v?.override) overrides[k] = v.override; });
+  const allIds = Array.from(new Set(Object.values(EVIDENCE_TO_CHECKLIST).flatMap(m => m.ids)));
+  const ruled = new Map(applyDocRules(allIds.map(id => ({ id, isRequired: true })), deriveDocFacts(request, crmExt), overrides).map(r => [r.item.id, r.applies]));
+
+  return list.map(item => {
+    const map = EVIDENCE_TO_CHECKLIST[item.id];
+    if (!map) return item;
+    const relevant = map.ids.filter(id => ruled.get(id) !== false);
+    if (relevant.length === 0) return { ...item, isSubmitted: false, unsubmittedReason: '해당 없음' };
+    const ok = map.mode === 'any' ? relevant.some(approved) : relevant.every(approved);
+    return { ...item, isSubmitted: ok, unsubmittedReason: ok ? '' : item.unsubmittedReason };
+  });
 }
 
 /**
@@ -662,7 +721,7 @@ export function buildCourtFilingMasterData(
       debtCauses: [],
       detailedReasonEssay: ''
     },
-    evidenceList: getEvidenceListForJurisdiction(courtJurisdiction)
+    evidenceList: applyChecklistToEvidence(getEvidenceListForJurisdiction(courtJurisdiction), request, crmExt)
   };
 
   return recalculateMasterData(initialData);

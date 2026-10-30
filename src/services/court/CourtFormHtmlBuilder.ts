@@ -10,13 +10,15 @@
  * - 변제계획안 (D5110 변제계획안 및 변제예정액표)
  * - 금지명령 신청서
  * - 소송위임장 및 경유확인서
- * - 서울회생법원 필수자료제출목록
+ * - 자료제출목록 (관할 법원별)
  */
 
 import { DELIVERY_UNIT_FEE_KRW, calcCourtFees } from './courtFees';
 import { getLivingExpense, DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from '../repayment/repaymentConstants2026';
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentCreditor } from '../repayment/repaymentTypes';
+import { normalizeDebtCauses, STATEMENT_DEBT_CAUSES } from './statementDebtCauses';
+import { applyChecklistToEvidence, detectCourtJurisdiction, getEvidenceListForJurisdiction } from '../documents/courtFilingEngine';
 
 export interface CourtFormDataContext {
   clientRequest: ConsultRequest;
@@ -785,7 +787,11 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
     .map(s => (s || '').trim()).filter(Boolean);
   const detailCause = (storyParts.length > 0 ? storyParts.join('<br><br>') : (story?.aiDraftStatement || '').trim()) || '(미입력)';
   const kw = (story?.initialCauseKeywords || []).join(' ');
-  const box = (...words: string[]) => (words.some(w => kw.includes(w)) ? '■' : '&nbsp;');
+  // 선택지는 진술서 양식 목록 하나 (DP-8). 변제계획 편집기에서 고른 사유 + 의뢰인 진술 키워드
+  const picked = new Set<string>(normalizeDebtCauses(ctx.crmExt.repaymentPlan?.debtGrowthReasons));
+  const CAUSE_WORDS: Record<string, string[]> = { '생활비 부족': ['생활비'], '병원비 과다지출': ['의료', '병원'], '교육비 과다지출': ['교육'], '음식, 음주, 여흥, 도박 또는 취미활동': ['도박', '음주', '유흥', '취미'], '점포 운영의 실패': ['점포', '사업', '자영'], '주식 투자 실패': ['주식', '코인', '가상', '투자'], '사기 피해': ['사기'], '타인(친지, 친구 등)의 채무보증': ['보증'] };
+  Object.entries(CAUSE_WORDS).forEach(([c, ws]) => { if (ws.some(w => kw.includes(w))) picked.add(c); });
+  const causeBoxes = STATEMENT_DEBT_CAUSES.map(c => `[ ${picked.has(c) ? '■' : '&nbsp;'} ] ${c}`).join(' &nbsp; &nbsp; ');
 
   return `
   <div style="${A4_PAGE_STYLE}">
@@ -815,8 +821,7 @@ export function buildCourtStatementHtml(ctx: CourtFormDataContext): string {
       2. 개인회생절차에 이르게 된 사정 (중복 선택)
     </h3>
     <div style="font-size: 11px; line-height: 2; padding: 10px 14px; background: transparent; border: 1px solid #cbd5e1; margin-bottom: 16px; border-radius: 0;">
-      <div>[ ${box('생활비')} ] 생활비 부족 &nbsp; &nbsp; [ ${box('교육비')} ] 교육비 과다지출 &nbsp; &nbsp; [ ${box('점포')} ] 점포운영 실패 &nbsp; &nbsp; [ ${box('사업')} ] 사업실패</div>
-      <div>[ ${box('보증')} ] 타인 채무보증 &nbsp; &nbsp; [ ${box('사기')} ] 사기 피해 &nbsp; &nbsp; [ ${box('주식', '코인', '가상')} ] 주식/가상화폐 투자실패 &nbsp; &nbsp; [ ${box('의료', '병원')} ] 의료비 지출</div>
+      <div>${causeBoxes}</div>
     </div>
 
     <h3 style="font-size: 13px; font-weight: 900; color: #1e3a8a; margin: 0 0 8px 0;">
@@ -950,21 +955,32 @@ export function buildCourtPowerOfAttorneyHtml(ctx: CourtFormDataContext): string
   `;
 }
 
-/** 11. 서울회생법원 필수자료제출목록 */
+/** 11. 자료제출목록 — 관할 법원 목록 + 3단계 서류 체크리스트 승인 상태 (DP-4) */
 export function buildCourtRequiredDocumentChecklistHtml(ctx: CourtFormDataContext): string {
+  // 목록은 원본 사건 데이터로 만들고, 화면에 넣는 글자만 이스케이프한다
+  const courtNameRaw = ctx.courtName || ctx.crmExt?.courtCase?.courtName || '';
+  const items = applyChecklistToEvidence(getEvidenceListForJurisdiction(detectCourtJurisdiction(courtNameRaw)), ctx.clientRequest, ctx.crmExt);
   ctx = safeCtx(ctx);
   const clientName = ctx.clientRequest.clientName || '신청인';
+  const courtName = escapeHtml(courtNameRaw);
+  const rows = items.map((it, i) => `
+        <tr style="border-bottom: 1px solid #000000; height: 30px;">
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">${i + 1}</td>
+          <td style="padding: 4px 10px; border-right: 1px solid #000000;">${escapeHtml(it.name)}</td>
+          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">${it.isSubmitted ? '제출' : '□'}</td>
+          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">${escapeHtml(it.isSubmitted ? '' : it.unsubmittedReason)}</td>
+        </tr>`).join('');
 
   return `
   <div style="${A4_PAGE_STYLE}">
     <div style="display: flex; justify-content: space-between; font-size: 11px; color: #333333; margin-bottom: 12px;">
-      <span>[서울회생법원 실무준칙 별지]</span>
+      <span>${courtName ? `[${courtName}]` : ''}</span>
       <span>신청인: ${clientName}</span>
     </div>
 
     <div style="text-align: center; margin-bottom: 20px;">
       <h1 style="font-size: 22px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #0f172a;">
-        필수자료 제출목록 및 제출 여부
+        자료제출목록
       </h1>
     </div>
 
@@ -974,69 +990,15 @@ export function buildCourtRequiredDocumentChecklistHtml(ctx: CourtFormDataContex
           <th style="width: 45px; border-right: 1px solid #000000;">번호</th>
           <th style="border-right: 1px solid #000000;">서 류 명</th>
           <th style="width: 75px; border-right: 1px solid #000000;">제출여부</th>
-          <th style="width: 220px;">비고 / 소명 내용</th>
+          <th style="width: 220px;">미제출 사유</th>
         </tr>
       </thead>
-      <tbody>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">1</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">주민등록등본 및 초본 (말소·변동 전체)</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">과거 5년 주소변동 전체 포함 제출</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">2</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">가족관계증명서 및 혼인관계증명서 (상세)</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">가족 주민등록번호 뒷자리 마스킹 처리</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">3</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">지방세 세목별 과세(비과세)증명서 (5년)</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전국 자치단체 대상 전체 세목 발행본</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">4</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">지적전산자료 조회결과서 (K-Geo 무소유 증명)</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">신청인 본인 명의 전국 부동산 무소유 확인</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">5</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">계좌정보통합관리서비스(어카운트인포) 내역</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">은행권·제2금융권 전체 활동성/비활동성 계좌</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">6</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">보험계약 조회결과서 및 해약환급금 확인서</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">전 보험사 계약 현황 및 합산 250만 원 공제 적용</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">7</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">소득금액증명원 / 근로소득원천징수영수증</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">최근 1개년 급여 내역 및 세무서 발행본</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">8</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">재직증명서 및 최근 1년 급여입금통장 거래내역</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">현재 재직 상태 및 급여 실지급액 입증</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #000000; height: 30px;">
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">9</td>
-          <td style="padding: 4px 10px; border-right: 1px solid #000000;">금융기관별 부채증명서 원본 일체</td>
-          <td style="text-align: center; font-weight: bold; border-right: 1px solid #000000;">□</td>
-          <td style="padding: 4px 10px; font-size: 11px; color: #333333;">채권자목록 기재 채권사 전원 부채확인서</td>
-        </tr>
+      <tbody>${rows}
       </tbody>
     </table>
 
     <div style="margin-top: 20px; font-size: 11px; color: #000000; line-height: 1.6;">
-      ※ 제출 여부(□)는 담당자가 실제 서류를 확인한 뒤 표시합니다. 필수 서류 목록은 관할 법원 실무준칙에 따라 다를 수 있습니다.
+      ※ '제출'은 사무소가 서류를 확인(승인)한 항목입니다. 미제출 항목은 사유를 적어 주세요. 목록은 관할 법원 실무준칙에 따라 다를 수 있습니다.
     </div>
   </div>
   `;

@@ -47,6 +47,7 @@ import CourtDocumentExportModal from '../filing/CourtDocumentExportModal';
 import BatchFilingPackagingModal from '../filing/BatchFilingPackagingModal';
 import PropertyValuationModal from '../assets/PropertyValuationModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
+import { normalizeDebtCauses, STATEMENT_DEBT_CAUSES } from '../../../services/court/statementDebtCauses';
 
 interface RepaymentPlanEditorProps {
   clientId: string;
@@ -152,7 +153,8 @@ export default function RepaymentPlanEditor({
 
   // ── 채무 증대 사유 (이미지 3-5 실무 양식) ──
   const [debtGrowthReasons, setDebtGrowthReasons] = useState<string[]>(() => {
-    return crmExt.repaymentPlan?.debtGrowthReasons || ['생활비 부족'];
+    // 고른 사유만 (이전: 아무것도 안 고른 사건에 '생활비 부족'이 미리 체크됐다)
+    return normalizeDebtCauses(crmExt.repaymentPlan?.debtGrowthReasons);
   });
   const [debtGrowthNarrative, setDebtGrowthNarrative] = useState<string>(() => {
     return crmExt.repaymentPlan?.debtGrowthNarrative || '';
@@ -506,7 +508,7 @@ export default function RepaymentPlanEditor({
   // ── 채무 증대 사유 체크박스 토글 ──
   const toggleDebtGrowthReason = (reason: string) => {
     setDebtGrowthReasons((prev) =>
-      prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]
+      normalizeDebtCauses(prev).includes(reason as any) ? normalizeDebtCauses(prev).filter((r) => r !== reason) : normalizeDebtCauses([...prev, reason])
     );
   };
 
@@ -2003,18 +2005,8 @@ export default function RepaymentPlanEditor({
 
                 {/* 9개 공식 사유 체크박스 (그림 3-5 정확 일치) */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
-                  {[
-                    '교육비 과다지출',
-                    '기타',
-                    '병원비 과다지출',
-                    '사기 피해',
-                    '생활비 부족',
-                    '음식, 음주, 여흥, 도박 또는 취미활동',
-                    '점포 운영의 실패',
-                    '주식투자 실패',
-                    '타인채무의 보증',
-                  ].map((reason) => {
-                    const isChecked = debtGrowthReasons.includes(reason);
+                  {[...STATEMENT_DEBT_CAUSES].map((reason) => {
+                    const isChecked = normalizeDebtCauses(debtGrowthReasons).includes(reason);
                     return (
                       <label
                         key={reason}

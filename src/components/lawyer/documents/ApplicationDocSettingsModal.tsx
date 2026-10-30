@@ -9,6 +9,8 @@ import {
   ApplicationDocTemplateService, 
   APPLICATION_CATEGORIES, 
   compareDocItemsPriority,
+  getDocValidityMonths,
+  saveDocValidityMonths,
   type ApplicationDocMasterItem, 
   type DocCategoryKey 
 } from '../../../services/documents/applicationDocTemplateService';
@@ -53,6 +55,18 @@ function ApplicationDocSettingsModalInner({
   const [editTips, setEditTips] = useState('');
   const [editIsRequired, setEditIsRequired] = useState(true);
   const [editIsThirdPartyMasking, setEditIsThirdPartyMasking] = useState(false);
+
+  // 발급일 기준 (사무소 서버 설정)
+  const [validIssue, setValidIssue] = useState(() => getDocValidityMonths().issueMonths);
+  const [validCorrection, setValidCorrection] = useState(() => getDocValidityMonths().correctionMonths);
+  const [savingValidity, setSavingValidity] = useState(false);
+  const handleSaveValidity = async () => {
+    setSavingValidity(true);
+    const r = await saveDocValidityMonths(validIssue, validCorrection);
+    setSavingValidity(false);
+    if (r.ok) toast.success('발급일 기준을 저장했어요.');
+    else toast.error(r.message || '발급일 기준을 저장하지 못했어요.');
+  };
 
   const refreshList = () => {
     setTemplates(ApplicationDocTemplateService.getTemplates());
@@ -203,14 +217,14 @@ function ApplicationDocSettingsModalInner({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-slate-900">
-                  신청서류 마스터 설정 (LegalFlow Engine)
+                  신청서류 기준 설정
                 </h2>
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-brand/10 text-brand border border-brand/20">
                   사무소 공통 서류 템플릿
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                사건 및 소득 유형에 따라 의뢰인이 제출할 필수 서류와 발급 팁을 미리 설정하여 원클릭 배포합니다.
+                사건·소득 유형별로 의뢰인이 낼 서류와 발급 안내를 정합니다. 사무소 서버에 저장되고, 사건 정보에 따라 필요 여부가 다시 판단됩니다.
               </p>
             </div>
           </div>
@@ -628,7 +642,28 @@ function ApplicationDocSettingsModalInner({
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>설정한 서류 템플릿은 CRM Stage 2 및 의뢰인 모바일 앱(웹)에 실시간 자동 반영됩니다.</span>
+            <span>바꾼 기준은 다음에 여는 사건 3단계 서류 목록부터 적용됩니다.</span>
+          </div>
+          {/* 발급일 기준 (DP-3): 승인 때 받은 발급일이 이 기간을 넘으면 '다시 발급 필요'로 표시 */}
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <label className="flex items-center gap-1 whitespace-nowrap">
+              접수용 발급 후
+              <select value={validIssue} onChange={e => setValidIssue(Number(e.target.value))}
+                className="min-h-[36px] px-2 rounded-xl border border-slate-200 bg-white font-bold">
+                {[1, 2, 3].map(n => <option key={n} value={n}>{n}개월</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-1 whitespace-nowrap">
+              보정 첨부용
+              <select value={validCorrection} onChange={e => setValidCorrection(Number(e.target.value))}
+                className="min-h-[36px] px-2 rounded-xl border border-slate-200 bg-white font-bold">
+                {[1, 2, 3].map(n => <option key={n} value={n}>{n}개월</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={handleSaveValidity} disabled={savingValidity}
+              className="min-h-[36px] px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 font-bold whitespace-nowrap active:scale-[0.98] disabled:opacity-60">
+              {savingValidity ? '저장 중…' : '기준 저장'}
+            </button>
           </div>
           <button
             onClick={onClose}

@@ -1,3 +1,6 @@
+import { toast } from 'sonner';
+import { supabase, isSupabaseConfigured } from '../../supabaseClient';
+import { deriveDocFacts } from './docRules';
 /**
  * 신청서류 마스터 템플릿 관리 서비스 (리걸플로 매뉴얼 20~21p 벤치마킹)
  * - 로펌 관리자가 카테고리별(개인회생 급여/영업, 파산, 보정권고)로 구비서류를 사전 등록/편집
@@ -208,10 +211,10 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     order: 11,
     phase: 2,
     submissionMethod: 'DIGITAL_UPLOAD',
-    name: '생명보험협회 보험가입 확인서',
+    name: '보험가입내역조회 (한국신용정보원 크레딧포유, 생존자 기준)',
     category: 'REHAB_SALARIED',
     subCategory: 'FINANCE',
-    agency: '생명·손해보험협회 (내보험찾기 / 내보험다보여)',
+    agency: '한국신용정보원 크레딧포유 (금융기관)',
     agencyUrl: 'https://cont.insure.or.kr',
     tips: '내보험찾기 접속 후 가입된 보험 전체 목록 조회 결과서.',
     isRequired: true,
@@ -222,7 +225,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     order: 12,
     phase: 2,
     submissionMethod: 'DIGITAL_UPLOAD',
-    name: '보험 예상 해약환급금 확인서',
+    name: '보험회사별 예상 해약환급금 증명서 (가입내역의 모든 보험·공제)',
     category: 'REHAB_SALARIED',
     subCategory: 'FINANCE',
     agency: '해당 보험사 콜센터 통화 후 팩스/파일 발급',
@@ -277,7 +280,7 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     order: 16,
     phase: 2,
     submissionMethod: 'DIGITAL_UPLOAD',
-    name: '계좌정보통합관리(어카운트인포) 결과',
+    name: '계좌정보통합조회 ① 은행별 계좌 목록',
     category: 'REHAB_SALARIED',
     subCategory: 'FINANCE',
     agency: '금융결제원 계좌정보통합관리서비스(payinfo)',
@@ -780,9 +783,74 @@ const DEFAULT_DOC_TEMPLATES: ApplicationDocMasterItem[] = [
     isRequired: false,
     isThirdPartyMasking: false
   },
+  // ── DP-2 (10-31): 실제 접수본 기준으로 빠진 서류 ──
+  { id: 'rs-p2-28', order: 53, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '계좌정보통합조회 ② 계좌 상세(잔액 포함)', category: 'REHAB_SALARIED', subCategory: 'FINANCE',
+    agency: '금융결제원 계좌정보통합관리서비스(payinfo) 금융기관', agencyUrl: 'https://www.payinfo.or.kr', tips: '은행별 목록에서 각 계좌의 잔액이 보이는 상세 화면을 출력해 주세요.', isRequired: true },
+  { id: 'rs-p2-29', order: 54, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '계좌정보통합조회 ③ 금융기관별(저축은행·보험·상호금융)', category: 'REHAB_SALARIED', subCategory: 'FINANCE',
+    agency: '금융결제원 계좌정보통합관리서비스(payinfo) 금융기관', agencyUrl: 'https://www.payinfo.or.kr', tips: '제2금융권·우체국·새마을금고·신협 계좌까지 포함해 출력합니다.', isRequired: true },
+  { id: 'rs-p2-30', order: 55, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '계좌정보통합조회 ④ 증권사별 계좌', category: 'REHAB_SALARIED', subCategory: 'FINANCE',
+    agency: '금융결제원 계좌정보통합관리서비스(payinfo) 금융기관', agencyUrl: 'https://www.payinfo.or.kr', tips: '증권 계좌가 없어도 "조회 결과 없음" 화면을 출력해 냅니다.', isRequired: true },
+  { id: 'rs-p2-31', order: 56, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '계좌정보통합조회 ⑤ 카드사별 보유 카드', category: 'REHAB_SALARIED', subCategory: 'FINANCE',
+    agency: '금융결제원 계좌정보통합관리서비스(payinfo) 금융기관', agencyUrl: 'https://www.payinfo.or.kr', tips: '해지·정지된 카드도 함께 나오게 출력합니다.', isRequired: true },
+  { id: 'rs-p2-32', order: 57, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '계좌정보통합조회 ⑥ 카드 상세', category: 'REHAB_SALARIED', subCategory: 'FINANCE',
+    agency: '금융결제원 계좌정보통합관리서비스(payinfo) 금융기관', agencyUrl: 'https://www.payinfo.or.kr', tips: '카드사별 상세(결제 계좌·이용 한도) 화면입니다.', isRequired: true },
+  { id: 'rs-p2-34', order: 58, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '퇴직연금 적립금 확인서 (퇴직연금 가입 시)', category: 'REHAB_SALARIED', subCategory: 'WORK',
+    agency: '퇴직연금 사업자(은행·보험·증권) 또는 직장', tips: 'DB·DC형 적립금 잔액이 나온 확인서. 퇴직연금이 없으면 직장 확인으로 대신합니다.', isRequired: false },
+  { id: 'rs-p2-35', order: 59, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '변제계획안 제출서', category: 'REHAB_SALARIED', subCategory: 'PERSONAL',
+    agency: '사무소 작성 (법원 서식)', tips: '변제계획안 앞에 붙이는 제출서. 4단계 서식에서 만듭니다.', isRequired: true },
+  { id: 'rs-p2-36', order: 60, phase: 2, submissionMethod: 'DIGITAL_UPLOAD', name: '소송위임장 및 변호사 경유확인서', category: 'REHAB_SALARIED', subCategory: 'PERSONAL',
+    agency: '사무소 작성 (지방변호사회 경유)', tips: '위임장은 의뢰인 날인, 경유확인서는 소속 지방변호사회에서 받습니다.', isRequired: true },
 ];
 
 const STORAGE_KEY = 'LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V3';
+
+// ── 사무소 서버 기준 (DP-6, office_document_templates) ──
+// 서버 사무소가 있으면 메모리 사본 + 서버 저장, 없으면(개발) 이 브라우저 저장소를 쓴다.
+let officeScopeId: string | null = null;
+let officeCache: ApplicationDocMasterItem[] | null = null;
+let officeValidity = { issueMonths: 1, correctionMonths: 2 };
+const TEMPLATES_CHANGED_EVENT = 'mykim:doc-templates-changed';
+export { TEMPLATES_CHANGED_EVENT };
+
+/** 로그인한 사무소의 서류 기준을 서버에서 읽어 둔다 (LawyerRole) */
+export async function setDocTemplateOfficeScope(officeId: string | null | undefined): Promise<void> {
+  officeScopeId = officeId || null;
+  officeCache = null;
+  officeValidity = { issueMonths: 1, correctionMonths: 2 };
+  if (!officeScopeId || !isSupabaseConfigured) return;
+  const { data, error } = await supabase.from('office_document_templates').select('items, issue_valid_months, correction_valid_months').eq('office_id', officeScopeId).maybeSingle();
+  if (error) { console.warn('[DocTemplates] 서버 기준을 읽지 못해 기본 목록을 씁니다:', error.message); return; }
+  if (data) {
+    officeValidity = { issueMonths: data.issue_valid_months || 1, correctionMonths: data.correction_valid_months || 2 };
+    if (Array.isArray(data.items) && data.items.length > 0) officeCache = data.items as ApplicationDocMasterItem[];
+  }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(TEMPLATES_CHANGED_EVENT));
+}
+
+/** 발급일 기준 (개월): 접수용 / 보정 첨부용 */
+export function getDocValidityMonths(): { issueMonths: number; correctionMonths: number } {
+  return officeValidity;
+}
+
+export async function saveDocValidityMonths(issueMonths: number, correctionMonths: number): Promise<{ ok: boolean; message?: string }> {
+  if (!officeScopeId) { officeValidity = { issueMonths, correctionMonths }; return { ok: true }; }
+  const { error } = await supabase.from('office_document_templates').upsert({
+    office_id: officeScopeId, issue_valid_months: issueMonths, correction_valid_months: correctionMonths,
+    ...(officeCache ? { items: officeCache } : {}),
+  }, { onConflict: 'office_id' });
+  if (error) return { ok: false, message: /row-level|permission/i.test(error.message) ? '사무소 설정 권한이 없어요.' : '저장하지 못했어요.' };
+  officeValidity = { issueMonths, correctionMonths };
+  return { ok: true };
+}
+
+function persistOfficeTemplates(list: ApplicationDocMasterItem[]): void {
+  officeCache = list;
+  void supabase.from('office_document_templates').upsert({
+    office_id: officeScopeId, items: list, issue_valid_months: officeValidity.issueMonths, correction_valid_months: officeValidity.correctionMonths,
+  }, { onConflict: 'office_id' }).then(({ error }) => {
+    if (error) toast.error(/row-level|permission/i.test(error.message) ? '서류 기준은 사무소 설정 권한이 있어야 바꿀 수 있어요.' : '서류 기준을 서버에 저장하지 못했어요.');
+  });
+}
 
 /**
  * 서류 목록 정렬 우선순위 비교기
@@ -838,6 +906,12 @@ export class ApplicationDocTemplateService {
    * 저장소에서 전체 템플릿 목록 로드 (없으면 기본값 초기화 및 지능형 마이그레이션)
    */
   static getTemplates(): ApplicationDocMasterItem[] {
+    if (officeScopeId) {
+      const base = officeCache && officeCache.length ? officeCache.map(i => this.normalizeItem(i)) : DEFAULT_DOC_TEMPLATES.slice();
+      const ids = new Set(base.map(i => i.id));
+      DEFAULT_DOC_TEMPLATES.forEach(d => { if (!ids.has(d.id)) base.push(d); });
+      return base.sort(compareDocItemsPriority);
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY) || 
                   localStorage.getItem('LEGAL_CRM_APPLICATION_DOC_MASTER_TEMPLATES_V2') || 
@@ -981,15 +1055,18 @@ export class ApplicationDocTemplateService {
    * 기본 표준 템플릿으로 초기화
    */
   static resetToDefaults(): void {
+    if (officeScopeId) { persistOfficeTemplates(DEFAULT_DOC_TEMPLATES.slice()); return; }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DOC_TEMPLATES));
   }
 
   /**
    * 의뢰인 사건 정보(소득, 회생/파산)에 부합하는 권장 서류 목록 반환 (인감증명서 최상단 보장)
    */
-  static getRecommendedDocsForClient(clientRequest: any): ApplicationDocMasterItem[] {
-    const isBankruptcy = clientRequest?.caseType === 'bankruptcy' || clientRequest?.targetSolution === '파산면책';
-    const isBusiness = clientRequest?.jobType === '사업자' || clientRequest?.isBusiness || clientRequest?.incomeType === '사업소득';
+  static getRecommendedDocsForClient(clientRequest: any, crmExt?: any): ApplicationDocMasterItem[] {
+    // 사건 종류·소득 유형은 정리 자료(financialProfile)와 사건 기록에서 읽는다 (이전: 없는 최상위 칸을 읽어 늘 급여소득자 목록)
+    const facts = deriveDocFacts(clientRequest, crmExt);
+    const isBankruptcy = facts.caseType === 'bankruptcy' || clientRequest?.targetSolution === '파산면책';
+    const isBusiness = facts.income === 'business' || !!clientRequest?.isBusiness;
 
     // 공통 1차 서류 (인감증명서 최상단 보장)
     const phase1Docs = this.getTemplatesByCategory('REHAB_SALARIED').filter(d => d.phase === 1);
@@ -998,7 +1075,7 @@ export class ApplicationDocTemplateService {
       // 파산: 1차 서류 + 파산 전용 2차 서류
       const bpPhase2 = this.getTemplatesByCategory('BANKRUPTCY');
       const commonPhase2 = this.getTemplatesByCategory('REHAB_SALARIED').filter(d => 
-        d.phase === 2 && ['rs-p2-1', 'rs-p2-2', 'rs-p2-3', 'rs-p2-6', 'rs-p2-7', 'rs-p2-8', 'rs-p2-10'].includes(d.id)
+        d.phase === 2 && ['rs-p2-1', 'rs-p2-2', 'rs-p2-3', 'rs-p2-6', 'rs-p2-7', 'rs-p2-8', 'rs-p2-10', 'rs-p2-11', 'rs-p2-28', 'rs-p2-29', 'rs-p2-30', 'rs-p2-31', 'rs-p2-32', 'rs-p2-36'].includes(d.id)
       );
       return [...phase1Docs, ...commonPhase2, ...bpPhase2]
         .sort(compareDocItemsPriority)
@@ -1029,6 +1106,7 @@ export class ApplicationDocTemplateService {
   }
 
   private static saveTemplates(list: ApplicationDocMasterItem[]): void {
+    if (officeScopeId) { persistOfficeTemplates(list); return; }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   }
 }

@@ -9,7 +9,7 @@
  *  - 암호/손상 여부 검사
  *  - 페이지 수 확인
  *  - 파일명 규칙 준수 여부
- *  - 총 패키지 용량 확인 (50MB)
+ *  - 총 패키지 용량 확인 (100MB)
  * 
  * 사용 라이브러리: pdf-lib (이미 설치됨) — 비용 ₩0
  */
@@ -23,8 +23,8 @@ import { PDFDocument } from 'pdf-lib';
 /** 법원 전자소송 개별 파일 용량 제한 (20MB) */
 export const COURT_FILE_SIZE_LIMIT = 20 * 1024 * 1024;
 
-/** 법원 전자소송 1회 접수 총용량 (50MB, 보수적 기준) */
-export const COURT_TOTAL_SIZE_LIMIT = 50 * 1024 * 1024;
+/** 전자소송 첨부 총용량 100MB (전자소송포털 안내: 파일당 20MB·첨부 총 100MB). 이전 50MB는 근거 없는 값 */
+export const COURT_TOTAL_SIZE_LIMIT = 100 * 1024 * 1024;
 
 /** 파일명 규칙 패턴: 번호_서류명.pdf (예: 01_주민등록초본.pdf) */
 const FILE_NAME_PATTERN = /^\d{2}_[가-힣a-zA-Z0-9_\-]+\.(pdf|PDF)$/;
@@ -349,7 +349,7 @@ export async function inspectSubmissionPackage(files: File[]): Promise<PackageIn
       id: 'pkg-total-size',
       label: '총 패키지 용량',
       severity: 'error',
-      message: `총 ${(totalSize / (1024 * 1024)).toFixed(1)}MB — 법원 1회 접수 제한(50MB)을 초과합니다. 파일을 나누어 접수하거나 스캔 품질을 낮춰주세요.`,
+      message: `총 ${(totalSize / (1024 * 1024)).toFixed(1)}MB — 전자소송 첨부 총용량(100MB)을 넘습니다. 파일을 나누어 접수하거나 스캔 품질을 낮춰주세요.`,
       courtImpact: '🔴 접수 거부',
     });
   } else if (totalSize > COURT_TOTAL_SIZE_LIMIT * 0.8) {
@@ -357,7 +357,7 @@ export async function inspectSubmissionPackage(files: File[]): Promise<PackageIn
       id: 'pkg-total-size',
       label: '총 패키지 용량',
       severity: 'warning',
-      message: `총 ${(totalSize / (1024 * 1024)).toFixed(1)}MB — 법원 제한(50MB)에 근접합니다.`,
+      message: `총 ${(totalSize / (1024 * 1024)).toFixed(1)}MB — 전자소송 첨부 총용량(100MB)에 가까워요.`,
       courtImpact: '⚠️ 제한 임박',
     });
   }

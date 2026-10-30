@@ -1,5 +1,6 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
+import { normalizeDebtCauses, STATEMENT_DEBT_CAUSES } from '../../../../services/court/statementDebtCauses';
 
 interface CourtFormProps {
   data: CourtFilingMasterData;
@@ -179,9 +180,9 @@ export const WrittenStatementFormD5105: React.FC<CourtFormProps> = ({ data, isEd
         <div className="mb-6 ml-4">
           <h3 className="font-bold mb-2">2. 개인회생절차에 이르게 된 사정(여러 항목 중복 선택 가능)</h3>
           <div className="border border-black p-4 text-[14px] leading-loose">
-            {['생활비 부족', '사업 실패', '보증 채무', '투자 손실', '도박 등', '과소비', '의료비', '기타'].map(cause => (
+            {STATEMENT_DEBT_CAUSES.map(cause => (
               <span key={cause} className="inline-block mr-6">
-                {(statement.debtCauses || []).includes(cause) ? '☑' : '☐'} {cause}
+                {normalizeDebtCauses(statement.debtCauses).includes(cause) ? '☑' : '☐'} {cause}
               </span>
             ))}
           </div>

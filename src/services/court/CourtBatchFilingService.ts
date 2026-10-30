@@ -9,9 +9,6 @@ import {
   type CourtFormDataContext 
 } from './CourtFormHtmlBuilder';
 import { 
-  generateCourtOfficialFormPdf 
-} from './CourtFormPdfGenerator';
-import { 
   splitPdfIfNeeded, 
   formatFileSize, 
   COURT_FILE_SIZE_LIMIT, 
@@ -63,7 +60,7 @@ export interface FilingPackageResult {
   totalSizeFormatted: string;
   totalFiles: number;
   hasSplitFiles: boolean;
-  isWithinCourtLimit: boolean; // total <= 50MB
+  isWithinCourtLimit: boolean; // total <= COURT_TOTAL_SIZE_LIMIT
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -97,18 +94,45 @@ export const SLOT_KEYWORDS_MAP: Record<string, string[]> = {
   B10: ['위임장', '소송위임장'],
 };
 
-/** 파일명 및 linkedDocId 기반 슬롯 코드 매칭 유틸리티 */
-export function matchFileToSlot(fileName: string, linkedDocId?: string): string | null {
-  if (linkedDocId && SLOT_KEYWORDS_MAP[linkedDocId]) {
-    return linkedDocId;
-  }
-  const lowerName = fileName.toLowerCase();
+/**
+ * 3단계 서류 체크리스트 항목 → 회생 편철 칸 (DP-5). 접수본 순서 기준:
+ * 신청서(환급 통장) → 주민등록 → 가족관계 → 채권자목록 소명 → 재산 소명 → 소득 소명 → 진술서 첨부 → 변제계획 → 금지명령 → 위임장
+ */
+export const CHECKLIST_TO_REHAB_SLOT: Record<string, string> = {
+  'rs-p1-1': 'R01', 'rs-p1-2': 'R01',
+  'rs-p1-3': 'R02', 'rs-p1-4': 'R02',
+  'rs-p1-6': 'R12', 'rs-p1-7': 'R12', 'rs-p2-36': 'R12',
+  'rs-p2-9': 'R00',
+  'rs-p2-25': 'R04',
+  'rs-p1-8': 'R06', 'rs-p1-9': 'R06', 'rs-p2-1': 'R06', 'rs-p2-2': 'R06', 'rs-p2-3': 'R06', 'rs-p2-6': 'R06',
+  'rs-p2-7': 'R06', 'rs-p2-28': 'R06', 'rs-p2-29': 'R06', 'rs-p2-30': 'R06', 'rs-p2-31': 'R06', 'rs-p2-32': 'R06',
+  'rs-p2-10': 'R06', 'rs-p2-12': 'R06', 'rs-p2-21': 'R06', 'rs-p2-22': 'R06', 'rs-p2-23': 'R06', 'rs-p2-24': 'R06', 'rs-p2-34': 'R06',
+  'rs-p2-13': 'R08', 'rs-p2-14': 'R08', 'rs-p2-15': 'R08', 'rs-p2-16': 'R08', 'rs-p2-17': 'R08', 'rs-p2-18': 'R08', 'rs-p2-19': 'R08',
+  'rb-p2-1': 'R08', 'rb-p2-2': 'R08', 'rb-p2-3': 'R08', 'rb-p2-4': 'R08', 'rb-p2-5': 'R08', 'rb-p2-6': 'R08', 'rb-p2-7': 'R08', 'rb-p2-8': 'R08', 'rb-p2-9': 'R08',
+  'rs-p2-4': 'R09', 'rs-p2-5': 'R09', 'rs-p2-8': 'R09', 'rs-p2-11': 'R09', 'rs-p2-20': 'R09', 'rs-p2-26': 'R09',
+  'rs-p2-35': 'R10',
+  'rs-p2-27': 'R11',
+};
+
+/**
+ * 파일 → 편철 칸. 1) 칸 코드가 직접 연결된 파일 2) 체크리스트 항목에 연결된 파일 3) 파일 이름 (가장 긴 단어가 맞는 칸)
+ * 이전: 사전 순서대로 처음 맞는 칸 → '금지명령 신청서'가 '신청서'(R00)로 들어갔다.
+ * allowed: 이 사건 묶음의 칸 코드 (파산이면 B 칸만)
+ */
+export function matchFileToSlot(fileName: string, linkedDocId?: string, allowed?: string[]): string | null {
+  const ok = (code: string) => !allowed || allowed.includes(code);
+  if (linkedDocId && SLOT_KEYWORDS_MAP[linkedDocId] && ok(linkedDocId)) return linkedDocId;
+  if (linkedDocId && CHECKLIST_TO_REHAB_SLOT[linkedDocId] && ok(CHECKLIST_TO_REHAB_SLOT[linkedDocId])) return CHECKLIST_TO_REHAB_SLOT[linkedDocId];
+  const lowerName = fileName.toLowerCase().replace(/\s+/g, '');
+  let best: { code: string; len: number } | null = null;
   for (const [slotCode, keywords] of Object.entries(SLOT_KEYWORDS_MAP)) {
-    if (keywords.some(kw => lowerName.includes(kw.toLowerCase()))) {
-      return slotCode;
+    if (!ok(slotCode)) continue;
+    for (const kw of keywords) {
+      const k = kw.toLowerCase().replace(/\s+/g, '');
+      if (lowerName.includes(k) && (!best || k.length > best.len)) best = { code: slotCode, len: k.length };
     }
   }
-  return null;
+  return best?.code ?? null;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -127,9 +151,9 @@ export const REHAB_14_STANDARD_ORDER: Omit<FilingDocumentSlot, 'file' | 'files' 
   { order: 9, code: 'R08', title: '09. 수입지출 소명자료 (재직증명서/원천징수/급여통장 1년 등)', category: 'EVIDENCE', isRequired: true },
   { order: 10, code: 'R09', title: '10. 진술서 (학력/경력 및 상세 채무증대경위서)', category: 'CORE_FORM', isRequired: true },
   { order: 11, code: 'R10', title: '11. 변제계획안 및 변제예정액표 (D5110)', category: 'CORE_FORM', isRequired: true },
-  { order: 12, code: 'R11', title: '12. 금지명령 신청서 (급여/유체동산 강제집행·추심 금지)', category: 'CORE_FORM', isRequired: true },
+  { order: 12, code: 'R11', title: '12. 금지명령 신청서 (필요한 사건만)', category: 'CORE_FORM', isRequired: false },
   { order: 13, code: 'R12', title: '13. 소송위임장 및 대한변협 경유확인서', category: 'POWER_OF_ATTORNEY', isRequired: true },
-  { order: 14, code: 'R13', title: '14. 서울회생법원 필수자료제출목록 (실무준칙 별지)', category: 'CORE_FORM', isRequired: true },
+  { order: 14, code: 'R13', title: '14. 자료제출목록', category: 'CORE_FORM', isRequired: true },
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -321,21 +345,8 @@ export class CourtBatchFilingService {
         }
       }
 
-      // 2. 시스템 생성 서식이고 컨텍스트 데이터가 존재하는 경우 -> 공식 한글 전산양식 실시간 자동 렌더링
-      if (!slotMerged && formDataContext && (slot.category === 'CORE_FORM' || slot.category === 'POWER_OF_ATTORNEY')) {
-        try {
-          const officialFormBytes = await generateCourtOfficialFormPdf(slot.code, formDataContext);
-          if (officialFormBytes && officialFormBytes.length > 0) {
-            const formPdf = await PDFDocument.load(officialFormBytes, { ignoreEncryption: true });
-            const copiedPages = await mergedPdf.copyPages(formPdf, formPdf.getPageIndices());
-            copiedPages.forEach(page => mergedPdf.addPage(page));
-            slotMerged = true;
-            continue;
-          }
-        } catch (e) {
-          console.warn(`[BatchFiling] 공식 서식 실시간 생성 실패: ${slot.code} ${slot.title}`, e);
-        }
-      }
+      // 2. 시스템 서식은 여기서 만들지 않는다. 이전: 서식마다 인쇄 창을 띄우고(빈 결과) 간지만 넣었다.
+      //    서식 작성기에서 만든 PDF를 이 칸에 올려야 묶음에 들어간다 (H-7에서 서버 글자 PDF로 교체 예정)
 
       // 3. 소명자료 미첨부 또는 예외 시: 대한민국 법원 제출용 표준 한글 간지(Separator Sheet) 삽입
       if (!slotMerged) {
@@ -646,7 +657,7 @@ export class CourtBatchFilingService {
 신청인: ${clientName}
 패키지 생성시각: ${new Date().toISOString()}
 총 파일 수: ${manifest.length}개
-총 용량: ${formatFileSize(totalSizeBytes)} (법원 1회 접수 한도 50MB 기준: ${isWithinCourtLimit ? '정상 접수 가능' : '한도 초과 주의'})
+총 용량: ${formatFileSize(totalSizeBytes)} (전자소송 첨부 총용량 기준: ${isWithinCourtLimit ? '정상 접수 가능' : '한도 초과 주의'})
 20MB 초과 자동분할: ${hasSplitFiles ? '적용됨 (20MB 미만 자동분할 완료)' : '미발생 (전체 20MB 이내)'}
 
 [회생위원 전산 뷰어 좌측 목차 1:1 반영 서류 목록]

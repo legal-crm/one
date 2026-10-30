@@ -48,6 +48,7 @@ import ProfileListingNotice from './lawyer/settings/ProfileListingNotice';
 import ReviewStateBanner from './lawyer/settings/ReviewStateBanner';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
+import { setDocTemplateOfficeScope } from '../services/documents/applicationDocTemplateService';
 import ServerFeeTab from './lawyer/fees/ServerFeeTab';
 import { useOfficeWorkspaceCases, workspaceCaseToRequest, emptyFinancialProfile } from '../hooks/useOfficeWorkspaceCases';
 import { createCase, findClientsByPhone, notifyOfficeCasesChanged, workspaceKeyForCase } from '../services/cases/caseCoreService';
@@ -367,6 +368,8 @@ export default function LawyerRole({
   const currentOfficeId = officeCtx.office?.officeId;
   setCrmOfficeScope(currentOfficeId);
   useEffect(() => {
+    // 서류 기준(사무소 체크리스트·발급일 기준)도 서버에서 읽는다 (DP-1). 사무소가 없으면 기본 목록
+    void setDocTemplateOfficeScope(currentOfficeId);
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);
   }, [currentOfficeId]);

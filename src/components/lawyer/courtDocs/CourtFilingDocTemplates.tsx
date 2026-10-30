@@ -400,17 +400,31 @@ export const CreditorListDoc: React.FC<DocTemplateProps> = ({ data, isEditable }
         </tbody>
       </table>
 
-      {/* 부속서류 3/4 안내 표 */}
-      <div className="border border-black p-3 mt-4 text-xs space-y-2">
-        <div className="font-bold">[부속서류 3: 전부명령의 내역]</div>
-        <p className="text-xs">
-          채권번호 1번 ({creditors[0]?.name}) - 서울회생법원 타채 사건 채권압류 및 전부명령 (인가결정 시 실효 예정)
-        </p>
-        <div className="font-bold pt-2 border-t border-slate-300">[부속서류 4: 채무자가 연대보증인인 경우]</div>
-        <p className="text-xs">
-          주채무자 채무에 대한 연대보증 분할안분 처리 조항 준용.
-        </p>
-      </div>
+      {/* 부속서류 3·4: 해당 채권자가 있을 때만 (이전: 모든 사건에 '채권번호 1번 … 서울회생법원 전부명령' 고정 문장이 찍혔다) */}
+      {((data.assignmentCreditors || []).length > 0 || (data.guarantyCreditors || []).length > 0) && (
+        <div className="border border-black p-3 mt-4 text-xs space-y-2">
+          {(data.assignmentCreditors || []).length > 0 && (
+            <>
+              <div className="font-bold">[부속서류 3: 전부명령의 내역]</div>
+              {(data.assignmentCreditors || []).map(c => (
+                <p key={`a-${c.id}`} className="text-xs">
+                  채권번호 {c.creditorNumber || creditors.findIndex(x => x.id === c.id) + 1}번 ({c.name}) — 사건번호·법원·제3채무자는 결정문을 보고 적어 주세요.
+                </p>
+              ))}
+            </>
+          )}
+          {(data.guarantyCreditors || []).length > 0 && (
+            <>
+              <div className="font-bold pt-2 border-t border-slate-300">[부속서류 4: 기타]</div>
+              {(data.guarantyCreditors || []).map(c => (
+                <p key={`g-${c.id}`} className="text-xs">
+                  채권번호 {c.creditorNumber || creditors.findIndex(x => x.id === c.id) + 1}번 ({c.name}) — 보증 관계(주채무자·보증 내용)를 적어 주세요.
+                </p>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -22,7 +22,7 @@ import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   buildCourtFilingMasterData, 
   recalculateMasterData,
-  getEvidenceListForJurisdiction,
+  switchEvidenceJurisdiction,
   type CourtFilingMasterData 
 } from '../../../services/documents/courtFilingEngine';
 import {
@@ -82,7 +82,7 @@ function applyDraft(base: CourtFilingMasterData, draft?: Partial<CourtFilingDraf
   return recalculateMasterData({
     ...base,
     courtJurisdiction: jurisdiction,
-    evidenceList: jurisdiction !== base.courtJurisdiction ? getEvidenceListForJurisdiction(jurisdiction) : base.evidenceList,
+    evidenceList: jurisdiction !== base.courtJurisdiction ? switchEvidenceJurisdiction(base.evidenceList, jurisdiction) : base.evidenceList,
     debtor: { ...base.debtor, ...(draft.debtor || {}) },
     lawyer: { ...base.lawyer, ...(draft.lawyer || {}) },
     court: { ...base.court, ...(draft.court || {}) },

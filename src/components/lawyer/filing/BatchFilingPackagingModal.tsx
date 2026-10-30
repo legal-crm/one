@@ -102,13 +102,14 @@ function BatchFilingPackagingModalInner({
   
   const [slots, setSlots] = useState<FilingDocumentSlot[]>(() => {
     const uploaded = crmExt.uploadedFiles || [];
+    const slotCodes = standardTemplates.map(s => s.code);
     return standardTemplates.map(t => {
       const isSystemCoreForm = t.category === 'CORE_FORM' || t.category === 'POWER_OF_ATTORNEY';
 
       // 스마트 다중 파일 매칭 (linkedDocId, 슬롯코드, 키워드 사전 대조)
       const matchedFiles: FilingFileItem[] = [];
       uploaded.forEach(u => {
-        const detectedSlot = matchFileToSlot(u.name || '', (u as any).linkedDocId);
+        const detectedSlot = matchFileToSlot(u.name || '', (u as any).linkedDocId, slotCodes);
         if (detectedSlot === t.code) {
           matchedFiles.push({
             name: u.name,
@@ -119,18 +120,16 @@ function BatchFilingPackagingModalInner({
         }
       });
 
-      // 시스템 서식은 시스템 데이터 기반으로 100% 자동 생성 가능하므로 항상 READY
+      // 시스템 서식도 만든 PDF를 이 칸에 올려야 준비 완료 (이전: 파일 없이도 '준비 완료'로 보였지만 묶음엔 빈 간지만 들어갔다)
       const hasUploadedFiles = matchedFiles.length > 0;
-      const isReady = hasUploadedFiles || isSystemCoreForm;
+      const isReady = hasUploadedFiles;
 
       return {
         ...t,
         status: isReady ? 'READY' : (t.isRequired ? 'MISSING' : 'OPTIONAL_SKIPPED'),
         files: matchedFiles,
-        file: hasUploadedFiles ? matchedFiles[0] : (isSystemCoreForm ? {
-          name: `[법원전산양식_자동완성]_${t.title.split('.')[1]?.trim() || t.title}_${clientName}.pdf`,
-          mimeType: 'application/pdf'
-        } : undefined)
+        notes: !hasUploadedFiles && isSystemCoreForm ? '서식 미작성' : undefined,
+        file: hasUploadedFiles ? matchedFiles[0] : undefined
       };
     });
   });
@@ -201,8 +200,6 @@ function BatchFilingPackagingModalInner({
         });
       } else if (s.file?.dataUrl) {
         sizeBytes = Math.round(s.file.dataUrl.length * 0.75);
-      } else if (isCore) {
-        sizeBytes = 250 * 1024; // 코어 전산양식 평균 250KB
       }
 
       const sizeEst = sizeBytes > 0 
@@ -223,7 +220,7 @@ function BatchFilingPackagingModalInner({
         isDigital: isCore,
         isOver20MB,
         status: isReady ? 'READY' : 'MISSING',
-        notes: isCore ? '법원 전산양식 공식 렌더링 (텍스트 레이어 내장)' : (fileCount > 0 ? `${fileCount}개 증빙 결합` : '의뢰인 업로드 필요')
+        notes: fileCount > 0 ? `${fileCount}개 파일 결합` : (isCore ? '서식 미작성 — 서식 작성기에서 PDF를 만들어 올려 주세요' : '의뢰인 업로드 필요')
       });
     });
 
@@ -406,7 +403,7 @@ function BatchFilingPackagingModalInner({
                   법원 정식 전자소송 14단계 서류 패키징 & 원스톱 단일 PDF 생성
                 </h2>
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  {courtName} 실무 규격 100% 일치
+                  {courtName} 접수 순서 기준
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -748,7 +745,7 @@ function BatchFilingPackagingModalInner({
             {slots.map((slot) => {
               const isCore = slot.category === 'CORE_FORM' || slot.category === 'POWER_OF_ATTORNEY';
               const isReady = slot.status === 'READY';
-              const fileCount = slot.files?.length || (slot.file && !isCore ? 1 : 0);
+              const fileCount = slot.files?.length || (slot.file ? 1 : 0);
 
               return (
                 <div 
@@ -781,9 +778,9 @@ function BatchFilingPackagingModalInner({
                           </span>
                         )}
                         {isCore ? (
-                          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 flex items-center gap-1">
+                          <span className={`text-xs font-bold px-1.5 py-0.2 rounded border flex items-center gap-1 ${isReady ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-800 bg-amber-50 border-amber-200'}`}>
                             <CheckCheck className="w-2.5 h-2.5" />
-                            <span>법원 전산양식 자동생성(완료)</span>
+                            <span>{isReady ? '작성한 서식 첨부됨' : '서식 미작성'}</span>
                           </span>
                         ) : (
                           <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
@@ -799,10 +796,10 @@ function BatchFilingPackagingModalInner({
                       </div>
 
                       <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 truncate">
-                        {isCore ? (
-                          <span className="text-blue-600 font-medium truncate flex items-center gap-1">
+                        {isCore && !isReady ? (
+                          <span className="text-amber-700 font-medium truncate flex items-center gap-1">
                             <FileText className="w-3 h-3 shrink-0" />
-                            {slot.file?.name || `[법원공식전산서식] ${slot.title}`}
+                            서식 작성기에서 PDF를 만들어 이 칸에 올려 주세요
                           </span>
                         ) : slot.files && slot.files.length > 0 ? (
                           <span className="text-emerald-700 font-medium truncate flex items-center gap-1">
@@ -891,7 +888,7 @@ function BatchFilingPackagingModalInner({
         <div className="p-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>대한민국 법원(서울회생법원 등) 전자소송 접수 기준 100% 호환</span>
+            <span>전자소송 첨부 기준: 파일당 20MB·총 100MB, 글자 검색 가능한 PDF 권장</span>
           </div>
           <button
             onClick={onClose}

@@ -1,3 +1,5 @@
+import { applyDocRules, deriveDocFacts, isIssueStale, needsIssueDate } from '../../../services/documents/docRules';
+import { useDialog } from '../../common/DialogProvider';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Building2, Home, Briefcase, CreditCard, ShieldCheck, 
@@ -13,6 +15,7 @@ import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../
 import { 
   ApplicationDocTemplateService, 
   compareDocItemsPriority,
+  getDocValidityMonths,
   type DocPhase, 
   type SubmissionMethod 
 } from '../../../services/documents/applicationDocTemplateService';
@@ -28,6 +31,7 @@ import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { localYmd } from '../../../utils/localDate';
 import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../utils/carrierTracking';
 import SmartDocumentDropzone from './SmartDocumentDropzone';
+import CorrectionPrepCard from './CorrectionPrepCard';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
 import { won } from '../quickdock/ui/money';
 
@@ -68,23 +72,17 @@ export interface DocItemModel {
   submittedAt?: string;
   approvedAt?: string;
   supplementReason?: string;
+  /** 규칙 판단: true 필요 / null 확인 필요 (해당 없음은 따로 모음) */
+  applies?: boolean | null;
+  ruleWhy?: string;
+  /** 사건별 변호사 결정 */
+  override?: 'include' | 'exclude';
+  /** 발급일 (DP-3) */
+  issuedOn?: string;
 }
 
-// ── 서류 진행 상태 저장 (의뢰인별 로컬 캐시) ──
-type Stage3DocState = Pick<DocItemModel, 'status' | 'requestedAt' | 'submittedAt' | 'approvedAt' | 'supplementReason'>;
-interface Stage3SavedState { docs?: Record<string, Stage3DocState>; postalCarrier?: string; postalTrackingNumber?: string }
-const stage3Key = (clientId: string) => `legal_crm_stage3_docs_${clientId}`;
-function loadStage3State(clientId: string): Stage3SavedState | null {
-  try { const raw = localStorage.getItem(stage3Key(clientId)); return raw ? JSON.parse(raw) : null; } catch { return null; }
-}
-function saveStage3State(clientId: string, patch: Stage3SavedState): boolean {
-  try {
-    const cur = loadStage3State(clientId) || {};
-    localStorage.setItem(stage3Key(clientId), JSON.stringify({ ...cur, ...patch }));
-    return true;
-  } catch { return false; }
-}
-
+// ── 서류 진행 상태: 사건 작업 공간(crm_clients, 서버)의 stage3DocsState 에만 둔다 (이전: 브라우저 캐시를 함께 읽고 써 기기마다 달랐다) ──
+type Stage3DocState = Pick<DocItemModel, 'status' | 'requestedAt' | 'submittedAt' | 'approvedAt' | 'supplementReason' | 'override' | 'issuedOn'>;
 type AgencyTab = 'all' | 'gov' | 'tax' | 'work' | 'finance' | 'personal';
 type StatusFilter = 'all' | 'unsubmitted' | 'review' | 'supplement' | 'approved';
 
@@ -107,6 +105,7 @@ export default function Stage3DocumentsHubView({
   activeSection = 'docs',
   onSelectSection,
 }: Stage3DocumentsHubViewProps) {
+  const dialog = useDialog();
   // 현재 활성 섹션 매핑
   const currentSection = useMemo(() => {
     if (activeSection === 'debt-cert') return 'debt-cert';
@@ -131,9 +130,8 @@ export default function Stage3DocumentsHubView({
   const requiredSealCount = ApplicationDocTemplateService.getRequiredSealCertCount(creditorCount);
 
   // 1차 실물 등기 및 배송추적 상태
-  const savedStage3 = loadStage3State(clientRequest.id);
-  const [postalCarrier, setPostalCarrier] = useState<string>(crmExt?.postalCarrier || savedStage3?.postalCarrier || '');
-  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>(crmExt?.postalTrackingNumber || savedStage3?.postalTrackingNumber || '');
+  const [postalCarrier, setPostalCarrier] = useState<string>(crmExt?.postalCarrier || '');
+  const [postalTrackingNumber, setPostalTrackingNumber] = useState<string>(crmExt?.postalTrackingNumber || '');
   const [isEditingPostal, setIsEditingPostal] = useState<boolean>(false);
   const [inputCarrier, setInputCarrier] = useState<string>(postalCarrier);
   const [inputTracking, setInputTracking] = useState<string>(postalTrackingNumber);
@@ -181,9 +179,12 @@ export default function Stage3DocumentsHubView({
     const uploaded = crmExt?.uploadedFiles || [];
     const serverStage3 = (crmExt as any)?.stage3DocsState || {};
     const crmDocs = crmExt?.documents || [];
-    const saved = loadStage3State(clientRequest.id)?.docs || {};
-    const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest)
+    const masterTemplates = ApplicationDocTemplateService.getRecommendedDocsForClient(clientRequest, crmExt)
       .sort(compareDocItemsPriority);
+    // 사건 사실로 필요·필수를 정한다 (DP-1). 변호사가 사건마다 넣고 뺀 결정(override)이 먼저
+    const overrides: Record<string, 'include' | 'exclude' | undefined> = {};
+    Object.entries(serverStage3 as Record<string, Stage3DocState>).forEach(([k, v]) => { if (v?.override) overrides[k] = v.override; });
+    const ruled = new Map(applyDocRules(masterTemplates, deriveDocFacts(clientRequest, crmExt), overrides).map(r => [r.item.id, r]));
 
     return masterTemplates.map((rawItem) => {
       const isSeal = rawItem.name.includes('인감');
@@ -201,11 +202,14 @@ export default function Stage3DocumentsHubView({
         isCreditorMultiplier: item.isCreditorMultiplier,
         targetParty: item.targetParty,
         status: 'NOT_REQUESTED',
+        applies: ruled.get(item.id)?.applies ?? true,
+        ruleWhy: ruled.get(item.id)?.why,
       };
+      if (!isSeal) base.isRequired = ruled.get(item.id)?.isRequired ?? item.isRequired;
 
       // 1순위: CRM 서버의 3단계 상태
       const serverSt = serverStage3[item.id];
-      if (serverSt?.status) return { ...base, ...serverSt };
+      if (serverSt?.status || serverSt?.override || serverSt?.issuedOn) return { ...base, ...serverSt, applies: base.applies, ruleWhy: base.ruleWhy };
 
       // 2순위: CRM 표준 documents 체크리스트 매칭
       const matchedCrmDoc = crmDocs.find(cd => cd.id === item.id || cd.label === item.name);
@@ -221,12 +225,8 @@ export default function Stage3DocumentsHubView({
         }
       }
 
-      // 3순위: 브라우저 캐시
-      const st = saved[item.id];
-      if (st?.status) return { ...base, ...st };
-
-      // 4순위: 업로드 파일 매칭
-      const match = uploaded.find(f => f.name.includes(item.name.slice(0, 3)));
+      // 3순위: 이 서류 칸에 연결된 제출 파일 (이전: 파일 이름 앞 3글자가 같으면 제출로 봤다)
+      const match = uploaded.find(f => (f as any).linkedDocId === item.id);
       if (match) return { ...base, status: 'SUBMITTED' as const, submittedAt: match.uploadedAt ? localYmd(new Date(match.uploadedAt)) : undefined };
       return base;
     }).sort(compareDocItemsPriority);
@@ -253,12 +253,11 @@ export default function Stage3DocumentsHubView({
   useEffect(() => {
     const docs: Record<string, Stage3DocState> = {};
     docList.forEach(d => {
-      if (d.status !== 'NOT_REQUESTED' || d.requestedAt) {
-        docs[d.id] = { status: d.status, requestedAt: d.requestedAt, submittedAt: d.submittedAt, approvedAt: d.approvedAt, supplementReason: d.supplementReason };
+      if (d.status !== 'NOT_REQUESTED' || d.requestedAt || d.override || d.issuedOn) {
+        docs[d.id] = { status: d.status, requestedAt: d.requestedAt, submittedAt: d.submittedAt, approvedAt: d.approvedAt, supplementReason: d.supplementReason, override: d.override, issuedOn: d.issuedOn };
       }
     });
 
-    saveStage3State(clientRequest.id, { docs, postalCarrier, postalTrackingNumber });
 
     // 첫 마운트 또는 고객 전환 시에는 이미 로드된 데이터이므로 서버 저장을 건너뜀 (무한 루프 방지)
     if (isFirstRenderRef.current) {
@@ -314,14 +313,23 @@ export default function Stage3DocumentsHubView({
         ...(hasPostalTrackingChanged ? { postalTrackingNumber } : {}),
         ...(hasSealChanged ? { isSealKeptInSafe } : {}),
         ...(hasDocsStateChanged ? { stage3DocsState: docs } as any : {}),
-      }).catch(() => {});
+      }).catch(() => {
+        toast.error('서류 진행 상태를 서버에 저장하지 못했어요. 인터넷 연결을 확인하고 다시 바꿔 주세요.');
+      });
     }, 600);
 
     return () => clearTimeout(timer);
   }, [docList, postalCarrier, postalTrackingNumber, isSealKeptInSafe, clientRequest.id]);
 
   // 서류 통계
+  // 이 사건엔 해당 없는 서류 (규칙 또는 변호사 결정) — 목록·진행률에서 빼고 아래에 따로 모은다
+  const activeDocs = useMemo(() => docList.filter(d => d.applies !== false), [docList]);
+  const excludedDocs = useMemo(() => docList.filter(d => d.applies === false), [docList]);
+  const [showExcluded, setShowExcluded] = useState(false);
+  const validity = getDocValidityMonths();
+
   const stats = useMemo(() => {
+    const docList = activeDocs;
     const total = docList.length;
     const required = docList.filter(d => d.isRequired);
     const approved = docList.filter(d => d.status === 'APPROVED');
@@ -352,11 +360,11 @@ export default function Stage3DocumentsHubView({
       phase1ApprovedCount: phase1Approved.length,
       isPhase1Done,
     };
-  }, [docList]);
+  }, [activeDocs]);
 
   // 필터링된 서류 목록
   const filteredDocs = useMemo(() => {
-    return docList.filter(doc => {
+    return activeDocs.filter(doc => {
       // 발급처 필터
       if (activeAgency === 'gov' && !doc.agency.includes('주민센터') && !doc.agency.includes('정부24') && !doc.agency.includes('대법원')) return false;
       if (activeAgency === 'tax' && !doc.agency.includes('홈택스') && !doc.agency.includes('국세청') && !doc.agency.includes('위택스')) return false;
@@ -372,7 +380,7 @@ export default function Stage3DocumentsHubView({
 
       return true;
     }).sort(compareDocItemsPriority);
-  }, [docList, activeAgency, statusFilter]);
+  }, [activeDocs, activeAgency, statusFilter]);
 
   // 발급처별 서류 카운트
   const agencyCounts = useMemo(() => {
@@ -505,7 +513,6 @@ export default function Stage3DocumentsHubView({
     setPostalCarrier(trimmedCarrier);
     setPostalTrackingNumber(trimmedTracking);
     setIsEditingPostal(false);
-    saveStage3State(clientRequest.id, { postalCarrier: trimmedCarrier, postalTrackingNumber: trimmedTracking });
     if (onUpdateCrmExt) {
       try {
         await onUpdateCrmExt({
@@ -513,7 +520,8 @@ export default function Stage3DocumentsHubView({
           postalTrackingNumber: trimmedTracking,
         });
       } catch {
-        // ignore
+        toast.error('배송 정보를 서버에 저장하지 못했어요. 다시 저장해 주세요.');
+        return;
       }
     }
     toast.success(`배송 정보가 저장되었습니다: [${getCarrierLabel(trimmedCarrier)}] ${trimmedTracking || '미등록'}`);
@@ -536,12 +544,29 @@ export default function Stage3DocumentsHubView({
   };
 
   // 개별 서류 승인
-  const handleApproveDoc = (docId: string) => {
+  const handleApproveDoc = async (docId: string) => {
+    const target = docList.find(d => d.id === docId);
+    let issuedOn = target?.issuedOn;
+    // 관공서·금융기관 발급 서류는 발급일을 받아 기준(사무소 설정)을 넘으면 '다시 발급'으로 표시한다
+    if (target && needsIssueDate({ id: target.id, agency: target.agency, name: target.name })) {
+      const v = await dialog.prompt({ title: '발급일 확인', message: `"${target.name}" 발급일(YYYY-MM-DD)을 입력하세요. 비우면 발급일 없이 승인합니다.`, placeholder: '2026-10-31', defaultValue: issuedOn || '' });
+      if (v === null) return;
+      if (v.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(v.trim())) { toast.error('발급일은 2026-10-31처럼 입력해 주세요.'); return; }
+      issuedOn = v.trim() || undefined;
+      if (issuedOn && isIssueStale(issuedOn, getDocValidityMonths().issueMonths)) {
+        toast.warning(`발급한 지 ${getDocValidityMonths().issueMonths}개월이 넘었어요. 접수 전에 다시 발급받아야 해요.`);
+      }
+    }
     setDocList(prev => prev.map(d => 
       d.id === docId 
-        ? { ...d, status: 'APPROVED', approvedAt: localYmd() } 
+        ? { ...d, status: 'APPROVED', approvedAt: localYmd(), issuedOn } 
         : d
     ));
+  };
+
+  // 이 사건에 넣기 / 해당 없음으로 빼기 (DP-1)
+  const handleOverride = (docId: string, override: 'include' | 'exclude' | undefined) => {
+    setDocList(prev => prev.map(d => (d.id === docId ? { ...d, override, applies: override === 'exclude' ? false : override === 'include' ? true : d.applies } : d)));
   };
 
   // 개별 서류 보완 요청
@@ -743,6 +768,12 @@ export default function Stage3DocumentsHubView({
                               실물 등기
                             </span>
                           )}
+                          {doc.applies === null && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 font-bold" title={doc.ruleWhy}>확인 필요</span>
+                          )}
+                          {doc.issuedOn && isIssueStale(doc.issuedOn, validity.issueMonths) && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 font-bold">다시 발급 필요 (발급 {doc.issuedOn})</span>
+                          )}
                         </div>
                         {doc.status !== 'APPROVED' && doc.status !== 'NOT_REQUESTED' && (
                           <div className="flex items-center gap-1.5 text-xs mt-0.5">
@@ -813,6 +844,22 @@ export default function Stage3DocumentsHubView({
                                   <span className="text-slate-500 w-16 shrink-0">메모</span>
                                   <span className="text-slate-700">{doc.notes || '-'}</span>
                                 </div>
+                                {doc.ruleWhy && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-slate-500 w-16 shrink-0">판단</span>
+                                    <span className="text-slate-700">{doc.ruleWhy}</span>
+                                  </div>
+                                )}
+                                {doc.issuedOn && (
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-slate-500 w-16 shrink-0">발급일</span>
+                                    <span className="text-slate-700">{doc.issuedOn} (기준 {validity.issueMonths}개월)</span>
+                                  </div>
+                                )}
+                                <button type="button" onClick={() => handleOverride(doc.id, 'exclude')}
+                                  className="mt-1 min-h-[44px] px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold whitespace-nowrap active:scale-[0.98]">
+                                  이 사건엔 해당 없음
+                                </button>
                                 {doc.isThirdPartyMaskingRequired && (
                                   <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-100">
                                     <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold shrink-0">
@@ -855,6 +902,50 @@ export default function Stage3DocumentsHubView({
               })}
             </div>
           </div>
+
+          {/* 보정 때 자주 요구된 자료 미리 받기 (DP-7) */}
+          <CorrectionPrepCard
+            courtName={crmExt?.courtCase?.courtName || (crmExt as any)?.petitionInfo?.courtName}
+            existingRequests={crmExt?.documentRequests || []}
+            requestedBy={office.firmName || office.lawyerName || '담당 사무소'}
+            onAddRequests={onUpdateCrmExt ? (next) => onUpdateCrmExt({ documentRequests: next }) : undefined}
+          />
+
+          {/* 이 사건엔 해당 없는 서류 (DP-1): 사건 사실 규칙 또는 변호사 결정으로 뺀 서류. 필요하면 다시 넣는다 */}
+          {excludedDocs.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setShowExcluded(v => !v)}
+                aria-expanded={showExcluded}
+                className="w-full min-h-[44px] px-4 py-3 flex items-center justify-between text-left active:scale-[0.99]"
+              >
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">이 사건엔 해당 없음 ({excludedDocs.length})</span>
+                {showExcluded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+              </button>
+              {showExcluded && (
+                <ul className="border-t border-slate-100 divide-y divide-slate-100">
+                  {excludedDocs.map(doc => (
+                    <li key={doc.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-800">{doc.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {doc.override === 'exclude' ? '변호사가 이 사건에서 뺐어요.' : (doc.ruleWhy || '사건 정보로 보아 필요하지 않아요.')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOverride(doc.id, 'include')}
+                        className="min-h-[44px] px-3 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-xs font-bold whitespace-nowrap active:scale-[0.98]"
+                      >
+                        이 사건에 넣기
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* 하단 2열 요약 카드 (1차 서류 배송 및 보관 & 인증서 금고) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
