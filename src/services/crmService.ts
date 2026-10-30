@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { uploadCaseFile, listClientSubmittedFiles } from './files/caseFileService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
@@ -125,9 +126,10 @@ function loadLocalCrmData(): CrmDataStore {
 /** 서버(crm_clients) 조회. 오류·예외면 null */
 async function fetchServerCrmData(): Promise<CrmDataStore | null> {
     try {
-      const { data, error } = await supabase
-        .from('crm_clients')
-        .select('*');
+      const [{ data, error }, clientFiles] = await Promise.all([
+        supabase.from('crm_clients').select('*'),
+        listClientSubmittedFiles(crmOfficeScope),
+      ]);
       if (!error && data) {
         const store: CrmDataStore = {};
         data.forEach((row: any) => {
@@ -160,6 +162,21 @@ async function fetchServerCrmData(): Promise<CrmDataStore | null> {
             deletedAt: row.deleted_at || undefined,
           };
         });
+        // 의뢰인이 제출한 파일(case_files)을 사건 자료함에 합친다. 체크리스트 연결 항목은 '제출됨'으로
+        for (const [clientKey, files] of Object.entries(clientFiles)) {
+          const ext = store[clientKey] || createDefaultCrmExtension(clientKey);
+          const known = new Set((ext.uploadedFiles || []).map(f => f.id));
+          const added = files.filter(f => !known.has(f.id));
+          if (added.length === 0) continue;
+          ext.uploadedFiles = [...(ext.uploadedFiles || []), ...added];
+          ext.documents = (ext.documents || []).map(d => {
+            const hit = added.find(f => f.linkedDocId === d.id);
+            return hit && (!d.reviewStatus || d.reviewStatus === 'not_submitted')
+              ? { ...d, reviewStatus: 'submitted' as DocumentReviewStatus, linkedFileId: hit.id, submittedAt: hit.uploadedAt }
+              : d;
+          });
+          store[clientKey] = ext;
+        }
         return store;
       }
       if (error) console.warn('[CRM] Supabase load failed, falling back to this device copy', error.message);
@@ -208,7 +225,30 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
       // 고정 컬럼에 없는 확장 필드(진술서·D5102·D5103·소명표·13단계 등)는 extension_data(jsonb)에 통째로 보관
       // (migration 016). 파일 본문(uploadedFiles)은 기존 uploaded_files 컬럼을 사용하므로 중복 저장하지 않는다.
       // 인증서 금고(certificateVault)는 개인키 원본이 포함되므로 서버 jsonb로 절대 전송하지 않는다.
-      const { uploadedFiles: _files, certificateVault: _vault, ...extensionData } = mergedExt as CrmClientExtension & { certificateVault?: unknown };
+      const { uploadedFiles: _files, certificateVault: _vault, ...extensionRest } = mergedExt as CrmClientExtension & { certificateVault?: unknown };
+      // 새 파일(본문만 있고 저장소 경로 없음)은 비공개 저장소에 올린다 (이전: 파일이 서버에 전혀 저장되지 않았다)
+      if (crmOfficeScope && Array.isArray(mergedExt.uploadedFiles)) {
+        const pending = mergedExt.uploadedFiles.filter(f => f.dataUrl && !f.storagePath && f.uploadSource !== 'client');
+        if (pending.length > 0) {
+          const results = await Promise.all(pending.map(f => uploadCaseFile({ source: 'office', clientKey: clientId, officeId: crmOfficeScope, file: f })));
+          const byId = new Map(results.filter(r => r.ok && r.file).map(r => [r.file!.id, r.file!]));
+          const failed = results.filter(r => !r.ok);
+          mergedExt.uploadedFiles = mergedExt.uploadedFiles.map(f => {
+            const up = byId.get(f.id);
+            return up ? { ...f, storagePath: up.storagePath, fileSize: up.fileSize } : f;
+          });
+          store[clientId] = mergedExt;
+          setLocalData(CRM_STORAGE_KEY, store);
+          if (failed.length > 0) notifySaveFailure(`서류 ${failed.length}개를 저장소에 올리지 못했습니다: ${failed[0].message || ''}`);
+        }
+      }
+      const extensionData = {
+        ...extensionRest,
+        // 파일은 정보만 (본문 dataUrl 제외). 저장소에 올라간 파일만 다른 기기에서 다시 열 수 있다
+        uploadedFiles: (mergedExt.uploadedFiles || [])
+          .filter(f => f.storagePath && f.uploadSource !== 'client')
+          .map(({ dataUrl: _d, ...meta }) => meta),
+      };
       const baseRow = {
         client_id: clientId,
         crm_status: mergedExt.crmStatus,
@@ -1179,6 +1219,15 @@ export async function submitClientDocument(
   }
 
   ext.lastActivityAt = new Date().toISOString();
+  if (isSupabaseConfigured) {
+    const up = await uploadCaseFile({ source: 'client', clientKey: clientId, file: newFile });
+    if (!up.ok) throw new Error(up.message || '서버 저장 실패');
+    ext.uploadedFiles = ext.uploadedFiles.map(f => (f.id === newFile.id ? { ...f, storagePath: up.file?.storagePath } : f));
+    // 의뢰인 화면 캐시만 갱신 (사무소는 case_files에서 읽는다)
+    store[clientId] = ext;
+    setLocalData(CRM_STORAGE_KEY, store);
+    return;
+  }
   const synced = await saveCrmClient(clientId, ext);
   if (!synced) throw new Error('서버 저장 실패');
 }

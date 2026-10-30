@@ -3,7 +3,9 @@ import { toast } from 'sonner';
 import { DOC_REVIEW_STATUS_CONFIG } from '../../../types';
 import type { DocumentFile } from '../../../types';
 import MobileScanner from '../../lawyer/MobileScanner';
+import { useEffect, useMemo, useState } from 'react';
 import { submitClientDocument } from '../../../services/crmService';
+import { listMySubmittedFiles } from '../../../services/files/caseFileService';
 import type { MyPageModel } from './useMyPageModel';
 import type { MyCaseData } from './myCaseData';
 
@@ -16,7 +18,19 @@ export default function DocumentSubmissionCard({ vm, cd }: { vm: MyPageModel; cd
     setIsIncomeExpenseModalOpen, setIsPropertyIntakeModalOpen, setIsStatementModalOpen, setRefreshTick,
     setShowScanner, showScanner, userAlias,
   } = vm;
-  const { checklist, docRequests, handleFileUpload, reqId, submittedCount, uploadedFiles } = cd;
+  const { checklist, docRequests, handleFileUpload, reqId, submittedCount, uploadedFiles: localFiles } = cd;
+  // 서버에 제출된 파일 (다른 기기·새 탭에서도 보이게). 이 기기에서 방금 낸 파일과 합친다
+  const [serverFiles, setServerFiles] = useState<DocumentFile[]>([]);
+  useEffect(() => {
+    if (!reqId) return;
+    let cancelled = false;
+    listMySubmittedFiles(reqId).then(list => { if (!cancelled) setServerFiles(list); });
+    return () => { cancelled = true; };
+  }, [reqId, localFiles.length]);
+  const uploadedFiles = useMemo(() => {
+    const ids = new Set(localFiles.map(f => f.id));
+    return [...localFiles, ...serverFiles.filter(f => !ids.has(f.id))];
+  }, [localFiles, serverFiles]);
   return (
     <>
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">

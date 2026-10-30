@@ -20,6 +20,7 @@ import {
   type FilingFileItem,
   type FilingBundleItem
 } from '../../../services/court/CourtBatchFilingService';
+import { hydrateFileDataUrls } from '../../../services/files/caseFileService';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
@@ -112,6 +113,7 @@ function BatchFilingPackagingModalInner({
           matchedFiles.push({
             name: u.name,
             dataUrl: u.dataUrl,
+            storagePath: u.storagePath,
             mimeType: u.mimeType
           });
         }
@@ -228,6 +230,13 @@ function BatchFilingPackagingModalInner({
     return list;
   }, [slots, creditors, clientName]);
 
+  // 저장소에만 있는 파일(다른 기기에서 올렸거나 새로 불러온 사건)은 묶기 전에 본문을 내려받는다
+  const hydrateSlots = async (list: FilingDocumentSlot[]): Promise<FilingDocumentSlot[]> => Promise.all(list.map(async slot => {
+    const files = slot.files ? await hydrateFileDataUrls(slot.files) : slot.files;
+    const [file] = slot.file ? await hydrateFileDataUrls([slot.file]) : [slot.file];
+    return { ...slot, files, file } as FilingDocumentSlot;
+  }));
+
   // 0. 대한민국 법원 전자소송 표준 ZIP 패키지 다운로드 (회생위원 뷰어 1:1 최적화 - 추천)
   const handleDownloadCourtStandardZip = async () => {
     setIsProcessing(true);
@@ -243,7 +252,7 @@ function BatchFilingPackagingModalInner({
       };
 
       const result = await CourtBatchFilingService.buildFilingPackage(
-        slots,
+        await hydrateSlots(slots),
         clientName,
         formDataContext,
         { creditors, isBankruptcy }
@@ -282,7 +291,7 @@ function BatchFilingPackagingModalInner({
       };
 
       const bytes = await CourtBatchFilingService.mergeCourtFilingPdf(
-        slots, 
+        await hydrateSlots(slots), 
         caseTitle, 
         clientName,
         formDataContext
@@ -304,7 +313,7 @@ function BatchFilingPackagingModalInner({
     setIsProcessing(true);
     setProcessLabel('번호순 개별 서류 ZIP 패키징 중...');
     try {
-      const zipBlob = await CourtBatchFilingService.createFilingZip(slots, clientName);
+      const zipBlob = await CourtBatchFilingService.createFilingZip(await hydrateSlots(slots), clientName);
       const filename = `[전자소송업로드용]_${caseTypeTitle}_${clientName}_번호순정렬.zip`;
       CourtBatchFilingService.downloadZip(zipBlob, filename);
       toast.success('📦 전자소송 등록용 번호순 ZIP 파일이 성공적으로 다운로드되었습니다!');
@@ -338,9 +347,9 @@ function BatchFilingPackagingModalInner({
     setProcessLabel('매뉴얼 7-1 규격 전자소송 7대 묶음 PDF 결합 및 압축 중...');
     try {
       const zipBlob = await CourtBatchFilingService.exportCourt7BundleZip(
-        slots,
+        await hydrateSlots(slots),
         clientName,
-        crmExt.uploadedFiles || []
+        await hydrateFileDataUrls(crmExt.uploadedFiles || [])
       );
       const filename = `[전자소송7대묶음]_개인회생_${clientName}.zip`;
       CourtBatchFilingService.downloadZip(zipBlob, filename);

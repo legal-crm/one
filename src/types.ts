@@ -393,6 +393,8 @@ export interface DocumentFile {
   fileSize?: number;
   mimeType?: string;
   dataUrl?: string;
+  /** 비공개 저장소 경로 (case-files). 있으면 본문은 서버에 있고 dataUrl은 화면 캐시일 뿐 */
+  storagePath?: string;
   notes?: string;
   // ── 양방향 동기화 ──
   uploadSource?: 'lawyer' | 'client';    // 업로드 출처

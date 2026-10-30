@@ -20,6 +20,8 @@ import {
 
 export interface FilingFileItem {
   name: string;
+  /** 비공개 저장소 경로 (본문이 없으면 묶기 전에 내려받는다) */
+  storagePath?: string;
   dataUrl?: string;
   bytes?: Uint8Array;
   mimeType?: string;
