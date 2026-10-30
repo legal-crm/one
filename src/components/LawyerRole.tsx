@@ -43,6 +43,7 @@ import { useOfficeContext } from '../hooks/useOfficeContext';
 import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../services/office/officeService';
 import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
+import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import ServerFeeOverview from './lawyer/fees/ServerFeeOverview';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
 import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
@@ -403,6 +404,12 @@ export default function LawyerRole({
     || (import.meta.env.DEV && sessionStorage.getItem(DEV_LAWYER_SESSION_KEY) !== null);
   const officeCtx = useOfficeContext(isLoggedIn && !legacyPermissionFallback);
   const permissionCtx = usePermissions(activeStaffMember, officeCtx.office, legacyPermissionFallback);
+  // 사무소 정보(법원 서식·계약서·안내문 대리인 기본값)는 서버 사업자 정보에서 한 번 읽어 둔다
+  const currentOfficeId = officeCtx.office?.officeId;
+  useEffect(() => {
+    if (!currentOfficeId) return;
+    void loadOfficeProfile(currentOfficeId);
+  }, [currentOfficeId]);
 
   // ── Browser history & URL synchronization (기획서 1-6 & 3.6) ──
   // 이전: tab 상태만 history.state에 기록하고 URL 동기화가 없어 새로고침·뒤로가기 시 view/case/stage 유실

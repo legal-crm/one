@@ -474,7 +474,7 @@ export default function Stage3DocumentsHubView({
   const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/?tab=mypage` : '';
   const ensureOffice = (): boolean => {
     if (!office.firmName || !office.address) {
-      toast.error('사무소명·주소가 설정되지 않았습니다. [설정 > 사업자 정보]를 먼저 입력해 주세요.');
+      toast.error('사무소명·주소가 설정되지 않았습니다. [광고·결제 > 사업자 · 세금계산서]를 먼저 입력해 주세요.');
       return false;
     }
     return true;

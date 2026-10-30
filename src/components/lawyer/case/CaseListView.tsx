@@ -16,6 +16,8 @@ import { getKoreanHoliday } from '../../../utils/koreanHolidays';
 export type SavedViewTab = 'all' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5' | 'stage6' | 'closed';
 
 export interface CaseListViewProps {
+  /** 서버 사건 기록 단계 (상담 요청 ID → 사무소용 단계 이름). 없으면 '서버 기록 없음' */
+  serverStageLabels?: Record<string, string>;
   requests: ConsultRequest[];
   getCrmExt: (id: string) => CrmClientExtension;
   selectedId: string;
@@ -85,6 +87,7 @@ export function CaseListView({
   onOpenImport,
   onOpenTrash,
   onOpenSettings,
+  serverStageLabels,
 }: CaseListViewProps) {
   // 보기 모드 (리스트 vs 칸반 vs 캘린더)
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'calendar'>('list');
@@ -1095,6 +1098,11 @@ export function CaseListView({
                                   <span className="text-xs font-mono text-slate-400 truncate">
                                     {ext.courtCase.caseNumber}
                                   </span>
+                                )}
+                                {serverStageLabels && (
+                                  serverStageLabels[r.id]
+                                    ? <span className="text-xs px-1.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap" title="서버 사건 기록 단계">{serverStageLabels[r.id]}</span>
+                                    : <span className="text-xs px-1.5 py-0.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-200 whitespace-nowrap" title="서버 사건 기록이 아직 없습니다">기록 전</span>
                                 )}
                               </div>
                             </div>

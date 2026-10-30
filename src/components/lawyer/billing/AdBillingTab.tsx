@@ -23,6 +23,7 @@ import {
   type OfficeBillingProfile,
 } from '../../../services/adOrderService';
 import { checkCorpNum, formatCorpNum } from '../../../services/taxInvoiceService';
+import { setOfficeProfileCache } from '../../../services/lawyer/officeProfile';
 
 type Sub = 'status' | 'products' | 'orders' | 'business';
 
@@ -455,7 +456,8 @@ function BillingProfileSection({ officeId, canEdit, canView, orders }: { officeI
     const r = await saveBillingProfile({ ...form, officeId, corpNum: digits });
     setSaving(false);
     if (r.ok === false) { setFormError(r.message); return; }
-    toast.success('사업자 정보를 저장했습니다.');
+    toast.success('사업자 정보를 저장했습니다. 법원 서식·계약서·안내문의 사무소 정보에도 바로 쓰입니다.');
+    setOfficeProfileCache({ ...form, officeId, corpNum: digits });
     setForm(null);
     void load();
   };
@@ -489,6 +491,7 @@ function BillingProfileSection({ officeId, canEdit, canView, orders }: { officeI
               <div><span className="text-slate-500">대표자</span> <span className="font-bold ml-1.5">{profile.ceoName || '-'}</span></div>
               <div><span className="text-slate-500">계산서 이메일</span> <span className="font-bold ml-1.5">{profile.email || '-'}</span></div>
               {profile.email2 && <div><span className="text-slate-500">추가 이메일</span> <span className="font-bold ml-1.5">{profile.email2}</span></div>}
+              {profile.contactPhone && <div><span className="text-slate-500">전화</span> <span className="font-bold ml-1.5">{profile.contactPhone}</span></div>}
               {profile.address && <div className="sm:col-span-2"><span className="text-slate-500">주소</span> <span className="font-bold ml-1.5">{profile.address}</span></div>}
             </div>
             {canEdit && <button onClick={startEdit} className="text-sm font-bold text-[#1E3A5F] hover:underline cursor-pointer">수정</button>}
@@ -521,7 +524,8 @@ function BillingProfileSection({ officeId, canEdit, canView, orders }: { officeI
               <div><label className="text-sm font-bold text-slate-700 block mb-1.5">업태 / 종목</label>
                 <div className="flex gap-2"><input value={form.bizType || ''} onChange={set('bizType')} className={field} /><input value={form.bizClass || ''} onChange={set('bizClass')} className={field} /></div>
               </div>
-              <div className="md:col-span-2"><label className="text-sm font-bold text-slate-700 block mb-1.5">사업장 주소</label><input value={form.address || ''} onChange={set('address')} className={field} /></div>
+              <div><label className="text-sm font-bold text-slate-700 block mb-1.5">사무소 전화</label><input value={form.contactPhone || ''} onChange={set('contactPhone')} placeholder="02-000-0000" className={field} /></div>
+              <div><label className="text-sm font-bold text-slate-700 block mb-1.5">사업장 주소</label><input value={form.address || ''} onChange={set('address')} className={field} /></div>
             </div>
             {formError && <p className="text-sm text-rose-600" role="alert">{formError}</p>}
             <div className="flex gap-3">

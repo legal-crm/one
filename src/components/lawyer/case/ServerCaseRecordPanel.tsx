@@ -3,7 +3,7 @@
 // - 상담 요청마다 우리 사무소 서버 사건을 하나 만들고, 단계는 '기록' 버튼으로만 앞으로 간다.
 // - 모든 쓰기는 서버 함수. 실패는 화면에 그대로 보여 준다(조용한 브라우저 대체 없음).
 // ============================================================
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, History, RefreshCw, Scale } from 'lucide-react';
 import {
@@ -21,6 +21,8 @@ interface Props {
   canCloseOrReopen: boolean;
   /** 사건 기록 권한 (없으면 읽기만) */
   canEdit: boolean;
+  /** 수임 계약 이후 사건이면 서버 기록이 없을 때 자동으로 만든다 (수납·서류 기록의 바탕) */
+  autoStart?: boolean;
   /** 서버 단계가 바뀌면 기존 화면 상태를 맞춘다 */
   onStageSynced?: (crmStatus: CrmStatus, record: CaseRecord) => void;
 }
@@ -32,7 +34,8 @@ const today = () => {
 
 const fmtDateTime = (iso: string) => new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-export default function ServerCaseRecordPanel({ officeId, consultRequestId, caseType, canCloseOrReopen, canEdit, onStageSynced }: Props) {
+export default function ServerCaseRecordPanel({ officeId, consultRequestId, caseType, canCloseOrReopen, canEdit, autoStart, onStageSynced }: Props) {
+  const autoTriedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<CaseRecord | null>(null);
@@ -53,6 +56,15 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
       setLoading(false);
       return;
     }
+    if (!found.data && autoStart && canEdit && !autoTriedRef.current) {
+      // 한 번만 시도 (실패하면 아래 '사건 기록 시작' 버튼으로 다시 할 수 있다)
+      autoTriedRef.current = true;
+      const created = await createCase(officeId, { caseType, source: 'consult_request', consultRequestId });
+      if (created.ok) {
+        toast.success('수임 사건이라 서버 사건 기록을 자동으로 시작했어요. 지금까지 진행한 단계를 아래에서 기록해 주세요.');
+        found.data = created.data;
+      }
+    }
     setRecord(found.data);
     if (found.data) {
       const ev = await listCaseEvents(found.data.id, 50);
@@ -61,7 +73,7 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
       setEvents([]);
     }
     setLoading(false);
-  }, [officeId, consultRequestId]);
+  }, [officeId, consultRequestId, autoStart, canEdit, caseType]);
 
   useEffect(() => { void load(); }, [load]);
 

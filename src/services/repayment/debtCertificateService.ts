@@ -481,7 +481,7 @@ export function createDefaultAgencyApplicationData(
     });
   }
 
-  // 사무소 정보는 [알림 및 설정 > 사업자 정보]에 저장된 값만 사용 (없으면 빈 값)
+  // 사무소 정보는 [광고·결제 > 사업자 · 세금계산서]에 저장된 값만 사용 (없으면 빈 값)
   const office = getOfficeProfile(activeLawyerName);
   return {
     caseType: 'rehab',

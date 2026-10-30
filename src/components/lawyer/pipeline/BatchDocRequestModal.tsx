@@ -115,7 +115,7 @@ export default function BatchDocRequestModal({
   // 미리보기 사무소 정보: [설정 > 사업자 정보] 값 (이전: 다른 사무소 이름·주소 하드코딩)
   const office = getOfficeProfile();
   const officeName = office.firmName || '사무소명 미설정';
-  const officeAddress = office.address || '사무소 주소 미설정 — [알림 및 설정 > 사업자 정보]에서 입력';
+  const officeAddress = office.address || '사무소 주소 미설정 — [광고·결제 > 사업자 · 세금계산서]에서 입력';
 
   return (
     <ModalPortal>

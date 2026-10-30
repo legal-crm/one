@@ -60,6 +60,7 @@ import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneySta
 import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
 import ServerFeePanel from './case/ServerFeePanel';
+import { listCases, loadStageDefinitions, stageDef } from '../../services/cases/caseCoreService';
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
@@ -619,6 +620,25 @@ export default function CrmTab({
     }
     return true;
   }), [requests, isMine, getCrmExt, showTrash, currentPermissions, activeStaff]);
+
+  // 서버 사건 기록 단계 (CM-1): 목록에서 어떤 사건이 서버에 기록돼 있는지 보이게 한다
+  const [serverStageLabels, setServerStageLabels] = useState<Record<string, string> | undefined>(undefined);
+  useEffect(() => {
+    if (!officeId || selectedId) return;
+    let cancelled = false;
+    (async () => {
+      const [defs, cs] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 })]);
+      if (cancelled || cs.ok === false) return;
+      const map: Record<string, string> = {};
+      cs.data.forEach(c => {
+        if (!c.consultRequestId) return;
+        const d = defs.ok ? stageDef(defs.data, c.caseType, c.stage) : undefined;
+        map[c.consultRequestId] = c.closeReason ? '종결' : (d?.officeLabel || c.stage);
+      });
+      setServerStageLabels(map);
+    })();
+    return () => { cancelled = true; };
+  }, [officeId, selectedId]);
 
   const filteredRequests = useMemo(() => {
     let result = requests.filter(r => {
@@ -1783,6 +1803,7 @@ export default function CrmTab({
           )}
         <CaseListView
           requests={listScopeRequests}
+          serverStageLabels={serverStageLabels}
           getCrmExt={getCrmExt}
           selectedId={selectedId}
           onSelectCase={(id) => setSelectedId(id)}
@@ -2089,6 +2110,7 @@ export default function CrmTab({
                   caseType={isBankruptcyCase ? 'bankruptcy' : 'rehab'}
                   canEdit={currentPermissions.changeStatus}
                   canCloseOrReopen={isOfficeLawyer}
+                  autoStart={!['requested', 'consulting', 'cancelled'].includes(getCrmExt(selectedId).crmStatus)}
                   onStageSynced={(crmStatus, rec) => {
                     const ext = getCrmExt(selectedId);
                     const courtCase = rec.caseNumber
