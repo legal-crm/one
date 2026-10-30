@@ -34,7 +34,7 @@ import { fetchHoneypotLogs, type HoneypotAttackLog } from '../services/honeypotS
 import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
 import PlatformDashboard, { isSpamBlocked } from './admin/PlatformDashboard';
 import { maskPhoneNumber, maskPersonName, maskEmailAddress } from '../utils/piiMask';
-import { adminSetConsultStatus, adminSetConsultHidden, adminReopenStaleConsult } from '../services/consultService';
+import { adminSetConsultStatus, adminSetConsultHidden } from '../services/consultService';
 import { adminLoadInquiries, adminReplyInquiry } from '../services/inquiryService';
 import { localYmd } from '../utils/localDate';
 import { fetchPlatformActivity, type PlatformActivityLog } from '../services/platformActivityService';
@@ -839,27 +839,6 @@ export default function AdminRole({
     toast.success('상태를 변경했습니다.');
   };
 
-  /** 장기 미응답 요청 오픈 매칭 재공개 */
-  const handleReopenStale = async (req: ConsultRequest) => {
-    const confirmed = await dialog.confirm({
-      title: '오픈 매칭으로 재공개',
-      message: `요청 ${req.id}는 ${Math.floor((Date.now() - new Date(req.createdAt).getTime()) / 3_600_000)}시간 동안 제안서가 없습니다.\n전체 승인 변호사가 볼 수 있는 오픈 매칭으로 전환할까요?\n특정 변호사에게 배정하지 않으며, 가능하면 의뢰인 동의를 먼저 받으세요.`,
-      confirmText: '재공개',
-      variant: 'warning'
-    });
-    if (!confirmed) return;
-    setClientActionBusy(true);
-    const res = await adminReopenStaleConsult(req.id, `${STALE_HOURS}시간 이상 미응답`);
-    setClientActionBusy(false);
-    if (res.ok === false) {
-      toast.error(`재공개하지 못했습니다: ${res.error}`);
-      return;
-    }
-    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, requestType: 'open', status: 'requested' } : r));
-    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `장기 미응답 요청 오픈 매칭 재공개: ${req.id}`);
-    toast.success('오픈 매칭으로 재공개했습니다.');
-  };
-
   // 3. Lawyer approval directory filtering
   const filteredLawyers = lawyers.filter(l => {
     const term = lawyerSearch.toLowerCase();
@@ -1448,8 +1427,12 @@ export default function AdminRole({
               <div className="bg-[#111622] p-4 rounded-xl border border-amber-500/30 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h3 className="text-sm font-extrabold text-amber-200">장기 미응답 요청 ({staleRequests.length}건)</h3>
-                  <span className="text-xs text-slate-400">요청 대기·지정 응답 상태로 {STALE_HOURS}시간 이상 제안서가 없는 건 · 특정 변호사 임의 배정은 하지 않습니다</span>
+                  <span className="text-xs text-slate-400">요청 대기·지정 응답 상태로 {STALE_HOURS}시간 이상 제안서가 없는 건 · 확인용 목록</span>
                 </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  변호사가 2영업일 안에 검토 시작·제안서·거절 중 하나로 답하지 않으면 서버가 요청을 닫고 자리를 돌려줍니다.
+                  의뢰인에게는 다른 변호사를 고를 수 있다는 안내가, 사무소에는 기한 하루 전 상기 알림이 갑니다. 관리자가 요청을 다른 변호사에게 공개하거나 배정하지 않습니다.
+                </p>
                 {staleRequests.length === 0 ? (
                   <p className="text-sm text-slate-400">해당하는 요청이 없습니다.</p>
                 ) : (
@@ -1458,15 +1441,7 @@ export default function AdminRole({
                       <li key={r.id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <button type="button" onClick={() => handleSelectClient(r.id)} className="text-left text-slate-200 hover:text-white cursor-pointer">
                           <span className="font-bold">{clientDisplayName(r)}</span>
-                          <span className="text-slate-400"> · {r.id} · {Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 3_600_000)}시간 경과 · 지정 변호사 {(r.selectedLawyerIds || []).length}명</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={clientActionBusy || r.requestType === 'open'}
-                          onClick={() => handleReopenStale(r)}
-                          className="min-h-[44px] px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 text-xs font-bold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        >
-                          {r.requestType === 'open' ? '이미 오픈 매칭' : '오픈 매칭으로 재공개'}
+                          <span className="text-slate-400"> · {r.id} · {Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 3_600_000)}시간 경과 · 요청한 변호사 {(r.selectedLawyerIds || []).length}명</span>
                         </button>
                       </li>
                     ))}

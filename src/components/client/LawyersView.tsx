@@ -32,8 +32,10 @@ interface LawyersViewProps {
   onSelectionModeChange?: (on: boolean) => void;
   /** 이번에 더 고를 수 있는 변호사 수 (한도 − 이미 요청한 수) */
   maxSelections?: number;
-  /** 한 상담에 요청할 수 있는 전체 한도 (안내 문구용) */
+  /** 동시에 진행할 수 있는 변호사 한도 (안내 문구용) */
   requestLimit?: number;
+  /** 서버 기준 지금 진행 중인 변호사 수 (모든 상담 요청 합계, 로그인 후) */
+  activeSeats?: number;
   onConfirmSelection?: (lawyerIds: string[]) => void;
   hasCompletedCheck?: boolean;
   /** 변호사를 더할 수 있는 진행 중 상담 요청이 있음 (체크를 다시 하지 않고 바로 요청 가능) */
@@ -56,6 +58,7 @@ export default function LawyersView({
   onSelectionModeChange,
   maxSelections = 3,
   requestLimit = 3,
+  activeSeats,
   onConfirmSelection,
   hasCompletedCheck,
   canRequestNow = false,
@@ -248,9 +251,11 @@ export default function LawyersView({
             <div className="text-sm leading-relaxed break-keep">
               <p className="font-bold text-emerald-950">체크 결과로 바로 상담을 요청할 수 있어요</p>
               <p className="text-emerald-900">
-                {requestedLawyerIds.length > 0
-                  ? `이미 ${requestedLawyerIds.length}명에게 요청했고, ${slotsLeft}명을 더 고를 수 있어요.`
-                  : `여러 변호사의 제안을 비교하려면 ${slotsLeft}명까지 한 번에 고르세요.`}
+                {typeof activeSeats === 'number' && activeSeats > 0
+                  ? `진행 중 ${activeSeats}/${requestLimit}명 · ${slotsLeft}명을 더 고를 수 있어요. 2영업일 안에 답이 없거나 거절하면 자리가 돌아와요.`
+                  : requestedLawyerIds.length > 0
+                    ? `이미 ${requestedLawyerIds.length}명에게 요청했고, ${slotsLeft}명을 더 고를 수 있어요.`
+                    : `여러 변호사의 제안을 비교하려면 ${slotsLeft}명까지 한 번에 고르세요.`}
                 {requiresLogin && ' 요청을 보낼 때 로그인합니다.'}
               </p>
             </div>

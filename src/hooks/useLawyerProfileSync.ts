@@ -98,7 +98,11 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
       }
 
       // 관리자가 삭제한 프로필은 이 기기 목록에서도 제거
-      const next = prev.filter(local => !res.deletedIds.has(local.id)).map(local => {
+      // 서버가 보여 주지 않는 행: 관리자(새 프로필)·변호사 본인 프로필만 이 기기 사본을 둔다.
+      // 그 밖(의뢰인·방문자)은 지운다 — 정지·공개 조건 미충족으로 목록에서 빠진 변호사가 옛 사본으로 계속 보이지 않게 (20261031001300)
+      const ownLawyerId = roleRef.current === 'lawyer' ? sessionStorage.getItem(LAWYER_SESSION_KEY) : null;
+      const keepLocalOnly = (id: string) => roleRef.current === 'admin' || id === ownLawyerId;
+      const next = prev.filter(local => !res.deletedIds.has(local.id) && (remoteById.has(local.id) || keepLocalOnly(local.id))).map(local => {
         const remote = remoteById.get(local.id);
         if (!remote) return local; // 아직 DB에 없는 프로필 (권한 있는 사용자가 올림)
         const lastSynced = prevSynced.get(local.id);

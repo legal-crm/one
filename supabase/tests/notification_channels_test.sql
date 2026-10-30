@@ -48,9 +48,10 @@ RESET ROLE;
 
 -- 의뢰인 상담 요청 2번(같은 일) → 대표 이메일 1건·팀 방 1건만
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e3","role":"authenticated"}', true);
-SET LOCAL ROLE authenticated;
+-- 변호사 지정은 서버 함수(client_request_lawyers)만 할 수 있어 시험 행은 서버 권한으로 넣는다 (20261031001300)
 INSERT INTO consult_requests (id, client_id, client_name, status, selected_lawyer_id)
 VALUES ('test-req-o', '00000000-0000-4000-8000-0000000000e3', 'TEST', 'requested', 'test-lawyer-o1');
+SET LOCAL ROLE authenticated;
 INSERT INTO consult_messages (id, consult_request_id, sender_type, sender_id, sender_name, message)
 VALUES ('test-msg-o1', 'test-req-o', 'client', 'x', 'TEST', 'a'), ('test-msg-o2', 'test-req-o', 'client', 'x', 'TEST', 'b');
 RESET ROLE;

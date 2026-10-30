@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Toaster, toast } from 'sonner';
 import { DialogProvider } from './components/common/DialogProvider';
 import { 
@@ -9,7 +9,9 @@ import {
   saveConsultMessage, 
   saveAllConsultMessages, 
   migrateAnonymousRequests,
-  setConsultSyncContext
+  setConsultSyncContext,
+  hasPendingConsultWrite,
+  wasLastConsultLoadOk,
 } from './services/consultService';
 import { 
   mockLawyers, 
@@ -347,9 +349,13 @@ export default function App() {
     });
 
     // 3. Apply incoming DB requests
+    // 서버 값이 기준이다. 이 기기에서 보내는 중인 행만 화면 사본(제안서·비교 대상·상태)을 남긴다.
+    // (이전: 제안서는 더 긴 쪽, 비교 대상은 합집합을 써서 거절·기한 지남으로 서버가 지운 변호사·제안서가 계속 보였다)
     incomingList.forEach(item => {
       const existing = map.get(item.id);
-      if (existing) {
+      if (existing && !hasPendingConsultWrite(item.id)) {
+        map.set(item.id, { ...existing, ...item });
+      } else if (existing) {
         const mergedProposals = (existing.proposals?.length || 0) > (item.proposals?.length || 0)
           ? existing.proposals
           : (item.proposals || existing.proposals);
@@ -433,9 +439,13 @@ export default function App() {
     return [];
   });
 
+  // 지난번 서버가 돌려준 상담 요청 ID (역할이 바뀌면 새로 센다)
+  const serverRequestIdsRef = useRef<Set<string>>(new Set());
+
   // Async load from Supabase + 5초 간격 폴링 동기화 (역할 및 본인 세션에 한정하여 BOLA 원천 차단)
   useEffect(() => {
     let isMounted = true;
+    serverRequestIdsRef.current = new Set();
 
     const syncFromDb = async () => {
       try {
@@ -463,9 +473,18 @@ export default function App() {
         const dbMessages = reqIds.length > 0 ? await loadConsultMessages(reqIds) : [];
         if (!isMounted) return;
 
-        if (dbRequests.length > 0) {
+        // 지난번 서버가 돌려준 행이 이번에 빠졌으면(거절·기한 지남·취소로 볼 수 없게 됨, 관리자 숨김) 화면에서도 뺀다.
+        // 서버에 한 번도 없던 이 기기 행(로그인 전 요청 등)과 보내는 중인 행은 그대로 둔다.
+        const loadOk = wasLastConsultLoadOk();
+        const goneIds = new Set<string>();
+        if (loadOk) {
+          const nowIds = new Set(dbRequests.map(r => r.id));
+          serverRequestIdsRef.current.forEach(id => { if (!nowIds.has(id) && !hasPendingConsultWrite(id)) goneIds.add(id); });
+          serverRequestIdsRef.current = nowIds;
+        }
+        if (dbRequests.length > 0 || goneIds.size > 0) {
           _setRequests(prev => {
-            const merged = mergeConsultRequests(prev, dbRequests);
+            const merged = mergeConsultRequests(prev.filter(r => !goneIds.has(r.id)), dbRequests);
             try { secureSetItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
             return merged;
           });

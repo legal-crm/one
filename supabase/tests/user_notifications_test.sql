@@ -16,9 +16,10 @@ VALUES ('test-lawyer-n1', '00000000-0000-4000-8000-0000000000d2', 'TEST 사무',
 
 -- 의뢰인: 상담 요청 → 대표에게만 알림 (사무 직원·다른 사무소 없음)
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d3","role":"authenticated"}', true);
-SET LOCAL ROLE authenticated;
+-- 변호사 지정은 서버 함수(client_request_lawyers)만 할 수 있어 시험 행은 서버 권한으로 넣는다 (20261031001300)
 INSERT INTO consult_requests (id, client_id, client_name, status, selected_lawyer_id)
 VALUES ('test-req-n', '00000000-0000-4000-8000-0000000000d3', 'TEST가명', 'requested', 'test-lawyer-n1');
+SET LOCAL ROLE authenticated;
 INSERT INTO consult_messages (id, consult_request_id, sender_type, sender_id, sender_name, message)
 VALUES ('test-msg-n1', 'test-req-n', 'client', '00000000-0000-4000-8000-0000000000d3', 'TEST가명', 'hello'),
        ('test-msg-n2', 'test-req-n', 'client', '00000000-0000-4000-8000-0000000000d3', 'TEST가명', 'hello again');

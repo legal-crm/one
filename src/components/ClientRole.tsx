@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { fetchConsultCooldownRemaining } from '../services/cms/contentService';
 import { useDialog } from './common/DialogProvider';
 import { Client, FinancialProfile, ConsultRequest, ConsultStatus, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
-import { migrateAnonymousRequests, saveConsultRequest } from '../services/consultService';
+import { migrateAnonymousRequests, saveOwnConsultRequestStrict, clientRequestLawyers, loadMyConsultSeats } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
 import { generateAlias } from '../utils/generateAlias';
 import { ensureUniqueAlias, claimAlias } from '../services/aliasService';
@@ -64,7 +64,7 @@ import { CLIENT_TAB_LABELS, isClientTab, readInitialClientTab, resolveClientNavT
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
 import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
 import { getDisplayName as getLawyerDisplayName } from './client/lawyerDirectory';
-import { commitPendingLoginConsent, recordThirdPartyConsent } from '../services/clientConsentService';
+import { CONSENT_VERSIONS, commitPendingLoginConsent, recordThirdPartyConsent } from '../services/clientConsentService';
 import ThirdPartyConsentModal from './client/ThirdPartyConsentModal';
 const RemedyModal = React.lazy(() => import('./client/RemedyModal'));
 const NewsDetailModal = React.lazy(() => import('./client/NewsDetailModal'));
@@ -686,48 +686,60 @@ export default function ClientRole({
    * 기존 요청 대상은 유지하고, 한도(3명)를 넘는 변호사는 제외하며, 새로 더해진 변호사에게만 알린다.
    * @returns 새로 요청 대상이 된 변호사 수
    */
-  const requestLawyersForConsult = (request: ConsultRequest, lawyerIds: string[], options: { isNew?: boolean } = {}): number => {
-    const merge = mergeLawyerRequest(request.selectedLawyerIds, lawyerIds);
-    const reopen = request.status === 'cancelled' || request.status === 'closed';
-    const nextRequest: ConsultRequest = {
-      ...request,
-      selectedLawyerIds: merge.selectedLawyerIds,
-      requestType: 'direct_multi',
-      maxParticipants: Math.max(1, merge.selectedLawyerIds.length),
-      status: reopen ? 'requested' : request.status,
-    };
-
+  const requestLawyersForConsult = async (request: ConsultRequest, lawyerIds: string[], options: { isNew?: boolean } = {}): Promise<number> => {
+    // 서버가 3명 자리(요청 건수와 무관)·공개 변호사·정리 자료를 확인한다 (LD-1, 20261031001300).
+    // 요청 행이 먼저 서버에 있어야 하므로 행 저장 → 요청 함수 순서로 보내고, 실패하면 안내문을 보내지 않는다.
+    const saved = await saveOwnConsultRequestStrict(request);
+    if (saved.ok === false) {
+      toast.error(saved.message);
+      return 0;
+    }
+    const savedRequest = saved.request;
     if (options.isNew) {
-      setRequests(prev => [nextRequest, ...prev.filter(r => r.id !== nextRequest.id)]);
-    } else {
-      setRequests(prev => prev.map(r => (r.id === request.id
-        ? { ...r, selectedLawyerIds: merge.selectedLawyerIds, requestType: 'direct_multi' as const, maxParticipants: nextRequest.maxParticipants, status: reopen ? 'requested' as const : r.status }
-        : r)));
+      setRequests(prev => [savedRequest, ...prev.filter(r => r.id !== request.id)]);
+    } else if (savedRequest.clientId !== request.clientId) {
+      setRequests(prev => prev.map(r => (r.id === request.id ? { ...r, clientId: savedRequest.clientId } : r)));
+    }
+    const res = await clientRequestLawyers(request.id, lawyerIds, CONSENT_VERSIONS.thirdParty);
+    if (res.ok === false) {
+      toast.error(res.message);
+      return 0;
+    }
+    const { added, overflow, unavailable, active, limit, selectedLawyerIds } = res.result;
+    setSeatInfo({ active, limit });
+    const reopen = request.status === 'cancelled' || request.status === 'closed';
+    setRequests(prev => prev.map(r => (r.id === request.id
+      ? { ...r, selectedLawyerIds, requestType: 'direct_multi' as const, maxParticipants: limit, status: reopen && added.length > 0 ? 'requested' as const : r.status }
+      : r)));
+
+    if (overflow.length > 0) {
+      toast.info(`진행 중인 변호사는 한 번에 ${limit}명까지예요. ${overflow.length}명은 요청하지 않았어요. 응답이 없거나 거절하면 자리가 돌아와요.`);
+    }
+    if (unavailable.length > 0) {
+      toast.info(`${unavailable.length}명은 지금 상담 요청을 받을 수 없는 변호사예요.`);
     }
 
-    if (merge.overflowLawyerIds.length > 0) {
-      toast.info(`한 상담에는 변호사 ${LAWYER_REQUEST_LIMIT}명까지 요청할 수 있어 ${merge.overflowLawyerIds.length}명은 요청하지 않았습니다.`);
-    }
-
-    if (merge.addedLawyerIds.length > 0) {
-      const addedIds = merge.addedLawyerIds;
+    if (added.length > 0) {
       // 안내문이 '○○ 변호사님'으로 끝나므로 이름에 붙은 '변호사'는 뗀다
-      const names = addedIds
+      const names = added
         .map(id => directoryLawyers.find(x => x.id === id))
         .filter((l): l is LawyerType => !!l)
         .map(getLawyerDisplayName);
-      // 상담 요청 행이 서버에 먼저 있어야 안내문이 저장된다(외래키). 임의 지연 대신 요청 저장이 끝난 뒤 보낸다.
-      void saveConsultRequest(nextRequest).catch(() => {}).finally(() => {
-        // 의뢰인 화면 전용 안내문 ('client-only' → 변호사 화면에는 보이지 않음)
-        onAddMessage(request.id, buildClientRequestNotice(names, addedIds.length), 'system', 'system', '시스템 안내', 'client-only');
-        // 새로 요청받은 변호사에게만 개별 안내 (다른 변호사 이름은 알리지 않음)
-        addedIds.forEach(lawyerId => {
-          onAddMessage(request.id, LAWYER_REQUEST_RECEIVED_NOTICE, 'system', 'system', '시스템 안내', lawyerId);
-        });
+      // 의뢰인 화면 전용 안내문 ('client-only' → 변호사 화면에는 보이지 않음)
+      onAddMessage(request.id, buildClientRequestNotice(names, added.length), 'system', 'system', '시스템 안내', 'client-only');
+      // 새로 요청받은 변호사에게만 개별 안내 (다른 변호사 이름은 알리지 않음)
+      added.forEach(lawyerId => {
+        onAddMessage(request.id, LAWYER_REQUEST_RECEIVED_NOTICE, 'system', 'system', '시스템 안내', lawyerId);
       });
     }
-    return merge.addedLawyerIds.length;
+    return added.length;
   };
+
+  // 의뢰인 진행 중 변호사 자리 (서버 기준, 로그인 후)
+  const [seatInfo, setSeatInfo] = useState<{ active: number; limit: number } | null>(null);
+  const refreshSeats = useCallback(() => {
+    void loadMyConsultSeats().then(s => setSeatInfo(s ? { active: s.active, limit: s.limit } : null));
+  }, []);
 
   // 공개 요청(누구나 보고 제안)은 변호사법 위배로 폐지(10-24 결정). 서버도 'open' 요청을 변호사에게 보여 주지 않는다(20261030000200).
 
@@ -744,6 +756,10 @@ export default function ClientRole({
 
   /** 고른 변호사에게 상담을 요청하기 전에 동의 창을 연다 */
   const requestLawyersWithConsent = (request: ConsultRequest, lawyerIds: string[], options: { isNew?: boolean } = {}) => {
+    if (seatInfo && seatInfo.active >= seatInfo.limit) {
+      toast.info(`진행 중인 변호사가 이미 ${seatInfo.limit}명이에요. 요청을 취소하거나, 2영업일 안에 답이 없거나 거절하면 자리가 돌아와요.`);
+      return;
+    }
     const preview = mergeLawyerRequest(request.selectedLawyerIds, lawyerIds);
     if (preview.addedLawyerIds.length === 0) {
       toast.info(preview.overflowLawyerIds.length > 0
@@ -774,7 +790,7 @@ export default function ClientRole({
     if (pending.scope === 'selected') {
       const { addedLawyerIds } = mergeLawyerRequest(latest.selectedLawyerIds, pending.lawyerIds);
       await recordThirdPartyConsent({ requestId: latest.id, scope: 'selected', lawyerIds: addedLawyerIds });
-      const added = requestLawyersForConsult(latest, pending.lawyerIds, { isNew: pending.isNew });
+      const added = await requestLawyersForConsult(latest, pending.lawyerIds, { isNew: pending.isNew });
       if (added > 0) toast.success(`변호사 ${added}명에게 상담 요청을 보냈습니다.`);
       setLawyerSelectionMode(false);
       setLawyerSelectionTargetId(null);
@@ -843,6 +859,12 @@ export default function ClientRole({
 
   // User Auth & Privacy States
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // 진행 중 변호사 자리: 로그인·변호사 찾기/내 관리방을 열 때·요청 목록이 바뀔 때 서버에서 다시 센다 (거절·기한 지남은 서버가 반영)
+  const seatRefreshKey = requests.map(r => `${r.id}:${r.status}:${(r.selectedLawyerIds || []).length}`).join('|');
+  useEffect(() => {
+    if (!isLoggedIn) { setSeatInfo(null); return; }
+    if (activeTab === 'lawyers' || activeTab === 'chat') refreshSeats();
+  }, [isLoggedIn, activeTab, seatRefreshKey, refreshSeats]);
   useEffect(() => {
     if (!isLoggedIn) { setServerCooldownUntil(0); return; }
     let cancelled = false;
@@ -2365,8 +2387,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setLawyerSelectionMode(on);
                   if (!on) setLawyerSelectionTargetId(null);
                 }}
-                maxSelections={Math.max(0, LAWYER_MAX_SELECTIONS - lawyerTargetRequestedIds.length)}
-                requestLimit={LAWYER_MAX_SELECTIONS}
+                maxSelections={Math.max(0, Math.min(
+                  LAWYER_MAX_SELECTIONS - lawyerTargetRequestedIds.length,
+                  seatInfo ? seatInfo.limit - seatInfo.active : LAWYER_MAX_SELECTIONS,
+                ))}
+                requestLimit={seatInfo?.limit ?? LAWYER_MAX_SELECTIONS}
+                activeSeats={seatInfo?.active}
                 onConfirmSelection={handleConfirmLawyerSelection}
                 hasCompletedCheck={!!activeResult}
                 canRequestNow={!!lawyerRequestTarget}

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
-import type { ConsultRequest, ConsultMessage } from '../types';
+import type { ConsultRequest, ConsultMessage, ConsultStatus } from '../types';
 import { isLegacyEncryptedField, isLegacyEncryptedString, LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER } from '../utils/cryptoField';
 import { getTargetLawyerColumnState, setTargetLawyerColumnState } from './consultMessageSchema';
 
@@ -91,6 +91,24 @@ export function setConsultSyncContext(role: string, actorId?: string | null): vo
 
 const snapshotOf = (r: ConsultRequest) => JSON.stringify(r);
 const markSynced = (rows: ConsultRequest[]) => rows.forEach(r => lastSynced.set(r.id, snapshotOf(r)));
+
+// 서버로 보내는 중인 요청 ID — 이 동안만 화면 사본을 우선하고, 그 밖에는 서버 값이 기준이다
+// (거절·기한 지남·다른 변호사 확정처럼 서버가 바꾼 변호사·제안서·상태가 옛 사본에 덮이지 않게, 20261031001300)
+const pendingWrites = new Map<string, number>();
+export function hasPendingConsultWrite(id: string): boolean {
+  return (pendingWrites.get(id) || 0) > 0;
+}
+const beginWrites = (ids: string[]) => ids.forEach(id => pendingWrites.set(id, (pendingWrites.get(id) || 0) + 1));
+const endWrites = (ids: string[]) => ids.forEach(id => {
+  const n = (pendingWrites.get(id) || 0) - 1;
+  if (n > 0) pendingWrites.set(id, n); else pendingWrites.delete(id);
+});
+
+// 마지막 상담 요청 불러오기가 서버에서 성공했는지 (실패하면 화면 사본을 지우지 않는다)
+let lastConsultLoadOk = false;
+export function wasLastConsultLoadOk(): boolean {
+  return lastConsultLoadOk;
+}
 const isMaskedPhone = (phone?: string) => !!phone && phone.includes('*');
 
 async function getAuthUserId(): Promise<string | null> {
@@ -133,6 +151,8 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
 
   const changed = requests.filter(r => lastSynced.get(r.id) !== snapshotOf(r));
   if (changed.length === 0) return;
+  const changedIds = changed.map(r => r.id);
+  beginWrites(changedIds);
 
   try {
     if (syncRole === 'client') {
@@ -188,6 +208,8 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
     }
   } catch (e) {
     logSupabaseError('syncRequestsToDb (exception)', e);
+  } finally {
+    endWrites(changedIds);
   }
 }
 
@@ -221,6 +243,9 @@ async function rowToRequest(row: any): Promise<ConsultRequest> {
     entryCategory: row.entry_category,
     createdAt: row.created_at,
     ...(row.created_by_lawyer_id ? { createdByLawyerId: row.created_by_lawyer_id } : {}),
+    // 변호사 뷰: 이 요청에서 내 자리 상태·응답 기한 (20261031001300)
+    ...(row.my_seat_status ? { mySeatStatus: row.my_seat_status } : {}),
+    ...(row.my_respond_by ? { myRespondBy: row.my_respond_by } : {}),
     // 변호사 마스킹 뷰: 계약 체결(또는 본인 등록) 건만 실제 연락처가 내려옴
     ...(row.contact_visible === true ? { contactDisclosureStatus: 'contact_shared' as const } : {}),
     // 023 관리자 숨김 (관리자 조회에만 존재 — 변호사 뷰에는 숨김 행이 내려오지 않음)
@@ -266,17 +291,21 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
       const { data, error } = await query;
       
       if (error) {
+        lastConsultLoadOk = false;
         logSupabaseError('loadConsultRequests', error);
       } else if (data) {
         const mapped = await Promise.all(data.map(rowToRequest));
         const result = mapped.filter((req: ConsultRequest) => req.id !== 'req-1' && req.id !== 'req-2' && req.id !== 'req-3');
         markSynced(result);
+        lastConsultLoadOk = true;
         return result;
       }
     } catch (e) {
+      lastConsultLoadOk = false;
       logSupabaseError('loadConsultRequests (exception)', e);
     }
   }
+  lastConsultLoadOk = false;
   
   // LocalStorage Fallback (소유자 기반 스코프 필터링)
   const allRequests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
@@ -323,9 +352,129 @@ export function adminSetConsultHidden(id: string, hidden: boolean, reason?: stri
   return callAdminConsultRpc('admin_set_consult_hidden', { p_id: id, p_hidden: hidden, p_reason: reason || null });
 }
 
-/** 관리자: 장기 미응답 요청을 오픈 매칭으로 재공개 */
-export function adminReopenStaleConsult(id: string, reason?: string) {
-  return callAdminConsultRpc('admin_reopen_stale_consult', { p_id: id, p_reason: reason || null });
+// '오픈 매칭 재공개'는 폐지(OP-Q2). 응답 기한(2영업일)이 지나면 서버가 자리를 돌려주고 의뢰인이 다른 변호사를 고른다.
+
+// ── 변호사 찾기 서버 규칙 (LD-1·LD-9, 20261031001300) ─────────────────────
+// 의뢰인 1명이 동시에 진행 중인 변호사는 3명까지(요청 건수와 무관). 요청 추가·취소·비교/확정은 서버 함수로만.
+
+export const CONSULT_SEAT_LIMIT = 3;
+
+export type ConsultSeatStatus = 'requested' | 'reviewing' | 'proposed' | 'chosen' | 'declined' | 'expired' | 'withdrawn' | 'released';
+
+export interface ConsultSeats {
+  limit: number;
+  active: number;
+  lawyers: Array<{ requestId: string; lawyerId: string; status: ConsultSeatStatus; requestedAt: string; respondBy: string; closedAt?: string }>;
+}
+
+function seatErrorMessage(error: any): string {
+  const m = String(error?.message || '');
+  if (m.includes('situation check required')) return '내 상황 체크를 먼저 마쳐 주세요.';
+  if (m.includes('login required')) return '로그인이 필요해요.';
+  if (m.includes('consent required')) return '정보 제공 동의가 필요해요.';
+  if (m.includes('already contracted')) return '이미 수임 계약이 진행된 상담이에요.';
+  if (m.includes('not in consultation') || m.includes('not in this consultation')) return '지금 단계에서는 할 수 없는 작업이에요. 화면을 새로 고쳐 주세요.';
+  if (m.includes('not found')) return '상담 요청을 찾지 못했어요. 화면을 새로 고쳐 주세요.';
+  return '서버에 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.';
+}
+
+/** 의뢰인 본인 상담 요청 행을 서버에 저장하고 결과를 돌려준다 (요청 추가 전에 행이 서버에 있어야 한다) */
+export async function saveOwnConsultRequestStrict(input: ConsultRequest): Promise<{ ok: true; request: ConsultRequest } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: true, request: input };
+  const uid = await getAuthUserId();
+  if (!uid) return { ok: false, message: '로그인이 필요해요. 다시 로그인해 주세요.' };
+  // 로그인 전에 이 기기에서 만든 요청(client-temp)은 로그인한 계정으로 옮겨 저장한다 (migrateAnonymousRequests와 같은 규칙)
+  const request: ConsultRequest = input.clientId === 'client-temp' ? { ...input, clientId: uid } : input;
+  if (request.clientId !== uid) return { ok: false, message: '로그인한 계정의 상담 요청이 아니에요. 다시 로그인해 주세요.' };
+  const validation = validateAndSanitizeConsultRequest(request);
+  const safe: ConsultRequest = validation.success && validation.data ? ({ ...request, ...validation.data } as unknown as ConsultRequest) : request;
+  const row = await requestToRow(safe);
+  if (legacyEncryptedProfileIds.has(safe.id)) delete (row as any).financial_profile;
+  const { error } = await supabase.from('consult_requests').upsert(row, { onConflict: 'id' });
+  if (error) {
+    logSupabaseError('saveOwnConsultRequestStrict', error);
+    return { ok: false, message: '상담 요청을 서버에 저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.' };
+  }
+  const requests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
+  const idx = requests.findIndex(r => r.id === safe.id);
+  if (idx >= 0) requests[idx] = safe; else requests.push(safe);
+  setLocalData(REQUESTS_STORAGE_KEY, requests);
+  markSynced([safe]);
+  return { ok: true, request: safe };
+}
+
+export interface ClientRequestLawyersResult {
+  added: string[];
+  overflow: string[];
+  already: string[];
+  unavailable: string[];
+  active: number;
+  limit: number;
+  respondBy?: string;
+  selectedLawyerIds: string[];
+}
+
+/** 동의 창에서 '동의하고 보내기'를 누른 뒤: 고른 변호사에게 요청 (서버가 3명 자리·공개 변호사·정리 자료를 확인) */
+export async function clientRequestLawyers(requestId: string, lawyerIds: string[], consentVersion: string): Promise<{ ok: true; result: ClientRequestLawyersResult } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc('client_request_lawyers', { p_request_id: requestId, p_lawyer_ids: lawyerIds, p_consent_version: consentVersion });
+  if (error) { logSupabaseError('client_request_lawyers', error); return { ok: false, message: seatErrorMessage(error) }; }
+  const d = (data || {}) as any;
+  return {
+    ok: true,
+    result: {
+      added: d.added || [], overflow: d.overflow || [], already: d.already || [], unavailable: d.unavailable || [],
+      active: Number(d.active) || 0, limit: Number(d.limit) || CONSULT_SEAT_LIMIT, respondBy: d.respond_by || undefined,
+      selectedLawyerIds: Array.isArray(d.selected_lawyer_ids) ? d.selected_lawyer_ids : [],
+    },
+  };
+}
+
+/** 보낸 요청 취소 (lawyerId 를 비우면 이 상담의 진행 중 변호사 전부) */
+export async function clientWithdrawConsultLawyer(requestId: string, lawyerId?: string): Promise<{ ok: true; remaining: number; active: number } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc('client_withdraw_consult_lawyer', { p_request_id: requestId, p_lawyer_id: lawyerId || null });
+  if (error) { logSupabaseError('client_withdraw_consult_lawyer', error); return { ok: false, message: seatErrorMessage(error) }; }
+  return { ok: true, remaining: Number((data as any)?.remaining) || 0, active: Number((data as any)?.active) || 0 };
+}
+
+/** 비교 상담 시작(compare) · 이 변호사와 이어가기(confirm) · 확정 취소(unconfirm) */
+export async function clientSetConsultChoice(requestId: string, action: 'compare' | 'confirm' | 'unconfirm', lawyerId?: string): Promise<{ ok: true; status: ConsultStatus; selectedLawyerId?: string; acceptedLawyerIds: string[] } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc('client_set_consult_choice', { p_request_id: requestId, p_action: action, p_lawyer_id: lawyerId || null });
+  if (error) { logSupabaseError('client_set_consult_choice', error); return { ok: false, message: seatErrorMessage(error) }; }
+  const d = (data || {}) as any;
+  return { ok: true, status: d.status, selectedLawyerId: d.selected_lawyer_id || undefined, acceptedLawyerIds: Array.isArray(d.accepted_lawyer_ids) ? d.accepted_lawyer_ids : [] };
+}
+
+/** 내 자리 현황 (로그인 전·실패면 null) */
+export async function loadMyConsultSeats(): Promise<ConsultSeats | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase.rpc('my_consult_seats');
+  if (error || !data) return null;
+  const d = data as any;
+  return {
+    limit: Number(d.limit) || CONSULT_SEAT_LIMIT,
+    active: Number(d.active) || 0,
+    lawyers: (Array.isArray(d.lawyers) ? d.lawyers : []).map((l: any) => ({
+      requestId: l.request_id, lawyerId: l.lawyer_id, status: l.status, requestedAt: l.requested_at, respondBy: l.respond_by, closedAt: l.closed_at || undefined,
+    })),
+  };
+}
+
+export type ConsultDeclineReason = 'not_my_field' | 'too_busy' | 'other';
+export const CONSULT_DECLINE_REASONS: Array<{ value: ConsultDeclineReason; label: string }> = [
+  { value: 'not_my_field', label: '맡는 분야가 아니에요' },
+  { value: 'too_busy', label: '지금 업무가 많아요' },
+  { value: 'other', label: '기타' },
+];
+
+/** 변호사: 이번 상담 요청 거절 (사유는 사무소 기록에만, 의뢰인에게는 '이번엔 어렵다'만) */
+export async function lawyerDeclineConsultRequest(requestId: string, reason: ConsultDeclineReason, note?: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.rpc('lawyer_decline_consult_request', { p_id: requestId, p_reason: reason, p_note: note?.trim() || null });
+  if (error) {
+    logSupabaseError('lawyer_decline_consult_request', error);
+    const m = String(error.message || '');
+    return { ok: false, message: m.includes('nothing to decline') ? '이미 닫혔거나 계약이 진행된 요청이에요.' : m.includes('not allowed') ? '이 요청을 거절할 권한이 없어요.' : '거절을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' };
+  }
+  return { ok: true };
 }
 
 export async function saveConsultRequest(request: ConsultRequest): Promise<void> {

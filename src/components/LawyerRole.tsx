@@ -44,6 +44,7 @@ import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../s
 import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission, scopeOf as officeScopeOf } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import ServerNotificationSettings from './lawyer/settings/ServerNotificationSettings';
+import ProfileListingNotice from './lawyer/settings/ProfileListingNotice';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
 import ServerFeeTab from './lawyer/fees/ServerFeeTab';
@@ -2967,6 +2968,17 @@ export default function LawyerRole({
             </div>
           )}
 
+        {/* 변호사 찾기 공개 조건 안내 (LD-3): 채우지 않으면 목록·상담 요청에서 빠진다 */}
+        {activeTab === 'dashboard' && isLawyerOrOwner && (
+          <div className="mb-4">
+            <ProfileListingNotice
+              lawyer={activeLawyer}
+              compact
+              onEdit={() => { setActiveTab('settings'); setSettingsCategory('profile'); setSettingsSub('profile-edit'); }}
+            />
+          </div>
+        )}
+
         {/* TAB 1: LAWYER DASHBOARD (Task 3-6 개편된 오늘의 업무 대시보드) */}
         {activeTab === 'dashboard' && (
           <LawyerDashboardView
@@ -3357,7 +3369,8 @@ export default function LawyerRole({
 
             {/* 프로필 편집 뷰 */}
             {settingsSub === 'profile-edit' && (
-              <div>
+              <div className="space-y-4">
+                <ProfileListingNotice lawyer={activeLawyer} />
                 <LawyerProfileEditor
                   lawyer={activeLawyer}
                   onImageChange={(newAvatar) => {

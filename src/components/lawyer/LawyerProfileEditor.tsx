@@ -488,46 +488,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
             </div>
 
             {/* § 실적 정보 */}
-            <div className={sectionCls}>
-              <h3 className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5">
-                <Award className="w-4 h-4" />
-                실적 정보
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className={labelCls}>누적 수임 건수</label>
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={form.totalCases || ''}
-                    onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })}
-                    placeholder="직접 확인한 건수만 입력"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>인가 성공률 (%)</label>
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={form.successRate || ''}
-                    onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })}
-                    placeholder="0~100"
-                    max={100}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>평균 변제율 (%)</label>
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={form.avgRepaymentRate || ''}
-                    onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })}
-                    placeholder="0~100"
-                    max={100}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* 실적 수치 입력 칸은 두지 않는다 (LD-Q7, 서버도 저장 안 함) */}
 
             {/* § 관련 링크 */}
             <div className={sectionCls}>
@@ -804,7 +765,6 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                           {[
                             form.barAssociation ? { label: '소속', sub: form.barAssociation, icon: '⚖️' } : null,
                             form.courtJurisdiction ? { label: '관할 법원', sub: form.courtJurisdiction, icon: '🏛️' } : null,
-                            form.totalCases ? { label: `수임 ${form.totalCases}건`, sub: '변호사 입력값', icon: '🏆' } : null,
                           ].filter((b): b is { label: string; sub: string; icon: string } => !!b).map(badge => (
                             <div key={badge.label} className="flex flex-col items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-xs text-center">
                               <span className="text-lg">{badge.icon}</span>
@@ -1151,15 +1111,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               </div>
             </div>
 
-            {/* § 실적 정보 (3단 인라인 압축) */}
-            <div className={sectionCls}>
-              <h3 className={sectionTitleCls}><Award className="w-4 h-4" /> 실적 정보</h3>
-              <div className="grid grid-cols-3 gap-2.5">
-                <div><label className={labelCls}>누적 수임 (건)</label><input type="number" className={inputCls} value={form.totalCases || ''} onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })} placeholder="직접 확인한 건수만 입력" /></div>
-                <div><label className={labelCls}>인가 성공률 (%)</label><input type="number" className={inputCls} value={form.successRate || ''} onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })} placeholder="0~100" min={0} max={100} /></div>
-                <div><label className={labelCls}>평균 변제율 (%)</label><input type="number" className={inputCls} value={form.avgRepaymentRate || ''} onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })} placeholder="0~100" min={0} max={100} /></div>
-              </div>
-            </div>
+            {/* 실적 수치(누적 수임·인가 성공률·평균 변제율)는 입력받지 않는다 (LD-Q7: 결과 약속 광고로 보일 수 있고 근거 확인 불가, 서버도 저장 안 함) */}
 
             {/* § 관련 링크 */}
             <div className={sectionCls}>
@@ -1227,7 +1179,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                         <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-3">{form.bio || '소개글을 입력해주세요.'}</p>
                       </div>
                       <div className="space-y-1.5">
-                        <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><Shield className="w-3 h-3 text-[#1E3A5F]" />전담 서비스 안내</h4>
+                        <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><Shield className="w-3 h-3 text-[#1E3A5F]" />서비스 안내</h4>
                         <div className="grid grid-cols-2 gap-1.5">
                           {[{ title: '초기 상담 지원', emoji: '💬' },{ title: '1:1 밀착 관리', emoji: '🤝' },{ title: '보정명령 긴급 대응', emoji: '⚡' },{ title: '신용 회복 가이드', emoji: '📈' }].map(svc => (
                             <div key={svc.title} className="bg-slate-50 border border-slate-100 rounded-lg p-2 flex items-center gap-1.5"><span className="text-xs">{svc.emoji}</span><h5 className="font-bold text-xs text-slate-800 truncate">{svc.title}</h5></div>

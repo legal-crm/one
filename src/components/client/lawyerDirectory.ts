@@ -6,11 +6,39 @@ import type { User } from '../../types';
    - 원칙: 변호사가 직접 등록했거나 플랫폼이 확인한 정보만 보여 준다
    ───────────────────────────────────────────── */
 
-/** 관리자 자격 심사를 통과한(또는 정지·반려되지 않은) 변호사만 공개 디렉토리에 노출 */
+/** 목록 공개 최소 조건 항목 (서버 lawyer_profile_missing 과 같은 규칙, LD-Q4) */
+export type LawyerProfileMissing = 'name' | 'firm_name' | 'region' | 'photo' | 'fields' | 'bio';
+export const LAWYER_PROFILE_MISSING_LABELS: Record<LawyerProfileMissing, string> = {
+  name: '실명',
+  firm_name: '사무소 이름',
+  region: '사무소 시·도 (\'전국\'은 안 돼요)',
+  photo: '본인 사진',
+  fields: '상담 분야 1개 이상',
+  bio: '소개 50자 이상',
+};
+export const LAWYER_BIO_MIN_LENGTH = 50;
+
+export function getLawyerProfileMissing(l: Pick<User, 'name' | 'firmName' | 'region' | 'avatar' | 'avatarData' | 'fields' | 'bio'>): LawyerProfileMissing[] {
+  const out: LawyerProfileMissing[] = [];
+  if (!String(l.name || '').trim()) out.push('name');
+  if (!String(l.firmName || '').trim()) out.push('firm_name');
+  const region = String(l.region || '').trim();
+  if (!region || region === '전국') out.push('region');
+  if (!l.avatar && !l.avatarData) out.push('photo');
+  if (!Array.isArray(l.fields) || l.fields.length === 0) out.push('fields');
+  const bio = String(l.bio || '').trim();
+  if (bio.length < LAWYER_BIO_MIN_LENGTH || bio.includes('계정으로 가입 신청된 변호사입니다')) out.push('bio');
+  return out;
+}
+
+/**
+ * 관리자 승인 + 공개 최소 조건을 채운 변호사만 공개 디렉토리에 노출.
+ * 서버(lawyers 읽기 정책)도 같은 조건이라, 이 함수는 기기에 남은 옛 사본을 거르는 용도다.
+ */
 export function isPubliclyListable(l: User): boolean {
   if (l.approved === false) return false;
   if (l.licenseStatus === 'pending' || l.licenseStatus === 'rejected' || l.licenseStatus === 'suspended') return false;
-  return true;
+  return getLawyerProfileMissing(l).length === 0;
 }
 
 /** 플랫폼이 변호사 등록번호를 확인한 경우에만 배지 표시 (대한변협 인증 표기는 사실과 다를 수 있어 사용하지 않음) */

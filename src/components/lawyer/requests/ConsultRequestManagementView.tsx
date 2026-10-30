@@ -11,6 +11,7 @@ import type {
 } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
+import { CONSULT_DECLINE_REASONS, lawyerDeclineConsultRequest, type ConsultDeclineReason } from '../../../services/consultService';
 
 interface ConsultRequestManagementViewProps {
   requests: ConsultRequest[];
@@ -249,6 +250,30 @@ export default function ConsultRequestManagementView({
       }
     }
   }, [activeRequest?.id, currentMyProposal]);
+
+  // 응답 기한 표시 (기한은 그날 밤 12시라 1분 앞 시각으로 보여 준다)
+  const formatRespondBy = (iso: string) => {
+    const d = new Date(new Date(iso).getTime() - 60_000);
+    return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // 거절 (사유는 사무소 기록에만, 의뢰인에게는 '이번엔 어렵다'만 전달)
+  const [declineTarget, setDeclineTarget] = useState<ConsultRequest | null>(null);
+  const [declineReason, setDeclineReason] = useState<ConsultDeclineReason>('not_my_field');
+  const [declineNote, setDeclineNote] = useState('');
+  const [declineBusy, setDeclineBusy] = useState(false);
+  const submitDecline = async () => {
+    if (!declineTarget) return;
+    setDeclineBusy(true);
+    const res = await lawyerDeclineConsultRequest(declineTarget.id, declineReason, declineNote);
+    setDeclineBusy(false);
+    if (res.ok === false) { toast.error(res.message); return; }
+    const id = declineTarget.id;
+    setRequests(prev => prev.filter(r => r.id !== id));
+    setDeclineTarget(null);
+    setDeclineNote('');
+    toast.success('거절을 전했어요. 의뢰인에게는 사유 없이 "이번엔 어렵다"고만 안내돼요.');
+  };
 
   // 검토 시작 액션
   const handleStartReview = (req: ConsultRequest) => {
@@ -607,8 +632,35 @@ export default function ConsultRequestManagementView({
                   <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                   <span>채팅창</span>
                 </button>
+
+                {(activeRequest.mySeatStatus === 'requested' || activeRequest.mySeatStatus === 'reviewing' || activeRequest.mySeatStatus === 'proposed') && (
+                  <button
+                    type="button"
+                    onClick={() => setDeclineTarget(activeRequest)}
+                    className="px-3 py-2 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>이번엔 어려워요</span>
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* 응답 기한 (요청 다음 날부터 2영업일째 끝, 20261031001300) */}
+            {activeRequest.mySeatStatus === 'requested' && activeRequest.myRespondBy && (
+              <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-900 font-bold flex flex-wrap items-center gap-2" role="status">
+                <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  응답 기한 {formatRespondBy(activeRequest.myRespondBy)}까지 · 검토 시작·채팅·제안서·거절 중 하나로 답해 주세요.
+                  기한이 지나면 요청이 닫히고 의뢰인은 다른 변호사를 고를 수 있어요.
+                </span>
+              </div>
+            )}
+            {activeRequest.mySeatStatus === 'released' && (
+              <div className="bg-slate-100 border-b border-slate-200 px-6 py-2.5 text-xs text-slate-700 font-bold" role="status">
+                의뢰인이 다른 변호사와 상담을 이어가기로 해 이 요청에는 더 응답할 수 없어요.
+              </div>
+            )}
 
             {/* 우측 탭 컨텐츠 바디 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -804,6 +856,48 @@ export default function ConsultRequestManagementView({
           </div>
         )}
       </div>
+
+      {declineTarget && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="decline-title">
+          <div className="bg-white rounded-3xl shadow-lg w-full max-w-md p-6 space-y-4">
+            <div className="space-y-1">
+              <h3 id="decline-title" className="text-base font-black text-slate-900">이번 상담 요청을 거절할까요?</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                의뢰인에게는 사유 없이 "이번엔 맡기 어렵다"고만 안내되고, 의뢰인은 다른 변호사를 고를 수 있어요.
+                거절하면 이 요청과 보낸 제안서는 더 볼 수 없어요.
+              </p>
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-bold text-slate-700 mb-1">사유 (사무소 기록에만 남아요)</legend>
+              {CONSULT_DECLINE_REASONS.map(r => (
+                <label key={r.value} className="flex items-center gap-2 min-h-[44px] px-3 rounded-xl border border-slate-200 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand/5">
+                  <input type="radio" name="decline-reason" value={r.value} checked={declineReason === r.value} onChange={() => setDeclineReason(r.value)} />
+                  <span className="text-sm text-slate-800">{r.label}</span>
+                </label>
+              ))}
+            </fieldset>
+            <label className="block space-y-1">
+              <span className="text-xs font-bold text-slate-700">메모 (선택, 300자)</span>
+              <textarea
+                value={declineNote}
+                onChange={e => setDeclineNote(e.target.value.slice(0, 300))}
+                rows={2}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setDeclineTarget(null)} disabled={declineBusy}
+                className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 whitespace-nowrap active:scale-[0.98] cursor-pointer">
+                닫기
+              </button>
+              <button type="button" onClick={submitDecline} disabled={declineBusy}
+                className="min-h-[44px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-60">
+                {declineBusy ? '보내는 중…' : '거절 전하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

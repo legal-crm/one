@@ -9,6 +9,8 @@ const LABEL = {
   client_message: '의뢰인 메시지',
   client_document: '의뢰인이 낸 서류',
   fee_client_report: '의뢰인 입금 알림',
+  consult_request_due_soon: '응답 기한이 다가온 상담 요청',
+  consult_request_expired: '응답 기한이 지난 상담 요청',
   test: '팀 알림 연결 테스트',
 };
 

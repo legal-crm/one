@@ -15,7 +15,7 @@ import {
 import { Button, Modal, SegmentedTabs } from './ui';
 import { cn } from '../../utils/cn';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
-import { purgeConsultationRecord } from '../../services/consultService';
+import { purgeConsultationRecord, clientSetConsultChoice, clientWithdrawConsultLawyer } from '../../services/consultService';
 import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 import ChatMessageList from './room/ChatMessageList';
 import ChatComposer, { type ChatComposerHandle } from './room/ChatComposer';
@@ -338,12 +338,15 @@ export default function ChatView({
   };
 
   /** 제안서의 '상담 시작': 지정 요청(direct)이면 바로 상담 변호사로, 여러 명 요청이면 비교 상담에 더한다 */
-  const startConsultWithProposal = (bid: ConsultProposal) => {
+  const startConsultWithProposal = async (bid: ConsultProposal) => {
     if (!currentRequest) return;
+    // 상태·비교 대상은 서버 함수로만 바뀐다 (의뢰인이 행을 직접 고치면 서버가 되돌린다, 20261031001300)
+    const res = await clientSetConsultChoice(currentRequest.id, 'compare', bid.lawyerId);
+    if (res.ok === false) { toast.error(res.message); return; }
     if (currentRequest.requestType === 'direct') {
       onSetRequests(prev => prev.map(r =>
         r.id === currentRequest.id
-          ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId }
+          ? { ...r, status: res.status, selectedLawyerId: res.selectedLawyerId, acceptedLawyerIds: res.acceptedLawyerIds }
           : r
       ));
       // 변호사 화면 필터(chatSelectors)가 이 문장으로 구분하므로 저장 문구는 그대로 둔다(의뢰인 화면은 consultFlow에서 바꿔 보여 줌)
@@ -353,10 +356,9 @@ export default function ChatView({
         'system', 'system', '시스템 안내', bid.lawyerId
       );
     } else {
-      const newAccepted = Array.from(new Set([...(currentRequest.acceptedLawyerIds || []), bid.lawyerId]));
       onSetRequests(prev => prev.map(r =>
         r.id === currentRequest.id
-          ? { ...r, status: 'comparing' as const, acceptedLawyerIds: newAccepted }
+          ? { ...r, status: res.status, acceptedLawyerIds: res.acceptedLawyerIds }
           : r
       ));
       onAddMessage(
@@ -387,10 +389,12 @@ export default function ChatView({
       variant: 'primary'
     });
     if (!confirmed) return;
+    const res = await clientSetConsultChoice(currentRequest.id, 'confirm', chosenId);
+    if (res.ok === false) { toast.error(res.message); return; }
 
     onSetRequests(prev => prev.map(r =>
       r.id === currentRequest.id
-        ? { ...r, status: 'counseling' as const, selectedLawyerId: chosenId, rejectionNotified: true }
+        ? { ...r, status: res.status, selectedLawyerId: res.selectedLawyerId, acceptedLawyerIds: res.acceptedLawyerIds, rejectionNotified: true }
         : r
     ));
     setActiveChatLawyerId(chosenId);
@@ -422,8 +426,10 @@ export default function ChatView({
       variant: 'warning'
     });
     if (!confirmed || !currentRequest) return;
+    const res = await clientSetConsultChoice(currentRequest.id, 'unconfirm');
+    if (res.ok === false) { toast.error(res.message); return; }
     onSetRequests(prev => prev.map(r =>
-      r.id === currentRequest.id ? { ...r, selectedLawyerId: undefined, status: 'responding' } : r
+      r.id === currentRequest.id ? { ...r, selectedLawyerId: undefined, status: res.status } : r
     ));
     toast.success('상담 변호사 확정을 취소했습니다.');
   };
@@ -441,9 +447,11 @@ export default function ChatView({
     });
     if (!confirmed) return;
 
-    // 상담 요청 대상에서 제외 (화면의 요청 목록도 이 값을 그대로 읽는다)
+    // 상담 요청 대상에서 제외 (서버가 자리를 돌려주고, 남은 변호사가 없으면 요청을 취소 상태로 바꾼다)
+    const res = await clientWithdrawConsultLawyer(currentRequest.id, lawyer.id);
+    if (res.ok === false) { toast.error(res.message); return; }
     const updatedLawyerIds = (currentRequest.selectedLawyerIds || []).filter(id => id !== lawyer.id);
-    const allCancelled = updatedLawyerIds.length === 0;
+    const allCancelled = res.remaining === 0;
     onSetRequests(prev => prev.map(r =>
       r.id === currentRequest.id
         ? { ...r, selectedLawyerIds: updatedLawyerIds, status: allCancelled ? 'cancelled' as const : r.status }

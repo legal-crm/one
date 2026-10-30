@@ -245,6 +245,9 @@ RESET ROLE;
 -- ── 상담 요청 보안 (20261030000200) ────────────────────────
 INSERT INTO consult_requests (id, client_id, client_name, phone, request_type, status)
 VALUES ('test-req-open', 'client-temp', 'TEST_공개', '01099998888', 'open', 'requested');
+-- 익명은 승인 + 공개 최소 조건을 채운 변호사만 본다 (20261031001300)
+UPDATE lawyers SET firm_name = 'TEST 법률사무소', region = '서울', avatar = 'https://example.test/a.webp',
+  fields = '["개인회생"]'::jsonb, bio = repeat('개인회생 상담을 합니다. ', 5) WHERE id = 'test-lawyer-a';
 
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SET LOCAL ROLE anon;
@@ -257,7 +260,8 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FAIL anon inserts consult request';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-  IF (SELECT count(*) FROM lawyers) = 0 THEN RAISE EXCEPTION 'FAIL anon cannot read public lawyer profiles'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM lawyers WHERE id = 'test-lawyer-a') THEN RAISE EXCEPTION 'FAIL anon cannot read public lawyer profiles'; END IF;
+  IF EXISTS (SELECT 1 FROM lawyers WHERE id LIKE 'test-%' AND id <> 'test-lawyer-a') THEN RAISE EXCEPTION 'FAIL anon reads unlisted lawyer profiles'; END IF;
   RAISE NOTICE 'PASS 익명: 상담·메시지·계약 읽기/쓰기 차단, 변호사 공개 프로필만 읽기';
 END $$;
 RESET ROLE;
