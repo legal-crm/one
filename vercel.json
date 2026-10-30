@@ -4,7 +4,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/generate-statement.js": { "maxDuration": 60 }
+    "api/generate-statement.js": { "maxDuration": 60 },
+    "api/popbill.js": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/generate-statement?cron=marketing-daily", "schedule": "30 22 * * *" }

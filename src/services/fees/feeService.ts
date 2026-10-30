@@ -236,6 +236,67 @@ export async function loadFeeOverviewByRequest(officeId: string): Promise<Record
   return out;
 }
 
+// ── 납부 안내 알림톡 자동 발송 (FE-7) ─────────────────────────────────────────
+export interface FeeReminderSettings {
+  enabled: boolean;
+  sendDMinus3: boolean;
+  sendDue: boolean;
+  sendDPlus1: boolean;
+  sendDPlus7: boolean;
+  sendHour: number;
+}
+export interface FeeReminderRow {
+  id: string;
+  caseId: string;
+  kind: 'd_minus_3' | 'due' | 'd_plus_1' | 'd_plus_7';
+  dueOn: string;
+  sendOn: string;
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'skipped' | 'cancelled';
+  error?: string;
+  amountWon?: number;
+  sentAt?: string;
+}
+export const REMINDER_KIND_LABEL: Record<FeeReminderRow['kind'], string> = {
+  d_minus_3: '3일 전 안내', due: '당일 안내', d_plus_1: '다음 날 안내', d_plus_7: '7일 뒤 안내',
+};
+export const REMINDER_STATUS_LABEL: Record<FeeReminderRow['status'], string> = {
+  pending: '보낼 예정', sending: '보내는 중', sent: '보냄', failed: '못 보냄', skipped: '건너뜀', cancelled: '취소',
+};
+export const DEFAULT_REMINDER_SETTINGS: FeeReminderSettings = { enabled: false, sendDMinus3: true, sendDue: true, sendDPlus1: true, sendDPlus7: true, sendHour: 10 };
+
+export async function loadReminderSettings(officeId: string): Promise<RpcResult<FeeReminderSettings>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.from('fee_reminder_settings').select('*').eq('office_id', officeId).maybeSingle();
+  if (error) return { ok: false, code: 'load_failed', message: msg(error) };
+  if (!data) return { ok: true, data: DEFAULT_REMINDER_SETTINGS };
+  return { ok: true, data: { enabled: data.enabled, sendDMinus3: data.send_d_minus_3, sendDue: data.send_due, sendDPlus1: data.send_d_plus_1, sendDPlus7: data.send_d_plus_7, sendHour: data.send_hour } };
+}
+
+export async function saveReminderSettings(officeId: string, s: FeeReminderSettings): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { error } = await supabase.rpc('set_fee_reminder_settings', {
+    p_office_id: officeId,
+    p: { enabled: s.enabled, send_d_minus_3: s.sendDMinus3, send_due: s.sendDue, send_d_plus_1: s.sendDPlus1, send_d_plus_7: s.sendDPlus7, send_hour: s.sendHour },
+  });
+  if (error) return { ok: false, code: 'save_failed', message: /fee\.record/.test(error.message) ? '자동 안내 설정은 수납 기록 권한(전체)이 있어야 바꿀 수 있어요.' : msg(error) };
+  return { ok: true, data: null };
+}
+
+export async function loadRecentReminders(officeId: string, caseId?: string, limit = 50): Promise<RpcResult<FeeReminderRow[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  let q = supabase.from('fee_reminders').select('*').eq('office_id', officeId).order('created_at', { ascending: false }).limit(limit);
+  if (caseId) q = q.eq('case_id', caseId);
+  const { data, error } = await q;
+  if (error) return { ok: false, code: 'load_failed', message: msg(error) };
+  return {
+    ok: true,
+    data: (data || []).map((r: any) => ({
+      id: r.id, caseId: r.case_id, kind: r.kind, dueOn: r.due_on, sendOn: r.send_on, status: r.status,
+      error: r.error || undefined, amountWon: r.amount_won ?? undefined, sentAt: r.sent_at || undefined,
+    })),
+  };
+}
+
 // ── 입금 계좌 (사무소 기본 + 사건별) ─────────────────────────────────────────
 export interface DepositAccount { bankName: string; accountNumber: string; accountHolder: string; scope: 'case' | 'office' }
 

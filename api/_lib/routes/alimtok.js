@@ -41,8 +41,8 @@ const MILESTONE_TEMPLATE_CODES = {
 //   ALIMTOK_TEMPLATE_CODES='{"contract_signed":"0260900012345", ...}'
 let TEMPLATE_OVERRIDES = {};
 try { TEMPLATE_OVERRIDES = JSON.parse(process.env.ALIMTOK_TEMPLATE_CODES || '{}') || {}; } catch { TEMPLATE_OVERRIDES = {}; }
-const resolveMilestoneTemplate = (milestone) => (milestone && (TEMPLATE_OVERRIDES[milestone] || MILESTONE_TEMPLATE_CODES[milestone])) || null;
-const isIssuedTemplateCode = (code) => /^\d{6,20}$/.test(String(code || ''));
+export const resolveMilestoneTemplate = (milestone) => (milestone && (TEMPLATE_OVERRIDES[milestone] || MILESTONE_TEMPLATE_CODES[milestone])) || null;
+export const isIssuedTemplateCode = (code) => /^\d{6,20}$/.test(String(code || ''));
 
 // 템플릿이 없거나 알림톡 접수가 실패했을 때 회사 발신번호로 일반 문자(SMS/LMS)를 보낼지.
 //   기본 꺼짐: 켜 두면 승인된 변호사 계정이 검수되지 않은 임의 문구를 회사 번호로 보낼 수 있다.

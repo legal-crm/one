@@ -41,7 +41,7 @@ import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { useOfficeContext } from '../hooks/useOfficeContext';
 import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../services/office/officeService';
-import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission } from '../services/office/officePermissions';
+import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission, scopeOf as officeScopeOf } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
@@ -3210,6 +3210,7 @@ export default function LawyerRole({
                   officeId={officeCtx.office.officeId}
                   onOpenCase={(reqId) => openCase(reqId, 'fees')}
                   canExport={canUseOfficePermission(officeCtx.office.permissions, 'fee.export')}
+                  canEditReminders={officeScopeOf(officeCtx.office.permissions, 'fee.record') === 'all'}
                   accountAccess={canUseOfficePermission(officeCtx.office.permissions, 'office.settings.edit') ? 'edit'
                     : (canUseOfficePermission(officeCtx.office.permissions, 'office.settings.view') || canUseOfficePermission(officeCtx.office.permissions, 'fee.record')) ? 'view' : 'none'}
                 />

@@ -9,6 +9,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Search, 
 import { loadFeeOverview, type FeeOverviewRow } from '../../../services/fees/feeService';
 import { listCases, listOfficeClients, loadStageDefinitions, stageDef } from '../../../services/cases/caseCoreService';
 import DepositAccountEditor from './DepositAccountEditor';
+import FeeReminderSettingsCard from './FeeReminderSettingsCard';
 
 const won = (n?: number) => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : '-');
 const PAGE = 20;
@@ -43,9 +44,11 @@ export interface ServerFeeTabProps {
   /** 사무소 기본 입금 계좌: 바꾸기 / 보기 / 숨김 */
   accountAccess?: 'edit' | 'view' | 'none';
   canExport?: boolean;
+  /** 납부 안내 자동 발송 설정 (수납 기록 권한 전체 범위) */
+  canEditReminders?: boolean;
 }
 
-export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'none', canExport = false }: ServerFeeTabProps) {
+export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'none', canExport = false, canEditReminders = false }: ServerFeeTabProps) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
@@ -177,6 +180,11 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
       </div>
 
       {accountAccess !== 'none' && <DepositAccountEditor officeId={officeId} caseId={null} canEdit={accountAccess === 'edit'} />}
+      <FeeReminderSettingsCard
+        officeId={officeId}
+        canEdit={canEditReminders}
+        caseNames={Object.fromEntries((rows || []).map(r => [r.caseId, r.name]))}
+      />
 
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-sm text-rose-800">

@@ -9,8 +9,11 @@
 import { createRouter } from './_lib/route-dispatch.js';
 import alimtokHandler from './_lib/routes/alimtok.js';
 import invoiceHandler from './_lib/routes/invoice.js';
+import feeRemindersHandler from './_lib/routes/fee-reminders.js';
 
 export default createRouter('service', {
   kakao: { handler: alimtokHandler, legacyPath: '/api/alimtok' },
   invoice: { handler: invoiceHandler, legacyPath: '/api/invoice' },
+  // 수임료 납부 안내 예약 발송 — Supabase 정기 작업만 부른다 (토큰 확인)
+  reminders: { handler: feeRemindersHandler, legacyPath: '/api/fee-reminders' },
 });
