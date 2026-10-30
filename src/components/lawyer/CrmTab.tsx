@@ -608,6 +608,18 @@ export default function CrmTab({
   const currentPermissions = permissionsOverride || activeStaff?.permissions || DEFAULT_PERMISSIONS.OWNER;
 
   // ── 필터링 + 정렬 + 페이지네이션 ──
+  // 사건 목록 범위 (CM-1): 이전에는 CaseListView에 requests 전체를 넘겨 다른 변호사 건·삭제 건·권한 밖 건이 보였다
+  const listScopeRequests = useMemo(() => requests.filter(r => {
+    if (!isMine(r)) return false;
+    const ext = getCrmExt(r.id);
+    if (showTrash ? !ext.deletedAt : !!ext.deletedAt) return false;
+    if (!currentPermissions.viewAllClients && activeStaff) {
+      const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+      if (effectiveAssignee !== activeStaff.id) return false;
+    }
+    return true;
+  }), [requests, isMine, getCrmExt, showTrash, currentPermissions, activeStaff]);
+
   const filteredRequests = useMemo(() => {
     let result = requests.filter(r => {
       // 현재 변호사에게 관련된 요청만 표시 (지정, 수락, 배정, 제안서 발송 포함)
@@ -1762,8 +1774,15 @@ export default function CrmTab({
 
       {/* ── 사건 관리 목록 (개편된 CaseListView: 7열 테이블, 저장된 보기 8단계, 빠른 필터 칩, 1줄 툴바, 6단계 칸반 보드 내장) ── */}
       {!selectedId && (
+          <>
+          {showTrash && (
+            <div role="status" className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span>휴지통을 보고 있습니다. 삭제한 사건은 30일 동안 여기서 복구할 수 있습니다.</span>
+              <button type="button" onClick={() => setShowTrash(false)} className="min-h-[44px] px-4 rounded-xl bg-white border border-amber-300 font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer">사건 목록으로 돌아가기</button>
+            </div>
+          )}
         <CaseListView
-          requests={requests}
+          requests={listScopeRequests}
           getCrmExt={getCrmExt}
           selectedId={selectedId}
           onSelectCase={(id) => setSelectedId(id)}
@@ -1782,6 +1801,7 @@ export default function CrmTab({
           onOpenTrash={() => setShowTrash(true)}
           onOpenSettings={() => setIsMasterSettingsModalOpen(true)}
         />
+          </>
       )}
 
       {/* ══════════ 상세 뷰 (풀사이즈) ══════════ */}

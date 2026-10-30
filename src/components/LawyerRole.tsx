@@ -759,8 +759,9 @@ export default function LawyerRole({
   const [notifTestLoading, setNotifTestLoading] = useState<string | null>(null);
 
   // Telegram Integration States
-  const [tgConnected, setTgConnected] = useState<boolean>(true);
-  const [tgChatId, setTgChatId] = useState<string>('12948592948');
+  // 저장된 연결 정보가 있을 때만 '연결됨' (이전: 기본값 true + 가짜 Chat ID)
+  const [tgConnected, setTgConnected] = useState<boolean>(() => { try { return !!loadNotificationSettings()?.telegram?.connected; } catch { return false; } });
+  const [tgChatId, setTgChatId] = useState<string>(() => { try { return loadNotificationSettings()?.telegram?.chatId || ''; } catch { return ''; } });
   const [tgDutyMode, setTgDutyMode] = useState<boolean>(false);
   const [tgWorkHoursStart, setTgWorkHoursStart] = useState<string>('09:00');
   const [tgWorkHoursEnd, setTgWorkHoursEnd] = useState<string>('18:00');
@@ -794,7 +795,7 @@ export default function LawyerRole({
       id: 'tg-sys-2',
       sender: 'system',
       time: '오후 1:13',
-      text: '⚙️ 대표방 텔레그램 연동 Chat ID(12948592948) 바인딩 완료'
+      text: '⚙️ 텔레그램 연동은 설정 > 알림에서 연결합니다'
     },
     {
       id: 'tg-msg-1',
@@ -3887,7 +3888,7 @@ export default function LawyerRole({
                       <div className="flex-1 relative">
                         <input 
                           type="text" 
-                          placeholder="Chat ID 입력 (예: 12948592948)"
+                          placeholder="Chat ID 입력 (예: -1001234567890)"
                           value={tgChatId}
                           onChange={(e) => setTgChatId(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-12 focus:ring-1 focus:ring-brand focus:outline-none"
