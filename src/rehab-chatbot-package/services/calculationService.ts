@@ -23,8 +23,21 @@ import {
     shortPlanInputFromCondition,
     type CorePlanStatus,
 } from '../../services/repayment/rehabLegalCore';
+import {
+    additionalLivingCostRules,
+    calculateLivingExpenseAndDisposableIncome,
+    computeAssetBreakdown,
+    getDefaultStatutoryDeduction,
+} from '../../services/repayment/repaymentCalculationEngine';
+import type { IncomeAndExpenseInput, RepaymentAsset } from '../../services/repayment/repaymentTypes';
 
-// ... (existing code)
+/** 챗봇 지역 그룹 이름 → 공통 엔진 지역 구분 */
+function regionTypeOfGroup(group: string): 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS' {
+    if (group === '서울특별시') return 'SEOUL';
+    if (group === '과밀억제권역') return 'OVERCROWDED';
+    if (group === '광역시기준') return 'METROPOLITAN';
+    return 'OTHERS';
+}
 
 /**
  * 사용자 입력 데이터 (2026년 고도화)
@@ -278,91 +291,73 @@ export function calculateRepayment(
         }
     }
 
-    // 3. 월 가용소득 (변제금) 계산 및 생계비 자동 조정
-    const baseLivingCostRaw = getRecognizedLivingCost(input.familySize, effectiveConfig);
+    // 3. 인정 생계비 — 법원 서식 엔진과 같은 함수 (B-3, repaymentCalculationEngine)
+    //    기본 생계비(중위소득 60% 반올림 표) + 주거비·의료비·교육비 (가구원수별 지역 한도, 교육비는 포함분을 뺀 뒤 한도)
+    //    (이전: 이 엔진만 교육비를 한도 적용 후 포함분을 빼고, 5인 이상·0.5인 단위 주거비가 0원이었음)
+    const calcYear = effectiveConfig.baseYear || new Date().getFullYear();
+    const regionType = regionTypeOfGroup(regionGroup);
+    const minorChildCount = Math.max(0, Math.floor(input.minorChildren || 0));
+    const totalEduCost = (input.educationCost || 0) + (input.specialEducationCost || 0);
+    const living = calculateLivingExpenseAndDisposableIncome({
+        incomeType: 'salary',
+        monthlyNetIncome: Math.max(0, input.monthlyIncome || 0),
+        householdSize: Math.max(1, input.familySize || 1),
+        region: regionType,
+        actualHousingExpense: Math.max(0, input.rentCost || 0),
+        actualMedicalExpense: Math.max(0, input.medicalCost || 0),
+        numberOfChildren: minorChildCount,
+        educationExpensePerChild: minorChildCount > 0 ? totalEduCost / minorChildCount : 0,
+        isSpecialEducation: !!input.hasSpecialEducation,
+        otherApprovedExpense: 0,
+        trusteeType: 'INTERNAL',
+        medianIncomeYear: calcYear,
+    } as IncomeAndExpenseInput);
+    const livingRules = additionalLivingCostRules(Math.max(1, input.familySize || 1), regionType, living.baseLivingExpense, !!input.hasSpecialEducation);
+    const baseLivingCostRaw = living.baseLivingExpense;
     let recognizedLivingCost = baseLivingCostRaw;
 
-    // 추가 주거비 계산 (2026년 신규 로직)
-    let additionalHousingCost = 0;
+    // 추가 주거비
+    const additionalHousingCost = living.additionalHousingDeduction;
     let housingCostBreakdown: RehabCalculationResult['housingCostBreakdown'] = undefined;
-
     if (input.rentCost && input.rentCost > 0) {
-        // 해당 지역 및 가구원수의 기준 가져오기
-        const housingCriteria = effectiveConfig.additionalHousingCosts?.[regionGroup]?.[input.familySize] ||
-            effectiveConfig.additionalHousingCosts?.['그외']?.[input.familySize];
-
-        if (housingCriteria) {
-            // 공식: 인정액 = Min(월세 - 기본포함분, 한도)
-            // 단, 월세가 기본포함분보다 적으면 0
-            const deductibleRent = Math.max(0, input.rentCost - housingCriteria.included);
-            additionalHousingCost = Math.min(deductibleRent, housingCriteria.limit);
-
-            // 상세 설명 생성
-            let explanation = '';
-            if (input.rentCost <= housingCriteria.included) {
-                explanation = `월세(${formatCurrency(input.rentCost)})가 기본 포함분(${formatCurrency(housingCriteria.included)}) 이하이므로 추가 인정액 없음`;
-            } else if (deductibleRent <= housingCriteria.limit) {
-                explanation = `월세 ${formatCurrency(input.rentCost)} - 기본포함 ${formatCurrency(housingCriteria.included)} = ${formatCurrency(additionalHousingCost)} 인정`;
-            } else {
-                explanation = `월세 ${formatCurrency(input.rentCost)} - 기본포함 ${formatCurrency(housingCriteria.included)} = ${formatCurrency(deductibleRent)} → 한도 ${formatCurrency(housingCriteria.limit)} 적용`;
-            }
-
-            // 상세 내역 저장
-            housingCostBreakdown = {
-                rent: input.rentCost,
-                included: housingCriteria.included,
-                limit: housingCriteria.limit,
-                recognized: additionalHousingCost,
-                explanation
-            };
-
-            if (additionalHousingCost > 0) {
-                aiAdvice.push(`🏠 **주거비 추가 인정**: 월세 중 ${formatCurrency(additionalHousingCost)}이 추가 생계비로 인정되었습니다.`);
-            }
+        const included = livingRules.housingIncluded;
+        const limit = livingRules.housingLimit;
+        const deductibleRent = Math.max(0, input.rentCost - included);
+        let explanation = '';
+        if (input.rentCost <= included) {
+            explanation = `월세(${formatCurrency(input.rentCost)})가 기본 포함분(${formatCurrency(included)}) 이하이므로 추가 인정액 없음`;
+        } else if (deductibleRent <= limit) {
+            explanation = `월세 ${formatCurrency(input.rentCost)} - 기본포함 ${formatCurrency(included)} = ${formatCurrency(additionalHousingCost)} 인정`;
+        } else {
+            explanation = `월세 ${formatCurrency(input.rentCost)} - 기본포함 ${formatCurrency(included)} = ${formatCurrency(deductibleRent)} → 한도 ${formatCurrency(limit)} 적용`;
+        }
+        housingCostBreakdown = { rent: input.rentCost, included, limit, recognized: additionalHousingCost, explanation };
+        if (additionalHousingCost > 0) {
+            aiAdvice.push(`🏠 **주거비 추가 인정**: 월세 중 ${formatCurrency(additionalHousingCost)}이 추가 생계비로 인정되었습니다.`);
         }
     }
 
-    // 추가 의료비 계산 (2026년)
-    let additionalMedicalCost = 0;
+    // 추가 의료비
+    const additionalMedicalCost = living.additionalMedicalDeduction;
     let medicalCostBreakdown: {
         totalCost: number;
         included: number;
         recognized: number;
         explanation: string;
     } | undefined;
-
     if (input.medicalCost && input.medicalCost > 0) {
-        // 가구원수별 기본 포함금액 가져오기 (없으면 1인 기준 fallback)
-        const medIncluded = effectiveConfig.medicalCostIncluded?.[input.familySize] ||
-            effectiveConfig.medicalCostIncluded?.[4] || 64619;
-
-        // 포함분 초과 금액 전액 인정 (한도 없음)
-        if (input.medicalCost > medIncluded) {
-            additionalMedicalCost = input.medicalCost - medIncluded;
-        }
-
-        // 설명 생성
-        let explanation = '';
-        if (input.medicalCost <= medIncluded) {
-            explanation = `월 의료비(${formatCurrency(input.medicalCost)})가 기본 포함분(${formatCurrency(medIncluded)}) 이하이므로 추가 인정액 없음`;
-        } else {
-            explanation = `의료비 계산: ${formatCurrency(input.medicalCost)} - 기본포함 ${formatCurrency(medIncluded)} = ${formatCurrency(additionalMedicalCost)} 추가 인정`;
-        }
-
-        medicalCostBreakdown = {
-            totalCost: input.medicalCost,
-            included: medIncluded,
-            recognized: additionalMedicalCost,
-            explanation
-        };
-
+        const medIncluded = livingRules.medicalIncluded;
+        const explanation = input.medicalCost <= medIncluded
+            ? `월 의료비(${formatCurrency(input.medicalCost)})가 기본 포함분(${formatCurrency(medIncluded)}) 이하이므로 추가 인정액 없음`
+            : `의료비 계산: ${formatCurrency(input.medicalCost)} - 기본포함 ${formatCurrency(medIncluded)} = ${formatCurrency(additionalMedicalCost)} 추가 인정`;
+        medicalCostBreakdown = { totalCost: input.medicalCost, included: medIncluded, recognized: additionalMedicalCost, explanation };
         if (additionalMedicalCost > 0) {
             aiAdvice.push(`🏥 **의료비 추가 인정**: 월 의료비 중 기본 포함분(${formatCurrency(medIncluded)})을 초과하는 ${formatCurrency(additionalMedicalCost)}이 추가 인정되었습니다.`);
         }
     }
 
-    // 추가 교육비 계산 (2026년) - 수정된 로직: Min(지출액, 한도) - 포함분
-    let additionalEducationCost = 0;
+    // 추가 교육비: 자녀 1인당 min(지출 − 포함분, 한도)
+    const additionalEducationCost = living.additionalEducationDeduction;
     let educationCostBreakdown: {
         totalCost: number;
         childCount: number;
@@ -374,49 +369,28 @@ export function calculateRepayment(
         isSpecialEducation: boolean;
         explanation: string;
     } | undefined;
-
-    const totalEduCost = (input.educationCost || 0) + (input.specialEducationCost || 0);
-    if (totalEduCost > 0 && input.minorChildren && input.minorChildren > 0) {
-        const eduCriteria = effectiveConfig.educationCostCriteria || { included: 89627, limit: 200000, specialLimit: 500000 };
-
-        // 특수교육 여부에 따라 한도 적용
-        const applicableLimit = input.hasSpecialEducation ? eduCriteria.specialLimit : eduCriteria.limit;
-
-        // 자녀 1인당 평균 교육비 산출
-        const perChildCost = totalEduCost / input.minorChildren;
-
-        // [수정된 로직] Min(지출액, 한도) - 포함분
-        const cappedCost = Math.min(perChildCost, applicableLimit);
-        const perChildAdditional = Math.max(0, cappedCost - eduCriteria.included);
-
-        additionalEducationCost = perChildAdditional * input.minorChildren;
-
-        // 설명 생성
+    if (totalEduCost > 0 && minorChildCount > 0) {
+        const perChildCost = totalEduCost / minorChildCount;
+        const included = livingRules.educationIncluded;
+        const applicableLimit = livingRules.educationLimit;
+        const perChildAdditional = Math.max(0, Math.min(perChildCost - included, applicableLimit));
         const eduType = input.hasSpecialEducation ? '특수교육비' : '일반교육비';
-        let explanation = '';
-
-        if (perChildCost <= eduCriteria.included) {
-            explanation = `1인당 교육비(${formatCurrency(perChildCost)})가 기본 포함분(${formatCurrency(eduCriteria.included)}) 이하이므로 추가 인정액 없음`;
-        } else if (perChildCost <= applicableLimit) {
-            explanation = `${eduType} 계산: 1인당 ${formatCurrency(perChildCost)} - 기본포함 ${formatCurrency(eduCriteria.included)} = ${formatCurrency(perChildAdditional)} × ${input.minorChildren}명 = ${formatCurrency(additionalEducationCost)} 추가 인정`;
-        } else {
-            explanation = `${eduType} 계산: Min(${formatCurrency(perChildCost)}, 한도 ${formatCurrency(applicableLimit)}) - 기본포함 ${formatCurrency(eduCriteria.included)} = ${formatCurrency(perChildAdditional)} × ${input.minorChildren}명 = ${formatCurrency(additionalEducationCost)} 추가 인정`;
-        }
-
+        const explanation = perChildCost <= included
+            ? `1인당 교육비(${formatCurrency(perChildCost)})가 기본 포함분(${formatCurrency(included)}) 이하이므로 추가 인정액 없음`
+            : `${eduType} 계산: Min(1인당 ${formatCurrency(perChildCost)} - 기본포함 ${formatCurrency(included)}, 한도 ${formatCurrency(applicableLimit)}) = ${formatCurrency(perChildAdditional)} × ${minorChildCount}명 = ${formatCurrency(additionalEducationCost)} 추가 인정`;
         educationCostBreakdown = {
             totalCost: totalEduCost,
-            childCount: input.minorChildren,
+            childCount: minorChildCount,
             perChildCost,
             applicableLimit,
-            included: eduCriteria.included,
+            included,
             perChildAdditional,
             recognized: additionalEducationCost,
             isSpecialEducation: input.hasSpecialEducation || false,
-            explanation
+            explanation,
         };
-
         if (additionalEducationCost > 0) {
-            aiAdvice.push(`🎓 **${eduType} 추가 인정**: Min(1인당 지출액, 한도) - 기본포함분 방식으로 총 ${formatCurrency(additionalEducationCost)}이 추가 인정되었습니다.`);
+            aiAdvice.push(`🎓 **${eduType} 추가 인정**: 자녀 1인당 (지출 − 기본 포함분)을 한도 안에서 인정해 총 ${formatCurrency(additionalEducationCost)}이 추가 인정되었습니다.`);
         }
     }
 
@@ -482,60 +456,44 @@ export function calculateRepayment(
         riskWarnings.push('월 소득이 인정 생계비 이하입니다. 개인회생은 계속적 수입으로 변제해야 하므로, 개인파산 절차도 함께 검토가 필요합니다.');
     }
 
-    // 4. 청산가치(재산) 계산
-    const depositRule = effectiveConfig.depositExemptions[regionGroup] || effectiveConfig.depositExemptions['그외'];
-    let exemptDeposit = 0;
+    // 4. 청산가치 — 법원 서식 엔진과 같은 재산 계산 (B-3, computeAssetBreakdown)
+    //    임차보증금: 소액임차 요건이면 공제 후 대출 차감 / 퇴직금: 연금이 아니면 1/2 / 배우자 재산: 법원 실무 비율
+    //    본인 재산(합계 입력)은 종류를 알 수 없어 공제 없이 더한다 (예금·보험 공제는 변호사가 사건 화면에서 종류별로 입력)
     const depositLoan = input.depositLoan || 0;
-
-    // Step 1: 보증금(원본) 기준으로 면제 여부 판단
-    if (input.deposit <= depositRule.limit) {
-        exemptDeposit = Math.min(input.deposit, depositRule.deduct);
+    const isRehabCourt = courtName.includes('회생법원');
+    const holderRatio = input.housingContractHolder === 'spouse'
+        ? (isRehabCourt ? 0 : 0.5)
+        : input.housingContractHolder === 'others' ? 0 : 1;
+    const liqAssets: RepaymentAsset[] = [];
+    const pushAsset = (a: Partial<RepaymentAsset> & Pick<RepaymentAsset, 'id' | 'category' | 'marketValue'>) => {
+        if (!(a.marketValue > 0)) return;
+        liqAssets.push({ name: a.id, encumbrance: 0, statutoryDeduction: 0, liquidationValue: 0, ...a } as RepaymentAsset);
+    };
+    pushAsset({ id: 'my_assets', category: 'OTHER', marketValue: Math.max(0, input.myAssets || 0) });
+    if (input.deposit > 0 && holderRatio > 0) {
+        // 계약 명의가 배우자면 (공제·대출 차감 뒤 값) × 반영 비율 — 아래에서 곱한다
+        pushAsset({ id: 'lease_deposit', category: 'HOUSING_DEPOSIT', marketValue: input.deposit, encumbrance: depositLoan });
     }
-
-    // Step 2: 면제 후 잔여 보증금 = 보증금 - 면제보증금
-    const remainingDeposit = Math.max(0, input.deposit - exemptDeposit);
-
-    // Step 3: 잔여 보증금에서 대출금 차감 = 보증금 기여분
-    // 대출금은 잔여 보증금에서만 차감 (면제 재산에는 영향 없음)
-    let depositContribution = Math.max(0, remainingDeposit - depositLoan);
-
-    // V2.2: 계약명의자 분기 처리
-    if (input.housingContractHolder === 'spouse') {
-        const isRehabilitationCourt = courtName.includes('회생법원');
-        if (isRehabilitationCourt) {
-            depositContribution = 0;
-        } else {
-            depositContribution = Math.round(depositContribution * 0.5);
-        }
-    } else if (input.housingContractHolder === 'others') {
-        depositContribution = 0;
+    if (input.retirementPay && input.retirementPay > 0 && (input.retirementPensionType === 'none' || input.retirementPensionType === 'unknown')) {
+        pushAsset({ id: 'retirement', category: 'RETIREMENT', marketValue: input.retirementPay, isRetirementPension: false });
     }
-
-    // 청산가치 계산: 본인재산 + 보증금기여분 + 배우자재산 반영분
-    let liquidationValue = input.myAssets + depositContribution;
-
-    // 퇴직금 반영 (퇴직연금 미가입 또는 모름일 때 50% 반영)
-    if (input.retirementPay && input.retirementPay > 0) {
-        if (input.retirementPensionType === 'none' || input.retirementPensionType === 'unknown') {
-            liquidationValue += Math.round(input.retirementPay * 0.5);
-        }
+    if (input.isMarried && input.spouseAssets > 0 && courtTrait.spousePropertyRate > 0) {
+        pushAsset({ id: 'spouse_assets', category: 'OTHER', marketValue: input.spouseAssets, ownerType: 'SPOUSE', spouseContributionRatio: courtTrait.spousePropertyRate });
     }
-
-    // 배우자 재산 반영 (법원 성향에 따라)
-    if (input.isMarried && input.spouseAssets > 0) {
-        liquidationValue += Math.round(input.spouseAssets * courtTrait.spousePropertyRate);
-    }
-
-    // 투기성 손실금 청산가치 반영 (법원 성향에 따라)
     if (courtTrait.investLossInclude) {
         if (input.riskFactor === 'investment' && input.speculativeLoss && input.speculativeLoss > 0) {
-            liquidationValue += input.speculativeLoss;
+            pushAsset({ id: 'speculative_loss', category: 'ADDITIONAL_INCLUSION', marketValue: input.speculativeLoss });
         } else if (input.riskFactor === 'gambling' && input.gamblingLoss && input.gamblingLoss > 0) {
-            liquidationValue += input.gamblingLoss;
+            pushAsset({ id: 'gambling_loss', category: 'ADDITIONAL_INCLUSION', marketValue: input.gamblingLoss });
         }
     }
-
-
+    const liqRows = computeAssetBreakdown(liqAssets, regionType).map(a =>
+        a.id === 'lease_deposit' && holderRatio < 1 ? { ...a, liquidationValue: Math.round(a.liquidationValue * holderRatio) } : a);
+    const liquidationValue = liqRows.reduce((s, a) => s + a.liquidationValue, 0);
+    // 보증금 중 소액임차 공제액 (화면 설명용)
+    const exemptDeposit = input.deposit > 0
+        ? Math.min(input.deposit, getDefaultStatutoryDeduction({ category: 'HOUSING_DEPOSIT', marketValue: input.deposit }, regionType))
+        : 0;
 
     // 5~7. 변제기간·월 변제금·총 변제액 — 법률 산식 단일 기준(rehabLegalCore) 위임
     //  · 라이프니츠 현가(36개월 33.3657)로 청산가치 보장 검증
@@ -544,6 +502,8 @@ export function calculateRepayment(
     const shortPlan = checkShortPlanReason({
         ...shortPlanInputFromCondition(courtName, input.age, input.specialCondition),
         courtHasRule: courtTrait.shortPlanRule,
+        // 미성년 자녀 2명 이상도 제424호 사유 (이전: 이 엔진만 넘기지 않아 판정에서 빠졌음)
+        minorChildren: input.minorChildren || 0,
     });
     const corePlan = determineRepaymentPlan({
         monthlyIncome: input.monthlyIncome,

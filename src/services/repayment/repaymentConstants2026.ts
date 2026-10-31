@@ -168,6 +168,19 @@ export const REGION_CONFIG_2026: Record<RegionType, RegionInfo> = {
   },
 };
 
+/**
+ * 가구원수별 추가 주거비 인정 한도 (2026 서울회생법원 생계비 검토 위원회 의결, 1~4인)
+ * 추가 주거비 = min(실제 주거비 − 기초 포함분, 이 한도). 5인 이상은 의결에 없어 4인 한도를 쓴다('확인 필요').
+ * 새 의결이 나오기 전까지 다음 해에도 이 표를 쓴다 (27 기획서 10-3).
+ * (이전: 모든 가구원수에 1인 총액 한도를 써서 2인 이상 주거비가 낮게 나왔음 — B-3)
+ */
+export const HOUSING_ADDITIONAL_LIMIT_2026: Record<RegionType, Record<number, number>> = {
+  SEOUL: { 1: 589208, 2: 982013, 3: 1253955, 4: 1510789 },
+  OVERCROWDED: { 1: 430122, 2: 716869, 3: 915387, 4: 1102876 },
+  METROPOLITAN: { 1: 229791, 2: 382985, 3: 489042, 4: 589208 },
+  OTHERS: { 1: 176762, 2: 294604, 3: 376186, 4: 453237 },
+};
+
 // 가구원수별 기초생계비에 이미 포함된 주거비 (지역 무관, 기초생계비의 약 17.8%)
 export const BASE_HOUSING_INCLUDED_2026: Record<number, number> = {
   1: 273861,

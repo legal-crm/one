@@ -8,6 +8,31 @@ import {
   getMinimumRepaymentThreshold,
   getRecognizedLivingCost2026,
 } from './services/repayment/rehabLegalCore';
+import {
+  additionalLivingCostRules,
+  calculateLivingExpenseAndDisposableIncome,
+  computeAssetBreakdown,
+} from './services/repayment/repaymentCalculationEngine';
+import type { AssetCategory, IncomeAndExpenseInput, RepaymentAsset } from './services/repayment/repaymentTypes';
+import { MAX_ADDITIONAL_REGULAR_EDUCATION, MAX_ADDITIONAL_SPECIAL_EDUCATION } from './services/repayment/repaymentConstants2026';
+
+/** 의뢰인 접수 지역 키 → 공통 엔진 지역 구분 */
+const REGION_KEY_TO_TYPE: Record<string, 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS'> = {
+  Seoul: 'SEOUL', Overcrowded: 'OVERCROWDED', Metro: 'METROPOLITAN', Others: 'OTHERS',
+};
+
+/** 의뢰인 재산 종류 → 공통 엔진 재산 분류 */
+function assetCategoryOf(type: string): AssetCategory {
+  switch (type) {
+    case 'deposit': return 'HOUSING_DEPOSIT';
+    case 'savings': return 'DEPOSIT';
+    case 'insurance': return 'INSURANCE';
+    case 'severance': return 'RETIREMENT';
+    case 'realestate': case 'realestate_general': case 'land': return 'REAL_ESTATE';
+    case 'vehicle': case 'business_vehicle': return 'CAR';
+    default: return 'OTHER';
+  }
+}
 
 /**
  * Korean Individual Rehabilitation Calculation Engine
@@ -70,63 +95,25 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   const jurisdiction = detectJurisdiction(data.residence, settings.courtRegionMap);
   const region: RegionKey = jurisdiction.region;
 
-  // 4. Calculate Total Liquidation Value (총 청산가치)
-  let totalLiquidationValue = 0;
-  // 보장성보험 압류금지는 모든 보험 합산 1회 (LS-Q8, 이전: 보험마다 공제)
-  let insurancePool = yearPolicy.assetExemptions.insurance;
-
-  data.assets.forEach(asset => {
-    if (asset.isExempt) return; // Skip if marked exempt
-
-    // 퇴직금(severance): 연금형(pension)이면 압류 불가 → 청산가치 미반영
-    if (asset.type === 'severance' && data.retirementPensionType === 'pension') {
-      return;
-    }
-
-    // 퇴직금(severance): 비연금형이면 50%만 청산가치 반영 (법적으로 1/2만 압류 가능)
-    if (asset.type === 'severance' && data.retirementPensionType !== 'pension') {
-      const severanceValue = Math.round(asset.marketValue * 0.5);
-      totalLiquidationValue += severanceValue;
-      return;
-    }
-
-    // 코인/주식(stock): 지금 갖고 있는 평가액은 언제나 청산가치에 넣는다.
-    // 회생법원 실무준칙 제408호의 '투자 손실금 미가산'은 이미 잃은 돈을 더하지 않는다는 뜻이지
-    // 보유 자산을 빼라는 뜻이 아님 (27 기획서 10장). (이전: includeCryptoStock=false면 보유 주식을 통째로 뺐음)
-
-    let value = asset.marketValue;
-    
-    // Subtract secured loan if it has a pledge
-    if (asset.hasPledge) {
-      value = Math.max(0, value - asset.loanBalance);
-    }
-
-    // Apply specific exemption rules
-    if (asset.type === 'deposit') {
-      const depositRule = yearPolicy.depositRules[region];
-      if (depositRule) {
-        // If the deposit is within the limit, protect up to deduct
-        if (asset.marketValue <= depositRule.limit) {
-          value = Math.max(0, value - depositRule.deduct);
-        }
-      }
-    } else if (asset.type === 'insurance' && asset.owner !== 'spouse') {
-      const used = Math.min(insurancePool, value);
-      insurancePool -= used;
-      value = Math.max(0, value - used);
-    }
-
-    // Apply spouse asset inclusion (usually 50% in Korea)
-    if (asset.owner === 'spouse') {
-      if (courtConfig.includeSpouseProperty) {
-        value = Math.round(value * 0.5);
-      } else {
-        value = 0;
-      }
-    }
-
-    totalLiquidationValue += value;
-  });
+  // 4. 청산가치 — 법원 서식 엔진과 같은 재산 계산 (B-3, computeAssetBreakdown)
+  //  · 예금·보장성보험 압류금지 각각 합계 250만 원 1회 (이전: 이 엔진만 예금 공제가 없었음)
+  //  · 임차보증금 소액임차 공제, 퇴직금 1/2(연금은 0), 담보대출 차감
+  //  · 배우자 명의 재산은 법원 실무에 따라 50% 또는 0 (공제 없이)
+  //  · 보유 주식·코인 평가액은 언제나 넣는다 (제408호 '투자 손실금 미가산'은 이미 잃은 돈 이야기)
+  const regionType = REGION_KEY_TO_TYPE[region] || 'OTHERS';
+  const liqSource = data.assets.filter(asset => !asset.isExempt && !(asset.owner === 'spouse' && !courtConfig.includeSpouseProperty));
+  const liqRows = computeAssetBreakdown(liqSource.map((asset, i): RepaymentAsset => ({
+    id: `a${i}`,
+    name: asset.type,
+    category: assetCategoryOf(asset.type),
+    marketValue: Math.max(0, asset.marketValue || 0),
+    encumbrance: asset.hasPledge ? Math.max(0, asset.loanBalance || 0) : 0,
+    statutoryDeduction: 0,
+    liquidationValue: 0,
+    isRetirementPension: asset.type === 'severance' && data.retirementPensionType === 'pension',
+    ...(asset.owner === 'spouse' ? { ownerType: 'SPOUSE' as const, spouseContributionRatio: 0.5 } : {}),
+  })), regionType);
+  const totalLiquidationValue = liqRows.reduce((sum, row) => sum + row.liquidationValue, 0);
 
   // 5. Calculate Total Debt — 채무 유형별 분리 (법원 기준)
   // 무담보 채권: 가용소득 안분 변제 대상
@@ -208,57 +195,36 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
 
   baseMedianIncome = lowerMedian + (upperMedian - lowerMedian) * fraction;
 
-  // Basic Living Cost is 60% of Median Income
-  // [단일 기준] 2026년은 법원 정밀 엔진의 공시 생계비(원 단위 절사) 테이블 사용
-  const basicLivingCost = applyYear === 2026
-    ? getRecognizedLivingCost2026(householdSize)
-    : Math.round(baseMedianIncome * 0.6);
-
-  // ─── 추가 생계비 항목별 계산 (2026년 서울회생법원 생계비검토위원회 의결기준) ───
+  // 인정 생계비 — 법원 서식 엔진과 같은 함수 (B-3, repaymentCalculationEngine)
+  //  기본 생계비 = 중위소득 60% 반올림 표, 주거비 = min(실제 − 포함분, 가구원수별 지역 한도),
+  //  교육비 = 자녀 1인당 min(지출 − 포함분 89,627원, 한도), 의료비 = 포함분 초과액
+  //  (이전: 교육비 포함분을 빼지 않았고, 2027년부터 주거·의료·교육비가 0원이었음 — 새 의결 전까지 2026 의결 적용)
   const extra = data.extraLivingCost;
-  let additionalHousing = 0;
-  let additionalEducation = 0;
-  let additionalSpecialEd = 0;
-  let additionalMedical = 0;
+  const allowAdditional = !!courtConfig.allowAdditionalLivingCost;
+  const minorChildCount = Math.max(0, Math.floor(data.minorChildren || 0));
+  const educationTotal = (extra.education || 0) + (extra.specialEducation || 0);
+  const hasSpecialEducation = (extra.specialEducation || 0) > 0;
+  const living = calculateLivingExpenseAndDisposableIncome({
+    incomeType: 'salary',
+    monthlyNetIncome: totalMonthlyIncome,
+    householdSize,
+    region: regionType,
+    actualHousingExpense: allowAdditional ? (data.monthlyRent || 0) + (extra.utilities || 0) : 0,
+    actualMedicalExpense: allowAdditional ? (extra.medical || 0) : 0,
+    numberOfChildren: allowAdditional ? minorChildCount : 0,
+    educationExpensePerChild: minorChildCount > 0 ? educationTotal / minorChildCount : 0,
+    isSpecialEducation: hasSpecialEducation,
+    otherApprovedExpense: 0,
+    trusteeType: 'INTERNAL',
+    medianIncomeYear: applyYear,
+  } as IncomeAndExpenseInput);
+  const livingRulesBd = additionalLivingCostRules(householdSize, regionType, living.baseLivingExpense, hasSpecialEducation);
+  const basicLivingCost = living.baseLivingExpense;
+  const additionalHousing = living.additionalHousingDeduction;
+  const additionalEducation = living.additionalEducationDeduction;
+  const additionalSpecialEd = 0; // 교육비에 함께 계산 (특수교육이면 한도 50만 원)
+  const additionalMedical = living.additionalMedicalDeduction;
   let additionalOther = 0;
-
-  if (courtConfig.allowAdditionalLivingCost) {
-    // ① 주거비: 실제 지출(월세+공과금) - 기초생계비 포함분, 지역×가구원수별 한도
-    const actualHousing = (data.monthlyRent || 0) + (extra.utilities || 0);
-    const householdSizeInt = Math.max(1, Math.round(householdSize));
-
-    let includedHousing = 0;
-    let housingAdditionalLimit = 0;
-
-    if (householdSizeInt <= 4) {
-      const housingRule = yearPolicy.housingCostLimits?.[region]?.[householdSizeInt];
-      if (housingRule) {
-        includedHousing = housingRule.includedInMedian;
-        housingAdditionalLimit = housingRule.additionalLimit;
-      }
-    } else {
-      // 5인 이상: 기초 생계비 × 17.8%, 추가 한도는 4인 기준 준용
-      includedHousing = Math.round(basicLivingCost * 0.178);
-      const rule4 = yearPolicy.housingCostLimits?.[region]?.[4];
-      housingAdditionalLimit = rule4?.additionalLimit || 0;
-    }
-
-    const housingExcess = Math.max(0, actualHousing - includedHousing);
-    additionalHousing = Math.min(housingExcess, housingAdditionalLimit);
-
-    // ② 교육비: 미성년 자녀 1인당 일반 20만 / 특수 50만 한도
-    const minorChildrenCount = data.minorChildren || 0;
-    const eduLimit = yearPolicy.educationCost?.additionalLimit || 200000;
-    const specialEduLimit = yearPolicy.specialEducationCost?.additionalLimit || 500000;
-
-    additionalEducation = Math.min(extra.education || 0, eduLimit * minorChildrenCount);
-    additionalSpecialEd = Math.min(extra.specialEducation || 0, specialEduLimit * minorChildrenCount);
-
-    // ③ 의료비: 가구원수별 기초생계비 포함분 초과액만 인정
-    const medicalSizeKey = Math.min(householdSizeInt, 4) as 1 | 2 | 3 | 4;
-    const includedMedical = yearPolicy.medicalCostIncludedInMedian?.[medicalSizeKey] || 0;
-    additionalMedical = Math.max(0, (extra.medical || 0) - includedMedical);
-  }
 
   // ④ 기타생계비: 회생법원 관할 + 고소득(중위150%↑) + 변제율40%↑ 조건부 인정
   if (courtConfig.allowOtherLivingCost) {
@@ -485,20 +451,10 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   if (adultChildrenCount > 0) dependentRules.push(`성년자녀 ${adultChildrenCount}명 (소득기준 충족)`);
   dependentRules.push(`총 가구원수 = 1(본인) + ${totalDependents}(부양가족) = ${householdSize}인`);
 
-  // 주거비 breakdown
-  const householdSizeIntBd = Math.max(1, Math.round(householdSize));
-  let includedHousingBd = 0;
-  let housingLimitBd = 0;
-  if (courtConfig.allowAdditionalLivingCost) {
-    if (householdSizeIntBd <= 4) {
-      const hr = yearPolicy.housingCostLimits?.[region]?.[householdSizeIntBd];
-      if (hr) { includedHousingBd = hr.includedInMedian; housingLimitBd = hr.additionalLimit; }
-    } else {
-      includedHousingBd = Math.round(basicLivingCost * 0.178);
-      const r4 = yearPolicy.housingCostLimits?.[region]?.[4];
-      housingLimitBd = r4?.additionalLimit || 0;
-    }
-  }
+  // 주거비 breakdown (계산과 같은 기준값)
+  const householdSizeIntBd = Math.max(1, Math.floor(householdSize));
+  const includedHousingBd = allowAdditional ? livingRulesBd.housingIncluded : 0;
+  const housingLimitBd = allowAdditional ? livingRulesBd.housingLimit : 0;
   const actualHousingBd = (data.monthlyRent || 0) + (extra.utilities || 0);
   const housingRules: string[] = [];
   housingRules.push(`실제 주거비: ${actualHousingBd.toLocaleString()}원 (월세 ${(data.monthlyRent||0).toLocaleString()} + 공과금 ${(extra.utilities||0).toLocaleString()})`);
@@ -509,10 +465,10 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
 
   // 교육비 breakdown
   const minorCntBd = data.minorChildren || 0;
-  const eduLimitBd = yearPolicy.educationCost?.additionalLimit || 200000;
-  const specEduLimitBd = yearPolicy.specialEducationCost?.additionalLimit || 500000;
+  const eduLimitBd = MAX_ADDITIONAL_REGULAR_EDUCATION;
+  const specEduLimitBd = MAX_ADDITIONAL_SPECIAL_EDUCATION;
   const eduRules: string[] = [];
-  eduRules.push(`미성년 자녀 ${minorCntBd}명 × 1인당 한도 ${eduLimitBd.toLocaleString()}원 = 총 한도 ${(eduLimitBd * minorCntBd).toLocaleString()}원`);
+  eduRules.push(`미성년 자녀 ${minorCntBd}명 × 1인당 (지출 − 기본 포함분 ${livingRulesBd.educationIncluded.toLocaleString()}원), 1인당 한도 ${livingRulesBd.educationLimit.toLocaleString()}원`);
   eduRules.push(`실제 교육비: ${(extra.education || 0).toLocaleString()}원 → 인정: ${additionalEducation.toLocaleString()}원`);
 
   const specEduRules: string[] = [];
@@ -521,7 +477,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
 
   // 의료비 breakdown
   const medSizeKey = Math.min(householdSizeIntBd, 4) as 1|2|3|4;
-  const includedMedicalBd = yearPolicy.medicalCostIncludedInMedian?.[medSizeKey] || 0;
+  const includedMedicalBd = allowAdditional ? livingRulesBd.medicalIncluded : 0;
   const medRules: string[] = [];
   medRules.push(`기초생계비 포함 의료비(${householdSizeIntBd}인): ${includedMedicalBd.toLocaleString()}원`);
   medRules.push(`실제 의료비: ${(extra.medical || 0).toLocaleString()}원`);
@@ -566,57 +522,38 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   let retirementContrib = 0;
   let retirementRule = '해당 없음';
   let totalBeforeExempt = 0;
-  let insurancePoolDetail = yearPolicy.assetExemptions.insurance;
+  const typeLabels: Record<string, string> = { deposit: '임차보증금', realestate: '부동산', realestate_general: '부동산', land: '토지', vehicle: '차량', business_vehicle: '차량', savings: '예금/적금', stock: '주식/코인', insurance: '보험', severance: '퇴직금', other: '기타' };
   data.assets.forEach(asset => {
     if (asset.isExempt) return;
-    let val = asset.marketValue;
-    let rule = '';
-    if (asset.type === 'severance') {
-      if (data.retirementPensionType === 'pension') {
-        rule = 'DB/DC형 연금 → 압류 불가, 청산가치 0원';
-        retirementRule = rule;
-        liqItems.push({ label: '퇴직금(연금형)', amount: 0, rule });
-        return;
-      } else {
-        retirementContrib = Math.round(val * 0.5);
-        rule = '비연금형 → 50%만 압류 가능';
-        retirementRule = rule;
-        liqItems.push({ label: '퇴직금', amount: retirementContrib, rule });
-        return;
-      }
+    totalBeforeExempt += asset.marketValue;
+    if (asset.owner === 'spouse' && !courtConfig.includeSpouseProperty) {
+      liqItems.push({ label: typeLabels[asset.type] || asset.type, amount: 0, rule: '법원 정책: 배우자 재산 미반영' });
     }
-    if (asset.type === 'stock') {
+  });
+  liqSource.forEach((asset, i) => {
+    const row = liqRows[i];
+    const label = asset.type === 'severance' && data.retirementPensionType === 'pension' ? '퇴직금(연금형)' : (typeLabels[asset.type] || asset.type);
+    let rule = '시가 기준 평가';
+    if (asset.owner === 'spouse') {
+      rule = '배우자 재산 50% 반영 (공제 없음)';
+      spouseAssetContrib += row.liquidationValue;
+    } else if (row.category === 'RETIREMENT') {
+      rule = row.isRetirementPension ? 'DB/DC형 연금 → 압류 불가, 청산가치 0원' : '비연금형 → 50%만 압류 가능';
+      retirementRule = rule;
+      retirementContrib += row.liquidationValue;
+    } else if (row.category === 'HOUSING_DEPOSIT') {
+      rule = row.statutoryDeduction > 0 ? `소액임차보증금 면제(${region}): ${row.statutoryDeduction.toLocaleString()}원 공제` : '소액임차 기준 초과 · 공제 없음';
+    } else if (row.category === 'DEPOSIT') {
+      rule = `예금 압류금지: 합산 250만 원 중 ${row.statutoryDeduction.toLocaleString()}원 공제`;
+    } else if (row.category === 'INSURANCE') {
+      rule = `보험 압류금지: 합산 250만 원 중 ${row.statutoryDeduction.toLocaleString()}원 공제`;
+    } else if (asset.type === 'stock') {
       rule = '보유 주식·코인 평가액 (투자 손실금은 법원 실무에 따라 따로 판단)';
     }
-    if (asset.hasPledge) val = Math.max(0, val - asset.loanBalance);
-    let exemptAmt = 0;
-    if (asset.type === 'deposit') {
-      const dr = yearPolicy.depositRules[region];
-      if (dr && asset.marketValue <= dr.limit) {
-        exemptAmt = Math.min(val, dr.deduct);
-        val = Math.max(0, val - dr.deduct);
-        rule = `소액임차보증금 면제(${region}): ${dr.deduct.toLocaleString()}원 공제`;
-      }
-    } else if (asset.type === 'insurance' && asset.owner !== 'spouse') {
-      exemptAmt = Math.min(val, insurancePoolDetail);
-      insurancePoolDetail -= exemptAmt;
-      val = Math.max(0, val - exemptAmt);
-      rule = `보험 면제: 합산 ${yearPolicy.assetExemptions.insurance.toLocaleString()}원 중 ${exemptAmt.toLocaleString()}원 공제`;
+    if (asset.owner !== 'spouse' && row.statutoryDeduction > 0 && row.category !== 'RETIREMENT') {
+      liqExemptions.push({ label: asset.type, amount: Math.min(row.statutoryDeduction, Math.max(0, row.marketValue - row.encumbrance)) });
     }
-    if (exemptAmt > 0) liqExemptions.push({ label: asset.type, amount: exemptAmt });
-    totalBeforeExempt += asset.marketValue;
-    if (asset.owner === 'spouse') {
-      if (courtConfig.includeSpouseProperty) {
-        spouseAssetContrib += Math.round(val * 0.5);
-        val = Math.round(val * 0.5);
-        rule = (rule ? rule + ' / ' : '') + '배우자 재산 50% 반영';
-      } else {
-        val = 0;
-        rule = '법원 정책: 배우자 재산 미반영';
-      }
-    }
-    const typeLabels: Record<string, string> = { deposit: '임차보증금', realestate: '부동산', vehicle: '차량', savings: '예금/적금', stock: '주식/코인', insurance: '보험', other: '기타' };
-    liqItems.push({ label: typeLabels[asset.type] || asset.type, amount: val, rule: rule || '시가 기준 평가' });
+    liqItems.push({ label, amount: row.liquidationValue, rule });
   });
   const liqRules: string[] = [];
   liqRules.push(`총 자산 시가: ${totalBeforeExempt.toLocaleString()}원`);

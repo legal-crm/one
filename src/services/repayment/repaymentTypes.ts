@@ -359,7 +359,7 @@ export interface IncomeAndExpenseInput {
   trusteeType: TrusteeType;
 
   // ── 투더코어 벤치마킹 수입지출 실무 룰 ──
-  medianIncomeYear?: 2025 | 2026;     // 기준중위소득 적용년도 선택 (작성연도 vs 신청연도 상이할 때)
+  medianIncomeYear?: number;          // 기준중위소득 적용년도 (신청(예정)일 연도, 2025~2027 표, 그 밖은 가까운 연도 표)
   isChildSupportEstateClaim?: boolean;// 양육비를 재단채권으로 변제계획안에 기재 (외부회생위원 보정 대응)
   isAdjustedLivingCost?: boolean;     // 60% 이하 수동 조정생계비 적용 여부
 }
@@ -466,6 +466,10 @@ export interface RepaymentPlanData {
   requiresPostCommencementInterest?: boolean; // 총변제액이 원리금 초과 시 개시후이자 입력 경고 상태
   decimalRepaymentRate?: boolean;    // 변제율 소수점 첫째자리 표기 여부 (보정권고 대응)
   garnishmentDepositFirstRound?: number; // 인가 후 1회차에 일시 투입되는 압류적립금
+  /** 자동 판정 결과 (rehabLegalCore.determineRepaymentPlan 상태, 수동 조정이면 없음) */
+  autoPlanStatus?: 'SHORT_PLAN' | 'STANDARD' | 'EXTENDED' | 'FULL_PAYOFF' | 'LIVING_COST_CUT' | 'ASSET_DISPOSAL' | 'LIQUIDATION_EXCEEDS' | 'NO_DEBT';
+  /** 자동 판정 경고 (생계비 감액 필요·청산가치 초과 등) */
+  autoPlanWarnings?: string[];
 
   lastSavedAt: string;
 }

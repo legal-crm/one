@@ -12,7 +12,7 @@ import {
   getLivingExpense,
   get2026LivingExpense,
   getLeibnizFactor,
-  REGION_CONFIG_2026,
+  HOUSING_ADDITIONAL_LIMIT_2026,
   BASE_HOUSING_INCLUDED_2026,
   BASE_MEDICAL_EXPENSE_2026,
   BASE_EDUCATION_EXPENSE_DEDUCTION,
@@ -25,7 +25,7 @@ import {
   LEIBNIZ_FACTOR_60,
   LEIBNIZ_FACTORS,
 } from './repaymentConstants2026';
-import { getMinimumRepaymentThreshold } from './rehabLegalCore';
+import { determineRepaymentPlan, getMinimumRepaymentThreshold, type CorePlanResult, type CorePlanStatus } from './rehabLegalCore';
 import { localYmd } from '../../utils/localDate';
 
 /**
@@ -80,6 +80,31 @@ import type {
 // STEP 1. 생계비 및 가용소득 산정 엔진
 // ══════════════════════════════════════════════════════════════════
 
+/**
+ * 추가 생계비 기준값 (2026 서울회생법원 생계비 검토 위원회 의결 — 새 의결 전까지 다음 해에도 적용)
+ * 모든 엔진·화면 설명이 이 값 하나를 쓴다 (B-3).
+ * 5인 이상: 주거비 포함분 = 기초생계비 × 17.8%, 주거비 한도·의료비 포함분은 4인 값 ('확인 필요').
+ */
+export function additionalLivingCostRules(
+  householdSize: number,
+  region: 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS',
+  baseLivingExpense: number,
+  isSpecialEducation = false,
+): { housingIncluded: number; housingLimit: number; medicalIncluded: number; educationIncluded: number; educationLimit: number } {
+  const intHousehold = Math.max(1, Math.floor(householdSize || 1));
+  const key4 = Math.min(4, intHousehold);
+  const housingTable = HOUSING_ADDITIONAL_LIMIT_2026[region] || HOUSING_ADDITIONAL_LIMIT_2026.SEOUL;
+  return {
+    housingIncluded: intHousehold in BASE_HOUSING_INCLUDED_2026
+      ? BASE_HOUSING_INCLUDED_2026[intHousehold]
+      : Math.round(baseLivingExpense * 0.178),
+    housingLimit: housingTable[key4],
+    medicalIncluded: BASE_MEDICAL_EXPENSE_2026[key4] || 64619,
+    educationIncluded: BASE_EDUCATION_EXPENSE_DEDUCTION,
+    educationLimit: isSpecialEducation ? MAX_ADDITIONAL_SPECIAL_EDUCATION : MAX_ADDITIONAL_REGULAR_EDUCATION,
+  };
+}
+
 export function calculateLivingExpenseAndDisposableIncome(
   input: IncomeAndExpenseInput
 ): CalculatedLivingExpense {
@@ -101,35 +126,24 @@ export function calculateLivingExpenseAndDisposableIncome(
   // 1. 기준연도(2025 or 2026) 기초생계비 (중위소득 60%)
   const baseLivingExpense = getLivingExpense(householdSize, medianIncomeYear);
 
-  // 2. 추가 주거비 계산 (공식: Min(실제주거비, 지역한도) - 기초포함분)
-  const regionConfig = REGION_CONFIG_2026[region] || REGION_CONFIG_2026.SEOUL;
-  const housingLimit = regionConfig.housingLimit;
-  
-  let baseHousingIncluded = 0;
-  const intHousehold = Math.floor(householdSize);
-  if (intHousehold in BASE_HOUSING_INCLUDED_2026) {
-    baseHousingIncluded = BASE_HOUSING_INCLUDED_2026[intHousehold];
-  } else {
-    baseHousingIncluded = Math.round(baseLivingExpense * 0.178); // 5인 이상 17.8%
-  }
-  
-  const eligibleHousing = Math.min(actualHousingExpense, housingLimit);
-  const additionalHousingDeduction = Math.max(0, eligibleHousing - baseHousingIncluded);
+  const rules = additionalLivingCostRules(householdSize, region, baseLivingExpense, isSpecialEducation);
+
+  // 2. 추가 주거비 = min(실제 주거비 − 기초 포함분, 가구원수별 지역 한도)
+  //    (이전: 모든 가구원수에 1인 총액 한도를 써서 2인 이상이 낮게 나왔음 — B-3)
+  const additionalHousingDeduction = Math.min(
+    rules.housingLimit,
+    Math.max(0, actualHousingExpense - rules.housingIncluded),
+  );
 
   // 3. 추가 의료비 계산 (공식: Max(0, 월평균 의료비 - 가구별 기초의료비))
-  const medicalHousehold = Math.min(4, Math.max(1, intHousehold));
-  const baseMedicalThreshold = BASE_MEDICAL_EXPENSE_2026[medicalHousehold] || 64619;
-  const additionalMedicalDeduction = Math.max(0, actualMedicalExpense - baseMedicalThreshold);
+  const additionalMedicalDeduction = Math.max(0, actualMedicalExpense - rules.medicalIncluded);
 
-  // 4. 추가 교육비 계산 (자녀 1인당: Min(실제지출 - 기초교육포함분 89,627원, 한도) * 자녀수)
+  // 4. 추가 교육비 = 자녀 1인당 min(실제 지출 − 기초 포함분 89,627원, 한도) × 자녀 수 (27 기획서 LS-5)
   let additionalEducationDeduction = 0;
   if (numberOfChildren > 0 && educationExpensePerChild > 0) {
-    const maxEducationLimit = isSpecialEducation
-      ? MAX_ADDITIONAL_SPECIAL_EDUCATION
-      : MAX_ADDITIONAL_REGULAR_EDUCATION;
-    const rawPerChild = educationExpensePerChild - BASE_EDUCATION_EXPENSE_DEDUCTION;
-    const deductionPerChild = Math.max(0, Math.min(rawPerChild, maxEducationLimit));
-    additionalEducationDeduction = deductionPerChild * numberOfChildren;
+    const rawPerChild = educationExpensePerChild - rules.educationIncluded;
+    const deductionPerChild = Math.max(0, Math.min(rawPerChild, rules.educationLimit));
+    additionalEducationDeduction = Math.round(deductionPerChild * numberOfChildren);
   }
 
   // 5. 총 추가생계비 및 최종 인정 생계비
@@ -712,6 +726,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   let formType: RepaymentFormType = 'D5110';
   let requiredDisposalAmount = 0;
   let isManuallyOverridden = false;
+  let autoPlanStatus: CorePlanStatus | undefined;
+  let autoPlanWarnings: string[] = [];
 
   const isSeoulPrincipalOnly = manualOverride?.isSeoulPrincipalOnly || false;
   const garnishmentDepositFirstRound = manualOverride?.garnishmentDepositFirstRound || 0;
@@ -730,71 +746,37 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
       requiredDisposalAmount = manualOverride.requiredDisposalAmount;
     }
   } else {
-    // ── 자동 판정 알고리즘 (2026 Engine, rehabLegalCore와 동일 순서) ──
-    // Step 0: 3년 미만 단축 사유 (청년·취약계층, 관할 허용 시)
-    const alloc24 = shortPlanReview ? allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 24) : null;
-    const check24 = alloc24
-      ? verifyLiquidationGuaranteeAndMinRepayment(totalPrincipal, alloc24.monthlyTotal, 24, totalLiquidationValue)
-      : null;
-    // Step A: 36개월 가용소득 검증
-    const alloc36 = allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 36);
-    const check36 = verifyLiquidationGuaranteeAndMinRepayment(
-      totalPrincipal,
-      alloc36.monthlyTotal,
-      36,
-      totalLiquidationValue
-    );
-
-    if (check24 && check24.satisfiesLiquidationGuarantee && check24.satisfiesMinimumRepayment) {
-      months = 24;
-      formType = 'D5110';
-    } else if (check36.satisfiesLiquidationGuarantee && check36.satisfiesMinimumRepayment) {
-      // Case A: 36개월 전산양식 D5110
-      months = 36;
-      formType = 'D5110';
-    } else {
-      // Step B: 36개월 미달 시 60개월 연장 검증
-      const alloc60 = allocateCreditorRepayments(monthlyRepaymentTarget, creditors, 60);
-      const check60 = verifyLiquidationGuaranteeAndMinRepayment(
-        totalPrincipal,
-        alloc60.monthlyTotal,
-        60,
-        totalLiquidationValue
-      );
-
-      if (check60.satisfiesLiquidationGuarantee && check60.satisfiesMinimumRepayment) {
-        // Case B: 60개월 연장 전산양식 D5110
-        months = 60;
-        formType = 'D5110';
-      } else {
-        // Step C: 60개월로도 미달 시 -> 월 변제금 최소 상향액 산출
-        // rehabLegalCore.determineRepaymentPlan Step C와 동일: 청산가치·최저변제액·우선채권(내부 보수 기준 30회 내 완납) 중 최댓값
-        const priorityForStepC = creditors
-          .filter((c) => c.isPriority && !c.isSecured)
-          .reduce((s, c) => s + c.principal, 0);
-        const minTargetMonthly = Math.max(
-          Math.ceil(totalLiquidationValue / LEIBNIZ_FACTOR_60),
-          Math.ceil(getMinimumRepaymentThreshold(totalPrincipal) / 60),
-          priorityForStepC > 0 ? Math.ceil(priorityForStepC / 30) : 0,
-        );
-        const adjustedLivingExpense = incomeExpense.monthlyNetIncome - minTargetMonthly;
-
-        if (adjustedLivingExpense > 0) {
-          // 생계비 축소 후 가용소득 상향 가능 -> D5110 변제금 상향
-          months = 60;
-          monthlyRepaymentTarget = minTargetMonthly;
-          formType = 'D5110';
-        } else {
-          // 월 소득 전체를 투입해도 청산가치에 미달 -> [전산양식 D5111] (재산처분 병행) 전환
-          months = 60;
-          monthlyRepaymentTarget = incomeExpense.monthlyNetIncome; // 소득 전액 투입
-          formType = 'D5111';
-          const pv60 = Math.floor(monthlyRepaymentTarget * LEIBNIZ_FACTOR_60);
-          const shortage = totalLiquidationValue - pv60;
-          // 재산처분 목표액: 튜닝박스 기본값(1년 내 처분, 1.1배)과 동일 배수로 초안 산정 — 실무자가 튜닝박스에서 조정
-          requiredDisposalAmount = Math.ceil(shortage * 1.1);
-        }
-      }
+    // ── 자동 판정: 의뢰인 저장·변호사 제안서·퀵툴과 같은 판정 함수 하나 (B-3, rehabLegalCore.determineRepaymentPlan) ──
+    //  · [24] → 36 → 60개월 순서, 청산가치(현재가치)·최저변제액·우선채권(기간 절반 안 완납) 확인
+    //  · 가용소득으로 원금을 먼저 다 갚으면 그 회차로 줄임 (관할 실무 확인 필요)
+    //  · 60개월로도 미달이면 필요한 최소 월 변제금(생계비 감액) → 소득 전액으로도 미달이면 재산처분 병행(D5111)
+    //  (이전: 이 엔진만 우선채권 확인·원금 조기 완제·청산가치 초과 판정이 없어 다른 화면과 기간이 달랐음)
+    const priorityForPlan = creditors
+      .filter((c) => c.isPriority && !c.isSecured)
+      .reduce((s, c) => s + c.principal, 0);
+    const corePlan = determineRepaymentPlan({
+      monthlyIncome: incomeExpense.monthlyNetIncome,
+      // 외부 회생위원 보수까지 뺀 가용소득이 판정 기준이 되도록 생계비에 보수를 더해 넘긴다
+      recognizedLivingCost: calculatedLiving.finalTotalLivingExpense + calculatedLiving.trusteeFee,
+      liquidationValue: totalLiquidationValue,
+      generalDebt: Math.max(0, totalPrincipal - priorityForPlan),
+      priorityDebt: priorityForPlan,
+      allowShortPlan: shortPlanReview,
+    });
+    autoPlanStatus = corePlan.status;
+    autoPlanWarnings = corePlan.warnings;
+    if (corePlan.status !== 'NO_DEBT') {
+      months = corePlan.months;
+      monthlyRepaymentTarget = corePlan.monthlyPayment;
+    }
+    formType = 'D5110';
+    if (corePlan.status === 'ASSET_DISPOSAL') {
+      // 월 소득 전체를 투입해도 청산가치에 미달 -> [전산양식 D5111] (재산처분 병행)
+      formType = 'D5111';
+      const pv60 = Math.floor(monthlyRepaymentTarget * LEIBNIZ_FACTOR_60);
+      const shortage = Math.max(0, totalLiquidationValue - pv60);
+      // 재산처분 목표액: 튜닝박스 기본값(1년 내 처분, 1.1배)과 동일 배수로 초안 산정 — 실무자가 튜닝박스에서 조정
+      requiredDisposalAmount = Math.ceil(shortage * 1.1);
     }
   }
 
@@ -985,6 +967,12 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   const endMonthDate = new Date(startYear, startM - 1 + months - 1, 1);
   const endYearMonth = `${endMonthDate.getFullYear()}-${String(endMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
+  // 원금 조기 완제(자동 판정): 마지막 회차는 남은 원금만 낸다 → 총변제액 = 원금 (다른 화면과 같은 값, B-3)
+  if (autoPlanStatus === 'FULL_PAYOFF' && twoStageTotalRepayment === null && totalPrincipal > 0) {
+    verification.totalRepayment = Math.min(verification.totalRepayment, totalPrincipal);
+    verification.repaymentRate = Math.round((verification.totalRepayment / totalPrincipal) * 1000) / 10;
+  }
+
   // 압류적립금 1회차 일시 투입액 가산
   const finalTotalRepaymentAmount = verification.totalRepayment + garnishmentDepositFirstRound;
   const finalRepaymentRate = totalPrincipal > 0
@@ -1061,6 +1049,9 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     requiresPostCommencementInterest,
     decimalRepaymentRate,
     garnishmentDepositFirstRound,
+    // 자동 판정 결과 (수동 조정이면 비어 있음) — 화면 경고·검토 근거
+    autoPlanStatus,
+    autoPlanWarnings: autoPlanWarnings.length > 0 ? autoPlanWarnings : undefined,
     lastSavedAt: new Date().toISOString(),
   };
 }
@@ -1119,4 +1110,90 @@ export function rebuildPlanWithAssets(
     debtGrowthReasons: plan.debtGrowthReasons,
     debtGrowthNarrative: plan.debtGrowthNarrative,
   };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 통합 추정 (B-3): 의뢰인 저장(rehabEngine)·챗봇/변호사 제안서(calculationService)·퀵툴이 같이 쓰는 한 경로
+//  생계비 = calculateLivingExpenseAndDisposableIncome
+//  청산가치 = computeAssetBreakdown (예금·보험 합계 1회 공제, 소액임차, 퇴직금 1/2, 배우자 기여도)
+//  기간·월 변제금 = rehabLegalCore.determineRepaymentPlan (법원 서식 엔진 buildRepaymentPlan도 같은 함수)
+// ══════════════════════════════════════════════════════════════════
+
+export interface RehabEstimateInput {
+  /** 적용 연도 (신청(예정)일 연도) */
+  year: number;
+  householdSize: number;
+  region: AssetRegion;
+  monthlyIncome: number;
+  housingExpense?: number;
+  medicalExpense?: number;
+  children?: number;
+  educationPerChild?: number;
+  specialEducation?: boolean;
+  /** 기타 생계비 등 따로 인정한 금액 (법원 실무 규칙은 부르는 쪽이 정함) */
+  otherApprovedExpense?: number;
+  trusteeType?: 'INTERNAL' | 'EXTERNAL';
+  /** 기본 생계비를 직접 정한 경우 (예: 다른 화면에서 이미 확정한 값) */
+  baseLivingOverride?: number;
+  assets: RepaymentAsset[];
+  generalDebt: number;
+  priorityDebt?: number;
+  allowShortPlan?: boolean;
+}
+
+export interface RehabEstimateResult {
+  living: CalculatedLivingExpense;
+  /** 판정에 쓴 인정 생계비 (외부 회생위원 보수 포함) */
+  recognizedLivingCost: number;
+  assets: RepaymentAsset[];
+  liquidationValue: number;
+  plan: CorePlanResult;
+}
+
+export function estimateRehabPlan(input: RehabEstimateInput): RehabEstimateResult {
+  const children = Math.max(0, Math.floor(input.children || 0));
+  let living = calculateLivingExpenseAndDisposableIncome({
+    incomeType: 'salary',
+    monthlyNetIncome: Math.max(0, input.monthlyIncome || 0),
+    householdSize: Math.max(1, input.householdSize || 1),
+    region: input.region,
+    actualHousingExpense: Math.max(0, input.housingExpense || 0),
+    actualMedicalExpense: Math.max(0, input.medicalExpense || 0),
+    numberOfChildren: children,
+    educationExpensePerChild: children > 0 ? Math.max(0, input.educationPerChild || 0) : 0,
+    isSpecialEducation: !!input.specialEducation,
+    otherApprovedExpense: Math.max(0, input.otherApprovedExpense || 0),
+    trusteeType: input.trusteeType || 'INTERNAL',
+    medianIncomeYear: input.year,
+  } as IncomeAndExpenseInput);
+  if (input.baseLivingOverride && input.baseLivingOverride > 0) {
+    const finalTotalLivingExpense = input.baseLivingOverride + living.totalAdditionalExpense;
+    const rawDisposableIncome = Math.max(0, input.monthlyIncome - finalTotalLivingExpense);
+    const trusteeFee = living.trusteeFee > 0 ? Math.round(rawDisposableIncome * 0.01) : 0;
+    living = {
+      ...living,
+      baseLivingExpense: input.baseLivingOverride,
+      finalTotalLivingExpense,
+      rawDisposableIncome,
+      trusteeFee,
+      actualDisposableIncome: Math.max(0, rawDisposableIncome - trusteeFee),
+    };
+  }
+  const assets = computeAssetBreakdown(input.assets, input.region);
+  const liquidationValue = assets.reduce((s, a) => s + a.liquidationValue, 0);
+  const recognizedLivingCost = living.finalTotalLivingExpense + living.trusteeFee;
+  const plan = determineRepaymentPlan({
+    monthlyIncome: Math.max(0, input.monthlyIncome || 0),
+    recognizedLivingCost,
+    liquidationValue,
+    generalDebt: Math.max(0, input.generalDebt || 0),
+    priorityDebt: Math.max(0, input.priorityDebt || 0),
+    allowShortPlan: !!input.allowShortPlan,
+  });
+  return { living, recognizedLivingCost, assets, liquidationValue, plan };
+}
+
+/** 지금 날짜 기준 적용 연도 (기준표가 있는 범위 2025~2027 밖이면 가까운 연도 표를 쓴다) */
+export function currentCalcYear(now: Date = new Date()): number {
+  return now.getFullYear();
 }

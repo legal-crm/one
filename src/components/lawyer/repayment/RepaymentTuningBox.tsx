@@ -403,6 +403,19 @@ export default function RepaymentTuningBox({
         {/* [신규 2] 보정권고 가용소득 & 기간 정밀 튜닝 */}
         {activeTab === 'correction' && (
           <div className="space-y-3.5 animate-fadeIn text-xs">
+            {/* 자동 판정 경고 (제안서·의뢰인 화면과 같은 판정 함수, B-3) */}
+            {(plan.autoPlanWarnings || []).map((w) => (
+              <div key={w} className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/50 flex items-start gap-2 text-amber-100">
+                <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="leading-relaxed">{w}</p>
+              </div>
+            ))}
+            {plan.autoPlanStatus === 'FULL_PAYOFF' && (
+              <div className="p-3 rounded-xl bg-sky-950/40 border border-sky-600/50 flex items-start gap-2 text-sky-100">
+                <AlertTriangle className="w-4 h-4 text-sky-300 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="leading-relaxed">가용소득으로 원금을 {plan.months}개월 안에 모두 갚을 수 있어 변제기간을 원금 완제 회차로 줄였습니다. 관할 법원 실무를 확인해 주세요.</p>
+              </div>
+            )}
             {/* 개시후이자 발생 경고 배너 */}
             {plan.requiresPostCommencementInterest && (
               <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-600/60 flex items-start gap-2 text-rose-200 animate-pulse">

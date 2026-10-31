@@ -45,7 +45,7 @@ export default function ExtraExpenseTool() {
   const handleCopy = () => {
     const text = `[추가생계비 검토 (참고, 관할 법원 기준 확인 필요)]
 • 가구원 ${formatHousehold(shared.householdSize)} · ${REGION_CONFIG_2026[shared.region].name}
-• 주거비: 월 ${won(housing)} → 추가 인정 예상 ${won(r.housing)} (지역 한도 ${won(r.housingLimit)}, 생계비 포함분 ${won(r.housingIncluded)})
+• 주거비: 월 ${won(housing)} → 추가 인정 예상 ${won(r.housing)} (추가 인정 한도 ${won(r.housingLimit)}, 생계비 포함분 ${won(r.housingIncluded)})
 • 의료비: 월 ${won(medical)} → 추가 인정 예상 ${won(r.medical)} (기초의료비 ${won(r.medicalBase)} 초과분)
 • 교육비: 자녀 ${children}명 × 월 ${won(educationPerChild)} → 추가 인정 예상 ${won(r.education)}
 • 합계: 월 ${won(r.total)}
@@ -90,7 +90,7 @@ export default function ExtraExpenseTool() {
         </div>
         <MoneyInput id="extra-housing" value={housing} onChange={setHousing} placeholder="월 실제 주거비" />
         <p className="text-xs text-slate-600 leading-snug">
-          지역 한도 {won(r.housingLimit)}까지 인정 대상으로 보고, 기준생계비에 포함된 주거비 {won(r.housingIncluded)}를 뺀 금액입니다.
+          실제 주거비에서 기준생계비에 포함된 주거비 {won(r.housingIncluded)}를 뺀 금액을 가구원수별 지역 한도 {won(r.housingLimit)} 안에서 인정합니다.
           소명: 임대차계약서, 월세 이체내역.
         </p>
       </div>

@@ -7,6 +7,7 @@
 // ============================================================
 
 import {
+  additionalLivingCostRules,
   calculateLivingExpenseAndDisposableIncome,
   computeAssetBreakdown,
 } from '../../../services/repayment/repaymentCalculationEngine';
@@ -21,7 +22,6 @@ import {
   HOUSING_EXEMPT_DEPOSIT_LIMITS,
   MAX_ADDITIONAL_REGULAR_EDUCATION,
   MAX_ADDITIONAL_SPECIAL_EDUCATION,
-  REGION_CONFIG_2026,
   RegionType,
 } from '../../../services/repayment/repaymentConstants2026';
 import { localYmd } from '../../../utils/localDate';
@@ -50,6 +50,8 @@ export function computeQuickDisposable(p: {
   monthlyIncome: number;
   extraLivingCost: number;
   region: RegionType;
+  /** 적용 연도 (기본: 올해 — 이전에는 2026 고정) */
+  year?: number;
 }): QuickDisposableResult {
   const r = calculateLivingExpenseAndDisposableIncome({
     incomeType: 'salary',
@@ -62,7 +64,7 @@ export function computeQuickDisposable(p: {
     educationExpensePerChild: 0,
     otherApprovedExpense: nonNeg(p.extraLivingCost),
     trusteeType: 'INTERNAL',
-    medianIncomeYear: 2026,
+    medianIncomeYear: p.year ?? new Date().getFullYear(),
   });
   return {
     baseLivingExpense: r.baseLivingExpense,
@@ -93,6 +95,7 @@ export function computeQuickExtraExpense(p: {
   children: number;
   educationPerChild: number;
   special: boolean;
+  year?: number;
 }): QuickExtraExpenseResult {
   const householdSize = Math.max(1, Number(p.householdSize) || 1);
   const r = calculateLivingExpenseAndDisposableIncome({
@@ -107,19 +110,20 @@ export function computeQuickExtraExpense(p: {
     isSpecialEducation: p.special,
     otherApprovedExpense: 0,
     trusteeType: 'INTERNAL',
-    medianIncomeYear: 2026,
+    medianIncomeYear: p.year ?? new Date().getFullYear(),
   });
-  const intSize = Math.floor(householdSize);
+  // 화면 참고 기준값도 계산과 같은 함수에서 (B-3)
+  const rules = additionalLivingCostRules(householdSize, p.region, r.baseLivingExpense, p.special);
   return {
     housing: r.additionalHousingDeduction,
     medical: r.additionalMedicalDeduction,
     education: r.additionalEducationDeduction,
     total: r.totalAdditionalExpense,
-    housingLimit: REGION_CONFIG_2026[p.region].housingLimit,
-    housingIncluded: BASE_HOUSING_INCLUDED_2026[intSize] ?? Math.round(r.baseLivingExpense * 0.178),
-    medicalBase: BASE_MEDICAL_EXPENSE_2026[Math.min(4, Math.max(1, intSize))],
-    educationIncluded: BASE_EDUCATION_EXPENSE_DEDUCTION,
-    educationCap: p.special ? MAX_ADDITIONAL_SPECIAL_EDUCATION : MAX_ADDITIONAL_REGULAR_EDUCATION,
+    housingLimit: rules.housingLimit,
+    housingIncluded: rules.housingIncluded,
+    medicalBase: rules.medicalIncluded,
+    educationIncluded: rules.educationIncluded,
+    educationCap: rules.educationLimit,
   };
 }
 
