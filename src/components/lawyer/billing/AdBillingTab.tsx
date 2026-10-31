@@ -24,8 +24,10 @@ import {
 } from '../../../services/adOrderService';
 import { checkCorpNum, formatCorpNum } from '../../../services/taxInvoiceService';
 import { setOfficeProfileCache } from '../../../services/lawyer/officeProfile';
+import { CREATIVE_STATUS_LABEL, officeAdStats, setOrderCreative } from '../../../services/ads/adCreativeService';
+import AdCreativesSection, { useOfficeCreatives } from './AdCreativesSection';
 
-type Sub = 'status' | 'products' | 'orders' | 'business';
+type Sub = 'status' | 'products' | 'orders' | 'creatives' | 'business';
 
 interface AdBillingTabProps {
   officeId?: string;
@@ -165,6 +167,17 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
     onOrderCreated?.(r.data);
   };
 
+  // 소재·노출 집계 (AD-5·AD-10)
+  const creatives = useOfficeCreatives(officeId);
+  const [stats, setStats] = useState<Record<string, { impressions: number; profileOpens: number }>>({});
+  useEffect(() => { if (officeId) void officeAdStats(officeId).then(setStats); }, [officeId, orders]);
+  const pickCreative = async (orderId: string, creativeId: string) => {
+    const r = await setOrderCreative(orderId, creativeId);
+    if (r.ok === false) { toast.error(r.message); return; }
+    toast.success('주문에 소재를 연결했어요.');
+    void load();
+  };
+
   const myOrders = orders || [];
   const activeCount = myOrders.filter(o => o.status === 'active').length;
   const pendingCount = myOrders.filter(o => o.status === 'pending').length;
@@ -178,6 +191,7 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
           { key: 'status' as const, label: '광고 현황' },
           { key: 'products' as const, label: '광고 상품' },
           { key: 'orders' as const, label: '내 광고 주문' },
+          { key: 'creatives' as const, label: '광고 소재' },
           { key: 'business' as const, label: '사업자 · 세금계산서' },
         ]).map(t => (
           <button key={t.key} onClick={() => setSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] ${sub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
@@ -313,6 +327,7 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                     <th className="p-3.5 text-right">VAT</th>
                     <th className="p-3.5 text-right">입금액</th>
                     <th className="p-3.5">상태</th>
+                    <th className="p-3.5">소재 · 노출</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -328,6 +343,18 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border whitespace-nowrap ${STATUS_STYLE[o.status] || STATUS_STYLE.expired}`}>{AD_STATUS_LABEL[o.status] || o.status}</span>
                         {o.status === 'pending' && o.reservedUntil && <span className="block text-[11px] text-amber-700 mt-1">입금 기한 {ymd(o.reservedUntil)}</span>}
                         {o.status === 'cancelled' && o.cancelReason && <span className="block text-[11px] text-slate-500 mt-1">{o.cancelReason}{typeof o.refundAmount === 'number' ? ` · 환불 ${won(o.refundAmount)}` : ''}</span>}
+                        {o.status === 'paid' && o.placement === 'main_banner' && !(creatives.list || []).some(c => c.id === o.creativeId && c.status === 'approved') && <span className="block text-[11px] text-amber-700 mt-1">승인된 배너 소재가 있어야 노출이 시작돼요</span>}
+                      </td>
+                      <td className="p-3.5 text-xs">
+                        {['pending', 'paid', 'active'].includes(o.status) && canManageAds ? (
+                          <select aria-label="연결할 소재" value={o.creativeId || ''} onChange={e => e.target.value && void pickCreative(o.id, e.target.value)} className="min-h-[36px] rounded-lg border border-slate-200 px-2 text-xs bg-white max-w-[180px]">
+                            <option value="">{o.placement === 'main_banner' ? '배너 소재 고르기' : '기본: 프로필 사진'}</option>
+                            {(creatives.list || []).filter(c => c.lawyerId === o.lawyerId && (c.kind === 'banner') === (o.placement === 'main_banner') && !['rejected', 'retired'].includes(c.status)).map(c => (
+                              <option key={c.id} value={c.id}>{c.headline} ({CREATIVE_STATUS_LABEL[c.status]})</option>
+                            ))}
+                          </select>
+                        ) : <span className="text-slate-500">{o.creativeId ? '연결됨' : '-'}</span>}
+                        {stats[o.id] && <span className="block text-[11px] text-slate-500 mt-1 tabular-nums">노출 {stats[o.id].impressions.toLocaleString('ko-KR')} · 프로필 열기 {stats[o.id].profileOpens.toLocaleString('ko-KR')} (90일)</span>}
                       </td>
                     </tr>
                   ))}
@@ -337,6 +364,10 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
           )}
           <p className="text-xs text-slate-500">입금 계좌: {BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber} (예금주 {BANK_ACCOUNT_INFO.holder}). 신청 후 3영업일 안에 입금하지 않으면 구좌 예약이 자동으로 풀립니다.</p>
         </div>
+      )}
+
+      {!loadError && products && orders && sub === 'creatives' && (
+        <AdCreativesSection officeId={officeId} lawyerId={lawyerId} lawyerName={lawyerName} canManage={canManageAds} />
       )}
 
       {!loadError && products && orders && sub === 'business' && (

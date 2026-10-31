@@ -130,6 +130,7 @@ export function rowToAdOrder(r: any): AdOrder {
     cancelledAt: r.cancelled_at || undefined,
     cancelReason: r.cancel_reason || undefined,
     refundAmount: r.refund_amount ?? undefined,
+    creativeId: r.creative_id ?? undefined,
   };
 }
 

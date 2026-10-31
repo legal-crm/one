@@ -2124,6 +2124,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         {/* 홈(랜딩) */}
         {activeTab === 'landing' && (
           <LandingView
+            banners={banners}
             qas={qas}
             reviews={reviews}
             newsArticles={newsArticles}

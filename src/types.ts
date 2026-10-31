@@ -2059,6 +2059,8 @@ export interface AdOrder {
   cancelledAt?: string;
   cancelReason?: string;
   refundAmount?: number;
+  /** 연결된 광고 소재 (AD-5) */
+  creativeId?: string;
 }
 
 export interface Notice {
