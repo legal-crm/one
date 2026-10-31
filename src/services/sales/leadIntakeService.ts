@@ -12,11 +12,13 @@ export interface LeadIntakeSource {
   lastReceivedAt?: string;
   createdAt: string;
   revokedAt?: string;
+  /** 연결된 거래처(광고대행사) */
+  vendorId?: string;
 }
 
 export interface IntakeLogRow {
   receivedAt: string;
-  result: 'created' | 'duplicate' | 'rejected_key' | 'rejected_limit' | 'rejected_invalid';
+  result: 'created' | 'duplicate' | 'rejected_key' | 'rejected_limit' | 'rejected_invalid' | 'rejected_suppressed' | 'rejected_contract';
   sourceId?: string;
 }
 
@@ -26,6 +28,8 @@ export const INTAKE_RESULT_LABEL: Record<IntakeLogRow['result'], string> = {
   rejected_key: '키 오류',
   rejected_limit: '한도 초과',
   rejected_invalid: '이름·번호 오류',
+  rejected_suppressed: '수신 거부 번호',
+  rejected_contract: '거래처 계약 종료',
 };
 
 const msg = (e: { message?: string } | null | undefined) => {
@@ -50,7 +54,7 @@ export async function listIntakeSources(officeId: string): Promise<RpcResult<Lea
     ok: true,
     data: (data || []).map((r: any) => ({
       id: r.id, name: r.name, keyHint: r.key_hint, active: !!r.active, hourlyLimit: r.hourly_limit, receivedCount: r.received_count,
-      lastReceivedAt: r.last_received_at || undefined, createdAt: r.created_at, revokedAt: r.revoked_at || undefined,
+      lastReceivedAt: r.last_received_at || undefined, createdAt: r.created_at, revokedAt: r.revoked_at || undefined, vendorId: r.vendor_id || undefined,
     })),
   };
 }

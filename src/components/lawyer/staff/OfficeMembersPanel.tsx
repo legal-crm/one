@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, History, Lock, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import {
-  listOfficeAuditLogs, listOfficeCustomRoles, listOfficeMembers, offboardOfficeMember, saveOfficeCustomRole, updateOfficeMember,
+  getOfficeMfaPolicy, listOfficeAuditLogs, listOfficeCustomRoles, listOfficeMembers, offboardOfficeMember, saveOfficeCustomRole, setOfficeMfaPolicy, updateOfficeMember,
   type OfficeAuditLog, type OfficeCustomRole, type OfficeMember,
 } from '../../../services/office/officeService';
 import {
@@ -28,6 +28,24 @@ const ACTION_LABEL: Record<string, string> = {
   'member.offboard': '퇴사 처리',
 };
 const ASSIGNABLE_ROLES: Array<Exclude<OfficeMemberRole, 'owner'>> = ['lawyer', 'consultant', 'clerk', 'accounting', 'custom'];
+
+/** 직원 2단계 인증 필수 (RB-7, 기본 켬). 대표는 늘 필수 */
+function MfaPolicyRow({ officeId }: { officeId: string }) {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => { void getOfficeMfaPolicy(officeId).then(r => setOn(r.ok ? r.data : true)); }, [officeId]);
+  const change = async (v: boolean) => {
+    const r = await setOfficeMfaPolicy(officeId, v);
+    if (r.ok === false) { toast.error(r.message); return; }
+    setOn(r.data);
+    toast.success(r.data ? '직원도 2단계 인증을 해야 들어올 수 있어요.' : '직원 2단계 인증 필수를 껐어요. 대표는 계속 필수예요.');
+  };
+  return (
+    <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+      <input type="checkbox" className="w-4 h-4 mt-0.5" disabled={on === null} checked={on !== false} onChange={e => void change(e.target.checked)} />
+      <span><b>직원 2단계 인증 필수</b><span className="block text-xs text-slate-600">켜 두면 직원도 인증 앱 코드를 넣어야 사무소 자료를 볼 수 있어요. 대표는 늘 필수예요.</span></span>
+    </label>
+  );
+}
 
 function lastSeen(iso: string | null) {
   if (!iso) return '접속 기록 없음';
@@ -211,6 +229,8 @@ export default function OfficeMembersPanel({ officeId, canManage }: Props) {
           </button>
         )}
       </header>
+
+      {canManage && !showLogs && <MfaPolicyRow officeId={officeId} />}
 
       {showLogs ? (
         logs.length === 0 ? <p className="text-sm text-slate-500">아직 활동 기록이 없어요.</p> : (

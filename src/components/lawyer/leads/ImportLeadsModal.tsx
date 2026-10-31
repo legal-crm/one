@@ -11,6 +11,7 @@ import { localYmd } from '../../../utils/localDate';
 const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_IMPORT_ROWS = 5000;
 import { loadInboundPaths } from '../../../services/settingsService';
+import { getCachedVendors } from '../../../services/sales/salesVendorService';
 import ModalPortal from '../../common/ModalPortal';
 
 interface ImportLeadsModalProps {
@@ -50,8 +51,9 @@ export default function ImportLeadsModal({
   const [rawData, setRawData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [batchName, setBatchName] = useState(() => `${localYmd().slice(0, 7)} 대량 인입 DB`);
-  const [defaultInboundPath, setDefaultInboundPath] = useState('타사DB구매');
+  const [defaultInboundPath, setDefaultInboundPath] = useState(() => loadInboundPaths()[0] || '기타');
   const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const [vendorId, setVendorId] = useState('');
 
   const handleClose = () => {
     setStep(1);
@@ -181,12 +183,14 @@ export default function ImportLeadsModal({
         customerName,
         phone: formattedPhone,
         status: 'new',
-        secondaryStatus: '신규인입',
         birth: normalizeBirthYear(String(obj.birth || '')),
         // 파일에 없는 항목은 비워 둠 (이전: 성별 남·급여소득·4대보험 가입·미혼·월세·카드사용으로 임의 지정)
         gender: (String(obj.gender || '').includes('여') ? '여' : String(obj.gender || '').includes('남') ? '남' : undefined) as any,
         region: String(obj.region || '').trim(),
         inboundPath: defaultInboundPath,
+        vendorId: vendorId || undefined,
+        vendorLeadRef: String(obj.vendorLeadRef || '').trim().slice(0, 60) || undefined,
+        noAnswerCount: 0,
         batchName: batchName.trim(),
         caseType: String(obj.caseType || '').includes('파산') ? '개인파산' : '개인회생',
         jobTypes: [],
@@ -212,7 +216,7 @@ export default function ImportLeadsModal({
     });
 
     return { valid, duplicates, errors };
-  }, [isOpen, step, rawData, columnMapping, allowDuplicates, existingLeads, existingRequests, defaultInboundPath, batchName]);
+  }, [isOpen, step, rawData, columnMapping, allowDuplicates, existingLeads, existingRequests, defaultInboundPath, batchName, vendorId]);
 
   const handleFinalImport = () => {
     if (processedResults.valid.length === 0) {
@@ -330,6 +334,15 @@ export default function ImportLeadsModal({
                     {inboundPaths.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
+                {getCachedVendors().length > 0 && (
+                  <div>
+                    <label className="block text-xs font-extrabold text-violet-900 mb-1">거래처(광고대행사)</label>
+                    <select value={vendorId} onChange={e => setVendorId(e.target.value)} className="w-full px-3 py-1.5 text-xs font-bold bg-white border border-violet-200 rounded-xl outline-hidden focus:ring-2 focus:ring-violet-500">
+                      <option value="">자체 광고 (거래처 없음)</option>
+                      {getCachedVendors().filter(v => v.status === 'active').map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

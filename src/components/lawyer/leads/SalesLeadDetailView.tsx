@@ -7,9 +7,13 @@ import {
 import { toast } from 'sonner';
 import type { 
   SalesLead, LeadStatus, AssetItem, CreditLoanItem, 
-  LeadMemoItem, ReminderItem, ReminderType, CallLog, LeadStatusLog, Partner 
+  LeadMemoItem, ReminderItem, ReminderType, CallLog, LeadStatusLog
 } from '../../../types/leadTypes';
-import { LEAD_STATUS_CONFIG } from '../../../types/leadTypes';
+import { LEAD_STATUS_CONFIG, LEAD_CLOSE_REASON_LABEL } from '../../../types/leadTypes';
+import { setLeadStatus } from '../../../services/sales/leadRules';
+import { getSalesSettings } from '../../../services/sales/salesSettingsService';
+import { getCachedVendors } from '../../../services/sales/salesVendorService';
+import LeadOutcomeModal from './LeadOutcomeModal';
 import type { User, StaffMember, ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   CASE_TYPES, JOB_TYPES, HOUSING_TYPES, HOUSING_DETAILS, 
@@ -19,13 +23,12 @@ import {
   saveSalesLead, logLeadCall, extractBriefingData, 
   formatPhone, normalizeBirthYear 
 } from '../../../services/leadService';
-import { loadPartners, loadInboundPaths, loadSecondaryStatuses } from '../../../services/settingsService';
+import { loadInboundPaths } from '../../../services/settingsService';
 import { sendQuickSmsOrCopy } from '../../../services/communicationService';
 import { localYmd, addDaysYmd } from '../../../utils/localDate';
 import CaseBriefingBanner from './CaseBriefingBanner';
 import CaseCommPanel from '../case/CaseCommPanel';
 import { CaseSummaryTab } from './CaseSummaryTab';
-import { CaseSettlementTab } from './CaseSettlementTab';
 
 interface SalesLeadDetailViewProps {
   lead: SalesLead;
@@ -58,21 +61,14 @@ export default function SalesLeadDetailView({
   officePermissions,
 }: SalesLeadDetailViewProps) {
   const [currentLead, setCurrentLead] = useState<SalesLead>(lead);
-  const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'summary' | 'fee' | 'calls'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'summary' | 'calls'>('info');
   const [dockTab, setDockTab] = useState<'reminders'>('reminders');
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [isSavedPulsing, setIsSavedPulsing] = useState(false);
 
-  // 파트너, 인입경로, 2차 상태
-  const partners = useMemo(() => loadPartners(), []);
+  // 유입 경로(사무소 영업 설정)·거래처(광고대행사)
   const inboundPaths = useMemo(() => loadInboundPaths(), []);
-  const secondaryStatuses = useMemo(() => {
-    const loaded = loadSecondaryStatuses();
-    return loaded.includes('선택 안함') ? loaded : ['선택 안함', ...loaded];
-  }, []);
-  const currentPartner = useMemo(() => {
-    return partners.find(p => p.id === currentLead.partnerId);
-  }, [partners, currentLead.partnerId]);
+  const vendors = getCachedVendors();
 
   // Sync state if lead prop changes
   useEffect(() => {
@@ -108,28 +104,25 @@ export default function SalesLeadDetailView({
     persistLead(updated);
   };
 
-  // 1차 상태 변경 및 상태 전이 로그 기록
+  // 상태 직접 바꾸기 (종료는 사유가 필요해서 결과 적기 창으로)
+  const [outcomeOpen, setOutcomeOpen] = useState(false);
   const handleStatusChange = (newStatus: LeadStatus) => {
     if (newStatus === currentLead.status) return;
+    if (newStatus === 'closed') { setOutcomeOpen(true); return; }
+    if (newStatus === 'converted') return;
     const oldStatusLabel = LEAD_STATUS_CONFIG[currentLead.status]?.label || currentLead.status;
     const newStatusLabel = LEAD_STATUS_CONFIG[newStatus]?.label || newStatus;
-
     const logItem: LeadStatusLog = {
       logId: `log-${Date.now()}`,
       fromStatus: oldStatusLabel,
       toStatus: newStatusLabel,
       changedAt: new Date().toISOString(),
-      memo: `담당자(${activeLawyer.name})가 상태를 변경했습니다.`,
+      memo: `${activeLawyer.name}님이 상태를 직접 바꿨어요.`,
     };
-
-    const updated: SalesLead = {
-      ...currentLead,
-      status: newStatus,
-      statusLogs: [logItem, ...(currentLead.statusLogs || [])],
-      updatedAt: new Date().toISOString(),
-    };
+    const updated = setLeadStatus(currentLead, newStatus);
+    updated.statusLogs = [logItem, ...(currentLead.statusLogs || [])];
     persistLead(updated);
-    toast.success(`상태가 '${newStatusLabel}'(으)로 변경되었습니다.`);
+    toast.success(`상태를 '${newStatusLabel}'(으)로 바꿨어요.`);
   };
 
   // 전화번호 복사
@@ -330,11 +323,12 @@ export default function SalesLeadDetailView({
     }
   };
 
-  // 퀵 SMS: 실제 발송 큐 등록, 실패 시 문구 복사 (부재 차수는 올리지 않음)
+  // 퀵 SMS: 실제 발송 큐 등록, 실패 시 문구 복사 (부재 차수는 올리지 않음). 문구는 사무소 영업 설정
   const handleSendQuickSms = async (type: 'no_answer' | 'appointment') => {
+    const office = activeLawyer.firmName || activeLawyer.name || '법률사무소';
     const text = type === 'no_answer'
-      ? `[법무법인] ${currentLead.customerName}님, 회생·파산 무료상담 신청 주셔서 연락드렸으나 부재중으로 문자 남깁니다. 편하신 시간에 회신 주시면 변호사 직접 진단 도와드리겠습니다.`
-      : `[법무법인] ${currentLead.customerName}님, 회생·파산 상담 전화 예약 안내드립니다. 예약 일시에 맞춰 연락드리겠습니다.`;
+      ? getSalesSettings().noAnswerSms.replace(/\{사무소\}/g, office)
+      : `안녕하세요, ${office}입니다. ${currentLead.customerName}님, 약속하신 시간에 맞춰 다시 연락드릴게요.`;
 
     const r = await sendQuickSmsOrCopy(currentLead.phone, text);
     if (r.sent) toast.success(`${currentLead.customerName}님께 퀵 문자 발송을 요청했습니다.`, { description: r.message });
@@ -397,37 +391,35 @@ export default function SalesLeadDetailView({
             </div>
           </div>
 
-          {/* Right: 1차 상태 Select + 2차 상태 Select + Drive Settings + CTA Promotion Button */}
+          {/* Right: 상태 (6개) + 결과 적기 + 이관 */}
           <div className="flex items-center gap-2.5 flex-wrap justify-end">
-            {/* 1차 상태 셀렉터 */}
             <div className="flex items-center gap-1.5">
-              <label className="text-xs font-bold text-slate-400 hidden sm:inline">1차 상태:</label>
+              <label htmlFor="lead-status" className="text-xs font-bold text-slate-500 hidden sm:inline">상태</label>
               <select
+                id="lead-status"
                 value={currentLead.status}
+                disabled={currentLead.status === 'converted'}
                 onChange={e => handleStatusChange(e.target.value as LeadStatus)}
                 className={`px-3 py-2 text-xs font-extrabold rounded-xl border cursor-pointer outline-hidden transition-all ${statusCfg.bgColor} ${statusCfg.color} ${statusCfg.borderColor}`}
               >
-                {(Object.keys(LEAD_STATUS_CONFIG) as LeadStatus[]).map(key => (
-                  <option key={key} value={key}>
-                    {LEAD_STATUS_CONFIG[key].emoji} {LEAD_STATUS_CONFIG[key].label}
-                  </option>
+                {(Object.keys(LEAD_STATUS_CONFIG) as LeadStatus[]).filter(k => k !== 'converted' || currentLead.status === 'converted').map(key => (
+                  <option key={key} value={key}>{LEAD_STATUS_CONFIG[key].label}{key === 'no_answer' && currentLead.noAnswerCount ? ` ${currentLead.noAnswerCount}차` : ''}</option>
                 ))}
               </select>
             </div>
-
-            {/* 2차 상태 셀렉터 */}
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-bold text-purple-600 hidden sm:inline">2차 상태:</label>
-              <select
-                value={currentLead.secondaryStatus || '선택 안함'}
-                onChange={e => handleFieldUpdate('secondaryStatus', e.target.value === '선택 안함' ? '' : e.target.value)}
-                className="px-3 py-2 text-xs font-extrabold rounded-xl border border-purple-200 bg-purple-50 text-purple-800 cursor-pointer outline-hidden transition-all hover:bg-purple-100"
-              >
-                {secondaryStatuses.map(st => (
-                  <option key={st} value={st}>{st}</option>
-                ))}
-              </select>
-            </div>
+            {currentLead.status === 'closed' && currentLead.closeReason && (
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-2 py-1">
+                종료: {LEAD_CLOSE_REASON_LABEL[currentLead.closeReason] || currentLead.closeReason}{currentLead.closeDetail ? ` · ${currentLead.closeDetail}` : ''}
+              </span>
+            )}
+            {currentLead.nextAttemptAt && currentLead.status !== 'closed' && (
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">다음 연락 {new Date(currentLead.nextAttemptAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            )}
+            {currentLead.status !== 'converted' && (
+              <button type="button" onClick={() => setOutcomeOpen(true)} className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E3A5F] text-white rounded-xl text-xs font-black whitespace-nowrap cursor-pointer active:scale-[0.98]">
+                <PhoneCall size={14} /> 결과 적기
+              </button>
+            )}
 
             {/* 고객 관리로 이전 CTA */}
             {currentLead.status === 'converted' ? (
@@ -463,7 +455,6 @@ export default function SalesLeadDetailView({
           { id: 'info', label: '정보 수정' },
           { id: 'timeline', label: '타임라인' },
           { id: 'summary', label: '요약문' },
-          { id: 'fee', label: '수임료/정산' },
           { id: 'calls', label: '소통 기록' },
         ].map(tab => (
           <button
@@ -531,16 +522,16 @@ export default function SalesLeadDetailView({
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                          거래처 (법률사무소)
+                          거래처(광고대행사)
                         </label>
                         <select
                           className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-hidden"
-                          value={currentLead.partnerId || ''}
-                          onChange={e => handleFieldUpdate('partnerId', e.target.value)}
+                          value={currentLead.vendorId || ''}
+                          onChange={e => handleFieldUpdate('vendorId', e.target.value || undefined)}
                         >
-                          <option value="">거래처 선택 (기본)</option>
-                          {partners.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
+                          <option value="">자체 광고 (거래처 없음)</option>
+                          {vendors.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
                           ))}
                         </select>
                       </div>
@@ -1633,18 +1624,18 @@ export default function SalesLeadDetailView({
       {activeTab === 'summary' && (
         <CaseSummaryTab
           lead={currentLead}
-          partner={currentPartner}
           managerName={activeLawyer.name}
           onUpdateLead={persistLead}
         />
       )}
 
-      {/* ── 7. Sub-Tab 4: 수임료/정산 ── */}
-      {activeTab === 'fee' && (
-        <CaseSettlementTab
+      {outcomeOpen && (
+        <LeadOutcomeModal
           lead={currentLead}
-          partner={currentPartner}
-          onUpdateLead={persistLead}
+          caller={{ id: activeLawyer.id, name: activeLawyer.name }}
+          officeName={activeLawyer.firmName || activeLawyer.name}
+          onClose={() => setOutcomeOpen(false)}
+          onSaved={(u) => { setCurrentLead(u); onUpdateLead(u); }}
         />
       )}
 

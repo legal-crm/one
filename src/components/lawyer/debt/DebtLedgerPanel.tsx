@@ -18,6 +18,7 @@ import {
   migrateLegacyDebtOrder, recordAgencyOrder, updateDebtCertificate, type AgencyOrder, type DebtAgency,
 } from '../../../services/debt/debtLedgerService';
 import { loadCaseFilesByIds } from '../../../services/corrections/correctionService';
+import DebtAgencySettingsModal from './DebtAgencySettingsModal';
 import { getCaseFileUrl, uploadCaseFile } from '../../../services/files/caseFileService';
 import { localYmd } from '../../../utils/localDate';
 import { addBusinessDaysLocal } from './businessDays';
@@ -52,6 +53,7 @@ export default function DebtLedgerPanel(p: Props) {
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [agencies, setAgencies] = useState<DebtAgency[]>([]);
+  const [agencyOpen, setAgencyOpen] = useState(false);
   const [orders, setOrders] = useState<AgencyOrder[]>([]);
   const [busy, setBusy] = useState(false);
   const today = localYmd();
@@ -193,6 +195,8 @@ export default function DebtLedgerPanel(p: Props) {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void load()} aria-label="새로 고침" className={`${btn} border border-slate-200 text-slate-600`}><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => setAgencyOpen(true)} className={`${btn} border border-slate-200 text-slate-700`}>대행사 설정</button>
+            {agencyOpen && <DebtAgencySettingsModal officeId={officeId} onClose={() => setAgencyOpen(false)} onSaved={setAgencies} />}
             {canEdit && <button type="button" onClick={() => p.onOpenAgencyApplication(rows)} className={`${btn} border border-slate-200 text-slate-700`}><FileSpreadsheet className="w-3.5 h-3.5" /> 대행 의뢰서·위임장</button>}
             {canEdit && <button type="button" disabled={busy} onClick={() => void recordSend()} className={`${btn} bg-indigo-600 text-white`}><Send className="w-3.5 h-3.5" /> 대행사에 보냄 기록</button>}
             {canEdit && <button type="button" onClick={() => void addOne()} className={`${btn} bg-[#1E3A5F] text-white`}><Plus className="w-3.5 h-3.5" /> 채권자 추가</button>}

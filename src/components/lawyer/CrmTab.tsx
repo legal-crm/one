@@ -39,7 +39,6 @@ import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
 import BulkMessageSendModal from './BulkMessageSendModal';
 import CaseBriefingBanner from './CaseBriefingBanner';
-import CrmSettingsModal from './CrmSettingsModal';
 import { extractBriefingFromClient } from '../../services/leadService';
 import { ClientCaseSummarySubTab } from './ClientCaseSummarySubTab';
 import ClientContractSubTab from './ClientContractSubTab';
@@ -108,6 +107,11 @@ function mapSubtabToPipeline(tab: string): {
       return { stage: 1, section: 'summary', openContext: true };
     case 'timeline':
       return { stage: 1, section: 'summary' };
+    case 'ai-review':
+    case 'case-review':
+      return { stage: 1, section: 'ai-review' };
+    case 'proposal':
+      return { stage: 1, section: 'proposal' };
     case 'fees':
       return { stage: 2, section: 'fees' };
     case 'contracts':
@@ -443,7 +447,6 @@ export default function CrmTab({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDropOffModalOpen, setIsDropOffModalOpen] = useState(false);
-  const [isMasterSettingsModalOpen, setIsMasterSettingsModalOpen] = useState(false);
   
   // ── 수임료 자동 발송 및 모달 상태 ──
   const [isFeeSettingsModalOpen, setIsFeeSettingsModalOpen] = useState(false);
@@ -1956,7 +1959,6 @@ export default function CrmTab({
           onOpenExport={() => setIsExportModalOpen(true)}
           onOpenImport={() => setIsImportModalOpen(true)}
           onOpenTrash={() => setShowTrash(true)}
-          onOpenSettings={() => setIsMasterSettingsModalOpen(true)}
         />
           </>
       )}
@@ -2182,8 +2184,8 @@ export default function CrmTab({
             case 1:
               return [
                 { id: 'summary', label: '상담 요약' },
-                { id: 'eligibility', label: '적격 검토' },
-                { id: 'ai-review', label: 'AI 사건 분석' },
+                { id: 'eligibility', label: '요건 확인' },
+                { id: 'ai-review', label: '사건 검토' },
                 { id: 'proposal', label: '제안서' },
               ];
             case 2:
@@ -2359,6 +2361,8 @@ export default function CrmTab({
                       <Stage1ConsultationView
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
+                        officeId={officeId}
+                        canWriteReview={!officeId || officeCan('proposal.draft') || officeCan('case.edit')}
                         activeLawyer={activeLawyer}
                         onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                         onAdvanceToNextStage={() => advancePipelineStage(2)}
@@ -2727,14 +2731,6 @@ export default function CrmTab({
                         상세 보기
                       </button>
                       <div className="flex gap-2">
-                        {setCopilotPreselectedReqId && setActiveTab && (
-                          <button
-                            onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                            className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center gap-1 border border-slate-200 whitespace-nowrap press-scale cursor-pointer"
-                          >
-                            🔬 AI 분석
-                          </button>
-                        )}
                         <button
                           onClick={() => handleOpenProposalDraft(r.id)}
                           className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2 px-4 rounded-xl text-xs tracking-wide transition-all shadow-xs flex items-center gap-1 whitespace-nowrap press-scale cursor-pointer"
@@ -2860,10 +2856,6 @@ export default function CrmTab({
         getCrmExt={getCrmExt}
         getDisplayClientName={getDisplayClientName}
         getDisplayPhoneNumber={getDisplayPhoneNumber}
-      />
-      <CrmSettingsModal
-        isOpen={isMasterSettingsModalOpen}
-        onClose={() => setIsMasterSettingsModalOpen(false)}
       />
       <DropOffReasonModal
         isOpen={isDropOffModalOpen}

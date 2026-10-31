@@ -1,29 +1,53 @@
 import { IntakeChannel } from '../types';
 
-export type LeadStatus = 
-  | 'new'           // 🆕 신규 DB (미접촉)
-  | 'no_answer_1'   // 📞 부재중 1차
-  | 'no_answer_2'   // 📞 부재중 2차
-  | 'no_answer_3'   // 📞 부재중 3차 이상
-  | 'callback'      // ⏰ 재통화 예약
-  | 'in_progress'   // 💬 1차 상담 통화 중 / 검토
-  | 'converted'     // ⭐️ 고객 전환 완료 (CRM 고객관리로 이전됨)
-  | 'rejected'      // 🚫 거절 / 단순변심
-  | 'ineligible'    // ❌ 자격 미달 (채무 1천만 미만 등)
-  | 'wrong_number'; // ⚠️ 결번 / 오류 번호
+/** 영업 리드 상태 6개 (SL-3, 15 기획서 3-1). 종료는 closeReason 필수 */
+export type LeadStatus = 'new' | 'no_answer' | 'callback' | 'counseling' | 'converted' | 'closed';
 
 export const LEAD_STATUS_CONFIG: Record<LeadStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
-  new:          { label: '신규 DB',       emoji: '🆕', color: 'text-blue-600',   bgColor: 'bg-blue-50',    borderColor: 'border-blue-200' },
-  no_answer_1:  { label: '부재중 1차',     emoji: '📞', color: 'text-amber-600',  bgColor: 'bg-amber-50',   borderColor: 'border-amber-200' },
-  no_answer_2:  { label: '부재중 2차',     emoji: '📞', color: 'text-orange-600', bgColor: 'bg-orange-50',  borderColor: 'border-orange-200' },
-  no_answer_3:  { label: '부재중 3차이상',  emoji: '📵', color: 'text-rose-600',   bgColor: 'bg-rose-50',    borderColor: 'border-rose-200' },
-  callback:     { label: '재통화 예약',    emoji: '⏰', color: 'text-purple-600', bgColor: 'bg-purple-50',  borderColor: 'border-purple-200' },
-  in_progress:  { label: '1차 상담중',     emoji: '💬', color: 'text-indigo-600', bgColor: 'bg-indigo-50',  borderColor: 'border-indigo-200' },
-  converted:    { label: '고객 이전완료',   emoji: '⭐️', color: 'text-emerald-700',bgColor: 'bg-emerald-50', borderColor: 'border-emerald-300' },
-  rejected:     { label: '거절/단순변심',   emoji: '🚫', color: 'text-slate-500',  bgColor: 'bg-slate-100',  borderColor: 'border-slate-300' },
-  ineligible:   { label: '자격 미달',     emoji: '❌', color: 'text-red-500',    bgColor: 'bg-red-50',     borderColor: 'border-red-200' },
-  wrong_number: { label: '결번/오류',     emoji: '⚠️', color: 'text-zinc-500',   bgColor: 'bg-zinc-100',   borderColor: 'border-zinc-300' },
+  new:        { label: '신규',       emoji: '', color: 'text-blue-700',    bgColor: 'bg-blue-50',    borderColor: 'border-blue-200' },
+  no_answer:  { label: '부재',       emoji: '', color: 'text-amber-700',   bgColor: 'bg-amber-50',   borderColor: 'border-amber-200' },
+  callback:   { label: '재통화 약속', emoji: '', color: 'text-purple-700',  bgColor: 'bg-purple-50',  borderColor: 'border-purple-200' },
+  counseling: { label: '상담 중',    emoji: '', color: 'text-indigo-700',  bgColor: 'bg-indigo-50',  borderColor: 'border-indigo-200' },
+  converted:  { label: '이관 완료',  emoji: '', color: 'text-emerald-700', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-300' },
+  closed:     { label: '종료',       emoji: '', color: 'text-slate-600',   bgColor: 'bg-slate-100',  borderColor: 'border-slate-300' },
 };
+
+/** 종료 사유 (고정 선택지). '대상 아님'은 사무소 내부 기록이며 고객에게 보내지 않는다 */
+export type LeadCloseReason =
+  | 'unreachable' | 'wrong_number' | 'info_only' | 'not_eligible' | 'declined'
+  | 'later' | 'duplicate' | 'not_self' | 'false_info' | 'opt_out' | 'other';
+
+export const LEAD_CLOSE_REASONS: Array<{ key: LeadCloseReason; label: string; hint?: string }> = [
+  { key: 'unreachable', label: '연락 불가', hint: '부재가 계속됨' },
+  { key: 'wrong_number', label: '결번·잘못된 번호' },
+  { key: 'info_only', label: '단순 문의', hint: '정보만 원함' },
+  { key: 'not_eligible', label: '대상 아님', hint: '변호사 지시에 따른 내부 판단' },
+  { key: 'declined', label: '거절·다른 곳 선택' },
+  { key: 'later', label: '시기 미정', hint: '다시 연락할 날을 정하면 그날 대기열에 올라와요' },
+  { key: 'duplicate', label: '중복' },
+  { key: 'not_self', label: '본인 아님' },
+  { key: 'false_info', label: '허위 정보' },
+  { key: 'opt_out', label: '수신 거부', hint: '번호 지문을 수신 거부 목록에 남겨요' },
+  { key: 'other', label: '기타' },
+];
+export const LEAD_CLOSE_REASON_LABEL: Record<string, string> = Object.fromEntries(LEAD_CLOSE_REASONS.map(r => [r.key, r.label]));
+
+/** '대상 아님' 세부 (선택) */
+export const NOT_ELIGIBLE_DETAILS = ['채무 금액', '소득', '재산', '이미 진행 중인 절차', '과거 이력', '기타'];
+
+/** 통화 중 체크하기 쉬운 10칸 (모르면 비움, 지어낸 기본값 없음) */
+export interface LeadIntakeCheck {
+  debtBand?: string;      // 대략 총 채무
+  incomeBand?: string;    // 월 소득
+  incomeType?: '급여' | '사업' | '무직' | '기타';
+  insurance4?: '가입' | '미가입' | '모름';
+  assets?: string;        // 집·차·보증금 유무와 대략 금액
+  housing?: '자가' | '전세' | '월세' | '무상거주' | '기타';
+  family?: string;        // 혼인·부양 자녀
+  collection?: '없음' | '연체' | '추심' | '압류' | '모름';
+  history?: '없음' | '회생' | '파산' | '신복위' | '모름';
+  wish?: '회생' | '파산' | '모름';
+}
 
 export type ReminderType = '통화' | '출장미팅' | '방문미팅' | '입금' | '기타' | '문자';
 
@@ -44,7 +68,7 @@ export interface CallLog {
   calledAt: string;
   callerId: string;
   callerName: string;
-  result: 'connected' | 'no_answer' | 'busy' | 'rejected' | 'wrong_number' | 'callback';
+  result: 'connected' | 'no_answer' | 'busy' | 'rejected' | 'wrong_number' | 'callback' | 'closed';
   durationSeconds?: number;
   memo?: string;
   callbackScheduledAt?: string;
@@ -87,9 +111,29 @@ export interface SalesLead {
   id: string;                         // lead-xxx
   customerName: string;               // 고객명
   phone: string;                      // 연락처
-  status: LeadStatus;                 // 1차 상태
-  secondaryStatus?: string;           // 2차 세부 상태
-  tertiaryStatus?: string;            // 3차 세부 상태
+  status: LeadStatus;                 // 상태 6개
+  /** 부재 횟수 (SL-3 재시도 규칙) */
+  noAnswerCount?: number;
+  /** 다음 시도 시각 (부재 재시도·재통화 약속·상담 중 다음 할 일, ISO) */
+  nextAttemptAt?: string;
+  /** 종료 사유 (status = closed) */
+  closeReason?: LeadCloseReason;
+  closeDetail?: string;
+  /** 시기 미정 종료 → 다시 연락할 날 (YYYY-MM-DD) */
+  recontactOn?: string;
+  /** 첫 연락 시각 (통계: 첫 연락까지 시간) */
+  firstContactAt?: string;
+  /** 한 번이라도 상담 중이었는지 (통계) */
+  reachedCounseling?: boolean;
+  /** 거래처(광고대행사) */
+  vendorId?: string;
+  vendorLeadRef?: string;
+  /** 같은 번호 재문의 기록 (접수 주소) */
+  reinquiryCount?: number;
+  /** 상담 확인 10칸 (SL-5) */
+  intakeCheck?: LeadIntakeCheck;
+  secondaryStatus?: string;           // (예전) 2차 세부 상태 — 화면에서 쓰지 않음
+  tertiaryStatus?: string;
   birth: string;                      // 출생년도 ("1985")
   gender: '남' | '여';
   region: string;                     // 거주지역

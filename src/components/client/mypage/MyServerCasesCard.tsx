@@ -79,62 +79,100 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
         <Briefcase className="w-5 h-5 text-brand" aria-hidden="true" />사무소가 기록한 진행 상황
       </h2>
       <ul className="space-y-3">
-        {cases.map(c => (
-          <li key={c.caseId} className="rounded-xl border border-slate-200 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-slate-900">{c.officeName || '담당 사무소'}</span>
-              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{CASE_TYPE_LABEL[c.caseType]}</span>
-              {c.caseNumber && <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{c.courtName} {c.caseNumber}</span>}
-            </div>
-            <p className="mt-2 text-lg font-extrabold text-slate-900">{c.clientStageLabel}</p>
-            <ol className="mt-3 grid grid-cols-6 gap-1" aria-label="절차 단계">
-              {GROUP_LABELS.map((label, i) => {
-                const n = i + 1;
-                const done = n < c.groupNo || c.stage === 'closed';
-                const now = n === c.groupNo && c.stage !== 'closed';
-                return (
-                  <li key={label} className="text-center">
-                    <span className={`block h-1.5 rounded-full ${done ? 'bg-brand' : now ? 'bg-brand/60' : 'bg-slate-200'}`} />
-                    <span className={`mt-1 block text-[11px] leading-tight ${now ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
-                  </li>
-                );
-              })}
-            </ol>
-            <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-              {c.filedOn && <div><dt className="inline">접수 </dt><dd className="inline font-semibold text-slate-800">{c.filedOn}</dd></div>}
-              {c.commencedOn && <div><dt className="inline">{c.caseType === 'bankruptcy' ? '파산선고 ' : '개시결정 '}</dt><dd className="inline font-semibold text-slate-800">{c.commencedOn}</dd></div>}
-              {c.creditorsMeetingOn && <div><dt className="inline">채권자집회 </dt><dd className="inline font-semibold text-slate-800">{c.creditorsMeetingOn}</dd></div>}
-              {c.confirmedOn && <div><dt className="inline">인가결정 </dt><dd className="inline font-semibold text-slate-800">{c.confirmedOn}</dd></div>}
-              {c.dischargeDecidedOn && <div><dt className="inline">면책 결정 </dt><dd className="inline font-semibold text-slate-800">{c.dischargeDecidedOn}</dd></div>}
-            </dl>
-            {/* 계약 뒤 대화는 같은 상담방에서 이어진다 (MY-Q3) */}
-            {c.hasConsultRequest && (
+        {cases.map(c => <CaseCard key={c.caseId} c={c} />)}
+      </ul>
+    </section>
+  );
+}
+
+type CaseTab = 'todo' | 'progress' | 'cost' | 'chat';
+
+/** 사건 하나 = 탭 4개 (MY-5·MY-6·MY-7): 할 일(기본) · 진행 · 비용 · 대화 */
+function CaseCard({ c }: { c: MyCaseSummary }) {
+  const closed = c.stage === 'closed';
+  const [tab, setTab] = useState<CaseTab>(closed ? 'progress' : 'todo');
+  const tabs: Array<[CaseTab, string]> = [['todo', '할 일'], ['progress', '진행'], ['cost', '비용'], ['chat', '대화']];
+  return (
+    <li className="rounded-xl border border-slate-200 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-bold text-slate-900">{c.officeName || '담당 사무소'}</span>
+        <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{CASE_TYPE_LABEL[c.caseType]}</span>
+        {c.caseNumber && <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{c.courtName} {c.caseNumber}</span>}
+      </div>
+      <p className="mt-2 text-lg font-extrabold text-slate-900">{c.clientStageLabel}</p>
+      <div className="mt-3 flex gap-1.5 overflow-x-auto" role="tablist" aria-label="사건 화면">
+        {tabs.map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className={`min-h-[40px] px-3.5 rounded-xl text-sm font-bold whitespace-nowrap active:scale-[0.98] ${tab === k ? 'bg-brand text-white' : 'bg-slate-50 border border-slate-200 text-slate-700'}`}>{l}</button>
+        ))}
+      </div>
+
+      {tab === 'todo' && (
+        <div className="mt-3 space-y-3">
+          {closed && <p className="text-sm text-slate-600">사건이 끝나 할 일이 없어요.</p>}
+          {/* 법원 보정 할 일 (CR-5) · 사무소가 요청한 서식 (H-14) · 서류 요청 */}
+          {!closed && <MyCorrectionTodo caseKey={c.workspaceKey} />}
+          {!closed && <MyCaseFormsSection caseKey={c.workspaceKey} />}
+          {!c.hasConsultRequest && !closed && <MyCaseDocsSection caseKey={c.workspaceKey} />}
+          {c.hasConsultRequest && !closed && <p className="text-xs text-slate-500">사무소가 요청한 서류는 아래 '필수 서류 제출'에서도 낼 수 있어요.</p>}
+        </div>
+      )}
+
+      {tab === 'progress' && (
+        <div className="mt-3 space-y-3">
+          <ol className="grid grid-cols-6 gap-1" aria-label="절차 단계">
+            {GROUP_LABELS.map((label, i) => {
+              const n = i + 1;
+              const done = n < c.groupNo || closed;
+              const now = n === c.groupNo && !closed;
+              return (
+                <li key={label} className="text-center">
+                  <span className={`block h-1.5 rounded-full ${done ? 'bg-brand' : now ? 'bg-brand/60' : 'bg-slate-200'}`} />
+                  <span className={`mt-1 block text-[11px] leading-tight ${now ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+            {c.filedOn && <div><dt className="inline">접수 </dt><dd className="inline font-semibold text-slate-800">{c.filedOn}</dd></div>}
+            {c.commencedOn && <div><dt className="inline">{c.caseType === 'bankruptcy' ? '파산선고 ' : '개시결정 '}</dt><dd className="inline font-semibold text-slate-800">{c.commencedOn}</dd></div>}
+            {c.creditorsMeetingOn && <div><dt className="inline">채권자집회 </dt><dd className="inline font-semibold text-slate-800">{c.creditorsMeetingOn}</dd></div>}
+            {c.confirmedOn && <div><dt className="inline">인가결정 </dt><dd className="inline font-semibold text-slate-800">{c.confirmedOn}</dd></div>}
+            {c.dischargeDecidedOn && <div><dt className="inline">면책 결정 </dt><dd className="inline font-semibold text-slate-800">{c.dischargeDecidedOn}</dd></div>}
+          </dl>
+          {closed && <p className="text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
+          {!closed && <MyDebtCertProgress caseKey={c.workspaceKey} />}
+          {c.caseType === 'bankruptcy' && c.groupNo >= 5 && <MyBankruptcySchedule caseId={c.caseId} />}
+        </div>
+      )}
+
+      {tab === 'cost' && (
+        <div className="mt-3 space-y-3">
+          <MyCaseFeeSection caseId={c.caseId} />
+          {c.caseType === 'rehab' && c.groupNo >= 5 && !closed && <MyPlanPaymentsSection caseId={c.caseId} />}
+        </div>
+      )}
+
+      {tab === 'chat' && (
+        <div className="mt-3 space-y-2">
+          {/* 계약 뒤 대화는 같은 상담방에서 이어진다 (MY-Q3) */}
+          {c.hasConsultRequest ? (
+            <>
+              <p className="text-sm text-slate-600">담당 변호사와 나눈 대화가 이어져요. 할 일에 대해 묻고 싶으면 이 대화방을 써 주세요.</p>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent(OPEN_CONSULT_CHAT_EVENT, { detail: { requestId: c.workspaceKey } }))}
-                className="mt-3 min-h-[44px] px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-800 hover:bg-slate-50 inline-flex items-center gap-2 whitespace-nowrap active:scale-[0.98]"
+                className="min-h-[44px] px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-800 hover:bg-slate-50 inline-flex items-center gap-2 whitespace-nowrap active:scale-[0.98]"
               >
                 <MessageSquare className="w-4 h-4" aria-hidden="true" />
                 담당 변호사와 대화
               </button>
-            )}
-            {c.stage === 'closed' && <p className="mt-2 text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
-            {/* 법원 보정 할 일 (CR-5): 진행 중 회차가 있으면 맨 위에 */}
-            {c.stage !== 'closed' && <MyCorrectionTodo caseKey={c.workspaceKey} />}
-            {/* 사무소가 작성을 요청한 서식 (H-14) */}
-            {c.stage !== 'closed' && <MyCaseFormsSection caseKey={c.workspaceKey} />}
-            {/* 부채증명서 진행 (DC-10): 받은 곳 수와 발급 중 주의사항 */}
-            {c.stage !== 'closed' && <MyDebtCertProgress caseKey={c.workspaceKey} />}
-            {/* 법원 변제금 회차 (CM-8): 개시결정 뒤 사무소가 회차표를 만들면 보인다 */}
-            {c.stage !== 'closed' && c.caseType === 'rehab' && c.groupNo >= 5 && <MyPlanPaymentsSection caseId={c.caseId} />}
-            {/* 파산 진행 일정 (BK-5) */}
-            {c.caseType === 'bankruptcy' && c.groupNo >= 5 && <MyBankruptcySchedule caseId={c.caseId} />}
-            <MyCaseFeeSection caseId={c.caseId} />
-            {/* 상담 요청에서 시작한 사건은 아래 '필수 서류 제출' 카드에서 받는다 */}
-            {!c.hasConsultRequest && c.stage !== 'closed' && <MyCaseDocsSection caseKey={c.workspaceKey} />}
-          </li>
-        ))}
-      </ul>
-    </section>
+            </>
+          ) : (
+            <p className="text-sm text-slate-600">이 사건은 사무소가 직접 등록했어요. 대화는 사무소 연락처로 해 주세요.</p>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

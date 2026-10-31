@@ -12,6 +12,7 @@ import type {
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 import { CONSULT_DECLINE_REASONS, lawyerDeclineConsultRequest, type ConsultDeclineReason } from '../../../services/consultService';
+import CaseReviewPanel from '../case/CaseReviewPanel';
 
 interface ConsultRequestManagementViewProps {
   requests: ConsultRequest[];
@@ -20,6 +21,11 @@ interface ConsultRequestManagementViewProps {
   activeStaff?: StaffMember | null;
   onOpenCase: (clientId: string, stage?: number, section?: string) => void;
   onOpenChat: (threadId: string) => void;
+  /** 제안서 작성 화면(ProposalWorkspace) 열기 — 제안서는 이 화면 하나에서만 (CV-6) */
+  onOpenProposalDraft?: (requestId: string) => void;
+  /** 사건 검토 기록 (CV-1) */
+  officeId?: string;
+  canWriteReview?: boolean;
 }
 
 export type RequestFilterTab = 'all' | 'new' | 'reviewing' | 'proposal_sent' | 'urgent' | 'hidden';
@@ -31,6 +37,9 @@ export default function ConsultRequestManagementView({
   activeStaff,
   onOpenCase,
   onOpenChat,
+  onOpenProposalDraft,
+  officeId,
+  canWriteReview = true,
 }: ConsultRequestManagementViewProps) {
   const dialog = useDialog();
 
@@ -571,8 +580,8 @@ export default function ConsultRequestManagementView({
               <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
                 {[
                   { key: 'summary', label: '사건 요약' },
-                  { key: 'ai-review', label: 'AI 정밀 검토' },
-                  { key: 'proposal', label: '맞춤 제안서' },
+                  { key: 'ai-review', label: '사건 검토' },
+                  { key: 'proposal', label: '제안서' },
                 ].map(tab => (
                   <button
                     key={tab.key}
@@ -722,127 +731,39 @@ export default function ConsultRequestManagementView({
                 </div>
               )}
 
-              {/* ── 탭 2: AI 정밀 검토 (청산가치 · 가용소득 · 3대 리스크) ── */}
+              {/* ── 탭 2: 사건 검토 (CV-2: 통합 엔진·서버 기록, 고정 문장 총평 삭제) ── */}
               {previewTab === 'ai-review' && (
                 <div className="space-y-5 animate-fadeIn">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-2xs">
-                          <Sparkles className="w-4 h-4" />
-                        </span>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900">AI 사건 종합 진단 및 탕감 시뮬레이션</h3>
-                          <p className="text-xs text-slate-500">채무-자산-소득 데이터를 교차 분석한 인공지능 리포트입니다.</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleApplyAiToProposal}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer press-scale"
-                      >
-                        <Sparkles className="w-3 h-3 text-amber-300" />
-                        <span>제안서에 분석 반영</span>
-                      </button>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-indigo-950 leading-relaxed">
-                      신청인은 월 가용소득 약 {(activeRequest.financialProfile?.income || 0) > 130 ? ((activeRequest.financialProfile?.income || 0) - 130).toLocaleString() : 0}만원 수준으로 36개월 기준 총 채무의 최대 약 {proposalReductionRate}% 감면 및 인가가 가능한 우량 적격 사례로 분석됩니다.
-                    </div>
-                  </div>
+                  <CaseReviewPanel
+                    officeId={officeId}
+                    caseKey={activeRequest.id}
+                    financialProfile={activeRequest.financialProfile}
+                    canWrite={canWriteReview}
+                    onUseInProposal={onOpenProposalDraft ? () => onOpenProposalDraft(activeRequest.id) : undefined}
+                  />
                 </div>
               )}
 
-              {/* ── 탭 3: 맞춤 제안서 작성 및 발송 ── */}
+              {/* ── 탭 3: 제안서 — 작성·발송은 제안서 작성 화면 하나에서 (CV-6) ── */}
               {previewTab === 'proposal' && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5 animate-fadeIn">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-blue-600 text-white shadow-2xs">
-                        <Send className="w-4 h-4" />
-                      </span>
-                      <div>
-                        <h3 className="font-bold text-sm text-slate-900">맞춤 솔루션 및 제안서 작성</h3>
-                        <p className="text-xs text-slate-500">의뢰인의 모바일 앱으로 실시간 전송되는 1:1 맞춤 제안서입니다.</p>
-                      </div>
-                    </div>
-
-                    {currentMyProposal && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                        기존 제안서 발송됨
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 3대 핵심 수치 입력 그리드 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">예상 채무 탕감률 (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="95"
-                        value={proposalReductionRate}
-                        onChange={e => setProposalReductionRate(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold font-mono text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#1E3A5F]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">예상 월 변제금 (만원)</label>
-                      <input
-                        type="number"
-                        value={proposalMonthlyPayment}
-                        onChange={e => setProposalMonthlyPayment(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold font-mono text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#1E3A5F]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">제안 수임료 (만원)</label>
-                      <input
-                        type="number"
-                        value={proposalFee}
-                        onChange={e => setProposalFee(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold font-mono text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#1E3A5F]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 전달 메시지 입력창 */}
-                  <div className="space-y-1.5 text-xs">
-                    <label className="font-bold text-slate-700">의뢰인 전달 상담 소견 및 메시지</label>
-                    <textarea
-                      rows={5}
-                      value={proposalMessage}
-                      onChange={e => setProposalMessage(e.target.value)}
-                      placeholder="의뢰인에게 맞춤형 법률 조언과 안심 메시지를 작성하세요..."
-                      className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#1E3A5F] leading-relaxed"
-                    />
-                  </div>
-
-                  {/* 발송 / 컨펌 요청 액션 바 */}
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                    {isStaff ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSubmitProposal(true)}
-                        disabled={isSubmittingProposal}
-                        className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale disabled:opacity-50"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>대표 변호사 컨펌 요청</span>
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4 animate-fadeIn">
+                  <h3 className="font-bold text-sm text-slate-900">변호사 검토 제안서</h3>
+                  {currentMyProposal ? (
+                    <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div><dt className="text-slate-500">월 변제금</dt><dd className="font-bold text-slate-900">{currentMyProposal.monthlyPayment ? `${Number(currentMyProposal.monthlyPayment).toLocaleString('ko-KR')}만원` : '-'}</dd></div>
+                      <div><dt className="text-slate-500">변제 기간</dt><dd className="font-bold text-slate-900">{currentMyProposal.duration ? `${currentMyProposal.duration}개월` : '-'}</dd></div>
+                      <div><dt className="text-slate-500">수임료</dt><dd className="font-bold text-slate-900">{currentMyProposal.fee ? `${Number(currentMyProposal.fee).toLocaleString('ko-KR')}만원` : '-'}</dd></div>
+                    </dl>
+                  ) : (
+                    <p className="text-sm text-slate-600">아직 보낸 제안서가 없어요. '사건 검토'에서 계산을 확인한 뒤 제안서를 써 주세요.</p>
+                  )}
+                  {onOpenProposalDraft && (
+                    <div className="flex justify-end">
+                      <button type="button" onClick={() => onOpenProposalDraft(activeRequest.id)} className="min-h-[44px] px-5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-black text-sm rounded-xl whitespace-nowrap active:scale-[0.98]">
+                        {currentMyProposal ? '제안서 고쳐 보내기' : '제안서 쓰기'}
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSubmitProposal(false)}
-                        disabled={isSubmittingProposal}
-                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{currentMyProposal ? '제안서 수정 재발송' : '의뢰인에게 제안서 발송'}</span>
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

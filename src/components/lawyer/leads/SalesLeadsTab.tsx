@@ -7,12 +7,18 @@ import {
   CalendarClock, X, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SalesLead, LeadStatus } from '../../../types/leadTypes';
-import { LEAD_STATUS_CONFIG } from '../../../types/leadTypes';
+import type { SalesLead } from '../../../types/leadTypes';
+import { LEAD_STATUS_CONFIG, LEAD_CLOSE_REASON_LABEL } from '../../../types/leadTypes';
+import { isTodayQueue, queueBucket, sortQueue } from '../../../services/sales/leadRules';
+import { loadSalesSettings, subscribeSalesSettings } from '../../../services/sales/salesSettingsService';
+import { getCachedVendors, listVendors, subscribeVendors } from '../../../services/sales/salesVendorService';
+import LeadOutcomeModal from './LeadOutcomeModal';
+import SalesVendorsModal from './SalesVendorsModal';
+import SalesStatsModal from './SalesStatsModal';
 import type { User, StaffMember, ConsultRequest, CrmClientExtension } from '../../../types';
 import { 
   loadSalesLeads, saveSalesLeads, saveSalesLead, deleteSalesLead, 
-  bulkInsertLeads, logLeadCall, extractBriefingData, formatPhone,
+  bulkInsertLeads,
   subscribeSalesLeads, syncSalesLeadsFromServer, getSalesLeadSyncState
 } from '../../../services/leadService';
 import { loadInboundPaths } from '../../../services/settingsService';
@@ -22,21 +28,14 @@ import { listOfficeMembers, type OfficeMember } from '../../../services/office/o
 import { supabase, isSupabaseConfigured } from '../../../supabaseClient';
 import { localYmd } from '../../../utils/localDate';
 
-import SalesDashboardWidget from './SalesDashboardWidget';
-import CaseBriefingBanner from './CaseBriefingBanner';
 import SalesLeadDetailView from './SalesLeadDetailView';
 import NewLeadModal from './NewLeadModal';
 import ImportLeadsModal from './ImportLeadsModal';
 import LeadConversionModal from './LeadConversionModal';
-import StatusVisibilityModal from './StatusVisibilityModal';
 import SalesSettingsModal from './SalesSettingsModal';
 import LeadIntakeSourcesModal from './LeadIntakeSourcesModal';
 
-/** 가장 최근 '재통화 예약' 통화 기록의 예약 일시 (SalesLead에 callbackTime 필드가 없어 통화 이력에서 도출) */
-const getCallbackTime = (lead: SalesLead): string | undefined =>
-  (lead.callLogs || [])
-    .filter(l => l.result === 'callback' && l.callbackScheduledAt)
-    .sort((a, b) => (b.calledAt || '').localeCompare(a.calledAt || ''))[0]?.callbackScheduledAt;
+const fmtWhen = (iso?: string) => (iso ? new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 
 interface SalesLeadsTabProps {
   activeLawyer: User;
@@ -53,8 +52,8 @@ interface SalesLeadsTabProps {
   officePermissions?: Record<string, string> | null;
 }
 
-// 기획서 4.7 5대 상태 탭 + 전체
-export type SalesLeadTabStatus = 'all' | 'new' | 'callback' | 'no_answer' | 'in_progress' | 'converted';
+// 오늘 할 일 + 상태 6개 + 전체 (SL-4)
+export type SalesLeadTabStatus = 'today' | 'all' | 'new' | 'no_answer' | 'callback' | 'counseling' | 'converted' | 'closed';
 
 export default function SalesLeadsTab({
   activeLawyer,
@@ -80,7 +79,26 @@ export default function SalesLeadsTab({
     return unsub;
   }, []);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<SalesLeadTabStatus>('all');
+  const [selectedStatus, setSelectedStatus] = useState<SalesLeadTabStatus>('today');
+  const [selectedVendor, setSelectedVendor] = useState<string>('all');
+  const [closeReasonFilter, setCloseReasonFilter] = useState<string>('all');
+  const [isVendorsOpen, setIsVendorsOpen] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  // 영업 설정·거래처는 서버 값 (SL-12·SL-15)
+  const [, setSettingsTick] = useState(0);
+  const [vendors, setVendors] = useState(() => getCachedVendors());
+  useEffect(() => {
+    const u1 = subscribeSalesSettings(() => setSettingsTick(t => t + 1));
+    const u2 = subscribeVendors(() => setVendors(getCachedVendors()));
+    if (officeId) {
+      void loadSalesSettings(officeId).then(r => { if (r.ok === false) toast.error(`영업 설정을 불러오지 못했어요: ${r.message}`); });
+      void listVendors(officeId);
+    }
+    return () => { u1(); u2(); };
+  }, [officeId]);
+  // 1분마다 대기열 시각 다시 판정
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => { const t = window.setInterval(() => setNowTick(Date.now()), 60_000); return () => window.clearInterval(t); }, []);
   const [selectedPath, setSelectedPath] = useState<string>('all');
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   // 담당자 (SL-3): 사무소 구성원 중 배정, '내 담당만' 보기
@@ -111,9 +129,6 @@ export default function SalesLeadsTab({
 
   // 통화 결과 등록 모달 상태 (기획서: 행의 '통화 결과' 버튼 하나로 기록)
   const [callModalTargetLead, setCallModalTargetLead] = useState<SalesLead | null>(null);
-  const [callResultType, setCallResultType] = useState<'connected' | 'no_answer' | 'callback' | 'rejected' | 'wrong_number'>('no_answer');
-  const [callMemo, setCallMemo] = useState('');
-  const [callbackDateTime, setCallbackDateTime] = useState('');
 
   // 행별 더보기 메뉴 열림 상태
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -126,7 +141,8 @@ export default function SalesLeadsTab({
 
   // 필터링된 리드 목록 (기획서 4.7 5대 탭)
   const filteredLeads = useMemo(() => {
-    return leads.filter(l => {
+    const now = new Date(nowTick);
+    const list = leads.filter(l => {
       // 1. 검색어 필터
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
@@ -145,70 +161,36 @@ export default function SalesLeadsTab({
         return false;
       }
 
-      // 3. 상태 탭 5종 필터
-      if (selectedStatus === 'new' && l.status !== 'new') return false;
-      if (selectedStatus === 'callback' && l.status !== 'callback') return false;
-      if (selectedStatus === 'no_answer' && !['no_answer_1', 'no_answer_2', 'no_answer_3', 'no_answer'].includes(l.status)) return false;
-      if (selectedStatus === 'in_progress' && l.status !== 'in_progress') return false;
-      if (selectedStatus === 'converted' && l.status !== 'converted') return false;
+      // 3. 거래처
+      if (selectedVendor !== 'all' && (selectedVendor === 'none' ? !!l.vendorId : l.vendorId !== selectedVendor)) return false;
+
+      // 4. 상태 탭
+      if (selectedStatus === 'today') return isTodayQueue(l, now);
+      if (selectedStatus !== 'all' && l.status !== selectedStatus) return false;
+      if (selectedStatus === 'closed' && closeReasonFilter !== 'all' && l.closeReason !== closeReasonFilter) return false;
 
       return true;
     });
-  }, [leads, searchTerm, selectedStatus, selectedPath, onlyMine, myUserId]);
+    return selectedStatus === 'today' ? sortQueue(list, now) : list;
+  }, [leads, searchTerm, selectedStatus, selectedPath, selectedVendor, closeReasonFilter, onlyMine, myUserId, nowTick]);
 
   // 상태 카운트 집계
   const statusCounts = useMemo(() => {
-    let newCount = 0;
-    let callbackCount = 0;
-    let noAnswerCount = 0;
-    let inProgressCount = 0;
-    let convertedCount = 0;
-
+    const now = new Date(nowTick);
+    const c: Record<SalesLeadTabStatus, number> = { today: 0, all: leads.length, new: 0, no_answer: 0, callback: 0, counseling: 0, converted: 0, closed: 0 };
     leads.forEach(l => {
-      if (l.status === 'new') newCount++;
-      else if (l.status === 'callback') callbackCount++;
-      else if (['no_answer_1', 'no_answer_2', 'no_answer_3', 'no_answer'].includes(l.status)) noAnswerCount++;
-      else if (l.status === 'in_progress') inProgressCount++;
-      else if (l.status === 'converted') convertedCount++;
+      if (isTodayQueue(l, now)) c.today++;
+      if (l.status in c) c[l.status as SalesLeadTabStatus]++;
     });
-
-    return {
-      all: leads.length,
-      new: newCount,
-      callback: callbackCount,
-      no_answer: noAnswerCount,
-      in_progress: inProgressCount,
-      converted: convertedCount,
-    };
-  }, [leads]);
-
-  // 통화 결과 저장 확정
-  const handleSaveCallResult = () => {
-    if (!callModalTargetLead) return;
-
-    const updated = logLeadCall(
-      callModalTargetLead.id,
-      { id: activeLawyer.id, name: activeLawyer.name },
-      callResultType,
-      callMemo.trim() || undefined,
-      callResultType === 'callback' ? callbackDateTime : undefined
-    );
-
-    if (updated) {
-      setLeads(prev => prev.map(l => l.id === callModalTargetLead.id ? { ...updated } : l));
-      toast.success(`통화 결과 기록이 완료되었습니다.`);
-    }
-
-    setCallModalTargetLead(null);
-    setCallMemo('');
-    setCallbackDateTime('');
-  };
+    return c;
+  }, [leads, nowTick]);
+  const vendorName = (id?: string) => (id ? vendors.find(v => v.id === id)?.name || '거래처' : '');
 
   // 리드 삭제
   const handleDelete = async (leadId: string, name: string) => {
     const confirmed = await dialog.confirm({
       title: '영업 리드 삭제',
-      message: `${name} 고객 리드를 삭제하시겠습니까? 삭제된 리드는 복구되지 않습니다.`,
+      message: `${name} 고객 리드를 휴지통으로 옮길까요? 30일 뒤 완전히 지워져요.`,
       confirmText: '삭제',
       cancelText: '취소',
       variant: 'danger',
@@ -288,6 +270,19 @@ export default function SalesLeadsTab({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('today')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
+          >
+            <Clock className="w-3.5 h-3.5" /> 오늘 할 일 {statusCounts.today}건
+          </button>
+          {officeId && (
+            <button type="button" onClick={() => setIsStatsOpen(true)} className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap">통계</button>
+          )}
+          {officeId && (
+            <button type="button" onClick={() => setIsVendorsOpen(true)} className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap">거래처(광고대행사)</button>
+          )}
           {officeId && canAssignLeads && (
             <button
               type="button"
@@ -330,14 +325,16 @@ export default function SalesLeadsTab({
       {/* 상태 탭: 신규 · 재통화 예정 · 부재 · 상담 중 · 이관 완료 (+ 전체) */}
       <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs font-bold scrollbar-none">
-          {[
-            { id: 'all' as const, label: '전체', count: statusCounts.all },
-            { id: 'new' as const, label: '신규 접수', count: statusCounts.new },
-            { id: 'callback' as const, label: '재통화 예정', count: statusCounts.callback },
-            { id: 'no_answer' as const, label: '부재', count: statusCounts.no_answer },
-            { id: 'in_progress' as const, label: '상담 중', count: statusCounts.in_progress },
-            { id: 'converted' as const, label: '이관 완료', count: statusCounts.converted },
-          ].map(tab => {
+          {([
+            { id: 'today', label: '오늘 할 일' },
+            { id: 'all', label: '전체' },
+            { id: 'new', label: '신규' },
+            { id: 'no_answer', label: '부재' },
+            { id: 'callback', label: '재통화 약속' },
+            { id: 'counseling', label: '상담 중' },
+            { id: 'converted', label: '이관 완료' },
+            { id: 'closed', label: '종료' },
+          ] as Array<{ id: SalesLeadTabStatus; label: string }>).map(t => ({ ...t, count: statusCounts[t.id] })).map(tab => {
             const isSelected = selectedStatus === tab.id;
             return (
               <button
@@ -374,6 +371,19 @@ export default function SalesLeadsTab({
             />
           </div>
 
+          {selectedStatus === 'closed' && (
+            <select aria-label="종료 사유" value={closeReasonFilter} onChange={e => setCloseReasonFilter(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
+              <option value="all">종료 사유: 전체</option>
+              {Object.entries(LEAD_CLOSE_REASON_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          )}
+          {vendors.length > 0 && (
+            <select aria-label="거래처" value={selectedVendor} onChange={e => setSelectedVendor(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
+              <option value="all">거래처: 전체</option>
+              <option value="none">자체 광고</option>
+              {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          )}
           {myUserId && members.length > 0 && (
             <button type="button" onClick={() => setOnlyMine(v => !v)} aria-pressed={onlyMine} className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap cursor-pointer active:scale-[0.98] ${onlyMine ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>내 담당만</button>
           )}
@@ -399,8 +409,8 @@ export default function SalesLeadsTab({
                 <th className="py-3.5 px-4 w-[22%]">고객명 (연락처)</th>
                 <th className="py-3.5 px-3 w-[15%]">유입 경로 / 등록일</th>
                 <th className="py-3.5 px-3 w-[18%] text-right">채무 / 월소득</th>
-                <th className="py-3.5 px-3 w-[13%] text-center">진행 상태</th>
-                <th className="py-3.5 px-3 w-[14%] text-center">통화 시도 / 예약</th>
+                <th className="py-3.5 px-3 w-[13%] text-center">상태</th>
+                <th className="py-3.5 px-3 w-[14%] text-center">다음 연락</th>
                 <th className="py-3.5 px-4 w-[18%] text-center">관리 액션</th>
               </tr>
             </thead>
@@ -408,8 +418,8 @@ export default function SalesLeadsTab({
               {filteredLeads.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16 text-center text-slate-400 space-y-2">
-                    <p className="text-sm font-bold text-slate-600">조건에 맞는 영업 DB가 없습니다.</p>
-                    <p className="text-xs text-slate-400">새로운 DB를 등록하거나 검색 필터를 초기화해 보세요.</p>
+                    <p className="text-sm font-bold text-slate-600">{selectedStatus === 'today' ? '오늘 연락할 리드가 없어요.' : '조건에 맞는 리드가 없어요.'}</p>
+                    <p className="text-xs text-slate-500">리드를 등록하거나 '자동 접수 주소'로 광고 리드를 받아 보세요. 검색·필터를 바꿔 볼 수도 있어요.</p>
                   </td>
                 </tr>
               ) : (
@@ -457,8 +467,9 @@ export default function SalesLeadsTab({
                       {/* 2. 유입 경로 / 등록일 */}
                       <td className="py-3.5 px-3">
                         <span className="font-bold text-slate-800 text-xs block">
-                          {lead.inboundPath || '직접 인입'}
+                          {lead.inboundPath || '직접 등록'}
                         </span>
+                        {lead.vendorId && <span className="text-[11px] text-slate-500 block">{vendorName(lead.vendorId)}</span>}
                         <span className="text-xs text-slate-400">
                           {lead.createdAt.slice(0, 10)}
                         </span>
@@ -477,23 +488,28 @@ export default function SalesLeadsTab({
                       {/* 4. 진행 상태 */}
                       <td className="py-3.5 px-3 text-center">
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border inline-flex items-center gap-1 ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor}`}>
-                          <span>{statusConfig.emoji}</span>
-                          <span>{statusConfig.label}</span>
+                          {statusConfig.label}{lead.status === 'no_answer' && lead.noAnswerCount ? ` ${lead.noAnswerCount}차` : ''}
                         </span>
+                        {lead.status === 'closed' && lead.closeReason && (
+                          <span className="block text-[11px] text-slate-500 mt-1">{LEAD_CLOSE_REASON_LABEL[lead.closeReason] || lead.closeReason}{lead.closeDetail ? ` · ${lead.closeDetail}` : ''}</span>
+                        )}
+                        {!!lead.reinquiryCount && <span className="block text-[11px] text-indigo-700 mt-1">재문의 {lead.reinquiryCount}회</span>}
                       </td>
 
-                      {/* 5. 통화 시도 / 예약일자 */}
+                      {/* 5. 다음 연락 */}
                       <td className="py-3.5 px-3 text-center">
-                        <span className="text-xs font-bold text-slate-700 block">
-                          {lead.callCount}회 시도
-                        </span>
-                        {getCallbackTime(lead) ? (
-                          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded inline-block mt-0.5">
-                            예약: {getCallbackTime(lead)?.slice(5, 16)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
+                        {(() => {
+                          const b = queueBucket(lead, new Date(nowTick));
+                          if (lead.status === 'closed' && lead.closeReason === 'later' && lead.recontactOn) return <span className="text-xs font-bold text-slate-700">{lead.recontactOn} 다시 연락</span>;
+                          if (lead.status === 'new') return <span className="text-xs font-bold text-blue-700">첫 연락 전</span>;
+                          if (!lead.nextAttemptAt) return <span className="text-xs text-slate-400">-</span>;
+                          return (
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded inline-block ${b === 'overdue' ? 'bg-rose-50 text-rose-700' : b === 'due' ? 'bg-amber-50 text-amber-800' : 'text-slate-700'}`}>
+                              {b === 'overdue' ? '지남 · ' : b === 'due' ? '지금 · ' : ''}{fmtWhen(lead.nextAttemptAt)}
+                            </span>
+                          );
+                        })()}
+                        <span className="block text-[11px] text-slate-500 mt-0.5">통화 {lead.callCount || 0}회</span>
                       </td>
 
                       {/* 6. 관리 액션 (주 버튼: 통화 결과 기록 + ⋯) */}
@@ -502,16 +518,13 @@ export default function SalesLeadsTab({
                           {/* 기획서 4.7 핵심: 행의 '통화 결과' 버튼 하나로 부재/재통화/성공 등 기록 */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setCallModalTargetLead(lead);
-                              setCallResultType(lead.status === 'callback' ? 'callback' : 'no_answer');
-                              setCallbackDateTime(getCallbackTime(lead) || `${localYmd()}T14:00`);
-                            }}
+                            onClick={() => setCallModalTargetLead(lead)}
+                            disabled={lead.status === 'converted'}
                             className="px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#152a45] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-[0.98]"
-                            title="통화 결과 기록"
+                            title="통화 결과 적기"
                           >
                             <Phone className="w-3.5 h-3.5" />
-                            <span>통화 결과</span>
+                            <span>결과 적기</span>
                           </button>
 
                           {/* ⋯ 더보기 메뉴 */}
@@ -549,7 +562,7 @@ export default function SalesLeadsTab({
                                     className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
                                   >
                                     <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>정식 고객으로 이전</span>
+                                    <span>사건 관리로 이관</span>
                                   </button>
                                 )}
 
@@ -578,7 +591,7 @@ export default function SalesLeadsTab({
                                   className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                  <span>DB 삭제</span>
+                                  <span>휴지통으로</span>
                                 </button>
                               </div>
                             )}
@@ -594,111 +607,22 @@ export default function SalesLeadsTab({
         </div>
       </div>
 
-      {/* ── 4. 통화 결과 등록 모달 (기획서 4.7: 부재, 재통화 예약, 상담 성공, 거절, 결번) ── */}
+      {/* ── 4. 결과 적기 (SL-3) ── */}
       {callModalTargetLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PhoneCall className="w-5 h-5 text-blue-400" />
-                <h3 className="text-sm font-bold">
-                  [{callModalTargetLead.customerName}] 통화 결과 기록
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCallModalTargetLead(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+        <LeadOutcomeModal
+          lead={callModalTargetLead}
+          caller={{ id: activeLawyer.id, name: activeLawyer.name }}
+          officeName={activeLawyer.firmName || activeLawyer.name}
+          onClose={() => setCallModalTargetLead(null)}
+          onSaved={(updated) => setLeads(prev => prev.map(l => (l.id === updated.id ? { ...updated } : l)))}
+        />
+      )}
 
-            <div className="p-6 space-y-4 text-xs text-slate-700">
-              <div className="bg-slate-50 p-3.5 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900 text-sm">{callModalTargetLead.customerName}</div>
-                  <div className="text-slate-500 font-mono mt-0.5">{callModalTargetLead.phone}</div>
-                </div>
-                <div className="text-right text-slate-400">
-                  <span>누적 통화 {callModalTargetLead.callCount}회</span>
-                </div>
-              </div>
-
-              {/* 결과 선택 5종 버튼 */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-800">통화 결과 선택</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'no_answer' as const, label: '부재중 (부재 카운트+1)', color: 'text-amber-800 bg-amber-50 border-amber-300' },
-                    { id: 'callback' as const, label: '재통화 예약 (시간지정)', color: 'text-blue-800 bg-blue-50 border-blue-300' },
-                    { id: 'connected' as const, label: '상담 성공 (1차 상담중)', color: 'text-emerald-800 bg-emerald-50 border-emerald-300' },
-                    { id: 'rejected' as const, label: '상담 거절 / 취소', color: 'text-slate-700 bg-slate-100 border-slate-300' },
-                    { id: 'wrong_number' as const, label: '결번 / 번호 오류', color: 'text-rose-800 bg-rose-50 border-rose-300' },
-                  ].map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setCallResultType(opt.id)}
-                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
-                        callResultType === opt.id
-                          ? `${opt.color} ring-2 ring-blue-500 shadow-2xs`
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 재통화 예약 선택 시 날짜/시간 인풋 표시 */}
-              {callResultType === 'callback' && (
-                <div className="space-y-1.5 bg-blue-50/50 p-3.5 rounded-xl border border-blue-200 animate-fadeIn">
-                  <label className="font-bold text-blue-900 flex items-center gap-1">
-                    <CalendarClock className="w-3.5 h-3.5 text-blue-600" />
-                    <span>재통화 예약 일시</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={callbackDateTime}
-                    onChange={e => setCallbackDateTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-
-              {/* 메모 입력 */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-800">통화 메모</label>
-                <input
-                  type="text"
-                  value={callMemo}
-                  onChange={e => setCallMemo(e.target.value)}
-                  placeholder="예: 18시 퇴근 후 통화 희망, 최근 채무 비중 큼"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCallModalTargetLead(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCallResult}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#1E3A5F] hover:bg-[#152a45] rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98]"
-              >
-                통화 결과 저장
-              </button>
-            </div>
-          </div>
-        </div>
+      {isVendorsOpen && officeId && (
+        <SalesVendorsModal officeId={officeId} canManage={canAssignLeads} leads={leads} onClose={() => setIsVendorsOpen(false)} />
+      )}
+      {isStatsOpen && officeId && (
+        <SalesStatsModal officeId={officeId} onClose={() => setIsStatsOpen(false)} />
       )}
 
       {/* ── 5. 단건 등록 모달 ── */}
@@ -740,6 +664,7 @@ export default function SalesLeadsTab({
       <SalesSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        canManage={canAssignLeads || !officeId}
       />
 
       {/* ── 8. 고객 승격 모달 ── */}

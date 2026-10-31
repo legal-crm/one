@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, FinancialProfile, User } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
+import CaseReviewPanel from '../case/CaseReviewPanel';
 
 /** 수임 계약 이후 상담 요청 상태 */
 const RETAINED_REQUEST_STATUSES: ReadonlyArray<ConsultRequest['status']> = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
@@ -27,6 +28,9 @@ interface Stage1ConsultationViewProps {
   onSimulateContactShare?: () => void;
   activeSection?: string;
   onSelectSection?: (section: string) => void;
+  /** 사건 검토 기록 (CV-1) */
+  officeId?: string;
+  canWriteReview?: boolean;
 }
 
 export default function Stage1ConsultationView({
@@ -41,6 +45,8 @@ export default function Stage1ConsultationView({
   onSimulateContactShare,
   activeSection,
   onSelectSection,
+  officeId,
+  canWriteReview = true,
 }: Stage1ConsultationViewProps) {
   const fp: Partial<FinancialProfile> = clientRequest.financialProfile || {};
   const debtTotal = fp.debtTotal || (clientRequest as any)?.totalDebt || 0; // 만원
@@ -245,79 +251,18 @@ export default function Stage1ConsultationView({
         </div>
       )}
 
-      {/* ── [Section: ai-review] AI 사건 분석 및 검토 ── */}
+      {/* ── [Section: ai-review] 사건 검토 (CV-2: 별도 메뉴 대신 1단계 안, 고정 문장 총평 삭제) ── */}
       {currentSection === 'ai-review' && (
         <div className="space-y-5 animate-fadeIn">
+          <CaseReviewPanel
+            officeId={officeId}
+            caseKey={clientRequest.id}
+            financialProfile={clientRequest.financialProfile}
+            crmExt={crmExt}
+            isBankruptcy={String((crmExt as any)?.caseType || (clientRequest as any)?.caseType || '').toLowerCase().includes('bankrupt')}
+            canWrite={canWriteReview}
+          />
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
-                  <Sparkles className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900">
-                    AI 사건 심층 분석 및 쟁점 검토 리포트
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    채무 발생 경위와 재무 상태를 기반으로 도출한 인공지능 사건 종합 진단입니다.
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
-                AI 진단 완료
-              </span>
-            </div>
-
-            {/* AI 종합 평가 카드 */}
-            <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
-              <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                AI 분석 총평
-              </span>
-              <p className="text-xs text-slate-700 leading-relaxed">
-                {(clientRequest as any)?.aiAnalysis?.summary || (
-                  `신청인은 총 채무 ${debtTotal.toLocaleString()}만원 중 무담보 채무가 대부분을 차지하고 있으며, 월 가용소득은 약 ${availableIncome.toLocaleString()}만원으로 산출됩니다. 36개월 기준 예상 변제율은 약 ${myProposal?.reductionRate || Math.max(20, Math.round((1 - (availableIncome * 36) / Math.max(1, debtTotal)) * 100))}%로 회생 신청에 적합한 조건을 갖추고 있습니다.`
-                )}
-              </p>
-            </div>
-
-            {/* 3대 핵심 리스크 스크리닝 */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-800">사건 핵심 쟁점 및 리스크 검토</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-500 block">1. 청산가치 보장</span>
-                  <span className={`text-xs font-bold ${isDebtExceedingAssets ? 'text-emerald-700' : 'text-rose-700'} flex items-center gap-1`}>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {isDebtExceedingAssets ? '자산 초과 채무 충족' : '청산가치 반영 필요'}
-                  </span>
-                  <p className="text-xs text-slate-500">
-                    총 자산 {assetsTotal.toLocaleString()}만 대비 총 채무 {debtTotal.toLocaleString()}만으로 신청 자격 충족.
-                  </p>
-                </div>
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-500 block">2. 최근 채무 비중</span>
-                  <span className={`text-xs font-bold ${speculativeDebtRatio <= 20 ? 'text-emerald-700' : 'text-amber-700'} flex items-center gap-1`}>
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    사행성/최근 채무 {speculativeDebtRatio}%
-                  </span>
-                  <p className="text-xs text-slate-500">
-                    {speculativeDebtRatio <= 20 ? '사행성 비중 양호 수준' : '보정권고 시 자금사용처 소명 대비 필요'}
-                  </p>
-                </div>
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-500 block">3. 압류 및 독촉 대응</span>
-                  <span className={`text-xs font-bold ${hasUrgentSeizure ? 'text-amber-700' : 'text-blue-700'} flex items-center gap-1`}>
-                    <Zap className="w-3.5 h-3.5" />
-                    {hasUrgentSeizure ? '금지명령 신청 시급' : '통상 일정 진행 가능'}
-                  </span>
-                  <p className="text-xs text-slate-500">
-                    {hasUrgentSeizure ? '접수 즉시 금지명령 동시 접수 권장' : '접수 후 개시결정까지 순차 대응'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* 하단 액션 */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               {onOpenProposalDraft && (

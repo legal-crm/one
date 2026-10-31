@@ -6,8 +6,6 @@ import {
   Shield, Check, Phone, Building2, HelpCircle, Layers, Eye,
   BarChart3, Users, Home, CreditCard, Calculator, Percent, Zap
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 
 import { 
@@ -24,8 +22,7 @@ import {
   calculateReductionRatePercentile 
 } from '../../rehab-chatbot-package/utils/statisticsUtils';
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../rehab-chatbot-package/config/rehabStatistics2025';
-import PrintableReportTemplate from '../client/PrintableReportTemplate';
-import PrintableLawyerOpinionTemplate from '../client/PrintableLawyerOpinionTemplate';
+import { downloadProposalPdf } from '../../services/proposal/proposalPdf';
 import ModalPortal from './ModalPortal';
 import { getRecognizedLivingCost2026 } from '../../services/repayment/rehabLegalCore';
 
@@ -689,187 +686,44 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     };
   }, [clientInput, clientName, activeCalcResult, totalDebt]);
 
-  // PDF Export - 격리된 Sandbox Iframe / Clean Body-Mount 하이브리드 엔진
-  // "Unable to find element in cloned iframe" 및 React 전역 트리 간섭 원천 방지
+  // PDF: '변호사 검토 제안서' 1종, 서버 글자 PDF (B-5e). 이전: 7쪽/2쪽 두 양식을 html2canvas 그림으로 저장
   const handleExportPDF = async () => {
-    if (!printRef.current) return;
     setIsGeneratingPdf(true);
-    const toastId = toast.loading('고해상도 진단서를 PDF로 변환하고 있습니다...');
-
+    const toastId = toast.loading('변호사 검토 제안서 PDF를 만들고 있어요...');
     try {
-      // 1. 폰트 및 DOM 렌더링 완료 대기
-      if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-      }
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // 2. 페이지 요소 수집 (.pdf-page-item 우선, fallback id 기반)
-      const container = printRef.current;
-      let pageElements = Array.from(container.querySelectorAll<HTMLElement>('.pdf-page-item'));
-
-      if (pageElements.length === 0) {
-        if (isAIPremium) {
-          for (let p = 1; p <= 7; p++) {
-            const el = document.getElementById(`pdf-page-${p}`);
-            if (el) pageElements.push(el);
-          }
-        } else {
-          for (let p = 1; p <= 2; p++) {
-            const el = document.getElementById(`pdf-lawyer-page-${p}`);
-            if (el) pageElements.push(el);
-          }
-        }
-      }
-
-      if (pageElements.length === 0) {
-        const directChildren = Array.from(container.firstElementChild?.children || []);
-        if (directChildren.length > 0) {
-          pageElements = directChildren as HTMLElement[];
-        }
-      }
-
-      if (pageElements.length === 0) {
-        throw new Error('진단서 페이지 요소를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-      }
-
-      // 3. jsPDF 인스턴스 초기화 (A4: 210mm x 297mm)
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      const r: any = activeCalcResult || {};
+      const analysisRows = isAIPremium ? [
+        r.recognizedLivingCost ? { label: '인정 생계비(월)', value: `${Math.round(r.recognizedLivingCost).toLocaleString('ko-KR')}원` } : null,
+        r.availableIncome ? { label: '가용 소득(월)', value: `${Math.round(r.availableIncome).toLocaleString('ko-KR')}원` } : null,
+        r.liquidationValue ? { label: '청산가치', value: `${Math.round(r.liquidationValue).toLocaleString('ko-KR')}원` } : null,
+        r.priorityRepayment ? { label: '조세 등 우선채권', value: `${Math.round(r.priorityRepayment).toLocaleString('ko-KR')}원` } : null,
+        r.planReason ? { label: '기간 판단 근거', value: String(r.planReason) } : null,
+      ].filter(Boolean) as Array<{ label: string; value: string }> : undefined;
+      const res = await downloadProposalPdf({
+        documentId: proposalId,
+        issuedAt: proposalProp?.createdAt || reportData?.createdAt,
+        validDays: Number(proposalProp?.validDays) || 30,
+        lawyerName: lawyerName || '담당 변호사',
+        lawyerFirmName,
+        clientLabel: isClientView ? '본인' : (clientName || '의뢰인'),
+        procedure: proposalProp?.procedureType || proposalProp?.caseType || '개인회생',
+        courtName,
+        totalDebt,
+        monthlyPayment,
+        repaymentMonths,
+        totalRepayment: totalRepaymentCalculated,
+        lawyerOpinion: lawyerComment || NOT_WRITTEN_TEXT,
+        specialNotes,
+        totalFeeWon,
+        downPaymentWon,
+        monthlyInstallmentWon,
+        installments,
+        additionalCostsNotice,
+        includeAnalysis: !!isAIPremium,
+        analysisRows,
       });
-      const imgWidth = 210;
-      const imgHeight = 297;
-
-      // 4. 격리 Sandbox 렌더러 함수
-      const capturePage = async (pageEl: HTMLElement): Promise<HTMLCanvasElement> => {
-        // Strategy 1: Isolated sandbox iframe (100% immune to React DOM & extensions interference)
-        try {
-          const iframe = document.createElement('iframe');
-          iframe.style.position = 'fixed';
-          iframe.style.top = '-99999px';
-          iframe.style.left = '-99999px';
-          iframe.style.width = '850px';
-          iframe.style.height = '1250px';
-          iframe.style.border = '0';
-          iframe.style.opacity = '0';
-          iframe.style.pointerEvents = 'none';
-          iframe.setAttribute('aria-hidden', 'true');
-          document.body.appendChild(iframe);
-
-          try {
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (iframeDoc) {
-              iframeDoc.open();
-              iframeDoc.write('<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#ffffff;"></body></html>');
-              iframeDoc.close();
-
-              // Copy styles from main document
-              Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(styleEl => {
-                try {
-                  iframeDoc.head.appendChild(styleEl.cloneNode(true));
-                } catch {}
-              });
-
-              // Clone page into iframe body
-              const clonedPage = pageEl.cloneNode(true) as HTMLElement;
-              clonedPage.style.position = 'static';
-              clonedPage.style.margin = '0';
-              clonedPage.style.boxSizing = 'border-box';
-              iframeDoc.body.appendChild(clonedPage);
-
-              if (iframeDoc.fonts && iframeDoc.fonts.ready) {
-                await iframeDoc.fonts.ready;
-              }
-              await new Promise(r => setTimeout(r, 60));
-
-              const canvas = await html2canvas(clonedPage, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: 850,
-                ignoreElements: (el) => el.tagName === 'IFRAME'
-              });
-
-              return canvas;
-            }
-          } finally {
-            if (iframe.parentNode) {
-              iframe.parentNode.removeChild(iframe);
-            }
-          }
-        } catch (iframeErr) {
-          console.warn('[PDF Export] Sandbox iframe capture failed, trying direct body mount:', iframeErr);
-        }
-
-        // Strategy 2: Direct Body Mount Fallback
-        const tempHost = document.createElement('div');
-        tempHost.style.position = 'fixed';
-        tempHost.style.top = '-99999px';
-        tempHost.style.left = '-99999px';
-        tempHost.style.width = '850px';
-        tempHost.style.zIndex = '-9999';
-        tempHost.style.backgroundColor = '#ffffff';
-        document.body.appendChild(tempHost);
-
-        try {
-          const clonedPage = pageEl.cloneNode(true) as HTMLElement;
-          clonedPage.style.position = 'static';
-          clonedPage.style.margin = '0';
-          tempHost.appendChild(clonedPage);
-
-          if (document.fonts && document.fonts.ready) {
-            await document.fonts.ready;
-          }
-          await new Promise(r => setTimeout(r, 60));
-
-          const canvas = await html2canvas(clonedPage, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            windowWidth: 850,
-            ignoreElements: (el) => el.tagName === 'IFRAME'
-          });
-
-          return canvas;
-        } finally {
-          if (tempHost.parentNode) {
-            tempHost.parentNode.removeChild(tempHost);
-          }
-        }
-      };
-
-      // 5. 각 페이지별 격리 캡처 및 PDF 삽입
-      for (let i = 0; i < pageElements.length; i++) {
-        const pageEl = pageElements[i] as HTMLElement;
-        const canvas = await capturePage(pageEl);
-
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-      }
-
-      const filePrefix = isAIPremium ? 'AI_분석리포트' : '변호사_직접검토의견서';
-      const sanitizedName = (clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣_]/g, '');
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const fileName = `${filePrefix}_${sanitizedName}_${dateStr}.pdf`;
-
-      pdf.save(fileName);
-
-      toast.success(
-        isAIPremium 
-          ? `AI 분석 리포트 PDF를 저장했습니다. (${pageElements.length}쪽)` 
-          : `변호사 직접 검토 의견서 PDF가 저장되었습니다. (${pageElements.length}p)`, 
-        { id: toastId }
-      );
-    } catch (error: any) {
-      console.error('PDF Generation Error:', error);
-      toast.error(`PDF 생성 중 오류가 발생했습니다: ${error?.message || error || '다시 시도해주세요.'}`, { id: toastId });
+      if (res.ok === false) { toast.error(res.message, { id: toastId }); return; }
+      toast.success('변호사 검토 제안서 PDF를 저장했어요.', { id: toastId });
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -894,57 +748,6 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   const modalContent = (
     <div className={embedded ? "w-full" : "fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"}>
-      {/* 
-        OFF-SCREEN PRINTABLE CONTAINER FOR PDF GENERATION
-        Rendered at left: -9999px to ensure clean html2canvas capture without visible backdrop bleed.
-      */}
-      <div 
-        id="pdf-render-container" 
-        ref={printRef}
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: '-9999px',
-          width: '794px',
-          zIndex: -9999,
-          pointerEvents: 'none',
-        }}
-      >
-        {isAIPremium ? (
-          <PrintableReportTemplate
-            result={activeCalcResult}
-            userInput={activeUserInput}
-          />
-        ) : (
-          <PrintableLawyerOpinionTemplate
-            result={activeCalcResult}
-            userInput={activeUserInput}
-            proposal={proposalProp}
-            lawyerName={lawyerName}
-            lawyerFirmName={lawyerFirmName}
-            clientName={clientName}
-            courtName={courtName}
-            totalDebt={totalDebt}
-            monthlyPayment={monthlyPayment}
-            debtReductionRate={debtReductionRate}
-            estimatedReduction={estimatedReduction}
-            repaymentMonths={repaymentMonths}
-            totalRepayment={totalRepaymentCalculated}
-            /* 의뢰인 PDF: 템플릿 자체 기본 소견·계획으로 채워지지 않도록, 미작성이면 미작성 문구를 넘긴다 */
-            lawyerOpinion={lawyerComment || NOT_WRITTEN_TEXT}
-            specialNotes={isClientView && specialNotes.length === 0 ? [NOT_WRITTEN_TEXT] : specialNotes}
-            totalFeeWon={totalFeeWon}
-            downPaymentWon={downPaymentWon}
-            monthlyInstallmentWon={monthlyInstallmentWon}
-            installments={installments}
-            additionalCostsNotice={additionalCostsNotice}
-            documentId={proposalId}
-            issuedAt={proposalProp?.createdAt || reportData?.createdAt}
-          />
-        )}
-      </div>
-
       {/* Main Modal Container */}
       <div 
         className={`relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col ${embedded ? '' : 'max-h-[calc(100vh-2.5rem)]'} animate-in fade-in zoom-in-95 duration-200`}

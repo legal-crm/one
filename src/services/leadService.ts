@@ -1,4 +1,4 @@
-import type { SalesLead, LeadStatus, CallLog, ReminderItem, CustomerBriefingData, CommissionRule, Partner } from '../types/leadTypes';
+import type { SalesLead, LeadStatus, CallLog, ReminderItem, CustomerBriefingData } from '../types/leadTypes';
 import type { ConsultRequest, CrmClientExtension, CaseType } from '../types';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
@@ -8,6 +8,9 @@ import { convertSalesLeadToCase, notifyOfficeCasesChanged } from './cases/caseCo
 import { createTask } from './taskTicketService';
 import { localYmd } from '../utils/localDate';
 import { getDisplayClientName, getDisplayPhoneNumber } from '../utils/clientDisplay';
+import { LEAD_CLOSE_REASON_LABEL, LEAD_STATUS_CONFIG } from '../types/leadTypes';
+import { applyCallOutcome, normalizeLead, type CallOutcome, type OutcomeResult } from './sales/leadRules';
+import { getSalesSettings } from './sales/salesSettingsService';
 
 const LEGACY_SALES_LEADS_KEY = 'legal_sales_leads';
 
@@ -70,7 +73,7 @@ export function syncSalesLeadsFromServer(): Promise<void> {
       return;
     }
     lastSyncError = null;
-    leadCache = (data || []).map((r: any) => ({ ...(r.data || {}), id: r.id, assigneeUserId: r.assignee_user_id || undefined }) as SalesLead);
+    leadCache = (data || []).map((r: any) => normalizeLead({ ...(r.data || {}), id: r.id, assigneeUserId: r.assignee_user_id || undefined } as SalesLead));
     leadSnapshot = snapshotOf(leadCache);
     loadedScope = scope;
     clearLegacyLeadCopies();
@@ -93,8 +96,8 @@ const INITIAL_MOCK_LEADS: SalesLead[] = [
     birth: '1984',
     gender: '남',
     region: '서울 관악구',
-    inboundPath: '타사DB구매',
-    batchName: '2026-09 금융사동의DB 500건',
+    inboundPath: '랜딩 페이지',
+    batchName: '2026-09 랜딩 문의',
     caseType: '개인회생',
     jobTypes: ['급여소득'],
     insurance4: '가입',
@@ -183,8 +186,8 @@ const INITIAL_MOCK_LEADS: SalesLead[] = [
     id: 'lead-1003',
     customerName: '박준형',
     phone: '010-9182-3741',
-    status: 'no_answer_1',
-    secondaryStatus: '부재1차',
+    status: 'no_answer',
+    noAnswerCount: 1,
     birth: '1979',
     gender: '남',
     region: '인천 부평구',
@@ -297,6 +300,71 @@ export function bulkInsertLeads(newLeads: SalesLead[]): number {
 
 // ── 통화 디스포지션 기록 ──
 
+/** 결과 적기 (SL-3): 상태·부재 횟수·다음 시도 시각을 규칙대로 바꾸고 통화 기록을 남긴다 */
+export function recordLeadOutcome(
+  leadId: string,
+  caller: { id: string; name: string },
+  outcome: CallOutcome,
+  memo?: string
+): OutcomeResult | null {
+  const list = loadSalesLeads();
+  const lead = list.find(l => l.id === leadId);
+  if (!lead) return null;
+  const res = applyCallOutcome(normalizeLead(lead), outcome, new Date(), getSalesSettings().rules);
+  const nowIso = res.lead.updatedAt;
+  const logResult: CallLog['result'] = outcome.kind === 'no_answer' ? 'no_answer'
+    : outcome.kind === 'callback' ? 'callback'
+    : outcome.kind === 'counseling' ? 'connected'
+    : outcome.reason === 'wrong_number' ? 'wrong_number' : 'closed';
+  const logItem: CallLog = {
+    id: `clog-${Date.now()}`,
+    leadId: lead.id,
+    calledAt: nowIso,
+    callerId: caller.id,
+    callerName: caller.name,
+    result: logResult,
+    memo: [outcome.kind === 'closed' ? `종료: ${LEAD_CLOSE_REASON_LABEL[outcome.reason] || outcome.reason}` : '', res.autoClosed ? `부재 ${res.lead.noAnswerCount}회로 자동 종료` : '', memo || ''].filter(Boolean).join(' · ') || undefined,
+    callbackScheduledAt: outcome.kind === 'callback' ? outcome.at : undefined,
+  };
+  res.lead.callLogs = [logItem, ...(lead.callLogs || [])];
+  if (lead.status !== res.lead.status) {
+    res.lead.statusLogs = [{
+      logId: `log-${Date.now()}`,
+      fromStatus: LEAD_STATUS_CONFIG[normalizeLead(lead).status]?.label || lead.status,
+      toStatus: LEAD_STATUS_CONFIG[res.lead.status]?.label || res.lead.status,
+      changedAt: nowIso,
+      memo: `${caller.name}: ${logItem.memo || '결과 기록'}`,
+    }, ...(lead.statusLogs || [])];
+  }
+
+  // 재통화 약속 → 담당자 할 일
+  if (outcome.kind === 'callback') {
+    try {
+      void createTask(salesLeadScope || 'default', {
+        targetType: 'sales_lead' as any,
+        targetId: lead.id,
+        assignerId: caller.id,
+        assignerName: caller.name,
+        assigneeId: lead.assigneeId || caller.id,
+        assigneeName: lead.assigneeName || caller.name,
+        title: `[재통화 약속] ${lead.customerName}`,
+        description: memo || '고객이 정한 시각에 다시 연락',
+        priority: 'HIGH',
+        dueDate: outcome.at,
+        taskDomain: 'sales',
+        leadId: lead.id,
+        leadPhone: lead.phone,
+        leadDebt: lead.debtTotal,
+      }).catch(err => console.warn('Auto task creation for lead failed', err));
+    } catch (err) {
+      console.warn('Auto task creation for lead failed', err);
+    }
+  }
+  saveSalesLead(res.lead);
+  return res;
+}
+
+/** (호환) 예전 결과 이름으로 기록 */
 export function logLeadCall(
   leadId: string,
   caller: { id: string; name: string },
@@ -304,80 +372,12 @@ export function logLeadCall(
   memo?: string,
   callbackScheduledAt?: string
 ): SalesLead | null {
-  const list = loadSalesLeads();
-  const lead = list.find(l => l.id === leadId);
-  if (!lead) return null;
-
-  const nowIso = new Date().toISOString();
-  lead.callCount = (lead.callCount || 0) + 1;
-  lead.lastCallAt = nowIso;
-  lead.updatedAt = nowIso;
-
-  // 상태 자동 전이
-  if (result === 'no_answer') {
-    if (lead.status === 'new') lead.status = 'no_answer_1';
-    else if (lead.status === 'no_answer_1') lead.status = 'no_answer_2';
-    else lead.status = 'no_answer_3';
-  } else if (result === 'callback') {
-    lead.status = 'callback';
-    if (callbackScheduledAt) {
-      lead.reminders = lead.reminders || [];
-      const newRem: ReminderItem = {
-        id: `rem-${Date.now()}`,
-        datetime: callbackScheduledAt,
-        type: '통화',
-        content: memo || '재통화 약속',
-        isCompleted: false,
-        createdAt: nowIso,
-      };
-      lead.reminders.push(newRem);
-
-      // '내 할일'에 영업 티켓 자동 생성
-      // 이전: createTask(객체 1개)로 잘못 호출 → tenantId 자리에 객체가 들어가 티켓이 생성되지 않음(비동기 오류도 무시)
-      try {
-        void createTask(salesLeadScope || 'default', {
-          targetType: 'sales_lead' as any,
-          targetId: lead.id,
-          assignerId: caller.id,
-          assignerName: caller.name,
-          assigneeId: lead.assigneeId || caller.id,
-          assigneeName: lead.assigneeName || caller.name,
-          title: `[콜백] ${lead.customerName} 재통화 예약`,
-          description: memo || '고객 요청 재통화 일정',
-          priority: 'HIGH',
-          dueDate: callbackScheduledAt,
-          taskDomain: 'sales',
-          leadId: lead.id,
-          leadPhone: lead.phone,
-          leadDebt: lead.debtTotal,
-        }).catch(err => console.warn('Auto task creation for lead failed', err));
-      } catch (err) {
-        console.warn('Auto task creation for lead failed', err);
-      }
-    }
-  } else if (result === 'connected') {
-    lead.status = 'in_progress';
-  } else if (result === 'rejected') {
-    lead.status = 'rejected';
-  } else if (result === 'wrong_number') {
-    lead.status = 'wrong_number';
-  }
-
-  const logItem: CallLog = {
-    id: `clog-${Date.now()}`,
-    leadId: lead.id,
-    calledAt: nowIso,
-    callerId: caller.id,
-    callerName: caller.name,
-    result,
-    memo,
-    callbackScheduledAt,
-  };
-  lead.callLogs = lead.callLogs || [];
-  lead.callLogs.unshift(logItem);
-
-  saveSalesLead(lead);
-  return lead;
+  const outcome: CallOutcome = result === 'no_answer' || result === 'busy' ? { kind: 'no_answer' }
+    : result === 'callback' ? { kind: 'callback', at: callbackScheduledAt || new Date(Date.now() + 3600e3).toISOString() }
+    : result === 'connected' ? { kind: 'counseling' }
+    : result === 'wrong_number' ? { kind: 'closed', reason: 'wrong_number' }
+    : { kind: 'closed', reason: 'declined' };
+  return recordLeadOutcome(leadId, caller, outcome, memo)?.lead || null;
 }
 
 // ── 리마인더 관리 ──
@@ -613,90 +613,6 @@ export async function convertLeadToClient(
   }
 
   return { newRequest, newExt, updatedLead: lead, serverSaved };
-}
-
-// ── 독립 영업 대시보드 통계 산출 ──
-
-export interface SalesDashboardMetrics {
-  totalLeads: number;
-  newLeads: number;
-  noAnswerLeads: number;
-  todayReminders: number;
-  overdueReminders: number;
-  inProgressLeads: number;
-  convertedCount: number;
-  conversionRate: number;
-  totalCalls: number;
-  connectedRate: number;
-}
-
-export function getSalesDashboardMetrics(leads: SalesLead[]): SalesDashboardMetrics {
-  const total = leads.length;
-  if (total === 0) {
-    return {
-      totalLeads: 0,
-      newLeads: 0,
-      noAnswerLeads: 0,
-      todayReminders: 0,
-      overdueReminders: 0,
-      inProgressLeads: 0,
-      convertedCount: 0,
-      conversionRate: 0,
-      totalCalls: 0,
-      connectedRate: 0,
-    };
-  }
-
-  const todayStr = localYmd(); // 이전: UTC 날짜 → 한국 00~09시에 '오늘 리마인더'가 전날 기준으로 집계됨
-  const nowMs = Date.now();
-
-  let newCount = 0;
-  let noAnswerCount = 0;
-  let inProgressCount = 0;
-  let convertedCount = 0;
-  let totalCalls = 0;
-  let connectedCalls = 0;
-  let todayReminders = 0;
-  let overdueReminders = 0;
-
-  leads.forEach(l => {
-    if (l.status === 'new') newCount++;
-    if (l.status === 'no_answer_1' || l.status === 'no_answer_2' || l.status === 'no_answer_3') noAnswerCount++;
-    if (l.status === 'in_progress' || l.status === 'callback') inProgressCount++;
-    if (l.status === 'converted') convertedCount++;
-
-    totalCalls += (l.callCount || 0);
-
-    // 통화 연결율
-    (l.callLogs || []).forEach(c => {
-      if (c.result === 'connected' || c.result === 'callback') connectedCalls++;
-    });
-
-    // 리마인더
-    (l.reminders || []).forEach(r => {
-      if (!r.isCompleted) {
-        if (r.datetime.startsWith(todayStr)) todayReminders++;
-        const rMs = new Date(r.datetime.replace(' ', 'T')).getTime();
-        if (!isNaN(rMs) && rMs < nowMs) overdueReminders++;
-      }
-    });
-  });
-
-  const conversionRate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
-  const connectedRate = totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0;
-
-  return {
-    totalLeads: total,
-    newLeads: newCount,
-    noAnswerLeads: noAnswerCount,
-    todayReminders,
-    overdueReminders,
-    inProgressLeads: inProgressCount,
-    convertedCount,
-    conversionRate,
-    totalCalls,
-    connectedRate,
-  };
 }
 
 // ── 유틸리티: 전화번호 중복 검사 및 정규화 ──
@@ -1048,35 +964,6 @@ export const injectSummaryMetadata = (text: string, managerName: string): string
     newText = `* 담당자 : ${manager}\n` + newText;
   }
   return newText;
-};
-
-export const getMatchingRule = (fee: number, rules: CommissionRule[]): CommissionRule | undefined => {
-  const safeRules = Array.isArray(rules) ? rules : [];
-  const activeRules = safeRules.filter(r => r.active);
-  const matchedRules = activeRules.filter(r => {
-    const minOk = fee >= r.minFee;
-    const maxOk = !r.maxFee || fee <= r.maxFee;
-    return minOk && maxOk;
-  });
-
-  if (matchedRules.length === 0) return undefined;
-
-  matchedRules.sort((a, b) => {
-    if (b.minFee !== a.minFee) return b.minFee - a.minFee;
-    if (b.priority !== a.priority) return b.priority - a.priority;
-    return 0;
-  });
-
-  return matchedRules[0];
-};
-
-export const calculateCommission = (fee: number, rules?: CommissionRule[]): number => {
-  if (!fee || fee <= 0) return 0;
-  const safeRules = Array.isArray(rules) ? rules : [];
-  const rule = getMatchingRule(fee, safeRules);
-  if (rule) return rule.commission;
-  // 매칭되는 정산 룰이 없으면 0 (이전: 임의로 수임료의 10%를 수수료로 표시)
-  return 0;
 };
 
 // ── 본안 수임 고객(ConsultRequest & CrmClientExtension) 표준 요약문 생성 함수 ──

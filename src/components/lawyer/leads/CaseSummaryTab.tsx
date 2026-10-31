@@ -1,27 +1,25 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Copy, Edit2, FileText, Send, Sparkles, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SalesLead, Partner, LeadMemoItem } from '../../../types/leadTypes';
+import type { SalesLead, LeadMemoItem } from '../../../types/leadTypes';
 import { generateSummary, injectSummaryMetadata } from '../../../services/leadService';
 import { extractSpecialMemoFromSummary } from '../../../services/aiCallSummaryService';
 
 interface CaseSummaryTabProps {
   lead: SalesLead;
-  partner?: Partner;
   managerName?: string;
   onUpdateLead: (updated: SalesLead) => void;
 }
 
 export const CaseSummaryTab: React.FC<CaseSummaryTabProps> = ({
   lead,
-  partner,
   managerName,
   onUpdateLead,
 }) => {
   // 기본 요약문 자동 생성 텍스트
   const generatedBasicSummary = useMemo(() => {
-    return generateSummary(lead, managerName, partner?.summaryTemplate);
-  }, [lead, managerName, partner?.summaryTemplate]);
+    return generateSummary(lead, managerName);
+  }, [lead, managerName]);
 
   // 기본 요약문 편집 상태
   const [manualSummary, setManualSummary] = useState(generatedBasicSummary);

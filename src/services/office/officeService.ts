@@ -152,6 +152,20 @@ export async function updateOfficeMember(memberId: string, patch: {
   return { ok: true, data: mapMember(data) };
 }
 
+/** 직원 2단계 인증 필수 여부 (대표는 늘 필수) */
+export async function getOfficeMfaPolicy(officeId: string): Promise<RpcResult<boolean>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('office_mfa_policy', { p_office_id: officeId });
+  if (error) return toRpcError(error);
+  return { ok: true, data: data !== false };
+}
+export async function setOfficeMfaPolicy(officeId: string, staffRequired: boolean): Promise<RpcResult<boolean>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('set_office_mfa_policy', { p_office_id: officeId, p_staff_required: staffRequired });
+  if (error) return toRpcError(error);
+  return { ok: true, data: data !== false };
+}
+
 /** 퇴사 처리: 맡던 사건·리드·업무를 넘기고 기기·세션을 끊는다 (대표·office.staff 권한) */
 export async function offboardOfficeMember(memberId: string, handoverMemberId: string, reason?: string): Promise<RpcResult<{ cases: number; leads: number; queue: number; devices: number }>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;

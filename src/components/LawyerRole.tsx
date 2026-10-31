@@ -53,6 +53,7 @@ import ServerNotificationSettings from './lawyer/settings/ServerNotificationSett
 import OfficePhonePanel from './lawyer/settings/OfficePhonePanel';
 import ProfileListingNotice from './lawyer/settings/ProfileListingNotice';
 import ReviewStateBanner from './lawyer/settings/ReviewStateBanner';
+import OfficeMfaGate, { useOfficeMfa } from './lawyer/security/OfficeMfaGate';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
 import { setCrmOfficeScope } from '../services/crmService';
 import { setDocTemplateOfficeScope } from '../services/documents/applicationDocTemplateService';
@@ -107,7 +108,6 @@ function daysUntilLocalDate(dateStr: string): number | null {
 
 /** 모바일 '더보기' 메뉴 (기획서 1-4, 1-7 표준 용어 적용) */
 const MOBILE_MORE_TABS: Array<{ id: string; label: string; perm?: string }> = [
-  { id: 'case-copilot', label: 'AI 사건 분석', perm: 'case-copilot' },
   { id: 'contracts', label: '계약 현황' },
   { id: 'fee-settlement', label: '수임료 수납', perm: 'fee-settlement' },
   { id: 'sales-leads', label: '영업 DB', perm: 'sales-leads' },
@@ -370,6 +370,8 @@ export default function LawyerRole({
   const legacyPermissionFallback = !isSupabaseConfigured
     || (import.meta.env.DEV && sessionStorage.getItem(DEV_LAWYER_SESSION_KEY) !== null);
   const officeCtx = useOfficeContext(isLoggedIn && !legacyPermissionFallback);
+  // 사무소 2단계 인증 (ST-11·RB-7): 대표 필수·직원 기본 필수. 서버도 aal1이면 사무소 권한을 막는다
+  const officeMfa = useOfficeMfa(isLoggedIn && !legacyPermissionFallback);
   const permissionCtx = usePermissions(activeStaffMember, officeCtx.office, legacyPermissionFallback);
   // 사건 검토 이용 조건 (통합어드민 부가 기능 과금 모드, 기본 무료 — CT-15·LA-Q1)
   const platformFeatures = usePlatformFeatures();
@@ -2678,13 +2680,28 @@ export default function LawyerRole({
       if (linkId) openCase(linkId, 'court');
       else openCase();
     } else if (linkType === 'copilot_review') {
-      if (linkId) setCopilotPreselectedReqId(linkId);
-      setActiveTab('case-copilot');
+      // 사건 검토는 사건 화면 1단계 안 (CV-3)
+      if (linkId) openCase(linkId, 'ai-review' as any);
+      else setActiveTab('requests');
     } else if (linkType === 'chat' || linkType === 'consult_message') {
       if (linkId) openThread(linkId);
       else setActiveTab('chat');
     }
   };
+
+  if (officeMfa.stage !== 'ok') {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4">
+        <OfficeMfaGate
+          stage={officeMfa.stage}
+          factorId={officeMfa.factorId}
+          // 인증 뒤에는 aal2 토큰으로 사무소 데이터를 처음부터 다시 읽는다
+          onDone={() => { if (officeMfa.stage === 'error') void officeMfa.recheck(); else window.location.reload(); }}
+          onSignOut={() => { void supabase.auth.signOut().finally(() => window.location.reload()); }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white animate-fadeIn">
@@ -2841,16 +2858,7 @@ export default function LawyerRole({
                         icon: MessageSquare,
                         badge: chatBadgeCount > 0 ? { count: chatBadgeCount, variant: 'normal' as const } : null,
                       },
-                      {
-                        // 이름에서 'AI'를 뺐다(규칙 계산, CV-Q2). 이용 조건은 통합어드민 '부가 기능 과금 모드'(기본 무료, CT-15)
-                        id: 'case-copilot',
-                        label: '사건 검토',
-                        icon: caseReview.open ? Microscope : Lock,
-                        badge: !caseReview.open
-                          ? { count: 0, label: '이용 조건', variant: 'normal' as const }
-                          : null,
-                        isLocked: !caseReview.open,
-                      },
+                      // (CV-3) '사건 검토' 별도 메뉴 삭제 — 상담 요청 상세·사건 관리 1단계의 '사건 검토'로 통합
                     ],
                   },
                   {
@@ -3246,30 +3254,19 @@ export default function LawyerRole({
               openCase(clientId, section as any);
             }}
             onOpenChat={(threadId) => openThread(threadId)}
+            onOpenProposalDraft={(id) => handleOpenProposalDraft(id)}
+            officeId={currentOfficeId || undefined}
+            canWriteReview={canUseOfficePermission(officeCtx.office?.permissions, 'proposal.draft') || !currentOfficeId}
           />
         )}
 
-        {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
-        {activeTab === 'case-copilot' && caseReview.reason && caseReview.open && (
-          <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{caseReview.reason}</p>
-        )}
+        {/* (CV-3) 예전 '사건 검토' 메뉴 주소로 들어오면 안내만 — 검토는 상담 요청 상세·사건 관리 1단계 */}
         {activeTab === 'case-copilot' && (
-          caseReview.open ? (
-            <CaseReviewCopilot
-              consultRequests={requests.filter(isRelevantRequest)}
-              tenantId={firmTenantId}
-              actorId={activeStaffMember?.id || activeLawyer.id}
-              actorRole={activeStaffMember?.role || 'OWNER'}
-              actorName={activeStaffMember?.name || activeLawyer.name}
-              preselectedRequestId={copilotPreselectedReqId}
-              onProposalSent={(reqId: string, proposalData: any) => handleSubmitProposalFromDraft(reqId, proposalData)}
-            />
-          ) : (
-            <AICaseAnalysisLocked
-              reason={caseReview.reason}
-              onContactAdmin={() => setActiveTab('inquiry-to-admin')}
-            />
-          )
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+            <p className="text-sm font-bold text-slate-800">사건 검토는 상담 요청 화면과 사건 관리 1단계로 옮겼어요.</p>
+            <p className="text-xs text-slate-600">상담 요청을 고르면 '사건 검토' 탭에서 계산하고 기록을 남길 수 있어요.</p>
+            <button type="button" onClick={() => setActiveTab('requests')} className="min-h-[44px] px-5 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap active:scale-[0.98]">상담 요청으로 가기</button>
+          </div>
         )}
 
         {/* TAB: STAFF MANAGEMENT */}

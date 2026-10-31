@@ -5,7 +5,7 @@ import type { SalesLead } from '../../../types/leadTypes';
 import type { ConsultRequest } from '../../../types';
 import { ChipSelect } from './ChipSelect';
 import { formatPhone, normalizeBirthYear, checkLeadPhoneDuplicate } from '../../../services/leadService';
-import { loadInboundPaths, loadSecondaryStatuses } from '../../../services/settingsService';
+import { loadInboundPaths } from '../../../services/settingsService';
 import ModalPortal from '../../common/ModalPortal';
 
 interface NewLeadModalProps {
@@ -24,17 +24,15 @@ export default function NewLeadModal({
   existingRequests,
 }: NewLeadModalProps) {
   const inboundPaths = useMemo(() => loadInboundPaths(), [isOpen]);
-  const secondaryStatuses = useMemo(() => loadSecondaryStatuses(), [isOpen]);
 
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [birth, setBirth] = useState('');
   const [gender, setGender] = useState<'남' | '여'>('남');
   const [region, setRegion] = useState('');
-  const [inboundPath, setInboundPath] = useState('타사DB구매');
+  const [inboundPath, setInboundPath] = useState(() => loadInboundPaths()[0] || '기타');
   const [batchName, setBatchName] = useState('');
   const [caseType, setCaseType] = useState<'개인회생' | '개인파산'>('개인회생');
-  const [secondaryStatus, setSecondaryStatus] = useState('');
 
   // 직업 및 소득
   const [jobTypes, setJobTypes] = useState<string[]>(['급여소득']);
@@ -82,7 +80,6 @@ export default function NewLeadModal({
       customerName: customerName.trim(),
       phone: formatPhone(phone),
       status: 'new',
-      secondaryStatus: secondaryStatus || '신규인입',
       birth: normalizeBirthYear(birth),
       gender,
       region: region.trim(),
