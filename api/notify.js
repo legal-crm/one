@@ -11,10 +11,13 @@ import { createRouter } from './_lib/route-dispatch.js';
 import telegramHandler from './_lib/routes/telegram.js';
 import sendEmailHandler from './_lib/routes/send-email.js';
 import outboxHandler from './_lib/routes/notify-outbox.js';
+import healthHandler from './_lib/routes/health.js';
 
 export default createRouter('channel', {
   telegram: { handler: telegramHandler, legacyPath: '/api/telegram' },
   email: { handler: sendEmailHandler, legacyPath: '/api/send-email' },
   // 서버 알림 바깥 채널 발송 (이메일·사무소 텔레그램 방) — Supabase 정기 작업만 부른다 (토큰 확인)
   outbox: { handler: outboxHandler, legacyPath: '/api/notify-outbox' },
+  // 통합어드민 서비스 상태 (OP-3, 관리자만)
+  health: { handler: healthHandler, legacyPath: '/api/health' },
 });

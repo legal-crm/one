@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LogIn, MessageSquarePlus, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientInquiry } from '../../types';
-import { createInquiry, lookupInquiry, loadMyInquiries, toClientInquiry, type InquiryPublic } from '../../services/inquiryService';
+import { createInquiry, inquiryStatusView, lookupInquiry, loadMyInquiries, toClientInquiry, type InquiryPublic } from '../../services/inquiryService';
 import { Badge, Button, Callout, Card, EmptyState, FormField, ListSkeleton, PageHeader, inputClass, textareaClass } from './ui';
 
 interface InquiryViewProps {
@@ -23,11 +23,11 @@ interface InquiryViewProps {
 type InquiryItem = Pick<InquiryPublic, 'id' | 'title' | 'content' | 'status' | 'createdAt' | 'replyContent' | 'repliedAt'>;
 
 function InquiryCard({ inq }: { inq: InquiryItem }) {
-  const replied = inq.status === 'replied';
+  const sv = inquiryStatusView(inq.status);
   return (
     <Card as="article" padded={false} className="space-y-3 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Badge tone={replied ? 'success' : 'warning'}>{replied ? '답변 완료' : '답변 대기'}</Badge>
+        <Badge tone={sv.tone}>{sv.label}</Badge>
         <span className="text-sm text-slate-600">
           <span className="font-mono">{inq.id}</span> · {new Date(inq.createdAt).toLocaleDateString('ko-KR')}
         </span>

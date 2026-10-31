@@ -2179,7 +2179,8 @@ export interface ClientInquiry {
   createdAt: string;
   replyContent?: string;
   repliedAt?: string;
-  status: 'pending' | 'replied';
+  /** CT-8: 접수·확인 중·답변 완료·종결 */
+  status: 'pending' | 'in_progress' | 'replied' | 'closed';
 }
 
 export interface LawyerInquiry {
@@ -2193,7 +2194,10 @@ export interface LawyerInquiry {
   createdAt: string;
   replyContent?: string;
   repliedAt?: string;
-  status: 'pending' | 'replied';
+  /** CT-8: 접수·확인 중·답변 완료·종결 */
+  status: 'pending' | 'in_progress' | 'replied' | 'closed';
+  /** 담당 관리자 (CT-8) */
+  assignee?: string;
 }
 
 export interface PlatformConfig {

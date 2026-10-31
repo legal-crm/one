@@ -1,4 +1,17 @@
-import { supabase, isSupabaseConfigured } from '../../supabaseClient';
+import { supabase, isSupabaseConfigured, getAuthHeaders } from '../../supabaseClient';
+
+/** 서비스 상태 (OP-3): DB는 실제 읽기, 외부 서비스는 서버 키 설정 여부만 */
+export interface ServiceCheck { key: string; label: string; ok: boolean; detail: string }
+export async function loadServiceHealth(): Promise<Result<{ checkedAt: string; checks: ServiceCheck[] }>> {
+  try {
+    const res = await fetch('/api/notify?channel=health', { headers: { ...(await getAuthHeaders()) } });
+    const j = await res.json().catch(() => null);
+    if (!j?.ok) return { ok: false, message: j?.error || `서비스 상태를 확인하지 못했어요 (${res.status}).` };
+    return { ok: true, data: { checkedAt: j.checkedAt, checks: j.checks || [] } };
+  } catch {
+    return { ok: false, message: '서버에 연결하지 못했어요.' };
+  }
+}
 
 // ============================================================
 // 통합어드민 운영 서버 함수 (OP-2·OP-3·OP-8·OP-9·OP-10, 20261031001400)

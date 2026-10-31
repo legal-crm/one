@@ -8,7 +8,9 @@ import {
   applyDockToActiveCase, 
   addDockTaskTicket, 
   addDockMemo,
-  DockApplyData 
+  addDockDeadline,
+  DockApplyData,
+  type DockDeadline,
 } from './dockShared';
 
 interface DockCaseActionBarProps {
@@ -29,6 +31,8 @@ interface DockCaseActionBarProps {
   disabled?: boolean;
   /** 상단 사건 연결 상태 바 표시 여부 */
   showHeaderBadge?: boolean;
+  /** 기한 계산 결과: 있으면 '할 일 등록' 대신 '할 일 + 캘린더' (T-3) */
+  deadline?: DockDeadline;
 }
 
 /**
@@ -45,6 +49,7 @@ export default function DockCaseActionBar({
   memoCategory = 'consultation',
   disabled = false,
   showHeaderBadge = true,
+  deadline,
 }: DockCaseActionBarProps) {
   const shared = useDockShared();
   const caseCtx = shared.caseContext;
@@ -73,6 +78,10 @@ export default function DockCaseActionBar({
     const fallbackDesc = memoText || applyData?.summaryText || '퀵툴에서 산출한 회생/파산 수치를 확인하고 의뢰인 상담 및 서류에 반영하세요.';
 
     setIsAddingTask(true);
+    if (deadline) {
+      try { await addDockDeadline(deadline); } finally { setIsAddingTask(false); }
+      return;
+    }
     try {
       await addDockTaskTicket({
         title: taskData?.title || fallbackTitle,
@@ -125,7 +134,7 @@ export default function DockCaseActionBar({
             type="button"
             onClick={handleApply}
             disabled={disabled || isApplying}
-            className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-[#1E3A5F] hover:bg-[#163152] disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
             title="계산된 변제금 및 채무·기간을 사건 변제계획에 반영합니다"
           >
             <FolderCheck className="w-3.5 h-3.5" aria-hidden="true" />
@@ -139,10 +148,10 @@ export default function DockCaseActionBar({
           onClick={handleAddTask}
           disabled={disabled || isAddingTask}
           className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 disabled:opacity-50 text-slate-800 font-bold text-xs transition-all active:scale-95 cursor-pointer"
-          title="사건 담당자 할 일(업무 티켓)으로 등록합니다"
+          title={deadline ? '만료일로 사건 할 일과 캘린더 일정을 함께 등록합니다' : '사건 담당자 할 일(업무 티켓)으로 등록합니다'}
         >
           <PlusCircle className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
-          <span>{isAddingTask ? '등록 중...' : '할 일 등록'}</span>
+          <span>{isAddingTask ? '등록 중...' : deadline ? '할 일 + 캘린더' : '할 일 등록'}</span>
         </button>
 
         {/* 3. 메모에 추가 */}

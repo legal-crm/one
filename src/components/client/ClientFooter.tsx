@@ -1,3 +1,4 @@
+import { useCompanyInfo } from '../../services/cms/companyInfo';
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, ShieldCheck } from 'lucide-react';
 import { PlatformConfig } from '../../types';
@@ -82,6 +83,7 @@ const linkClass = 'inline-flex items-center min-h-11 text-sm font-medium text-sl
 
 export default function ClientFooter({ platformConfig, onNavigate, onStartCheck, reserveBottomNav = true }: ClientFooterProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const company = useCompanyInfo();
   const { features } = usePlatformFeatures();
   // 공식 채널은 통합어드민 'SNS 채널·유입'에서 '운영 중'으로 표시한 것만 (이전: 개설 전 주소가 코드에 고정)
   const [liveChannels, setLiveChannels] = useState<Record<string, string>>({});
@@ -213,22 +215,22 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
           </button>
           <div id="client-footer-business-info" className={cn('space-y-5 md:block', infoOpen ? 'block' : 'hidden')}>
           <div className="space-y-2 text-xs sm:text-sm text-slate-400 leading-relaxed">
-            <p className="text-base font-bold text-slate-200">몬스터랩</p>
-            {/* 통신판매업자 법정 표시 (R4·R5·R9·R10, 10-24 결정) */}
+            <p className="text-base font-bold text-slate-200">{company.legalName}</p>
+            {/* 통신판매업자 법정 표시 (R4·R5·R9·R10, 10-24 결정) — 값은 회사 정보 한 곳(CT-12) */}
             <p className="flex flex-wrap gap-x-4 gap-y-0.5">
-              <span>상호: 몬스터랩</span>
-              <span>대표: 진성호</span>
-              <span>사업자등록번호: 521-39-01355</span>
-              <span>통신판매업 신고: 제2026-진접오남-0565호</span>
+              <span>상호: {company.legalName}</span>
+              <span>대표: {company.ceo}</span>
+              <span>사업자등록번호: {company.businessNumber}</span>
+              <span>통신판매업 신고: {company.mailOrderNumber}</span>
             </p>
             <p className="flex flex-wrap gap-x-4 gap-y-0.5">
-              <span>사업장 주소지: 경기도 남양주시 진접읍 해밀예당1로189번길 3, 2102동 301호(원일플로라아파트)</span>
-              <span>전화번호: 070-4187-2882</span>
-              <span>고객문의: support@mykim.kr</span>
+              <span>사업장 주소지: {company.address}</span>
+              <span>전화번호: {company.phone}</span>
+              <span>고객문의: {company.email}</span>
             </p>
             <p className="flex flex-wrap gap-x-4 gap-y-0.5">
-              <span>개인정보 보호책임자: 진성호(대표)</span>
-              <span>호스팅 서비스 제공자: Vercel Inc.</span>
+              <span>개인정보 보호책임자: {company.privacyOfficer}</span>
+              <span>호스팅 서비스 제공자: {company.hosting}</span>
             </p>
             <p className="text-xs text-slate-400">Founded April 2026</p>
           </div>

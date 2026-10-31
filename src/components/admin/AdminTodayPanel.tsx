@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { loadAdminTodo, loadPlatformMetrics, type AdminTodoItem, type PlatformMetrics } from '../../services/admin/adminOpsService';
+import { loadAdminTodo, loadPlatformMetrics, loadServiceHealth, type AdminTodoItem, type PlatformMetrics, type ServiceCheck } from '../../services/admin/adminOpsService';
 
 /**
  * 대시보드 맨 위: 오늘 처리할 일 + 기간 지표 (OP-3, 서버 기준).
@@ -20,10 +20,19 @@ function fmtAge(iso?: string): string {
 }
 
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '–');
+/** 앞 기간 대비 (같은 길이) */
+const delta = (cur: number, prev: number | undefined) => {
+  if (prev === undefined) return '';
+  const d = cur - prev;
+  return d === 0 ? ' · 앞 기간과 같음' : ` · 앞 기간보다 ${d > 0 ? '+' : ''}${d.toLocaleString()}`;
+};
 
 export default function AdminTodayPanel({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const [todo, setTodo] = useState<AdminTodoItem[] | null>(null);
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
+  const [prevMetrics, setPrevMetrics] = useState<PlatformMetrics | null>(null);
+  const [health, setHealth] = useState<{ checkedAt: string; checks: ServiceCheck[] } | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,13 +40,22 @@ export default function AdminTodayPanel({ onNavigate }: { onNavigate: (tab: stri
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [t, m] = await Promise.all([loadAdminTodo(), loadPlatformMetrics(new Date(Date.now() - days * 86400000))]);
+    const now = Date.now();
+    const from = new Date(now - days * 86400000);
+    const [t, m, p, h] = await Promise.all([
+      loadAdminTodo(),
+      loadPlatformMetrics(from),
+      loadPlatformMetrics(new Date(now - 2 * days * 86400000), from),
+      loadServiceHealth(),
+    ]);
     setLoading(false);
     if (t.ok === false) { setError(t.message); return; }
     if (m.ok === false) { setError(m.message); return; }
     setError(null);
     setTodo(t.data);
     setMetrics(m.data);
+    setPrevMetrics(p.ok ? p.data : null);
+    if (h.ok === false) { setHealthError(h.message); } else { setHealth(h.data); setHealthError(null); }
     setUpdatedAt(new Date());
   }, [days]);
 
@@ -65,13 +83,14 @@ export default function AdminTodayPanel({ onNavigate }: { onNavigate: (tab: stri
   }
 
   const m = metrics!;
+  const pm = prevMetrics || undefined;
   const cards: Array<{ label: string; value: string; sub: string }> = [
-    { label: '새 상담 요청', value: `${m.consult.created}건`, sub: `숨김 ${m.consult.hidden}건 · 정리 완료 ${m.checksCompleted}건` },
+    { label: '새 상담 요청', value: `${m.consult.created}건`, sub: `숨김 ${m.consult.hidden}건 · 정리 완료 ${m.checksCompleted}건${delta(m.consult.created, pm?.consult.created)}` },
     { label: '변호사 응답', value: pct(m.seats.responded, m.seats.requested), sub: `요청 ${m.seats.requested} · 기한 안 응답 ${pct(m.seats.respondedInTime, m.seats.requested)} · 평균 ${m.seats.avgFirstResponseHours ?? '–'}시간` },
     { label: '기한 지남·거절', value: `${m.seats.expired + m.seats.declined}건`, sub: `기한 지남 ${m.seats.expired} · 거절 ${m.seats.declined}` },
     { label: '승인 변호사', value: `${m.lawyers.approved}명`, sub: `목록 공개 ${m.lawyers.listed} · 심사 대기 ${m.lawyers.pending} · 정지 ${m.lawyers.suspended}` },
-    { label: '의뢰인 계정', value: `${m.accounts.clients}명`, sub: `기간 중 새 가입 ${m.accounts.newClients} · 정지 ${m.accounts.suspended}` },
-    { label: '광고 입금', value: `${m.ads.paidAmount.toLocaleString()}원`, sub: `입금 대기 ${m.ads.byStatus.pending || 0} · 노출 중 ${m.ads.byStatus.active || 0}` },
+    { label: '의뢰인 계정', value: `${m.accounts.clients}명`, sub: `기간 중 새 가입 ${m.accounts.newClients}${delta(m.accounts.newClients, pm?.accounts.newClients)} · 정지 ${m.accounts.suspended}` },
+    { label: '광고 입금', value: `${m.ads.paidAmount.toLocaleString()}원`, sub: `입금 대기 ${m.ads.byStatus.pending || 0} · 노출 중 ${m.ads.byStatus.active || 0}${delta(m.ads.paidAmount, pm?.ads.paidAmount)}` },
     { label: '미답변 문의', value: `${m.inquiries.clientPending + m.inquiries.lawyerPending}건`, sub: `의뢰인 ${m.inquiries.clientPending} · 변호사 ${m.inquiries.lawyerPending}` },
   ];
 
@@ -129,7 +148,30 @@ export default function AdminTodayPanel({ onNavigate }: { onNavigate: (tab: stri
             </div>
           ))}
         </div>
-        <p className="text-xs text-slate-400">서버 기록 기준 · 상담 원문·채무액은 집계하지 않아요 · 매일 새벽 하루 지표를 따로 남겨요.</p>
+        <p className="text-xs text-slate-400">서버 기록 기준 · 상담 원문·채무액은 집계하지 않아요 · '앞 기간'은 바로 앞의 같은 길이 기간 · 매일 새벽 하루 지표를 따로 남겨요.</p>
+      </section>
+
+      <section className="bg-[#111622] border border-[#1E293B]/60 rounded-2xl p-5 space-y-3" aria-labelledby="admin-health-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="admin-health-title" className="text-base font-extrabold text-white">서비스 상태</h2>
+          {health && <span className="text-xs text-slate-400">{new Date(health.checkedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 확인</span>}
+        </div>
+        {healthError ? (
+          <p className="text-sm text-rose-200" role="alert">{healthError}</p>
+        ) : !health ? (
+          <div className="h-16 rounded-xl bg-slate-800/60 animate-pulse" aria-busy="true" />
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {health.checks.map(c => (
+              <li key={c.key} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${c.ok ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+                {c.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                <span className="font-bold">{c.label}</span>
+                <span className="text-xs opacity-80 ml-auto text-right">{c.ok ? '정상' : '확인 필요'} · {c.detail}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-slate-400">데이터베이스는 실제로 읽어 보고, 외부 서비스는 서버에 키가 있는지만 봐요(요금이 드는 호출은 하지 않아요).</p>
       </section>
     </div>
   );

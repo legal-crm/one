@@ -16,6 +16,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { PLATFORM_FACTS_LINES } from '../api/_lib/compliance-terms.js';
+import { fetchCompanyInfo, normalizeCompanyInfo } from '../api/_lib/company-info.js';
+
+// 회사 정보 한 곳 (CT-12): 빌드 때 서버 값을 한 번 읽어 llms.txt에 쓴다
+let COMPANY = normalizeCompanyInfo(null);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -270,11 +274,11 @@ function buildLlmsTxt(indexable) {
     '<!-- scripts/seo-build.mjs 가 빌드 때 자동으로 만듭니다. 직접 고치지 마세요. -->',
     '',
     '## 운영 정보',
-    '- 상호: 몬스터랩 (개인사업자)',
-    '- 대표: 진성호',
-    '- 사업자등록번호: 521-39-01355',
-    '- 통신판매업 신고: 제2026-진접오남-0565호',
-    '- 고객 문의: support@mykim.kr',
+    `- 상호: ${COMPANY.legalName} (${COMPANY.businessType})`,
+    `- 대표: ${COMPANY.ceo}`,
+    `- 사업자등록번호: ${COMPANY.businessNumber}`,
+    `- 통신판매업 신고: ${COMPANY.mailOrderNumber}`,
+    `- 고객 문의: ${COMPANY.email}`,
     '- 브랜드: my김변 (마이김변)',
     '- 서비스 시작: 2026년 4월',
     '- 사이트: https://mykim.kr',
@@ -377,6 +381,10 @@ async function deployExtras(indexable) {
 }
 
 try {
+  // 회사 정보: Vercel 빌드에서만 서버 값을 읽는다 (로컬 빌드는 기본값 — 추적 파일을 바꾸지 않게)
+  if (process.env.VERCEL) {
+    COMPANY = (await fetchCompanyInfo(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)).info;
+  }
   const out = main();
   await deployExtras(out?.indexable || []);
 } catch (e) {

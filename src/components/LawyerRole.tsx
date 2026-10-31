@@ -1,3 +1,4 @@
+import { useCompanyInfo } from '../services/cms/companyInfo';
 import { noticeForLawyer } from '../types';
 import { feeTotalWon } from '../utils/feeUnits';
 import { getLawyerLicenseUrl, uploadLawyerLicense } from '../services/lawyers/lawyerLicenseService';
@@ -191,6 +192,7 @@ export default function LawyerRole({
   notices: allNotices = initialNotices
 }: LawyerRoleProps) {
   const dialog = useDialog();
+  const companyInfo = useCompanyInfo();
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts' | 'fee-settlement' | 'requests'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
@@ -2468,7 +2470,7 @@ export default function LawyerRole({
             {/* 푸터 */}
             <footer className="bg-slate-950 text-slate-500 text-xs text-center py-8 px-4">
               <p>© 2026 {platformConfig.siteLogoText || 'my김변'}. 변호사 광고·정보 제공 플랫폼과 사무소 업무 도구.</p>
-              <p className="mt-1">몬스터랩 | 대표 진성호 | 사업자등록번호 521-39-01355 | 통신판매업 신고 제2026-진접오남-0565호 | 문의 support@mykim.kr</p>
+              <p className="mt-1">{companyInfo.legalName} | 대표 {companyInfo.ceo} | 사업자등록번호 {companyInfo.businessNumber} | 통신판매업 신고 {companyInfo.mailOrderNumber} | 문의 {companyInfo.email}</p>
             </footer>
           </div>
         )}

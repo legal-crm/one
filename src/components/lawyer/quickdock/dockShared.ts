@@ -68,6 +68,17 @@ export interface DockCaseActionHandlers {
   onAddTaskTicket?: (task: { title: string; description: string; dueDate?: string; priority?: string }) => Promise<boolean | void> | boolean | void;
   onAddMemo?: (text: string, category?: string) => Promise<boolean | void> | boolean | void;
   onOpenAlimtok?: (caseId: string) => void;
+  /** T-3: 기한을 할 일과 캘린더에 함께 등록 (일정 탭과 같은 저장 함수) */
+  onAddDeadline?: (d: DockDeadline) => Promise<{ task: boolean; calendar: boolean }>;
+}
+
+export interface DockDeadline {
+  title: string;
+  description: string;
+  /** 만료일 YYYY-MM-DD */
+  date: string;
+  /** 근거 조문 (있으면 설명에 붙임) */
+  basis?: string;
 }
 
 export interface DockSharedState {
@@ -345,6 +356,28 @@ export async function addDockTaskTicket(task: {
     return false;
   } catch (err: any) {
     toast.error(err?.message || '할 일 등록 중 오류가 발생했습니다.');
+    return false;
+  }
+}
+
+/** 기한 등록 헬퍼: 할 일 + 캘린더 (T-3) */
+export async function addDockDeadline(d: DockDeadline): Promise<boolean> {
+  if (!state.caseContext) {
+    toast.error('현재 연결된 사건이 없습니다.');
+    return false;
+  }
+  if (!globalActionHandlers?.onAddDeadline) {
+    toast.error('기한 등록 핸들러가 연결되어 있지 않습니다.');
+    return false;
+  }
+  try {
+    const r = await globalActionHandlers.onAddDeadline(d);
+    if (r.task && r.calendar) toast.success(`${state.caseContext.clientName} 사건의 할 일과 캘린더에 ${d.date} 기한을 넣었어요.`);
+    else if (r.task) toast.warning('할 일은 넣었지만 캘린더 일정은 저장하지 못했어요. 캘린더에 직접 추가해 주세요.');
+    else toast.error('기한을 등록하지 못했어요.');
+    return r.task;
+  } catch (err: any) {
+    toast.error(err?.message || '기한 등록 중 오류가 발생했습니다.');
     return false;
   }
 }

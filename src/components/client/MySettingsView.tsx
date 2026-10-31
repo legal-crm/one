@@ -5,6 +5,7 @@ import { useDialog } from '../common/DialogProvider';
 import { supabase } from '../../supabaseClient';
 import { purgeAllClientData } from '../../services/consultService';
 import type { ClientInquiry } from '../../types';
+import { inquiryStatusView } from '../../services/inquiryService';
 import ConsentStatusList from './ConsentStatusList';
 import { Badge, Button, Card, EmptyState, FormField, PageHeader, inputClass } from './ui';
 import { cn } from '../../utils/cn';
@@ -46,7 +47,8 @@ const SECURITY_POINTS = [
 function InquiryItem({ inq }: { inq: ClientInquiry }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const replied = inq.status === 'replied';
+  const sv = inquiryStatusView(inq.status);
+  const replied = !!inq.replyContent;
   return (
     <li className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <button
@@ -61,7 +63,7 @@ function InquiryItem({ inq }: { inq: ClientInquiry }) {
           <span className="mt-0.5 block truncate text-sm font-bold text-slate-900">{inq.title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <Badge tone={replied ? 'success' : 'warning'}>{replied ? '답변 완료' : '답변 대기'}</Badge>
+          <Badge tone={sv.tone}>{sv.label}</Badge>
           <ChevronDown className={cn('h-4 w-4 text-slate-500 transition-transform', open && 'rotate-180')} aria-hidden="true" />
         </span>
       </button>

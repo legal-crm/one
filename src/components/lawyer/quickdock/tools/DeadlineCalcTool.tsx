@@ -11,10 +11,15 @@ import DockCaseActionBar from '../DockCaseActionBar';
 
 const UNIT_LABEL: Record<DeadlineUnit, string> = { day: '일', week: '주', month: '개월' };
 
-const PRESETS: { label: string; amount: number; unit: DeadlineUnit }[] = [
-  { label: '7일', amount: 7, unit: 'day' },
-  { label: '14일', amount: 14, unit: 'day' },
-  { label: '1개월', amount: 1, unit: 'month' },
+/** 근거가 붙은 빠른 선택 (T-3). 기산일·기간은 재판서·공고로 다시 확인 */
+const PRESETS: { label: string; amount: number; unit: DeadlineUnit; title: string; basis?: string; baseHint: string }[] = [
+  { label: '즉시항고 1주', amount: 1, unit: 'week', title: '즉시항고 기한', basis: '민사소송법 제444조 (재판을 고지받은 날부터 1주)', baseHint: '재판 고지일' },
+  { label: '공고된 재판 14일', amount: 14, unit: 'day', title: '즉시항고 기한(공고)', basis: '채무자회생법 제13조 (공고가 있은 날부터 14일)', baseHint: '공고일' },
+  { label: '면책 즉시항고 14일', amount: 14, unit: 'day', title: '면책결정 즉시항고 기한', basis: '채무자회생법 제13조·제564조 (면책결정 공고일부터 14일)', baseHint: '면책결정 공고일' },
+  { label: '면제재산 신청 14일', amount: 14, unit: 'day', title: '면제재산 신청 기한', basis: '채무자회생법 제383조 제3항 (파산선고 후 14일 이내)', baseHint: '파산선고일' },
+  { label: '보정 기한', amount: 14, unit: 'day', title: '보정 기한', basis: '보정명령·보정권고에 적힌 기간 (기간은 서면대로 고쳐 주세요)', baseHint: '보정명령 송달일' },
+  { label: '7일', amount: 7, unit: 'day', title: '7일 기한', baseHint: '기준일' },
+  { label: '1개월', amount: 1, unit: 'month', title: '1개월 기한', baseHint: '기준일' },
 ];
 
 function ddayLabel(diff: number | null): { text: string; tone: string } {
@@ -28,12 +33,15 @@ function ddayLabel(diff: number | null): { text: string; tone: string } {
  * 기한·기일 계산기
  * - 송달일(고지일) 기준 N일·N주·N개월 만료일을 민법 제157·160·161조로 계산하고
  *   말일이 토요일·일요일·공휴일이면 다음 날로 연장한다.
- * - 사건 워크스페이스 연동 시 만료일 기준 '할 일 등록', '메모에 추가' 가능
+ * - 사건 워크스페이스 연동 시 만료일로 '할 일 + 캘린더'(일정 탭과 같은 저장), '메모에 추가' (T-3)
  */
 export default function DeadlineCalcTool() {
   const [baseDate, setBaseDate] = useState(() => localYmd());
   const [amountText, setAmountText] = useState('7');
   const [unit, setUnit] = useState<DeadlineUnit>('day');
+  const [title, setTitle] = useState('7일 기한');
+  const [basis, setBasis] = useState<string | undefined>();
+  const [baseHint, setBaseHint] = useState('기준일');
   const { copied, copy } = useCopyFeedback();
 
   const amount = Number(amountText);
@@ -50,24 +58,24 @@ export default function DeadlineCalcTool() {
     const extended = result.extendedOver.length > 0
       ? `\n• 연장: 말일 ${formatYmdWithDow(result.rawEndDate)} (${result.extendedOver.map(x => `${x.date.slice(5)} ${x.reason}`).join(', ')}) → 다음 평일 만료`
       : '';
-    return `[기한 계산 (참고)]
-• 기준일(송달·고지): ${formatYmdWithDow(baseDate)}
+    return `[기한 계산 (참고)] ${title}
+• 기준일(${baseHint}): ${formatYmdWithDow(baseDate)}${basis ? `\n• 근거: ${basis}` : ''}
 • 기간: ${amount}${UNIT_LABEL[unit]} (초일 불산입, ${formatYmdWithDow(result.startDate)}부터 기산)
 • 만료일: ${formatYmdWithDow(result.date)}${extended}
 ※ 민법 제157·160·161조 기준 계산입니다. 기산일과 기간은 재판서·공고 내용으로 확인해 주세요.`;
-  }, [result, baseDate, amount, unit]);
+  }, [result, baseDate, amount, unit, title, basis, baseHint]);
 
   const handleCopy = () => {
     if (!briefingText) return;
     copy(briefingText, '기한 계산 결과가 복사되었습니다.');
   };
 
-  const taskData = result
+  const deadline = result
     ? {
-        title: `[기한 준수] ${amount}${UNIT_LABEL[unit]} 만료일 (${formatYmdWithDow(result.date)})`,
+        title: `${title.trim() || '기한'} (${formatYmdWithDow(result.date)})`,
         description: briefingText,
-        dueDate: result.date,
-        priority: 'HIGH',
+        date: result.date,
+        basis,
       }
     : undefined;
 
@@ -78,7 +86,7 @@ export default function DeadlineCalcTool() {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label htmlFor="deadline-base" className="text-xs font-bold text-slate-700 block mb-1">
-              기준일 (송달·고지일)
+              기준일 ({baseHint})
             </label>
             <input
               id="deadline-base"
@@ -119,6 +127,12 @@ export default function DeadlineCalcTool() {
             </div>
           </div>
         </div>
+        <div>
+          <label htmlFor="deadline-title" className="text-xs font-bold text-slate-700 block mb-1">기한 이름</label>
+          <input id="deadline-title" value={title} maxLength={40} onChange={e => setTitle(e.target.value)}
+            className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/40" />
+          {basis && <p className="mt-1 text-xs text-slate-600">근거: {basis}</p>}
+        </div>
         {!amountValid && (
           <p id="deadline-amount-error" className="text-xs font-bold text-rose-700">
             기간은 1 이상의 정수로 입력하세요 (일 365·주 52·개월 24 이하).
@@ -128,15 +142,19 @@ export default function DeadlineCalcTool() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold text-slate-500">빠른 선택</span>
           {PRESETS.map(p => {
-            const selected = amountValid && amount === p.amount && unit === p.unit;
+            const selected = amountValid && amount === p.amount && unit === p.unit && title === p.title;
             return (
               <button
                 key={p.label}
                 type="button"
                 aria-pressed={selected}
+                title={p.basis}
                 onClick={() => {
                   setAmountText(String(p.amount));
                   setUnit(p.unit);
+                  setTitle(p.title);
+                  setBasis(p.basis);
+                  setBaseHint(p.baseHint);
                 }}
                 className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer press-scale ${
                   selected ? 'bg-sky-600 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
@@ -191,7 +209,7 @@ export default function DeadlineCalcTool() {
         <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
           <CalendarX2 className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
           <p className="font-bold">기준일과 기간을 입력하면 만료일을 계산합니다.</p>
-          <p className="text-xs text-slate-500">빠른 선택 버튼으로 7일·14일·1개월을 바로 넣을 수 있습니다.</p>
+          <p className="text-xs text-slate-500">빠른 선택에서 즉시항고·면제재산 신청·보정 기한 같은 근거 있는 기간을 고를 수 있어요.</p>
         </div>
       )}
 
@@ -205,7 +223,7 @@ export default function DeadlineCalcTool() {
 
       <CopyButton copied={copied} onClick={handleCopy} disabled={!result} label="기한 안내 복사" />
       <DockCaseActionBar
-        taskData={taskData}
+        deadline={deadline}
         memoText={briefingText}
         memoCategory="task"
         disabled={!result}

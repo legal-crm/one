@@ -919,6 +919,34 @@ export default function CrmTab({
           });
           return true;
         },
+        onAddDeadline: async (d) => {
+          const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+          const isLawyerActor = !activeStaff || activeStaff.role === 'OWNER' || activeStaff.role === 'LAWYER';
+          const desc = `${d.description}${d.basis ? `\n근거: ${d.basis}` : ''}`;
+          let task = false;
+          try {
+            await createTask(firmTenantId || 'default-firm', {
+              targetType: 'case', targetId: selectedClient.id,
+              assignerId: actor.id, assignerName: actor.name, assigneeId: actor.id, assigneeName: actor.name,
+              title: `[기한] ${clientName} - ${d.title}`, description: desc, priority: 'URGENT', dueDate: d.date,
+              // 직원이 만든 기한은 변호사 확인을 거친다 (일정 탭과 같은 규칙)
+              requiresApproval: !isLawyerActor,
+            });
+            task = true;
+          } catch (e: any) {
+            toast.error(e?.message || '할 일을 등록하지 못했어요.');
+            return { task: false, calendar: false };
+          }
+          let calendar = true;
+          try {
+            await createCalendarEvent(firmTenantId || activeLawyer.lawFirmId || activeLawyer.id, {
+              title: `[기한] ${clientName} - ${d.title}`, date: d.date, type: 'deadline', visibility: 'firm',
+              recurrence: 'none', reminder: '1day', createdBy: actor.id, createdByName: actor.name, createdByRole: actor.role as string,
+              description: desc, clientName,
+            });
+          } catch { calendar = false; }
+          return { task, calendar };
+        },
         onAddMemo: async (text, category = 'consult') => {
           const currentExt = getCrmExt(selectedClient.id);
           const note = createCrmNote(

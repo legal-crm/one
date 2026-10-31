@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { LawyerInquiry, LawyerInquiryCategory, InquiryAttachment } from '../../types';
 import { submitLawyerInquiry } from '../../services/cms/contentService';
+import { inquiryStatusView } from '../../services/inquiryService';
 
 // 첨부는 문의 행에 함께 저장되므로 작게 제한 (비공개 저장소 전환 전까지)
 const MAX_ATTACHMENT_BYTES = 1024 * 1024;
@@ -264,11 +265,13 @@ export default function LawyerInquiryTab({
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${
-                            inq.status === 'replied' 
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                              : 'bg-amber-50 text-amber-600 border border-amber-100'
+                            inq.status === 'replied'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : inq.status === 'closed' ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                              : inq.status === 'in_progress' ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                              : 'bg-amber-50 text-amber-700 border border-amber-100'
                           }`}>
-                            {inq.status === 'replied' ? '답변 완료' : '답변 대기'}
+                            {inquiryStatusView(inq.status).label}
                           </span>
                           <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
                             {categoryLabel}

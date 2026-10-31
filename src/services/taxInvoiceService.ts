@@ -1,5 +1,6 @@
 // 전자세금계산서 프론트엔드 서비스
 // PopBill API Serverless Functions 호출 래퍼
+import { getCompanyInfo } from './cms/companyInfo';
 import * as XLSX from 'xlsx-js-style';
 import type { AdOrder } from '../types';
 import { supabase } from '../supabaseClient';
@@ -305,9 +306,9 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
         '순번': seq++,
         '발행구분': '정발행(매출)',
         '작성일자': order.taxInvoice.issuedAt ? localYmd(new Date(order.taxInvoice.issuedAt)) : '',
-        '공급자상호': '몬스터랩',
-        '공급자사업자번호': '521-39-01355',
-        '공급자대표': '진성호',
+        '공급자상호': getCompanyInfo().legalName,
+        '공급자사업자번호': getCompanyInfo().businessNumber,
+        '공급자대표': getCompanyInfo().ceo,
         '공급받는자(상호)': order.buyerCorpName || order.lawyerName,
         '공급받는자(사업자번호)': formatCorpNum(order.buyerCorpNum || ''),
         '공급받는자(대표자)': order.buyerCEOName || order.lawyerName,
@@ -330,9 +331,9 @@ export function exportTaxInvoicesToExcel(orders: AdOrder[], filename?: string): 
         '순번': seq++,
         '발행구분': `수정발행 [${modReasonLabel}]`,
         '작성일자': mod.issuedAt ? localYmd(new Date(mod.issuedAt)) : '',
-        '공급자상호': '몬스터랩',
-        '공급자사업자번호': '521-39-01355',
-        '공급자대표': '진성호',
+        '공급자상호': getCompanyInfo().legalName,
+        '공급자사업자번호': getCompanyInfo().businessNumber,
+        '공급자대표': getCompanyInfo().ceo,
         '공급받는자(상호)': order.buyerCorpName || order.lawyerName,
         '공급받는자(사업자번호)': formatCorpNum(order.buyerCorpNum || ''),
         '공급받는자(대표자)': order.buyerCEOName || order.lawyerName,
