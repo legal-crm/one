@@ -2,13 +2,14 @@
 // [M-3] 게시된 칼럼(news_articles) → 정적 페이지 public/articles/c-<id>.html
 // - Vercel 빌드에서만 실행 (로컬 빌드는 추적 파일을 바꾸지 않는다). seo-build가 이어서 사이트맵·RSS·llms.txt·IndexNow에 넣는다
 // - 예시 글(is_example)은 만들지 않는다. 금지 표현(공통 사전)이 걸린 글은 빼고 경고만 (빌드는 막지 않는다)
-// - 글쓴이는 '마이김변 편집팀' (가상 변호사 명의 금지, CT-Q1). 법률 검토 표시는 외부 자문(R6) 확정 전 넣지 않는다
+// - 글쓴이는 '마이김변 편집팀' (가상 변호사 명의 금지, CT-Q1). 법률 검토는 검토받은 글(legalReview)에만 '법률 검토: 변호사(검토일)' (R6·쟁점 33)
 // - 실패해도 빌드를 막지 않는다 (기존 파일 유지)
 // ============================================================
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DECISION_RULES, decisionRuleRegex } from '../api/_lib/compliance-terms.js';
+import { legalReviewLabel } from '../api/_lib/legal-review.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'public', 'articles');
@@ -81,7 +82,7 @@ export function renderArticle(a) {
 <main>
 <nav class="meta"><a href="/">홈</a> &gt; <a href="/?tab=news">법률 정보</a></nav>
 <h1>${esc(title)}</h1>
-<p class="meta">${esc(a.category || '법률 정보')} · 마이김변 편집팀${date ? ` · ${esc(date)}` : ''}</p>
+<p class="meta">${esc(a.category || '법률 정보')} · 마이김변 편집팀${date ? ` · ${esc(date)}` : ''}${legalReviewLabel(a.legalReview) ? ` · ${esc(legalReviewLabel(a.legalReview))}` : ''}</p>
 ${renderBody(a.content)}
 <div class="cta"><p>내 상황은 변호사마다 판단이 다를 수 있어요. 채무·소득을 정리하고 상담받을 변호사를 직접 골라 보세요.</p><a href="/check">내 상황 체크하기</a></div>
 <p class="note">이 글은 일반적인 제도 안내이며 개별 사건에 대한 법률 판단이 아닙니다. 실제 결과는 법원 심사와 사건 사정에 따라 달라집니다.</p>

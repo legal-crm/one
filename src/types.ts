@@ -1951,6 +1951,8 @@ export interface NewsArticle {
   views: number;
   date?: string;
   imageUrl: string;
+  /** 외부 법률 검토 (R6·쟁점 33): 실제로 검토받은 글만. 표시는 '법률 검토: 소성록 변호사(검토일)' */
+  legalReview?: { reviewer: string; reviewedOn: string };
 }
 
 export interface QAAnswer {
@@ -2162,7 +2164,10 @@ export interface InquiryAttachment {
   fileName: string;
   fileType: string;
   fileSize: number;
+  /** 예전 첨부(base64). 새 첨부는 비어 있고 path만 (CT-8) */
   dataUrl: string;
+  /** 비공개 저장소 inquiry-files 경로 */
+  path?: string;
 }
 
 export interface ClientInquiry {

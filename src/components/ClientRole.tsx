@@ -2293,7 +2293,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB: 변제금 계산기 */}
-            {/* 제도 이해용 계산기 재구성(B-7)과 외부 변호사 검토 전에는 통합어드민 '기능 표시'에서 숨김 (CK-Q1) */}
+            {/* 통합어드민 '기능 표시'로 켜고 끔 (외부 변호사 검토 2026-11-01 완료 후 켬, CK-Q1) */}
             {activeTab === 'calculator' && !platformFeatures.features.calculatorVisible && (
               <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white">
                 <h1 className="sr-only">변제금 계산기</h1>

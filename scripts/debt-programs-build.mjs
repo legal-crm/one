@@ -6,6 +6,7 @@
 // - 판단·추천 없이 일반 정보·공식 연락처·확인일만. 실패해도 빌드를 막지 않는다 (기존 파일 유지)
 // ============================================================
 import fs from 'node:fs';
+import { SITE_REVIEW, legalReviewLabel } from '../api/_lib/legal-review.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEBT_PROGRAMS_DATA, DEBT_PROGRAM_ORDER_DATA } from '../src/content/debtProgramsData.js';
@@ -23,11 +24,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 export function mergePrograms(overrides) {
   const out = {};
   const hidden = new Set();
+  let edited = false;
   for (const k of DEBT_PROGRAM_ORDER_DATA) {
     const b = DEBT_PROGRAMS_DATA[k];
     const x = (overrides && overrides[k]) || {};
     const points = Array.isArray(x.keyPoints) ? x.keyPoints.filter(Boolean) : [];
     const links = Array.isArray(x.links) ? x.links.filter((l) => l && l.label) : [];
+    if ((typeof x.summary === 'string' && x.summary.trim() && x.summary.trim() !== b.summary) || points.length || links.length) edited = true;
     out[k] = {
       ...b,
       summary: (typeof x.summary === 'string' && x.summary.trim()) || b.summary,
@@ -37,7 +40,8 @@ export function mergePrograms(overrides) {
     };
     if (x.hidden && !FIXED_VISIBLE.has(k)) hidden.add(k);
   }
-  return { programs: out, order: DEBT_PROGRAM_ORDER_DATA.filter((k) => !hidden.has(k)) };
+  // 검토(R6)는 원본 글 기준 — 관리자가 글을 고치면 검토 표시를 뗀다
+  return { programs: out, order: DEBT_PROGRAM_ORDER_DATA.filter((k) => !hidden.has(k)), edited };
 }
 
 function footerHtml() {
@@ -61,7 +65,8 @@ const linkHtml = (l) => {
   return `<li>${parts.join(' · ')}</li>`;
 };
 
-export function renderPage({ programs, order }) {
+export function renderPage({ programs, order, edited = false }) {
+  const review = edited ? '' : legalReviewLabel(SITE_REVIEW);
   const title = '채무 관련 제도 한눈에 보기 — 개인회생·파산·채무조정·생계비계좌';
   const desc = '개인회생, 개인파산, 신용회복위원회 채무조정, 금융회사 직접 채무조정 요청, 채무자대리인, 세금 체납, 법률구조, 생계비계좌의 일반 정보와 공식 연락처를 모았습니다. 추천 순서가 아닙니다.';
   const modified = order.map((k) => programs[k].checkedOn).sort().pop() || '';
@@ -151,6 +156,7 @@ ${sections}
         <a href="/check">내 상황 체크하기 →</a>
     </div>
     <p class="footer-note">이 페이지는 일반적인 제도 안내이며 개별 사건에 대한 법률 판단이 아닙니다. 기준과 절차는 바뀔 수 있으니 각 기관의 공식 안내를 함께 확인하세요.</p>
+    ${review ? `<p class="footer-note">${esc(review)}</p>` : ''}
     </main>
     ${footerHtml()}
 </body>

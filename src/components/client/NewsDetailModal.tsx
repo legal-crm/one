@@ -1,3 +1,4 @@
+import { legalReviewLabel } from '../../../api/_lib/legal-review.js';
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { NewsArticle } from '../../types';
@@ -84,7 +85,10 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
         </div>
       )}
 
-      <p className="mt-6 text-sm leading-relaxed text-slate-600 break-keep">
+      {legalReviewLabel(article.legalReview) && (
+        <p className="mt-6 text-sm font-bold text-slate-700">{legalReviewLabel(article.legalReview)}</p>
+      )}
+      <p className="mt-2 text-sm leading-relaxed text-slate-600 break-keep">
         일반적인 법률 정보이며 개별 사건에 대한 법률 자문이 아니에요. 내 상황은 변호사 상담으로 확인하세요.
       </p>
     </Modal>

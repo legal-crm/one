@@ -4,9 +4,10 @@ import { Send, Paperclip, X, FileText, Image as ImageIcon, MessageSquare, Chevro
 import { LawyerInquiry, LawyerInquiryCategory, InquiryAttachment } from '../../types';
 import { submitLawyerInquiry } from '../../services/cms/contentService';
 import { inquiryStatusView } from '../../services/inquiryService';
+import { isAllowedInquiryFile, signInquiryAttachments, uploadLawyerInquiryFiles } from '../../services/cms/inquiryFiles';
 
-// 첨부는 문의 행에 함께 저장되므로 작게 제한 (비공개 저장소 전환 전까지)
-const MAX_ATTACHMENT_BYTES = 1024 * 1024;
+// 첨부는 비공개 저장소에 올리고 문의 행에는 경로만 (CT-8)
+interface PendingFile { id: string; file: File; preview?: string }
 
 interface LawyerInquiryTabProps {
   lawyerInquiries: LawyerInquiry[];
@@ -32,7 +33,7 @@ export default function LawyerInquiryTab({
   const [category, setCategory] = useState<LawyerInquiryCategory>('platform_usage');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [attachments, setAttachments] = useState<InquiryAttachment[]>([]);
+  const [attachments, setAttachments] = useState<PendingFile[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -51,25 +52,15 @@ export default function LawyerInquiryTab({
     }
 
     files.forEach(file => {
-      if (file.size > MAX_ATTACHMENT_BYTES) {
-        toast.error(`'${file.name}' 파일이 1MB를 넘습니다. 1MB 이하 파일만 첨부할 수 있습니다.`);
+      if (!isAllowedInquiryFile(file)) {
+        toast.error(`'${file.name}'은(는) 첨부할 수 없어요. 이미지·PDF, 3MB 이하만 됩니다.`);
         return;
       }
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setAttachments(prev => [...prev, {
-            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            dataUrl: result
-          }]);
-        }
-      };
-      reader.readAsDataURL(file);
+      setAttachments(prev => [...prev, {
+        id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        file,
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      }]);
     });
 
     if (fileInputRef.current) {
@@ -78,7 +69,19 @@ export default function LawyerInquiryTab({
   };
 
   const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(att => att.id !== id));
+    setAttachments(prev => {
+      const gone = prev.find(a => a.id === id);
+      if (gone?.preview) URL.revokeObjectURL(gone.preview);
+      return prev.filter(att => att.id !== id);
+    });
+  };
+
+  const openAttachment = async (att: InquiryAttachment) => {
+    if (att.dataUrl) { window.open(att.dataUrl, '_blank', 'noopener'); return; }
+    const urls = await signInquiryAttachments([att]);
+    const u = att.path ? urls[att.path] : undefined;
+    if (!u) { toast.error('첨부를 열지 못했어요.'); return; }
+    window.open(u, '_blank', 'noopener');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,19 +93,25 @@ export default function LawyerInquiryTab({
     }
     if (submitting) return;
 
+    const inquiryId = `lawyer-inq-${Date.now()}`;
+    setSubmitting(true);
+    let uploaded: InquiryAttachment[] = [];
+    if (attachments.length > 0) {
+      const up = await uploadLawyerInquiryFiles(currentLawyerId, inquiryId, attachments.map(a => a.file));
+      if (up.ok === false) { setSubmitting(false); setSubmitError(up.message); return; }
+      uploaded = up.data;
+    }
     const newInquiry: LawyerInquiry = {
-      id: `lawyer-inq-${Date.now()}`,
+      id: inquiryId,
       lawyerId: currentLawyerId,
       lawyerName: currentLawyerName,
       category,
       title: title.trim(),
       content: content.trim(),
-      attachments,
+      attachments: uploaded,
       status: 'pending',
       createdAt: new Date().toISOString()
     };
-
-    setSubmitting(true);
     const res = await submitLawyerInquiry(newInquiry);
     setSubmitting(false);
     if (res.ok === false) {
@@ -114,6 +123,7 @@ export default function LawyerInquiryTab({
     setTitle('');
     setContent('');
     setCategory('platform_usage');
+    attachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
     setAttachments([]);
     
     toast.success('문의를 보냈습니다. 운영팀이 확인한 뒤 이 화면에 답변을 남깁니다.');
@@ -183,7 +193,7 @@ export default function LawyerInquiryTab({
               >
                 <Paperclip className="w-5 h-5 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 font-medium">
-                  파일 첨부 (이미지, PDF · 최대 3개 · 각 1MB)
+                  파일 첨부 (이미지, PDF · 최대 3개 · 각 3MB)
                 </p>
                 <input
                   type="file"
@@ -199,9 +209,9 @@ export default function LawyerInquiryTab({
                 <div className="flex flex-wrap gap-3 mt-3">
                   {attachments.map(att => (
                     <div key={att.id} className="relative group rounded-lg overflow-hidden border border-slate-200 bg-white">
-                      {att.fileType.startsWith('image/') ? (
+                      {att.preview ? (
                         <div className="w-20 h-20 bg-slate-100 flex items-center justify-center">
-                          <img src={att.dataUrl} alt={att.fileName} className="w-full h-full object-cover" />
+                          <img src={att.preview} alt={att.file.name} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-20 h-20 bg-slate-50 flex flex-col items-center justify-center p-2">
@@ -307,10 +317,10 @@ export default function LawyerInquiryTab({
                         {inq.attachments && inq.attachments.length > 0 && (
                           <div className="flex flex-wrap gap-2 pt-2">
                             {inq.attachments.map(att => (
-                              <div key={att.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-600">
+                              <button type="button" key={att.id} onClick={() => void openAttachment(att)} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 hover:border-brand/40 cursor-pointer">
                                 {att.fileType.startsWith('image/') ? <ImageIcon className="w-4 h-4 text-brand" /> : <FileText className="w-4 h-4 text-brand" />}
                                 <span className="max-w-[150px] truncate">{att.fileName}</span>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         )}

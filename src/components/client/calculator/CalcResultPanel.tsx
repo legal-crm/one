@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button, Callout } from '../ui';
 import { formatMan, type PublicCalcRange } from '../../../services/repayment/publicCalculator';
+import { SITE_REVIEW, legalReviewLabel } from '../../../../api/_lib/legal-review.js';
 
 export const CALC_DISCLAIMER = '공개된 기준을 적용한 참고용 일반 계산이며, 개인 사건의 결과를 판단하지 않습니다. 입력한 값은 저장하거나 보내지 않습니다.';
+/** 외부 법률 검토 (R6·쟁점 8): 계산기 화면 구성·문구 검토 완료 */
+export const CALC_REVIEW_LABEL = legalReviewLabel(SITE_REVIEW);
 
 /**
  * 제도 이해용 계산기 결과 (B-7): 범위 + 계산 과정 펼치기 + 결과를 바꾸는 요인 + 근거
@@ -115,7 +118,7 @@ export default function CalcResultPanel({
         </ul>
       </div>
 
-      <p className="text-xs text-slate-500 leading-relaxed break-keep">{CALC_DISCLAIMER}</p>
+      <p className="text-xs text-slate-500 leading-relaxed break-keep">{CALC_DISCLAIMER}{CALC_REVIEW_LABEL ? ` · ${CALC_REVIEW_LABEL}` : ''}</p>
 
       <div className="flex flex-col sm:flex-row gap-2">
         {extraAction}

@@ -16,6 +16,7 @@ import OfficeClosurePanel from './admin/OfficeClosurePanel';
 import AdminActionsPanel from './admin/AdminActionsPanel';
 import InquiryBoxPanel from './admin/InquiryBoxPanel';
 import CompanyInfoPanel from './admin/CompanyInfoPanel';
+import { LEGAL_REVIEWERS } from '../../api/_lib/legal-review.js';
 import { ContentStatusCell, ContentStatusSummary, useContentStatuses } from './admin/content/ContentStatusBar';
 import { DEFAULT_PROHIBITED_EXPRESSIONS, findProhibitedExpressions } from '../services/proposalCompliance';
 import { REVIEW_CONSENT_METHOD_LABEL, type ReviewConsentMethod } from '../types';
@@ -199,7 +200,10 @@ export default function AdminRole({
   const [formContent, setFormContent] = useState<string>('');
   const [formCategory, setFormCategory] = useState<string>('개인회생');
   const [formBadge, setFormBadge] = useState<'HOT' | 'NEW' | 'BEST' | null>(null);
-  const [formAuthorId, setFormAuthorId] = useState<string>('lawyer-1');
+  const [formAuthorId, setFormAuthorId] = useState<string>('');
+  // R6·쟁점 33: 검토받은 글만 검토자·검토일
+  const [formReviewer, setFormReviewer] = useState<string>('');
+  const [formReviewedOn, setFormReviewedOn] = useState<string>('');
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
@@ -3333,8 +3337,10 @@ export default function AdminRole({
                       setFormContent('');
                       setFormCategory('개인회생');
                       setFormBadge(null);
-                      setFormAuthorId(lawyers[0]?.id || 'lawyer-1');
-                      setFormImageUrl('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600');
+                      setFormAuthorId('');
+                      setFormReviewer('');
+                      setFormReviewedOn('');
+                      setFormImageUrl('');
                     }}
                     className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
@@ -3496,17 +3502,19 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
-                          <select 
-                            value={formBadge || ''} 
-                            onChange={(e) => setFormBadge((e.target.value as any) || null)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          >
-                            <option value="">배지 없음</option>
-                            <option value="HOT">HOT (오렌지)</option>
-                            <option value="NEW">NEW (인디고)</option>
-                            <option value="BEST">BEST (에메랄드)</option>
-                          </select>
+                          <label htmlFor="news-reviewer" className="text-sm text-slate-300 block font-bold">법률 검토 (검토받은 글만)</label>
+                          <div className="flex gap-2">
+                            <select id="news-reviewer" value={formReviewer} onChange={(e) => { setFormReviewer(e.target.value); if (e.target.value && !formReviewedOn) setFormReviewedOn(localYmd()); }}
+                              className="flex-1 bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200">
+                              <option value="">검토 없음</option>
+                              {LEGAL_REVIEWERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            </select>
+                            {formReviewer && (
+                              <input type="date" aria-label="검토일" value={formReviewedOn} max={localYmd()} onChange={(e) => setFormReviewedOn(e.target.value)}
+                                className="bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">고른 글에만 '법률 검토: 변호사(검토일)'이 붙어요. 사무소 이름·연락처는 넣지 않아요.</p>
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
@@ -3521,23 +3529,15 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
-                          <select 
-                            value={formAuthorId} 
-                            onChange={(e) => setFormAuthorId(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          >
-                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
-                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
-                            ))}
-                          </select>
+                          <span className="text-sm text-slate-300 block font-bold">글쓴이</span>
+                          <p className="min-h-[46px] flex items-center px-3 rounded-xl bg-[#07090E] border border-[#1E293B]/80 text-slate-300">마이김변 편집팀 (변호사 명의로 쓰지 않아요)</p>
                         </div>
 
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
                           <input 
                             type="text" 
-                            placeholder="대표 이미지 unsplash URL 입력"
+                            placeholder="https://… (비워 두면 이미지 없음)"
                             value={formImageUrl}
                             onChange={(e) => setFormImageUrl(e.target.value)}
                             className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
@@ -3583,7 +3583,8 @@ export default function AdminRole({
                               toast.error('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
                               return;
                             }
-                            const targetLawyer = lawyers.find(l => l.id === formAuthorId) || lawyers[0];
+                            if (formReviewer && !/^\d{4}-\d{2}-\d{2}$/.test(formReviewedOn)) { toast.error('검토일을 넣어 주세요.'); return; }
+                            const legalReview = formReviewer ? { reviewer: formReviewer, reviewedOn: formReviewedOn } : undefined;
                             if (isCreateMode) {
                               const newArt: NewsArticle = {
                                 id: `news-${Date.now()}`,
@@ -3591,13 +3592,14 @@ export default function AdminRole({
                                 excerpt: formExcerpt.trim(),
                                 content: formContent.trim(),
                                 category: formCategory,
-                                badge: formBadge,
-                                authorId: formAuthorId,
-                                authorName: targetLawyer.name,
-                                authorAvatar: targetLawyer.avatar,
+                                badge: null,
+                                authorId: undefined,
+                                authorName: '마이김변 편집팀',
+                                authorAvatar: '',
                                 views: 0,
-                                date: new Date().toISOString().split('T')[0],
-                                imageUrl: formImageUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600'
+                                date: localYmd(),
+                                imageUrl: formImageUrl.trim(),
+                                legalReview,
                               };
                               setNewsArticles(prev => [newArt, ...prev]);
                               toast.success('신규 법률 기사가 게재 등록되었습니다');
@@ -3608,11 +3610,12 @@ export default function AdminRole({
                                 excerpt: formExcerpt.trim(),
                                 content: formContent.trim(),
                                 category: formCategory,
-                                badge: formBadge,
-                                authorId: formAuthorId,
-                                authorName: targetLawyer.name,
-                                authorAvatar: targetLawyer.avatar,
-                                imageUrl: formImageUrl.trim() || a.imageUrl
+                                badge: null,
+                                authorId: undefined,
+                                authorName: '마이김변 편집팀',
+                                authorAvatar: '',
+                                imageUrl: formImageUrl.trim(),
+                                legalReview,
                               } : a));
                               toast.success('법률 아티클 정보가 수정 반영되었습니다');
                             }
@@ -3621,7 +3624,7 @@ export default function AdminRole({
                           }}
                           className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
                         >
-                          {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
+                          {isCreateMode ? '저장' : '변경 사항 저장'}
                         </button>
                       </div>
                     </div>
@@ -3638,7 +3641,7 @@ export default function AdminRole({
                             <th className="p-3">커버</th>
                             <th className="p-3">기사 분류</th>
                             <th className="p-3">법률 아티클 기사명</th>
-                            <th className="p-3">집필 대리인</th>
+                            <th className="p-3">글쓴이</th>
                             <th className="p-3">조회수</th>
                             <th className="p-3">게재일</th>
                             <th className="p-3 text-right">콘텐츠 조율</th>
@@ -3669,18 +3672,11 @@ export default function AdminRole({
                               </td>
                               <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate leading-normal">
                                 <div className="flex items-center gap-1.5">
-                                  {art.badge && (
-                                    <span className={`text-[7px] font-black px-1 rounded-sm text-white ${
-                                      art.badge === 'HOT' ? 'bg-orange-500' :
-                                      art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
-                                    }`}>
-                                      {art.badge}
-                                    </span>
-                                  )}
                                   <span>{art.title}</span>
+                                  {art.legalReview && <span className="text-xs font-bold px-1.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">법률 검토</span>}
                                 </div>
                               </td>
-                              <td className="p-3 font-bold text-slate-300">By {art.authorName}</td>
+                              <td className="p-3 font-bold text-slate-300">{art.authorName || '마이김변 편집팀'}</td>
                               <td className="p-3 text-slate-500">{art.views.toLocaleString()}회</td>
                               <td className="p-3 font-mono text-slate-450">{art.date}</td>
                               <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
@@ -3692,9 +3688,11 @@ export default function AdminRole({
                                     setFormExcerpt(art.excerpt);
                                     setFormContent(art.content);
                                     setFormCategory(art.category);
-                                    setFormBadge(art.badge as any);
-                                    setFormAuthorId(art.authorId || '');
-                                    setFormImageUrl(art.imageUrl);
+                                    setFormBadge(null);
+                                    setFormAuthorId('');
+                                    setFormReviewer(art.legalReview?.reviewer || '');
+                                    setFormReviewedOn(art.legalReview?.reviewedOn || '');
+                                    setFormImageUrl(art.imageUrl || '');
                                   }}
                                   className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                                 >

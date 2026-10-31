@@ -77,7 +77,7 @@ export default function PlatformFeaturesPanel() {
         <label className="flex items-start gap-2 text-sm text-slate-200">
           <input type="checkbox" className="mt-1" checked={cfg.features.calculatorVisible}
             onChange={e => set({ features: { ...cfg.features, calculatorVisible: e.target.checked } })} />
-          <span>변제금 계산기 공개 <span className="block text-xs text-slate-400">제도 이해용으로 다시 만들고(B-7) 외부 변호사 검토를 마친 뒤 켜세요.</span></span>
+          <span>변제금 계산기 공개 <span className="block text-xs text-slate-400">외부 변호사 검토 완료(2026-11-01). 끄면 고객 화면에서 바로 숨겨지고, 다음 배포부터 안내 페이지가 검색에서 빠져요.</span></span>
         </label>
         <label className="flex items-start gap-2 text-sm text-slate-200">
           <input type="checkbox" className="mt-1" checked={cfg.features.companionVisible}

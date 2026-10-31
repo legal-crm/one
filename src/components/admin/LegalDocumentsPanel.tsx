@@ -1,13 +1,13 @@
 // 통합어드민 › 플랫폼 설정: 약관·처리방침 버전 (CT-13)
 // 게시본은 고칠 수 없다. 새 내용은 새 버전으로 게시하고, 중요한 변경이면 '다시 동의 받기'를 켠다.
-// 운영 규칙: 시행 7일 전(이용자에게 불리한 변경은 30일 전) 공지. 약관 본문(정적 페이지)은 외부 자문 뒤 바꾼다(R6).
+// 운영 규칙: 시행 7일 전(이용자에게 불리한 변경은 30일 전) 공지. 약관 본문을 고치면 외부 자문(R6)에 다시 보내고, 검토한 판에만 검토일을 남긴다.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, RefreshCw } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../supabaseClient';
 import { rpcErrorMessage } from '../../services/office/rpcResult';
 
-interface LegalDoc { id: string; kind: string; version: string; title: string; url: string; summary: string | null; effective_on: string; requires_reconsent: boolean; published_at: string }
+interface LegalDoc { id: string; kind: string; version: string; title: string; url: string; summary: string | null; effective_on: string; requires_reconsent: boolean; published_at: string; reviewed_by?: string | null; reviewed_on?: string | null }
 interface Stat { kind: string; version: string; granted: number; withdrawn: number }
 
 const KIND_LABEL: Record<string, string> = { terms: '이용약관', privacy: '개인정보 처리방침', third_party: '변호사 정보 제공 동의', lawyer_terms: '변호사 이용약관' };
@@ -74,6 +74,9 @@ export default function LegalDocumentsPanel() {
               <li key={d.id} className="py-2 text-slate-200">
                 <span className="font-bold">{KIND_LABEL[d.kind] || d.kind}</span>
                 <span className="text-slate-400"> · {d.version} · {d.effective_on} 시행{d.requires_reconsent ? ' · 다시 동의' : ''}</span>
+                {d.reviewed_by && d.reviewed_on
+                  ? <span className="ml-1 text-xs font-bold text-emerald-300">법률 검토: {d.reviewed_by}({d.reviewed_on})</span>
+                  : <span className="ml-1 text-xs text-amber-300">외부 검토 전</span>}
                 <span className="block text-xs text-slate-500">동의 {s?.granted ?? 0}건{s?.withdrawn ? ` · 철회 ${s.withdrawn}건` : ''} · <a href={d.url} target="_blank" rel="noopener noreferrer" className="underline">{d.url}</a></span>
               </li>
             );

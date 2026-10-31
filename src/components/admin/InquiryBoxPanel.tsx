@@ -11,6 +11,7 @@ import type { LawyerInquiry } from '../../types';
 import { useDialog } from '../common/DialogProvider';
 import { supabase, isSupabaseConfigured } from '../../supabaseClient';
 import { DEFAULT_PROHIBITED_EXPRESSIONS, findProhibitedExpressions } from '../../services/proposalCompliance';
+import { signInquiryAttachments } from '../../services/cms/inquiryFiles';
 import {
   INQUIRY_STATUS_LABEL, adminLoadInquiries, adminReplyInquiry, adminUpdateInquiry, inquiryDueInfo,
   type AdminInquiry, type InquiryStatus,
@@ -35,7 +36,7 @@ interface Row {
   reply?: string;
   repliedAt?: string;
   contactInfo?: string;
-  attachments: { fileName: string; fileSize: number; fileType: string; url?: string }[];
+  attachments: { fileName: string; fileSize: number; fileType: string; url?: string; path?: string }[];
   notice?: AdminInquiry['replyNotice'];
 }
 
@@ -72,6 +73,15 @@ export default function InquiryBoxPanel({ lawyerInquiries, setLawyerInquiries, a
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
+  // 변호사 문의 첨부(비공개 저장소)는 고를 때 5분 주소를 만든다
+  const [lawyerUrls, setLawyerUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!selectedKey.startsWith('l:')) return;
+    const inq = lawyerInquiries.find(i => `l:${i.id}` === selectedKey);
+    const need = (inq?.attachments || []).filter(a => a.path && !lawyerUrls[a.path]);
+    if (need.length === 0) return;
+    void signInquiryAttachments(need).then(m => setLawyerUrls(prev => ({ ...prev, ...m })));
+  }, [selectedKey, lawyerInquiries, lawyerUrls]);
 
   const loadClient = useCallback(async () => {
     setLoadError('');
@@ -99,10 +109,10 @@ export default function InquiryBoxPanel({ lawyerInquiries, setLawyerInquiries, a
       key: `l:${i.id}`, source: 'lawyer', id: i.id, writer: i.lawyerName, writerSub: '변호사',
       title: i.title, content: i.content, category: LAWYER_CATEGORY[i.category] || i.category,
       status: normStatus(i.status), assignee: i.assignee, createdAt: i.createdAt, reply: i.replyContent, repliedAt: i.repliedAt,
-      attachments: (i.attachments || []).map(a => ({ fileName: a.fileName, fileSize: a.fileSize, fileType: a.fileType, url: a.dataUrl || undefined })),
+      attachments: (i.attachments || []).map(a => ({ fileName: a.fileName, fileSize: a.fileSize, fileType: a.fileType, url: a.dataUrl || lawyerUrls[a.path || ''] || undefined, path: a.path })),
     }));
     return [...c, ...l].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  }, [clientItems, lawyerInquiries]);
+  }, [clientItems, lawyerInquiries, lawyerUrls]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
