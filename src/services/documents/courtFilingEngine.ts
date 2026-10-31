@@ -258,6 +258,16 @@ export interface CourtFilingMasterData {
     statutoryMinimumAmount: number;
     meetsStatutoryMinimum: boolean;
     statutoryWarningMessage: string | null;
+
+    // H-10: 변제계획 편집기(repaymentCalculationEngine) 결과를 그대로 쓴다
+    /** true면 월 변제금·총 변제예정액·청산가치·현재가치가 저장된 변제계획안 값 (작성기에서 다시 계산하지 않음) */
+    fromPlan?: boolean;
+    /** 변제예정액의 현재가치 (라이프니츠, 엔진 계산값) */
+    presentValue?: number;
+    /** 총 채무액 (채권자목록 합계) */
+    totalDebtAmount?: number;
+    /** 우선권 채권 2단계 분할 변제 여부 */
+    isTwoStage?: boolean;
   };
 
   // 4. 회생위원 계좌 및 5대 특약
@@ -501,14 +511,18 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
 
   const formulaText = `{55,000 + (5,500원 X [ ${creditorCount} ] X 8회)}`;
 
-  // 2. 가용소득 및 변제액 재계산
-  const monthlyNet = prev.repaymentSummary.monthlyNetIncome;
-  const totalLivingCost = prev.repaymentSummary.monthlyLivingCost + (prev.repaymentSummary.additionalLivingCost || 0);
-  const monthlyDisposableIncome = Math.max(0, monthlyNet - totalLivingCost);
-  const months = prev.repaymentSummary.repaymentMonths || 36;
-  const totalRepaymentAmount = monthlyDisposableIncome * months;
+  // 2. 가용소득 및 변제액
+  // 변제계획안이 있으면 그 값(엔진: 현재가치·우선권 2단계·유보 반영)을 그대로 쓴다 (H-10).
+  // 이전: 작성기가 '소득 − 생계비 × 개월'로 따로 계산해 변제계획안과 금액이 달랐다.
+  const rs = prev.repaymentSummary;
+  const months = rs.repaymentMonths || 36;
+  const monthlyDisposableIncome = rs.fromPlan
+    ? rs.monthlyDisposableIncome
+    : Math.max(0, rs.monthlyNetIncome - (rs.monthlyLivingCost + (rs.additionalLivingCost || 0)));
+  const totalRepaymentAmount = rs.fromPlan ? rs.totalRepaymentAmount : monthlyDisposableIncome * months;
 
-  const totalDebtAmount = prev.creditors.reduce((sum, c) => sum + creditorTotal(c), 0) || 1;
+  const creditorDebt = prev.creditors.reduce((sum, c) => sum + creditorTotal(c), 0);
+  const totalDebtAmount = creditorDebt || 1;
   const repaymentRatio = Math.round((totalRepaymentAmount / totalDebtAmount) * 100);
 
   // 3. 제614조 제2항 제3호 인가요건 검증
@@ -525,7 +539,7 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
   }
 
   if (!meetsStatutoryMinimum) {
-    statutoryWarningMessage = `신청인의 총변제예정액(${totalRepaymentAmount.toLocaleString()}원)은 법정 최저변제액(${statutoryMinimumAmount.toLocaleString()}원)에 미달하여 법 제614조 제2항 제3호 인가요건을 충족하지 못하고 있습니다. 부양가족 수나 생계비율을 조정하여 월 가용소득을 상향해야 기각을 방지할 수 있습니다.`;
+    statutoryWarningMessage = `총변제예정액(${totalRepaymentAmount.toLocaleString()}원)이 법 제614조 제2항 제3호의 최저변제액(${statutoryMinimumAmount.toLocaleString()}원)보다 적습니다. 변제계획 편집기에서 소득·생계비·변제기간을 다시 확인해 주세요.`;
   }
 
   return {
@@ -550,7 +564,10 @@ export function recalculateMasterData(prev: CourtFilingMasterData): CourtFilingM
       repaymentRatio,
       statutoryMinimumAmount,
       meetsStatutoryMinimum,
-      statutoryWarningMessage
+      statutoryWarningMessage,
+      totalDebtAmount: creditorDebt,
+      // 변제계획안이 없으면 현재가치를 만들지 않는다 (이전 서식 표는 총액 × 0.92로 지어 냈음)
+      presentValue: rs.fromPlan ? rs.presentValue : undefined
     }
   };
 }
@@ -605,6 +622,34 @@ export function buildCourtFilingMasterData(
   const annualNetIncome = annualTotalIncome - annualTotalDeductions;
   const monthlyAverageIncome = monthlyLedger.length > 0 ? Math.round(annualNetIncome / monthlyLedger.length) : 0;
 
+  // H-10: 변제계획 편집기에서 계산·저장한 계획안이 있으면 그 결과를 서식 요약의 원본으로 쓴다
+  const plan: any = repaymentPlan;
+  const planSummary: CourtFilingMasterData['repaymentSummary'] | null = plan && plan.months && plan.calculatedLiving && plan.incomeExpense
+    ? {
+        monthlyNetIncome: plan.incomeExpense.monthlyNetIncome || 0,
+        householdSize: plan.incomeExpense.householdSize || householdSize,
+        medianIncomeAmount: baseMedian,
+        medianIncomeRatio: 60,
+        monthlyLivingCost: plan.calculatedLiving.baseLivingExpense || 0,
+        additionalLivingCost: plan.calculatedLiving.totalAdditionalExpense || 0,
+        monthlyDisposableIncome: plan.monthlyRepaymentTotal || plan.calculatedLiving.actualDisposableIncome || 0,
+        repaymentMonths: plan.months,
+        totalRepaymentAmount: plan.totalRepaymentAmount || 0,
+        liquidationValue: plan.totalLiquidationValue || 0,
+        repaymentRatio: Math.round(plan.totalRepaymentRate || 0),
+        repaymentType: plan.interestRepaymentMode && plan.interestRepaymentMode !== 'principal_only' ? '원리금변제' : '원금변제',
+        isExternalTrustee: plan.incomeExpense.trusteeType ? plan.incomeExpense.trusteeType === 'EXTERNAL' : true,
+        hasGarnishment: stayCases.length > 0,
+        statutoryMinimumAmount: plan.minimumRepaymentThreshold || 0,
+        meetsStatutoryMinimum: plan.satisfiesMinimumRepayment !== false,
+        statutoryWarningMessage: null,
+        fromPlan: true,
+        presentValue: plan.presentValue || 0,
+        totalDebtAmount: plan.totalDebt || 0,
+        isTwoStage: !!plan.isTwoStageRepayment,
+      }
+    : null;
+
   const initialData: CourtFilingMasterData = {
     courtJurisdiction,
     debtor: {
@@ -657,7 +702,7 @@ export function buildCourtFilingMasterData(
       totalCost: 0,
       formulaText: ''
     },
-    repaymentSummary: {
+    repaymentSummary: planSummary ?? {
       monthlyNetIncome,
       householdSize,
       medianIncomeAmount: baseMedian,

@@ -55,7 +55,7 @@ export const SummaryAndUrgentNoticeDoc: React.FC<DocTemplateProps> = ({ data, is
             <td className="border border-black p-2 font-semibold">○ 총변제예정(유보)액</td>
             <td className="border border-black p-2 text-right pr-4 font-bold">{repaymentSummary.totalRepaymentAmount.toLocaleString()}원</td>
             <td className="border border-black p-2 font-semibold">○ 변제예정액의 현재가치</td>
-            <td className="border border-black p-2 text-right pr-4">{Math.round(repaymentSummary.totalRepaymentAmount * 0.92).toLocaleString()}원</td>
+            <td className="border border-black p-2 text-right pr-4">{repaymentSummary.presentValue != null ? `${repaymentSummary.presentValue.toLocaleString()}원` : '변제계획안 작성 후 표시'}</td>
           </tr>
           <tr>
             <td className="border border-black p-2 font-semibold">○ 청산가치</td>
@@ -72,9 +72,9 @@ export const SummaryAndUrgentNoticeDoc: React.FC<DocTemplateProps> = ({ data, is
           <tr>
             <td className="border border-black p-2 font-semibold">○ 변제형태</td>
             <td className="border border-black p-2">{repaymentSummary.repaymentType}</td>
-            <td className="border border-black p-2 font-semibold">○ 탕감예상 채무금액</td>
+            <td className="border border-black p-2 font-semibold">○ 면책 예정 채무액(예상)</td>
             <td className="border border-black p-2 text-right pr-4 text-black font-bold">
-              {Math.max(0, 46830000 - repaymentSummary.totalRepaymentAmount).toLocaleString()}원
+              {repaymentSummary.totalDebtAmount ? `${Math.max(0, repaymentSummary.totalDebtAmount - repaymentSummary.totalRepaymentAmount).toLocaleString()}원` : '채권자목록 입력 후 표시'}
             </td>
           </tr>
           <tr>

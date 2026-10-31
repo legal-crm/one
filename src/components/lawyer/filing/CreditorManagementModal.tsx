@@ -114,8 +114,8 @@ function CreditorManagementModalInner({
       debtUsage: '',
       phone: '',
       fax: '',
-      debtCauseDetail: '신용대출',
-      borrowedDate: new Date().toISOString().split('T')[0],
+      debtCauseDetail: '', // 증명서로 채운다 (이전: '신용대출'·오늘 날짜 기본값)
+      borrowedDate: '',
       address: '',
       serviceAddress: '',
       representative: '',
@@ -257,7 +257,8 @@ function CreditorManagementModalInner({
       phone: editingCreditor.phone || '',
       fax: editingCreditor.fax || '',
 
-      debtCauseDetail: editingCreditor.debtCauseDetail || '신용대출',
+      debtCauseDetail: editingCreditor.debtCauseDetail || '',
+      personType: editingCreditor.personType,
       borrowedDate: editingCreditor.borrowedDate || new Date().toISOString().split('T')[0],
       address: editingCreditor.address || '',
       serviceAddress: editingCreditor.serviceAddress || editingCreditor.address || '',
@@ -589,6 +590,23 @@ function CreditorManagementModalInner({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 인격 구분 (DC-14): 전자소송 CSV '인격구분' 칸. 비우면 이름으로 짐작(국가·지자체·법인)하고, 개인은 직접 골라 주세요 */}
+                <div>
+                  <label htmlFor="creditor-person-type" className="block text-slate-700 font-bold mb-1">인격 구분</label>
+                  <select
+                    id="creditor-person-type"
+                    value={editingCreditor.personType || ''}
+                    onChange={(e) => setEditingCreditor(prev => ({ ...prev, personType: (e.target.value || undefined) as RepaymentCreditor['personType'] }))}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:border-blue-500 focus:outline-hidden"
+                  >
+                    <option value="">이름으로 짐작 (확인 필요)</option>
+                    <option value="natural">자연인 (개인)</option>
+                    <option value="corporation">법인</option>
+                    <option value="unincorporated">법인 아닌 사단·재단</option>
+                    <option value="state">국가</option>
+                    <option value="local_gov">지방자치단체</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">차용원인</label>
                   <input
@@ -1032,7 +1050,7 @@ function CreditorManagementModalInner({
                       <td className="p-3">
                         <div className="font-bold text-slate-900">{creditor.name}</div>
                         <div className="text-xs text-slate-500 mt-0.5">
-                          {creditor.debtCauseDetail || '신용대출'} · {creditor.borrowedDate || '일자 미상'}
+                          {creditor.debtCauseDetail || '차용원인 미입력'} · {creditor.borrowedDate || '일자 미상'}
                           {creditor.debtUsage && <span className="text-slate-400"> · 사용처: {creditor.debtUsage}</span>}
                         </div>
                       </td>

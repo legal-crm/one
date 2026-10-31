@@ -161,7 +161,13 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
 
   /** 레지스트리 경로로 값 수정 */
   const updateField = (key: string, value: unknown) => {
-    updateMaster(prev => setFieldValue(prev, key, value));
+    updateMaster(prev => {
+      const next = setFieldValue(prev, key, value);
+      // 변제 요약 칸을 직접 고치면 변제계획안 연결을 끊고 이 서식 값으로 계산한다 (H-10)
+      return key.startsWith('repaymentSummary.') && next.repaymentSummary.fromPlan
+        ? { ...next, repaymentSummary: { ...next.repaymentSummary, fromPlan: false, presentValue: undefined } }
+        : next;
+    });
   };
 
   const getFocusables = (): HTMLElement[] => {
@@ -312,6 +318,8 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
       ...prev,
       repaymentSummary: {
         ...prev.repaymentSummary,
+        fromPlan: false,
+        presentValue: undefined,
         householdSize,
         medianIncomeAmount: baseMedian,
         monthlyLivingCost: livingCost,
@@ -1060,6 +1068,11 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
 
           {openSection === 'income' && (
             <div data-section-body="income" className="p-4 pt-1 space-y-3 text-xs border-t border-slate-800/60 bg-slate-900/40">
+              {data.repaymentSummary.fromPlan && (
+                <p className="rounded-lg bg-cyan-900/40 border border-cyan-700/60 px-2.5 py-2 text-cyan-100 leading-relaxed">
+                  변제계획 편집기에서 저장한 계획안 값(월 변제금·변제기간·총 변제예정액·청산가치·현재가치)을 쓰고 있어요. 여기서 소득·가구 수·기간을 고치면 계획안 연결이 끊기고 이 서식 값으로만 계산돼요.
+                </p>
+              )}
               <div>
                 <label className="text-xs text-slate-400 block mb-1">월 평균 세후 소득</label>
                 <div className="flex items-center gap-2">
@@ -1071,7 +1084,9 @@ const CourtFilingInputSidebar = forwardRef<CourtFilingInputSidebarHandle, CourtF
                       ...prev,
                       repaymentSummary: {
                         ...prev.repaymentSummary,
-                        monthlyNetIncome: Number(e.target.value) || 0
+                        monthlyNetIncome: Number(e.target.value) || 0,
+                        fromPlan: false,
+                        presentValue: undefined
                       }
                     }))}
                     className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
