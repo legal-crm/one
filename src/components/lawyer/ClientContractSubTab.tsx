@@ -1,3 +1,4 @@
+import { getDefaultDebtCertUnitFee } from '../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
@@ -75,7 +76,7 @@ export default function ClientContractSubTab({
     const initialFeeManwon = won > 0 ? Math.round(won / 10000) : 0;
     const creditorCount = client.financialProfile?.creditorCount || 0;
     const isBk = crmExt.caseType === 'bankruptcy' || crmExt.caseType === 'individual_bankruptcy';
-    const costs = calculateCourtCosts(creditorCount, 15000, DELIVERY_UNIT_FEE_KRW, undefined, {
+    const costs = calculateCourtCosts(creditorCount, getDefaultDebtCertUnitFee(), DELIVERY_UNIT_FEE_KRW, undefined, {
       caseType: isBk ? 'bankruptcy' : 'rehab',
       withProhibition: !isBk,
       electronic: true,
@@ -97,7 +98,7 @@ export default function ClientContractSubTab({
         stampFee: costs.stampFee,
         miscFee: 0,
         debtCertFee: costs.debtCertFee,
-        debtCertUnitFee: 15000,
+        debtCertUnitFee: getDefaultDebtCertUnitFee(),
         deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: 0,
       },

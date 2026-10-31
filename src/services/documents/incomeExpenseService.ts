@@ -603,8 +603,8 @@ export function syncBusinessLedgerToD5103(
       ...(prev.business || {} as any),
       annualGrossRevenue: ledger.annualTotals.totalGrossRevenue,
       annualOperatingExpenses: ledger.annualTotals.totalOperatingExpense,
-      // 제세공과금: 입력값이 없으면 매출의 3%를 '추정치'로 사용 (변호사 검토 시 실제 신고액으로 교체)
-      annualTaxes: prev.business?.annualTaxes || Math.round(ledger.annualTotals.totalGrossRevenue * 0.03),
+      // 제세공과금: 실제 신고액만 (이전: 입력이 없으면 매출의 3%를 지어 넣었다. 프리랜서 3.3%는 원천징수라 별개, B-6)
+      annualTaxes: prev.business?.annualTaxes || 0,
       netAnnualBusinessIncome: ledger.annualTotals.totalNetProfit,
       monthlyAverageIncome: ledger.monthlyAverages.avgNetIncome
     }

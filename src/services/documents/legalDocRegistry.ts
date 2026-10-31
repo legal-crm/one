@@ -2730,7 +2730,7 @@ export const MASTER_ISSUANCE_GUIDE_DB: Record<string, IssuanceGuideInfo> = {
   '지방세 세목별 과세증명서': {
     agencyName: '위택스(WeTax) / 주민센터',
     agencyUrl: 'https://www.wetax.go.kr',
-    agencyPhone: '110',
+    agencyPhone: '1577-5700',
     issuanceSteps: [
       '위택스 접속 ➔ [납부결과/증명발급] ➔ [세목별 과세증명서] 클릭.',
       '과세구분: "전체 세목", 과세물건지: "전국", 발급기간: "최근 5년"을 설정합니다.',

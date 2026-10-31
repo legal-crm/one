@@ -86,12 +86,29 @@ export default function DebtAgencyApplicationModal({
   }, [clientId]);
 
   // 주문 채권자가 바뀌었을 때 appData에 동기화
+  // 채권자가 늘거나 줄어도 이미 고친 칸(사무소·의뢰인 정보·채권자 줄 체크·메모)은 남긴다 (이전: 저장하지 않은 편집이 모두 되돌아갔다, DC-9)
   useEffect(() => {
     if (order.agencyApplication) {
       setAppData(sanitizeAgencyData(order.agencyApplication));
-    } else {
-      setAppData(createDefaultAgencyApplicationData(order, clientRequest, activeLawyerName));
+      return;
     }
+    const fresh = createDefaultAgencyApplicationData(order, clientRequest, activeLawyerName);
+    setAppData(prev => {
+      if (!prev) return fresh;
+      const byKey = new Map((prev.creditors || []).filter(r => r.creditorName).map(r => [r.id, r] as const));
+      const byName = new Map((prev.creditors || []).filter(r => r.creditorName).map(r => [r.creditorName, r] as const));
+      return {
+        ...fresh,
+        caseType: prev.caseType, officeName: prev.officeName, caseManager: prev.caseManager, billingManager: prev.billingManager,
+        tel: prev.tel, fax: prev.fax, directPhone: prev.directPhone, hp: prev.hp, clientName: prev.clientName, clientPhone: prev.clientPhone,
+        customTemplateName: (prev as any).customTemplateName,
+        creditors: fresh.creditors.map(r => {
+          const old = byKey.get(r.id) || (r.creditorName ? byName.get(r.creditorName) : undefined);
+          return old ? { ...r, requestDebtCert: old.requestDebtCert, requestCardHistory: old.requestCardHistory, requestBankHistory: old.requestBankHistory, note: old.note } : r;
+        }),
+      } as typeof fresh;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.items.length, order.agencyApplication]);
 
   // 의뢰인 모바일 7대 실무 입력 내역 확인

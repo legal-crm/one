@@ -3,7 +3,7 @@
 // 공식 개발가이드: https://developer.codef.io/products/public/each/ck/scourt-events
 
 import { handleCorsPreflight } from '../cors-helper.js';
-import { verifyAuth } from '../auth-middleware.js';
+import { verifyAuth, isActiveOfficeMember } from '../auth-middleware.js';
 import { withMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 
 let cachedToken = {
@@ -218,9 +218,13 @@ async function handler(req, res) {
   if (!user && !(process.env.NODE_ENV === 'development' && !process.env.VERCEL)) {
     return res.status(401).json({ ok: false, error: '로그인이 필요해요.' });
   }
+  // 사무소 구성원만 (이전: 로그인만 확인해 의뢰인 계정도 사건 조회를 부를 수 있었다, CM-7)
+  if (user && process.env.VERCEL && !(await isActiveOfficeMember(user))) {
+    return res.status(403).json({ ok: false, error: '사무소 계정으로만 조회할 수 있어요.' });
+  }
 
   const {
-    courtName = '서울회생법원',
+    courtName = '',
     caseNumber = '',
     clientName = '',
     bankCode = '',

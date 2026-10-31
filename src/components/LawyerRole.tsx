@@ -36,6 +36,7 @@ import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
 import { confirmClientCopy, findProhibitedExpressions, loadOfficeCopyRules } from '../services/proposalCompliance';
 import { buildProposalSnapshot } from '../services/proposal/clientProposalModel';
 import { loadCreditorRegistry } from '../services/court/creditorRegistryService';
+import { loadDefaultDebtCertUnitFee } from '../services/debt/debtAgencyDefaults';
 import { decideProposalReview, listPendingProposalReviews, registerSeal, requestProposalReview } from '../services/office/officeSettingsService';
 import OfficeSettingsPanel, { OfficeSealCard } from './lawyer/settings/OfficeSettingsPanel';
 import { loadSealCache } from '../services/office/sealCache';
@@ -386,6 +387,7 @@ export default function LawyerRole({
     void loadOfficeProfile(currentOfficeId);
     void loadOfficeCopyRules(currentOfficeId || null);
     void loadSealCache(currentOfficeId);
+    void loadDefaultDebtCertUnitFee(currentOfficeId);
   }, [currentOfficeId]);
   // 공용 채권자 정보(서버, NF-5) — 채권자 검색·자동 매칭·서식이 이 목록을 쓴다
   useEffect(() => {

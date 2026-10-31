@@ -4,6 +4,7 @@
 // 기기 저장(localStorage)은 Supabase가 없는 로컬 개발 환경 전용
 // ============================================================
 
+import { getDefaultDebtCertUnitFee } from './debt/debtAgencyDefaults';
 import type { ElectronicContract, ContractDocument, ContractDocType, ContractStatus, FeeInstallment, CourtCosts, BankAccountInfo, SuccessFeeAgreement } from '../types';
 import { CONTRACT_DOC_TYPES } from '../types';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
@@ -540,11 +541,11 @@ export function buildContractDraft(data: {
       stampFee: data.courtCosts.stampFee ?? 30000,
       miscFee: data.courtCosts.miscFee ?? 0,
       debtCertFee: data.courtCosts.debtCertFee ?? 0,
-      debtCertUnitFee: data.courtCosts.debtCertUnitFee ?? 15000,
+      debtCertUnitFee: data.courtCosts.debtCertUnitFee ?? getDefaultDebtCertUnitFee(),
       deliveryUnitFee: data.courtCosts.deliveryUnitFee ?? DELIVERY_UNIT_FEE_KRW,
       provisionalDeposit: data.courtCosts.provisionalDeposit ?? 0,
       isCustomized: data.courtCosts.isCustomized ?? false,
-    } : { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0, debtCertFee: 0, debtCertUnitFee: 15000, deliveryUnitFee: DELIVERY_UNIT_FEE_KRW, provisionalDeposit: 0 },
+    } : { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0, debtCertFee: 0, debtCertUnitFee: getDefaultDebtCertUnitFee(), deliveryUnitFee: DELIVERY_UNIT_FEE_KRW, provisionalDeposit: 0 },
     feeSchedule: data.feeSchedule ?? [],
     vatIncluded: data.vatIncluded ?? false,
     feeAccount: data.feeAccount,
@@ -731,7 +732,7 @@ ${firmName}은 위임 사무 처리를 위해 아래 의뢰인의 신분증 사�
 
 export function calculateCourtCosts(
   creditorCount: number,
-  debtCertUnitFee: number = 15000,
+  debtCertUnitFee: number = getDefaultDebtCertUnitFee(),
   deliveryUnitFee: number = DELIVERY_UNIT_FEE_KRW,
   baseStampFee?: number,
   options?: {

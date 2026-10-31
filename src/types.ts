@@ -2410,7 +2410,7 @@ export interface CourtCosts {
   stampFee: number;
   miscFee: number;
   debtCertFee?: number;        // 부채증명서 발급 대행비 (채권자수 * 단가)
-  debtCertUnitFee?: number;    // 채권자 1곳당 발급 단가 (기본: 15,000원)
+  debtCertUnitFee?: number;    // 채권자 1곳당 발급 단가 (기본: 사무소 대행사 설정, 없으면 0원)
   deliveryUnitFee?: number;    // 송달료 1회분 단가 (2026-07-01부터 5,640원) — 회차 = 10 + 채권자수×8
   provisionalDeposit?: number; // 법원 변제예납금
   isCustomized?: boolean;      // 사무실 수기 수정 여부

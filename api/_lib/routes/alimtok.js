@@ -2,6 +2,7 @@
 // GET  /api/alimtok?action=status -> 팝빌 상태 및 잔여 포인트 조회
 // POST /api/alimtok               -> 알림톡 발송 (실패 시 LMS/SMS 자동 대체 발송)
 
+import { createHash } from 'node:crypto';
 import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from '../popbill-service.js';
 import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from '../rate-limiter.js';
 import { verifyAuth, isAdminWithMfa, supabase as authSupabase } from '../auth-middleware.js';
@@ -291,7 +292,7 @@ export default async function handler(req, res) {
 
   const finalTemplateCode = reqTemplateCode || resolveMilestoneTemplate(milestone) || '';
   const finalReceiverName = receiverName || '의뢰인';
-  const finalAltSubject = altSubject || '[my김변 법률센터] 안내';
+  const finalAltSubject = altSubject || '[마이김변] 안내';
   const finalAltContent = altContent || content;
 
   // 1. 팝빌 환경변수 미등록: 발송하지 않았음을 명확히 반환 (이전: ok:true + MOCK 접수번호 → 일부 화면이 '발송 완료'로 표시)
@@ -316,6 +317,28 @@ export default async function handler(req, res) {
       templateCode: finalTemplateCode || null,
       error: '카카오 검수 승인된 알림톡 템플릿이 등록되지 않아 발송하지 않았습니다. (관리자: ALIMTOK_TEMPLATE_CODES 설정 필요)',
     });
+  }
+
+  // 1-c. 하루 발송 한도 (DB 공유 — 서버 인스턴스마다 따로 세던 메모리 한도 보완)
+  //  받는 번호(지문)당 하루 20건, 보내는 계정당 하루 500건. 번호 원문은 저장하지 않는다.
+  {
+    const phoneBucket = 'to:' + createHash('sha256').update(cleanPhone).digest('hex').slice(0, 40);
+    const userBucket = 'user:' + String(req.user.id).slice(0, 60);
+    try {
+      const { data: okPhone, error: phoneErr } = await authSupabase.rpc('bump_message_counter', { p_bucket: phoneBucket, p_limit: 20 });
+      if (phoneErr) throw phoneErr;
+      if (okPhone === false) {
+        return res.status(429).json({ ok: false, error: '같은 번호로 오늘 보낼 수 있는 건수(20건)를 넘었습니다. 내일 다시 보내 주세요.' });
+      }
+      const { data: okUser, error: userErr } = await authSupabase.rpc('bump_message_counter', { p_bucket: userBucket, p_limit: 500 });
+      if (userErr) throw userErr;
+      if (okUser === false) {
+        return res.status(429).json({ ok: false, error: '이 계정이 오늘 보낼 수 있는 건수(500건)를 넘었습니다. 내일 다시 보내 주세요.' });
+      }
+    } catch (limitErr) {
+      console.error('[Alimtok] send limit check failed:', limitErr?.message || limitErr);
+      return res.status(503).json({ ok: false, error: '발송 한도를 확인하지 못해 보내지 않았습니다. 잠시 뒤 다시 시도해 주세요.' });
+    }
   }
 
   // 2. 팝빌 실제 알림톡(ATS) 발송 (카카오톡 우선 + 미수신시 LMS 자동 대체 전송)

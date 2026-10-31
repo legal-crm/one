@@ -1,3 +1,4 @@
+import { getDefaultDebtCertUnitFee } from '../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useRef } from 'react';
 import { 
@@ -59,7 +60,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
   const [c, setC] = useState<ElectronicContract>(() => {
     const creditorCount = initialContract.courtCosts?.creditorCount ?? 5;
-    const debtCertUnitFee = initialContract.courtCosts?.debtCertUnitFee ?? 15000;
+    const debtCertUnitFee = initialContract.courtCosts?.debtCertUnitFee ?? getDefaultDebtCertUnitFee();
     const deliveryUnitFee = initialContract.courtCosts?.deliveryUnitFee ?? DELIVERY_UNIT_FEE_KRW;
     const isBk = (initialContract.caseType || '').includes('파산') || initialContract.caseCategory === 'individual_bankruptcy';
     const initialCosts = calculateCourtCosts(creditorCount, debtCertUnitFee, deliveryUnitFee, initialContract.courtCosts?.stampFee, {
@@ -284,7 +285,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       }
 
       const finalCreditors = foundCreditorCount || c.courtCosts.creditorCount || 6;
-      const unitFee = c.courtCosts.debtCertUnitFee || 15000;
+      const unitFee = c.courtCosts.debtCertUnitFee || getDefaultDebtCertUnitFee();
       const deliveryUnitFee = c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
       const caseCat = foundCaseType || c.caseCategory || 'individual_rehab';
       const isBk = caseCat === 'individual_bankruptcy';
@@ -321,7 +322,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // ── 납부 금액 개별 항목 조작 핸들러 (리걸플로 4-3 호환) ──
   const handleAddCourtCostItem = () => {
     const credCount = c.courtCosts?.creditorCount || 0;
-    const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
+    const unitFee = c.courtCosts?.debtCertUnitFee || getDefaultDebtCertUnitFee();
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {
@@ -733,7 +734,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // ─── Step 2: 수임료·실비·성공보수 설정 (리걸플로 4-2, 4-3, 4-4 완벽 구현) ───
   const renderFeeSchedule = () => {
     const credCount = c.courtCosts?.creditorCount || 0;
-    const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
+    const unitFee = c.courtCosts?.debtCertUnitFee || getDefaultDebtCertUnitFee();
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {
@@ -1006,7 +1007,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                     <button
                       type="button"
                       onClick={() => {
-                        const auto = calculateCourtCosts(credCount, 15000, DELIVERY_UNIT_FEE_KRW, 30000);
+                        const auto = calculateCourtCosts(credCount, getDefaultDebtCertUnitFee(), DELIVERY_UNIT_FEE_KRW, 30000);
                         update({
                           courtCosts: {
                             ...c.courtCosts,
@@ -1014,7 +1015,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                             stampFee: auto.stampFee,
                             debtCertFee: auto.debtCertFee,
                             deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
-                            debtCertUnitFee: 15000,
+                            debtCertUnitFee: getDefaultDebtCertUnitFee(),
                             isCustomized: false,
                           }
                         });
@@ -1034,7 +1035,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         onChange={e => {
                           const unit = Math.max(0, +e.target.value);
                           update({
-                            courtCosts: { ...c.courtCosts, deliveryUnitFee: unit, deliveryFee: calculateCourtCosts(credCount, 15000, unit).deliveryFee, isCustomized: true }
+                            courtCosts: { ...c.courtCosts, deliveryUnitFee: unit, deliveryFee: calculateCourtCosts(credCount, getDefaultDebtCertUnitFee(), unit).deliveryFee, isCustomized: true }
                           });
                         }}
                         className="w-full px-2 py-1 bg-white border rounded text-xs font-bold"
@@ -1044,7 +1045,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                       <span className="text-xs text-slate-500 block">부채발급 1곳당 단가</span>
                       <input 
                         type="number"
-                        value={c.courtCosts.debtCertUnitFee || 15000}
+                        value={c.courtCosts.debtCertUnitFee || getDefaultDebtCertUnitFee()}
                         onChange={e => {
                           const unit = Math.max(0, +e.target.value);
                           update({
@@ -1074,7 +1075,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         onChange={e => {
                           const num = Math.max(0, +e.target.value);
                           const unitDel = c.courtCosts.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
-                          const unitDebt = c.courtCosts.debtCertUnitFee || 15000;
+                          const unitDebt = c.courtCosts.debtCertUnitFee || getDefaultDebtCertUnitFee();
                           update({
                             courtCosts: {
                               ...c.courtCosts,
@@ -1141,7 +1142,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700">부채증명서 발급 비용</label>
                     <span className="text-xs text-slate-400 font-mono">
-                      {credCount}곳 × {(c.courtCosts.debtCertUnitFee || 15000).toLocaleString()}원
+                      {credCount}곳 × {(c.courtCosts.debtCertUnitFee || getDefaultDebtCertUnitFee()).toLocaleString()}원
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
@@ -2446,7 +2447,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const renderPreview = () => {
     const includedDocs = c.documents.filter(d => d.included);
     const credCount = c.courtCosts?.creditorCount || 0;
-    const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
+    const unitFee = c.courtCosts?.debtCertUnitFee || getDefaultDebtCertUnitFee();
     const delUnitFee = c.courtCosts?.deliveryUnitFee || DELIVERY_UNIT_FEE_KRW;
     const isBk = c.caseCategory === 'individual_bankruptcy' || (c.caseType || '').includes('파산');
     const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee, {

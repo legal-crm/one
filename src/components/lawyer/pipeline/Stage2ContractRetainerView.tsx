@@ -1,3 +1,4 @@
+import { getDefaultDebtCertUnitFee } from '../../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW, calcCourtFees } from '../../../services/court/courtFees';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { localYmd } from '../../../utils/localDate';
@@ -276,7 +277,7 @@ export default function Stage2ContractRetainerView({
               stampFee,
               miscFee: 0,
               debtCertFee: 0,
-              debtCertUnitFee: 15000,
+              debtCertUnitFee: getDefaultDebtCertUnitFee(),
               deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
               provisionalDeposit: trusteeDeposit,
               isCustomized: true,
@@ -313,7 +314,7 @@ export default function Stage2ContractRetainerView({
         stampFee,
         miscFee: 0,
         debtCertFee: 0,
-        debtCertUnitFee: 15000,
+        debtCertUnitFee: getDefaultDebtCertUnitFee(),
         deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: trusteeDeposit,
         isCustomized: true,
@@ -480,7 +481,7 @@ export default function Stage2ContractRetainerView({
         stampFee,
         miscFee: 0,
         debtCertFee: 0,
-        debtCertUnitFee: 15000,
+        debtCertUnitFee: getDefaultDebtCertUnitFee(),
         deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
         provisionalDeposit: trusteeDeposit,
         isCustomized: true,

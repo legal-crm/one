@@ -99,3 +99,14 @@ export function withAuth(handler, options = {}) {
     }
   };
 }
+
+/** 사무소 활성 구성원(변호사·직원)인지 — 의뢰인 계정이 사무소 전용 API를 부르지 못하게 (서비스 롤 조회) */
+export async function isActiveOfficeMember(user) {
+  if (!user?.id || !process.env.SUPABASE_SERVICE_ROLE_KEY) return false;
+  try {
+    const { data, error } = await supabase.from('office_members').select('id').eq('user_id', user.id).eq('status', 'active').limit(1);
+    return !error && Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}

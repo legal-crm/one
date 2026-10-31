@@ -6,7 +6,7 @@
  * - 좌측 62%: A4 실시간 캔버스 (대법원 바탕체 표준 규격)
  * - 우측 38%: CourtFilingInputSidebar (스마트 아코디언 입력 폼 & 5대 특약 원클릭 삽입기)
  * - 4대 관할법원(전국공통, 강릉지원, 대전지법, 청주지법) 자료제출목록 동적 전환 및 HWP 원본 다운로드
- * - 110~140p 첨부 직결(Interleaved) 완성본 번들 PDF 머징 연동
+ * - 첨부 직결(Interleaved) 완성본 번들 PDF 머징 연동
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -396,7 +396,7 @@ function CourtDocSuiteViewerModalInner({
     await downloadFilledHwpx(template.templatePath, fieldData, fileName);
   };
 
-  // 110~140p 첨부 직결 번들 머징 핸들러
+  // 첨부 직결 번들 머징 핸들러
   const handleGenerateBundle = async () => {
     try {
       setIsBundling(true);
@@ -721,10 +721,10 @@ function CourtDocSuiteViewerModalInner({
             onClick={handleGenerateBundle}
             disabled={isBundling}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg text-xs font-bold text-white shadow-sm transition"
-            title="고객이 보낸 부채증명서, 등초본, 과세증명을 법원 공식 순서로 결합한 전자소송 완성본(110~140p) 출력"
+            title="고객이 보낸 부채증명서, 등초본, 과세증명을 법원 공식 순서로 결합한 전자소송 묶음 PDF로 출력"
           >
             <FolderArchive className="w-3.5 h-3.5" />
-            <span>{isBundling ? '번들 병합 중...' : '110~140p 완성본 번들'}</span>
+            <span>{isBundling ? '번들 병합 중...' : '전자소송 묶음 PDF'}</span>
           </button>
 
           <button

@@ -1,3 +1,4 @@
+import { getDefaultDebtCertUnitFee } from '../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState } from 'react';
 import { FileSignature, Smartphone, Users, CheckCircle2, FileText, Send, X } from 'lucide-react';
@@ -119,7 +120,7 @@ function ContractConversionModalInner({
       // 채권자 수를 모르면 0으로 두고 계약 마법사에서 입력 (이전: 임의로 5곳 가정해 법원비용 산정)
       const creditorCount = knownCreditorCount;
       const isBk = caseType === 'individual_bankruptcy';
-      const courtCosts = calculateCourtCosts(creditorCount, 15000, DELIVERY_UNIT_FEE_KRW, undefined, {
+      const courtCosts = calculateCourtCosts(creditorCount, getDefaultDebtCertUnitFee(), DELIVERY_UNIT_FEE_KRW, undefined, {
         caseType: isBk ? 'bankruptcy' : 'rehab',
         withProhibition: !isBk,
         electronic: true,
@@ -142,7 +143,7 @@ function ContractConversionModalInner({
           stampFee: courtCosts.stampFee,
           miscFee: 0,
           debtCertFee: courtCosts.debtCertFee,
-          debtCertUnitFee: 15000,
+          debtCertUnitFee: getDefaultDebtCertUnitFee(),
           deliveryUnitFee: DELIVERY_UNIT_FEE_KRW,
           provisionalDeposit: 0,
         },
