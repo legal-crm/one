@@ -7,7 +7,7 @@
 --  2. case_certificate_vaults: 사건 키별 인증서 금고. 직접 접근 없음, 함수만.
 --     - 개인키·인증서 비밀번호는 의뢰인이 정한 보관 PIN으로 브라우저에서 암호화한 암호문만 받는다
 --       (npki.encVersion = 'pin-v1', 평문 keyBase64 거절). 서버·관리자는 열 수 없다 (제로날리지)
---     - 의뢰인: 내 사건에 제출·보기·파기 / 사무소: 그 사건 documents.manage 권한자만 보기·대신 등록·파기, 열 때마다 활동 기록
+--     - 의뢰인: 내 사건에 제출·보기·파기 / 사무소: 그 사건 vault.view 권한자만(기본: 배정된 사건만) 보기·대신 등록·파기, 열 때마다 활동 기록
 --     - 관리자 정책 없음
 -- ============================================================
 
@@ -136,7 +136,7 @@ DECLARE
   v_name text;
 BEGIN
   IF NOT public.comm_key_in_office(p_office_id, p_case_key) THEN RAISE EXCEPTION 'case not found' USING ERRCODE = 'P0002'; END IF;
-  IF NOT public.comm_can(p_office_id, 'documents.manage', p_case_key, NULL, NULL) THEN RAISE EXCEPTION 'permission denied: documents.manage' USING ERRCODE = '42501'; END IF;
+  IF NOT public.comm_can(p_office_id, 'vault.view', p_case_key, NULL, NULL) THEN RAISE EXCEPTION 'permission denied: vault.view' USING ERRCODE = '42501'; END IF;
   SELECT * INTO r FROM case_certificate_vaults WHERE case_key = p_case_key;
   IF r.case_key IS NULL THEN RETURN NULL; END IF;
   IF r.office_id IS NOT NULL AND r.office_id <> p_office_id THEN RAISE EXCEPTION 'case not found' USING ERRCODE = 'P0002'; END IF;
@@ -157,7 +157,7 @@ DECLARE
   v_name text;
 BEGIN
   IF NOT public.comm_key_in_office(p_office_id, p_case_key) THEN RAISE EXCEPTION 'case not found' USING ERRCODE = 'P0002'; END IF;
-  IF NOT public.comm_can(p_office_id, 'documents.manage', p_case_key, NULL, NULL) THEN RAISE EXCEPTION 'permission denied: documents.manage' USING ERRCODE = '42501'; END IF;
+  IF NOT public.comm_can(p_office_id, 'vault.view', p_case_key, NULL, NULL) THEN RAISE EXCEPTION 'permission denied: vault.view' USING ERRCODE = '42501'; END IF;
   SELECT * INTO v_old FROM case_certificate_vaults WHERE case_key = p_case_key;
   IF v_old.case_key IS NOT NULL AND v_old.office_id IS NOT NULL AND v_old.office_id <> p_office_id THEN RAISE EXCEPTION 'case not found' USING ERRCODE = 'P0002'; END IF;
   SELECT display_name INTO v_name FROM office_members WHERE office_id = p_office_id AND user_id = auth.uid() AND status = 'active' LIMIT 1;
@@ -184,7 +184,7 @@ DECLARE
 BEGIN
   IF NOT v_is_client THEN
     IF p_office_id IS NULL OR NOT public.comm_key_in_office(p_office_id, p_case_key)
-       OR NOT public.comm_can(p_office_id, 'documents.manage', p_case_key, NULL, NULL) THEN
+       OR NOT public.comm_can(p_office_id, 'vault.view', p_case_key, NULL, NULL) THEN
       RAISE EXCEPTION 'permission denied' USING ERRCODE = '42501';
     END IF;
   END IF;

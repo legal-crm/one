@@ -47,9 +47,10 @@ DO $$ DECLARE v jsonb; BEGIN
 END $$;
 RESET ROLE;
 
--- 사무소: 보기(기록), 다른 사무소 거절
+-- 사무소: 보기(기록), 다른 사무소 거절. 금고 열람(vault.view)은 배정된 사건만 → 사건을 먼저 만든다
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f1","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
+SELECT (create_case('test-lawyer-cv1', '{"source":"consult_request","consult_request_id":"test-req-cv","case_type":"rehab"}'::jsonb)).id IS NOT NULL AS case_created;
 DO $$ DECLARE v jsonb; BEGIN
   IF (SELECT count(*) FROM client_companion_records) <> 0 THEN RAISE EXCEPTION 'FAIL office reads companion'; END IF;
   v := office_certificate_vault('test-lawyer-cv1', 'test-req-cv');

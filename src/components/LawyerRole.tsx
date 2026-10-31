@@ -20,6 +20,7 @@ import { getProposalBlockReason, hasProposalFrom, isChatOpenWithLawyer, isNewReq
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import { LawyerDashboardView } from './lawyer/dashboard';
+import ServerTodayView from './lawyer/dashboard/ServerTodayView';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
 import { loadSalesLeads, setSalesLeadScope } from '../services/leadService';
 import { claimLawyerAccount, getMyLawyerAccount, type LawyerAccount } from '../services/lawyerAccountService';
@@ -2630,6 +2631,48 @@ export default function LawyerRole({
     );
   }
 
+  // 서버 알림·업무함 공용 바로가기 (link_type, link_id)
+  const handleServerLink = (linkType: string, linkId: string | null) => {
+    if (linkType === 'case_documents') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
+    if (linkType === 'case_fees') { if (linkId) openCase(linkId, 'fees'); else openCase(); return; }
+    if (linkType === 'case_contract') { if (linkId) openCase(linkId, 'contracts'); else openCase(); return; }
+    if (linkType === 'case_correction') { if (linkId) openCase(linkId, 'corrections'); else openCase(); return; }
+    if (linkType === 'case_forms') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
+    if (linkType === 'schedule' || linkType === 'tasks' || linkType === 'task') { setActiveTab('tasks-schedule'); return; }
+    if (linkType === 'office_phone') { setActiveTab('settings'); setSettingsCategory('phone' as any); setSettingsSub('phone' as any); return; }
+    if (linkType === 'ads') { setActiveTab('billing'); return; }
+    if (linkType === 'sales_lead') { setActiveTab('sales-leads'); return; }
+    if (linkType === 'work_queue') { setActiveTab('dashboard'); return; }
+    if (linkType === 'proposal_review') {
+      const pending = pendingProposals.find(p => p.id === linkId);
+      if (pending) {
+        const req = requests.find(r => r.id === pending.reqId);
+        if (req) {
+          const rehabInput = mapToRehabUserInput(req);
+          const rehabResult = calculateRepayment(rehabInput);
+          setProposalRehabResult(rehabResult);
+          setProposalRehabInput(rehabInput);
+          setProposalConsultRequest(req);
+          setReviewModalProposal(pending);
+        }
+      }
+      setActiveTab('dashboard');
+    } else if (linkType === 'consult_request') {
+      if (linkId) openCase(linkId, 'info');
+      else openCase();
+    } else if (linkType === 'case') {
+      // 빈 'cases' 탭 대신 CRM 해당 사건으로 직행 (기획서 0-8)
+      if (linkId) openCase(linkId, 'court');
+      else openCase();
+    } else if (linkType === 'copilot_review') {
+      if (linkId) setCopilotPreselectedReqId(linkId);
+      setActiveTab('case-copilot');
+    } else if (linkType === 'chat' || linkType === 'consult_message') {
+      if (linkId) openThread(linkId);
+      else setActiveTab('chat');
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white animate-fadeIn">
       {/* ── 둘러보기(체험 모드) 상단 안내 배너 ── */}
@@ -2715,44 +2758,7 @@ export default function LawyerRole({
               tenantId={firmTenantId}
               userId={activeStaffMember?.id || activeLawyer.id}
               serverEnabled={!!currentOfficeId}
-              onNavigate={(linkType, linkId) => {
-                // 서버 알림(user_notifications) 링크: 사건 서류·수납
-                if (linkType === 'case_documents') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
-                if (linkType === 'case_fees') { if (linkId) openCase(linkId, 'fees'); else openCase(); return; }
-                if (linkType === 'case_contract') { if (linkId) openCase(linkId, 'contracts'); else openCase(); return; }
-                if (linkType === 'case_correction') { if (linkId) openCase(linkId, 'corrections'); else openCase(); return; }
-                if (linkType === 'case_forms') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
-                if (linkType === 'proposal_review') {
-                  const pending = pendingProposals.find(p => p.id === linkId);
-                  if (pending) {
-                    const req = requests.find(r => r.id === pending.reqId);
-                    if (req) {
-                      const rehabInput = mapToRehabUserInput(req);
-                      const rehabResult = calculateRepayment(rehabInput);
-                      setProposalRehabResult(rehabResult);
-                      setProposalRehabInput(rehabInput);
-                      setProposalConsultRequest(req);
-                      setReviewModalProposal(pending);
-                    }
-                  }
-                  setActiveTab('dashboard');
-                } else if (linkType === 'consult_request') {
-                  if (linkId) openCase(linkId, 'info');
-                  else openCase();
-                } else if (linkType === 'case') {
-                  // 빈 'cases' 탭 대신 CRM 해당 사건으로 직행 (기획서 0-8)
-                  if (linkId) openCase(linkId, 'court');
-                  else openCase();
-                } else if (linkType === 'copilot_review') {
-                  if (linkId) setCopilotPreselectedReqId(linkId);
-                  setActiveTab('case-copilot');
-                } else if (linkType === 'task') {
-                  setActiveTab('tasks-schedule');
-                } else if (linkType === 'chat' || (linkType as any) === 'consult_message') {
-                  if (linkId) openThread(linkId);
-                  else setActiveTab('chat');
-                }
-              }}
+              onNavigate={(linkType, linkId) => handleServerLink(linkType, linkId ?? null)}
             />
           </div>
         </header>
@@ -3044,7 +3050,19 @@ export default function LawyerRole({
         )}
 
         {/* TAB 1: LAWYER DASHBOARD (Task 3-6 개편된 오늘의 업무 대시보드) */}
-        {activeTab === 'dashboard' && (
+        {/* 서버 사무소가 있으면 서버 업무함 (HM-2~HM-8). 옛 화면은 서버가 없는 개발 환경만 */}
+        {activeTab === 'dashboard' && officeCtx.office && (
+          <ServerTodayView
+            officeId={officeCtx.office.officeId}
+            officeRole={officeCtx.office.role}
+            myMemberId={officeCtx.office.memberId}
+            notices={notices || []}
+            onNavigateTab={(tabId) => setActiveTab(tabId as any)}
+            onOpenLink={handleServerLink}
+            onNewCase={() => setIsExternalClientModalOpen(true)}
+          />
+        )}
+        {activeTab === 'dashboard' && !officeCtx.office && (
           <LawyerDashboardView
             activeLawyer={activeLawyer}
             activeStaff={activeStaffMember}
