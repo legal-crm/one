@@ -73,6 +73,12 @@ const MESSAGE_RULES: Array<[RegExp, string]> = [
   [/order already closed/i, '이미 끝난 주문이에요.'],
   [/invalid refund amount/i, '환불액은 0원 이상, 결제 금액 이하로 입력해 주세요.'],
   [/reason required/i, '사유를 입력해 주세요.'],
+  [/cancel only before payment/i, '입금 전 주문만 직접 취소할 수 있어요. 입금한 주문은 환불 요청을 해 주세요.'],
+  [/refund only for paid orders/i, '입금이 확인된 주문만 환불 요청할 수 있어요.'],
+  [/refund request already open/i, '이미 처리 중인 환불 요청이 있어요.'],
+  [/renew only paid orders/i, '입금 확인됐거나 노출 중인 광고만 연장할 수 있어요.'],
+  [/already renewed/i, '이미 연장 신청한 광고예요.'],
+  [/request already closed/i, '이미 처리된 요청이에요.'],
   [/authentication required/i, '로그인이 필요해요.'],
   [/Failed to fetch|NetworkError/i, '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'],
 ];
@@ -131,6 +137,7 @@ export function rowToAdOrder(r: any): AdOrder {
     cancelReason: r.cancel_reason || undefined,
     refundAmount: r.refund_amount ?? undefined,
     creativeId: r.creative_id ?? undefined,
+    renewedFrom: r.renewed_from ?? undefined,
   };
 }
 
@@ -221,6 +228,79 @@ export async function adminCancelAdOrder(orderId: string, reason: string, refund
   });
   if (error) return { ok: false, code: error.code || 'cancel_failed', message: adError(error) };
   return { ok: true, data: rowToAdOrder(data) };
+}
+
+// ── AD-7·AD-8 신청 취소·연장·환불 요청 ─────────────────────────────────────────
+export interface AdRefundQuote { rule: 'before_start' | 'prorated' | 'none'; amount: number; total: number; days: number | null; daysLeft: number | null }
+export interface AdOrderRequest {
+  id: string; orderId: string; officeId: string; reason: string; suggestedRefund: number;
+  status: 'open' | 'approved' | 'rejected' | 'withdrawn'; requestedAt: string; resolvedAt?: string; resolveNote?: string; refundAmount?: number;
+}
+function rowToRequest(r: any): AdOrderRequest {
+  return {
+    id: r.id, orderId: r.order_id, officeId: r.office_id, reason: r.reason || '', suggestedRefund: Number(r.suggested_refund) || 0,
+    status: r.status, requestedAt: r.requested_at, resolvedAt: r.resolved_at || undefined, resolveNote: r.resolve_note || undefined,
+    refundAmount: r.refund_amount ?? undefined,
+  };
+}
+
+/** 변호사: 입금 전 신청 취소 */
+export async function cancelMyAdOrder(orderId: string): Promise<RpcResult<AdOrder>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('ad_cancel_my_order', { p_order_id: orderId });
+  if (error) return { ok: false, code: error.code || 'cancel_failed', message: adError(error) };
+  return { ok: true, data: rowToAdOrder(data) };
+}
+
+/** 환불 예상액 (AD-Q4: 시작 전 전액, 노출 중 남은 날 일할) */
+export async function quoteAdRefund(orderId: string): Promise<RpcResult<AdRefundQuote>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('ad_refund_quote', { p_order_id: orderId });
+  if (error) return { ok: false, code: error.code || 'quote_failed', message: adError(error) };
+  const q = data as any;
+  return { ok: true, data: { rule: q.rule, amount: Number(q.amount) || 0, total: Number(q.total) || 0, days: q.days ?? null, daysLeft: q.days_left ?? null } };
+}
+
+export async function requestAdRefund(orderId: string, reason: string): Promise<RpcResult<AdOrderRequest>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('ad_request_refund', { p_order_id: orderId, p_reason: reason });
+  if (error) return { ok: false, code: error.code || 'request_failed', message: adError(error) };
+  return { ok: true, data: rowToRequest(data) };
+}
+
+export async function withdrawAdRefundRequest(requestId: string): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { error } = await supabase.rpc('ad_withdraw_refund_request', { p_request_id: requestId });
+  if (error) return { ok: false, code: error.code || 'withdraw_failed', message: adError(error) };
+  return { ok: true, data: null };
+}
+
+/** 변호사: 끝나는 날부터 같은 상품·지역으로 연장 신청 (새 주문) */
+export async function renewAdOrder(orderId: string, months: number, depositorName?: string): Promise<RpcResult<AdOrder>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('ad_renew_order', { p_order_id: orderId, p_months: months, p_depositor_name: depositorName?.trim() || null });
+  if (error) return { ok: false, code: error.code || 'renew_failed', message: adError(error) };
+  return { ok: true, data: rowToAdOrder(data) };
+}
+
+/** 환불 요청 목록 (RLS: 사무소 ads.manage·billing.view, 관리자) */
+export async function fetchAdOrderRequests(onlyOpen = false): Promise<RpcResult<AdOrderRequest[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  let q = supabase.from('ad_order_requests').select('*').order('requested_at', { ascending: false }).limit(300);
+  if (onlyOpen) q = q.eq('status', 'open');
+  const { data, error } = await q;
+  if (error) return { ok: false, code: error.code || 'load_failed', message: adError(error) };
+  return { ok: true, data: (data || []).map(rowToRequest) };
+}
+
+/** 관리자: 환불 요청 승인(주문 취소 + 환불액) / 반려(사유 필수) */
+export async function adminResolveAdRequest(requestId: string, decision: 'approve' | 'reject', refundAmount?: number | null, note?: string): Promise<RpcResult<AdOrderRequest>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('admin_resolve_ad_request', {
+    p_request_id: requestId, p_decision: decision, p_refund_amount: refundAmount ?? null, p_note: note?.trim() || null,
+  });
+  if (error) return { ok: false, code: error.code || 'resolve_failed', message: adError(error) };
+  return { ok: true, data: rowToRequest(data) };
 }
 
 /** 관리자: 입금 기한 지난 예약 취소·시작·만료를 바로 실행 (매일 자동 실행과 같은 함수) */

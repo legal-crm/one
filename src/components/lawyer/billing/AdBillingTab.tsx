@@ -15,7 +15,9 @@ import {
   fetchAdProducts,
   fetchActivePromotions,
   fetchBillingProfile,
+  fetchAdOrderRequests,
   quoteAdPrice,
+  type AdOrderRequest,
   saveBillingProfile,
   type AdPriceQuote,
   type AdProduct,
@@ -26,6 +28,7 @@ import { checkCorpNum, formatCorpNum, openOfficeTaxInvoice } from '../../../serv
 import { setOfficeProfileCache } from '../../../services/lawyer/officeProfile';
 import { CREATIVE_STATUS_LABEL, officeAdStats, setOrderCreative } from '../../../services/ads/adCreativeService';
 import AdCreativesSection, { useOfficeCreatives } from './AdCreativesSection';
+import AdOrderActions from './AdOrderActions';
 
 type Sub = 'status' | 'products' | 'orders' | 'creatives' | 'business';
 
@@ -102,16 +105,25 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
   const [promotions, setPromotions] = useState<AdPromotion[]>([]);
   const [orders, setOrders] = useState<AdOrder[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [orderRequests, setOrderRequests] = useState<AdOrderRequest[]>([]);
 
   const load = useCallback(async () => {
     setLoadError(null);
-    const [p, pr, o] = await Promise.all([fetchAdProducts(), fetchActivePromotions(), fetchAdOrders()]);
+    const [p, pr, o, rq] = await Promise.all([fetchAdProducts(), fetchActivePromotions(), fetchAdOrders(), fetchAdOrderRequests()]);
     if (p.ok === false) { setLoadError(p.message); return; }
     if (o.ok === false) { setLoadError(o.message); return; }
     setProducts(p.data);
     setPromotions(pr.ok ? pr.data.filter(x => x.active) : []);
     setOrders(o.data);
+    setOrderRequests(rq.ok ? rq.data : []);
   }, []);
+  // 주문마다 가장 최근 환불 요청 하나 (목록은 최신순)
+  const latestRequestByOrder = useMemo(() => {
+    const m = new Map<string, AdOrderRequest>();
+    for (const r of orderRequests) if (!m.has(r.orderId)) m.set(r.orderId, r);
+    return m;
+  }, [orderRequests]);
+  const renewedOrderIds = useMemo(() => new Set((orders || []).filter(o => o.renewedFrom && ['pending', 'paid', 'active'].includes(o.status)).map(o => o.renewedFrom as string)), [orders]);
 
   useEffect(() => {
     clearLegacyAdOrderCache();
@@ -328,6 +340,7 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                     <th className="p-3.5 text-right">입금액</th>
                     <th className="p-3.5">상태</th>
                     <th className="p-3.5">소재 · 노출</th>
+                    <th className="p-3.5">할 일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -355,6 +368,9 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                           </select>
                         ) : <span className="text-slate-500">{o.creativeId ? '연결됨' : '-'}</span>}
                         {stats[o.id] && <span className="block text-[11px] text-slate-500 mt-1 tabular-nums">노출 {stats[o.id].impressions.toLocaleString('ko-KR')} · 프로필 열기 {stats[o.id].profileOpens.toLocaleString('ko-KR')} (90일)</span>}
+                      </td>
+                      <td className="p-3.5">
+                        <AdOrderActions order={o} request={latestRequestByOrder.get(o.id)} renewed={renewedOrderIds.has(o.id)} canManage={canManageAds} onChanged={() => void load()} />
                       </td>
                     </tr>
                   ))}

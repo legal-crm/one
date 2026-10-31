@@ -2061,6 +2061,8 @@ export interface AdOrder {
   refundAmount?: number;
   /** 연결된 광고 소재 (AD-5) */
   creativeId?: string;
+  /** 연장 신청으로 만든 주문이면 원래 주문 번호 (AD-7) */
+  renewedFrom?: string;
 }
 
 export interface Notice {

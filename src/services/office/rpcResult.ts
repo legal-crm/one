@@ -7,6 +7,9 @@ export type RpcResult<T> =
   | { ok: false; code: string; message: string; data?: undefined };
 
 const MESSAGE_RULES: Array<[RegExp, string]> = [
+  [/cannot offboard owner/i, '대표는 퇴사 처리할 수 없어요.'],
+  [/already left/i, '이미 퇴사 처리된 구성원이에요.'],
+  [/handover member must be an active member/i, '일을 넘겨받을 사람은 지금 사용 중인 다른 구성원이어야 해요.'],
   [/permission denied|not an office member/i, '이 작업을 할 권한이 없어요. 사무소 대표에게 권한을 확인해 주세요.'],
   [/authentication required/i, '로그인이 필요해요. 다시 로그인해 주세요.'],
   [/version conflict/i, '다른 사람이 먼저 고쳤어요. 새로 불러온 뒤 다시 저장해 주세요.'],

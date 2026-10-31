@@ -152,6 +152,17 @@ export async function updateOfficeMember(memberId: string, patch: {
   return { ok: true, data: mapMember(data) };
 }
 
+/** 퇴사 처리: 맡던 사건·리드·업무를 넘기고 기기·세션을 끊는다 (대표·office.staff 권한) */
+export async function offboardOfficeMember(memberId: string, handoverMemberId: string, reason?: string): Promise<RpcResult<{ cases: number; leads: number; queue: number; devices: number }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('office_member_offboard', {
+    p_member_id: memberId, p_handover_member_id: handoverMemberId, p_reason: reason?.trim() || null,
+  });
+  if (error) return toRpcError(error);
+  const r = (data || {}) as any;
+  return { ok: true, data: { cases: Number(r.cases) || 0, leads: Number(r.leads) || 0, queue: Number(r.queue) || 0, devices: Number(r.devices) || 0 } };
+}
+
 export async function listOfficeCustomRoles(officeId: string): Promise<RpcResult<OfficeCustomRole[]>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   const { data, error } = await supabase.from('office_custom_roles').select('id, name, base_role, scopes').eq('office_id', officeId).order('name');

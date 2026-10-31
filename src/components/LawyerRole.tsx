@@ -3522,7 +3522,7 @@ export default function LawyerRole({
             )}
 
             {settingsCategory === 'office' && currentOfficeId && (
-              <OfficeSettingsPanel officeId={currentOfficeId} canEdit={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')} />
+              <OfficeSettingsPanel officeId={currentOfficeId} canEdit={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')} isOwner={officeCtx.office?.role === 'owner'} />
             )}
 
             {/* 내 도장·서명: 서버 저장(비공개 저장소). 아래 스튜디오로 만든 도장도 저장하면 서버로 올라감 */}

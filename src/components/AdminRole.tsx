@@ -23,6 +23,7 @@ import {
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
 import { mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import AdCreativeReviewPanel from './admin/AdCreativeReviewPanel';
+import AdRefundRequestsPanel from './admin/AdRefundRequestsPanel';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import { setLawyerDbApproval, getLawyerAccountByLawyerId, adminLinkLawyerAccount } from '../services/lawyerAccountService';
@@ -2456,6 +2457,7 @@ export default function AdminRole({
 
               {billingSubTab === 'adorders' && (
                 <div className="space-y-6">
+                  <AdRefundRequestsPanel orders={adminAdOrders} onResolved={() => void refreshAdOrders()} />
                   <AdCreativeReviewPanel lawyerName={(id) => lawyers.find(l => l.id === id)?.name || id} />
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">

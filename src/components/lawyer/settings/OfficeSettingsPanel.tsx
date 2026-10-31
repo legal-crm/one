@@ -7,18 +7,20 @@ import { RefreshCw, Save, Stamp, Upload } from 'lucide-react';
 import { loadActiveSeals, loadOfficeSettings, registerSeal, saveOfficeSettings, type OfficeSeal } from '../../../services/office/officeSettingsService';
 import { setOfficeProfileSettingsCache, type OfficeProfileSettings } from '../../../services/lawyer/officeProfile';
 import { DEFAULT_PROHIBITED_EXPRESSIONS, setOfficeCopyRules, type OfficeCopyRules } from '../../../services/proposalCompliance';
+import OfficeDataExportCard from './OfficeDataExportCard';
 
-type Sub = 'info' | 'seal' | 'copy';
+type Sub = 'info' | 'seal' | 'copy' | 'data';
 const btn = 'min-h-[44px] px-4 rounded-xl text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5';
 const field = 'w-full p-3 rounded-xl border border-slate-200 text-sm text-slate-800 disabled:bg-slate-50';
 
-export default function OfficeSettingsPanel({ officeId, canEdit }: { officeId?: string; canEdit: boolean }) {
+export default function OfficeSettingsPanel({ officeId, canEdit, isOwner = false }: { officeId?: string; canEdit: boolean; isOwner?: boolean }) {
   const [sub, setSub] = useState<Sub>('info');
   if (!officeId) return <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-600">사무소 정보를 불러오지 못했어요. 다시 로그인해 주세요.</div>;
+  const tabs: Array<[Sub, string]> = [['info', '사무소 정보'], ['seal', '사무소 직인'], ['copy', '의뢰인 발송 문구 규칙'], ...(isOwner ? [['data', '데이터 내보내기'] as [Sub, string]] : [])];
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="사무소 설정">
-        {([['info', '사무소 정보'], ['seal', '사무소 직인'], ['copy', '의뢰인 발송 문구 규칙']] as Array<[Sub, string]>).map(([k, l]) => (
+        {tabs.map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={sub === k} onClick={() => setSub(k)}
             className={`min-h-[40px] px-3.5 rounded-xl text-sm font-bold whitespace-nowrap active:scale-[0.98] ${sub === k ? 'bg-brand/10 border border-brand/30 text-brand' : 'bg-white border border-slate-200 text-slate-600'}`}>
             {l}
@@ -29,6 +31,7 @@ export default function OfficeSettingsPanel({ officeId, canEdit }: { officeId?: 
       {sub === 'info' && <OfficeInfo officeId={officeId} canEdit={canEdit} />}
       {sub === 'seal' && <OfficeSealCard officeId={officeId} kind="office_seal" canEdit={canEdit} />}
       {sub === 'copy' && <CopyRules officeId={officeId} canEdit={canEdit} />}
+      {sub === 'data' && isOwner && <OfficeDataExportCard officeId={officeId} />}
     </div>
   );
 }

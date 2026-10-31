@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, History, Lock, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import {
-  listOfficeAuditLogs, listOfficeCustomRoles, listOfficeMembers, saveOfficeCustomRole, updateOfficeMember,
+  listOfficeAuditLogs, listOfficeCustomRoles, listOfficeMembers, offboardOfficeMember, saveOfficeCustomRole, updateOfficeMember,
   type OfficeAuditLog, type OfficeCustomRole, type OfficeMember,
 } from '../../../services/office/officeService';
 import {
@@ -19,12 +19,13 @@ interface Props {
   canManage: boolean;
 }
 
-const STATUS_LABEL: Record<OfficeMember['status'], string> = { active: '사용 중', suspended: '정지', left: '탈퇴' };
+const STATUS_LABEL: Record<OfficeMember['status'], string> = { active: '사용 중', suspended: '정지', left: '퇴사' };
 const ACTION_LABEL: Record<string, string> = {
   'invite.create': '초대 링크 만듦', 'invite.accept': '초대 수락', 'invite.revoke': '초대 링크 만료',
   'member.update': '구성원 정보 변경', 'custom_role.save': '맞춤 역할 저장', 'case.create': '사건 만듦',
   'case.assign': '사건 담당 변경', 'case.trash': '사건 휴지통', 'case.restore': '사건 복구',
   'client_link.create': '의뢰인 연결 링크 만듦', 'client_link.accept': '의뢰인 계정 연결',
+  'member.offboard': '퇴사 처리',
 };
 const ASSIGNABLE_ROLES: Array<Exclude<OfficeMemberRole, 'owner'>> = ['lawyer', 'consultant', 'clerk', 'accounting', 'custom'];
 
@@ -137,6 +138,22 @@ export default function OfficeMembersPanel({ officeId, canManage }: Props) {
     await load();
   };
 
+  // 퇴사 처리 (RB-9): 맡던 사건·리드·업무를 넘겨받을 사람에게 옮기고 접속·업무폰을 끊는다
+  const [offboarding, setOffboarding] = useState<OfficeMember | null>(null);
+  const [handoverId, setHandoverId] = useState('');
+  const [offboardReason, setOffboardReason] = useState('');
+  const submitOffboard = async () => {
+    if (!offboarding) return;
+    if (!handoverId) { toast.error('일을 넘겨받을 사람을 골라 주세요.'); return; }
+    setBusy(true);
+    const res = await offboardOfficeMember(offboarding.id, handoverId, offboardReason);
+    setBusy(false);
+    if (!res.ok) { toast.error(res.message); return; }
+    toast.success(`퇴사 처리했어요. 사건 ${res.data.cases}건 · 영업 리드 ${res.data.leads}건 · 업무 ${res.data.queue}건을 넘기고 업무폰 ${res.data.devices}대를 해지했어요.`);
+    setOffboarding(null);
+    await load();
+  };
+
   const setStatus = async (m: OfficeMember, status: OfficeMember['status']) => {
     setBusy(true);
     const res = await updateOfficeMember(m.id, { status });
@@ -226,7 +243,7 @@ export default function OfficeMembersPanel({ officeId, canManage }: Props) {
                   {m.status === 'active'
                     ? <button type="button" disabled={busy} onClick={() => void setStatus(m, 'suspended')} className="min-h-[44px] px-3 rounded-xl border border-amber-300 text-xs font-bold text-amber-800 whitespace-nowrap active:scale-[0.98]">정지</button>
                     : <button type="button" disabled={busy} onClick={() => void setStatus(m, 'active')} className="min-h-[44px] px-3 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">다시 사용</button>}
-                  {m.status !== 'left' && <button type="button" disabled={busy} onClick={() => void setStatus(m, 'left')} className="min-h-[44px] px-3 rounded-xl border border-rose-300 text-xs font-bold text-rose-700 whitespace-nowrap active:scale-[0.98]">탈퇴</button>}
+                  {m.status !== 'left' && <button type="button" disabled={busy} onClick={() => { setOffboarding(m); setHandoverId(''); setOffboardReason(''); }} className="min-h-[44px] px-3 rounded-xl border border-rose-300 text-xs font-bold text-rose-700 whitespace-nowrap active:scale-[0.98]">퇴사 처리</button>}
                 </div>
               )}
             </li>
@@ -237,6 +254,34 @@ export default function OfficeMembersPanel({ officeId, canManage }: Props) {
             </li>
           )}
         </ul>
+      )}
+
+      {offboarding && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="offboard-title">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-lg space-y-4">
+            <h3 id="offboard-title" className="text-base font-black text-slate-900">{offboarding.displayName || offboarding.email || '구성원'} 퇴사 처리</h3>
+            <ul className="text-xs text-slate-700 space-y-1 list-disc pl-4">
+              <li>맡던 사건·영업 리드·업무를 넘겨받을 사람에게 옮겨요. 사건의 담당 변호사 자리는 변호사에게만 넘어가고, 직원에게 넘기면 담당 변호사 칸이 비어요.</li>
+              <li>이 사람의 접속을 모두 끊고 연결된 업무폰을 해지해요.</li>
+              <li>활동 기록은 그대로 남고, 퇴사 처리는 되돌릴 수 없어요. 다시 함께하려면 새로 초대해 주세요.</li>
+            </ul>
+            <label className="block text-xs font-semibold text-slate-700">일을 넘겨받을 사람
+              <select value={handoverId} onChange={e => setHandoverId(e.target.value)} className="mt-1 w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm">
+                <option value="">고르세요</option>
+                {members.filter(x => x.id !== offboarding.id && x.status === 'active').map(x => (
+                  <option key={x.id} value={x.id}>{x.displayName || x.email || '이름 없음'} · {OFFICE_ROLE_LABELS[x.role as OfficeRole] || x.role}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-semibold text-slate-700">사유 (선택, 활동 기록에 남아요)
+              <textarea value={offboardReason} maxLength={200} rows={2} onChange={e => setOffboardReason(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setOffboarding(null)} className="min-h-[44px] px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">취소</button>
+              <button type="button" disabled={busy || !handoverId} onClick={() => void submitOffboard()} className="min-h-[44px] px-4 rounded-xl bg-rose-700 text-white text-sm font-bold whitespace-nowrap disabled:opacity-60 active:scale-[0.98]">{busy ? '처리 중…' : '퇴사 처리'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editing && (
