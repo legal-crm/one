@@ -79,6 +79,8 @@ export interface FamilyMemberItem {
   hasIncome: boolean;              // 소득 유무
   jobAndIncomeDetail: string;      // 직업 및 월수입 내역 (예: 고등학생(소득없음), 주부, 알바 60만원 등)
   isEligibleDependent: boolean;    // 법정 부양가족 인정 적격 여부
+  /** 맞벌이 부부가 함께 부양하는 가족이면 0.5인으로 셈 (B-6). 없으면 1인 */
+  dependentShare?: 0.5 | 1;
   ineligibilityReason?: string;    // 제외/유보 사유 (예: 만 19세 이상, 1인 최저생계비 이상 소득)
   
   // ── 스마트 연령 판정 & OCR 파싱 연동 필드 ──
@@ -92,8 +94,10 @@ export interface FamilyMemberItem {
 
 /** 6. 지출 및 생계비 명세 */
 export interface ExpenseAndLivingDetail {
-  householdSize: number;           // 가족 수 (본인 포함 부양가족 수)
-  statutoryBaseCost2026: number;   // 2026 기준중위소득 60% 법정 기초생계비 (원)
+  householdSize: number;           // 가족 수 (본인 포함 부양가족 수, 공동부양은 0.5인)
+  statutoryBaseCost2026: number;   // 적용 연도 기준중위소득 60% 기초생계비 (원) — 칸 이름은 예전 그대로
+  /** 기준생계비 적용 연도 (신청(예정)일 연도, LS-Q1). 없으면 올해 */
+  standardYear?: number;
   
   claimedCostOption: 'BELOW_60' | 'ABOVE_60'; // 기준중위소득 60% 이하 vs 초과
   claimedBaseCost: number;         // 채무자 신청 기본 생계비 (원)

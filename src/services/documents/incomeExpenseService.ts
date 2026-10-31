@@ -22,7 +22,17 @@ import type {
   DayLaborerLedger,
   PartTimeLedger
 } from '../../types/incomeExpenseTypes';
-import { get2026LivingExpense, MIN_LIVING_EXPENSE_60_2026 } from '../repayment/repaymentConstants2026';
+import { getLivingExpense } from '../repayment/repaymentConstants2026';
+
+/** 가구원 수: 본인 1 + 인정 부양가족(공동부양은 0.5인). 최소 1 (B-6) */
+export function d5103HouseholdSize(members: FamilyMemberItem[]): number {
+  const n = members.reduce((sum, m) => sum + (m.isEligibleDependent ? (m.dependentShare === 0.5 ? 0.5 : 1) : 0), 0);
+  return Math.max(1, n);
+}
+/** 적용 연도 기준생계비 (기준표 서버 값 우선) */
+export function d5103BaseLivingCost(householdSize: number, year?: number): number {
+  return getLivingExpense(householdSize, year || new Date().getFullYear());
+}
 
 /**
  * 상담 신청 데이터(FinancialProfile) 및 CRM 데이터로부터 D5103 초안 생성
@@ -126,7 +136,7 @@ export function createDefaultIncomeExpenseD5103(
     const spouseIncomeKnown = typeof fp?.spouseIncome === 'number';
     const spouseIncome = (fp?.spouseIncome || 0) * 10000;
     // 배우자 소득이 1인 가구 기준생계비 이상이면 피부양자에서 제외하는 것이 일반적 (절대금액 100만 원 기준 제거)
-    const soloLiving = get2026LivingExpense(1);
+    const soloLiving = d5103BaseLivingCost(1);
     const isSpouseSelfSupporting = spouseIncome >= soloLiving;
     familyMembers.push({
       id: 'fam_spouse',
@@ -161,11 +171,11 @@ export function createDefaultIncomeExpenseD5103(
     });
   }
   
-  const eligibleDependentsCount = familyMembers.filter(f => f.isEligibleDependent).length;
-  const householdSize = Math.max(1, eligibleDependentsCount);
+  const householdSize = d5103HouseholdSize(familyMembers);
+  const standardYear = new Date().getFullYear();
   
   // ── 6. 지출 및 생계비: 기준 생계비만 자동, 추가 생계비는 소명자료 확인 후 직접 입력 ──
-  const statutoryBaseCost2026 = get2026LivingExpense(householdSize);
+  const statutoryBaseCost2026 = d5103BaseLivingCost(householdSize, standardYear);
   const actualRentWon = (fp?.rentCost || 0) * 10000;
   const additionalMedical = (fp?.medicalCost || 0) * 10000;
   const additionalEducation = (fp?.educationCost || 0) * 10000;
@@ -185,6 +195,7 @@ export function createDefaultIncomeExpenseD5103(
   const expenses: ExpenseAndLivingDetail = {
     householdSize,
     statutoryBaseCost2026,
+    standardYear,
     claimedCostOption,
     claimedBaseCost,
     additionalHousing,
@@ -249,9 +260,9 @@ export function recalculateD5103Data(prev: IncomeExpenseD5103Data): IncomeExpens
   next.familyMembers = next.familyMembers || [];
   next.expenses = next.expenses || ({
     householdSize: 1,
-    statutoryBaseCost2026: get2026LivingExpense(1),
+    statutoryBaseCost2026: d5103BaseLivingCost(1),
     claimedCostOption: 'BELOW_60',
-    claimedBaseCost: get2026LivingExpense(1),
+    claimedBaseCost: d5103BaseLivingCost(1),
     additionalHousing: 0,
     additionalMedical: 0,
     additionalEducation: 0,
@@ -300,11 +311,10 @@ export function recalculateD5103Data(prev: IncomeExpenseD5103Data): IncomeExpens
     (next.other.subsidyMonthly || 0) + 
     (next.other.familySupportMonthly || 0);
   
-  // 4. 가족 수에 따른 2026 기준생계비 재산정
-  const eligibleDependentsCount = next.familyMembers.filter(f => f.isEligibleDependent).length;
-  const householdSize = Math.max(1, eligibleDependentsCount);
+  // 4. 가족 수(공동부양 0.5인)·적용 연도에 따른 기준생계비 재산정
+  const householdSize = d5103HouseholdSize(next.familyMembers);
   next.expenses.householdSize = householdSize;
-  next.expenses.statutoryBaseCost2026 = get2026LivingExpense(householdSize);
+  next.expenses.statutoryBaseCost2026 = d5103BaseLivingCost(householdSize, next.expenses.standardYear);
   
   if (next.expenses.claimedCostOption === 'BELOW_60') {
     next.expenses.claimedBaseCost = next.expenses.statutoryBaseCost2026;

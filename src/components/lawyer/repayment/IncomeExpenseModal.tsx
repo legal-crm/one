@@ -26,7 +26,7 @@ import type {
   DynamicExpenseItem 
 } from '../../../types/incomeExpenseTypes';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
-import { MIN_LIVING_EXPENSE_60_2026 } from '../../../services/repayment/repaymentConstants2026';
+import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 import PrintableIncomeExpenseModal from './PrintableIncomeExpenseModal';
 import { rebuildPlanWithAssets } from '../../../services/repayment/repaymentCalculationEngine';
 import type { IncomeAndExpenseInput } from '../../../services/repayment/repaymentTypes';
@@ -206,6 +206,7 @@ function IncomeExpenseModalInner({
   const sal = formData.salary;
   const biz = formData.business;
   const exp = formData.expenses;
+  const stdYear = exp.standardYear || new Date().getFullYear();
   const fam = formData.familyMembers;
   const disp = formData.disposableIncome;
 
@@ -973,15 +974,26 @@ function IncomeExpenseModalInner({
                     </span>
                     <div>
                       <h4 className="font-extrabold text-sm text-slate-900">
-                        2026년 가구원 수별 법정 최저생계비 (기준 중위소득 60%)
+                        {stdYear}년 가구원 수별 기준생계비 (기준 중위소득 60%)
                       </h4>
                       <p className="text-xs text-slate-500">
-                        피부양자 {exp.householdSize}인 가구 기준 법정 인정액: <strong className="text-emerald-700 font-mono font-black">{exp.statutoryBaseCost2026.toLocaleString()}원</strong>
+                        {exp.householdSize}인 가구 기준생계비: <strong className="text-emerald-700 font-mono font-black">{exp.statutoryBaseCost2026.toLocaleString()}원</strong>
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      적용 연도
+                      <select
+                        value={stdYear}
+                        onChange={e => { const y = Number(e.target.value); updateData(p => ({ ...p, expenses: { ...p.expenses, standardYear: y } })); }}
+                        className="min-h-[36px] rounded-lg border border-slate-200 px-2 text-xs bg-white"
+                        aria-label="기준생계비 적용 연도"
+                      >
+                        {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}년</option>)}
+                      </select>
+                    </label>
                     <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
                       <input
                         type="radio"
@@ -1005,7 +1017,7 @@ function IncomeExpenseModalInner({
                   </div>
                 </div>
 
-                {/* 2026 기준표 요약 칩 */}
+                {/* 적용 연도 기준표 요약 칩 */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
                   {[1, 2, 3, 4].map(size => (
                     <div 
@@ -1018,7 +1030,7 @@ function IncomeExpenseModalInner({
                     >
                       <span className="block text-xs">{size}인 가구</span>
                       <span className="font-mono font-black text-xs">
-                        {MIN_LIVING_EXPENSE_60_2026[size].toLocaleString()}원
+                        {getLivingExpense(size, stdYear).toLocaleString()}원
                       </span>
                     </div>
                   ))}
@@ -1226,13 +1238,13 @@ function IncomeExpenseModalInner({
                     <strong className="text-sm font-bold text-emerald-600">{fam.filter(f => f.isEligibleDependent).length}명</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 font-medium block">2026 기준생계비</span>
+                    <span className="text-slate-500 font-medium block">{stdYear} 기준생계비</span>
                     <strong className="text-sm font-mono font-bold text-slate-900">{exp.statutoryBaseCost2026.toLocaleString()}원</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 font-medium block">월 변제금 경감 효과</span>
+                    <span className="text-slate-500 font-medium block">적용 가구원 수</span>
                     <strong className="text-sm font-mono font-bold text-blue-600">
-                      약 {Math.max(0, (fam.filter(f => f.isEligibleDependent).length - 1) * 94).toLocaleString()}만 원/월
+                      {exp.householdSize}인{fam.some(f => f.isEligibleDependent && f.dependentShare === 0.5) ? ' (공동부양 0.5인 포함)' : ''}
                     </strong>
                   </div>
                 </div>
@@ -1393,6 +1405,23 @@ function IncomeExpenseModalInner({
                                   {member.isEligibleDependent ? '인정' : '제외'}
                                 </span>
                               </label>
+                              {!isSelf && member.isEligibleDependent && (
+                                <label className="mt-1 flex items-center justify-center gap-1 cursor-pointer text-[11px] text-slate-600" title="맞벌이 부부가 함께 부양하면 0.5인으로 셉니다">
+                                  <input
+                                    type="checkbox"
+                                    checked={member.dependentShare === 0.5}
+                                    onChange={e => {
+                                      const half = e.target.checked;
+                                      updateData(p => ({
+                                        ...p,
+                                        familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, dependentShare: half ? 0.5 : undefined } : m)
+                                      }));
+                                    }}
+                                    className="w-3.5 h-3.5 rounded"
+                                  />
+                                  공동부양 0.5인
+                                </label>
+                              )}
                             </td>
                             <td className="p-2 text-center">
                               {!isSelf && (

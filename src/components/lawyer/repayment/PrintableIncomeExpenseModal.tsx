@@ -368,7 +368,7 @@ export default function PrintableIncomeExpenseModal({
               <div className="text-xs mb-2 text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-200">
                 <div className="flex justify-between items-center mb-1">
                   <span>
-                    • 2026년 보건복지부 공표 기준 중위소득의 60% 법정 생계비:
+                    • {exp.standardYear || new Date().getFullYear()}년 보건복지부 공표 기준 중위소득의 60% 기준생계비:
                   </span>
                   <span className="font-mono font-bold text-slate-900">
                     {exp.statutoryBaseCost2026.toLocaleString()} 원
@@ -397,7 +397,7 @@ export default function PrintableIncomeExpenseModal({
                       <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
                         {exp.claimedBaseCost.toLocaleString()} 원
                       </td>
-                      <td className="p-2 text-slate-600">2026년 기준중위소득 60% 법정 인정액 ({exp.householdSize}인 가구)</td>
+                      <td className="p-2 text-slate-600">{exp.standardYear || new Date().getFullYear()}년 기준중위소득 60% 기준생계비 ({exp.householdSize}인 가구)</td>
                     </tr>
                     {exp.additionalHousing > 0 && (
                       <tr>
