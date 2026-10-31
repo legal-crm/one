@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Check, ListChecks, Lock, MessageCircle, Phone, ShieldCheck, X } from 'lucide-react';
+import { CalendarClock, Check, ListChecks, Lock, MessageCircle, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import MyPageView from './MyPageView';
@@ -24,6 +24,7 @@ import ChatComposer, { type ChatComposerHandle } from './room/ChatComposer';
 import MatchPanel from './room/MatchPanel';
 import DebtSummaryPanel from './room/DebtSummaryPanel';
 import ConsultStatusStrip, { getStageCopy } from './room/ConsultStatusStrip';
+import ConsultBookingCard from './room/ConsultBookingCard';
 import { getDisplayName } from './lawyerDirectory';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { startContractFromProposal, requestOfflineContractFromProposal } from '../../services/proposalContractService';
@@ -101,7 +102,8 @@ export default function ChatView({
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<ChatComposerHandle>(null);
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
-  const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
+  // 상담 예약 창 열기 신호 (NF-3, 이전 '전화상담 요청'은 채팅 안내만 보내고 시간은 따로 맞춰야 했음)
+  const [bookingSignal, setBookingSignal] = useState<number>(0);
   const [activeChatLawyerId, setActiveChatLawyerId] = useState<string | null>(null);
   const [selectedProposalForReport, setSelectedProposalForReport] = useState<ConsultProposal | null>(null);
   const [contractSelectProposal, setContractSelectProposal] = useState<ConsultProposal | null>(null);
@@ -434,17 +436,6 @@ export default function ChatView({
     toast.success(`${name} 변호사에게 보낸 요청을 취소했습니다.`);
   };
 
-  const requestPhoneConsult = () => {
-    if (!currentRequest || !currentChatLawyerId) return;
-    onAddMessage(
-      currentRequest.id,
-      '[System] 📞 의뢰인이 전화상담을 요청했습니다. 채팅으로 통화 가능한 시간을 조율해 주세요.',
-      'system', 'system', '시스템 안내', currentChatLawyerId
-    );
-    setShowPhoneConsultModal(false);
-    toast.success('전화상담 요청을 보냈습니다. 변호사의 답변을 채팅에서 확인해 주세요.');
-  };
-
   // 상담 기록 완전 삭제 (대화·제안서·체크 정보)
   const handlePurgeRecord = async () => {
     if (!currentRequest?.id) return;
@@ -563,9 +554,9 @@ export default function ChatView({
               본인과 선택한 변호사만 볼 수 있어요
             </p>
           </div>
-          {stage === 'counseling' && !isChatClosedWithCurrent && (
-            <Button variant="secondary" size="md" onClick={() => setShowPhoneConsultModal(true)} leftIcon={<Phone className="w-4 h-4" aria-hidden="true" />}>
-              전화상담 요청
+          {(stage === 'counseling' || stage === 'comparing') && !isChatClosedWithCurrent && !!currentChatLawyerId && (
+            <Button variant="secondary" size="md" onClick={() => setBookingSignal(s => s + 1)} leftIcon={<CalendarClock className="w-4 h-4" aria-hidden="true" />}>
+              상담 예약
             </Button>
           )}
           {chatAvailable && currentRequest && <ReportConsultButton requestId={currentRequest.id} />}
@@ -612,6 +603,18 @@ export default function ChatView({
               제안서 보기
             </Button>
           </div>
+        )}
+
+        {/* 상담 예약 (NF-3): 변호사가 제안한 시간 고르기 · 내가 보낸 시간 · 확정된 예약 */}
+        {chatAvailable && currentRequest && (
+          <ConsultBookingCard
+            requestId={currentRequest.id}
+            lawyerId={currentChatLawyerId}
+            lawyerName={currentChatLawyerName || undefined}
+            canBook={!isChatClosedWithCurrent && !!currentChatLawyerId}
+            wishMethod={currentRequest.intake?.extra?.consultMethod}
+            openSignal={bookingSignal}
+          />
         )}
 
         {/* 비밀 보호·참고 의견 안내 (닫으면 1시간 숨김) */}
@@ -795,25 +798,6 @@ export default function ChatView({
         />
       </Modal>
 
-
-      {/* 전화상담 요청 */}
-      <Modal
-        open={showPhoneConsultModal}
-        onClose={() => setShowPhoneConsultModal(false)}
-        title="전화상담 요청"
-        icon={<Phone className="w-5 h-5" />}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setShowPhoneConsultModal(false)}>취소</Button>
-            <Button onClick={requestPhoneConsult} disabled={!currentRequest || !currentChatLawyerId}>요청 보내기</Button>
-          </>
-        }
-      >
-        <p className="text-sm text-slate-700 leading-relaxed break-keep">
-          {currentChatLawyerName ? `${currentChatLawyerName} 변호사` : '상담 변호사'}에게 전화상담 요청을 보냅니다. 변호사가 이 대화방에서 통화 가능한 시간을 여쭤본 뒤 연락드리며, 연락처는 직접 알려 주시기 전까지 공개되지 않습니다.
-        </p>
-      </Modal>
 
       {/* 제안서 및 분석 리포트 */}
       {selectedProposalForReport && (

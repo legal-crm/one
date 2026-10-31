@@ -12,8 +12,12 @@ import { ChatAvatar, ConsultStatusChip, IconButton } from './ChatPrimitives';
 import ChatTimeline from './ChatTimeline';
 import ChatComposer from './ChatComposer';
 import ReportConsultButton from '../../common/ReportConsultButton';
+import ConsultBookingBar from './ConsultBookingBar';
 
 export type ChatLayout = 'single' | 'drawer' | 'wide';
+
+/** 상담 예약을 쓸 수 있는 상담 요청 상태 (계약 뒤 일정은 사건 화면·일정 탭에서) */
+const BOOKABLE_STATUSES = new Set<string>(['requested', 'responding', 'comparing', 'counseling', 'contracted']);
 
 interface ChatConversationProps {
   thread: LawyerChatThread | null;
@@ -247,6 +251,15 @@ export default function ChatConversation({
       </header>
 
       {!railInline && <SummaryStrip request={request} onOpenRail={onOpenRail} />}
+
+      {/* 상담 예약 (NF-3) — 계약 전 상담 단계에서만 */}
+      {BOOKABLE_STATUSES.has(request.status) && (
+        <ConsultBookingBar
+          requestId={request.id}
+          refreshKey={thread.messages.length}
+          wishMethod={request.intake?.extra?.consultMethod}
+        />
+      )}
 
       <ChatTimeline
         key={thread.id}
