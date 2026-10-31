@@ -259,7 +259,12 @@ export default function RehabCompanionView({
       {/* 사건 화면의 '도움말' = 공적 지원 + 회복 아카데미(면책신청서 양식 포함) */}
       {(activeSubTab === 'academy' || (inCase && section === 'help')) && (
         <div className={inCase ? 'mt-6' : undefined}>
-          <RecoveryAcademyTab />
+          <RecoveryAcademyTab caseInfo={rehabCase ? {
+            courtName: rehabCase.courtName,
+            caseNumber: rehabCase.caseNumber,
+            source: rehabCase.sourceType === 'mykim_lawyer' || rehabCase.sourceType === 'external_office' || rehabCase.sourceType === 'self_litigant' ? rehabCase.sourceType : 'none',
+            caseKey: rehabCase.sourceType === 'mykim_lawyer' ? clientId : undefined,
+          } : undefined} />
         </div>
       )}
       </div>

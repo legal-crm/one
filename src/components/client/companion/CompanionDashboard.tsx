@@ -5,7 +5,6 @@ import {
   Layers, LifeBuoy, Pencil, Search, Users, CircleAlert, Wallet, ClipboardList
 } from 'lucide-react';
 import { evaluateOverdueRisk, getEffectiveRoundStatus } from '../../../services/companionService';
-import { updateCrmClientExtension } from '../../../services/crmService';
 import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
@@ -21,6 +20,7 @@ const ClientStatementModal = React.lazy(() => import('../statement/ClientStateme
 const ClientMonthlyIncomeExpenseModal = React.lazy(() => import('../incomeExpense/ClientMonthlyIncomeExpenseModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('../property/ClientPropertyIntakeModal'));
 const SelfCorrectionNotebookModal = React.lazy(() => import('./SelfCorrectionNotebookModal'));
+const DischargeWriterModal = React.lazy(() => import('../discharge/DischargeWriterModal'));
 
 interface CompanionDashboardProps {
   caseData: RehabCompanionCase;
@@ -180,7 +180,7 @@ export default function CompanionDashboard({
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
   const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
   const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
-  const [isDischargeRequested, setIsDischargeRequested] = useState(false);
+  const [isDischargeWriterOpen, setIsDischargeWriterOpen] = useState(false);
   const [showAllRounds, setShowAllRounds] = useState(false);
   const [showAllTools, setShowAllTools] = useState(false);
 
@@ -222,25 +222,9 @@ export default function CompanionDashboard({
       .catch(() => toast.error('복사하지 못했어요. 계좌번호를 길게 눌러 복사해 주세요.'));
   };
 
-  const handleDischargeRequest = async () => {
-    // 마이김변 변호사 사건: CRM에 요청 시각을 기록해 담당 변호사가 확인 / 그 외: 사실대로 안내
-    if (caseData.sourceType === 'mykim_lawyer' && clientId) {
-      const ok = await updateCrmClientExtension(clientId, { dischargeRequestedAt: new Date().toISOString() });
-      if (!ok) {
-        toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-        return;
-      }
-      setIsDischargeRequested(true);
-      toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
-    } else {
-      toast.info(
-        caseData.sourceType === 'external_office'
-          ? '진행 중인 법률사무소에 면책신청 진행을 직접 요청해 주세요.'
-          : '면책신청은 관할 법원에 직접 제출합니다. [회복 아카데미]에서 서식을 내려받을 수 있습니다.',
-        { duration: 5000 }
-      );
-    }
-  };
+  // 면책신청서 작성기 (H-0): 마이김변 사건은 첫 화면에서 '변호사에게 접수 요청'(서버 기록 + 사무소 알림)
+  // 이전: 의뢰인 화면이 crm_clients에 직접 쓰려 했지만 의뢰인에게 쓰기 권한이 없어 요청이 전달되지 않았다
+  const handleDischargeRequest = () => setIsDischargeWriterOpen(true);
 
   const sourceLabel =
     caseData.sourceType === 'external_office'
@@ -369,13 +353,10 @@ export default function CompanionDashboard({
           {allDone ? (
             <Button
               onClick={handleDischargeRequest}
-              disabled={isDischargeRequested}
               leftIcon={<Award className="w-4 h-4" aria-hidden="true" />}
               className="w-full sm:w-auto"
             >
-              {isDischargeRequested
-                ? '면책신청 요청을 보냈어요'
-                : caseData.sourceType === 'mykim_lawyer' ? '담당 변호사에게 면책신청 요청' : '면책신청 방법 안내'}
+              면책신청서 작성하기
             </Button>
           ) : !focusRound ? (
             <Button onClick={onOpenRegisterModal} leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />} className="w-full sm:w-auto">
@@ -729,6 +710,18 @@ export default function CompanionDashboard({
       />
 
       {/* 내 보정 정리 (나홀로·다른 사무소 사건, CR-12) */}
+      {isDischargeWriterOpen && (
+        <React.Suspense fallback={null}>
+          <DischargeWriterModal
+            open
+            onClose={() => setIsDischargeWriterOpen(false)}
+            source={caseData.sourceType === 'mykim_lawyer' || caseData.sourceType === 'external_office' || caseData.sourceType === 'self_litigant' ? caseData.sourceType : 'none'}
+            caseKey={caseData.sourceType === 'mykim_lawyer' ? clientId : undefined}
+            prefill={{ courtName: caseData.courtName || '', caseNumber: caseData.caseNumber || '', repaymentDone: allDone }}
+          />
+        </React.Suspense>
+      )}
+
       {isSelfCorrectionOpen && (
         <React.Suspense fallback={null}>
           <SelfCorrectionNotebookModal onClose={() => setIsSelfCorrectionOpen(false)} defaultCourt={caseData.courtName} />

@@ -29,6 +29,7 @@ import type { RepaymentCreditor } from '../../../services/repayment/repaymentTyp
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
 import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
 import { bankruptcyCreditorsForCsv } from '../../../services/court/bankruptcyStatement';
+import HwpxBatchSection from './HwpxBatchSection';
 
 interface BatchFilingPackagingModalProps {
   isOpen: boolean;
@@ -585,6 +586,13 @@ function BatchFilingPackagingModalInner({
             </button>
           </div>
         </div>
+
+        {/* 법원 원본 양식 HWPX 묶음 (H-4) — 개인회생만 (파산 양식 매핑은 다음 묶음) */}
+        {!isBankruptcy && (
+          <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
+            <HwpxBatchSection clientRequest={clientRequest} crmExt={crmExt} lawyerName={getOfficeProfile('').lawyerName} />
+          </div>
+        )}
 
         {isProcessing && (
           <div className="px-6 py-2 bg-blue-50 border-b border-blue-100 text-xs font-bold text-blue-800 flex items-center gap-2 animate-pulse">

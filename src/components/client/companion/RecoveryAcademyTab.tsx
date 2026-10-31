@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BookOpen, CheckCircle, Download, FileText, Sparkles, TrendingUp, ShieldCheck, ChevronRight, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Button, Modal } from '../ui';
+import type { DischargeSource } from '../discharge/DischargeWriterModal';
+const DischargeWriterModal = React.lazy(() => import('../discharge/DischargeWriterModal'));
 
 const ACADEMY_LESSONS = [
   {
@@ -60,19 +62,12 @@ const ACADEMY_LESSONS = [
   }
 ];
 
-export default function RecoveryAcademyTab() {
+export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtName?: string; caseNumber?: string; source?: DischargeSource; caseKey?: string } } = {}) {
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null);
+  const [writerOpen, setWriterOpen] = useState(false);
 
-  const handleDownloadForm = () => {
-    // 실제 서식 파일 다운로드 (기존: 토스트만 표시하고 아무것도 내려받지 않음)
-    const a = document.createElement('a');
-    a.href = '/forms/rehab-discharge-application.hwp';
-    a.download = '개인회생_면책신청서.hwp';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    toast.info('면책신청서 서식(HWP)을 내려받습니다. 제출 전 관할 법원 안내와 최신 서식을 확인해 주세요.');
-  };
+  // 빈 양식 대신 작성기 (H-0): 값을 채우고 서명·도장까지 넣은 PDF·HWPX. 빈 양식은 작성기 마지막 화면에 남김
+  const handleDownloadForm = () => setWriterOpen(true);
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
@@ -102,7 +97,7 @@ export default function RecoveryAcademyTab() {
             변제 완료 후 참고 자료
           </span>
           <p className="text-xs font-bold text-slate-800 dark:text-white">
-            법원 면책신청서 양식 (HWP)
+            법원 면책신청서
           </p>
           <button
             type="button"
@@ -110,7 +105,7 @@ export default function RecoveryAcademyTab() {
             className="w-full min-h-11 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>면책신청서 양식 내려받기</span>
+            <span>면책신청서 작성하기</span>
           </button>
         </div>
       </div>
@@ -219,6 +214,18 @@ export default function RecoveryAcademyTab() {
           ))}
         </div>
       </div>
+
+      {writerOpen && (
+        <React.Suspense fallback={null}>
+          <DischargeWriterModal
+            open
+            onClose={() => setWriterOpen(false)}
+            source={caseInfo?.source || 'none'}
+            caseKey={caseInfo?.caseKey}
+            prefill={{ courtName: caseInfo?.courtName || '', caseNumber: caseInfo?.caseNumber || '' }}
+          />
+        </React.Suspense>
+      )}
 
       {/* 가이드 상세 보기 (키트 Modal: ESC·포커스 가두기·닫으면 누른 카드로 포커스 복귀) */}
       {selectedLesson && (

@@ -64,6 +64,13 @@ const MESSAGE_RULES: Array<[RegExp, string]> = [
   [/recording not available/i, '이 녹음을 들을 권한이 없거나 아직 확인 중이에요.'],
   [/too many uploads in progress/i, '올리는 중인 녹음이 많아요. 잠시 뒤 다시 시도해 주세요.'],
   [/request already handled/i, '이미 처리한 요청이에요.'],
+  // 의뢰인 서류 작성기 (H-0)
+  [/resident number not allowed/i, '주민등록번호는 저장하지 않아요. 출력할 때만 입력해 주세요.'],
+  [/too many sign assets/i, '서명·도장은 30개까지 저장할 수 있어요. 쓰지 않는 것을 지워 주세요.'],
+  [/draft too large/i, '작성 내용이 너무 길어 저장하지 못했어요.'],
+  [/not your case/i, '내 사건이 아니라 요청할 수 없어요.'],
+  [/no office for case/i, '이 사건의 담당 사무소를 찾지 못했어요.'],
+  [/login required/i, '로그인이 필요해요. 다시 로그인해 주세요.'],
   [/not found/i, '대상을 찾지 못했어요. 새로고침 후 다시 시도해 주세요.'],
 ];
 

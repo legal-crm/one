@@ -27,6 +27,8 @@ interface Stage6PostCareDischargeViewProps {
   onUpdateStatus?: (newStatus: CrmStatus) => Promise<boolean | void>;
   onUpdateCrmExt?: (patch: Partial<CrmClientExtension>) => Promise<void>;
   activeLawyerName?: string;
+  /** 면책 섹션 위에 넣을 서버 화면 (면책신청서 만들기·의뢰인 요청 기록, H-0) */
+  dischargeSlot?: React.ReactNode;
 }
 
 export default function Stage6PostCareDischargeView({
@@ -38,6 +40,7 @@ export default function Stage6PostCareDischargeView({
   onUpdateStatus,
   onUpdateCrmExt,
   activeLawyerName = '담당 변호사',
+  dischargeSlot,
 }: Stage6PostCareDischargeViewProps) {
   const dialog = useDialog();
 
@@ -774,6 +777,7 @@ export default function Stage6PostCareDischargeView({
       {/* ── 5. 섹션 4: 면책 (discharge) ── */}
       {currentSection === 'discharge' && (
         <div className="space-y-6">
+          {caseType !== 'bankruptcy' && dischargeSlot}
           {/* 면책 신청 및 확정 카드 */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">

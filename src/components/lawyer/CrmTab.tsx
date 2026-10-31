@@ -143,6 +143,7 @@ import BankruptcyProgressPanel from './case/BankruptcyProgressPanel';
 import { findCaseByWorkspaceKey } from '../../services/cases/caseCoreService';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
+import OfficeDischargePanel from './case/OfficeDischargePanel';
 import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
 import Stage3DocumentsHubView from './pipeline/Stage3DocumentsHubView';
 import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
@@ -2608,6 +2609,21 @@ export default function CrmTab({
                           activeSection={detailTab as any}
                           onSelectSection={(sec) => setDetailTab(sec as any)}
                           activeLawyerName={assignedLawyerName}
+                          dischargeSlot={
+                            <OfficeDischargePanel
+                              officeId={officeId}
+                              caseKey={selectedId}
+                              actorName={activeLawyer.name}
+                              prefill={{
+                                courtName: selectedExt?.courtCase?.courtName || '',
+                                caseNumber: selectedExt?.courtCase?.caseNumber || '',
+                                name: selectedClient.clientName || '',
+                                address: selectedExt?.courtStatement?.applicantAddress || '',
+                                phone: selectedClient.phone && !selectedClient.phone.includes('*') ? selectedClient.phone : '',
+                                repaymentDone: selectedExt?.crmStatus === 'discharged',
+                              }}
+                            />
+                          }
                         />
                       )}
                     </div>

@@ -2,7 +2,9 @@ import { AlertTriangle, Check, CheckCircle, Copy, FileCheck, FileText, Landmark,
 import { toast } from 'sonner';
 import { Badge } from '../ui';
 import { CRM_STATUS_CONFIG, LEGALFLOW_BANKRUPTCY_STAGES, LEGALFLOW_REHAB_STAGES } from '../../../types';
-import { updateCrmClientExtension } from '../../../services/crmService';
+import React, { useEffect, useState } from 'react';
+import { lastDischargeRequest, recordDischargeEvent } from '../../../services/client/clientDocsService';
+const DischargeWriterModal = React.lazy(() => import('../discharge/DischargeWriterModal'));
 import type { MyPageModel } from './useMyPageModel';
 import type { MyCaseData } from './myCaseData';
 
@@ -14,7 +16,13 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
     activeRequest, allProposals, clientContract, isCorrectionUploadOpen, setDischargeRequestedLocal,
     setIsCorrectionUploadOpen, setIsCreditorMeetingModalOpen, setRefreshTick,
   } = vm;
-  const { PROGRESS_STEPS, crmExt, currentIdx, currentStatus, handleFileUpload, isDischargeRequested, reqId } = cd;
+  const { PROGRESS_STEPS, crmExt, currentIdx, currentStatus, handleFileUpload, isDischargeRequested: localRequested, reqId } = cd;
+  // 면책신청 요청은 서버 기록(client_discharge_events)으로 확인 (이전: 의뢰인이 쓸 수 없는 crm_clients에 쓰려 해 전달되지 않음)
+  const [serverRequestedAt, setServerRequestedAt] = useState<string | null>(null);
+  const [writerOpen, setWriterOpen] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  useEffect(() => { if (reqId) lastDischargeRequest(reqId).then(setServerRequestedAt); }, [reqId]);
+  const isDischargeRequested = localRequested || !!serverRequestedAt;
   return (
     <>
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5">
@@ -254,18 +262,17 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
             <button
               type="button"
               onClick={async () => {
-                if (!reqId || isDischargeRequested) return;
-                try {
-                  // 실제로 CRM에 요청 시각을 기록해 담당 변호사가 확인할 수 있게 한다
-                  await updateCrmClientExtension(reqId, { dischargeRequestedAt: new Date().toISOString() });
-                  setDischargeRequestedLocal(true);
-                  setRefreshTick(t => t + 1);
-                  toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
-                } catch {
-                  toast.error('요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-                }
+                if (!reqId || isDischargeRequested || requesting) return;
+                setRequesting(true);
+                const r = await recordDischargeEvent(reqId, 'request');
+                setRequesting(false);
+                if (r.ok === false) { toast.error(r.message); return; }
+                setServerRequestedAt(r.data);
+                setDischargeRequestedLocal(true);
+                setRefreshTick(t => t + 1);
+                toast.success('면책신청 요청을 담당 변호사에게 전달했습니다. 접수 일정은 변호사가 안내해 드립니다.');
               }}
-              disabled={isDischargeRequested}
+              disabled={isDischargeRequested || requesting}
               className={`px-4 min-h-11 text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5 press-scale shrink-0 whitespace-nowrap ${
                 isDischargeRequested 
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 cursor-default' 
@@ -273,9 +280,28 @@ export default function CaseProgressCard({ vm, cd }: { vm: MyPageModel; cd: MyCa
               }`}
             >
               {isDischargeRequested ? <Check className="w-4 h-4" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
-              <span>{isDischargeRequested ? '면책신청 요청을 전달했어요' : '변호사에게 면책신청 요청하기'}</span>
+              <span>{isDischargeRequested ? '면책신청 요청을 전달했어요' : '변호사에게 접수 요청'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setWriterOpen(true)}
+              className="px-4 min-h-11 text-sm font-bold rounded-xl border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 flex items-center justify-center gap-1.5 press-scale shrink-0 whitespace-nowrap cursor-pointer"
+            >
+              <FileText className="w-4 h-4" aria-hidden="true" />
+              <span>직접 작성하기</span>
             </button>
           </div>
+        )}
+        {writerOpen && (
+          <React.Suspense fallback={null}>
+            <DischargeWriterModal
+              open
+              onClose={() => setWriterOpen(false)}
+              source="mykim_lawyer"
+              caseKey={reqId || undefined}
+              prefill={{ courtName: crmExt?.courtCase?.courtName || '', caseNumber: crmExt?.courtCase?.caseNumber || '', repaymentDone: currentStatus === 'discharged' || crmExt?.thirteenStage === 'completed' }}
+            />
+          </React.Suspense>
         )}
       </div>
     </>

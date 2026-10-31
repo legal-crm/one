@@ -27,6 +27,22 @@ function blobToDataUrl(b: Blob): Promise<string> {
   return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => rej(fr.error); fr.readAsDataURL(b); });
 }
 
+/** 이미 만든 PDF 바이트를 사건 서류함(case-files, 사무소)에 저장 */
+export async function savePdfBytesToCase(p: {
+  bytes: Uint8Array; officeId: string; caseKey: string; fileName: string; actorName?: string; note?: string;
+}): Promise<{ ok: true; file: DocumentFile } | { ok: false; message: string }> {
+  const dataUrl = await blobToDataUrl(new Blob([p.bytes], { type: 'application/pdf' }));
+  const up = await uploadCaseFile({
+    source: 'office', clientKey: p.caseKey, officeId: p.officeId,
+    file: {
+      id: '', name: p.fileName, category: 'court_filing', uploadedAt: new Date().toISOString(), uploadedBy: p.actorName || '사무소',
+      mimeType: 'application/pdf', dataUrl, uploadSource: 'lawyer', reviewStatus: 'approved', notes: p.note,
+    } as DocumentFile,
+  });
+  if (!up.ok || !up.file) return { ok: false, message: up.message || 'PDF를 저장하지 못했어요.' };
+  return { ok: true, file: { ...up.file, dataUrl: undefined } };
+}
+
 export async function saveHtmlPdfToCase(p: {
   html: string; title: string; officeId: string; caseKey: string; fileName: string; actorName?: string; note?: string;
 }): Promise<{ ok: true; file: DocumentFile } | { ok: false; message: string }> {
