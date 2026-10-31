@@ -5,6 +5,7 @@
 // 주민등록번호는 묻지 않는다(L8). 판단·계산 문장은 넣지 않는다(제109조).
 // ============================================================
 import type { QuestionnaireField } from '../documents/legalDocRegistry';
+import { BANKRUPTCY_OFFICIAL_QUESTIONS } from '../court/bankruptcyStatement';
 
 export interface ClientFormSchema {
   docCode: string;
@@ -121,7 +122,41 @@ export const CLIENT_FORM_SCHEMAS: ClientFormSchema[] = [
   },
 ];
 
+/**
+ * 파산 진술서 추가 진술사항 (실무준칙 제407호 공식 11문항, BK-7) — 의뢰인은 '있어요/없어요'와 사실만 적는다.
+ * 사무소는 받은 답을 파산 서식 작성기의 공식 문항 칸으로 가져와 확인한다 (판단·면책 가능성 문장 없음)
+ */
+export const BANKRUPTCY_STATEMENT_DOC_CODE = 'BK_STMT';
+export const BANKRUPTCY_STATEMENT_SCHEMA: ClientFormSchema = {
+  docCode: BANKRUPTCY_STATEMENT_DOC_CODE,
+  title: '파산 진술서 추가 진술사항',
+  guide: '법원 진술서에 들어가는 공식 질문이에요. 해당하는지 고르고, 해당하면 날짜·금액·상대방 등 사실을 적어 주세요. 기억나지 않으면 대략 적어도 돼요.',
+  fields: BANKRUPTCY_OFFICIAL_QUESTIONS.flatMap((q, i): QuestionnaireField[] => (q.id === 'q05_insolvency'
+    ? [{ id: q.id, label: `${i + 1}. ${q.text}`, type: 'textarea', required: true, placeholder: q.detailHint }]
+    : [
+      { id: q.id, label: `${i + 1}. ${q.text}`, type: 'radio', options: ['없어요', '있어요'], required: true },
+      { id: `${q.id}_detail`, label: `${i + 1}번이 '있어요'라면 내용`, type: 'textarea', required: false, placeholder: q.detailHint },
+    ])),
+};
+
+/** 의뢰인 답 → 파산 서식 작성기 공식 문항 답 (빈 답은 건너뜀) */
+export function bankruptcyAnswersFromClient(answers: Record<string, string>): Record<string, { answer: 'yes' | 'no' | ''; detail: string }> {
+  const out: Record<string, { answer: 'yes' | 'no' | ''; detail: string }> = {};
+  for (const q of BANKRUPTCY_OFFICIAL_QUESTIONS) {
+    if (q.id === 'q05_insolvency') {
+      const t = (answers[q.id] || '').trim();
+      if (t) out[q.id] = { answer: 'yes', detail: t };
+      continue;
+    }
+    const a = answers[q.id];
+    if (a !== '있어요' && a !== '없어요') continue;
+    out[q.id] = { answer: a === '있어요' ? 'yes' : 'no', detail: a === '있어요' ? (answers[`${q.id}_detail`] || '').trim() : '' };
+  }
+  return out;
+}
+
 export function clientFormSchemaFor(docCode: string): ClientFormSchema | undefined {
+  if (docCode === BANKRUPTCY_STATEMENT_DOC_CODE) return BANKRUPTCY_STATEMENT_SCHEMA;
   return CLIENT_FORM_SCHEMAS.find(s => s.docCode === docCode);
 }
 

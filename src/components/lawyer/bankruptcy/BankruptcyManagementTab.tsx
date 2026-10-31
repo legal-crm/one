@@ -25,6 +25,7 @@ import { NON_DISCHARGEABLE_BASIS_LABEL, type NonDischargeableBasis } from '../..
 import { SUBMISSION_GROUPS, UNOBTAINABLE_KIND_LABEL, upgradeSubmissionList, type UnobtainableKind } from '../../../services/court/bankruptcySubmissionList';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import PrintableBankruptcyPetitionModal from './PrintableBankruptcyPetitionModal';
+import BankruptcyStatementRequest from './BankruptcyStatementRequest';
 import { BANKRUPTCY_OFFICIAL_QUESTIONS, bankruptcyCreditorsFromRepayment, questionPeriodText, unansweredCount } from '../../../services/court/bankruptcyStatement';
 import { findCaseByWorkspaceKey } from '../../../services/cases/caseCoreService';
 import { saveBankruptcyDetails } from '../../../services/cases/bankruptcyCaseService';
@@ -636,6 +637,12 @@ export default function BankruptcyManagementTab({
                 {unansweredCount(statement.officialAnswers) ? `답하지 않은 문항 ${unansweredCount(statement.officialAnswers)}개` : '모든 문항에 답함'}
               </span>
             </div>
+            <BankruptcyStatementRequest
+              officeId={officeId}
+              caseKey={clientId}
+              current={statement.officialAnswers}
+              onImport={(answers) => setStatement(prev => ({ ...prev, officialAnswers: answers }))}
+            />
             <ol className="space-y-2">
               {BANKRUPTCY_OFFICIAL_QUESTIONS.map((q, i) => {
                 const a = statement.officialAnswers?.[q.id] || { answer: '' as const, detail: '' };
