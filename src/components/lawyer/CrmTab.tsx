@@ -340,6 +340,8 @@ export default function CrmTab({
   const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
   // ── 6단계 수임 여정 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
+  // 보정 항목 → 부채증명 장부 줄 (DC-11)
+  const [debtFocusId, setDebtFocusId] = useState<string | null>(null);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   // 부모가 지정한 서브탭 — [selectedId] 효과가 고객을 고른 뒤 이 값을 적용하고 비운다
   const pendingDetailTabRef = React.useRef<{ clientId: string; tab: CrmDetailTab } | null>(
@@ -2032,6 +2034,7 @@ export default function CrmTab({
                         onAdvanceToNextStage={() => advancePipelineStage(4)}
                         officeId={officeId}
                         canEditDocs={officeId ? officeCan('documents.manage') : true}
+                        debtFocusId={debtFocusId}
                         onOpenDocScanner={() => setShowDocScanner(true)}
                         onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
                         onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
@@ -2145,6 +2148,11 @@ export default function CrmTab({
                             onOpenEditor={(tab) => {
                               setCourtDocSuiteInitialTab(tab);
                               setShowCourtDocSuite(true);
+                            }}
+                            onOpenDebtLedger={(certId) => {
+                              setDebtFocusId(certId || null);
+                              setPipelineStage(3);
+                              setDetailTab('debt-cert' as any);
                             }}
                           />
                         ) : undefined}

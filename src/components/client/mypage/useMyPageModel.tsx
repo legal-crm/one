@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useDialog } from '../../common/DialogProvider';
 import { loadCertificateVault, fetchClientVault } from '../../../services/vault/certificateVaultService';
 import { loadMyContracts } from '../../../services/contractService';
-import { getCrmClientSync } from '../../../services/crmService';
+import { getClientCaseViewSync, refreshClientCaseView } from '../../../services/crmService';
 import { getMyPageNextAction } from './nextAction';
 import type { MyPageSubTab } from './nextAction';
 import { getRequestRoomStage } from '../consultFlow';
@@ -201,16 +201,15 @@ export function useMyPageModel(props: MyPageViewProps) {
       c.consultRequestId === reqId || c.clientId === reqId || c.clientRefId === reqId) || null;
   }, [activeRequest?.id, requests, myContracts]);
 
-  // CRM 확장 상세 정보 (13단계 심리 상태, 법원 사건정보, 보정권고 연동)
-  const crmExt = useMemo(() => {
-    try {
-      const clientId = activeRequest?.id || requests[0]?.id;
-      if (!clientId) return null;
-      return getCrmClientSync(clientId);
-    } catch {
-      return null;
-    }
-  }, [activeRequest?.id, requests, refreshTick]);
+  // 사무소가 공유한 사건 보기 (MY-10: 서버 client_case_view만, 기기 사본은 읽지 않는다)
+  const caseViewId = activeRequest?.id || requests[0]?.id;
+  useEffect(() => {
+    if (!caseViewId) return;
+    let cancelled = false;
+    void refreshClientCaseView(caseViewId).then(ok => { if (!cancelled && ok) setRefreshTick(t => t + 1); });
+    return () => { cancelled = true; };
+  }, [caseViewId]);
+  const crmExt = useMemo(() => getClientCaseViewSync(caseViewId), [caseViewId, refreshTick]);
 
   // 계약 체결 여부 (제안서 검토 완료 후 정식 계약 단계 진입 여부)
   const isContracted = useMemo(() => {

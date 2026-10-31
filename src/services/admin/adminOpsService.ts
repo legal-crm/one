@@ -17,6 +17,9 @@ function errorMessage(error: any, fallback: string): string {
   if (m.includes('until must be')) return '정지 기한은 지금 이후로 정해 주세요.';
   if (m.includes('only for open reports')) return '원문은 열린 신고가 있는 요청만 볼 수 있어요.';
   if (m.includes('too many reports')) return '오늘 보낼 수 있는 신고 수(10건)를 넘었어요.';
+  if (m.includes('active ads')) return '노출 중이거나 시작 예정인 광고가 있어요. 광고 주문을 먼저 취소·환불한 뒤 종료해 주세요.';
+  if (m.includes('purge already started')) return '이미 파기가 시작돼 되돌릴 수 없어요.';
+  if (m.includes('office not closed')) return '종료된 사무소가 아니에요.';
   if (m.includes('not found')) return '대상을 찾지 못했어요. 목록을 새로 고쳐 주세요.';
   return fallback;
 }
@@ -287,5 +290,28 @@ export async function openConsultDetail(id: string, reason: string): Promise<Res
 /** 의뢰인·사무소: 상담 요청 신고 (스팸·부적절) */
 export async function reportConsultRequest(requestId: string, category: 'spam' | 'abuse' | 'fraud' | 'privacy' | 'other', detail?: string): Promise<Result<null>> {
   const r = await rpc<any>('report_consult_request', { p_request_id: requestId, p_category: category, p_detail: detail?.trim() || null }, '신고를 보내지 못했어요. 잠시 후 다시 시도해 주세요.');
+  return r.ok === false ? r : { ok: true, data: null };
+}
+
+// ── 사무소 탈퇴 (변호사회원 이용약관 제10조 제3항 7호·제16조, 20261101003100) ──
+// 종료하면 구성원 접근이 바로 막히고, 30일 뒤 서버 작업이 사무소 데이터를 파기한다. 30일 안에는 되돌릴 수 있다.
+export interface ClosedOffice { officeId: string; officeName: string; closedAt: string; closeReason: string | null; purgeOn: string; purgeStarted: boolean }
+
+export async function loadClosedOffices(): Promise<Result<ClosedOffice[]>> {
+  const r = await rpc<any[]>('admin_closed_offices', {}, '종료된 사무소 목록을 불러오지 못했어요.');
+  if (r.ok === false) return r;
+  return { ok: true, data: (r.data || []).map((x) => ({
+    officeId: String(x.office_id), officeName: String(x.office_name || ''), closedAt: String(x.closed_at || ''),
+    closeReason: x.close_reason ?? null, purgeOn: String(x.purge_on || ''), purgeStarted: !!x.purge_started,
+  })) };
+}
+
+export async function closeOffice(officeId: string, reason: string): Promise<Result<{ purgeOn: string; members: number }>> {
+  const r = await rpc<any>('admin_close_office', { p_office_id: officeId.trim(), p_reason: reason.trim() }, '사무소를 종료하지 못했어요.');
+  return r.ok === false ? r : { ok: true, data: { purgeOn: String(r.data?.purge_on || ''), members: Number(r.data?.members) || 0 } };
+}
+
+export async function reopenOffice(officeId: string, reason: string): Promise<Result<null>> {
+  const r = await rpc<unknown>('admin_reopen_office', { p_office_id: officeId, p_reason: reason.trim() }, '사무소를 되돌리지 못했어요.');
   return r.ok === false ? r : { ok: true, data: null };
 }

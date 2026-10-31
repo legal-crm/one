@@ -17,6 +17,7 @@ import type { CourtEvent } from '../../../types';
 import { BriefFileUpload, BundleButton, ExtensionSection, OcrFoundNotice, OcrReadButton, RevisedDocsSection, type EditorTab } from './CorrectionOrderTools';
 import { CorrectionStatsCard, CourtCorrectionHint, PrecedentTools, T2ImportButton, usePrecedents } from './CorrectionExtras';
 import type { CorrectionPrecedent } from '../../../services/corrections/correctionService';
+import CorrectionDebtLink from './CorrectionDebtLink';
 
 /**
  * 보정 대응 (CR, 서버 기록): 회차 등록 → 원문 나누기 → 의뢰인 요청 → 받기·검토 → 요약보정서 → 제출 기록.
@@ -36,6 +37,8 @@ interface Props {
   courtEvents?: CourtEvent[];
   /** 고쳐 낼 목록 편집기 열기 (CR-8) */
   onOpenEditor?: (tab: EditorTab) => void;
+  /** 부채증명 장부의 채권자 줄로 가기 (DC-11) */
+  onOpenDebtLedger?: (certId?: string) => void;
 }
 
 const OWNER_LABEL: Record<ItemOwner, string> = { client: '의뢰인', office: '사무소', both: '함께' };
@@ -393,7 +396,8 @@ function OrderDetail(p: DetailProps) {
             <ItemRow key={it.id} item={it} open={openId === it.id} onToggle={() => setOpenId(v => (v === it.id ? null : it.id))}
               library={library} editable={editable} reload={reload} dialog={dialog}
               precedents={p.precedents} reloadPrecedents={p.reloadPrecedents} canFinalize={canFinalize}
-              maskTerms={[p.applicantName || ''].filter(Boolean)} />
+              maskTerms={[p.applicantName || ''].filter(Boolean)}
+              debtLink={p.onOpenDebtLedger ? { officeId: p.officeId, caseKey: p.caseKey, onOpen: p.onOpenDebtLedger } : undefined} />
           ))}
         </ul>
       )}
@@ -425,10 +429,11 @@ function SourceFileLink({ fileId, label }: { fileId: string; label: string }) {
   return <button type="button" onClick={() => void open()} className="min-h-[44px] text-xs font-bold text-blue-700 underline underline-offset-2 cursor-pointer">{label}</button>;
 }
 
-function ItemRow({ item, open, onToggle, library, editable, reload, dialog, precedents, reloadPrecedents, canFinalize, maskTerms }: {
+function ItemRow({ item, open, onToggle, library, editable, reload, dialog, precedents, reloadPrecedents, canFinalize, maskTerms, debtLink }: {
   item: CorrectionItem; open: boolean; onToggle: () => void; library: LibraryEntry[]; editable: boolean;
   reload: () => Promise<void>; dialog: ReturnType<typeof useDialog>;
   precedents: CorrectionPrecedent[] | null; reloadPrecedents: () => Promise<void>; canFinalize: boolean; maskTerms: string[];
+  debtLink?: { officeId: string; caseKey: string; onOpen: (certId?: string) => void };
 }) {
   const [draft, setDraft] = useState(item);
   const [saving, setSaving] = useState(false);
@@ -496,6 +501,10 @@ function ItemRow({ item, open, onToggle, library, editable, reload, dialog, prec
       {open && (
         <div className="px-4 pb-4 space-y-3">
           {item.originalText && <p className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-3 whitespace-pre-wrap">원문: {item.originalText}</p>}
+          {debtLink && (
+            <CorrectionDebtLink officeId={debtLink.officeId} caseKey={debtLink.caseKey} onOpen={debtLink.onOpen}
+              text={[item.originalText, item.clientTitle, item.category].filter(Boolean).join(' ')} />
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <label className="space-y-1 text-xs font-bold text-slate-700">라이브러리에서 고르기

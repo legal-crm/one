@@ -79,8 +79,20 @@ export interface ClientCaseSchedule {
 }
 export function getClientCaseSchedule(requestId: string | undefined): ClientCaseSchedule | null {
   if (!requestId) return null;
-  const ext = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {})[requestId] as any;
+  const ext = clientCaseViews.get(requestId) as any;
   return ext?.clientSchedule || null;
+}
+
+/**
+ * 의뢰인 화면용 사건 보기 (MY-10): 서버 client_case_view 결과를 이 탭 메모리에만 둔다.
+ * 이전: 기기 저장소(사무소 사본과 같은 칸)에 써서, 의뢰인 기기에 사건 사본이 남고 오래된 값을 읽었다.
+ */
+const clientCaseViews = new Map<string, CrmClientExtension>();
+
+/** 서버에서 받아 온 의뢰인 사건 보기 (없으면 null — 기기 사본은 읽지 않는다) */
+export function getClientCaseViewSync(requestId: string | undefined): CrmClientExtension | null {
+  if (!requestId) return null;
+  return clientCaseViews.get(requestId) || null;
 }
 
 export async function refreshClientCaseView(requestId: string): Promise<boolean> {
@@ -88,9 +100,8 @@ export async function refreshClientCaseView(requestId: string): Promise<boolean>
   const { data, error } = await supabase.rpc('client_case_view', { p_request_id: requestId });
   if (error || !data) return false;
   const v = data as any;
-  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const cur = store[requestId] || createDefaultCrmExtension(requestId);
-  store[requestId] = {
+  const cur = clientCaseViews.get(requestId) || createDefaultCrmExtension(requestId);
+  clientCaseViews.set(requestId, {
     ...cur,
     crmStatus: v.crmStatus || cur.crmStatus,
     contractDate: v.contractDate ?? cur.contractDate,
@@ -100,8 +111,7 @@ export async function refreshClientCaseView(requestId: string): Promise<boolean>
     documentRequests: Array.isArray(v.documentRequests) ? v.documentRequests : cur.documentRequests,
     // 사무소가 적은 법원·집회 일정 (CM-11, 20261101002600). 의뢰인 화면 전용 칸
     clientSchedule: v.schedule && typeof v.schedule === 'object' ? v.schedule : (cur as any).clientSchedule,
-  } as CrmClientExtension;
-  setLocalData(CRM_STORAGE_KEY, store);
+  } as CrmClientExtension);
   return true;
 }
 

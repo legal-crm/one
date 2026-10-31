@@ -32,6 +32,8 @@ interface Props {
   canEdit: boolean;
   onUpdateCrmExt?: (patch: Partial<CrmClientExtension>) => Promise<void>;
   onOpenAgencyApplication: (rows: DebtCertificate[]) => void;
+  /** 보정 항목에서 넘어올 때 펼쳐 보여 줄 채권자 줄 (DC-11) */
+  focusCertId?: string | null;
 }
 
 const btn = 'min-h-[44px] px-3 rounded-xl text-xs font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5';
@@ -77,6 +79,15 @@ export default function DebtLedgerPanel(p: Props) {
   }, [officeId, caseKey, canEdit]);
 
   useEffect(() => { void load(); void loadDebtAgencies(officeId).then(setAgencies); }, [load, officeId]);
+  // 보정 항목에서 '장부에서 보기'로 넘어오면 그 줄을 펼치고 화면으로 옮긴다 (DC-11)
+  const focusedRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    const id = p.focusCertId;
+    if (!id || !rows || focusedRef.current === id || !rows.some(r => r.id === id)) return;
+    focusedRef.current = id;
+    setOpenId(id);
+    window.setTimeout(() => document.getElementById(`debt-row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }, [p.focusCertId, rows]);
   useEffect(() => {
     const h = () => void load();
     window.addEventListener(DEBT_LEDGER_CHANGED_EVENT, h);
@@ -253,7 +264,7 @@ export default function DebtLedgerPanel(p: Props) {
       ) : (
         <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
           {rows.map(r => (
-            <LedgerRow key={r.id} row={r} open={openId === r.id} onToggle={() => setOpenId(v => (v === r.id ? null : r.id))}
+            <LedgerRow key={r.id} row={r} focused={p.focusCertId === r.id} open={openId === r.id} onToggle={() => setOpenId(v => (v === r.id ? null : r.id))}
               canEdit={canEdit} officeId={officeId} caseKey={caseKey} today={today} reload={load} onApply={() => void applyOne(r)} dialog={dialog} />
           ))}
         </ul>
@@ -262,8 +273,8 @@ export default function DebtLedgerPanel(p: Props) {
   );
 }
 
-function LedgerRow({ row, open, onToggle, canEdit, officeId, caseKey, today, reload, onApply, dialog }: {
-  row: DebtCertificate; open: boolean; onToggle: () => void; canEdit: boolean; officeId: string; caseKey: string; today: string;
+function LedgerRow({ row, focused, open, onToggle, canEdit, officeId, caseKey, today, reload, onApply, dialog }: {
+  row: DebtCertificate; focused?: boolean; open: boolean; onToggle: () => void; canEdit: boolean; officeId: string; caseKey: string; today: string;
   reload: () => Promise<void>; onApply: () => void; dialog: ReturnType<typeof useDialog>;
 }) {
   const [d, setD] = useState(row);
@@ -344,7 +355,7 @@ function LedgerRow({ row, open, onToggle, canEdit, officeId, caseKey, today, rel
   );
 
   return (
-    <li>
+    <li id={`debt-row-${row.id}`} className={focused ? 'ring-2 ring-inset ring-amber-400' : undefined}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full min-h-[48px] px-3 py-2 flex flex-wrap items-center gap-2 text-left hover:bg-slate-50">
         {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
         <span className="text-xs font-black text-slate-500 w-6">{row.seq}</span>

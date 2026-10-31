@@ -12,6 +12,7 @@ import LawyerReviewQueue from './admin/LawyerReviewQueue';
 import AccountsPanel from './admin/AccountsPanel';
 import ConsultMonitorPanel from './admin/ConsultMonitorPanel';
 import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
+import OfficeClosurePanel from './admin/OfficeClosurePanel';
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
 import CreditorRegistryPanel from './admin/CreditorRegistryPanel';
 import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
@@ -5401,6 +5402,7 @@ export default function AdminRole({
             <div className="space-y-6">
               <AccountsPanel />
               <PrivacyRequestsPanel />
+              <OfficeClosurePanel />
             </div>
           )}
           {activeTab === 'members' && !isSupabaseConfigured && (() => {

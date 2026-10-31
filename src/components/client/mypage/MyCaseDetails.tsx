@@ -1,7 +1,5 @@
 import type { MyPageModel } from './useMyPageModel';
 import { buildMyCaseData } from './myCaseData';
-import { useEffect } from 'react';
-import { refreshClientCaseView } from '../../../services/crmService';
 import FinancialBlueprintCard from './FinancialBlueprintCard';
 import CaseProgressCard from './CaseProgressCard';
 import DocumentSubmissionCard from './DocumentSubmissionCard';
@@ -14,15 +12,7 @@ import CaseActivityTimeline from './CaseActivityTimeline';
  * 이전: MyPageView JSX 안의 즉시 실행 함수(약 1,250줄)
  */
 export default function MyCaseDetails({ vm }: { vm: MyPageModel }) {
-  // 담당 사무소가 정리한 진행 상태·서류 체크리스트·서류 요청을 서버에서 받아 온다 (이전: 이 기기 사본만 읽어 늘 비어 있었다)
-  const requestIdForView = vm.activeRequest?.id || vm.requests[0]?.id;
-  useEffect(() => {
-    if (!requestIdForView) return;
-    let cancelled = false;
-    refreshClientCaseView(requestIdForView).then(changed => { if (!cancelled && changed) vm.setRefreshTick(t => t + 1); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestIdForView]);
+  // 사무소가 공유한 진행 상태·서류 요청은 useMyPageModel이 서버(client_case_view)에서 받아 온다 (MY-10)
   const cd = buildMyCaseData(vm);
   return (
     <div className="space-y-8">

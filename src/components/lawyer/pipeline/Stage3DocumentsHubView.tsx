@@ -56,6 +56,8 @@ interface Stage3DocumentsHubViewProps {
   officeId?: string;
   /** 서류·부채증명 고치기 권한 (documents.manage) */
   canEditDocs?: boolean;
+  /** 보정 항목에서 넘어온 부채증명 장부 줄 (DC-11) */
+  debtFocusId?: string | null;
 }
 
 export type DocLifecycleStatus = 
@@ -117,6 +119,7 @@ export default function Stage3DocumentsHubView({
   onSelectSection,
   officeId,
   canEditDocs = true,
+  debtFocusId,
 }: Stage3DocumentsHubViewProps) {
   const dialog = useDialog();
   // 현재 활성 섹션 매핑
@@ -1172,6 +1175,7 @@ export default function Stage3DocumentsHubView({
           clientRequest={clientRequest}
           crmExt={crmExt}
           canEdit={canEditDocs}
+          focusCertId={debtFocusId}
           onUpdateCrmExt={onUpdateCrmExt}
           onOpenAgencyApplication={(rows) => {
             // 장부 줄로 의뢰서·위임장을 만든다 (인쇄·엑셀용, 브라우저에 저장하지 않음)

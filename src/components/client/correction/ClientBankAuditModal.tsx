@@ -11,7 +11,8 @@ import {
   AUDIT_PRESET_TEMPLATES, 
   getStoredBankAuditData, 
   saveStoredBankAuditData, 
-  submitBankAuditToLawyer, 
+  submitBankAuditToLawyer,
+  clearStoredBankAuditData, 
   parseExcelBankStatement, 
   parseRawBankStatementText 
 } from '../../../services/bankAuditService';
@@ -262,8 +263,10 @@ export default function ClientBankAuditModal({
         toast.warning('소명표를 사무소로 보내지 못했어요. 표는 이 기기에 저장돼 있어요.', { description: why });
         return;
       }
+      // 사무소에 PDF로 들어갔으니 이 기기의 작성 중 초안(거래 내역)은 지운다
+      clearStoredBankAuditData(clientId);
       toast.success('소명표를 사무소 사건 서류함에 냈어요.', {
-        description: "사무소 '서류 자료함'에 PDF로 올라갔어요. 확인 결과는 '내 사건 › 서류'에서 볼 수 있어요."
+        description: "사무소 '서류 자료함'에 PDF로 올라갔어요. 이 기기에 있던 작성 중 표는 지웠어요. 확인 결과는 '내 사건 › 서류'에서 볼 수 있어요."
       });
       onSubmittedSuccess?.();
       onClose();

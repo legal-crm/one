@@ -1005,6 +1005,13 @@ export function saveStoredBankAuditData(data: BankStatementAuditData): void {
   }
 }
 
+/**
+ * 작성 중 초안(이 기기)을 지운다 — 사무소 서류함에 PDF로 낸 뒤에는 기기에 거래 내역을 남기지 않는다 (S 원칙: 기기 저장은 작성 중 초안만)
+ */
+export function clearStoredBankAuditData(clientId: string): void {
+  try { localStorage.removeItem(`${STORAGE_KEY_PREFIX}${clientId}`); } catch { /* ignore */ }
+}
+
 /** 고객이 변호사에게 소명표 최종 제출 */
 export function submitBankAuditToLawyer(clientId: string): BankStatementAuditData {
   const current = getStoredBankAuditData(clientId);
