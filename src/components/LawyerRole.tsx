@@ -27,8 +27,6 @@ import { claimLawyerAccount, getMyLawyerAccount, type LawyerAccount } from '../s
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
 import { ConsultRequestManagementView } from './lawyer/requests';
-import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
-import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
 import { caseReviewAccess, usePlatformFeatures } from '../services/platform/featureConfigService';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
 import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';

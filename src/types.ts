@@ -2166,7 +2166,6 @@ export interface PlatformConfig {
   companyRepresentative: string;
   termsOfService: string;
   privacyPolicy: string;
-  showDiagnosisReport: boolean;
   showLegalNews: boolean;
 }
 

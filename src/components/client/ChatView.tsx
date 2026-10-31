@@ -18,7 +18,7 @@ import ReportConsultButton from '../common/ReportConsultButton';
 import { cn } from '../../utils/cn';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
 import { purgeConsultationRecord, clientSetConsultChoice, clientWithdrawConsultLawyer } from '../../services/consultService';
-import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
+import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import ChatMessageList from './room/ChatMessageList';
 import ChatComposer, { type ChatComposerHandle } from './room/ChatComposer';
 import MatchPanel from './room/MatchPanel';
@@ -28,8 +28,6 @@ import { getDisplayName } from './lawyerDirectory';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { startContractFromProposal, requestOfflineContractFromProposal } from '../../services/proposalContractService';
 import ContractMethodSelectModal, { type OfflineContractRequestPayload } from './ContractMethodSelectModal';
-
-const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 
 /* ─────────────────────────────────────────────
    '내 사건' › 상담 (상담방 우선 구조)
@@ -73,7 +71,6 @@ interface ChatViewProps {
   tempAlias: string;
   setTempAlias: (v: string) => void;
   lawyers?: UserType[];
-  showDiagnosisReport?: boolean;
 }
 
 const stripLawyerSuffix = (name?: string) => (name || '').replace(/\s*변호사$/, '');
@@ -183,41 +180,6 @@ export default function ChatView({
       toast.error(err?.message || '요청 처리 중 오류가 발생했습니다. 담당 사무소로 직접 문의해 주세요.');
     }
   };
-
-  // financialProfile → RehabUserInput 재구성 (상세 진단서 표시용)
-  const reportUserInput: RehabUserInput | undefined = React.useMemo(() => {
-    const profile = activeRequest?.financialProfile;
-    if (!profile) return undefined;
-    return {
-      address: profile.residenceRegion || '서울',
-      workLocation: undefined,
-      age: 35,
-      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
-                      profile.jobType === 'BUSINESS' ? 'business' :
-                      profile.jobType === 'DAILY' ? 'daily' :
-                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
-      monthlyIncome: (profile.income || 0) * 10000,
-      familySize: (profile.dependents || 0) + 1,
-      spouseAssets: (profile.spouseAsset || 0) * 10000,
-      rentCost: (profile.rentCost || 0) * 10000,
-      deposit: (profile.rentalDeposit || 0) * 10000,
-      depositLoan: (profile.depositLoan || 0) * 10000,
-      housingType: profile.housingType,
-      housingContractHolder: profile.housingContractHolder,
-      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
-      totalDebt: (profile.debtTotal || 0) * 10000,
-      priorityDebt: (profile.priorityDebt || 0) * 10000,
-      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
-      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
-      retirementPensionType: profile.retirementPensionType || 'unknown',
-      retirementPay: (profile.retirementPay || 0) * 10000,
-      isMarried: profile.maritalStatus === 'MARRIED',
-      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
-      minorChildren: profile.dependents || 0,
-      legalActions: profile.legalActions || [],
-      name: (profile as any).name || profile.clientName || userAlias || '의뢰인',
-    };
-  }, [activeRequest]);
 
   // 상담을 요청한 변호사 = 상담 요청에 저장된 목록 (화면 전용 사본을 두지 않아 새로고침·다른 상담방 전환에도 어긋나지 않는다)
   const requestedLawyerIds: string[] = currentRequest?.selectedLawyerIds || [];
@@ -833,14 +795,6 @@ export default function ChatView({
         />
       </Modal>
 
-      {/* 오프스크린 PDF 템플릿 (화면에 안 보이지만 html2canvas가 캡처) */}
-      {showProfilePanel && activeResult && reportUserInput && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '794px', zIndex: -9999, pointerEvents: 'none', opacity: 1 }} aria-hidden="true">
-          <React.Suspense fallback={null}>
-            <PrintableReportTemplate result={activeResult} userInput={reportUserInput} />
-          </React.Suspense>
-        </div>
-      )}
 
       {/* 전화상담 요청 */}
       <Modal

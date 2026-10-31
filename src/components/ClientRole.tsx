@@ -2346,7 +2346,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
                   tempAlias={tempAlias} setTempAlias={setTempAlias}
                   lawyers={directoryLawyers}
-                  showDiagnosisReport={platformConfig.showDiagnosisReport}
                 />
               )
             )}
@@ -2404,7 +2403,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <AIRehabChatbotV2
                   isOpen={true}
                   layout="embedded"
-                  showDiagnosisReport={platformConfig.showDiagnosisReport}
                   onClose={() => {
                     if (pendingChatbotData) {
                       const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);

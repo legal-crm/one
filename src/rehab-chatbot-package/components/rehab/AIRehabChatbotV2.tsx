@@ -17,7 +17,6 @@ import { X, Send, Bot, Check, AlertCircle } from 'lucide-react';
 import { calculateRepayment, RehabUserInput, RehabCalculationResult, formatCurrency, formatTenThousandWon } from '../../services/calculationService';
 import { DEFAULT_POLICY_CONFIG_2026, getCourtNameForAddress, chooseFavorableCourt } from '../../config/PolicyConfig';
 import { RehabChatConfig } from '../../types';
-import RehabResultReport from './RehabResultReport';
 import { auditDiagnosisSubmit } from '../../../services/auditService';
 import ChatbotRenderer from './templates/ChatbotRenderer';
 import { ChatbotTemplateId, ThemeMode, ChatbotColorPalette, getTemplateById, DEFAULT_DARK_PALETTE, DEFAULT_LIGHT_PALETTE, CHATBOT_TEMPLATES, InteractiveBlockConfig, InteractiveBlockState } from './templates/ChatbotTemplateConfig';
@@ -191,7 +190,6 @@ interface AIRehabChatbotV2Props {
     themeMode?: ThemeMode;
     customColors?: Partial<ChatbotColorPalette>;
     chatFontFamily?: string;
-    showDiagnosisReport?: boolean;
     enableFormBlocks?: boolean; // NEW: 모든 템플릿에서 Interactive Block 활성화
     interactiveBlockPreset?: 'none' | 'basic' | 'advanced' | 'custom';
     interactiveBlockConfig?: {
@@ -265,7 +263,6 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     layout = 'overlay',
     onProgressChange,
     isLoggedIn = false,
-    showDiagnosisReport = true,
     onShowAuthModal,
     onConsultation
 }) => {
@@ -501,9 +498,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 토글 OFF: 진단 완료 시 자동으로 변호사 선택 플로우 전환
+    // 정리가 끝나면 바로 변호사 선택 흐름으로 넘긴다.
+    // 의뢰인용 결과 리포트(월 변제금·감면율·적합도)는 CK-Q2 결정으로 삭제했다.
     useEffect(() => {
-        if (showResult && result && !showDiagnosisReport) {
+        if (showResult && result) {
             setShowResult(false);
             if (onConsultation) {
                 onConsultation();
@@ -511,7 +509,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 onClose();
             }
         }
-    }, [showResult, result, showDiagnosisReport]);
+    }, [showResult, result]);
 
     // 초기 메시지 (중복 방지) 및 세션 복구 체크
     useEffect(() => {
@@ -4278,29 +4276,6 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         </div>
                     </motion.div>
                 </motion.div>
-            )}
-
-            {/* Result Modal */}
-            {showResult && result && showDiagnosisReport && (
-                <RehabResultReport
-                    result={result}
-                    userInput={userInput as RehabUserInput}
-                    zIndexClass={isEmbedded ? 'z-[60]' : undefined}
-                    onClose={() => {
-                        setShowResult(false);
-                        onClose();
-                    }}
-                    onConsultation={() => {
-                        setShowResult(false);
-                        if (onConsultation) {
-                            onConsultation();
-                        } else {
-                            onClose();
-                        }
-                    }}
-                    isLoggedIn={isLoggedIn}
-                    onShowAuthModal={onShowAuthModal}
-                />
             )}
         </>
     );
