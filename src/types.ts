@@ -1279,9 +1279,13 @@ export interface User {
   catchphrase?: string; // 한줄 캐치프레이즈
   career?: string[]; // 경력 사항
   education?: string; // 학력
-  certYear?: string; // 변호사 자격 취득년도
+  certYear?: string; // 변호사 자격 (자유 입력, 예: 제7회 변호사시험 합격)
+  /** 변호사 자격 취득 연도 (선택). 'N년차'는 등록번호 대조가 끝난 변호사만 표시 (LD-4·LD-5) */
+  admittedYear?: number;
+  /** 대한변호사협회에 등록한 전문분야 (등록한 경우만). '전문' 표시는 이 칸이 있을 때만 (LD-4) */
+  kbaSpecialty?: string;
   barAssociation?: string; // 소속 변호사회
-  specialties?: string[]; // 상세 전문 분야
+  specialties?: string[]; // 주요 업무 키워드 (이전 이름: 상세 전문 분야)
   successRate?: number; // 인가 성공률 (%)
   totalCases?: number; // 누적 수임 건수
   avgRepaymentRate?: number; // 평균 변제율 (%)

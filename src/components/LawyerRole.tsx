@@ -85,6 +85,7 @@ import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
 import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
+import { getLawyerProfileMissing, LAWYER_PROFILE_MISSING_LABELS } from './client/lawyerDirectory';
 import DeviceSessionManager from './common/DeviceSessionManager';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { useAdminUrlSync } from '../hooks/useAdminUrlSync';
@@ -682,6 +683,8 @@ export default function LawyerRole({
   const [avatarImageData, setAvatarImageData] = useState<string>('');
   // 심사 대기 중 서류 추가/수정 접이식 상태 (기본 닫힘)
   const [showDocSubmit, setShowDocSubmit] = useState<boolean>(false);
+  // 심사 대기 중 공개 프로필 미리 채우기 (LD-4 가입 단계 2)
+  const [showPendingProfile, setShowPendingProfile] = useState<boolean>(false);
   const [signupFirmType, setSignupFirmType] = useState<LawyerFirmType>(() => activeLawyer?.firmType || 'INDIVIDUAL');
   const [signupFirmName, setSignupFirmName] = useState<string>(() => activeLawyer?.firmName || '');
   const [signupBizNumber, setSignupBizNumber] = useState<string>(() => activeLawyer?.businessNumber || '');
@@ -2493,8 +2496,61 @@ export default function LawyerRole({
 
           <ReviewStateBanner />
 
+          {/* 가입 단계 (LD-4): 1 자격 서류 → 2 공개 프로필 → 3 승인. 프로필은 심사 중에도 미리 채워 두면 승인 즉시 목록에 보인다 */}
+          {(() => {
+            const missing = activeLawyer ? getLawyerProfileMissing(activeLawyer) : [];
+            const docsDone = !!activeLawyer?.licenseNumber;
+            const steps = [
+              { n: 1, label: '자격 서류', done: docsDone },
+              { n: 2, label: '공개 프로필', done: missing.length === 0 },
+              { n: 3, label: '마이김변 승인', done: false },
+            ];
+            return (
+              <div className="text-left space-y-3">
+                <ol className="grid grid-cols-3 gap-2" aria-label="가입 단계">
+                  {steps.map(s => (
+                    <li key={s.n} className={`rounded-xl border p-2.5 text-center ${s.done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                      <span className={`mx-auto mb-1 w-7 h-7 rounded-full text-xs font-black flex items-center justify-center ${s.done ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        {s.done ? <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> : s.n}
+                      </span>
+                      <span className="block text-xs font-bold text-slate-800">{s.label}</span>
+                      <span className="block text-xs text-slate-500">{s.n === 3 ? '심사 중' : s.done ? '완료' : '남음'}</span>
+                    </li>
+                  ))}
+                </ol>
+                {missing.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      심사 중에도 공개 프로필을 미리 채울 수 있어요. 채워 두면 승인되는 날부터 변호사 찾기에 보여요.
+                      남은 항목: {missing.map(m => LAWYER_PROFILE_MISSING_LABELS[m]).join(' · ')}
+                    </p>
+                    <button type="button" onClick={() => setShowPendingProfile(true)}
+                      className="w-full min-h-[44px] rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer">
+                      공개 프로필 미리 채우기
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          {showPendingProfile && activeLawyer && (
+            <LawyerProfileEditor
+              lawyer={activeLawyer}
+              onImageChange={(newAvatar) => {
+                setActiveLawyer(prev => ({ ...prev, avatar: newAvatar, avatarData: newAvatar }));
+                setLawyers(prev => prev.map(l => l.id === activeLawyer.id ? { ...l, avatar: newAvatar, avatarData: newAvatar } : l));
+              }}
+              onSave={(updatedLawyer) => {
+                const finalLawyer = { ...updatedLawyer, avatar: updatedLawyer.avatarData || updatedLawyer.avatar, avatarData: updatedLawyer.avatarData || updatedLawyer.avatar };
+                setLawyers(prev => (prev.some(l => l.id === finalLawyer.id) ? prev.map(l => l.id === finalLawyer.id ? finalLawyer : l) : [...prev, finalLawyer]));
+                setActiveLawyer(finalLawyer);
+              }}
+              onClose={() => setShowPendingProfile(false)}
+            />
+          )}
+
           <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
-            <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
+            <h4 className="font-bold text-sm text-center">계정 승인 심사 대기 중</h4>
             <p>안녕하세요, <strong>{activeLawyer?.name || '변호사'}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
             <p>{platformConfig.siteLogoText || "my김변"}는 변호사 등록번호와 제출 서류를 관리자가 직접 확인한 뒤 활동을 승인합니다. 보통 1~2영업일이 걸려요.</p>

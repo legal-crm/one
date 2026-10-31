@@ -10,7 +10,7 @@ import type { User, LawFirm, LawyerSealInfo } from '../../types';
 import LawyerSealManagerModal from './LawyerSealManagerModal';
 import { toast } from 'sonner';
 import { uploadLawyerPhoto } from '../../services/lawyers/lawyerPhotoService';
-import { CONSULT_MODE_LABEL, LAWYER_FIELD_OPTIONS, LAWYER_SIDO_OPTIONS, type ConsultMode } from '../client/lawyerDirectory';
+import { CONSULT_MODE_LABEL, LAWYER_FIELD_OPTIONS, LAWYER_SIDO_OPTIONS, usesSpecialistWordWithoutRegistration, type ConsultMode } from '../client/lawyerDirectory';
 import { QNA_BASE_TERMS, findProhibitedExpressions, loadProhibitedExpressions } from '../../services/proposalCompliance';
 
 /**
@@ -214,11 +214,43 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
     () => findProhibitedExpressions([form.bio, form.catchphrase, (form.specialties || []).join(' ')].filter(Boolean).join(' '), undefined, Array.from(new Set([...QNA_BASE_TERMS, ...loadProhibitedExpressions()]))),
     [form.bio, form.catchphrase, form.specialties],
   );
-  const copyWarning = copyHits.length > 0 ? (
-    <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2" role="status">
-      광고 규정상 쓰기 어려운 표현이 있어요: {copyHits.join(', ')}. 그대로 저장하면 운영팀이 소개 문구를 다시 확인해요.
-    </p>
+  const specialistWord = usesSpecialistWordWithoutRegistration(form);
+  const copyWarning = copyHits.length > 0 || specialistWord ? (
+    <div className="space-y-1.5 mt-2">
+      {copyHits.length > 0 && (
+        <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2" role="status">
+          광고 규정상 쓰기 어려운 표현이 있어요: {copyHits.join(', ')}. 그대로 저장하면 운영팀이 소개 문구를 다시 확인해요.
+        </p>
+      )}
+      {specialistWord && (
+        <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2" role="status">
+          소개 글에 '전문'이 있어요. '전문' 표시는 대한변호사협회에 전문분야를 등록한 경우에만 쓸 수 있어요. 등록했다면 아래 '대한변협 등록 전문분야' 칸을 채워 주세요.
+        </p>
+      )}
+    </div>
   ) : null;
+
+  // 대한변협 등록 전문분야 (LD-4 '전문' 별도 칸) · 자격 취득 연도 (LD-5 'N년차'는 등록번호 대조 뒤에만)
+  const kbaSpecialtyField = (
+    <div>
+      <label className={labelCls} htmlFor="kba-specialty">대한변협 등록 전문분야 (등록한 경우만)</label>
+      <input id="kba-specialty" className={inputCls} value={form.kbaSpecialty || ''} maxLength={60}
+        onChange={e => updateForm({ kbaSpecialty: e.target.value })} placeholder="예: 도산 (등록하지 않았다면 비워 두세요)" />
+      <p className="text-xs text-slate-500 mt-1">의뢰인 화면에는 '(변호사 입력)'과 함께 보여요. 업무 분야·키워드는 '취급 분야'로 표시돼요.</p>
+    </div>
+  );
+  const thisYear = new Date().getFullYear();
+  const admittedYearField = (
+    <>
+      <label className={labelCls} htmlFor="admitted-year">자격 취득 연도</label>
+      <select id="admitted-year" className={inputCls} value={form.admittedYear ? String(form.admittedYear) : ''}
+        onChange={e => updateForm({ admittedYear: e.target.value ? Number(e.target.value) : undefined })}>
+        <option value="">고르지 않음</option>
+        {Array.from({ length: thisYear - 1959 }, (_, i) => thisYear - i).map(y => <option key={y} value={y}>{y}년</option>)}
+      </select>
+      <p className="text-xs text-slate-500 mt-1">등록번호 확인이 끝나면 '○년차'로 보여요.</p>
+    </>
+  );
 
   // ── 사무소 정보 입력 필드 (모달·인라인 공용) — 입력한 항목만 의뢰인 공개 프로필에 노출 ──
   const officeFields = (
@@ -420,11 +452,11 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               </p>
             </div>
 
-            {/* § 전문 분야 */}
+            {/* § 취급 분야 */}
             <div className={sectionCls}>
               <h3 className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5">
                 <Scale className="w-4 h-4" />
-                전문 분야
+                취급 분야
               </h3>
               <div className="space-y-4">
                 <div>
@@ -432,7 +464,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   {fieldsPicker}
                 </div>
                 <div>
-                  <label className={labelCls}>상세 전문 분야 (콤마로 구분)</label>
+                  <label className={labelCls}>주요 업무 키워드 (콤마로 구분)</label>
                   <input
                     className={inputCls}
                     value={specialtiesText}
@@ -440,6 +472,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     placeholder="개인회생 인가, 보정명령 대응, 채권추심 차단"
                   />
                 </div>
+                {kbaSpecialtyField}
               </div>
             </div>
 
@@ -513,6 +546,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                       placeholder="제7회 변호사시험 합격 (2018년)"
                     />
                   </div>
+                  <div>{admittedYearField}</div>
                   <div>
                     <label className={labelCls}>소속 변호사회</label>
                     <input
@@ -1115,18 +1149,19 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               </div>
             </div>
 
-            {/* § 전문 분야 */}
+            {/* § 취급 분야 */}
             <div className={sectionCls}>
-              <h3 className={sectionTitleCls}><Scale className="w-4 h-4" /> 전문 분야</h3>
+              <h3 className={sectionTitleCls}><Scale className="w-4 h-4" /> 취급 분야</h3>
               <div className="space-y-3">
                 <div>
                   <span className={labelCls}>업무 분야 (1개 이상 고르기)</span>
                   {fieldsPicker}
                 </div>
                 <div>
-                  <label className={labelCls}>상세 전문 분야 (콤마로 구분)</label>
+                  <label className={labelCls}>주요 업무 키워드 (콤마로 구분)</label>
                   <input className={inputCls} value={specialtiesText} onChange={e => handleSpecialtiesChange(e.target.value)} placeholder="개인회생 인가, 보정명령 대응, 채권추심 차단" />
                 </div>
+                {kbaSpecialtyField}
               </div>
             </div>
 
@@ -1153,6 +1188,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div><label className={labelCls}>학력</label><input className={inputCls} value={form.education || ''} onChange={e => updateForm({ education: e.target.value })} placeholder="법학전문대학원 졸업" /></div>
                   <div><label className={labelCls}>변호사 자격</label><input className={inputCls} value={form.certYear || ''} onChange={e => updateForm({ certYear: e.target.value })} placeholder="제7회 변호사시험 합격" /></div>
+                  <div>{admittedYearField}</div>
                   <div><label className={labelCls}>소속 변호사회</label><input className={inputCls} value={form.barAssociation || ''} onChange={e => updateForm({ barAssociation: e.target.value })} placeholder="서울지방변호사회" /></div>
                   <div><label className={labelCls}>관할 법원</label><input className={inputCls} value={form.courtJurisdiction || ''} onChange={e => updateForm({ courtJurisdiction: e.target.value })} placeholder="서울회생법원" /></div>
                 </div>

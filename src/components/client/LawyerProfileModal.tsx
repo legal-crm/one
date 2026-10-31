@@ -51,7 +51,7 @@ export default function LawyerProfileModal({
   const firmName = lawyer.firmName || lawyer.firm || '';
   const displayName = getDisplayName(lawyer);
   const isVerified = lawyer.licenseStatus === 'verified';
-  const years = getExperienceYears(lawyer.certYear);
+  const years = getExperienceYears(lawyer);
 
   const lawyerReviews = useMemo(
     () => reviews.filter(r => r.lawyerId === lawyer.id),
@@ -98,6 +98,7 @@ export default function LawyerProfileModal({
     { label: '관할 법원', icon: Scale, value: lawyer.courtJurisdiction },
     { label: '경력', icon: Briefcase, list: lawyer.career && lawyer.career.length > 0 ? lawyer.career : undefined },
     { label: '자격', icon: Award, value: lawyer.certYear },
+    { label: '대한변협 등록 전문분야', icon: Award, value: lawyer.kbaSpecialty?.trim() ? `${lawyer.kbaSpecialty.trim()} (변호사 입력)` : undefined },
     { label: '등록번호', icon: BadgeCheck, value: isVerified && lawyer.licenseNumber ? `${lawyer.licenseNumber} (플랫폼 확인)` : undefined },
     { label: '소속 변호사회', icon: Shield, value: lawyer.barAssociation },
     { label: '학력', icon: GraduationCap, value: lawyer.education },

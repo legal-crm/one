@@ -45,7 +45,7 @@ export default function LawyerCard({
   className,
 }: LawyerCardProps) {
   const name = getDisplayName(lawyer);
-  const years = getExperienceYears(lawyer.certYear);
+  const years = getExperienceYears(lawyer);
   const affiliation = getAffiliation(lawyer);
   const verified = isLicenseVerified(lawyer);
   const summary = lawyer.bio || lawyer.catchphrase || '';

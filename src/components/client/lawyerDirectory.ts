@@ -52,14 +52,28 @@ export function isAdLawyer(l: User): boolean {
   return l.adTier === 'top' || l.adTier === 'regional';
 }
 
-/** certYear 문자열에서 경력년수 계산 (예: "제8회 변호사시험 합격 (2019년)" → 7) */
-export function getExperienceYears(certYear?: string): number | null {
-  if (!certYear) return null;
-  const match = certYear.match(/(\d{4})년/);
-  if (!match) return null;
-  const year = parseInt(match[1], 10);
-  const diff = new Date().getFullYear() - year;
+/**
+ * 자격 취득 연도로 경력년수 계산 (LD-5: 등록번호 대조가 끝난 변호사만 — 확인 안 된 연도로 'N년차'를 보여 주지 않는다)
+ * 연도: admittedYear 칸 → 없으면 certYear 글의 'YYYY년' (예: "제8회 변호사시험 합격 (2019년)")
+ */
+export function getExperienceYears(l: Pick<User, 'certYear' | 'admittedYear' | 'licenseStatus'>, now = new Date()): number | null {
+  if (l.licenseStatus !== 'verified') return null;
+  let year = typeof l.admittedYear === 'number' && Number.isFinite(l.admittedYear) ? l.admittedYear : NaN;
+  if (!Number.isFinite(year) && l.certYear) {
+    const match = l.certYear.match(/(\d{4})년/);
+    if (match) year = parseInt(match[1], 10);
+  }
+  const thisYear = now.getFullYear();
+  if (!Number.isFinite(year) || year < 1950 || year > thisYear) return null;
+  const diff = thisYear - year;
   return diff > 0 ? diff : 1;
+}
+
+/** 소개 글에 '전문'을 썼는데 변협 등록 전문분야가 비어 있으면 안내 (변호사업무광고규정) */
+export function usesSpecialistWordWithoutRegistration(l: Pick<User, 'bio' | 'catchphrase' | 'specialties' | 'kbaSpecialty'>): boolean {
+  if ((l.kbaSpecialty || '').trim()) return false;
+  const text = [l.bio, l.catchphrase, ...(l.specialties || [])].filter(Boolean).join(' ');
+  return /전문(?!가 정보)/.test(text);
 }
 
 /** firmName 또는 career 첫 항목에서 소속명만 추출 (직함 제거) */
