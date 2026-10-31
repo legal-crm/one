@@ -1,3 +1,4 @@
+import { noticeForLawyer } from '../types';
 import { feeTotalWon } from '../utils/feeUnits';
 import { getLawyerLicenseUrl, uploadLawyerLicense } from '../services/lawyers/lawyerLicenseService';
 import { setFeePresetOfficeScope } from '../services/feePresetService';
@@ -186,12 +187,14 @@ export default function LawyerRole({
   popupConfig,
   lawyerInquiries,
   setLawyerInquiries,
-  notices = initialNotices
+  notices: allNotices = initialNotices
 }: LawyerRoleProps) {
   const dialog = useDialog();
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts' | 'fee-settlement' | 'requests'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
+  // 의뢰인 사이트 전용 공지는 변호사 화면에 보이지 않는다 (CT-6)
+  const notices = useMemo(() => (allNotices || []).filter(noticeForLawyer), [allNotices]);
   const [settingsCategory, setSettingsCategory] = useState<'profile' | 'office' | 'phone' | 'branding' | 'consult-style' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);

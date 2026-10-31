@@ -1,3 +1,5 @@
+import { noticeForClient } from '../types';
+import HomeNoticeStrip from './client/landing/HomeNoticeStrip';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, 
@@ -2216,6 +2218,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
         {/* 홈(랜딩) */}
         {activeTab === 'landing' && (
+          <HomeNoticeStrip notices={notices.filter(noticeForClient)} onOpen={(id) => { setSelectedNoticeId(id); setActiveTab('notices'); window.scrollTo({ top: 0 }); }} />
+        )}
+        {activeTab === 'landing' && (
           <LandingView
             banners={banners}
             lawyers={directoryLawyers}
@@ -2404,7 +2409,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {activeTab === 'qna' && (<QnAView qas={qas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); handleStartDiagnosisClick(); }} initialCategory={initialQnACategory || undefined} />)}
 
             {/* TAB 1-B: NOTICES TAB */}
-            {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
+            {activeTab === 'notices' && (<NoticesView notices={notices.filter(noticeForClient)} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
 
             {/* TAB: COMPANY INTRO — 'diagnosis'·'request' 등은 navigateTo가 '체크 시작'으로 바꾼다 */}
             {activeTab === 'company' && (<CompanyView onNavigate={(tab) => navigateTo(tab)} />)}

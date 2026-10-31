@@ -2084,7 +2084,11 @@ export interface Notice {
   date: string;
   isImportant: boolean;
   views: number;
+  /** 보이는 곳 (CT-6). 없으면 모두 */
+  audience?: 'all' | 'client' | 'lawyer';
 }
+export const noticeForClient = (n: Pick<Notice, 'audience'>) => (n.audience || 'all') !== 'lawyer';
+export const noticeForLawyer = (n: Pick<Notice, 'audience'>) => (n.audience || 'all') !== 'client';
 
 // --- Member & Activity Monitoring Types ---
 export type MemberStatus = 'active' | 'suspended' | 'pending' | 'withdrawn' | 'dormant';

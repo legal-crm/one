@@ -200,6 +200,7 @@ export default function AdminRole({
   const [noticeTitle, setNoticeTitle] = useState<string>('');
   const [noticeContent, setNoticeContent] = useState<string>('');
   const [noticeIsImportant, setNoticeIsImportant] = useState<boolean>(false);
+  const [noticeAudience, setNoticeAudience] = useState<'all' | 'client' | 'lawyer'>('all');
 
   // CRUD states for Q&A (고민 상담사례)
   const [editingQa, setEditingQa] = useState<ClientQA | null>(null);
@@ -3388,6 +3389,7 @@ export default function AdminRole({
                       setNoticeTitle('');
                       setNoticeContent('');
                       setNoticeIsImportant(false);
+                      setNoticeAudience('all');
                     }}
                     className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
@@ -4474,6 +4476,15 @@ export default function AdminRole({
                           <label htmlFor="noticeIsImportant" className="text-slate-350 select-none cursor-pointer font-bold">
                             🚨 중요 공지로 설정 (리스트 상단 중요 표시)
                           </label>
+                          <label className="ml-auto flex items-center gap-2 text-slate-300 font-bold">
+                            보이는 곳
+                            <select value={noticeAudience} onChange={e => setNoticeAudience(e.target.value as 'all' | 'client' | 'lawyer')}
+                              className="bg-[#07090E] border border-[#1E293B] rounded-lg px-2 py-1.5 text-sm text-white">
+                              <option value="all">모두</option>
+                              <option value="client">의뢰인 사이트만 (중요 공지는 홈에 한 줄)</option>
+                              <option value="lawyer">변호사 화면만 (중요 공지는 종 알림)</option>
+                            </select>
+                          </label>
                         </div>
 
                         <div className="space-y-1.5">
@@ -4522,6 +4533,7 @@ export default function AdminRole({
                                 content: noticeContent.trim(),
                                 date: new Date().toISOString().split('T')[0],
                                 isImportant: noticeIsImportant,
+                                audience: noticeAudience,
                                 views: 0
                               };
                               setNotices(prev => [newNotice, ...prev]);
@@ -4531,7 +4543,8 @@ export default function AdminRole({
                                 ...n,
                                 title: noticeTitle.trim(),
                                 content: noticeContent.trim(),
-                                isImportant: noticeIsImportant
+                                isImportant: noticeIsImportant,
+                                audience: noticeAudience
                               } : n));
                               toast.success('공지사항이 수정되었습니다');
                             }
@@ -4568,7 +4581,7 @@ export default function AdminRole({
                                   ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                                   : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                 }`}>
-                                  {notice.isImportant ? '중요' : '일반'}
+                                  {notice.isImportant ? '중요' : '일반'}{notice.audience === 'client' ? ' · 의뢰인' : notice.audience === 'lawyer' ? ' · 변호사' : ''}
                                 </span>
                               </td>
                               <td className="p-3 font-bold text-slate-100 max-w-[300px] truncate leading-normal">
@@ -4584,6 +4597,7 @@ export default function AdminRole({
                                     setNoticeTitle(notice.title);
                                     setNoticeContent(notice.content);
                                     setNoticeIsImportant(notice.isImportant || false);
+                                    setNoticeAudience(notice.audience || 'all');
                                   }}
                                   className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                                 >
