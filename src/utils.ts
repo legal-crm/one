@@ -1,4 +1,5 @@
 import { CourtRegionMapItem } from './types';
+import { smallLeaseRegionFor } from './services/repayment/smallLeaseRegion';
 
 /**
  * Formats a number (KRW won) into a Korean string format (e.g., 1억 2,500만원)
@@ -62,16 +63,17 @@ export const calculateManAge = (birthDateStr: string, atDateStr?: string): numbe
 };
 
 export const detectJurisdiction = (address: string, map: CourtRegionMapItem[] | undefined) => {
-  if (!address || !map || map.length === 0) return { court: '기타지방법원', region: 'Others' as const };
+  if (!address || !map || map.length === 0) return { court: '기타지방법원', region: 'Others' as const, smallLeaseRegion: smallLeaseRegionFor(address || '').region };
   
   const sortedMap = [...map].sort((a, b) => b.keyword.length - a.keyword.length);
 
   for (const item of sortedMap) {
     if (address.includes(item.keyword)) {
-      return { court: item.court, region: item.region };
+      // 소액임차 지역은 주소 전체로 법령 판정 (남양주·인천처럼 일부 동만 다른 곳이 있어 행정구역 표보다 정확)
+      return { court: item.court, region: item.region, smallLeaseRegion: smallLeaseRegionFor(address).region };
     }
   }
-  return { court: '기타지방법원', region: 'Others' as const };
+  return { court: '기타지방법원', region: 'Others' as const, smallLeaseRegion: smallLeaseRegionFor(address).region };
 };
 
 export const generateDateOptions = () => {

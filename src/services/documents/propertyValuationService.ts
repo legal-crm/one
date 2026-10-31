@@ -15,10 +15,11 @@ import {
   PropertyListD5102Data,
 } from '../../types/propertyTypes';
 import {
-  HOUSING_EXEMPT_DEPOSIT_LIMITS,
-  EXEMPT_INSURANCE_REFUND_LIMIT,
   EXEMPT_DEPOSIT_LIMIT,
   RegionType,
+  depositExemptionLimit,
+  housingExemptDepositLimit,
+  insuranceExemptionLimit,
 } from '../repayment/repaymentConstants2026';
 import type { ConsultRequest, CrmClientExtension } from '../../types';
 import type { RepaymentAsset } from '../repayment/repaymentTypes';
@@ -68,9 +69,6 @@ export function calculateVehicleLiquidation(item: VehicleItem): number {
  * 임차보증금 반환채권 청산가치 계산: 보증금 - 연체차임 - 질권대출 - 2026 소액보증금 공제
  */
 export function calculateLeaseDepositLiquidation(item: LeaseDepositItem): number {
-  const limitInfo =
-    HOUSING_EXEMPT_DEPOSIT_LIMITS[item.region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
-  
   const net = item.depositAmount - (item.unpaidRent || 0) - (item.pledgeLoanAmount || 0) - getLeaseDepositExemption(item);
   return Math.max(0, net);
 }
@@ -83,8 +81,7 @@ export function calculateLeaseDepositLiquidation(item: LeaseDepositItem): number
  */
 export function getLeaseDepositExemption(item: LeaseDepositItem): number {
   if (item.leaseType !== 'housing') return 0;
-  const limitInfo =
-    HOUSING_EXEMPT_DEPOSIT_LIMITS[item.region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
+  const limitInfo = housingExemptDepositLimit(item.region);
   if (item.depositAmount > limitInfo.maxDeposit) return 0;
   const remaining = Math.max(0, item.depositAmount - (item.unpaidRent || 0) - (item.pledgeLoanAmount || 0));
   return Math.min(limitInfo.exemptAmount, remaining);
@@ -102,7 +99,7 @@ export function calculateInsuranceLiquidation(item: InsuranceItem): number {
 export function getInsuranceDeduction(item: InsuranceItem): number {
   if (!item.isSecurityInsurance) return 0;
   const net = Math.max(0, item.surrenderValue - (item.policyLoanBalance || 0));
-  return Math.min(EXEMPT_INSURANCE_REFUND_LIMIT, net);
+  return Math.min(insuranceExemptionLimit(), net);
 }
 
 /**
@@ -121,7 +118,7 @@ export function calculateSeveranceLiquidation(item: SeveranceItem): number {
 export function calculateFinancialAssetLiquidation(item: FinancialAssetItem): number {
   if (item.category === 'deposit') {
     // 단일 계좌 기준 참고값 — 실제 합계 공제는 recalculateD5102Totals에서 전체 예금에 1회 적용
-    const net = item.marketValue - EXEMPT_DEPOSIT_LIMIT_2026;
+    const net = item.marketValue - depositExemptionLimit();
     return Math.max(0, net);
   }
   if (item.isLossExcluded) {
@@ -199,7 +196,7 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
 
   // 6. 금융자산
   // 예금 압류금지 공제는 계좌별이 아니라 전체 예금 합계에 1회 적용 (기존: 계좌마다 공제 → 계좌 수만큼 과다 공제)
-  let remainingDepositExemption = EXEMPT_DEPOSIT_LIMIT_2026;
+  let remainingDepositExemption = depositExemptionLimit();
   const updatedFinancialAssets = (data.financialAssets || []).map((fa) => {
     let deduction = 0;
     let liq: number;

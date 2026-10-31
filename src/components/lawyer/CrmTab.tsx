@@ -632,12 +632,14 @@ export default function CrmTab({
   const [serverStageLabels, setServerStageLabels] = useState<Record<string, string> | undefined>(undefined);
   const [serverFeeNext, setServerFeeNext] = useState<Record<string, { dueOn: string; amountWon: number; overdue: boolean }> | undefined>(undefined);
   // 사건별 가장 가까운 기한 있는 할 일 (CM-6) — 서버 업무함(office_work_queue)이 원본 데이터에서 계산한 값
+  const [serverStageGroup, setServerStageGroup] = useState<Record<string, number> | undefined>(undefined);
+  const [serverDeadlines, setServerDeadlines] = useState<Record<string, Array<{ date: string; kind: 'correction' | 'court' | 'filing'; title: string }>> | undefined>(undefined);
   const [serverNextDue, setServerNextDue] = useState<Record<string, { title: string; dueLabel: string; urgent: boolean }> | undefined>(undefined);
   useEffect(() => {
     if (!officeId || selectedId) return;
     let cancelled = false;
     (async () => {
-      const [defs, cs, fees, wq] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 }), loadFeeOverviewByRequest(officeId), loadWorkQueue(officeId)]);
+      const [defs, cs, fees, wq, corr] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 }), loadFeeOverviewByRequest(officeId), loadWorkQueue(officeId), loadCorrectionOverview(officeId)]);
       if (!cancelled && wq.ok) {
         const best: Record<string, { item: WorkItem; t: number }> = {};
         wq.data.forEach(it => {
@@ -662,12 +664,27 @@ export default function CrmTab({
       }
       if (cancelled || cs.ok === false) return;
       const map: Record<string, string> = {};
+      const groups: Record<string, number> = {};
+      const deadlines: Record<string, Array<{ date: string; kind: 'correction' | 'court' | 'filing'; title: string }>> = {};
+      const push = (k: string, d: { date: string; kind: 'correction' | 'court' | 'filing'; title: string }) => { (deadlines[k] ||= []).push(d); };
       cs.data.forEach(c => {
         // 상담 요청 사건 = 요청 ID, 직접 등록·이관 사건 = 'case-' + 사건 ID
+        const key = workspaceKeyForCase(c);
         const d = defs.ok ? stageDef(defs.data, c.caseType, c.stage) : undefined;
-        map[workspaceKeyForCase(c)] = c.closeReason ? '종결' : (d?.officeLabel || c.stage);
+        map[key] = c.closeReason ? '종결' : (d?.officeLabel || c.stage);
+        if (d?.groupNo && d.groupNo >= 1 && d.groupNo <= 6) groups[key] = d.groupNo;
+        if (c.closeReason) return;
+        if (c.creditorsMeetingOn) push(key, { date: c.creditorsMeetingOn, kind: 'court', title: c.caseType === 'bankruptcy' ? '채권자집회' : '채권자집회 기일' });
+        if (c.plannedFilingOn && !c.filedOn) push(key, { date: c.plannedFilingOn, kind: 'filing', title: '접수 예정일' });
+      });
+      corr.forEach(o => {
+        if (o.status === 'submitted' || o.submittedOn) return;
+        const date = o.officeDue || o.courtDue;
+        if (date) push(o.caseKey, { date, kind: 'correction', title: `${o.round}차 보정 ${o.officeDue ? '사무소 마감' : '법원 기한'}${o.itemsOpen ? ` · 남은 항목 ${o.itemsOpen}` : ''}` });
       });
       setServerStageLabels(map);
+      setServerStageGroup(groups);
+      setServerDeadlines(deadlines);
     })();
     return () => { cancelled = true; };
   }, [officeId, selectedId]);
@@ -1546,6 +1563,8 @@ export default function CrmTab({
           serverStageLabels={serverStageLabels}
           serverFeeNext={officeId ? (serverFeeNext || {}) : undefined}
           serverNextDue={officeId ? serverNextDue : undefined}
+          serverStageGroup={officeId ? serverStageGroup : undefined}
+          serverDeadlines={officeId ? (serverDeadlines || {}) : undefined}
           getCrmExt={getCrmExt}
           selectedId={selectedId}
           onSelectCase={(id) => setSelectedId(id)}

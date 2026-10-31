@@ -23,6 +23,10 @@ export interface CaseListViewProps {
   serverFeeNext?: Record<string, { dueOn: string; amountWon: number; overdue: boolean }>;
   /** 서버 업무함(office_work_queue) 기준 사건별 가장 가까운 할 일 (CM-6 '다음 기일/기한') */
   serverNextDue?: Record<string, { title: string; dueLabel: string; urgent: boolean }>;
+  /** 서버 사건 단계 묶음 번호 1~6 (case_stage_definitions.group_no). 있으면 칸반·단계 탭이 이것을 쓴다 (CM-6) */
+  serverStageGroup?: Record<string, number>;
+  /** 서버 기한·기일 (보정 사무소 마감·채권자집회·접수 예정). 있으면 캘린더·'기한 임박'이 이것을 쓴다 (CM-6) */
+  serverDeadlines?: Record<string, Array<{ date: string; kind: 'correction' | 'court' | 'filing'; title: string }>>;
   requests: ConsultRequest[];
   getCrmExt: (id: string) => CrmClientExtension;
   selectedId: string;
@@ -101,7 +105,11 @@ export function CaseListView({
   serverStageLabels,
   serverFeeNext,
   serverNextDue,
+  serverStageGroup,
+  serverDeadlines,
 }: CaseListViewProps) {
+  // 사건 단계: 서버 사건 기록이 있으면 그 단계 묶음, 없으면 사건 관리 상태로 (CM-6)
+  const stageOf = (id: string, crmStatus: CrmClientExtension['crmStatus']) => serverStageGroup?.[id] || stageForStatus(crmStatus);
   // 보기 모드 (리스트 vs 칸반 vs 캘린더)
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'calendar'>('list');
 
@@ -180,7 +188,7 @@ export function CaseListView({
       if (isClosed) {
         counts.closed++;
       } else {
-        const stage = stageForStatus(ext.crmStatus);
+        const stage = stageOf(r.id, ext.crmStatus);
         if (stage === 1) counts.stage1++;
         else if (stage === 2) counts.stage2++;
         else if (stage === 3) counts.stage3++;
@@ -191,13 +199,13 @@ export function CaseListView({
     });
 
     return counts;
-  }, [requests, getCrmExt]);
+  }, [requests, getCrmExt, serverStageGroup]);
 
   // 필터링된 사건 목록 산출
   const filteredRequests = useMemo(() => {
     return requests.filter(r => {
       const ext = getCrmExt(r.id);
-      const stage = stageForStatus(ext.crmStatus);
+      const stage = stageOf(r.id, ext.crmStatus);
       const isClosed = ['discharged', 'cancelled'].includes(ext.crmStatus);
 
       // 1. 저장된 보기 탭 필터
@@ -227,7 +235,11 @@ export function CaseListView({
       }
 
       // 5. 빠른 필터 칩: 기한 임박 (보정기한 D-7 이내 또는 리마인더 D-1)
-      if (filterUrgent) {
+      if (filterUrgent && serverDeadlines) {
+        const soon = (serverDeadlines[r.id] || []).some(d => { const n = daysUntil(d.date); return n !== null && n >= 0 && n <= 7; });
+        const hasPendingReminder = ext.notes?.some(n => n.reminder && !n.reminder.completed);
+        if (!soon && !serverNextDue?.[r.id]?.urgent && !hasPendingReminder) return false;
+      } else if (filterUrgent) {
         const correctionDeadline = (ext.correctionOrders?.[0] as any)?.deadline;
         const deadlineDiff = correctionDeadline ? daysUntil(correctionDeadline) : null;
         const isCorrectionUrgent = deadlineDiff !== null && deadlineDiff <= 7 && deadlineDiff >= 0;
@@ -299,7 +311,7 @@ export function CaseListView({
     });
   }, [
     requests, getCrmExt, savedViewTab, filterMyCase, filterUnassigned, 
-    filterStar, filterUrgent, assigneeFilter, caseTypeFilter, search, currentStaffId,
+    filterStar, filterUrgent, assigneeFilter, caseTypeFilter, search, currentStaffId, serverDeadlines, serverStageGroup, serverNextDue,
     courtFilter, filterDocsMissing, filterFeeOverdue, serverFeeNext, channelFilter
   ]);
   // 법원 목록 (지금 범위 사건에 적힌 법원만)
@@ -325,8 +337,8 @@ export function CaseListView({
         return sortDir === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       }
       if (sortField === 'stage') {
-        const stageA = stageForStatus(extA.crmStatus);
-        const stageB = stageForStatus(extB.crmStatus);
+        const stageA = stageOf(a.id, extA.crmStatus);
+        const stageB = stageOf(b.id, extB.crmStatus);
         return sortDir === 'asc' ? stageA - stageB : stageB - stageA;
       }
       if (sortField === 'debtTotal') {
@@ -379,7 +391,7 @@ export function CaseListView({
     }
 
     // 2. 단계별 다음 할 일 문구
-    const stage = stageForStatus(ext.crmStatus);
+    const stage = stageOf(r.id, ext.crmStatus);
     if (stage === 1) {
       return { text: '맞춤 제안서 발송 및 상담', due: '', isUrgent: false, type: 'stage' };
     }
@@ -464,7 +476,7 @@ export function CaseListView({
     filteredRequests.forEach(r => {
       const ext = getCrmExt(r.id);
       const displayName = getDisplayClientName(r, ext);
-      const stage = stageForStatus(ext.crmStatus);
+      const stage = stageOf(r.id, ext.crmStatus);
       const caseTypeLabel = (ext as any).caseType || r.caseType || (r.caseType?.includes('파산') ? '개인파산' : '개인회생');
 
       // 1. 사건 접수/등록일
@@ -505,8 +517,26 @@ export function CaseListView({
         });
       }
 
-      // 3. 보정명령/보정권고 기한
-      if (ext.correctionOrders && ext.correctionOrders.length > 0) {
+      // 3. 서버 기한·기일 (보정 사무소 마감·채권자집회·접수 예정)
+      if (serverDeadlines) {
+        (serverDeadlines[r.id] || []).forEach((d, idx) => {
+          const dl = daysUntil(d.date);
+          events.push({
+            id: `${r.id}-srv-${idx}`,
+            caseId: r.id,
+            clientName: displayName,
+            caseTypeLabel,
+            stageNum: stage,
+            dateStr: d.date.slice(0, 10),
+            type: d.kind === 'correction' ? 'correction' : 'reminder',
+            title: d.title,
+            badgeLabel: d.kind === 'correction' ? (dl !== null ? (dl >= 0 ? `보정 D-${dl}` : `보정 D+${Math.abs(dl)}`) : '보정') : d.kind === 'court' ? '기일' : '접수',
+            isUrgent: dl !== null && dl <= 7 && dl >= 0,
+            request: r,
+            ext,
+          });
+        });
+      } else if (ext.correctionOrders && ext.correctionOrders.length > 0) {
         ext.correctionOrders.forEach((co, idx) => {
           if (co.deadline) {
             const dStr = co.deadline.slice(0, 10);
@@ -593,7 +623,7 @@ export function CaseListView({
     });
 
     return events;
-  }, [filteredRequests, getCrmExt, serverFeeNext]);
+  }, [filteredRequests, getCrmExt, serverFeeNext, serverDeadlines, serverStageGroup]);
 
   // 캘린더 매트릭스 계산 (5~6주)
   const calendarDays = useMemo(() => {
@@ -1170,7 +1200,7 @@ export function CaseListView({
                   pagedRequests.map((r) => {
                     const ext = getCrmExt(r.id);
                     const displayName = getDisplayClientName(r, ext);
-                    const stage = stageForStatus(ext.crmStatus);
+                    const stage = stageOf(r.id, ext.crmStatus);
                     const isClosed = ['discharged', 'cancelled'].includes(ext.crmStatus);
                     const stageInfo = STAGE_CONFIG[stage] || STAGE_CONFIG[1];
                     const nextAction = getNextActionText(r, ext);
@@ -1450,7 +1480,7 @@ export function CaseListView({
               const stageCases = filteredRequests.filter(r => {
                 const ext = getCrmExt(r.id);
                 if (['discharged', 'cancelled'].includes(ext.crmStatus)) return false;
-                return stageForStatus(ext.crmStatus) === stageNum;
+                return stageOf(r.id, ext.crmStatus) === stageNum;
               });
 
               return (

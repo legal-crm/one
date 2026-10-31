@@ -1,5 +1,26 @@
 import type { AppSettings, CourtConfig } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
+import { RENAMED_DISTRICTS, smallLeaseRegionFor } from './repayment/smallLeaseRegion';
+import type { CourtRegionMapItem } from '../types';
+
+/**
+ * 게시본 지역 표 정리 (LS-9): 없어진 행정구역 이름을 지금 이름으로, 소액임차 칸은 법령 판정으로 채운다.
+ * 게시본에 표가 없으면 코드 기본 표.
+ */
+function normalizeCourtRegionMap(map: CourtRegionMapItem[] | undefined): CourtRegionMapItem[] {
+  if (!Array.isArray(map) || map.length === 0) return clone(DEFAULT_SETTINGS.courtRegionMap);
+  const seen = new Set<string>();
+  const out: CourtRegionMapItem[] = [];
+  for (const raw of map) {
+    if (!raw?.keyword) continue;
+    const keyword = RENAMED_DISTRICTS[raw.keyword] || raw.keyword;
+    const key = keyword + '|' + raw.court;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...raw, keyword, smallLeaseRegion: smallLeaseRegionFor(keyword).region });
+  }
+  return out;
+}
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { getSalesSettings } from './sales/salesSettingsService';
 import { toRpcError, NOT_CONFIGURED, type RpcResult } from './office/rpcResult';
@@ -50,6 +71,7 @@ export async function loadCalcStandard(opts: { officeId?: string; force?: boolea
           ...row.settings,
           yearlyPolicies: { ...clone(DEFAULT_SETTINGS.yearlyPolicies), ...(row.settings.yearlyPolicies || {}) },
           courtConfigs: { ...clone(DEFAULT_SETTINGS.courtConfigs), ...(row.settings.courtConfigs || {}) },
+          courtRegionMap: normalizeCourtRegionMap(row.settings.courtRegionMap),
         };
         meta = { version: row.version, publishedAt: row.published_at, note: row.note || '', source: 'server' };
       }

@@ -93,7 +93,8 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
 
   // 3. Determine Region for Asset Exemptions (소액임차보증금 범위)
   const jurisdiction = detectJurisdiction(data.residence, settings.courtRegionMap);
-  const region: RegionKey = jurisdiction.region;
+  // 소액임차보증금은 주택임대차보호법 시행령 지역 구분 (LS-9)
+  const region: RegionKey = jurisdiction.smallLeaseRegion || jurisdiction.region;
 
   // 4. 청산가치 — 법원 서식 엔진과 같은 재산 계산 (B-3, computeAssetBreakdown)
   //  · 예금·보장성보험 압류금지 각각 합계 250만 원 1회 (이전: 이 엔진만 예금 공제가 없었음)

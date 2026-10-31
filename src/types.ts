@@ -1831,7 +1831,10 @@ export type RegionKey = 'Seoul' | 'Overcrowded' | 'Metro' | 'Others';
 export interface CourtRegionMapItem {
   keyword: string;
   court: string;
+  /** 주거비 지역 구분 (생계비 추가 주거비 한도) */
   region: RegionKey;
+  /** 소액임차보증금 지역 구분 (주택임대차보호법 시행령 제10·11조, LS-9). 없으면 법령 판정 */
+  smallLeaseRegion?: RegionKey;
 }
 
 export interface DepositRule {

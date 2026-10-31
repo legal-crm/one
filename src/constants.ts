@@ -1,3 +1,4 @@
+import { smallLeaseRegionFor } from './services/repayment/smallLeaseRegion';
 import { DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from './services/repayment/repaymentConstants2026';
 import { AppSettings, CourtRegionMapItem, RegionKey, DepositRule, YearlyPolicy, CourtConfig, HousingCostRule, PermissionConfig, StatusConfig } from './types';
 
@@ -201,7 +202,9 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
     return policies;
 };
 
-export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
+// 주거비·소액임차 지역은 주택임대차보호법 시행령 제10조 구분 (LS-9, 2026-11-01 정리: 화성·세종·부산·광역시 군 지역·없어진 행정구역)
+// 소액임차 칸(smallLeaseRegion)은 아래 목록 끝에서 법령 판정(smallLeaseRegionFor)으로 채운다
+const COURT_REGION_MAP_BASE: CourtRegionMapItem[] = [
     { keyword: '가평군', court: '의정부지방법원', region: 'Others' },
     { keyword: '강남구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '강동구', court: '서울회생법원', region: 'Seoul' },
@@ -258,7 +261,7 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '논산시', court: '대전회생법원', region: 'Others' },
     { keyword: '단양군', court: '청주지방법원', region: 'Others' },
     { keyword: '담양군', court: '광주회생법원', region: 'Others' },
-    { keyword: '당진군', court: '대전회생법원', region: 'Others' },
+    { keyword: '당진시', court: '대전회생법원', region: 'Others' },
     { keyword: '대구광역시', court: '대구회생법원', region: 'Metro' },
     { keyword: '대구광역시 중구', court: '대구회생법원', region: 'Metro' },
     { keyword: '대구광역시 동구', court: '대구회생법원', region: 'Metro' },
@@ -267,8 +270,8 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '대구광역시 북구', court: '대구회생법원', region: 'Metro' },
     { keyword: '대구광역시 수성구', court: '대구회생법원', region: 'Metro' },
     { keyword: '대구광역시 달서구', court: '대구회생법원', region: 'Metro' },
-    { keyword: '대구광역시 달성군', court: '대구회생법원', region: 'Metro' },
-    { keyword: '대구광역시 군위군', court: '대구회생법원', region: 'Metro' },
+    { keyword: '대구광역시 달성군', court: '대구회생법원', region: 'Others' },
+    { keyword: '대구광역시 군위군', court: '대구회생법원', region: 'Others' },
     { keyword: '대전광역시', court: '대전회생법원', region: 'Metro' },
     { keyword: '대전광역시 유성구', court: '대전회생법원', region: 'Metro' },
     { keyword: '대전광역시 대덕구', court: '대전회생법원', region: 'Metro' },
@@ -279,7 +282,6 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '동대문구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '동두천시', court: '의정부지방법원', region: 'Others' },
     { keyword: '동작구', court: '서울회생법원', region: 'Seoul' },
-    { keyword: '동탄시', court: '수원회생법원', region: 'Others' },
     { keyword: '동해시', court: '춘천지방법원 강릉지원', region: 'Others' },
     { keyword: '마포구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '목포시', court: '광주회생법원', region: 'Others' },
@@ -291,7 +293,8 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '보성군', court: '광주회생법원', region: 'Others' },
     { keyword: '보은군', court: '청주지방법원', region: 'Others' },
     { keyword: '봉화군', court: '대구회생법원', region: 'Others' },
-    { keyword: '부산광역시', court: '부산회생법원', region: 'Others' },
+    { keyword: '부산광역시', court: '부산회생법원', region: 'Metro' },
+    { keyword: '기장군', court: '부산회생법원', region: 'Others' },
     { keyword: '부안군', court: '전주지방법원', region: 'Others' },
     { keyword: '부여군', court: '대전회생법원', region: 'Others' },
     { keyword: '부천시', court: '인천지방법원', region: 'Overcrowded' },
@@ -309,7 +312,8 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '성동구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '성북구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '성주군', court: '대구회생법원', region: 'Others' },
-    { keyword: '세종시', court: '대전회생법원', region: 'Others' },
+    { keyword: '세종특별자치시', court: '대전회생법원', region: 'Overcrowded' },
+    { keyword: '세종시', court: '대전회생법원', region: 'Overcrowded' },
     { keyword: '속초시', court: '춘천지방법원', region: 'Others' },
     { keyword: '송파구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '수원시', court: '수원회생법원', region: 'Overcrowded' },
@@ -329,8 +333,7 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '양천구', court: '서울회생법원', region: 'Seoul' },
     { keyword: '양평군', court: '수원회생법원', region: 'Others' },
     { keyword: '여수시', court: '광주회생법원', region: 'Others' },
-    { keyword: '여주군', court: '수원회생법원', region: 'Others' },
-    { keyword: '연기군', court: '대전회생법원', region: 'Others' },
+    { keyword: '여주시', court: '수원회생법원', region: 'Others' },
     { keyword: '연천군', court: '의정부지방법원', region: 'Others' },
     { keyword: '영광군', court: '광주회생법원', region: 'Others' },
     { keyword: '영덕군', court: '대구회생법원', region: 'Others' },
@@ -353,6 +356,7 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '용인시 수지구', court: '수원회생법원', region: 'Overcrowded' },
     { keyword: '울릉군', court: '대구회생법원', region: 'Others' },
     { keyword: '울산광역시', court: '울산지방법원', region: 'Metro' },
+    { keyword: '울주군', court: '울산지방법원', region: 'Others' },
     { keyword: '울진군', court: '대구회생법원', region: 'Others' },
     { keyword: '원주시', court: '춘천지방법원', region: 'Others' },
     { keyword: '은평구', court: '서울회생법원', region: 'Seoul' },
@@ -365,6 +369,8 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '익산시', court: '전주지방법원', region: 'Others' },
     { keyword: '인제군', court: '춘천지방법원', region: 'Others' },
     { keyword: '인천광역시', court: '인천지방법원', region: 'Overcrowded' },
+    { keyword: '강화군', court: '인천지방법원', region: 'Others' },
+    { keyword: '옹진군', court: '인천지방법원', region: 'Others' },
     { keyword: '장성군', court: '광주회생법원', region: 'Others' },
     { keyword: '장수군', court: '전주지방법원', region: 'Others' },
     { keyword: '장흥군', court: '광주회생법원', region: 'Others' },
@@ -388,7 +394,7 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '청도군', court: '대구회생법원', region: 'Others' },
     { keyword: '청송군', court: '대구회생법원', region: 'Others' },
     { keyword: '청양군', court: '대전회생법원', region: 'Others' },
-    { keyword: '청원군', court: '청주지방법원', region: 'Others' },
+    { keyword: '청주시 청원구', court: '청주지방법원', region: 'Others' },
     { keyword: '청주시', court: '청주지방법원', region: 'Others' },
     { keyword: '춘천시', court: '춘천지방법원', region: 'Others' },
     { keyword: '충주시', court: '청주지방법원', region: 'Others' },
@@ -410,11 +416,12 @@ export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = [
     { keyword: '해남군', court: '광주회생법원', region: 'Others' },
     { keyword: '홍성군', court: '대전회생법원', region: 'Others' },
     { keyword: '홍천군', court: '춘천지방법원', region: 'Others' },
-    { keyword: '화성시', court: '수원회생법원', region: 'Others' },
+    { keyword: '화성시', court: '수원회생법원', region: 'Overcrowded' },
     { keyword: '화순군', court: '광주회생법원', region: 'Others' },
     { keyword: '화천군', court: '춘천지방법원', region: 'Others' },
     { keyword: '횡성군', court: '춘천지방법원', region: 'Others' }
 ];
+export const COURT_REGION_MAP_DATA: CourtRegionMapItem[] = COURT_REGION_MAP_BASE.map(i => ({ ...i, smallLeaseRegion: smallLeaseRegionFor(i.keyword).region }));
 
 const generateCourtConfigs = (): Record<string, CourtConfig> => {
     const configs: Record<string, CourtConfig> = {};
