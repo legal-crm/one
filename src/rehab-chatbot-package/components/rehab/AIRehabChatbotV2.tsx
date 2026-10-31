@@ -402,7 +402,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     // 채무 유형별 금액 입력을 위한 상태
     const [currentDebtTypeIndex, setCurrentDebtTypeIndex] = useState<number>(0);
     const [debtTypeValues, setDebtTypeValues] = useState<Record<string, number>>({
-        bank: 0, capital: 0, savings_bank: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
+        bank: 0, capital: 0, savings_bank: 0, loan_lender: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
     });
 
     // 뒤로 가기: 단계 히스토리 스택
@@ -3056,7 +3056,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         [
                             { label: '🏦 은행 대출', value: 'bank' },
                             { label: '💳 카드사/캐피탈', value: 'capital' },
-                            { label: '🏪 저축은행/대부업', value: 'savings_bank' },
+                            { label: '🏪 저축은행', value: 'savings_bank' },
+                            { label: '🏷️ 대부업체', value: 'loan_lender' },
                             { label: '🏛️ 국세/세금 체납', value: 'tax' },
                             { label: '👤 가족/지인', value: 'private' },
                             { label: '📱 기타', value: 'app_loan' },
@@ -3078,7 +3079,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     [
                         { label: '🏦 은행 대출', value: 'bank' },
                         { label: '💳 카드사/캐피탈', value: 'capital' },
-                        { label: '🏪 저축은행/대부업', value: 'savings_bank' },
+                        { label: '🏪 저축은행', value: 'savings_bank' },
+                            { label: '🏷️ 대부업체', value: 'loan_lender' },
                         { label: '🏛️ 국세/세금 체납', value: 'tax' },
                         { label: '👤 가족/지인', value: 'private' },
                         { label: '📱 기타', value: 'app_loan' },
@@ -3398,7 +3400,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (debtTypes.length > 0) {
                     setCurrentDebtTypeIndex(0);
                     setDebtTypeValues({
-                        bank: 0, capital: 0, savings_bank: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
+                        bank: 0, capital: 0, savings_bank: 0, loan_lender: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
                     });
                     goToStep('debt_amount_detail');
                     
@@ -3442,6 +3444,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         (updatedValues.bank || 0) +
                         (updatedValues.capital || 0) +
                         (updatedValues.savings_bank || 0) +
+                        (updatedValues.loan_lender || 0) +
                         (updatedValues.private || 0) +
                         (updatedValues.app_loan || 0) +
                         (updatedValues.guarantee || 0);
@@ -4298,13 +4301,15 @@ function getDebtTypeQuestion(type: string): string {
         case 'capital':
             return '💳 카드사 및 캐피탈 대출금액은 총 얼마인가요?\n\n(만원 단위)';
         case 'savings_bank':
-            return '🏪 저축은행 및 대부업 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+            return '🏪 저축은행 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'loan_lender':
+            return '🏷️ 대부업체 대출금액은 총 얼마인가요?\n\n(만원 단위)';
         case 'tax':
             return '🏛️ 국세(세금 체납액)는 총 얼마인가요?\n\n(만원 단위)';
         case 'private':
-            return '👤 사금융 및 지인 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+            return '👤 가족·지인에게 빌린 돈은 총 얼마인가요?\n\n(만원 단위)';
         case 'app_loan':
-            return '📱 앱 및 온라인 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+            return '📱 그 밖의 대출(앱·온라인 대출 등)은 총 얼마인가요?\n\n(만원 단위)';
         case 'guarantee':
             return '🏢 보증채무 금액은 총 얼마인가요?\n\n(만원 단위)';
         default:

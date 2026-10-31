@@ -685,7 +685,8 @@ export function formatTenThousandWon(amount: number): string {
 const DEBT_TYPE_ANNUAL_RATE: Record<string, number> = {
     bank: 0.08,           // 은행 (1금융권) — 8%
     capital: 0.15,        // 카드사/캐피탈 — 15%
-    savings_bank: 0.15,   // 저축은행/대부업 — 15%
+    savings_bank: 0.15,   // 저축은행 — 15%
+    loan_lender: 0.2,     // 대부업 — 법정 최고금리 20%
     credit_card: 0.15,    // 신용카드 (카드론) — 15%
     app_loan: 0.15,       // 기타 대출 — 15%
     private: 0,           // 가족/지인 — 무이자
@@ -751,7 +752,8 @@ export function calculateCurrentMonthlyBurden(input: RehabUserInput): number {
 const DEBT_TYPE_CONFIG: Record<string, { label: string; color: string; riskLevel: 'high' | 'medium' | 'low' }> = {
     bank: { label: '은행 대출', color: '#3B82F6', riskLevel: 'low' },
     capital: { label: '카드사/캐피탈', color: '#8B5CF6', riskLevel: 'medium' },
-    savings_bank: { label: '저축은행/대부업', color: '#F59E0B', riskLevel: 'medium' },
+    savings_bank: { label: '저축은행', color: '#F59E0B', riskLevel: 'medium' },
+    loan_lender: { label: '대부업체', color: '#EA580C', riskLevel: 'medium' },
     private: { label: '가족/지인', color: '#EF4444', riskLevel: 'high' },
     app_loan: { label: '기타', color: '#F97316', riskLevel: 'medium' },
     guarantee: { label: '보증채무', color: '#EC4899', riskLevel: 'high' },

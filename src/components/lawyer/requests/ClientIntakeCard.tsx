@@ -1,5 +1,9 @@
 import { AlertTriangle, PencilLine } from 'lucide-react';
 import { INTAKE_FIELDS, formatIntakeValue, type ClientIntakeV2 } from '../../../services/intake/clientIntakeV2';
+const GOAL_LABEL: Record<string, string> = {
+  stop_collection: '독촉·추심 연락 멈추기', lower_payment: '매달 갚는 부담 줄이기', keep_job: '직장·자격 지키기',
+  keep_home: '사는 집 지키기', protect_family: '가족에게 알려지지 않기', fresh_start: '빚을 정리하고 새로 시작', compare_options: '맞는 제도를 알고 싶음',
+};
 
 const EXTRA_LABEL: Record<string, string> = {
   none: '없음', rehab: '개인회생', bankruptcy: '개인파산', credit_recovery: '신용회복 채무조정', direct_adjust: '금융회사 직접 채무조정 요청', unknown: '모름',
@@ -31,6 +35,7 @@ export default function ClientIntakeCard({ intake, updatedAt }: { intake?: Clien
     ['일한 기간 · 4대보험', [EXTRA_LABEL[x.tenure || ''], x.socialInsurance ? `4대보험 ${EXTRA_LABEL[x.socialInsurance] || ''}` : ''].filter(Boolean).join(' · ')],
     ['최근 소득 감소', EXTRA_LABEL[x.incomeDrop || ''] || ''],
     ['해당 사실 (판정 아님)', x.shortFacts?.length ? x.shortFacts.map(a => EXTRA_LABEL[a] || a).join(', ') : ''],
+    ['해결하고 싶은 것', (x.goals || []).map(g => GOAL_LABEL[g] || g).join(', ')],
     ['원하는 상담 방식 · 편한 때', [EXTRA_LABEL[x.consultMethod || ''], (x.consultTimes || []).map(a => EXTRA_LABEL[a] || a).join(', ')].filter(Boolean).join(' · ')],
   ];
   return (

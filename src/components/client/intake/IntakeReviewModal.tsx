@@ -21,9 +21,17 @@ export interface IntakeExtraFacts {
   /** 희망 상담 방식·시간대 (NF-Q4, 예약 아님 — 변호사가 맞춰 연락) */
   consultMethod?: '' | 'chat' | 'phone' | 'visit' | 'video' | 'any';
   consultTimes?: Array<'weekday_day' | 'weekday_evening' | 'weekend'>;
+  /** 상담에서 해결하고 싶은 것 (여러 개, 1-2) — 변호사에게 전달만, 판정 없음 */
+  goals?: Array<'stop_collection' | 'lower_payment' | 'keep_job' | 'keep_home' | 'protect_family' | 'fresh_start' | 'compare_options'>;
 }
 
-export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [], consultMethod: '', consultTimes: [] };
+export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [], consultMethod: '', consultTimes: [], goals: [] };
+
+const GOAL_OPTIONS = [
+  ['stop_collection', '독촉·추심 연락 멈추기'], ['lower_payment', '매달 갚는 부담 줄이기'], ['keep_job', '직장·자격 지키기'],
+  ['keep_home', '사는 집 지키기'], ['protect_family', '가족에게 알려지지 않기'], ['fresh_start', '빚을 정리하고 새로 시작'],
+  ['compare_options', '어떤 제도가 맞는지 알고 싶어요'],
+] as const;
 
 const man = (v?: number) => (v ? `${Math.round(v).toLocaleString('ko-KR')}만 원` : '');
 
@@ -176,6 +184,21 @@ export default function IntakeReviewModal({
                 <option value="">선택</option><option value="chat">채팅</option><option value="phone">전화</option><option value="visit">사무소 방문</option><option value="video">화상</option><option value="any">상관없어요</option>
               </select>
             </label>
+            <fieldset className="space-y-1 sm:col-span-2">
+              <legend className="font-bold text-slate-700">상담에서 해결하고 싶은 것 (여러 개)</legend>
+              <div className="flex flex-wrap gap-2">
+                {GOAL_OPTIONS.map(([v, l]) => {
+                  const on = (x.goals || []).includes(v);
+                  return (
+                    <button key={v} type="button" aria-pressed={on}
+                      onClick={() => setX(p => ({ ...p, goals: on ? (p.goals || []).filter(g => g !== v) : [...(p.goals || []), v] }))}
+                      className={`min-h-[44px] px-3 rounded-xl border text-sm font-semibold whitespace-nowrap active:scale-[0.98] ${on ? 'bg-brand/10 border-brand/40 text-brand' : 'bg-white border-slate-200 text-slate-700'}`}>
+                      {l}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
             <fieldset className="space-y-1">
               <legend className="font-bold text-slate-700">연락받기 편한 때 (여러 개)</legend>
               <div className="flex flex-wrap gap-2">
@@ -265,6 +288,7 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     `• 압류: ${x.seizure.length ? x.seizure.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 출생연도: ${x.birthYear || '답 없음'} · 일한 기간: ${L[x.tenure || ''] || '답 없음'} · 4대보험: ${L[x.socialInsurance || ''] || '답 없음'} · 최근 소득 감소: ${L[x.incomeDrop || ''] || '답 없음'}`,
     `• 해당 사실(판정 아님): ${(x.shortFacts || []).length ? (x.shortFacts || []).map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
+    `• 해결하고 싶은 것: ${(x.goals || []).length ? (x.goals || []).map(g => GOAL_OPTIONS.find(o => o[0] === g)?.[1] || g).join(', ') : '답 없음'}`,
     `• 원하는 상담 방식: ${L[x.consultMethod || ''] || '답 없음'} · 편한 때: ${(x.consultTimes || []).length ? (x.consultTimes || []).map(a => L[a]).join(', ') : '답 없음'}`,
   ];
   return `\n[5. 정리 확인 화면에서 더 답한 내용]\n${lines.join('\n')}`;
