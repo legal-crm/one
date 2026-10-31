@@ -9,6 +9,8 @@ import CasesSection from './CasesSection';
 import LegalNewsSection from './LegalNewsSection';
 import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
+import LawyerIntroSection from './LawyerIntroSection';
+import type { User } from '../../../types';
 // 계산 엔진이 커서 계산기를 켰을 때만 불러온다
 const QuickCalcSection = React.lazy(() => import('./QuickCalcSection'));
 import type { PublicCalcInput } from '../../../services/repayment/publicCalculator';
@@ -42,6 +44,8 @@ export interface LandingViewProps {
   /** 통합어드민 '기능 표시'에서 계산기를 켰을 때만 홈 빠른 계산기 (1-G) */
   calculatorVisible?: boolean;
   onOpenCalculator?: (seed: Partial<PublicCalcInput>) => void;
+  /** 공개 변호사 목록 — 홈 '등록 변호사' 띠 (AD-4) */
+  lawyers?: User[];
 }
 
 export default function LandingView(props: LandingViewProps) {
@@ -49,7 +53,7 @@ export default function LandingView(props: LandingViewProps) {
     qas, reviews, newsArticles, showLegalNews, remedies, maxLawyerSelections,
     onStartCheck, onBrowseLawyers, onSelectRemedy, onSelectSolution, onConsultFromQa,
     onViewAllQna, onViewAllReviews, onViewAllNews, onOpenArticle, onOpenLawyerProfile, onOpenInquiry,
-    banners = [], calculatorVisible = false, onOpenCalculator,
+    banners = [], calculatorVisible = false, onOpenCalculator, lawyers = [],
   } = props;
 
   return (
@@ -57,6 +61,7 @@ export default function LandingView(props: LandingViewProps) {
       <HeroSection onStartCheck={onStartCheck} onBrowseLawyers={onBrowseLawyers} banners={banners} onOpenLawyerProfile={onOpenLawyerProfile} showCalcLink={calculatorVisible && !!onOpenCalculator} />
       <ServiceGuideSection maxLawyerSelections={maxLawyerSelections} onStartCheck={onStartCheck} onBrowseLawyers={onBrowseLawyers} />
       <TrustFactsBar maxLawyerSelections={maxLawyerSelections} />
+      <LawyerIntroSection lawyers={lawyers} onOpenLawyerProfile={onOpenLawyerProfile} onBrowseLawyers={onBrowseLawyers} />
       {calculatorVisible && onOpenCalculator && (
         <React.Suspense fallback={<div className="h-96 bg-white border-t border-slate-100" aria-hidden="true" />}>
           <QuickCalcSection onOpenFull={onOpenCalculator} onStartCheck={onStartCheck} />

@@ -1282,7 +1282,7 @@ export interface User {
   totalCases?: number; // 누적 수임 건수
   avgRepaymentRate?: number; // 평균 변제율 (%)
   courtJurisdiction?: string; // 관할 법원
-  adTier?: 'top' | 'regional' | 'basic' | null; // 광고 등급
+  adTier?: 'top' | 'regional' | 'banner' | 'basic' | null; // 광고 등급 (서버 sync_lawyer_ad_tiers가 노출 중인 주문으로 맞춤)
   adRegion?: string; // 지역 상단 노출 구매 지역
   // ── 공식 채널 링크 ──
   websiteUrl?: string; // 공식 홈페이지 URL

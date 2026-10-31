@@ -2218,6 +2218,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         {activeTab === 'landing' && (
           <LandingView
             banners={banners}
+            lawyers={directoryLawyers}
             qas={qas}
             reviews={reviews}
             newsArticles={newsArticles}
