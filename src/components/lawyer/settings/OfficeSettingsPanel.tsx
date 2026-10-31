@@ -11,14 +11,14 @@ import OfficeDataExportCard from './OfficeDataExportCard';
 import ClientMessagingSettingsCard from './ClientMessagingSettingsCard';
 import CaseReviewRulesCard from './CaseReviewRulesCard';
 
-type Sub = 'info' | 'seal' | 'copy' | 'messaging' | 'review' | 'data';
+type Sub = 'info' | 'seal' | 'copy' | 'messaging' | 'review' | 'login' | 'data';
 const btn = 'min-h-[44px] px-4 rounded-xl text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5';
 const field = 'w-full p-3 rounded-xl border border-slate-200 text-sm text-slate-800 disabled:bg-slate-50';
 
 export default function OfficeSettingsPanel({ officeId, canEdit, isOwner = false }: { officeId?: string; canEdit: boolean; isOwner?: boolean }) {
   const [sub, setSub] = useState<Sub>('info');
   if (!officeId) return <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-600">사무소 정보를 불러오지 못했어요. 다시 로그인해 주세요.</div>;
-  const tabs: Array<[Sub, string]> = [['info', '사무소 정보'], ['seal', '사무소 직인'], ['copy', '의뢰인 발송 문구 규칙'], ['messaging', '의뢰인 안내 방법'], ['review', '사건 검토 기준'], ...(isOwner ? [['data', '데이터 내보내기'] as [Sub, string]] : [])];
+  const tabs: Array<[Sub, string]> = [['info', '사무소 정보'], ['seal', '사무소 직인'], ['copy', '의뢰인 발송 문구 규칙'], ['messaging', '의뢰인 안내 방법'], ['review', '사건 검토 기준'], ['login', '로그인 보안'], ...(isOwner ? [['data', '데이터 내보내기'] as [Sub, string]] : [])];
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="사무소 설정">
@@ -35,12 +35,13 @@ export default function OfficeSettingsPanel({ officeId, canEdit, isOwner = false
       {sub === 'copy' && <CopyRules officeId={officeId} canEdit={canEdit} />}
       {sub === 'messaging' && <ClientMessagingSettingsCard officeId={officeId} canEdit={canEdit} />}
       {sub === 'review' && <CaseReviewRulesCard officeId={officeId} canEdit={canEdit} />}
+      {sub === 'login' && <LoginPolicy officeId={officeId} canEdit={canEdit} />}
       {sub === 'data' && isOwner && <OfficeDataExportCard officeId={officeId} />}
     </div>
   );
 }
 
-function useSection<T extends Record<string, unknown>>(officeId: string, section: 'profile' | 'copy_rules') {
+function useSection<T extends Record<string, unknown>>(officeId: string, section: 'profile' | 'copy_rules' | 'security') {
   const [value, setValue] = useState<T | null>(null);
   const [version, setVersion] = useState<number | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +209,33 @@ function CopyRules({ officeId, canEdit }: { officeId: string; canEdit: boolean }
         <div className="flex justify-end">
           <button type="button" disabled={busy} onClick={() => void save()} className={`${btn} bg-[#1E3A5F] text-white`}><Save className="w-4 h-4" /> {busy ? '저장 중…' : '저장'}</button>
         </div>
+      )}
+    </section>
+  );
+}
+
+// 로그인 보안 (A-2·RB-7): 고정 IP가 없어 IP 허용 목록 대신 해외 로그인 차단·새 기기 알림. 2단계 인증 필수는 '직원·권한'에서
+function LoginPolicy({ officeId, canEdit }: { officeId: string; canEdit: boolean }) {
+  const s = useSection<{ block_overseas?: boolean; new_device_alert?: boolean } & Record<string, unknown>>(officeId, 'security');
+  const [busy, setBusy] = useState(false);
+  if (s.error) return <ErrorRow message={s.error} onRetry={() => void s.reload()} />;
+  if (!s.value) return <div className="h-40 rounded-2xl bg-slate-100 animate-pulse" aria-busy="true" />;
+  const v = s.value;
+  const toggle = (k: 'block_overseas' | 'new_device_alert', label: string, desc: string) => (
+    <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 min-h-[44px] cursor-pointer">
+      <input type="checkbox" className="mt-1 h-4 w-4" disabled={!canEdit} checked={!!v[k]} onChange={e => s.setValue({ ...v, [k]: e.target.checked })} />
+      <span><span className="block text-sm font-bold text-slate-900">{label}</span><span className="block text-sm text-slate-600">{desc}</span></span>
+    </label>
+  );
+  return (
+    <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3" aria-label="로그인 보안">
+      <h3 className="font-extrabold text-slate-900">로그인 보안</h3>
+      <p className="text-sm text-slate-600">사무소 구성원(대표 포함) 계정에 적용돼요. 2단계 인증 필수는 '직원·권한'에서 정해요.</p>
+      {toggle('block_overseas', '해외 로그인 막기', '대한민국이 아닌 곳에서 로그인하면 바로 로그아웃시키고 대표에게 알려요. 해외 출장 중에는 잠시 꺼 주세요.')}
+      {toggle('new_device_alert', '새 기기 로그인 알림', '구성원이 지난 90일 동안 쓰지 않은 기기·브라우저로 로그인하면 대표에게 알려요. 본인이 아니면 직원·권한에서 세션을 끊을 수 있어요.')}
+      {canEdit && (
+        <button type="button" disabled={busy} onClick={async () => { setBusy(true); const ok = await s.save(v); setBusy(false); if (ok) toast.success('로그인 보안 설정을 저장했어요.'); }}
+          className={`${btn} bg-slate-900 text-white`}><Save className="w-4 h-4" aria-hidden="true" /> 저장</button>
       )}
     </section>
   );

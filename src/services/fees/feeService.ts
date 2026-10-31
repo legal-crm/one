@@ -375,3 +375,53 @@ export function buildInstallments(opts: { totalFeeWon: number; downPaymentWon: n
   }
   return out;
 }
+
+// ── 거래내역 파일 대조 (FE-9) ──
+export async function bankTxSeen(officeId: string, hashes: string[]): Promise<Set<string>> {
+  if (!isSupabaseConfigured || hashes.length === 0) return new Set();
+  const { data, error } = await supabase.rpc('fee_bank_tx_seen', { p_office_id: officeId, p_hashes: hashes });
+  if (error) return new Set();
+  return new Set((data as string[] | null) || []);
+}
+
+export async function recordBankImport(caseId: string, p: { paidOn: string; amountWon: number; payerName: string; txHash: string }): Promise<RpcResult<{ duplicate: boolean }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('record_fee_bank_import', {
+    p_case_id: caseId, p_paid_on: p.paidOn, p_amount_won: p.amountWon, p_payer_name: p.payerName || null, p_tx_hash: p.txHash,
+  });
+  if (error) return { ok: false, code: 'save_failed', message: /fee\.record/.test(error.message) ? '파일 대조는 사무소 전체 수납 기록 권한이 있어야 해요.' : msg(error) };
+  return { ok: true, data: { duplicate: !!(data as any)?.duplicate } };
+}
+
+// ── 해지·환불 정산 (FE-10) ──
+export type SettlementReason = 'contract_terminated' | 'resigned' | 'client_withdrew' | 'other';
+export const SETTLEMENT_REASON_LABEL: Record<SettlementReason, string> = {
+  contract_terminated: '계약 해지', resigned: '사임', client_withdrew: '의뢰인 철회', other: '기타',
+};
+export interface FeeSettlement {
+  id: string; reason: SettlementReason; receivedWon: number; expenseWon: number; refundWon: number; refundOn?: string;
+  expenses: Array<{ label: string; amount_won: number }>; note?: string; createdAt: string;
+}
+
+export async function loadSettlements(caseId: string): Promise<FeeSettlement[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from('fee_settlements').select('*').eq('case_id', caseId).order('created_at', { ascending: false });
+  if (error) return [];
+  return (data || []).map((r: any) => ({
+    id: r.id, reason: r.reason, receivedWon: r.received_won, expenseWon: r.expense_won, refundWon: r.refund_won, refundOn: r.refund_on || undefined,
+    expenses: r.expenses || [], note: r.note || undefined, createdAt: r.created_at,
+  }));
+}
+
+export async function settleFeeCase(caseId: string, p: { reason: SettlementReason; refundWon: number; refundOn?: string; expenses: Array<{ label: string; amountWon: number }>; note?: string }): Promise<RpcResult<{ receivedWon: number }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('settle_fee_case', {
+    p_case_id: caseId,
+    p: { reason: p.reason, refund_won: p.refundWon, refund_on: p.refundOn || null, note: p.note || null, expenses: p.expenses.map(e => ({ label: e.label, amount_won: e.amountWon })) },
+  });
+  if (error) {
+    const m = /refund exceeds/i.test(error.message) ? '환불액이 받은 금액보다 많아요.' : /refund date/i.test(error.message) ? '환불일을 넣어 주세요.' : msg(error);
+    return { ok: false, code: 'save_failed', message: m };
+  }
+  return { ok: true, data: { receivedWon: Number((data as any)?.received_won) || 0 } };
+}

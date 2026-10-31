@@ -2,6 +2,7 @@
 // 사건 화면 '수임료 수납' (FE-1~FE-6) — 서버 원본
 // 약정(회차) 만들기·바꾸기(사유), 납부 기록(추가만)·취소(사유), 의뢰인 '입금했어요' 확정·반려
 // ============================================================
+import FeeSettlementDialog, { FeeSettlementHistory } from './FeeSettlementDialog';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronDown, ChevronUp, Plus, RefreshCw, Wallet } from 'lucide-react';
@@ -149,6 +150,8 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
 
   // ── 납부 기록 ──
   const [payOpen, setPayOpen] = useState(false);
+  const [settleOpen, setSettleOpen] = useState(false);
+  const [settleTick, setSettleTick] = useState(0);
   const [payOn, setPayOn] = useState(today());
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<FeePayment['method']>('transfer');
@@ -295,6 +298,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                       <span className="flex gap-2">
                         <button onClick={startEdit} className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold whitespace-nowrap cursor-pointer">일정 바꾸기</button>
                         <button onClick={() => openPay()} className="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap cursor-pointer">납부 기록</button>
+                        <button onClick={() => setSettleOpen(true)} className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold whitespace-nowrap cursor-pointer">정산(해지·사임)</button>
                       </span>
                     )}
                   </div>
@@ -352,6 +356,11 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                 </div>
               )}
 
+              {caseId && <FeeSettlementHistory caseId={caseId} refreshKey={settleTick} />}
+              {caseId && settleOpen && (
+                <FeeSettlementDialog caseId={caseId} paidTotal={paidTotal} onClose={() => setSettleOpen(false)}
+                  onDone={() => { setSettleOpen(false); setSettleTick(t => t + 1); void load(); notifyFeeChanged(); }} />
+              )}
               {caseId && <DepositAccountEditor officeId={officeId} caseId={caseId} canEdit={canRecord} />}
             </>
           )}

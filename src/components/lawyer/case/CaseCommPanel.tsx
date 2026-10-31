@@ -18,6 +18,8 @@ import {
   type CallRecording, type ClientContact, type CommLog, type CommTarget, type CommTemplate, type ContactRelation, type ManualLogInput, type OfficeDevice,
 } from '../../../services/comm/commService';
 import { listNoticeTasks } from '../../../services/comm/clientNoticeService';
+import { listLatestTranscripts, type CallTranscript } from '../../../services/comm/callTranscriptService';
+import RecordingTranscript from './RecordingTranscript';
 import KakaoNoticeSection from './KakaoNoticeSection';
 import KakaoExportImportModal from './KakaoExportImportModal';
 
@@ -56,6 +58,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
   const [contacts, setContacts] = useState<ClientContact[]>([]);
   const [logs, setLogs] = useState<CommLog[]>([]);
   const [recordings, setRecordings] = useState<CallRecording[]>([]);
+  const [transcripts, setTranscripts] = useState<Map<string, CallTranscript>>(new Map());
   const [templates, setTemplates] = useState<CommTemplate[]>([]);
   const [myDevice, setMyDevice] = useState<OfficeDevice | null>(null);
   const [mode, setMode] = useState<'none' | 'contact' | 'manual' | 'kakao' | 'sms'>('none');
@@ -107,6 +110,8 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
     setExportLines(x.ok ? x.data : []);
     setContacts(c.ok ? c.data : []);
     setRecordings(r.ok ? r.data : []);
+    // 녹음 대화록 (CL-8): 들을 수 있는 녹음만 서버가 돌려준다
+    void listLatestTranscripts((r.ok ? r.data : []).filter(x => x.status === 'verified' || x.status === 'mismatch').map(x => x.id)).then(setTranscripts);
     setTemplates(t.ok ? t.data : []);
     const uid = u.data.user?.id;
     setMyDevice(d.ok ? (d.data.find(x => x.userId === uid && x.status === 'active') || null) : null);
@@ -274,6 +279,10 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
       {playing?.id === rec.id && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio className="mt-2 w-full" controls autoPlay src={playing.url} onError={() => toast.error('재생 주소가 만료됐어요. 듣기를 다시 눌러 주세요.')} />
+      )}
+      {canRecording && (rec.status === 'verified' || rec.status === 'mismatch') && (
+        <RecordingTranscript recordingId={rec.id} transcript={transcripts.get(rec.id)}
+          onCreated={t => setTranscripts(prev => new Map(prev).set(rec.id, t))} />
       )}
     </div>
   );

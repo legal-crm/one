@@ -10,6 +10,7 @@ import { loadFeeOverview, type FeeOverviewRow } from '../../../services/fees/fee
 import { listCases, listOfficeClients, loadStageDefinitions, stageDef } from '../../../services/cases/caseCoreService';
 import DepositAccountEditor from './DepositAccountEditor';
 import FeeReminderSettingsCard from './FeeReminderSettingsCard';
+import FeeBankImportModal from './FeeBankImportModal';
 
 const won = (n?: number) => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : '-');
 const PAGE = 20;
@@ -55,6 +56,7 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
   const [sort, setSort] = useState<Sort>('next_due');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [showBankImport, setShowBankImport] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -165,9 +167,15 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
 
   return (
     <section className="space-y-4" aria-label="수임료 수납">
+      {showBankImport && <FeeBankImportModal officeId={officeId} onClose={() => setShowBankImport(false)} onSaved={() => { void load(); }} />}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-extrabold text-xl text-slate-900 flex items-center gap-2"><Wallet className="w-5 h-5 text-slate-700" />수임료 수납</h2>
         <div className="flex items-center gap-2">
+          {canEditReminders && (
+            <button onClick={() => setShowBankImport(true)} className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap cursor-pointer active:scale-[0.98]">
+              거래내역 파일로 맞추기
+            </button>
+          )}
           {canExport && rows && rows.length > 0 && (
             <button onClick={exportCsv} className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap cursor-pointer active:scale-[0.98]">
               <Download className="w-4 h-4" />엑셀(CSV) 내려받기

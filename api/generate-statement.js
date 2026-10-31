@@ -10,6 +10,7 @@ import * as mk from './_lib/marketing-engine.js';
 import { textModels } from './_lib/marketing-engine.js';
 import { fixCompliance, scanCompliance } from './_lib/marketing-compliance.js';
 import { buildStatementMasker } from './_lib/statement-masking.js';
+import { handleCallTranscript } from './_lib/routes/call-transcript.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -278,6 +279,10 @@ async function handler(req, res) {
   }
   if (req.body?.mode === 'call-summary') {
     return handleCallSummary(req, res);
+  }
+  // 통화 녹음 대화록 (CL-8): 서버가 저장소에서 녹음을 읽는다
+  if (req.body?.mode === 'call-transcript') {
+    return handleCallTranscript(req, res);
   }
   // [SEO] 관리자 IndexNow 즉시 색인 요청 (함수 개수 한도로 이 함수에 둠)
   if (req.body?.mode === 'indexnow') {
