@@ -14,6 +14,8 @@ import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { getCourtStats } from '../../constants/courtStatistics';
 import { confirmClientCopy } from '../../services/proposalCompliance';
 import { useDialog } from '../common/DialogProvider';
+import { isBankruptcyCaseType } from '../../services/cases/caseTypeOf';
+import { bankruptcyDepositDefault } from '../../services/court/courtFees';
 
 export interface AIAnalysisData {
   factSummary: {
@@ -108,6 +110,10 @@ export interface ProposalData {
   };
   rehabUserInput?: RehabUserInput;
   rehabCalcResult?: RehabCalculationResult;
+  /** 제안서 절차 (B-5d) — 파산이면 월 변제금·기간을 보내지 않는다 */
+  procedure?: 'rehab' | 'bankruptcy';
+  /** 유효기간 (일, 기본 30) */
+  validDays?: number;
 }
 
 interface LawyerProposalDraftProps {
@@ -237,29 +243,30 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   const [isAddingNote, setIsAddingNote] = useState(false);
 
   // Section 3: Fees State (3자리 콤마 기본 적용)
+  // 수임료는 변호사가 직접 넣는다 (이전: 150만·30만·5회·예납 30만·'송달료 포함' 기본값이 그대로 발송될 수 있었다)
   const [totalFeeStr, setTotalFeeStr] = useState(() => {
     if (initialDraft?.totalFeeStr) {
       const num = parseInt(initialDraft.totalFeeStr.replace(/,/g, ''), 10);
-      return isNaN(num) ? '1,500,000' : fmtNum(num);
+      return isNaN(num) ? '' : fmtNum(num);
     }
-    return '1,500,000';
+    return '';
   });
   const [downPaymentStr, setDownPaymentStr] = useState(() => {
     if (initialDraft?.downPaymentStr) {
       const num = parseInt(initialDraft.downPaymentStr.replace(/,/g, ''), 10);
-      return isNaN(num) ? '300,000' : fmtNum(num);
+      return isNaN(num) ? '' : fmtNum(num);
     }
-    return '300,000';
+    return '';
   });
-  const [installments, setInstallments] = useState<number>(initialDraft?.installments ?? 5);
+  const [installments, setInstallments] = useState<number>(initialDraft?.installments ?? 1);
   const [courtDepositStr, setCourtDepositStr] = useState(() => {
     if (initialDraft?.courtDepositStr) {
       const num = parseInt(initialDraft.courtDepositStr.replace(/,/g, ''), 10);
-      return isNaN(num) ? '300,000' : fmtNum(num);
+      return isNaN(num) ? '' : fmtNum(num);
     }
-    return '300,000';
+    return '';
   });
-  const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '착수금 결제 후 매월 분납 가능 (송달료 포함)');
+  const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '');
 
   const totalFee = parseInt(totalFeeStr.replace(/,/g, ''), 10) || 0;
   const downPayment = parseInt(downPaymentStr.replace(/,/g, ''), 10) || 0;
@@ -273,13 +280,30 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
 
   // Section 4: Lawyer Opinion
   const courtName = (rehabCalcResult as any).court || consultRequest?.financialProfile?.selectedCourt || '';
+
+  // 절차 (B-5d 파산 제안서 모드) — 저장된 사건 유형으로만 정하고 변호사가 바꿀 수 있다
+  const [procedure, setProcedure] = useState<'rehab' | 'bankruptcy'>(
+    initialDraft?.procedure ?? (isBankruptcyCaseType(null, consultRequest) ? 'bankruptcy' : 'rehab')
+  );
+  const isBankruptcyProposal = procedure === 'bankruptcy';
+  const [validDays, setValidDays] = useState<number>(initialDraft?.validDays ?? 30);
+  const changeProcedure = (next: 'rehab' | 'bankruptcy') => {
+    setProcedure(next);
+    if (next === 'bankruptcy' && !courtDepositStr) {
+      const dep = bankruptcyDepositDefault(courtName);
+      if (dep.amountWon) setCourtDepositStr(fmtNum(dep.amountWon));
+    }
+  };
   
   const defaultOpinion = useMemo(() => {
+    if (procedure === 'bankruptcy') {
+      return `입력하신 정보 기준으로 개인파산·면책 신청을 검토할 수 있는 사안입니다.\n\n소득·재산·채무 자료를 확인해 지급불능에 이른 경위를 정리하고, 파산과 면책을 함께 신청하겠습니다. 파산관재인 선임과 예납금은 법원이 정하며, 면책 여부도 법원 판단 사항입니다.`;
+    }
     if (aiAnalysis) {
       return `입력하신 정보 기준으로 개인회생 신청을 검토할 수 있는 사안입니다.\n\n현재 월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 계산되며, ${rehabCalcResult.repaymentMonths}개월 동안 월 ${formatCurrency(rehabCalcResult.monthlyPayment)}씩 변제하는 계획을 검토했습니다. 서류 확인 후 변제계획안을 확정하겠습니다.\n\n${courtName ? `${courtName}의 ` : '관할 법원의 '}실무 기준에 맞추어 접수 시 금지명령을 함께 신청하고, 인가 결정까지 절차를 성실히 진행하겠습니다. (결정 여부와 시기는 법원 판단 사항입니다)`;
     }
     return `입력하신 정보 기준으로 개인회생 신청을 검토할 수 있는 사안입니다.\n\n의뢰인님의 소득과 생계비를 종합 고려한 예상 월 변제금은 ${formatCurrency(rehabCalcResult.monthlyPayment)}이며, 서류 확인 후 변제계획안을 확정하겠습니다.\n\n접수 시 금지명령을 함께 신청하여 채권 추심에 대응하겠습니다. (인용 여부와 시기는 법원 판단 사항입니다)`;
-  }, [aiAnalysis, rehabCalcResult, courtName]);
+  }, [aiAnalysis, rehabCalcResult, courtName, procedure]);
 
   const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? defaultOpinion);
   // 변호사가 보고서·플랜에서 직접 정한 월 변제금·기간 (없으면 계산값)
@@ -377,10 +401,10 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       onDraftChange({
         totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo,
         lawyerOpinion, specialNotes, clientAnswers,
-        includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride,
+        includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride, procedure, validDays,
       });
     }
-  }, [totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride, onDraftChange]);
+  }, [totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes, planOverride, procedure, validDays, onDraftChange]);
 
   // Derived Summary Values
   const totalDebt = rehabUserInput.totalDebt || 0;
@@ -452,7 +476,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       }
     } : {}),
     rehabUserInput,
-    rehabCalcResult
+    rehabCalcResult,
+    procedure,
+    validDays,
   });
 
   // 발송 직전 검증 (ST-6): 공통 사전 + 사무소 단어. 기본 권고(사유 적고 그대로 보내기 + 기록), 사무소가 '엄격'이면 막음
@@ -622,12 +648,15 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 },
                 reviewGrade: aiAnalysis?.reviewGrade || 'NORMAL_REVIEW'
               } : undefined,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              procedure,
+              validDays,
             }}
             userInput={rehabUserInput}
             calcResult={rehabCalcResult}
             embedded={true}
             isClientViewer={false}
+            layout="client"
           />
         </div>
       </div>
@@ -703,11 +732,44 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             )}
           </div>
 
-          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-            rehabCalcResult.status === 'POSSIBLE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-          }`}>
-            {rehabCalcResult.status === 'POSSIBLE' ? '✓ 신청 적격' : '⚠️ 보완 대상'}
-          </span>
+          {!isBankruptcyProposal && (
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+              rehabCalcResult.status === 'POSSIBLE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {rehabCalcResult.status === 'POSSIBLE' ? '계산상 진행 가능' : '보완 검토 필요'}
+            </span>
+          )}
+        </div>
+
+        {/* ── 절차·유효기간 (B-5d) ── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div role="radiogroup" aria-label="제안서 절차" className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5">
+            {(['rehab', 'bankruptcy'] as const).map(pv => (
+              <button
+                key={pv}
+                type="button"
+                role="radio"
+                aria-checked={procedure === pv}
+                onClick={() => changeProcedure(pv)}
+                className={`px-3 min-h-[36px] rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer ${procedure === pv ? 'bg-[#1E3A5F] text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+              >
+                {pv === 'rehab' ? '개인회생 제안서' : '개인파산·면책 제안서'}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            유효기간
+            <select
+              value={validDays}
+              onChange={(e) => setValidDays(Number(e.target.value))}
+              className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white"
+            >
+              {[14, 30, 45, 60].map(d => <option key={d} value={d}>{d}일</option>)}
+            </select>
+          </label>
+          {isBankruptcyProposal && (
+            <span className="text-xs text-slate-600">파산 제안서는 월 변제금·기간을 보내지 않아요. 예납금은 법원 기준이 있으면 미리 채워요.</span>
+          )}
         </div>
 
         {/* ── 3. 예상 수임료 및 분납 패키지 (10초 퀵 프리셋) ── */}

@@ -14,6 +14,10 @@ export interface ProposalDraftState {
   includeCourtNotes: boolean;
   /** 변호사가 직접 정한 월 변제금·기간 (없으면 계산값) */
   planOverride?: { monthlyPayment: number; months: number } | null;
+  /** 제안서 절차 (B-5d 파산 제안서 모드) */
+  procedure?: 'rehab' | 'bankruptcy';
+  /** 유효기간 (일, 기본 30) */
+  validDays?: number;
 }
 
 export function useProposalDraft(clientId: string) {

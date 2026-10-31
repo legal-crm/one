@@ -25,6 +25,9 @@ import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../rehab-chatbot-packa
 import { downloadProposalPdf } from '../../services/proposal/proposalPdf';
 import ModalPortal from './ModalPortal';
 import { getRecognizedLivingCost2026 } from '../../services/repayment/rehabLegalCore';
+import ClientProposalReport from './proposal/ClientProposalReport';
+import { proposalFaqs, summarizeProposalInput, type ProposalProcedure, type ProposalSnapshot } from '../../services/proposal/clientProposalModel';
+import { isBankruptcyCaseType } from '../../services/cases/caseTypeOf';
 
 // ── 의뢰인 화면 표시 원칙 ──
 // 변호사가 작성하지 않은 소견·계획을 기본 문구로 채워 변호사 이름 아래 보여주지 않는다.
@@ -100,6 +103,10 @@ export interface PremiumReportData {
   recommendedStrategy?: string;
   clientQnA?: Array<{ question: string; answer: string; }>;
   aiInsights?: any;
+  /** 제안서 절차 (B-5d) */
+  procedure?: ProposalProcedure;
+  validDays?: number;
+  snapshot?: ProposalSnapshot;
 }
 
 export interface PremiumProposalReportModalProps {
@@ -122,6 +129,10 @@ export interface PremiumProposalReportModalProps {
   isContracted?: boolean;
   embedded?: boolean;
   isLawyerEditor?: boolean;
+  /** 'client' = 의뢰인용 한 줄 스크롤 화면(B-5c), 'classic' = 탭 화면(변호사 편집). 생략하면 의뢰인 화면일 때 'client' */
+  layout?: 'client' | 'classic';
+  /** 의뢰인이 제안서에서 질문·정정을 보내면 상담방 입력창에 넣는다 */
+  onAskLawyer?: (text: string) => void;
   onApplyChanges?: (updatedData: {
     monthlyPayment: number;
     repaymentMonths: number;
@@ -148,6 +159,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   isContracted = false,
   embedded = false,
   isLawyerEditor = false,
+  layout,
+  onAskLawyer,
   onApplyChanges
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'statistics' | 'roadmap' | 'faq'>('overview');
@@ -306,6 +319,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     ? Math.min(100, Math.max(0, Math.round((estimatedReduction / totalDebt) * 100))) 
     : (rawDebtReductionRate || 0);
 
+  // 제안서 스냅샷 (B-5d, 발송 때 저장) — 있으면 확정값·입력 요약·유효기간을 이 값으로 쓴다
+  const snapshot: ProposalSnapshot | undefined =
+    (proposalProp?.snapshot && proposalProp.snapshot.v === 1 ? proposalProp.snapshot : undefined) ||
+    ((reportData as any)?.snapshot && (reportData as any).snapshot.v === 1 ? (reportData as any).snapshot : undefined);
+  const procedure: ProposalProcedure =
+    snapshot?.procedure ||
+    (proposalProp?.procedureType === 'bankruptcy' || (reportData as any)?.procedure === 'bankruptcy' ? 'bankruptcy' : undefined) ||
+    (isBankruptcyCaseType(null, clientInfo) ? 'bankruptcy' : 'rehab');
+
   // ── 고객 상황 맞춤형 동적 FAQ 추출 로직 ──
   const effectiveUserInput = useMemo(() => {
     return (
@@ -318,147 +340,17 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     );
   }, [userInputProp, reportData, proposalProp, clientInfo]);
 
+  // 상황별 질문과 답 — 의뢰인 화면과 같은 중립 문구 한 곳(clientProposalModel.proposalFaqs)에서 가져온다 (B-5b)
+  // (이전: 이모지 배지, "전혀 아닙니다!", "기각 없이 안전하게", 2026 고정 수치 등)
   const personalizedFaqs = useMemo(() => {
-    const list: Array<{
-      q: string;
-      a: string;
-      badge: { label: string; color: string };
-      tip?: string;
-    }> = [];
-
-    const fp = clientInfo?.financialProfile;
-    const housingType = effectiveUserInput.housingType || (fp as any)?.housingType;
-    const deposit = effectiveUserInput.deposit || fp?.deposit || 0;
-    const isMarried = effectiveUserInput.isMarried || effectiveUserInput.maritalStatus === 'married';
-    const spouseAssets = effectiveUserInput.spouseAssets || 0;
-    const spouseIncome = effectiveUserInput.spouseIncome || 0;
-    const speculativeLoss = effectiveUserInput.speculativeLoss || (fp as any)?.speculativeLoss || 0;
-    const gamblingLoss = effectiveUserInput.gamblingLoss || (fp as any)?.gamblingDebt || 0;
-    const riskFactor = effectiveUserInput.riskFactor || (fp as any)?.riskFactor;
-    const employmentType = effectiveUserInput.employmentType || (fp as any)?.incomeType;
-    const priorityDebt = effectiveUserInput.priorityDebt || (fp as any)?.priorityDebt || 0;
-    const familySize = effectiveUserInput.familySize || fp?.dependents || 1;
-    const minorChildren = effectiveUserInput.minorChildren || 0;
-
-    // 1. 자가 주택 보유
-    if (housingType === 'owned' || (clientInfo as any)?.hasOwnedHouse) {
-      list.push({
-        badge: { label: '🏠 자가 주택 맞춤', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-        q: '살고 있는 집(자가 아파트·주택)이 경매로 넘어가거나 빼앗기나요?',
-        a: '집에 담보대출(근저당권)이 설정되어 있더라도, 담보대출 이자를 정상 납부하면서 변제계획을 수행하면 집을 유지할 수 있습니다. 단, 주택 시세에서 담보대출금을 뺀 순자산 가치(청산가치)보다 3~5년간 갚는 총 변제금이 더 많아야 합니다. 담보대출 유지 전략을 변호사와 사전에 정밀 검토하세요.',
-        tip: '시세 감정평가서 및 대출 잔액 증명서를 미리 준비하시면 정확한 청산가치를 산출할 수 있습니다.'
-      });
-      list.push({
-        badge: { label: '🏠 자가 주택 맞춤', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-        q: '집 시세에서 대출을 뺀 금액(청산가치)은 변제금에 어떻게 반영되나요?',
-        a: '예를 들어 아파트 시세 3억에 주담대 2억이라면, 순자산 1억원이 본인의 재산(청산가치)으로 잡힙니다. 개인회생은 "재산보다 많이 갚아야 한다"는 원칙이 있으므로, 3~5년간 갚는 총 변제금이 최소 1억원 이상이어야 합니다. 이에 따라 월 변제금이나 기간(최대 60개월)이 조정됩니다.'
-      });
-    }
-
-    // 2. 전·월세 보증금
-    if (housingType === 'rent' || housingType === 'jeonse' || deposit > 0) {
-      list.push({
-        badge: { label: '🏢 전·월세 보증금 맞춤', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-        q: '전세나 월세 보증금을 법원에 빼앗기거나 집에서 쫓겨나나요?',
-        a: '전혀 아닙니다! 법으로 보장되는 "소액임차보증금 최우선변제금" 범위 내라면 전액 안전하게 보호됩니다. (2026년 기준 서울 5,500만원, 수도권 과밀억제권역 4,800만원, 광역시 2,800만원, 그 외 2,500만원까지 공제). 이 한도 내의 보증금은 재산(청산가치)에 0원으로 잡혀 안전하게 집을 유지할 수 있습니다.',
-        tip: '임대차계약서 확정일자 날인본을 준비해 두시면 법원 소액보증금 공제 적용이 즉시 가능합니다.'
-      });
-      if (deposit > 5500) {
-        list.push({
-          badge: { label: '🏢 고액 보증금 맞춤', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-          q: '보증금이 소액보증금 공제 한도를 넘으면 어떻게 되나요?',
-          a: '예를 들어 서울에서 보증금이 8,000만원인 경우, 보호 한도인 5,500만원을 뺀 초과분 2,500만원만 재산에 반영됩니다. 집을 비워야 하는 것이 아니며, 3년간 갚을 총액이 2,500만원을 넘기만 하면 보증금을 온전히 유지할 수 있습니다.'
-        });
-      }
-    }
-
-    // 3. 배우자 재산 / 기혼자
-    if (isMarried || spouseAssets > 0 || spouseIncome > 0) {
-      list.push({
-        badge: { label: '💍 배우자 재산 맞춤', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-        q: '제 개인회생 때문에 배우자 명의의 재산이나 통장, 신용에 피해가 가나요?',
-        a: '개인회생은 본인 명의 채무만 조정하는 절차이므로 배우자의 신용점수나 금융 거래에는 아무런 영향이 없습니다. 배우자 명의 통장, 신용카드도 정상 사용 가능합니다. 단, 혼인 중 형성된 배우자 재산의 50%를 청산가치에 반영하라는 법원 보정이 나올 수 있으나, 배우자의 고유재산(결혼 전 형성, 상속·증여 등)임을 입증하면 반영 비율을 최소화할 수 있습니다.',
-        tip: '배우자 재산 형성 과정(부모 지원, 결혼 전 자금 등)을 소명할 수 있는 금융자료를 상담 시 지참하세요.'
-      });
-      list.push({
-        badge: { label: '💍 배우자 소득 맞춤', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-        q: '배우자 소득이 제 월급보다 많은데, 변제금이 올라가나요?',
-        a: '배우자 소득이 많다고 본인의 월 변제금이 강제로 늘어나지는 않습니다. 다만, 미성년 자녀를 부양가족으로 올릴 때 배우자의 소득이 더 높으면 자녀가 배우자의 부양으로 인정되어 본인의 인정 생계비가 다소 줄어들 수 있습니다. 소득 비율에 맞춘 부양가족 배분 전략을 변호사가 안내해 드립니다.'
-      });
-    }
-
-    // 4. 주식 / 코인 / 도박 투자 손실
-    if (speculativeLoss > 0 || gamblingLoss > 0 || riskFactor === 'investment' || riskFactor === 'gambling') {
-      list.push({
-        badge: { label: '📈 투자·코인 손실 맞춤', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-        q: '주식, 코인 등 투자나 도박으로 생긴 빚도 개인회생 대상이 되나요?',
-        a: '개인회생은 채무 발생 원인만으로 신청을 막지 않으므로 투자·도박으로 생긴 채무도 변제계획에 포함할 수 있습니다. 다만 최근 채무나 낭비 정황은 법원이 자세히 묻습니다. 회생법원 실무준칙(제408호)은 투자 손실금을 청산가치에 더하지 않는 것을 원칙으로 하지만, 법원과 사건 사정에 따라 판단이 달라질 수 있습니다.',
-        tip: '관할 법원에 따라 준칙 적용 여부가 다르므로, 관할 법원 맞춤 전략을 변호사와 상의하세요.'
-      });
-      list.push({
-        badge: { label: '📈 최근 대출 소명 맞춤', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-        q: '신청 직전에 대출받아 투자한 금액이 많은데 사기죄로 기각되나요?',
-        a: '신청 직전 집중 대출은 금융기관에서 이의를 제기할 수 있습니다. 하지만 대출금의 실제 사용처(계좌 입출금 및 거래소 입금 내역)와 투자 손실 내역을 투명하게 법원에 소명하고 최소 1~2회 이상 정상 상환한 내역을 갖추면 기각 없이 안전하게 개시결정을 받을 수 있습니다.'
-      });
-    }
-
-    // 5. 자영업자 / 프리랜서
-    if (['business', 'freelancer', 'daily'].includes(employmentType || '')) {
-      list.push({
-        badge: { label: '💼 자영업·프리랜서 맞춤', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-        q: '자영업자(사업자)인데 소득이 매달 불규칙해요. 소득 입증은 어떻게 하나요?',
-        a: '최근 1년간의 부가가치세 과세표준증명, 종합소득세 신고서, 사업자 통장 입출금 내역을 토대로 월평균 순소득(매출 - 필요경비)을 산출합니다. 최근 매출이 급감했다면 최근 3~6개월의 매출 추이를 소명하여 인정 소득을 낮춤으로써 월 변제금을 유리하게 낮출 수 있습니다.'
-      });
-      list.push({
-        badge: { label: '💼 사업자등록 유지 맞춤', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-        q: '사업자등록을 유지하면서 계속 가게나 영업을 운영할 수 있나요?',
-        a: '대부분 가능합니다. 개인회생은 영업을 계속해 얻는 소득으로 변제하는 제도이므로 사업자등록이 말소되지 않으며, 거래처와의 계약 및 사업 활동을 정상적으로 계속할 수 있습니다.'
-      });
-    }
-
-    // 6. 세금 체납
-    if (priorityDebt > 0) {
-      list.push({
-        badge: { label: '⚖️ 세금 체납 맞춤', color: 'bg-slate-100 text-slate-700 border-slate-300' },
-        q: '국세나 지방세, 국민건강보험료 체납액도 줄어드나요?',
-        a: '세금과 4대보험 체납액은 "우선권 있는 채권"으로 법률상 원금 감면은 불가능합니다. 하지만 36개월 변제기간 중 전반부(최대 18개월) 동안 세금을 최우선으로 전액 분할 상환하도록 계획안을 편성합니다. 법원 개시결정이 내려지면 세무서의 통장 압류나 급여 압류도 즉시 해제 신청을 할 수 있습니다.'
-      });
-    }
-
-    // 7. 100% 변제율 판정
-    if (debtReductionRate === 0 || (monthlyPayment * repaymentMonths >= totalDebt && totalDebt > 0)) {
-      list.push({
-        badge: { label: '💰 원금 전액 변제 계획', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-        q: '원금을 다 갚아야 한다면, 개인회생을 할 이유가 있나요?',
-        a: '원금을 모두 갚는 계획이라도 실익이 있을 수 있습니다. 개시결정 뒤에는 이자·연체이자가 더 붙지 않고, 금지·중지명령이 나오면 추심과 강제집행이 멈춥니다. 변제를 마치고 면책결정을 받으면 연체 정보가 정리됩니다. 사건마다 다르므로 담당 변호사와 확인해 주세요.'
-      });
-    }
-
-    // 8. 부양가족 있는 다인가구
-    if (familySize > 1 || minorChildren > 0) {
-      list.push({
-        badge: { label: '👨‍👩‍👧 부양가족 생계비 맞춤', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-        q: '부양가족이 있으면 매달 내는 변제금이 어떻게 줄어드나요?',
-        a: '법원이 보장하는 생활비(인정 생계비)는 가구원 수에 따라 대폭 커집니다 (2026년 기준 1인 약 154만원 → 2인 약 254만원 → 3인 약 325만원). 소득에서 이 생계비를 뺀 나머지만 변제금으로 내기 때문에, 미성년 자녀나 65세 이상 부모님을 부양가족으로 인정받을수록 매달 내야 할 돈이 수십만 원 이상 획기적으로 줄어듭니다.'
-      });
-    }
-
-    // 기본 케이스 (위 조건이 아무것도 없거나 1개 미만일 때)
-    if (list.length === 0) {
-      list.push({
-        badge: { label: '🎯 맞춤 진단', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-        q: '급여소득자인데 회사 몰래 진행할 수 있나요?',
-        a: '대리인이 있으면 법원 우편물은 보통 변호사 사무실로 송달됩니다. 다만 급여 압류가 이미 있거나 재직·급여 자료를 회사에서 발급받아야 하는 경우 회사가 알 수 있으니, 자료 발급 방법을 변호사와 미리 상의해 주세요.'
-      });
-      list.push({
-        badge: { label: '🎯 맞춤 진단', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-        q: '변제금 산정 시 인정 생계비는 어떻게 계산되나요?',
-        a: '보건복지부 기준 중위소득의 60%를 기본 생계비로 인정받습니다. 여기에 월세 지출, 지속적인 의료비나 교육비가 있다면 추가 생계비로 신청하여 월 변제금을 낮출 수 있습니다.'
-      });
-    }
-
-    return list;
-  }, [effectiveUserInput, clientInfo, totalDebt, monthlyPayment, repaymentMonths, debtReductionRate]);
+    const merged = { ...((clientInfo as any)?.financialProfile || {}), ...effectiveUserInput };
+    return proposalFaqs(procedure, merged).map(f => ({
+      q: f.q,
+      a: f.a,
+      badge: { label: f.tag || '공통', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+      tip: undefined as string | undefined,
+    }));
+  }, [effectiveUserInput, clientInfo, procedure]);
 
   // Fees
   const rawFees = reportData?.fees || proposalProp?.fees || proposalProp || {};
@@ -701,17 +593,17 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       ].filter(Boolean) as Array<{ label: string; value: string }> : undefined;
       const res = await downloadProposalPdf({
         documentId: proposalId,
-        issuedAt: proposalProp?.createdAt || reportData?.createdAt,
-        validDays: Number(proposalProp?.validDays) || 30,
+        issuedAt: snapshot?.issuedAt || proposalProp?.createdAt || reportData?.createdAt,
+        validDays: snapshot?.validDays || Number(proposalProp?.validDays) || 30,
         lawyerName: lawyerName || '담당 변호사',
         lawyerFirmName,
         clientLabel: isClientView ? '본인' : (clientName || '의뢰인'),
-        procedure: proposalProp?.procedureType || proposalProp?.caseType || '개인회생',
+        procedure: procedure === 'bankruptcy' ? '개인파산·면책' : '개인회생',
         courtName,
         totalDebt,
-        monthlyPayment,
-        repaymentMonths,
-        totalRepayment: totalRepaymentCalculated,
+        monthlyPayment: procedure === 'bankruptcy' ? 0 : (snapshot?.confirmed?.monthlyPaymentWon ?? monthlyPayment),
+        repaymentMonths: procedure === 'bankruptcy' ? 0 : (snapshot?.confirmed?.months ?? repaymentMonths),
+        totalRepayment: procedure === 'bankruptcy' ? 0 : (snapshot?.confirmed?.totalRepaymentWon ?? totalRepaymentCalculated),
         lawyerOpinion: lawyerComment || NOT_WRITTEN_TEXT,
         specialNotes,
         totalFeeWon,
@@ -745,6 +637,78 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   };
 
   if (!isOpen && !embedded) return null;
+
+  // ── 의뢰인용 한 줄 스크롤 화면 (B-5c·B-5d) ──
+  const useClientLayout = !isLawyerEditor && (layout === 'client' || (layout !== 'classic' && isClientView));
+  if (useClientLayout) {
+    const conf = snapshot?.confirmed;
+    const fp: any = (clientInfo as any)?.financialProfile || {};
+    // 스냅샷이 없는 이전 제안서: 계산 입력값 → 상담 요청 정리 자료(만원 단위) 순으로 요약
+    const fallbackInput = clientInput
+      ? summarizeProposalInput(clientInput, isCourtKnown ? courtName : '')
+      : summarizeProposalInput({
+          familySize: fp.dependents || fp.familySize,
+          monthlyIncome: Number(fp.income) > 0 ? Number(fp.income) * 10000 : undefined,
+          totalDebt: profileDebtTotalWon || totalDebt || undefined,
+          employmentType: fp.incomeType,
+          housingType: fp.housingType,
+          creditorCount: fp.creditorCount,
+        }, isCourtKnown ? courtName : '');
+    const r: any = activeCalcResult || {};
+    const rows = isAIPremium ? [
+      r.recognizedLivingCost ? { label: '인정 생계비(월)', value: `${Math.round(r.recognizedLivingCost).toLocaleString('ko-KR')}원`, termKey: 'livingCost' } : null,
+      r.availableIncome ? { label: '가용소득(월)', value: `${Math.round(r.availableIncome).toLocaleString('ko-KR')}원`, termKey: 'disposableIncome' } : null,
+      r.liquidationValue ? { label: '청산가치', value: `${Math.round(r.liquidationValue).toLocaleString('ko-KR')}원`, termKey: 'liquidationValue' } : null,
+      r.priorityRepayment ? { label: '우선채권', value: `${Math.round(r.priorityRepayment).toLocaleString('ko-KR')}원`, termKey: 'priorityClaim' } : null,
+      r.planReason ? { label: '기간을 정한 이유', value: String(r.planReason) } : null,
+    ].filter(Boolean) as Array<{ label: string; value: string; termKey?: string }> : undefined;
+    const report = (
+      <ClientProposalReport
+        procedure={procedure}
+        lawyerName={lawyerName}
+        lawyerFirmName={lawyerFirmName}
+        lawyerAvatar={lawyerAvatar}
+        lawyerPhone={isClientView ? lawyerPhone : ''}
+        courtName={courtName}
+        isCourtKnown={isCourtKnown}
+        issuedAt={snapshot?.issuedAt || proposalProp?.createdAt || reportData?.createdAt}
+        validDays={snapshot?.validDays || Number(proposalProp?.validDays) || reportData?.validDays || undefined}
+        expiresAt={snapshot?.expiresAt || proposalProp?.expiresAt || reportData?.expiresAt}
+        totalDebtWon={totalDebt}
+        monthlyPaymentWon={conf ? conf.monthlyPaymentWon : monthlyPayment}
+        months={conf ? conf.months : repaymentMonths}
+        totalRepaymentWon={conf ? conf.totalRepaymentWon : totalRepaymentCalculated}
+        input={snapshot?.input || fallbackInput}
+        lawyerComment={isClientView ? authoredLawyerComment : lawyerComment}
+        specialNotes={specialNotes}
+        clientQnA={(reportData?.clientQnA || clientQnA || []).filter((q: any) => q && q.question)}
+        fees={{
+          totalFeeWon, downPaymentWon, installments, monthlyInstallmentWon, courtDepositWon,
+          notice: typeof additionalCostsNotice === 'string' ? additionalCostsNotice : undefined,
+        }}
+        analysisRows={rows}
+        faqInput={{ ...fp, ...effectiveUserInput }}
+        isContractDone={isContractDone}
+        canAccept={!!(onAcceptProposal || onAppointLawyer)}
+        onAccept={handleAccept}
+        onAskLawyer={onAskLawyer || (onContactLawyer ? () => onContactLawyer({ name: lawyerName, firmName: lawyerFirmName, phone: lawyerPhone }) : undefined)}
+        onExportPdf={handleExportPDF}
+        isGeneratingPdf={isGeneratingPdf}
+        onClose={embedded ? undefined : onClose}
+        preview={!isClientView}
+      />
+    );
+    if (embedded) return <div className="w-full rounded-3xl overflow-hidden border border-slate-200">{report}</div>;
+    return (
+      <ModalPortal>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/70 flex items-stretch sm:items-center justify-center sm:p-5">
+          <div role="dialog" aria-modal="true" aria-labelledby="report-modal-title" className="relative w-full sm:max-w-3xl bg-slate-50 sm:rounded-3xl shadow-2xl overflow-y-auto h-full sm:h-auto sm:max-h-[calc(100vh-2.5rem)]">
+            {report}
+          </div>
+        </div>
+      </ModalPortal>
+    );
+  }
 
   const modalContent = (
     <div className={embedded ? "w-full" : "fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"}>
@@ -935,10 +899,10 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     onChange={(e) => setEditRepaymentMonths(parseInt(e.target.value, 10))}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:border-indigo-400 focus:outline-none cursor-pointer"
                   >
-                    <option value={24}>24개월 (청년/취약계층 특례)</option>
-                    <option value={36}>36개월 (표준 변제기간)</option>
-                    <option value={48}>48개월 (연장 변제)</option>
-                    <option value={60}>60개월 (최대 변제기간)</option>
+                    <option value={24}>24개월 (3년 미만 단축 사유 검토)</option>
+                    <option value={36}>36개월 (원칙)</option>
+                    <option value={48}>48개월 (3년 초과 사유 검토)</option>
+                    <option value={60}>60개월 (최대)</option>
                   </select>
                   <div className="text-[10px] text-slate-400">
                     총 변제액: {(editTotalRepayment).toLocaleString()}원

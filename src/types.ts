@@ -1192,6 +1192,13 @@ export interface ConsultProposal {
   approvedAt?: string;           // 승인 일시
   rejectionReason?: string;      // 반려 사유
   proposalData?: any;            // 원본 ProposalData (검토용 전체 데이터)
+  /** 절차 (B-5d) — 'bankruptcy'면 월 변제금·기간 없음 */
+  procedureType?: 'rehab' | 'bankruptcy';
+  /** 유효기간 (일, 기본 30) */
+  validDays?: number;
+  expiresAt?: string;
+  /** 발송 스냅샷 (입력 요약·확정값·기준 연도, services/proposal/clientProposalModel.ProposalSnapshot) */
+  snapshot?: any;
   viewedAt?: string;             // 고객 제안서 열람 시각
   phoneConsultRequestedAt?: string; // 고객 전화상담 요청 시각
 }

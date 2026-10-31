@@ -110,7 +110,9 @@ export function buildProposalPdfHtml(d: ProposalPdfData): string {
     ${d.courtName ? row('예상 관할', d.courtName) : ''}
   </table>
 
-  <h2>1. 변제 계획 검토 결과</h2>
+  ${bankruptcy ? `<h2>1. 파산·면책 검토</h2>
+  <table>${row('총 채무(신고 기준)', won(d.totalDebt))}</table>
+  <p class="small">개인파산은 매달 갚는 금액이 없고, 법원이 지급불능 여부와 면책 여부를 정해요. 파산관재인 선임과 예납금은 법원이 정해요.</p>` : `<h2>1. 변제 계획 검토 결과</h2>
   <table class="key">
     ${row('월 변제금(예상)', won(d.monthlyPayment))}
     ${row('변제 기간(예상)', d.repaymentMonths ? `${d.repaymentMonths}개월` : '미입력')}
@@ -122,7 +124,7 @@ export function buildProposalPdfHtml(d: ProposalPdfData): string {
   </table>
   ${d.monthlyPayment && d.repaymentMonths ? `<div class="box">${svgSchedule(d.repaymentMonths, d.monthlyPayment)}</div>` : ''}
   ${d.totalDebt && d.totalRepayment ? `<div class="box">${svgCompare(d.totalDebt, d.totalRepayment)}</div>` : ''}
-  <p class="small">위 금액은 지금까지 받은 자료로 변호사가 검토한 예상이에요. 법원 심사·채권 확정·소득과 생계비 인정 범위에 따라 달라질 수 있어요.</p>
+  <p class="small">위 금액은 지금까지 받은 자료로 변호사가 검토한 예상이에요. 법원 심사·채권 확정·소득과 생계비 인정 범위에 따라 달라질 수 있어요.</p>`}
 
   ${d.includeAnalysis && d.analysisRows && d.analysisRows.length ? `<h2>2. 검토 근거</h2><table>${d.analysisRows.map(r => row(r.label, r.value)).join('')}</table>` : ''}
 

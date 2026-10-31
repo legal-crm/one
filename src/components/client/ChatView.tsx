@@ -825,6 +825,20 @@ export default function ChatView({
           clientInfo={currentRequest || activeResult}
           onAppointLawyer={() => setContractSelectProposal(selectedProposalForReport)}
           onAcceptProposal={() => setContractSelectProposal(selectedProposalForReport)}
+          onAskLawyer={(text) => {
+            // 제안서에서 질문·정보 정정 → 그 변호사 대화 입력창에 넣는다 (B-5d). 보낼 수 없으면 복사만
+            const lid = selectedProposalForReport.lawyerId;
+            setSelectedProposalForReport(null);
+            const closedForLawyer = isRequestClosed || (!!decidedLawyerId && decidedLawyerId !== lid);
+            if (isKnownChatLawyer(lid) && !closedForLawyer) {
+              setActiveChatLawyerId(lid);
+              onSetChatInput(text);
+              setTimeout(() => composerRef.current?.focus(), 50);
+            } else {
+              navigator.clipboard?.writeText(text).catch(() => {});
+              toast.info('지금은 이 변호사에게 메시지를 보낼 수 없어요. 적은 내용을 복사해 두었어요.');
+            }
+          }}
         />
       )}
 

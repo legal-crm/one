@@ -34,6 +34,7 @@ import RequestTimeline from './lawyer/RequestTimeline';
 import NotificationBell from './lawyer/NotificationBell';
 import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
 import { confirmClientCopy, findProhibitedExpressions, loadOfficeCopyRules } from '../services/proposalCompliance';
+import { buildProposalSnapshot } from '../services/proposal/clientProposalModel';
 import { decideProposalReview, listPendingProposalReviews, registerSeal, requestProposalReview } from '../services/office/officeSettingsService';
 import OfficeSettingsPanel, { OfficeSealCard } from './lawyer/settings/OfficeSettingsPanel';
 import { loadSealCache } from '../services/office/sealCache';
@@ -1523,6 +1524,20 @@ export default function LawyerRole({
     }
 
     const isAIPremium = !!proposalData.aiInsights;
+    const isBankruptcyProposal = proposalData.procedure === 'bankruptcy';
+    const issuedAt = new Date().toISOString();
+    // 발송 스냅샷 (B-5d): 계산에 쓴 입력 요약·변호사 확정값·기준 연도·유효기간 — 의뢰인 화면은 이 값만 보여 준다
+    const snapshot = buildProposalSnapshot({
+      procedure: isBankruptcyProposal ? 'bankruptcy' : 'rehab',
+      validDays: proposalData.validDays,
+      issuedAt,
+      userInput: proposalData.rehabUserInput,
+      court: proposalData.diagnosis?.court,
+      monthlyPaymentWon: proposalData.diagnosis?.monthlyPayment,
+      months: proposalData.diagnosis?.repaymentMonths,
+      calcMonthlyPaymentWon: proposalData.rehabCalcResult?.monthlyPayment,
+      calcMonths: proposalData.rehabCalcResult?.repaymentMonths,
+    });
 
     // 의뢰인 비교표(client/room/ProposalCompareTable)가 읽는 값만 담은 요약 — 초안에 실제로 있는 값만 넣는다
     // (이전: AI 프리미엄이 아니면 proposalData를 저장하지 않아 착수금·예납금·수임료 메모가 '제안서 참고'로만 보였다)
@@ -1533,7 +1548,7 @@ export default function LawyerRole({
       if (value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value))) compareFees[key] = Number(value);
     }
     if (typeof draftFees.feeMemo === 'string' && draftFees.feeMemo.trim()) compareFees.feeMemo = draftFees.feeMemo.trim();
-    const draftMonths = Number(proposalData.diagnosis?.repaymentMonths);
+    const draftMonths = isBankruptcyProposal ? 0 : Number(proposalData.diagnosis?.repaymentMonths);
     const compareSummary = {
       fees: compareFees,
       ...(draftMonths > 0 ? { diagnosis: { repaymentMonths: draftMonths } } : {}),
@@ -1546,18 +1561,27 @@ export default function LawyerRole({
       lawyerAvatar: activeLawyer.avatar || activeLawyer.avatarData,
       firmName: activeLawyer.firmName || '개인 변호사',
       feasibility: proposalData.diagnosis.status === 'POSSIBLE' ? '진행 가능' : proposalData.diagnosis.status === 'DIFFICULT' ? '진행 어려움' : '진행 불가',
-      monthlyPayment: Math.round(proposalData.diagnosis.monthlyPayment / 10000),
-      duration: proposalData.diagnosis.repaymentMonths,
+      monthlyPayment: isBankruptcyProposal ? 0 : Math.round(proposalData.diagnosis.monthlyPayment / 10000),
+      duration: isBankruptcyProposal ? 0 : proposalData.diagnosis.repaymentMonths,
       reductionRate: proposalData.diagnosis.debtReductionRate,
       totalReduction: Math.round(proposalData.diagnosis.estimatedReduction / 10000),
       fee: Math.round(proposalData.fees.totalFee / 10000),
-      installment: `착수금 ${Math.round(proposalData.fees.downPayment / 10000)}만원, ${proposalData.fees.installments}회 분납`,
+      installment: proposalData.fees.totalFee > 0
+        ? [
+            proposalData.fees.downPayment > 0 ? `착수금 ${Math.round(proposalData.fees.downPayment / 10000)}만원` : '',
+            proposalData.fees.installments > 1 ? `${proposalData.fees.installments}회 분납` : '일시납',
+          ].filter(Boolean).join(', ')
+        : '',
       // '제안서 발송'은 소견 없이 보낼 때의 자리표시 문구 — 의뢰인 화면(client/proposalText.ts PLACEHOLDER_REMARKS)이
       // 이 문자열로 비교해 변호사 소견처럼 보이지 않게 하므로, 바꾸려면 그쪽과 함께 바꾼다
       remark: proposalData.lawyerOpinion || '제안서 발송',
       specialNotes: proposalData.specialNotes,
       clientQnA: proposalData.clientQnA,
-      createdAt: new Date().toISOString(),
+      createdAt: issuedAt,
+      procedureType: snapshot.procedure,
+      validDays: snapshot.validDays,
+      expiresAt: snapshot.expiresAt,
+      snapshot,
       // AI 프리미엄은 보고서 전체, 그 외에는 비교표용 요약
       proposalData: isAIPremium ? proposalData : compareSummary,
     };
@@ -1592,7 +1616,7 @@ export default function LawyerRole({
       ? `\n\n📊 정밀 분석 기반 진단입니다.\n• 채무 구조: 무담보 ${Math.round(proposalData.aiInsights.debtBreakdown.unsecured / 10000)}만원 / 담보 ${Math.round(proposalData.aiInsights.debtBreakdown.secured / 10000)}만원${proposalData.aiInsights.debtBreakdown.tax > 0 ? ` / 조세 ${Math.round(proposalData.aiInsights.debtBreakdown.tax / 10000)}만원` : ''}\n• 검토 등급: ${proposalData.aiInsights.reviewGrade === 'NORMAL_REVIEW' ? '일반 검토' : proposalData.aiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 검토' : '정밀 검토'}`
       : '';
 
-    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 변호사 검토 제안서를 보내드렸습니다:\n• 월 변제금(예상): ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}${aiSuffix}\n\n자세한 사항은 편하게 문의해 주세요.`;
+    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 변호사 검토 제안서를 보내드렸습니다:\n${isBankruptcyProposal ? '• 절차: 개인파산·면책' : `• 월 변제금(예상): ${monthlyText}`}\n• 수임료: ${proposalData.fees.totalFee > 0 ? feeText : '협의'}\n• 유효기간: ${snapshot.validDays}일\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}${aiSuffix}\n\n자세한 사항은 편하게 문의해 주세요.`;
 
     onAddMessage(
       reqId,

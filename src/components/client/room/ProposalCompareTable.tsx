@@ -2,6 +2,7 @@ import React from 'react';
 import type { ConsultProposal } from '../../../types';
 import { formatKoreanWon } from '../ui/form';
 import { feeTotalWon } from '../../../services/alimtokService';
+import { formatKoDate } from '../../../services/proposal/clientProposalModel';
 
 /**
  * 도착한 제안서 비교표 (2건 이상일 때)
@@ -20,11 +21,15 @@ interface Row {
   value: (p: ConsultProposal) => string;
 }
 
+const isBk = (p: ConsultProposal) => p.procedureType === 'bankruptcy';
+
 const ROWS: Row[] = [
-  { label: '예상 월 변제금', value: (p) => (Number(p.monthlyPayment) > 0 ? `${p.monthlyPayment}만원` : EMPTY) },
+  { label: '절차', value: (p) => (isBk(p) ? '개인파산·면책' : '개인회생') },
+  { label: '예상 월 변제금', value: (p) => (isBk(p) ? '해당 없음' : Number(p.monthlyPayment) > 0 ? `${p.monthlyPayment}만원` : EMPTY) },
   {
     label: '변제 기간',
     value: (p) => {
+      if (isBk(p)) return '해당 없음';
       const months = Number(p.duration) || Number(p.proposalData?.diagnosis?.repaymentMonths) || 0;
       return months > 0 ? `${months}개월` : EMPTY;
     },
@@ -47,6 +52,7 @@ const ROWS: Row[] = [
   },
   { label: '법원 예납금·실비', value: (p) => wonOrEmpty(p.proposalData?.fees?.courtDeposit) },
   { label: '수임료 메모', value: (p) => String(p.proposalData?.fees?.feeMemo || '').trim() || EMPTY },
+  { label: '유효기간', value: (p) => (p.expiresAt ? `${formatKoDate(p.expiresAt)}까지` : EMPTY) },
 ];
 
 export default function ProposalCompareTable({ proposals }: { proposals: ConsultProposal[] }) {
