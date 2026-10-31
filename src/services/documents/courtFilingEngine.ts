@@ -591,7 +591,8 @@ export function buildCourtFilingMasterData(
   const phone = request.phone && !request.phone.includes('*') ? request.phone : '';
   const office = getOfficeProfile(activeLawyerName);
 
-  const courtName = courtInfo?.courtName || request.court || '서울회생법원';
+  // 관할 법원은 기록된 값만 (이전: 없으면 '서울회생법원'을 넣어 다른 법원 사건 서식에 잘못 들어갔다). 비면 출력 전 검사가 막는다
+  const courtName = courtInfo?.courtName || request.court || '';
   const courtJurisdiction = detectCourtJurisdiction(courtName);
   // 사건번호는 접수 후 부여되므로 없으면 비워둔다 (이전: 무작위 가짜 사건번호 생성)
   const caseNumber = courtInfo?.caseNumber || '';
@@ -599,9 +600,8 @@ export function buildCourtFilingMasterData(
   const today = new Date();
   const applicationDateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}`;
   
-  const firstRepayDate = new Date(today);
-  firstRepayDate.setDate(firstRepayDate.getDate() + 90);
-  const firstRepayDateStr = `${firstRepayDate.getFullYear()}. ${String(firstRepayDate.getMonth() + 1).padStart(2, '0')}. 25`;
+  // 제1회 납입일은 법원 개시결정·변호사가 정한 값만 (이전: 오늘+90일의 25일을 지어 넣었다)
+  const firstRepayDateStr: string = (courtInfo as any)?.firstRepaymentDate || (crmExt as any)?.repaymentPlan?.firstRepaymentDate || '';
 
   const rawCreditors = repaymentPlan?.creditors || [];
   // 채권자는 변제계획안(부채증명서 동기화)에 입력된 것만 사용 — 없으면 빈 목록 (이전: 국민은행·신한카드 샘플)

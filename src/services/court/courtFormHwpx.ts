@@ -1,5 +1,5 @@
 // ============================================================
-// 법원 양식 HWPX 데이터 채움 (H-1 1묶음: D5100·D5106·D5110·D5113·D5114·위임장)
+// 법원 양식 HWPX 데이터 채움 (H-1 1묶음: D5100·D5106·D5101·D5103·D5105·D5110·D5113·D5114·위임장)
 //  * 양식(public/court-forms/hwpx)의 원래 글·표 칸 위치를 기준으로 사건 데이터를 넣는다 (hwpxBuilder)
 //  * 채울 위치를 찾지 못하면 CourtDocGuard가 내려받기를 막는다 → 대법원이 양식을 바꾸면 바로 드러난다
 //  * 주민등록번호는 사건 데이터에 없다(L8). 출력할 때 받은 값만 넣는다
@@ -11,12 +11,16 @@ import { basisWithDate, dotDate, headerBaseDate } from '../debt/debtLedgerRules'
 import type { HwpxEdit } from './hwpxBuilder';
 import { buildHwpx, fetchTemplate } from './hwpxBuilder';
 import { guard, runGuard, RRN_RE, type GuardIssue } from './courtDocGuard';
+import { d5101, d5103, d5105 } from './courtFormHwpxAttachments';
 
-export type FilledFormCode = 'D5100' | 'D5106' | 'D5110' | 'D5113' | 'D5114' | 'POA';
+export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5113' | 'D5114' | 'POA';
 
 export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string; order: number }> = {
   D5100: { title: '개인회생절차 개시신청서', path: '/court-forms/hwpx/개인회생절차 개시신청서(2021.4.20.시행)(D5100).hwpx', order: 1 },
   D5106: { title: '개인회생채권자목록', path: '/court-forms/hwpx/개인회생채권자목록(D5106).hwpx', order: 2 },
+  D5101: { title: '재산목록', path: '/court-forms/hwpx/재산목록(D5101).hwpx', order: 3 },
+  D5103: { title: '수입 및 지출에 관한 목록', path: '/court-forms/hwpx/수입 및 지출에 관한 목록(D5103).hwpx', order: 4 },
+  D5105: { title: '진술서', path: '/court-forms/hwpx/진술서(D5105).hwpx', order: 5 },
   D5110: { title: '변제계획안(가용소득만으로 변제)', path: '/court-forms/hwpx/변제계획안(가용소득만으로 변제하는 경우)(D5110) (1).hwpx', order: 6 },
   D5114: { title: '금지명령 신청서', path: '/court-forms/hwpx/금지명령 신청서(D5114).hwpx', order: 8 },
   D5113: { title: '중지명령 신청서', path: '/court-forms/hwpx/중지명령 신청서(D5113).hwpx', order: 9 },
@@ -49,7 +53,7 @@ const interest = (c: any): number => c.interest ?? c.currentInterest ?? 0;
 function d5100(d: CourtFilingMasterData, rrn: string): HwpxEdit[] {
   const r = d.repaymentSummary;
   const salary = d.debtor.employmentType !== '영업소득자';
-  const day = d.court.firstRepaymentDate?.match(/-(\d{2})$/)?.[1];
+  const day = d.court.firstRepaymentDate?.match(/(\d{1,2})\.?\s*$/)?.[1];
   return [
     { kind: 'cell', table: 0, row: 0, col: 2, text: d.debtor.name, label: '신청인 성명' },
     { kind: 'cell', table: 0, row: 0, col: 4, text: rrnFmt(rrn), label: '신청인 주민등록번호' },
@@ -244,6 +248,9 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
   switch (code) {
     case 'D5100': return d5100(d, rrn);
     case 'D5106': return d5106(d);
+    case 'D5101': return d5101(d);
+    case 'D5103': return d5103(d);
+    case 'D5105': return d5105(d);
     case 'D5110': return d5110(d);
     case 'D5113': return stayOrBan(d, rrn, 'D5113');
     case 'D5114': return stayOrBan(d, rrn, 'D5114');
@@ -253,7 +260,7 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
 
 /** 출력 전 검사 (H-3): 필수 항목·합계·주민번호 형식 */
 export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, rrn: string): { blocks: GuardIssue[]; warns: GuardIssue[]; ok: boolean } {
-  const needsRrn = code !== 'D5106' && code !== 'D5110';
+  const needsRrn = code !== 'D5106' && code !== 'D5110' && code !== 'D5101' && code !== 'D5103' && code !== 'D5105';
   const list = d.creditors || [];
   const r = d.repaymentSummary;
   return runGuard([
@@ -267,6 +274,10 @@ export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, r
     code === 'D5110' && r.liquidationValue > 0 && (r.presentValue ?? 0) > 0 && (r.presentValue ?? 0) < r.liquidationValue
       ? { level: 'block', message: '현재가치가 청산가치보다 적어요. 변제계획을 다시 확인해 주세요.' } : null,
     code === 'D5110' && r.meetsStatutoryMinimum === false ? { level: 'block', message: '최저변제액 기준을 채우지 못해요. 변제계획을 다시 확인해 주세요.' } : null,
+    code === 'D5105' && !String((d.statement as any)?.detailedReasonEssay || '').trim() ? { level: 'warn', message: '진술서의 구체적 사정이 비어 있어요. 한글에서 적어 주세요.' } : null,
+    code === 'D5103' && !(d.ledgerTotals?.monthlyAverageIncome || d.repaymentSummary.monthlyNetIncome) ? { level: 'warn', message: '월 수입이 비어 있어요. 급여 명세를 넣거나 한글에서 적어 주세요.' } : null,
+    code === 'D5103' && (d.repaymentSummary.additionalLivingCost || 0) > 0 ? { level: 'warn', message: '생계비가 60%를 넘어요. 뒷면 지출 내역(주거·의료·교육비)과 사유를 한글에서 채워 주세요.' } : null,
+    code === 'D5101' && (d.assets?.bankAccounts || []).length > 3 ? { level: 'warn', message: '예금 계좌가 3개를 넘어요. 나머지는 별지로 붙여 주세요.' } : null,
     code === 'D5113' && !(d.stayCases || []).length ? { level: 'warn', message: '중지할 압류 사건 정보가 없어요. 상대방·사건번호 칸을 한글에서 채워 주세요.' } : null,
     !caseNo(d) && code !== 'D5100' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
   ]);

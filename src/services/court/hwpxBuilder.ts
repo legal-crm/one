@@ -31,7 +31,9 @@ export function escapeXml(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    // 여러 줄 글(진술서 사정 등)은 한글 줄바꿈으로
+    .replace(/\r?\n/g, '<hp:lineBreak/>');
 }
 
 const unescapeXml = (s: string) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
