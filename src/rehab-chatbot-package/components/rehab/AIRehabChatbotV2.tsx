@@ -409,7 +409,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
     const handleCloseRequest = useCallback(() => {
         if (currentStep === 'intro' || currentStep === 'result' || showResult || stepHistory.length === 0) {
-            localStorage.removeItem('roi_rehab_chatbot_session');
+            sessionStorage.removeItem('roi_rehab_chatbot_session');
             onClose();
         } else {
             setShowExitConfirm(true);
@@ -540,7 +540,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             }
 
             // Check if there is an active saved session
-            const raw = localStorage.getItem('roi_rehab_chatbot_session');
+            const raw = sessionStorage.getItem('roi_rehab_chatbot_session');
             let foundSession = false;
             if (raw) {
                 try {
@@ -549,7 +549,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         foundSession = true;
                         setTimeout(() => {
                             addBotMessage(
-                                `이전에 정리하던 내용이 이 기기에 남아 있습니다.\n이어서 진행할까요?`,
+                                `이 창에서 정리하던 내용이 남아 있어요. (창을 닫으면 지워져요)\n이어서 진행할까요?`,
                                 [
                                     { label: '이어서 하기', value: 'resume' },
                                     { label: '처음부터 다시 하기', value: 'restart' }
@@ -643,7 +643,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 debtTypeValues,
                 savedAt: Date.now()
             };
-            localStorage.setItem('roi_rehab_chatbot_session', JSON.stringify(sessionData));
+            sessionStorage.setItem('roi_rehab_chatbot_session', JSON.stringify(sessionData));
         }
     }, [
         currentStep,
@@ -761,7 +761,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         switch (step) {
             case 'intro':
                 if (value === 'resume') {
-                    const raw = localStorage.getItem('roi_rehab_chatbot_session');
+                    const raw = sessionStorage.getItem('roi_rehab_chatbot_session');
                     if (raw) {
                         try {
                             const data = JSON.parse(raw);
@@ -829,7 +829,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }
                 }
                 
-                localStorage.removeItem('roi_rehab_chatbot_session');
+                sessionStorage.removeItem('roi_rehab_chatbot_session');
                 goToStep('address');
                 addBotMessage(
                     '지금 **살고 계신 곳**이 어디인가요?\n\n(예: 서울 강남구, 수원시 영통구)',
@@ -3633,7 +3633,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             setCurrentStep('result');
             setShowResult(true);
-            localStorage.removeItem('roi_rehab_chatbot_session');
+            sessionStorage.removeItem('roi_rehab_chatbot_session');
 
             if (onComplete) {
                 onComplete(calculationResult, input);
@@ -4254,7 +4254,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                     type="button"
                                     onClick={() => {
                                         setShowExitConfirm(false);
-                                        localStorage.removeItem('roi_rehab_chatbot_session');
+                                        sessionStorage.removeItem('roi_rehab_chatbot_session');
                                         onClose();
                                     }}
                                     className="flex-1 min-h-11 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"

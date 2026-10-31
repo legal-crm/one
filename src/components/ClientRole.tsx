@@ -42,6 +42,7 @@ import { usePageMeta, TAB_META } from '../hooks/usePageMeta';
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
 import type { PublicCalcInput } from '../services/repayment/publicCalculator';
+import IntakeReviewModal, { extraFactsText } from './client/intake/IntakeReviewModal';
 const QnAView = React.lazy(() => import('./client/QnAView'));
 const ChatView = React.lazy(() => import('./client/ChatView'));
 const NewsView = React.lazy(() => import('./client/NewsView'));
@@ -558,7 +559,7 @@ export default function ClientRole({
       if (d.type === 'secured') {
         banks += amt;
       } else if (d.type === 'tax') {
-        personals += amt;
+        // 세금·4대보험 체납은 priorityDebt 칸으로 따로 전달 (이전: '개인 채무'에 섞임, I-4)
       } else {
         cards += amt;
       }
@@ -584,6 +585,9 @@ export default function ClientRole({
       specialNoteLine = `\n• 특이사항: 1년 이내 도박으로 인한 채무액 ${formatKoreanCurrency(intakeData.gamblingLoss)}`;
     }
 
+    // 의뢰인이 입력한 재산 시가 합계 (계산값 아님)
+    const enteredAssetsTotal = (intakeData.assets || []).reduce((sum: number, a: any) => sum + (Number(a.marketValue) || 0), 0);
+
     const legalActionLabels: Record<string, string> = {
       collection_call: '독촉 전화/문자',
       court_order: '지급명령/소장 수령',
@@ -598,7 +602,7 @@ export default function ClientRole({
     const legalActionsStr = activeActions.length > 0 ? activeActions.join(', ') : '해당 없음';
 
     const updatedContent = `==================================
-📋 의뢰인 종합 사전 자가진단 리포트 (수정됨)
+📋 의뢰인 정리 자료 (내 상황 체크하기 입력 내용) (수정됨)
 ==================================
 
 [1. 가계 및 부양가족 현황]
@@ -609,9 +613,7 @@ export default function ClientRole({
 [2. 소득 및 자산 현황]
 • 직업 분류: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : intakeData.incomeSources[0]?.type === 'business' ? '자영업/개인사업자' : intakeData.incomeSources[0]?.type === 'freelancer' ? '프리랜서' : '무직'}
 • 월 평균 실수령액: ${formatKoreanCurrency(result.client.monthlyIncome)}
-• 인정 생계비: ${formatKoreanCurrency(result.base.living)}
-• 가용 소득 (예상 월납입금): ${formatKoreanCurrency(result.base.disposable)}
-• 총 자산가치 (청산가치): ${formatKoreanCurrency(result.base.liq)}
+• 입력한 재산 합계: ${formatKoreanCurrency(enteredAssetsTotal)}
   - 임대보증금: ${formatKoreanCurrency((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0))}
   - 배우자 자산: ${formatKoreanCurrency((intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0))}
   - 예상 퇴직금: ${intakeData.retirementPay ? formatKoreanCurrency(intakeData.retirementPay) : '없음'}${
@@ -632,7 +634,7 @@ export default function ClientRole({
 
 ----------------------------------
 💡 참고:
-- 가용 소득·청산가치는 의뢰인 입력값 기준 자동 계산입니다.
+- 의뢰인이 답한 내용 그대로입니다. 생계비·변제금 계산은 사무소 '사건 검토'에서 해 주세요.
 - 소득·재산 자료로 사실관계를 확인해 주세요.
 ==================================`;
 
@@ -1766,6 +1768,9 @@ export default function ClientRole({
     const debtManWon = Math.round(result.base.debtTotal / 10000);
     const assetsManWon = Math.round(result.base.liq / 10000);
     
+    // 의뢰인이 입력한 재산 시가 합계 (계산값 아님)
+    const enteredAssetsTotal = (intakeData.assets || []).reduce((sum, a: any) => sum + (Number(a.marketValue) || 0), 0);
+
     // Calculate detailed debt types
     let banks = 0;
     let cards = 0;
@@ -1781,7 +1786,7 @@ export default function ClientRole({
       if (d.type === 'secured') {
         banks += amt;
       } else if (d.type === 'tax') {
-        personals += amt;
+        // 세금·4대보험 체납은 priorityDebt 칸으로 따로 전달 (이전: '개인 채무'에 섞임, I-4)
       } else {
         cards += amt;
       }
@@ -1851,7 +1856,7 @@ export default function ClientRole({
       createdAt: new Date().toISOString(),
       title: `${intakeData.clientName}님의 개인회생 상담 요청`,
       content: `==================================
-📋 의뢰인 종합 사전 자가진단 리포트
+📋 의뢰인 정리 자료 (내 상황 체크하기 입력 내용)
 ==================================
 
 [1. 가계 및 부양가족 현황]
@@ -1862,9 +1867,7 @@ export default function ClientRole({
 [2. 소득 및 자산 현황]
 • 직업 분류: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : intakeData.incomeSources[0]?.type === 'business' ? '자영업/개인사업자' : intakeData.incomeSources[0]?.type === 'freelancer' ? '프리랜서' : '무직'}
 • 월 평균 실수령액: ${formatKoreanCurrency(result.client.monthlyIncome)}
-• 인정 생계비: ${formatKoreanCurrency(result.base.living)}
-• 가용 소득 (예상 월납입금): ${formatKoreanCurrency(result.base.disposable)}
-• 총 자산가치 (청산가치): ${formatKoreanCurrency(result.base.liq)}
+• 입력한 재산 합계: ${formatKoreanCurrency(enteredAssetsTotal)}
   - 임대보증금: ${formatKoreanCurrency((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0))}
   - 배우자 자산: ${formatKoreanCurrency((intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0))}
   - 예상 퇴직금: ${intakeData.retirementPay ? formatKoreanCurrency(intakeData.retirementPay) : '없음'}${
@@ -1890,17 +1893,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 ----------------------------------
 💡 참고:
-- 가용 소득·청산가치는 의뢰인 입력값 기준 자동 계산입니다.
+- 의뢰인이 답한 내용 그대로입니다. 생계비·변제금 계산은 사무소 '사건 검토'에서 해 주세요.
 - 소득·재산 자료로 사실관계를 확인해 주세요.
 ==================================`,
       financialProfile: {
         clientId: isLoggedIn ? (secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
         clientName: isLoggedIn ? userAlias : (intakeData.clientName || '익명 의뢰인'),
-        age: intakeData.age || (intakeData.birthDate ? (2026 - parseInt(intakeData.birthDate.split('-')[0])) : 35),
-        gender: intakeData.gender || 'male',
+        // 모르는 값은 비워 둔다 (이전: 나이 35·성별 남자로 채움, I-4)
+        age: intakeData.age || (intakeData.birthDate ? (new Date().getFullYear() - parseInt(intakeData.birthDate.split('-')[0])) : undefined),
+        gender: intakeData.gender || undefined,
         income: incomeManWon,
         debtTotal: debtManWon,
-        assetsTotal: assetsManWon,
+        // 총재산 칸 = 입력한 재산 합계 (이전: 엔진 청산가치를 넣음, I-4)
+        assetsTotal: Math.round(enteredAssetsTotal / 10000),
         dependents: result.client.dependents,
         minorChildren: intakeData.minorChildren || 0,
         maritalStatus: (intakeData.maritalStatus === 'single' ? 'SINGLE' : intakeData.maritalStatus === 'married' ? 'MARRIED' : 'DIVORCED') as any,
@@ -1914,10 +1919,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         riskFlags,
         jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 
                  intakeData.incomeSources[0]?.type === 'business' ? 'BUSINESS' : 
-                 (intakeData.incomeSources[0]?.type as any) === 'daily' || intakeData.incomeSources[0]?.type === 'worker_no_ins' ? 'DAILY' : 'FREELANCER',
+                 (intakeData.incomeSources[0]?.type as any) === 'daily' || intakeData.incomeSources[0]?.type === 'worker_no_ins' ? 'DAILY' :
+                 intakeData.incomeSources[0]?.type === 'freelancer' ? 'FREELANCER' : ('UNEMPLOYED' as any),
         companyName: intakeData.workplace || '',
         companyNameMasked: intakeData.workplace ? intakeData.workplace.replace(/./g, (c, i) => i > 0 && i < intakeData.workplace.length - 1 ? '*' : c) : '미기재',
-        employmentDate: intakeData.consultDate,
+        employmentDate: undefined, // 입사일을 묻지 않으므로 비움 (이전: 상담일을 넣음)
         residenceRegion: intakeData.residence,
         workLocation: intakeData.workplace || '',
         address: intakeData.residence || '',
@@ -1931,7 +1937,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         housingContractHolder: intakeData.housingContractHolder,
         debtCause: (intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING')) as any,
         harassmentLevel,
-        creditorCount: intakeData.debts.length || 3,
+        creditorCount: intakeData.debts.length || undefined,
         priorityDebt: Math.round((intakeData.debts.find(d => d.type === 'tax')?.principal || 0) / 10000),
         speculativeLoss: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : undefined,
         gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined,
@@ -1962,6 +1968,28 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
     // 보고서 팝업의 "내 전담 변호사 선택하기" 버튼이 즐겨찾기 확인 → 팝업 방식으로 동작하도록
     // 자동 변호사 탭 이동 및 선택 모드 활성화를 하지 않음
+  };
+
+  // '정리 확인' 화면 (I-2)
+  const [intakeReviewOpen, setIntakeReviewOpen] = useState(false);
+  /** 정리 확인 뒤 변호사 찾기로 (특정 변호사에게 시작했으면 그 변호사 동의 창부터) */
+  const goToLawyerSelectionAfterCheck = (req?: any) => {
+    const intentRequest = directIntent ? requests.find(r => r.id === directIntent.requestId) || (req?.id === directIntent.requestId ? req : undefined) : undefined;
+    if (directIntent && intentRequest) {
+      setActiveChatReqId(intentRequest.id);
+      if (isLoggedIn) setActiveTab('chat');
+      requestFromDirectory(intentRequest, [directIntent.lawyerId]);
+      setDirectIntent(null);
+      return;
+    }
+    // 변호사 찾기를 '여러 명 골라 요청하기' 모드로 연다. 즐겨찾기한 변호사가 있으면 즐겨찾기만 먼저 보여 준다
+    if (getFavoriteLawyerIds().size > 0) localStorage.setItem('lawyer_view_favorites_mode', 'true');
+    const targetId = (req || pendingNewRequest)?.id || null;
+    if (targetId) setActiveChatReqId(targetId);
+    setLawyerSelectionTargetId(targetId);
+    setLawyerSelectionMode(true);
+    setActiveTab('lawyers');
+    window.scrollTo({ top: 0 });
   };
 
   /**
@@ -2063,7 +2091,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
   const handleLogout = async () => {
     await purgeClientSession();
     // 공용 기기 대비: 진행 중이던 채무 정리 대화도 이 기기에서 지운다
-    try { localStorage.removeItem('roi_rehab_chatbot_session'); } catch { /* ignore */ }
+    try { sessionStorage.removeItem('roi_rehab_chatbot_session'); localStorage.removeItem('roi_rehab_chatbot_session'); } catch { /* ignore */ }
     setIsLoggedIn(false);
     setUserAlias('');
     // 이 기기의 화면 상태만 비운다(계정에 저장된 기록은 다시 로그인하면 복원)
@@ -2415,16 +2443,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   isOpen={true}
                   layout="embedded"
                   onClose={() => {
-                    if (pendingChatbotData) {
-                      const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
-                      setPendingChatbotData(null);
-                      handleIntakeSubmit(mappedData, false);
-                    }
+                    // 완료 때 이미 한 번 저장했다 (이전: 닫을 때 한 번 더 저장해 같은 상담 요청이 두 개 생김, I-4)
+                    setPendingChatbotData(null);
                     setActiveTab('landing');
                   }}
                   onComplete={(res, input) => {
                     setPendingChatbotData({ res, input });
-                    // 진단 완결 즉시 requests 및 localStorage에 자동 저장 (내 관리방 채무 현황 연동)
+                    // 정리가 끝나면 한 번만 저장한다 (본인만 보는 상담 요청 — 변호사에게는 동의 뒤 공개)
                     const mappedData = mapChatbotDataToIntakeData(res, input);
                     handleIntakeSubmit(mappedData, false);
                   }}
@@ -2443,27 +2468,35 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   isLoggedIn={isLoggedIn}
                   onShowAuthModal={() => setShowAuthModal(true)}
                   onConsultation={() => {
-                    // 특정 변호사에게 상담하려고 시작한 진단이면 그 변호사에게 보낼지 동의 창부터 연다(로그인 전이면 로그인 후 이어서)
-                    const intentRequest = directIntent ? requests.find(r => r.id === directIntent.requestId) : undefined;
-                    if (directIntent && intentRequest) {
-                      setActiveChatReqId(intentRequest.id);
-                      if (isLoggedIn) setActiveTab('chat');
-                      requestFromDirectory(intentRequest, [directIntent.lawyerId]);
-                      setDirectIntent(null);
-                      return;
-                    }
-                    // 변호사 찾기를 '여러 명 골라 요청하기' 모드로 연다. 즐겨찾기한 변호사가 있으면 즐겨찾기만 먼저 보여 준다
-                    // 좋아요 목록은 서버 저장 (이전: 다른 저장 방식으로 읽어 늘 비어 있었다)
-                    if (getFavoriteLawyerIds().size > 0) localStorage.setItem('lawyer_view_favorites_mode', 'true');
-                    const targetId = pendingNewRequest?.id || null;
-                    if (targetId) setActiveChatReqId(targetId);
-                    setLawyerSelectionTargetId(targetId);
-                    setLawyerSelectionMode(true);
-                    setActiveTab('lawyers');
-                    window.scrollTo({ top: 0 });
+                    // 바로 넘기지 않고 '정리 확인' 화면을 먼저 보여 준다 (I-2)
+                    if (pendingNewRequest) { setIntakeReviewOpen(true); return; }
+                    goToLawyerSelectionAfterCheck();
                   }}
                   onProgressChange={setChatbotSnapshot}
                 />
+                {intakeReviewOpen && pendingNewRequest && (
+                  <IntakeReviewModal
+                    open
+                    profile={pendingNewRequest.financialProfile}
+                    onClose={() => setIntakeReviewOpen(false)}
+                    onRestart={() => { setIntakeReviewOpen(false); forceStartNewDiagnosis(); }}
+                    onLearn={() => { setIntakeReviewOpen(false); setActiveTab('guide'); window.scrollTo({ top: 0 }); }}
+                    onConfirm={(extra) => {
+                      // 더 답한 사실을 상담 요청에 붙인다 (변호사에게는 동의 뒤 공개)
+                      const fp = {
+                        ...pendingNewRequest.financialProfile,
+                        prevHistory: extra.prevHistory, prevHistoryYear: extra.prevHistoryYear || undefined, prevHistoryResult: extra.prevHistoryResult || undefined,
+                        creditorCountBand: extra.creditorCountBand || undefined, overdueSince: extra.overdueSince || undefined,
+                        arrearsKinds: extra.arrears, seizureTargets: extra.seizure,
+                      };
+                      const updated = { ...pendingNewRequest, financialProfile: fp, content: `${pendingNewRequest.content || ''}${extraFactsText(extra)}` };
+                      setPendingNewRequest(updated);
+                      setRequests(prev => prev.map(r => (r.id === updated.id ? { ...r, financialProfile: fp, content: updated.content } : r)));
+                      setIntakeReviewOpen(false);
+                      goToLawyerSelectionAfterCheck(updated);
+                    }}
+                  />
+                )}
                 </div>
                 </section>
               </div>

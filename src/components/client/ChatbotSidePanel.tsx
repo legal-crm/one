@@ -101,7 +101,7 @@ export default function ChatbotSidePanel({ snapshot }: { snapshot: RehabChatProg
         <ul className="mt-3 space-y-2.5 text-sm text-slate-700">
           <li className="flex items-start gap-2.5">
             <Clock className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
-            <span className="break-keep">질문에 답하면 약 3분 안에 예상 변제금을 계산해 드립니다.</span>
+            <span className="break-keep">질문에 답하면 약 3분 안에 상담에 필요한 내용이 정리돼요. 변제금은 변호사가 자료를 보고 알려 드려요.</span>
           </li>
           <li className="flex items-start gap-2.5">
             <EyeOff className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
