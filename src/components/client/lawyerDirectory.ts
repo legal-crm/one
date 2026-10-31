@@ -81,24 +81,7 @@ export function getAvatarSrc(l: User): string {
   return l.avatarData || l.avatar;
 }
 
-// ── 즐겨찾기 (이 기기에만 저장. 내 관리방의 '즐겨찾기한 변호사에게 요청'과 같은 키를 쓴다) ──
-export const FAVORITES_KEY = 'lawyer_favorites';
-
-export function loadFavorites(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]') as string[]);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-export function saveFavorites(ids: Set<string>) {
-  try {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...ids]));
-  } catch {
-    /* 저장 공간 부족·비공개 모드는 무시 (화면 상태는 유지) */
-  }
-}
+// 즐겨찾기(좋아요)는 서버 저장으로 옮김: services/lawyers/favoriteLawyerService.ts (LD-10)
 
 /** 사무소 소재지 필터 (변호사 region 문자열에 포함되는지로 판정) */
 export const LAWYER_REGIONS = [

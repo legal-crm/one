@@ -12,9 +12,8 @@ import {
   getDisplayName,
   isAdLawyer,
   isPubliclyListable,
-  loadFavorites,
-  saveFavorites,
 } from './lawyerDirectory';
+import { useFavoriteLawyers } from '../../hooks/useFavoriteLawyers';
 
 const ITEMS_PER_PAGE = 10;
 /** 상단 광고는 한 번에 이만큼만 보여 준다 */
@@ -72,7 +71,8 @@ export default function LawyersView({
   const [selectedRegion, setSelectedRegion] = useState<LawyerRegion>('전체');
   const [page, setPage] = useState(1);
   const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
+  // 좋아요는 로그인한 계정에 서버 저장 (이전: 이 기기에만)
+  const { favorites, toggleFavorite } = useFavoriteLawyers(!requiresLogin);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedLawyerIds, setSelectedLawyerIds] = useState<string[]>([]);
   const listTopRef = useRef<HTMLDivElement>(null);
@@ -114,15 +114,6 @@ export default function LawyersView({
       return [...prev, id];
     });
   }, [slotsLeft]);
-
-  const toggleFavorite = useCallback((id: string) => {
-    setFavorites(prev => {
-      const next = new Set<string>(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      saveFavorites(next);
-      return next;
-    });
-  }, []);
 
   // ── 같은 광고 등급 내 무작위 정렬 (방문 세션마다 1회 셔플, 화면 내에서는 순서 고정) ──
   // 정액 광고 상품 간 노출 순서 우대를 없애기 위함 (목록 위 '정렬: 무작위' 안내와 일치)
@@ -382,7 +373,7 @@ export default function LawyersView({
               icon={showFavoritesOnly ? <Heart className="w-6 h-6" /> : <SearchX className="w-6 h-6" />}
               title={showFavoritesOnly && favorites.size === 0 ? '즐겨찾기한 변호사가 없습니다' : '조건에 맞는 변호사가 없습니다'}
               description={showFavoritesOnly && favorites.size === 0
-                ? '카드의 하트를 누르면 즐겨찾기에 담겨 나중에 다시 볼 수 있어요.'
+                ? (requiresLogin ? '로그인한 뒤 카드의 하트를 누르면 즐겨찾기에 담겨 어느 기기에서나 다시 볼 수 있어요.' : '카드의 하트를 누르면 즐겨찾기에 담겨 어느 기기에서나 다시 볼 수 있어요.')
                 : '다른 지역을 고르거나 검색어를 바꿔 보세요.'}
               action={hasActiveFilter ? <Button variant="secondary" onClick={resetFilters}>조건 초기화</Button> : undefined}
             />

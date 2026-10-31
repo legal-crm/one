@@ -57,6 +57,7 @@ const InquiryPopupModal = React.lazy(() => import('./client/InquiryPopupModal'))
 import ClientFooter from './client/ClientFooter';
 import PendingCaseLinkBanner from './client/mypage/PendingCaseLinkBanner';
 import { useServerNotifications } from '../hooks/useServerNotifications';
+import { getFavoriteLawyerIds } from '../services/lawyers/favoriteLawyerService';
 import ClientHeader from './client/ClientHeader';
 import MobileGNB from './client/MobileGNB';
 import LandingView from './client/landing/LandingView';
@@ -2364,9 +2365,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       return;
                     }
                     // 변호사 찾기를 '여러 명 골라 요청하기' 모드로 연다. 즐겨찾기한 변호사가 있으면 즐겨찾기만 먼저 보여 준다
-                    let favIds: string[] = [];
-                    try { favIds = JSON.parse(secureGetItem('lawyer_favorites') || '[]'); } catch { /* ignore */ }
-                    if (favIds.length > 0) localStorage.setItem('lawyer_view_favorites_mode', 'true');
+                    // 좋아요 목록은 서버 저장 (이전: 다른 저장 방식으로 읽어 늘 비어 있었다)
+                    if (getFavoriteLawyerIds().size > 0) localStorage.setItem('lawyer_view_favorites_mode', 'true');
                     const targetId = pendingNewRequest?.id || null;
                     if (targetId) setActiveChatReqId(targetId);
                     setLawyerSelectionTargetId(targetId);
