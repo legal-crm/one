@@ -587,12 +587,10 @@ function BatchFilingPackagingModalInner({
           </div>
         </div>
 
-        {/* 법원 원본 양식 HWPX 묶음 (H-4) — 개인회생만 (파산 양식 매핑은 다음 묶음) */}
-        {!isBankruptcy && (
-          <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
-            <HwpxBatchSection clientRequest={clientRequest} crmExt={crmExt} lawyerName={getOfficeProfile('').lawyerName} />
-          </div>
-        )}
+        {/* 법원 원본 양식 HWPX 묶음 (H-4) — 회생: 신청 서류 + 부속·면책 / 파산: 파산 및 면책 신청서 */}
+        <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
+          <HwpxBatchSection key={isBankruptcy ? 'bk' : 'rehab'} kind={isBankruptcy ? 'bankruptcy' : 'rehab'} clientRequest={clientRequest} crmExt={crmExt} lawyerName={getOfficeProfile('').lawyerName} />
+        </div>
 
         {isProcessing && (
           <div className="px-6 py-2 bg-blue-50 border-b border-blue-100 text-xs font-bold text-blue-800 flex items-center gap-2 animate-pulse">

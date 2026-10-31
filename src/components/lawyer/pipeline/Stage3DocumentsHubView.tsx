@@ -939,6 +939,7 @@ export default function Stage3DocumentsHubView({
 
           {/* 보정 때 자주 요구된 자료 미리 받기 (DP-7) */}
           <CorrectionPrepCard
+            officeId={officeId}
             courtName={crmExt?.courtCase?.courtName || (crmExt as any)?.petitionInfo?.courtName}
             existingRequests={crmExt?.documentRequests || []}
             requestedBy={office.firmName || office.lawyerName || '담당 사무소'}

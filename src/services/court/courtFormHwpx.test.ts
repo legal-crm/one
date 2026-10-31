@@ -100,3 +100,41 @@ describe('첨부서류 채움 (D5101·D5103·D5105)', () => {
     expect(xml).toContain('■ 있음');
   });
 });
+
+describe('회생 부속·면책·파산 서식 채움 (H-1 2·3묶음)', () => {
+  const xmlOf = async (code: FilledFormCode, m: any, rrn = '9001011234567') => {
+    const r = await buildHwpx(read(code), courtFormEdits(code, m, rrn));
+    expect(r.missing).toEqual([]);
+    return (await JSZip.loadAsync(r.bytes!)).file('Contents/section0.xml')!.async('string');
+  };
+  it('D5108: 계산에 쓴 압류금지 공제만 표에', async () => {
+    const m = master(1); m.assets.bankDeduction = 2_500_000; m.assets.severancePay = { company: 'TEST회사', amount: 4_000_000, exemptAmount: 2_000_000, netValue: 2_000_000 };
+    const xml = await xmlOf('D5108', m, '');
+    expect(xml).toContain('예금채권 중 압류금지 부분');
+    expect(xml).toContain('2,500,000원');
+    expect(xml).toContain('퇴직금 중 2분의 1 (TEST회사)');
+    expect(xml).not.toContain('보장성 보험');
+  });
+  it('D5109: 면제할 임차보증금이 있으면 1번 항목 표시·금액', async () => {
+    const m = master(1); m.assets.leaseDeposit.exemptDeposit = 5_500_000;
+    const xml = await xmlOf('D5109', m, '');
+    expect(xml).toContain('■ 1. 주거용건물 임차보증금반환청구권');
+    expect(xml).toContain('금 5,500,000 원');
+    expect(xml).toContain('( 10,000,000원)');
+  });
+  it('면책신청서·파산 신청서: 주민번호·환급계좌·법원', async () => {
+    const dis = await xmlOf('DISCH', master(1));
+    expect(dis).toContain('(주민등록번호 900101-1234567)');
+    expect(dis).toContain('국민은행');
+    expect(dis).toContain('수원회생법원 귀중');
+    const bk = await xmlOf('BKP', master(1));
+    expect(bk).toContain('(주민등록번호 : 900101-1234567)');
+    expect(bk).toContain('휴대전화(010-1111-2222)');
+  });
+  it('검사: 면책신청서는 사건번호가 있어야, 파산 신청서는 주민번호가 있어야', () => {
+    const m = master(1); m.court.caseNumber = '';
+    expect(courtFormGuard('DISCH', m, '9001011234567').ok).toBe(false);
+    expect(courtFormGuard('BKP', master(1), '').ok).toBe(false);
+    expect(courtFormGuard('SVC', master(1), '').ok).toBe(true);
+  });
+});

@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import type { DocumentRequest } from '../../../types';
 import { CORRECTION_PREP_BUNDLES, bundlesForCourt } from '../../../services/documents/correctionPrepBundles';
+import { loadCorrectionStats, type CorrectionStats } from '../../../services/corrections/correctionService';
+import { courtStatsFor } from '../../../services/documents/correctionPrepStats';
 
 interface Props {
+  /** 서버 사무소 — 있으면 우리 사무소의 같은 법원 보정 기록을 함께 보여 준다 (DP-6·CR-12) */
+  officeId?: string;
   courtName?: string;
   existingRequests: DocumentRequest[];
   requestedBy: string;
@@ -13,8 +17,15 @@ interface Props {
 }
 
 /** 3단계 '보정 때 자주 요구된 자료 미리 받기' (DP-7) — 고른 항목만 의뢰인 서류 요청에 더한다 */
-export default function CorrectionPrepCard({ courtName, existingRequests, requestedBy, onAddRequests }: Props) {
+export default function CorrectionPrepCard({ officeId, courtName, existingRequests, requestedBy, onAddRequests }: Props) {
   const [open, setOpen] = useState(false);
+  // 우리 사무소 보정 통계 (펼칠 때 한 번 읽음, 개인정보 없음)
+  const [stats, setStats] = useState<CorrectionStats | null | 'error'>(null);
+  useEffect(() => {
+    if (!open || !officeId || stats !== null) return;
+    void loadCorrectionStats(officeId).then(r => setStats(r.ok ? r.data : 'error'));
+  }, [open, officeId, stats]);
+  const courtStats = useMemo(() => (stats && stats !== 'error' ? courtStatsFor(stats, courtName) : null), [stats, courtName]);
   const autoIds = useMemo(() => bundlesForCourt(courtName), [courtName]);
   const already = useMemo(() => new Set(existingRequests.filter(r => r && !r.fulfilled).map(r => r.documentLabel)), [existingRequests]);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(
@@ -72,6 +83,33 @@ export default function CorrectionPrepCard({ courtName, existingRequests, reques
           <p className="text-xs text-slate-500">
             실제 보정권고에서 의뢰인이 다시 내야 했던 자료입니다. 접수 전에 받아 두면 보정 기간을 줄일 수 있어요. 필요한 것만 골라 요청하세요.
           </p>
+          {officeId && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5">
+              <p className="text-xs font-bold text-slate-800">우리 사무소 보정 기록{courtStats?.courtLabel ? ` · ${courtStats.courtLabel}` : ''}</p>
+              {stats === null ? (
+                <div className="h-8 rounded-lg bg-slate-200/70 animate-pulse" />
+              ) : stats === 'error' ? (
+                <p className="text-xs text-slate-600">보정 기록을 불러오지 못했어요. 아래 기본 묶음으로 골라 주세요.</p>
+              ) : !courtStats || courtStats.orders === 0 ? (
+                <p className="text-xs text-slate-600">{courtName ? '이 법원에서 등록한 보정 회차가 아직 없어요.' : '사건 법원이 정해지면 그 법원 보정 기록을 보여 드려요.'} 기록이 쌓이면 자주 나온 항목이 여기에 보여요.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-600">
+                    보정 {courtStats.orders}회{courtStats.avgDays !== null ? ` · 제출까지 평균 ${courtStats.avgDays}일` : ''}{courtStats.extensions > 0 ? ` · 연장 신청 ${courtStats.extensions}회` : ''}
+                  </p>
+                  {courtStats.topCategories.length > 0 && (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {courtStats.topCategories.map(c => (
+                        <li key={c.category} className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-xs text-slate-700">
+                          {c.category} {c.items}건{c.cannot > 0 ? ` · 못 낸 ${c.cannot}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {CORRECTION_PREP_BUNDLES.map(b => (
             <div key={b.id}>
               <p className="text-xs font-bold text-slate-700 mb-1">

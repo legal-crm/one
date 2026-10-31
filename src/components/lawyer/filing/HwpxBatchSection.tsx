@@ -4,7 +4,7 @@ import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { buildCourtFilingMasterData } from '../../../services/documents/courtFilingEngine';
-import { buildFilledCourtForm, FILLED_FORMS, type FilledFormCode } from '../../../services/court/courtFormHwpx';
+import { buildFilledCourtForm, FILLED_FORMS, type FilledFormCode, type FilledFormGroup } from '../../../services/court/courtFormHwpx';
 import { downloadBlob } from '../../../services/court/hwpxBuilder';
 
 /**
@@ -13,9 +13,13 @@ import { downloadBlob } from '../../../services/court/hwpxBuilder';
  *  * 주민등록번호는 이 화면 메모리에만 두고 저장하지 않는다 (L8)
  *  * 출력 전 검사(CourtDocGuard)가 막은 서식은 ZIP에 넣지 않고 사유를 보여 준다
  */
-export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName }: { clientRequest: ConsultRequest; crmExt: CrmClientExtension; lawyerName?: string }) {
-  const codes = (Object.keys(FILLED_FORMS) as FilledFormCode[]).sort((a, b) => FILLED_FORMS[a].order - FILLED_FORMS[b].order);
-  const [picked, setPicked] = useState<Record<string, boolean>>(() => Object.fromEntries(codes.map(c => [c, c !== 'D5113'])));
+export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName, kind = 'rehab' }: { clientRequest: ConsultRequest; crmExt: CrmClientExtension; lawyerName?: string; kind?: 'rehab' | 'bankruptcy' }) {
+  // 회생: 신청 핵심(기본 선택) + 부속·면책(필요할 때 고름) / 파산: 파산·면책 서식
+  const groups: FilledFormGroup[] = kind === 'bankruptcy' ? ['bankruptcy'] : ['rehab', 'rehab_extra'];
+  const codes = (Object.keys(FILLED_FORMS) as FilledFormCode[])
+    .filter(c => groups.includes(FILLED_FORMS[c].group))
+    .sort((a, b) => (groups.indexOf(FILLED_FORMS[a].group) - groups.indexOf(FILLED_FORMS[b].group)) || FILLED_FORMS[a].order - FILLED_FORMS[b].order);
+  const [picked, setPicked] = useState<Record<string, boolean>>(() => Object.fromEntries(codes.map(c => [c, FILLED_FORMS[c].group !== 'rehab_extra' && c !== 'D5113'])));
   const [rrn, setRrn] = useState('');
   const [busy, setBusy] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
@@ -39,7 +43,7 @@ export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName }: 
       if (!added) { toast.error('만들 수 있는 서식이 없어요. 아래 사유를 확인해 주세요.'); return; }
       const blob = await zip.generateAsync({ type: 'blob' });
       const safe = (clientRequest.clientName || '신청인').replace(/[\\/:*?"<>|\s]+/g, '');
-      downloadBlob(blob, `[법원양식HWPX]_개인회생_${safe}.zip`);
+      downloadBlob(blob, `[법원양식HWPX]_${kind === 'bankruptcy' ? '개인파산' : '개인회생'}_${safe}.zip`);
       toast.success(`법원 양식 HWPX ${added}개를 내려받았어요. 한글에서 열어 빈칸을 확인하세요.`);
     } catch (e: any) {
       toast.error(e?.message || 'HWPX 묶음을 만들지 못했어요.');
@@ -58,18 +62,27 @@ export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName }: 
           <p className="text-xs text-slate-600">사건 데이터를 대법원 양식에 채워 제출 순서대로 묶어요. 한글에서 열어 빈칸을 확인한 뒤 PDF로 저장해 올리세요.</p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {codes.map(c => (
-          <label key={c} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 min-h-9">
-            <input type="checkbox" checked={!!picked[c]} onChange={e => setPicked(p => ({ ...p, [c]: e.target.checked }))} />
-            {FILLED_FORMS[c].title}
-          </label>
-        ))}
-      </div>
+      {groups.map(g => {
+        const list = codes.filter(c => FILLED_FORMS[c].group === g);
+        if (list.length === 0) return null;
+        return (
+          <div key={g} className="space-y-1.5">
+            <p className="text-xs font-bold text-slate-500">{g === 'rehab' ? '신청 서류' : g === 'rehab_extra' ? '부속 신청서·면책 (필요할 때 고르기)' : '파산·면책 서류'}</p>
+            <div className="flex flex-wrap gap-2">
+              {list.map(c => (
+                <label key={c} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2.5 min-h-11">
+                  <input type="checkbox" checked={!!picked[c]} onChange={e => setPicked(p => ({ ...p, [c]: e.target.checked }))} />
+                  {FILLED_FORMS[c].title}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
       <label className="block text-xs font-bold text-slate-700">
-        채무자 주민등록번호 (저장하지 않음 — 개시신청서·금지/중지명령·위임장에 넣을 때만)
+        채무자 주민등록번호 (저장하지 않음 — {kind === 'bankruptcy' ? '파산 및 면책 신청서' : '개시신청서·금지/중지명령·위임장·면책신청서'}에 넣을 때만)
         <input
-          className="mt-1 w-full min-h-10 rounded-xl border border-slate-300 px-3 text-sm"
+          className="mt-1 w-full min-h-11 rounded-xl border border-slate-300 px-3 text-sm"
           value={rrn}
           onChange={e => setRrn(e.target.value.replace(/[^0-9-]/g, '').slice(0, 14))}
           inputMode="numeric"
@@ -81,7 +94,7 @@ export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName }: 
         type="button"
         onClick={run}
         disabled={busy}
-        className="min-h-10 px-4 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap cursor-pointer active:scale-[0.98] disabled:opacity-50"
+        className="min-h-11 px-4 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap cursor-pointer active:scale-[0.98] disabled:opacity-50"
       >
         {busy ? '만드는 중…' : 'HWPX 일괄 출력 (ZIP)'}
       </button>

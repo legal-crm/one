@@ -12,19 +12,29 @@ import type { HwpxEdit } from './hwpxBuilder';
 import { buildHwpx, fetchTemplate } from './hwpxBuilder';
 import { guard, runGuard, RRN_RE, type GuardIssue } from './courtDocGuard';
 import { d5101, d5103, d5105 } from './courtFormHwpxAttachments';
+import { bankruptcyPetition, d5108, d5109, discharge, exemptAssetRows, svc } from './courtFormHwpxMore';
 
-export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5113' | 'D5114' | 'POA';
+export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5113' | 'D5114' | 'POA'
+  | 'SVC' | 'D5108' | 'D5109' | 'DISCH' | 'BKP';
 
-export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string; order: number }> = {
-  D5100: { title: '개인회생절차 개시신청서', path: '/court-forms/hwpx/개인회생절차 개시신청서(2021.4.20.시행)(D5100).hwpx', order: 1 },
-  D5106: { title: '개인회생채권자목록', path: '/court-forms/hwpx/개인회생채권자목록(D5106).hwpx', order: 2 },
-  D5101: { title: '재산목록', path: '/court-forms/hwpx/재산목록(D5101).hwpx', order: 3 },
-  D5103: { title: '수입 및 지출에 관한 목록', path: '/court-forms/hwpx/수입 및 지출에 관한 목록(D5103).hwpx', order: 4 },
-  D5105: { title: '진술서', path: '/court-forms/hwpx/진술서(D5105).hwpx', order: 5 },
-  D5110: { title: '변제계획안(가용소득만으로 변제)', path: '/court-forms/hwpx/변제계획안(가용소득만으로 변제하는 경우)(D5110) (1).hwpx', order: 6 },
-  D5114: { title: '금지명령 신청서', path: '/court-forms/hwpx/금지명령 신청서(D5114).hwpx', order: 8 },
-  D5113: { title: '중지명령 신청서', path: '/court-forms/hwpx/중지명령 신청서(D5113).hwpx', order: 9 },
-  POA: { title: '위임장', path: '/court-forms/hwpx/위임장.hwpx', order: 10 },
+/** 묶음: rehab = 회생 신청 핵심(기본 선택) · rehab_extra = 회생 부속·면책(필요할 때 고름) · bankruptcy = 파산·면책 */
+export type FilledFormGroup = 'rehab' | 'rehab_extra' | 'bankruptcy';
+
+export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string; order: number; group: FilledFormGroup }> = {
+  D5100: { title: '개인회생절차 개시신청서', path: '/court-forms/hwpx/개인회생절차 개시신청서(2021.4.20.시행)(D5100).hwpx', order: 1, group: 'rehab' },
+  D5106: { title: '개인회생채권자목록', path: '/court-forms/hwpx/개인회생채권자목록(D5106).hwpx', order: 2, group: 'rehab' },
+  D5101: { title: '재산목록', path: '/court-forms/hwpx/재산목록(D5101).hwpx', order: 3, group: 'rehab' },
+  D5103: { title: '수입 및 지출에 관한 목록', path: '/court-forms/hwpx/수입 및 지출에 관한 목록(D5103).hwpx', order: 4, group: 'rehab' },
+  D5105: { title: '진술서', path: '/court-forms/hwpx/진술서(D5105).hwpx', order: 5, group: 'rehab' },
+  D5110: { title: '변제계획안(가용소득만으로 변제)', path: '/court-forms/hwpx/변제계획안(가용소득만으로 변제하는 경우)(D5110) (1).hwpx', order: 6, group: 'rehab' },
+  D5114: { title: '금지명령 신청서', path: '/court-forms/hwpx/금지명령 신청서(D5114).hwpx', order: 8, group: 'rehab' },
+  D5113: { title: '중지명령 신청서', path: '/court-forms/hwpx/중지명령 신청서(D5113).hwpx', order: 9, group: 'rehab' },
+  POA: { title: '위임장', path: '/court-forms/hwpx/위임장.hwpx', order: 10, group: 'rehab' },
+  SVC: { title: '송달장소 및 송달영수인 신고서', path: '/court-forms/hwpx/송달장소_및_송달영수인_신고서.hwpx', order: 11, group: 'rehab_extra' },
+  D5108: { title: '개인회생재단에 속하지 않는 재산목록 제출서', path: '/court-forms/hwpx/개인회생재단에 속하지 않는 재산목록 제출서(D5108).hwpx', order: 12, group: 'rehab_extra' },
+  D5109: { title: '면제재산 결정신청서', path: '/court-forms/hwpx/면제재산 결정신청서(D5109).hwpx', order: 13, group: 'rehab_extra' },
+  DISCH: { title: '개인회생 면책신청서', path: '/court-forms/hwpx/개인회생 면책신청서.hwpx', order: 20, group: 'rehab_extra' },
+  BKP: { title: '파산 및 면책 신청서', path: '/court-forms/hwpx/1.파산및면책신청서.hwpx', order: 1, group: 'bankruptcy' },
 };
 
 const won = (n?: number) => (Number.isFinite(n) ? `${Math.round(n as number).toLocaleString('ko-KR')}` : '');
@@ -255,12 +265,18 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
     case 'D5113': return stayOrBan(d, rrn, 'D5113');
     case 'D5114': return stayOrBan(d, rrn, 'D5114');
     case 'POA': return poa(d, rrn);
+    case 'SVC': return svc(d);
+    case 'D5108': return d5108(d);
+    case 'D5109': return d5109(d);
+    case 'DISCH': return discharge(d, rrn);
+    case 'BKP': return bankruptcyPetition(d, rrn);
   }
 }
 
 /** 출력 전 검사 (H-3): 필수 항목·합계·주민번호 형식 */
 export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, rrn: string): { blocks: GuardIssue[]; warns: GuardIssue[]; ok: boolean } {
-  const needsRrn = code !== 'D5106' && code !== 'D5110' && code !== 'D5101' && code !== 'D5103' && code !== 'D5105';
+  const needsRrn = ['D5100', 'D5113', 'D5114', 'POA', 'DISCH', 'BKP'].includes(code);
+  const leaseExempt = Number((d.assets as any)?.leaseDeposit?.exemptDeposit) || 0;
   const list = d.creditors || [];
   const r = d.repaymentSummary;
   return runGuard([
@@ -279,7 +295,13 @@ export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, r
     code === 'D5103' && (d.repaymentSummary.additionalLivingCost || 0) > 0 ? { level: 'warn', message: '생계비가 60%를 넘어요. 뒷면 지출 내역(주거·의료·교육비)과 사유를 한글에서 채워 주세요.' } : null,
     code === 'D5101' && (d.assets?.bankAccounts || []).length > 3 ? { level: 'warn', message: '예금 계좌가 3개를 넘어요. 나머지는 별지로 붙여 주세요.' } : null,
     code === 'D5113' && !(d.stayCases || []).length ? { level: 'warn', message: '중지할 압류 사건 정보가 없어요. 상대방·사건번호 칸을 한글에서 채워 주세요.' } : null,
-    !caseNo(d) && code !== 'D5100' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
+    code === 'D5108' && exemptAssetRows(d).length === 0 ? { level: 'warn', message: '계산에 쓴 압류금지 재산(예금·보험·퇴직금 공제)이 없어 표가 비어 있어요. 한글에서 채우세요.' } : null,
+    code === 'D5108' && exemptAssetRows(d).length > 0 ? { level: 'warn', message: '압류금지 근거 조문·소명자료가 사건에 맞는지 한글에서 확인하세요.' } : null,
+    code === 'D5109' && !(leaseExempt > 0) ? { level: 'warn', message: '면제할 임차보증금이 없어요. 6개월 생계비 면제재산이면 한글에서 2번 항목을 채우세요.' } : null,
+    code === 'DISCH' ? { level: 'warn', message: '면책신청서 날짜는 비워 뒀어요. 변제를 마친 뒤 접수하는 날로 적어 주세요.' } : null,
+    code === 'DISCH' && !caseNo(d) ? { level: 'block', message: '사건번호가 없어요. 면책신청서는 사건번호를 등록한 뒤 만들 수 있어요.' } : null,
+    code === 'BKP' ? { level: 'warn', message: '등록기준지·우편번호·지원기관 칸은 한글에서 채워 주세요.' } : null,
+    !caseNo(d) && code !== 'D5100' && code !== 'BKP' && code !== 'DISCH' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
   ]);
 }
 
