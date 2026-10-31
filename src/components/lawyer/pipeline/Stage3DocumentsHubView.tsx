@@ -22,7 +22,11 @@ import {
 import BatchDocRequestModal, { type BatchDocItem } from './BatchDocRequestModal';
 import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
 import PublicDocGuideModal from '../documents/PublicDocGuideModal';
-import { sendAlimtok } from '../../../services/alimtokService';
+import { renderTemplate, sendAlimtok } from '../../../services/alimtokService';
+import { deliverClientNotice, describeDelivery } from '../../../services/comm/clientNoticeService';
+import { toKakaoPlainText } from '../../../services/comm/kakaoPcBatchSheet';
+import { getCrmOfficeScope } from '../../../services/crmService';
+import type { AlimtokMilestone } from '../../../types';
 import { notifyCaseClient } from '../../../services/notifications/caseClientNotice';
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
@@ -612,14 +616,24 @@ export default function Stage3DocumentsHubView({
     const deadline = `${due.getMonth() + 1}월 ${due.getDate()}일`;
     const names = docList.filter(d => selectedDocIds.includes(d.id)).map(d => d.name);
     const base = { clientName: clientRequest.clientName, firmName: office.firmName, lawyerName: office.lawyerName || '담당 변호사', trackingUrl };
-    
-    const res = requestType === 'phase1'
-      ? await sendAlimtok(clientRequest.phone, 'doc_request_phase1', { ...base, creditorCount: `${requiredSealCount}부`, creditorNum: `${creditorCount}`, firmAddress: office.address })
+    const milestone: AlimtokMilestone = requestType === 'phase1' ? 'doc_request_phase1' : requestType === 'phase2' ? 'doc_request_phase2' : 'document_request';
+    const vars: Record<string, string> = requestType === 'phase1'
+      ? { ...base, creditorCount: `${requiredSealCount}부`, creditorNum: `${creditorCount}`, firmAddress: office.address }
       : requestType === 'phase2'
-      ? await sendAlimtok(clientRequest.phone, 'doc_request_phase2', base)
-      : await sendAlimtok(clientRequest.phone, 'document_request', { ...base, documentList: names.map((n, i) => `${i + 1}. ${n}`).join('\n'), deadline });
+      ? base
+      : { ...base, documentList: names.map((n, i) => `${i + 1}. ${n}`).join('\n'), deadline };
 
-    if (res.ok) {
+    // 사무소 설정 '의뢰인 안내 방법'대로: 알림톡 / 담당자 카톡 할 일 / 둘 다 (KT-2)
+    const delivered = await deliverClientNotice({
+      officeId: getCrmOfficeScope(), workspaceKey: clientRequest.id, milestone,
+      alimtokText: renderTemplate(milestone, vars), kakaoText: previewText ? toKakaoPlainText(previewText) : undefined,
+      phone: clientRequest.phone, receiverName: clientRequest.clientName,
+    }, () => sendAlimtok(clientRequest.phone, milestone, vars));
+    const summary = describeDelivery(delivered);
+    const res = { ok: summary.ok, error: summary.ok ? undefined : summary.text };
+    if (summary.ok && delivered.method !== 'alimtok') toast.success(summary.text);
+
+    if (res.ok && delivered.method !== 'none') {
       const notice = await notifyCaseClient({
         caseKey: clientRequest.id,
         kind: 'office_document',
@@ -634,7 +648,7 @@ export default function Stage3DocumentsHubView({
   // 개별 서류 다시 알림
   const handleSendSingleReminder = async (docName: string) => {
     if (!ensureOffice() || !clientRequest.phone) return;
-    const res = await sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', {
+    const vars = {
       clientName: clientRequest.clientName,
       unsubmittedCount: '1',
       unsubmittedDocNames: docName,
@@ -642,9 +656,15 @@ export default function Stage3DocumentsHubView({
       firmName: office.firmName,
       lawyerName: office.lawyerName || '담당 변호사',
       trackingUrl,
-    });
-    if (res.ok) toast.success(`'${docName}' 제출 안내 알림톡이 발송되었습니다.`);
-    else toast.error(`알림톡 발송 실패: ${res.error || '원인 불명'}`);
+    };
+    const delivered = await deliverClientNotice({
+      officeId: getCrmOfficeScope(), workspaceKey: clientRequest.id, milestone: 'doc_phase2_reminder',
+      alimtokText: renderTemplate('doc_phase2_reminder', vars), phone: clientRequest.phone, receiverName: clientRequest.clientName,
+      title: `서류 제출 안내 · ${docName}`.slice(0, 80),
+    }, () => sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', vars));
+    const summary = describeDelivery(delivered);
+    if (summary.ok) toast.success(`'${docName}' 제출 안내: ${summary.text}`);
+    else toast.error(summary.text);
   };
 
   // 진술서 및 수지표 요약 계산

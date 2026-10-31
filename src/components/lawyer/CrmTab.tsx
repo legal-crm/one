@@ -182,7 +182,8 @@ import {
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
 import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, AlimtokLog, AlimtokMilestone } from '../../types';
 import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
-import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon } from '../../services/alimtokService';
+import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon, renderTemplate } from '../../services/alimtokService';
+import { NOTICE_METHOD_LABEL, deliverClientNotice, describeDelivery, loadClientMessaging, noticeMethodFor } from '../../services/comm/clientNoticeService';
 import { loadNotificationSettings } from '../../services/notificationService';
 import { canUse as canUseOfficePermission } from '../../services/office/officePermissions';
 import CorrectionPanel from './case/CorrectionPanel';
@@ -1589,6 +1590,56 @@ export default function CrmTab({
     toast.success(`${count}건 배정 완료`);
   };
 
+  /**
+   * 상태가 바뀐 뒤 의뢰인 진행 안내를 보낼지 묻는다 (서버 사무소, KT-2).
+   * 방법은 사무소 설정 '의뢰인 안내 방법'(알림톡 / 담당자 카톡 할 일 / 둘 다). '보내지 않음'이면 묻지 않는다.
+   * 계약 체결·서류 요청은 각자 보내는 화면(계약 전환·3단계 서류)이 있어 여기서 묻지 않는다.
+   */
+  const offerStatusNotice = async (clientId: string, prevStatus: CrmStatus, newStatus: CrmStatus) => {
+    if (!officeId || prevStatus === newStatus) return;
+    const milestone = STATUS_TO_MILESTONE[newStatus];
+    const clientReq = requests.find(r => r.id === clientId);
+    if (!milestone || milestone === 'contract_signed' || milestone === 'document_request' || !clientReq) return;
+    try {
+      const cfg = await loadClientMessaging(officeId);
+      const method = noticeMethodFor(cfg.ok ? cfg.data.settings : null, milestone);
+      if (method === 'none') return;
+      const label = ALIMTOK_MILESTONE_CONFIG[milestone]?.label || '진행';
+      if (!clientReq.phone) { toast.info(`'${label}' 안내를 보내지 않았어요: 의뢰인 연락처가 없어요.`); return; }
+      const ext = getCrmExt(clientId);
+      const caseLabel = (clientReq.caseType === 'bankruptcy' || (ext as any).caseType === 'bankruptcy') ? '개인파산' : '개인회생';
+      const office = getOfficeProfile(activeLawyer.name);
+      const vars: Record<string, string> = {
+        clientName: clientReq.clientName, firmName: office.firmName || '', lawyerName: activeLawyer.name || '',
+        date: new Date().toLocaleDateString('ko-KR'), trackingUrl: `${window.location.origin}/my`, caseType: caseLabel,
+      };
+      if (ext.courtCase?.caseNumber) vars.caseNumber = ext.courtCase.caseNumber;
+      const months = (ext as any).repaymentPlan?.months;
+      const monthly = (ext as any).repaymentPlan?.monthlyRepaymentTotal;
+      if (months) vars.duration = String(months);
+      if (monthly) vars.monthlyPayment = Number(monthly).toLocaleString();
+      const rendered = renderTemplate(milestone, vars);
+      const missing = Array.from(new Set((rendered.match(/\{\{([^}]+)\}\}/g) || []).map(m => m.replace(/[{}]/g, ''))));
+      if (missing.length > 0) { toast.info(`'${label}' 안내를 보내지 않았어요: 사건에 필요한 정보(${missing.join(', ')})가 없어요.`); return; }
+      const ok = await dialog.confirm({
+        title: `의뢰인에게 '${label}' 안내 보내기`,
+        message: `보내는 방법: ${NOTICE_METHOD_LABEL[method]}\n(사무소 설정 › 의뢰인 안내 방법에서 바꿀 수 있어요)\n\n${method === 'alimtok' ? '' : '담당자 카톡은 자동으로 보내지 않고 사건 화면 소통 기록에 할 일로 쌓여요.'}`,
+        confirmText: '보내기',
+        cancelText: '보내지 않기',
+      });
+      if (!ok) return;
+      const delivered = await deliverClientNotice({
+        officeId, workspaceKey: clientId, milestone, alimtokText: rendered, phone: clientReq.phone, receiverName: clientReq.clientName,
+      }, () => sendAlimtok(clientReq.phone, milestone, vars));
+      const summary = describeDelivery(delivered);
+      if (summary.ok) toast.success(`[${label}] ${summary.text}`);
+      else toast.error(`[${label}] ${summary.text}`);
+    } catch (e) {
+      console.error('[진행 안내] 오류', e);
+      toast.error('진행 안내를 처리하지 못했어요(보내지 않았을 수 있어요).');
+    }
+  };
+
   // ── 칸반 드래그 ──
   const handleKanbanDrop = async (clientId: string, newStatus: CrmStatus) => {
     const ext = getCrmExt(clientId);
@@ -1624,6 +1675,9 @@ export default function CrmTab({
     await updateCrmExt(clientId, { crmStatus: newStatus, activities });
     
     // 알림톡 자동 트리거
+    // 서버 사무소: 사무소 설정 '의뢰인 안내 방법'대로 묻고 보낸다 (KT-2)
+    if (officeId) { await offerStatusNotice(clientId, ext.crmStatus, newStatus); return; }
+
     try {
       const notiSettings = loadNotificationSettings();
       if (notiSettings.kakao.autoTrigger) {
@@ -1919,8 +1973,10 @@ export default function CrmTab({
     )];
     const saved = await updateCrmExt(clientId, { crmStatus: newStatus, activities });
     notifySaved(saved, `사건 상태가 [${CRM_STATUS_CONFIG[newStatus].label}](으)로 변경되었습니다.`);
+    if (saved) void offerStatusNotice(clientId, ext.crmStatus, newStatus);
     return saved;
-  }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt, requests, dialog]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt, requests, dialog, officeId]);
 
   // ══════════════════════════════════════
   //  RENDER
@@ -2348,6 +2404,7 @@ export default function CrmTab({
                   officeId={officeId}
                   target={{ workspaceKey: selectedId }}
                   permissions={officePermissionMap}
+                  defaultOpen={detailTab === 'calls'}
                   caseOptions={listScopeRequests.slice(0, 300).map(r => ({ key: r.id, label: getDisplayClientName(r) || '의뢰인' }))}
                 />
               </div>

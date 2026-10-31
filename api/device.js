@@ -15,6 +15,7 @@
 //     command-result    {id, status:'done'|'failed', detail, parts}
 //     unpair            {}
 //   웹(로그인 사용자): verify-recording {id}  — 웹에서 올린 녹음의 서버 지문 확인 (Authorization: Bearer <JWT>)
+//                      verify-kakao-export {id} — 웹에서 올린 카카오톡 대화 내보내기 파일의 서버 지문 확인 (KT-4)
 //
 // 사무소·직원은 토큰으로 정한다. 앱이 보낸 사무소 값은 받지 않는다. 개인정보(번호·문자 내용)는 로그에 남기지 않는다.
 import crypto from 'node:crypto';
@@ -60,9 +61,9 @@ async function deviceFromRequest(req) {
   return { device: info };
 }
 
-// 저장소 파일을 내려받아 지문 계산 (최대 50MB)
-async function hashStoredObject(path) {
-  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+// 저장소 파일을 내려받아 지문 계산 (녹음 최대 50MB, 카톡 대화 파일 최대 10MB)
+async function hashStoredObject(path, bucket = BUCKET) {
+  const { data, error } = await supabase.storage.from(bucket).download(path);
   if (error || !data) return null;
   const buf = Buffer.from(await data.arrayBuffer());
   return { sha: sha256Hex(buf), size: buf.length };
@@ -99,6 +100,23 @@ export default async function handler(req, res) {
       const hashed = rec.status === 'uploading' ? await hashStoredObject(rec.storage_path) : null;
       const result = await rpc('finish_call_recording', {
         p_id: rec.id, p_server_sha: hashed?.sha ?? null, p_size: hashed?.size ?? null, p_actor: user.id, p_device: null,
+      });
+      return res.status(200).json(result);
+    }
+
+    // ── 웹: 올린 카카오톡 대화 내보내기 파일 지문 확인 (KT-4) ──
+    if (route === 'verify-kakao-export') {
+      let user;
+      try { user = await verifyAuth(req); } catch { return res.status(401).json({ ok: false, error: '로그인이 필요합니다.' }); }
+      if (checkRateLimit(`device-verify:${user.id}`, 20, 60 * 1000).isLimited) return res.status(429).json({ ok: false, error: '잠시 후 다시 시도해 주세요.' });
+      if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: '파일 번호가 없습니다.' });
+      const { data: ex, error: exErr } = await supabase.from('kakao_chat_exports')
+        .select('id, storage_path, uploaded_by, status, deleted_at').eq('id', body.id).maybeSingle();
+      if (exErr) throw new Error('export lookup failed');
+      if (!ex || ex.deleted_at || ex.uploaded_by !== user.id) return res.status(404).json({ ok: false, error: '파일을 찾지 못했습니다.' });
+      const hashed = ex.status === 'uploading' ? await hashStoredObject(ex.storage_path, 'comm-exports') : null;
+      const result = await rpc('finish_kakao_export_upload', {
+        p_id: ex.id, p_server_sha: hashed?.sha ?? null, p_size: hashed?.size ?? null, p_actor: user.id,
       });
       return res.status(200).json(result);
     }

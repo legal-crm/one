@@ -8,6 +8,7 @@ import { useDialog } from '../../common/DialogProvider';
 import { supabase } from '../../../supabaseClient';
 import { listOfficeMembers, type OfficeMember } from '../../../services/office/officeService';
 import { findProhibitedExpressions } from '../../../services/proposalCompliance';
+import KakaoPcBatchSection from './KakaoPcBatchSection';
 import {
   TEMPLATE_PURPOSE_LABEL, approveDevice, archiveCommTemplate, createPairingCode, describeLog, formatPhone, listCommTemplates,
   listOfficeDevices, listRegisterRequests, listReviewCommLogs, loadCommPolicy, relinkCommLog, resolveRegisterRequest,
@@ -125,8 +126,19 @@ export default function OfficePhonePanel({ officeId, myUserId, canManageDevices,
 
   const savePolicy = async () => {
     if (!policyDraft || !policy) return;
+    // PC 카톡 묶음 발송을 처음 켤 때 한 번 [운영자 판단] 안내 확인 (KT-Q7)
+    let ack = false;
+    if (policyDraft.kakaoPcBatchEnabled && !policy.kakaoPcBatchEnabled && !policy.kakaoPcBatchAckAt) {
+      ack = await dialog.confirm({
+        title: '[운영자 판단] PC 카톡 묶음 발송 켜기',
+        message: 'PC 카카오톡 자동 조작(엑셀 발송 양식)은 카카오 공식 기능이 아니라 카카오톡 계정이 제한될 수 있어요. 받는 사람을 이름으로 찾기 때문에 같은 이름의 친구에게 잘못 갈 수도 있어요. 마이김변은 사건에 등록한 의뢰인 카톡 이름이 다른 사건과 겹치지 않는 경우만 목록에 넣어요. 사무소가 판단해 켜 주세요.',
+        confirmText: '확인했고 켤게요',
+        variant: 'warning',
+      });
+      if (!ack) return;
+    }
     setBusy(true);
-    const res = await saveCommPolicy(officeId, policyDraft, policy.version);
+    const res = await saveCommPolicy(officeId, policyDraft, policy.version, { kakaoPcBatch: ack });
     setBusy(false);
     if (!res.ok) { toast.error(res.message); return; }
     setPolicy(res.data); setPolicyDraft(res.data);
@@ -306,6 +318,13 @@ export default function OfficePhonePanel({ officeId, myUserId, canManageDevices,
                 <span className="font-normal">까지</span>
               </div>
             </div>
+            <label className="flex items-center gap-2 min-h-10">
+              <input type="checkbox" checked={policyDraft.kakaoPcBatchEnabled} onChange={e => setPolicyDraft(p => (p ? { ...p, kakaoPcBatchEnabled: e.target.checked } : p))} className="w-4 h-4" />
+              <span className="text-slate-800">PC 카톡 묶음 발송 쓰기 <span className="text-xs text-amber-700">([운영자 판단] 선택 기능)</span></span>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">PC 묶음 하루 발송 한도
+              <input type="number" min={1} max={1000} value={policyDraft.kakaoPcBatchDailyLimit} onChange={e => setPolicyDraft(p => (p ? { ...p, kakaoPcBatchDailyLimit: Math.max(1, Math.min(1000, Number(e.target.value) || 1)) } : p))} className="min-h-10 rounded-xl border border-slate-200 px-2 text-sm font-normal text-slate-800" />
+            </label>
             <label className="sm:col-span-2 flex flex-col gap-1 text-xs font-bold text-slate-600">직원 안내 문구 (앱 첫 화면에 보여요)
               <textarea value={policyDraft.staffNotice} onChange={e => setPolicyDraft(p => (p ? { ...p, staffNotice: e.target.value } : p))} rows={3} maxLength={1000} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-normal text-slate-800" />
             </label>
@@ -317,6 +336,9 @@ export default function OfficePhonePanel({ officeId, myUserId, canManageDevices,
           )}
         </section>
       )}
+
+      {/* 3-1. PC 카톡 묶음 발송 (KT-8, 켰을 때만) */}
+      {policy?.kakaoPcBatchEnabled && <KakaoPcBatchSection officeId={officeId} dailyLimit={policy.kakaoPcBatchDailyLimit} />}
 
       {/* 4. 등록 요청함 */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

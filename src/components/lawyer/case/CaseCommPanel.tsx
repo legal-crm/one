@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  ChevronDown, ChevronUp, Copy, FileAudio, Link2, MessageCircle, Phone, PhoneIncoming, PhoneOutgoing, Plus, RefreshCw,
+  ChevronDown, ChevronUp, Copy, FileAudio, FileText, Link2, MessageCircle, Phone, PhoneIncoming, PhoneOutgoing, Plus, RefreshCw,
   ShieldCheck, ShieldAlert, Trash2, Upload, Footprints, StickyNote, Smartphone,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../../supabaseClient';
@@ -17,6 +17,9 @@ import {
   recordManualLog, relinkCommLog, removeContact, saveContact, sendDeviceCommand, setCommLogNote, uploadRecording,
   type CallRecording, type ClientContact, type CommLog, type CommTarget, type CommTemplate, type ContactRelation, type ManualLogInput, type OfficeDevice,
 } from '../../../services/comm/commService';
+import { listNoticeTasks } from '../../../services/comm/clientNoticeService';
+import KakaoNoticeSection from './KakaoNoticeSection';
+import KakaoExportImportModal from './KakaoExportImportModal';
 
 interface Props {
   officeId: string;
@@ -60,6 +63,24 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadLogId, setUploadLogId] = useState<string | null>(null);
+  // 카톡 안내·대화 백업 (KT-2·KT-4)
+  const [exportLines, setExportLines] = useState<CommLog[]>([]);
+  const [showExportLines, setShowExportLines] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [pendingNotices, setPendingNotices] = useState(0);
+  const [noticeReload, setNoticeReload] = useState(0);
+
+  // 알림·업무함에서 '소통 기록'으로 들어오면 펼친다
+  useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen]);
+
+  // 접혀 있어도 보낼 카톡 안내 수는 보여 준다
+  const refreshPendingNotices = useCallback(async () => {
+    if (!isSupabaseConfigured || !officeId || !target.workspaceKey) return;
+    const r = await listNoticeTasks(officeId, target.workspaceKey, false);
+    if (r.ok) setPendingNotices(r.data.filter(t => t.status === 'pending' || t.status === 'fallback_failed').length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [officeId, target.workspaceKey]);
+  useEffect(() => { void refreshPendingNotices(); }, [refreshPendingNotices]);
 
   const canContact = canUse(permissions, 'client.contact');
   const canRecording = canUse(permissions, 'comm.recording');
@@ -74,14 +95,16 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
   const load = useCallback(async () => {
     if (!isSupabaseConfigured || !officeId || (!target.workspaceKey && !target.salesLeadId)) return;
     setLoading(true);
-    const [c, l, r, t, d, u] = await Promise.all([
-      listContacts(officeId, target), listCommLogs(officeId, target), listRecordings(officeId, target),
+    const [c, l, r, t, d, u, x] = await Promise.all([
+      listContacts(officeId, target), listCommLogs(officeId, target, 200, { kakaoExport: 'exclude' }), listRecordings(officeId, target),
       listCommTemplates(officeId), listOfficeDevices(officeId), supabase.auth.getUser(),
+      listCommLogs(officeId, target, 300, { kakaoExport: 'only' }),
     ]);
     setLoading(false);
     if (!l.ok) { setError(l.message); return; }
     setError('');
     setLogs(l.data);
+    setExportLines(x.ok ? x.data : []);
     setContacts(c.ok ? c.data : []);
     setRecordings(r.ok ? r.data : []);
     setTemplates(t.ok ? t.data : []);
@@ -263,6 +286,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
         <span className="flex items-center gap-2 font-extrabold text-sm text-slate-900">
           <Phone className="w-4 h-4 text-brand" aria-hidden="true" />소통 기록
           {open && logs.length > 0 && <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">{logs.length}건</span>}
+          {pendingNotices > 0 && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">보낼 카톡 {pendingNotices}</span>}
         </span>
         <span className="flex items-center gap-2 text-xs text-slate-500">
           통화·문자·카톡·방문·녹음
@@ -272,6 +296,12 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
 
       {open && (
         <div className="border-t border-slate-100 px-4 py-3 space-y-3">
+          {/* 의뢰인 카톡 이름 · 담당자 카톡으로 보낼 안내 (사건만, 영업 리드는 없음) */}
+          {target.workspaceKey && (
+            <KakaoNoticeSection key={`notice-${noticeReload}`} officeId={officeId} workspaceKey={target.workspaceKey}
+              onChanged={() => { void refreshPendingNotices(); void load(); }} />
+          )}
+
           {/* 연락처 */}
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -322,7 +352,8 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
             {canRecording && (
               <button type="button" disabled={busy} onClick={() => pickRecording(null)} className="inline-flex items-center gap-1.5 min-h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 active:scale-[0.98] whitespace-nowrap"><Upload className="w-4 h-4" aria-hidden="true" />녹음 올리기</button>
             )}
-            <button type="button" onClick={() => void load()} aria-label="새로고침" className="ml-auto min-h-10 px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-[0.98]"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
+            <button type="button" onClick={() => setShowExportModal(true)} className="inline-flex items-center gap-1.5 min-h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-[0.98] whitespace-nowrap"><FileText className="w-4 h-4" aria-hidden="true" />카톡 대화 백업</button>
+            <button type="button" onClick={() => { void load(); void refreshPendingNotices(); setNoticeReload(n => n + 1); }} aria-label="새로고침" className="ml-auto min-h-10 px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-[0.98]"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
             <input ref={fileRef} type="file" accept="audio/*,.m4a,.amr,.3gp" className="hidden" onChange={e => void onFile(e)} />
           </div>
 
@@ -441,8 +472,34 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
               {looseRecordings.map(r => <li key={r.id}>{recordingRow(r)}</li>)}
             </ol>
           )}
-          <p className="text-[11px] text-slate-500">기록 내용은 고칠 수 없어요(메모·연결만 바뀌고 이력이 남아요). 녹음을 듣거나 내려받으면 열람 기록이 남아요.</p>
+
+          {/* 카톡 대화 백업 줄 (따로 접어 둔다: 많아서 다른 기록을 가리지 않게) */}
+          {exportLines.length > 0 && (
+            <div className="rounded-xl border border-slate-200">
+              <button type="button" onClick={() => setShowExportLines(s => !s)} aria-expanded={showExportLines} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <span>카톡 대화 백업 {exportLines.length >= 300 ? '최근 300' : exportLines.length}줄</span>
+                {showExportLines ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
+              </button>
+              {showExportLines && (
+                <ol className="border-t border-slate-100 max-h-[420px] overflow-y-auto divide-y divide-slate-50">
+                  {exportLines.map(l => (
+                    <li key={l.id} className={`px-3 py-2 text-sm ${l.direction === 'in' ? '' : 'bg-slate-50/60'}`}>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                        <span className={`font-bold ${l.direction === 'in' ? 'text-amber-800' : 'text-brand'}`}>{l.senderName || (l.direction === 'in' ? '의뢰인' : '사무소')}</span>
+                        <span>{fmtTime(l.occurredAt)}</span>
+                      </div>
+                      <p className="mt-0.5 whitespace-pre-wrap break-words text-slate-800">{l.body}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-500">기록 내용은 고칠 수 없어요(메모·연결만 바뀌고 이력이 남아요). 녹음을 듣거나 대화 원본을 내려받으면 열람 기록이 남아요.</p>
         </div>
+      )}
+      {showExportModal && (
+        <KakaoExportImportModal officeId={officeId} target={target} onClose={() => setShowExportModal(false)} onImported={() => void load()} />
       )}
     </section>
   );

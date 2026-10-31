@@ -7,6 +7,21 @@ export type RpcResult<T> =
   | { ok: false; code: string; message: string; data?: undefined };
 
 const MESSAGE_RULES: Array<[RegExp, string]> = [
+  // 카카오톡 안내·대화 백업·PC 묶음 (KT-2·KT-4·KT-8)
+  [/notice already handled/i, '이미 처리한 안내예요. 새로고침해 주세요.'],
+  [/fallback alimtalk is being sent/i, '기한이 지나 알림톡으로 대신 보내는 중이에요. 잠시 뒤 다시 확인해 주세요.'],
+  [/resident registration number not allowed/i, '주민등록번호 형식이 들어 있어 보낼 수 없어요. 번호를 지우고 다시 시도해 주세요.'],
+  [/title and body required/i, '안내 제목과 내용을 확인해 주세요.'],
+  [/too many notices today/i, '오늘 만들 수 있는 안내 할 일 수를 넘었어요.'],
+  [/file too large \(10MB\)/i, '파일이 너무 커요. 10MB 이하만 올릴 수 있어요.'],
+  [/too many uploads today/i, '오늘 올릴 수 있는 대화 파일 수(30개)를 넘었어요.'],
+  [/file fingerprint mismatch/i, '올린 파일의 지문이 서버 파일과 달라요. 원본 파일을 다시 올려 주세요.'],
+  [/file not stored yet/i, '파일 저장 확인이 아직 끝나지 않았어요. 잠시 뒤 다시 시도해 주세요.'],
+  [/choose the client name/i, '대화에서 의뢰인 이름을 골라 주세요.'],
+  [/too many lines in one call/i, '한 번에 넣을 수 있는 줄 수를 넘었어요.'],
+  [/acknowledgement required to enable PC KakaoTalk batch/i, 'PC 카톡 묶음 발송을 켜려면 [운영자 판단] 안내를 확인해 주세요.'],
+  [/PC KakaoTalk batch is off/i, 'PC 카톡 묶음 발송이 꺼져 있어요. 설정 › 업무폰에서 켤 수 있어요.'],
+  [/at most 30 rows at once/i, '한 번에 30줄까지 올릴 수 있어요.'],
   [/cannot offboard owner/i, '대표는 퇴사 처리할 수 없어요.'],
   [/already left/i, '이미 퇴사 처리된 구성원이에요.'],
   [/handover member must be an active member/i, '일을 넘겨받을 사람은 지금 사용 중인 다른 구성원이어야 해요.'],

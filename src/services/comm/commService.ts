@@ -27,6 +27,8 @@ export interface OfficeDevice {
 export interface CommPolicy {
   officeId: string; requireApproval: boolean; uploadNetwork: 'any' | 'wifi'; uploadRecordings: boolean; autoTranscribe: boolean;
   appSmsAllowed: boolean; smsDailyLimit: number; smsQuietStart: number; smsQuietEnd: number; staffNotice: string; version: number;
+  /** PC 카톡 묶음 발송 (KT-8, 사무소 선택). 처음 켤 때 [운영자 판단] 안내 확인 필요 */
+  kakaoPcBatchEnabled: boolean; kakaoPcBatchAckAt: string | null; kakaoPcBatchDailyLimit: number;
 }
 
 export interface ClientContact {
@@ -38,7 +40,10 @@ export interface CommLog {
   id: string; officeId: string; deviceId: string | null; userId: string | null;
   workspaceKey: string | null; salesLeadId: string | null; contactId: string | null;
   linkStatus: 'linked' | 'needs_review'; candidates: Array<{ workspace_key: string | null; sales_lead_id: string | null }>;
-  source: 'app' | 'manual' | 'kakao_manual' | 'alimtok' | 'popbill';
+  source: 'app' | 'manual' | 'kakao_manual' | 'alimtok' | 'popbill' | 'kakao_export' | 'kakao_pc_batch';
+  /** 카톡 대화 내보내기에서 온 줄의 보낸 사람 표시 이름 */
+  senderName: string | null;
+  exportId: string | null;
   channel: CommChannel; direction: CommDirection; result: CommResult;
   durationSec: number | null; lineLabel: string; body: string | null;
   occurredAt: string; receivedAt: string; contentHash: string;
@@ -88,6 +93,8 @@ const toPolicy = (r: any): CommPolicy => ({
   uploadRecordings: !!r.upload_recordings, autoTranscribe: !!r.auto_transcribe, appSmsAllowed: !!r.app_sms_allowed,
   smsDailyLimit: r.sms_daily_limit ?? 50, smsQuietStart: r.sms_quiet_start ?? 21, smsQuietEnd: r.sms_quiet_end ?? 8,
   staffNotice: r.staff_notice || '', version: r.version ?? 1,
+  kakaoPcBatchEnabled: !!r.kakao_pc_batch_enabled, kakaoPcBatchAckAt: r.kakao_pc_batch_ack_at ?? null,
+  kakaoPcBatchDailyLimit: r.kakao_pc_batch_daily_limit ?? 100,
 });
 
 const toContact = (r: any): ClientContact => ({
@@ -99,7 +106,8 @@ const toLog = (r: any): CommLog => ({
   id: r.id, officeId: r.office_id, deviceId: r.device_id ?? null, userId: r.user_id ?? null,
   workspaceKey: r.workspace_key ?? null, salesLeadId: r.sales_lead_id ?? null, contactId: r.contact_id ?? null,
   linkStatus: r.link_status, candidates: Array.isArray(r.candidates) ? r.candidates : [],
-  source: r.source, channel: r.channel, direction: r.direction, result: r.result,
+  source: r.source, senderName: r.sender_name ?? null, exportId: r.export_id ?? null,
+  channel: r.channel, direction: r.direction, result: r.result,
   durationSec: r.duration_sec ?? null, lineLabel: r.line_label || '', body: r.body ?? null,
   occurredAt: r.occurred_at, receivedAt: r.received_at, contentHash: r.content_hash,
   note: r.note ?? null, nextContactAt: r.next_contact_at ?? null,
@@ -169,13 +177,16 @@ export async function loadCommPolicy(officeId: string): Promise<RpcResult<CommPo
   return { ok: true, data: toPolicy(data) };
 }
 
-export async function saveCommPolicy(officeId: string, p: Partial<CommPolicy>, expectedVersion?: number): Promise<RpcResult<CommPolicy>> {
+export async function saveCommPolicy(officeId: string, p: Partial<CommPolicy>, expectedVersion?: number, ack?: { kakaoPcBatch?: boolean }): Promise<RpcResult<CommPolicy>> {
   const { data, error } = await supabase.rpc('set_office_comm_policy', {
     p_office_id: officeId,
     p: {
       require_approval: p.requireApproval, upload_network: p.uploadNetwork, upload_recordings: p.uploadRecordings,
       auto_transcribe: p.autoTranscribe, app_sms_allowed: p.appSmsAllowed, sms_daily_limit: p.smsDailyLimit,
       sms_quiet_start: p.smsQuietStart, sms_quiet_end: p.smsQuietEnd, staff_notice: p.staffNotice,
+      kakao_pc_batch_enabled: p.kakaoPcBatchEnabled, kakao_pc_batch_daily_limit: p.kakaoPcBatchDailyLimit,
+      // 처음 켤 때 [운영자 판단] 안내를 확인했다는 표시 (서버가 확인 시각을 남긴다)
+      kakao_pc_batch_ack: ack?.kakaoPcBatch ? true : undefined,
     },
     p_expected_version: expectedVersion ?? null,
   });
@@ -210,9 +221,12 @@ export async function removeContact(id: string): Promise<RpcResult<true>> {
 }
 
 // ── 소통 기록 ───────────────────────────────────────────────────────
-export async function listCommLogs(officeId: string, target: CommTarget, limit = 200): Promise<RpcResult<CommLog[]>> {
+/** opts.kakaoExport: 'exclude' = 카톡 대화 백업 줄 빼고, 'only' = 그 줄만 (백업 줄이 많아 다른 기록을 밀어내지 않게 따로 읽는다) */
+export async function listCommLogs(officeId: string, target: CommTarget, limit = 200, opts: { kakaoExport?: 'exclude' | 'only' } = {}): Promise<RpcResult<CommLog[]>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
-  const q = supabase.from('client_comm_logs').select('*').eq('office_id', officeId);
+  let q = supabase.from('client_comm_logs').select('*').eq('office_id', officeId);
+  if (opts.kakaoExport === 'exclude') q = q.neq('source', 'kakao_export');
+  if (opts.kakaoExport === 'only') q = q.eq('source', 'kakao_export');
   const { data, error } = await applyTarget(q, target).order('occurred_at', { ascending: false }).limit(limit);
   if (error) return toRpcError(error);
   return { ok: true, data: (data || []).map(toLog) };
@@ -419,6 +433,10 @@ export function describeLog(l: Pick<CommLog, 'channel' | 'direction' | 'result' 
   const head = l.channel === 'call' ? (l.direction === 'in' ? '걸려 온 전화' : '건 전화') : `${CHANNEL_LABEL[l.channel]} ${dir}`.trim();
   const res = l.channel === 'call' ? RESULT_LABEL[l.result] : (l.result === 'failed' ? RESULT_LABEL.failed : '');
   const dur = l.channel === 'call' && l.durationSec ? formatDuration(l.durationSec) : '';
-  const src = l.source === 'kakao_manual' ? '직접 보낸 기록' : l.source === 'manual' ? '직접 기록' : '';
+  const src = l.source === 'kakao_manual' ? '담당자 카톡(직접 보냄)'
+    : l.source === 'kakao_pc_batch' ? '담당자 카톡(PC 묶음)'
+    : l.source === 'kakao_export' ? '카톡 대화 백업'
+    : l.source === 'manual' ? '직접 기록'
+    : l.source === 'alimtok' ? '발송 결과 기록' : '';
   return [head, res, dur, src].filter(Boolean).join(' · ');
 }

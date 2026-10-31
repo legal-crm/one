@@ -2642,6 +2642,8 @@ export default function LawyerRole({
     if (linkType === 'case_contract') { if (linkId) openCase(linkId, 'contracts'); else openCase(); return; }
     if (linkType === 'case_correction') { if (linkId) openCase(linkId, 'corrections'); else openCase(); return; }
     if (linkType === 'case_forms') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
+    // 담당자 카톡 안내·소통 기록 (KT-2): 사건 화면을 열고 '소통 기록'을 펼친다
+    if (linkType === 'case_comm') { if (linkId) openCase(linkId, 'calls'); else openCase(); return; }
     if (linkType === 'schedule' || linkType === 'tasks' || linkType === 'task') { setActiveTab('tasks-schedule'); return; }
     if (linkType === 'office_phone') { setActiveTab('settings'); setSettingsCategory('phone' as any); setSettingsSub('phone' as any); return; }
     // '시작하기' 점검표 바로가기 (HM-7)

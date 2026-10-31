@@ -10,6 +10,7 @@ const LABEL = {
   client_document: '의뢰인이 낸 서류',
   fee_client_report: '의뢰인 입금 알림',
   correction_client_reply: '의뢰인이 보낸 보정 자료',
+  notice_fallback_failed: '알림톡 자동 대체를 못 한 카톡 안내',
   consult_request_due_soon: '응답 기한이 다가온 상담 요청',
   consult_request_expired: '응답 기한이 지난 상담 요청',
   test: '팀 알림 연결 테스트',
