@@ -209,6 +209,7 @@ export function rowToLawyer(row: any): User {
 export const PRIVATE_LAWYER_KEYS = [
   'email',
   'licenseImageData',
+  'licenseImagePath',
   'businessNumber',
   'ntsStatus',
   'sealInfo',

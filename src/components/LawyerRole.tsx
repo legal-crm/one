@@ -1,3 +1,4 @@
+import { getLawyerLicenseUrl, uploadLawyerLicense } from '../services/lawyers/lawyerLicenseService';
 import { setFeePresetOfficeScope } from '../services/feePresetService';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -668,7 +669,7 @@ export default function LawyerRole({
   const [signupError, setSignupError] = useState<string>('');
   const [signupLicenseNumber, setSignupLicenseNumber] = useState<string>('');
   const [licensePreview, setLicensePreview] = useState<string>('');
-  const [licenseImageData, setLicenseImageData] = useState<string>('');
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [avatarImageData, setAvatarImageData] = useState<string>('');
   // 심사 대기 중 서류 추가/수정 접이식 상태 (기본 닫힘)
@@ -683,7 +684,10 @@ export default function LawyerRole({
     if (activeLawyer?.licenseNumber) {
       setSignupLicenseNumber(activeLawyer.licenseNumber);
     }
-    if (activeLawyer?.licenseImageData) {
+    if (activeLawyer?.licenseImagePath) {
+      // 저장된 등록증은 비공개 저장소에서 5분짜리 주소로 미리 보기
+      void getLawyerLicenseUrl(activeLawyer.licenseImagePath).then(u => { if (u && !/\.pdf$/i.test(activeLawyer.licenseImagePath || '')) setLicensePreview(u); });
+    } else if (activeLawyer?.licenseImageData) {
       setLicensePreview(activeLawyer.licenseImageData);
     }
     if (activeLawyer?.firmType) {
@@ -748,10 +752,17 @@ export default function LawyerRole({
     }
   };
 
-  const handleSubmitLicenseDoc = () => {
-    if (!signupLicenseNumber.trim() && !licenseImageData) {
-      toast.error('변호사 등록번호 또는 신분증 이미지를 첨부해주세요.');
+  const handleSubmitLicenseDoc = async () => {
+    if (!signupLicenseNumber.trim() && !licenseFile && !activeLawyer.licenseImagePath) {
+      toast.error('변호사 등록번호 또는 등록증 사진을 넣어 주세요.');
       return;
+    }
+    // 등록증은 비공개 저장소에 올리고 경로만 저장 (OP-8, 이전: base64 글자를 프로필에 통째로)
+    let licenseImagePath = activeLawyer.licenseImagePath;
+    if (licenseFile) {
+      const up = await uploadLawyerLicense(activeLawyer.id, licenseFile);
+      if (up.ok === false) { toast.error(up.message); return; }
+      licenseImagePath = up.path;
     }
     const updated: User = {
       ...activeLawyer,
@@ -760,7 +771,7 @@ export default function LawyerRole({
       businessNumber: signupBizNumber.trim() || activeLawyer.businessNumber || undefined,
       ntsStatus: signupNtsStatus,
       licenseNumber: signupLicenseNumber.trim() || activeLawyer.licenseNumber || undefined,
-      licenseImageData: licenseImageData || activeLawyer.licenseImageData || undefined,
+      licenseImagePath,
       licenseStatus: 'pending',
       recentActivity: '변호사 등록증 및 소속 자격 증빙 제출 완료'
     };
@@ -784,13 +795,14 @@ export default function LawyerRole({
       toast.error('파일 크기가 5MB를 초과합니다. 더 작은 파일을 선택해주세요.');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setLicensePreview(result);
-      setLicenseImageData(result);
-    };
-    reader.readAsDataURL(file);
+    setLicenseFile(file);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setLicensePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setLicensePreview('');
+    }
   };
 
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2613,7 +2625,9 @@ export default function LawyerRole({
                 </label>
                 <label className="block cursor-pointer">
                   <div className={`border-2 ${licensePreview ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300 border-dashed bg-slate-50 hover:bg-slate-100'} rounded-2xl p-4 text-xs text-center transition-all hover:border-brand/50`}>
-                    {licensePreview ? (
+                    {!licensePreview && (licenseFile || activeLawyer.licenseImagePath) ? (
+                      <span className="text-emerald-700 font-bold block text-xs py-2">✅ {licenseFile ? licenseFile.name : '등록증 제출됨'} (눌러서 다시 고르기)</span>
+                    ) : licensePreview ? (
                       <div className="space-y-2">
                         <img src={licensePreview} alt="신분증 미리보기" className="max-h-36 mx-auto rounded-xl object-contain border border-emerald-300 bg-white shadow-xs" />
                         <span className="text-emerald-700 font-bold block text-xs">✅ 신분증 촬영/첨부 완료 (터치하여 다시 촬영)</span>
@@ -2634,7 +2648,7 @@ export default function LawyerRole({
 
               <button
                 type="button"
-                onClick={handleSubmitLicenseDoc}
+                onClick={() => void handleSubmitLicenseDoc()}
                 className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
               >
                 자격 증빙 서류 저장

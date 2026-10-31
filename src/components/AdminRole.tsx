@@ -1,3 +1,4 @@
+import LicenseFileLink from './admin/LicenseFileLink';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
@@ -942,7 +943,7 @@ export default function AdminRole({
     // 화면에는 이미 승인됐지만 서버 권한만 빠진 경우(과거 승인 시 계정 미연결) → 서버 동기화만 수행
     const resyncOnly = !!targetLawyer && targetLawyer.approved !== false;
     // 자격 서류가 전혀 없으면 승인하지 않음 (이전: 클릭만으로 '검증 완료' 부여)
-    if (!resyncOnly && targetLawyer && targetLawyer.licenseStatus !== 'suspended' && !targetLawyer.licenseNumber && !targetLawyer.licenseImageData) {
+    if (!resyncOnly && targetLawyer && targetLawyer.licenseStatus !== 'suspended' && !targetLawyer.licenseNumber && !targetLawyer.licenseImageData && !targetLawyer.licenseImagePath) {
       toast.error('등록번호나 등록증이 제출되지 않아 승인할 수 없습니다. 먼저 제출을 요청하세요.');
       return;
     }
@@ -2172,8 +2173,12 @@ export default function AdminRole({
                               가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인하면 변호사 찾기에 프로필이 공개되고(공개 조건 충족 시), 의뢰인이 직접 고른 상담 요청을 받을 수 있습니다.
                             </p>
 
-                            {/* 변호사 등록증 미리보기 */}
-                            {selectedLawyer.licenseImageData && (
+                            {/* 변호사 등록증 (비공개 저장소, 5분 열람 주소 — OP-8) */}
+                            {selectedLawyer.licenseImagePath && (
+                              <LicenseFileLink path={selectedLawyer.licenseImagePath} />
+                            )}
+                            {/* 예전 base64 등록증 */}
+                            {!selectedLawyer.licenseImagePath && selectedLawyer.licenseImageData && (
                               <div className="space-y-1.5 bg-[#0B0F19] border border-amber-500/20 rounded-xl p-3">
                                 <span className="text-sm font-bold text-amber-400 block">📋 첨부된 변호사 등록증</span>
                                 <img src={selectedLawyer.licenseImageData} alt="변호사 등록증" className="w-full max-h-48 object-contain rounded-lg border border-[#1E293B]/40" />
@@ -2189,7 +2194,7 @@ export default function AdminRole({
                                 )}
                               </div>
                             )}
-                            {!selectedLawyer.licenseImageData && !selectedLawyer.licenseNumber && (
+                            {!selectedLawyer.licenseImageData && !selectedLawyer.licenseImagePath && !selectedLawyer.licenseNumber && (
                               <div className="text-sm text-red-400 bg-red-500/5 border border-red-500/10 p-2.5 rounded-xl">
                                 ⚠️ 등록증 미첨부 — 가입자에게 등록증 제출을 요청하세요.
                               </div>

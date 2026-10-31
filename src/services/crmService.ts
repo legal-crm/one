@@ -69,6 +69,20 @@ export function getCrmExt(clientId: string): CrmClientExtension {
  * (crm_clients는 사무소 전용이라 의뢰인은 client_case_view 함수로 필요한 칸만 받는다, 20261031000400)
  * @returns 받은 요약이 있으면 true
  */
+/** 의뢰인 화면용 일정 요약 (client_case_view.schedule) */
+export interface ClientCaseSchedule {
+  courtName?: string | null;
+  caseNumber?: string | null;
+  meetingDate?: string | null;
+  meetingPlace?: string | null;
+  upcoming?: Array<{ date: string; type?: string; title?: string }>;
+}
+export function getClientCaseSchedule(requestId: string | undefined): ClientCaseSchedule | null {
+  if (!requestId) return null;
+  const ext = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {})[requestId] as any;
+  return ext?.clientSchedule || null;
+}
+
 export async function refreshClientCaseView(requestId: string): Promise<boolean> {
   if (!isSupabaseConfigured || !requestId) return false;
   const { data, error } = await supabase.rpc('client_case_view', { p_request_id: requestId });
@@ -84,6 +98,8 @@ export async function refreshClientCaseView(requestId: string): Promise<boolean>
     dischargeRequestedAt: v.dischargeRequestedAt ?? (cur as any).dischargeRequestedAt,
     documents: Array.isArray(v.documents) ? v.documents : cur.documents,
     documentRequests: Array.isArray(v.documentRequests) ? v.documentRequests : cur.documentRequests,
+    // 사무소가 적은 법원·집회 일정 (CM-11, 20261101002600). 의뢰인 화면 전용 칸
+    clientSchedule: v.schedule && typeof v.schedule === 'object' ? v.schedule : (cur as any).clientSchedule,
   } as CrmClientExtension;
   setLocalData(CRM_STORAGE_KEY, store);
   return true;

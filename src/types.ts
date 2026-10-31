@@ -1266,7 +1266,8 @@ export interface User {
   matchedCount: number;
   // [SECURITY] 비밀번호 필드 없음 — 변호사 인증은 Supabase Auth(소셜) + lawyer_accounts 매핑으로만 판정
   approved?: boolean; // Admin approval status for lawyers (UI 표시용; DB 권한은 lawyer_accounts.approved)
-  licenseImageData?: string; // 변호사 등록증 이미지 (Base64 Data URL)
+  licenseImageData?: string; // (예전) 변호사 등록증 이미지 Base64 — 새로 쓰지 않음, 서버가 지움
+  licenseImagePath?: string; // 변호사 등록증 비공개 저장소 경로 (lawyer-licenses, OP-8)
   licenseNumber?: string; // 변호사 등록번호
   licenseStatus?: 'pending' | 'verified' | 'rejected' | 'suspended'; // 자격 심사 상태
   avatarData?: string; // 프로필 사진 (Base64 Data URL, 파일 업로드 시)

@@ -14,10 +14,13 @@ export default function CreditorMeetingGuideModal({
   isOpen,
   onClose,
   courtName = '',
-  caseNumber = '사건 접수 준비중',
-  meetingDate = '기일 지정 대기중',
-  meetingPlace = '회생법정'
+  caseNumber = '',
+  meetingDate = '',
+  meetingPlace = ''
 }: CreditorMeetingGuideModalProps) {
+  // 날짜·장소는 사무소가 적은 값만 보여 준다 (이전: '기일 지정 대기중'·'회생법정' 고정 문구)
+  const dateText = meetingDate ? meetingDate.replace('T', ' ').slice(0, 16) : '아직 정해지지 않았어요';
+  const placeText = meetingPlace ? `${courtName} ${meetingPlace}`.trim() : (courtName ? `${courtName} (법정은 통지서 확인)` : '통지서에 적힌 법정');
   if (!isOpen) return null;
 
   return (
@@ -33,7 +36,7 @@ export default function CreditorMeetingGuideModal({
             <div>
               <h3 className="font-black text-base md:text-lg text-white">채권자집회 출석 가이드</h3>
               <p className="text-xs text-blue-200">
-                {courtName} · 사건번호: <span className="font-mono font-bold text-white">{caseNumber}</span>
+                {courtName || '관할 법원'} · 사건번호: <span className="font-mono font-bold text-white">{caseNumber || '접수 전'}</span>
               </p>
             </div>
           </div>
@@ -58,7 +61,7 @@ export default function CreditorMeetingGuideModal({
                 지정 집회 일시
               </span>
               <span className="font-black text-sm text-blue-700 dark:text-blue-400 font-mono">
-                {meetingDate}
+                {dateText}
               </span>
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-blue-100 dark:border-blue-900/50">
@@ -67,7 +70,7 @@ export default function CreditorMeetingGuideModal({
                 출석 장소
               </span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
-                {courtName} {meetingPlace}
+                {placeText}
               </span>
             </div>
           </div>

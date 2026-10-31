@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { getClientCaseSchedule, refreshClientCaseView } from '../../../services/crmService';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RehabCompanionCase, RepaymentRoundItem, RepaymentVerificationStatus } from '../../../types';
 import {
   Award, CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, FileSpreadsheet, FileText, HeartHandshake,
@@ -180,6 +181,15 @@ export default function CompanionDashboard({
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
   const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
   const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
+  // 마이김변 변호사 사건이면 사무소가 적은 집회 일정을 쓴다 (CM-11)
+  const isOfficeCase = caseData.sourceType === 'mykim_lawyer';
+  const [companionSchedule, setCompanionSchedule] = useState(() => (isOfficeCase ? getClientCaseSchedule(caseData.clientId) : null));
+  useEffect(() => {
+    if (!isOfficeCase || !caseData.clientId) return;
+    let stop = false;
+    void refreshClientCaseView(caseData.clientId).then(ok => { if (!stop && ok) setCompanionSchedule(getClientCaseSchedule(caseData.clientId)); });
+    return () => { stop = true; };
+  }, [isOfficeCase, caseData.clientId]);
   const [isDischargeWriterOpen, setIsDischargeWriterOpen] = useState(false);
   const [showAllRounds, setShowAllRounds] = useState(false);
   const [showAllTools, setShowAllTools] = useState(false);
@@ -705,8 +715,10 @@ export default function CompanionDashboard({
       <CreditorMeetingGuideModal
         isOpen={isCreditorMeetingModalOpen}
         onClose={() => setIsCreditorMeetingModalOpen(false)}
-        courtName={caseData.courtName}
-        caseNumber={caseData.caseNumber}
+        courtName={companionSchedule?.courtName || caseData.courtName}
+        caseNumber={companionSchedule?.caseNumber || caseData.caseNumber}
+        meetingDate={companionSchedule?.meetingDate || undefined}
+        meetingPlace={companionSchedule?.meetingPlace || undefined}
       />
 
       {/* 내 보정 정리 (나홀로·다른 사무소 사건, CR-12) */}

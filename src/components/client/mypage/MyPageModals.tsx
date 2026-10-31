@@ -2,7 +2,7 @@ import React from 'react';
 import PremiumProposalReportModal from '../../common/PremiumProposalReportModal';
 import { getIncomeExpenseProgress, getPropertyProgress, getStatementProgress } from '../docDrafts';
 import { submitBankAuditToOffice } from '../../../services/bankAuditSubmit';
-import { submitClientCaseDraft } from '../../../services/crmService';
+import { getClientCaseSchedule, submitClientCaseDraft } from '../../../services/crmService';
 import { submitClientVault } from '../../../services/vault/certificateVaultService';
 import CreditorMeetingGuideModal from '../companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from '../vault/ClientCertificateSubmissionModal';
@@ -26,6 +26,8 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
     setIsIncomeExpenseModalOpen, setIsPropertyIntakeModalOpen, setIsStatementModalOpen, setRefreshTick,
     setSelectedProposalForReport, targetClientId, userAlias,
   } = vm;
+  // 사무소가 적은 법원·집회 일정 (CM-11, client_case_view.schedule)
+  const meetingSchedule = getClientCaseSchedule(activeRequest?.id || requests[0]?.id);
   return (
     <>
       {/* 프리미엄 제안서 & 7p AI 진단서 모달 */}
@@ -163,8 +165,10 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
       <CreditorMeetingGuideModal
         isOpen={isCreditorMeetingModalOpen}
         onClose={() => setIsCreditorMeetingModalOpen(false)}
-        courtName={crmExt?.courtCase?.courtName || activeRequest?.court || ''}
-        caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '사건 접수 준비중'}
+        courtName={meetingSchedule?.courtName || crmExt?.courtCase?.courtName || activeRequest?.court || ''}
+        caseNumber={meetingSchedule?.caseNumber || crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || ''}
+        meetingDate={meetingSchedule?.meetingDate || undefined}
+        meetingPlace={meetingSchedule?.meetingPlace || undefined}
       />
 
       {/* 🔐 의뢰인 안심 인증서 제출 마법사 모달 */}
