@@ -1,3 +1,4 @@
+import { feeTotalWon } from '../utils/feeUnits';
 import { getLawyerLicenseUrl, uploadLawyerLicense } from '../services/lawyers/lawyerLicenseService';
 import { setFeePresetOfficeScope } from '../services/feePresetService';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -1910,7 +1911,7 @@ export default function LawyerRole({
     setContractTargetRequest(null);
 
     // Log activity
-    const feeText = newContract?.totalFee ? `${newContract.totalFee}만 원` : '수임 완료';
+    const feeText = newContract?.totalFee ? `${feeTotalWon(newContract.totalFee).toLocaleString('ko-KR')}원` : '수임 완료';
     onLogActivity(
       activeLawyer.id,
       activeLawyer.name,

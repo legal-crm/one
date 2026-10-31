@@ -10,6 +10,16 @@ import type { FeeInstallment } from '../types';
  */
 export const MANWON = 10_000;
 
+/**
+ * 계약서 totalFee 저장값: 만 원으로 딱 떨어지면 만원 숫자(기존 규칙), 아니면 원 그대로 (FE-3)
+ * 이전: 언제나 만 원으로 반올림해 3,305,000원이 331만 원으로 저장됐다. 1만 원 미만 수임료는 없다고 본다.
+ */
+export function feeStoreValue(won: number): number {
+  const w = Math.max(0, Math.round(Number(won) || 0));
+  if (w === 0) return 0;
+  return w % MANWON === 0 ? w / MANWON : Math.max(w, MANWON);
+}
+
 /** 총 수임료를 원 단위로 반환 */
 export function feeTotalWon(total: number | string | undefined | null): number {
   const t = Number(total) || 0;

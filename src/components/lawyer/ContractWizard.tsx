@@ -1,4 +1,4 @@
-import { feeTotalWon } from '../../utils/feeUnits';
+import { feeStoreValue, feeTotalWon } from '../../utils/feeUnits';
 import { getDefaultDebtCertUnitFee } from '../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useRef } from 'react';
@@ -886,7 +886,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                         const val = Math.max(0, +e.target.value);
                         update({
                           statementFees: { ...c.statementFees, baseFee: val, successFee: statementSuccessFee, otherFee: statementOtherFee },
-                          totalFee: Math.round(val / 10000),
+                          totalFee: feeStoreValue(val),
                         });
                       }}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
@@ -1251,7 +1251,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 <button
                   type="button"
                   onClick={() => {
-                    const targetBase = c.vatIncluded ? totalFeeWithVat : (c.totalFee * 10000);
+                    const targetBase = c.vatIncluded ? totalFeeWithVat : feeTotalWon(c.totalFee);
                     const rawSchedule = generateFeeSchedule(targetBase, downPayment * 10000, installments, downDate, firstDate);
                     let preservedPaidCount = 0;
                     const converted: FeeInstallment[] = rawSchedule.map(s => {
@@ -2464,7 +2464,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const provisionalDeposit = c.courtCosts?.provisionalDeposit ?? 0;
     const totalCourt = deliveryFee + stampFee + debtCertFee + miscFee + provisionalDeposit;
 
-    const baseFee = (c.totalFee || 0) * 10000;
+    const baseFee = feeTotalWon(c.totalFee);
     const vatAmount = c.vatIncluded ? Math.round(baseFee * 0.1) : 0;
     const totalFeeWithVat = baseFee + vatAmount;
     const grandTotal = totalFeeWithVat + totalCourt;

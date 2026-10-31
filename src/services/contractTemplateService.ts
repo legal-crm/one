@@ -2,6 +2,7 @@
 // 전자 계약 서식(문서함) 관리 및 11대 법률 표준 라이브러리 서비스
 // ============================================================
 
+import { feeTotalWon } from '../utils/feeUnits';
 import type { ContractDocType, ContractDocument } from '../types';
 import { localYmd } from '../utils/localDate';
 
@@ -481,8 +482,8 @@ export function applyTemplatePlaceholders(content: string, vars: PlaceholderVari
   const clientAddress = vars.clientAddress || '주소 미입력';
   const lawyerName = vars.lawyerName || '담당 변호사';
   const lawFirmName = vars.lawFirmName || '법무법인';
-  const totalFeeStr = vars.totalFee ? ((vars.totalFee * 10000).toLocaleString() + '원') : '협의 금액';
-  const totalFeeKorean = vars.totalFeeKorean || (vars.totalFee ? `${(vars.totalFee * 10000).toLocaleString()}원 상당` : '협의 금액');
+  const totalFeeStr = vars.totalFee ? (feeTotalWon(vars.totalFee).toLocaleString() + '원') : '협의 금액';
+  const totalFeeKorean = vars.totalFeeKorean || (vars.totalFee ? `${feeTotalWon(vars.totalFee).toLocaleString()}원 상당` : '협의 금액');
   // 계약의 부가세 설정을 따른다 (이전: 설정과 무관하게 '부가가치세 포함'을 넣고, 일부 서식은 '(부가세 별도)' 고정 → 한 계약서 안에서 모순)
   const vatStatus = vars.vatStatus
     || (vars.vatIncluded === true ? '부가가치세 별도' : vars.vatIncluded === false ? '부가가치세 포함' : '부가가치세 포함 여부 별도 약정');
