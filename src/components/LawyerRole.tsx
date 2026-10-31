@@ -3398,7 +3398,7 @@ export default function LawyerRole({
               <DeviceSessionManager
                 userId={activeLawyer.id}
                 userName={activeLawyer.name}
-                userRole="LAWYER"
+                userRole={officeCtx.office?.role && !['owner', 'lawyer'].includes(officeCtx.office.role) ? 'STAFF' : 'LAWYER'}
                 userEmail={(activeLawyer as any).email || ''}
                 firmName={activeLawyer.firmName || '법률사무소'}
               />
@@ -3696,8 +3696,8 @@ export default function LawyerRole({
                   상담 접수 실시간 수신 알림, 의뢰인 자동 알림톡 발송 및 계정 보안 설정을 관리합니다.
                 </p>
               </div>
-              <span className="bg-brand/10 border border-brand/20 text-brand text-[11px] font-extrabold px-3 py-1 rounded-full whitespace-nowrap self-start sm:self-center shadow-2xs">
-                SaaS Enterprise 가동 중
+              <span className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1 rounded-lg whitespace-nowrap self-start sm:self-center">
+                개발 환경 전용 화면
               </span>
             </div>
 

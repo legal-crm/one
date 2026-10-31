@@ -828,7 +828,7 @@ export default function RepaymentPlanEditor({
             </div>
           </div>
 
-          {/* 카드 2: 총 변제액 & 탕감률 */}
+          {/* 카드 2: 총 변제액 & 감면 비율 */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500">총 변제예정액</span>
@@ -840,7 +840,7 @@ export default function RepaymentPlanEditor({
               {Math.round(plan.totalRepaymentAmount / 10000).toLocaleString()}만원
             </div>
             <div className="mt-1 text-xs text-emerald-600 font-bold">
-              총 {Math.round(plan.totalForgivenAmount / 10000).toLocaleString()}만원 탕감 ({plan.forgivenessRate}%)
+              총 {Math.round(plan.totalForgivenAmount / 10000).toLocaleString()}만원 감면 ({plan.forgivenessRate}%)
             </div>
           </div>
 

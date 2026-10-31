@@ -9,7 +9,7 @@ import { formatWonKorean, won } from '../ui/money';
 import DockCaseActionBar from '../DockCaseActionBar';
 
 const PERIOD_OPTIONS: { months: number; note: string }[] = [
-  { months: 24, note: '특례' },
+  { months: 24, note: '단축' },
   { months: 36, note: '원칙' },
   { months: 48, note: '' },
   { months: 60, note: '최장' },
@@ -29,7 +29,8 @@ function StatusBadge({ ok, okText = '충족', failText = '미달' }: { ok: boole
 }
 
 /**
- * 변제율·탕감률 계산기
+ * 변제계획 점검기 (변호사 내부 검토용)
+ * - 의뢰인에게 감면율·'탕감' 표현을 보내지 않도록 복사 문구를 '내부 검토용'과 '의뢰인 안내용'으로 나눴다 (T-4).
  * - 현재가치(라이프니츠)·최저변제액·청산가치 판정은 rehabLegalCore(변제계획안 화면과 같은 산식)를 쓴다.
  * - 총 채무·월 변제금·기간은 퀵독 공유값이라 중위소득·청산가치 도구와 함께 바뀐다.
  * - 사건 워크스페이스 연동 시 '사건에 반영', '할 일 등록', '메모에 추가' 가능
@@ -37,6 +38,7 @@ function StatusBadge({ ok, okText = '충족', failText = '미달' }: { ok: boole
 export default function RehabPayCalcTool() {
   const shared = useDockShared();
   const { copied, copy } = useCopyFeedback();
+  const clientCopy = useCopyFeedback();
 
   const liquidation = useMemo(
     () => computeQuickLiquidation(shared.liquidation, shared.region).total,
@@ -49,19 +51,18 @@ export default function RehabPayCalcTool() {
     liquidationValue: liquidation,
   });
   const hasInput = shared.totalDebt > 0 && shared.monthlyPay > 0;
-  const forgivenessRate = hasInput ? Math.max(0, 100 - plan.repaymentRate) : 0;
 
   const setPeriod = (m: number) => setDockShared({ periodMonths: Math.min(60, Math.max(1, Math.round(m) || 36)) });
 
   const briefingText = useMemo(() => {
     if (!hasInput) return '';
     const lines = [
-      '[개인회생 변제율·현재가치 브리핑 (참고)]',
+      '[내부 검토용 · 의뢰인에게 그대로 보내지 마세요] 변제계획 점검 (참고)',
       `• 총 채무 원금: ${formatWonKorean(plan.principal)}`,
       `• 월 변제금: ${won(plan.monthly)} × ${plan.months}개월 = ${formatWonKorean(plan.totalRepayment)} (변제율 ${plan.repaymentRate.toFixed(1)}%)`,
       plan.fullPayoff && plan.payoffMonths
         ? `• 약 ${plan.payoffMonths}개월 안에 원금 전액 변제 가능`
-        : `• 원금 탕감 예상: ${formatWonKorean(plan.forgiven)} (탕감률 ${forgivenessRate.toFixed(1)}%)`,
+        : `• 변제 후 면책 대상 원금(예상): ${formatWonKorean(plan.forgiven)}`,
       `• 현재가치(라이프니츠 ${plan.leibnizFactor}): ${won(plan.presentValue)}`,
       `• 최저변제액 기준: ${won(plan.minimumRepayment)} → ${plan.satisfiesMinimum ? '충족' : '미달'}`,
       liquidation > 0
@@ -70,11 +71,21 @@ export default function RehabPayCalcTool() {
       '* 변제 완료 후 면책결정을 받으면 잔존 채무의 책임이 면제됩니다 (비면책채권 제외). 실제 변제금은 법원 인가 내용에 따릅니다.',
     ].filter(Boolean);
     return lines.join('\n');
-  }, [hasInput, plan, forgivenessRate, liquidation]);
+  }, [hasInput, plan, liquidation]);
+
+  // 의뢰인 안내용: 월 변제금·기간·총 변제액만 (변제율·감면 표현·인가 요건 판정 없음)
+  const clientText = useMemo(() => {
+    if (!hasInput) return '';
+    return [
+      '[변제 계획 참고 안내]',
+      `• 월 변제금 ${won(plan.monthly)} × ${plan.months}개월 (총 ${formatWonKorean(plan.totalRepayment)})`,
+      '* 실제 월 변제금과 기간은 채권자목록·재산·소득 자료를 확인한 뒤 변호사가 정하고, 법원 인가 내용에 따릅니다.',
+    ].join('\n');
+  }, [hasInput, plan]);
 
   const handleCopy = () => {
     if (!briefingText) return;
-    copy(briefingText, '변제율 브리핑 문구가 복사되었습니다.');
+    copy(briefingText, '내부 검토용 문구가 복사되었습니다.');
   };
 
   const applyData = hasInput
@@ -84,9 +95,8 @@ export default function RehabPayCalcTool() {
         totalDebt: plan.principal,
         liquidationValue: liquidation,
         repaymentRate: plan.repaymentRate,
-        forgivenessRate,
-        sourceTool: '변제율·탕감률 계산기',
-        summaryText: `월 변제금 ${won(plan.monthly)} (${plan.months}개월, 탕감률 ${forgivenessRate.toFixed(1)}%)`,
+        sourceTool: '변제계획 점검기',
+        summaryText: `월 변제금 ${won(plan.monthly)} (${plan.months}개월, 총 ${formatWonKorean(plan.totalRepayment)})`,
       }
     : undefined;
 
@@ -142,7 +152,7 @@ export default function RehabPayCalcTool() {
             </label>
           </div>
           {shared.periodMonths === 24 && (
-            <p className="text-xs text-slate-500 mt-1">24개월은 특례 요건과 관할 법원 운영 여부를 확인해야 합니다 (만나이·법원 참고 도구).</p>
+            <p className="text-xs text-slate-500 mt-1">3년 미만 기간은 관할 법원 실무준칙의 단축 사유(65세 이상·중증장애 등)를 확인해야 합니다 (만나이·법원 참고 도구).</p>
           )}
         </div>
       </div>
@@ -160,7 +170,7 @@ export default function RehabPayCalcTool() {
             </p>
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-slate-600">원금 탕감 예상</span>
+              <span className="text-slate-600">변제 후 면책 대상 원금 (예상)</span>
               <span className="font-bold text-indigo-700 tabular-nums">{formatWonKorean(plan.forgiven)}</span>
             </div>
           )}
@@ -168,12 +178,9 @@ export default function RehabPayCalcTool() {
           <div className="pt-2 border-t border-indigo-200 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <TrendingDown className="w-4 h-4 text-emerald-700" aria-hidden="true" />
-              <span className="font-extrabold text-slate-800">원금 탕감률</span>
+              <span className="font-extrabold text-slate-800">원금 대비 변제율</span>
             </div>
-            <div className="text-right">
-              <span className="text-lg font-black text-indigo-700 tabular-nums">{forgivenessRate.toFixed(1)}%</span>
-              <span className="text-xs text-slate-600 block">변제율 {plan.repaymentRate.toFixed(1)}%</span>
-            </div>
+            <span className="text-lg font-black text-indigo-700 tabular-nums">{plan.repaymentRate.toFixed(1)}%</span>
           </div>
 
           {/* 인가 요건 점검 (참고) */}
@@ -213,11 +220,18 @@ export default function RehabPayCalcTool() {
         <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-600 border border-slate-200 space-y-1">
           <Percent className="w-5 h-5 mx-auto text-slate-500" aria-hidden="true" />
           <p className="font-bold">총 채무와 월 변제금을 입력하세요.</p>
-          <p className="text-xs text-slate-500">탕감률·현재가치·최저변제액 충족 여부를 바로 계산합니다.</p>
+          <p className="text-xs text-slate-500">총 변제액·현재가치·최저변제액 충족 여부를 바로 계산합니다.</p>
         </div>
       )}
 
-      <CopyButton copied={copied} onClick={handleCopy} disabled={!hasInput} label="변제율 브리핑 문구 복사" />
+      <CopyButton copied={copied} onClick={handleCopy} disabled={!hasInput} label="내부 검토용 문구 복사" />
+      <CopyButton
+        copied={clientCopy.copied}
+        onClick={() => clientText && clientCopy.copy(clientText, '의뢰인 안내용 문구가 복사되었습니다.')}
+        disabled={!hasInput}
+        label="의뢰인 안내용 문구 복사"
+        variant="light"
+      />
       <DockCaseActionBar
         applyData={applyData}
         memoText={briefingText}

@@ -71,11 +71,11 @@ export default function QuickMemoTool() {
     toast.success('상담 요약 템플릿이 추가되었습니다.');
   };
 
-  // 다른 계산기(중위소득·변제율·청산가치·송달료)에 입력한 값을 한 번에 요약해 붙인다
+  // 다른 계산기(중위소득·변제계획·청산가치·송달료)에 입력한 값을 한 번에 요약해 붙인다
   const handleInsertSummary = () => {
     const summary = buildDockSummary(getDockShared());
     if (!summary) {
-      toast.info('퀵툴 계산기에 입력된 값이 없습니다. 중위소득·변제율·청산가치 도구에 먼저 입력하세요.');
+      toast.info('퀵툴 계산기에 입력된 값이 없습니다. 중위소득·변제계획·청산가치 도구에 먼저 입력하세요.');
       return;
     }
     appendBlock(summary);
@@ -94,7 +94,7 @@ export default function QuickMemoTool() {
             type="button"
             onClick={handleInsertSummary}
             className="text-teal-800 hover:text-teal-950 font-bold flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
-            title="중위소득·변제율·청산가치·송달료 도구의 입력값을 요약해 붙입니다"
+            title="중위소득·변제계획·청산가치·송달료 도구의 입력값을 요약해 붙입니다"
           >
             <Calculator className="w-3 h-3" aria-hidden="true" />
             계산 결과 삽입

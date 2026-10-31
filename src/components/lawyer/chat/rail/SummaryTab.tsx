@@ -172,7 +172,7 @@ export default function SummaryTab({ request, simulation, getDisplayPhoneNumber,
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${rate}%` }} />
               </div>
               <p className="mt-2.5 text-[12px] leading-5 text-slate-600 tabular-nums">
-                총 변제 {formatManwon(simulation.totalRepay)} · 탕감 {formatManwon(simulation.reduction)} · 청산가치 {formatManwon(simulation.liquidationValue)}
+                총 변제 {formatManwon(simulation.totalRepay)} · 감면 {formatManwon(simulation.reduction)} · 청산가치 {formatManwon(simulation.liquidationValue)}
               </p>
             </div>
           ) : (

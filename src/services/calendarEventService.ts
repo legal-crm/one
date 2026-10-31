@@ -58,10 +58,13 @@ export const VISIBILITY_CONFIG: Record<EventVisibility, { label: string; emoji: 
   personal: { label: '나만 보기', emoji: '🔒', color: 'text-slate-500',  bgColor: 'bg-slate-50' },
 };
 
-/** 알림(10분~1일 전)은 저장만 된다. 발송하는 스케줄러가 아직 없다. */
-export const REMINDER_DELIVERY_SUPPORTED = false;
-
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+
+/**
+ * 일정 알림은 서버가 보낸다 (pg_cron 5분 → calendar_dispatch_reminders → 종 알림·이메일, 만든 사람에게만).
+ * 서버가 없는 로컬 개발 환경에서는 저장만 된다.
+ */
+export const REMINDER_DELIVERY_SUPPORTED = isSupabaseConfigured;
 import { generateUUID } from '../utils/deviceDetector';
 import { addMonthsClamped, localYmd, parseLocalYmd } from '../utils/localDate';
 

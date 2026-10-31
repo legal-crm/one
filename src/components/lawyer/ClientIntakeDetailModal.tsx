@@ -345,7 +345,7 @@ export default function ClientIntakeDetailModal({
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-xs">📉 원금 탕감률 추정:</span>
+                <span className="text-slate-400 text-xs">📉 감면 비율 추정(참고):</span>
                 <span className="font-mono font-black text-amber-300 text-xs sm:text-sm">
                   약 {expectedReliefPercent}%
                 </span>

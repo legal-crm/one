@@ -8,8 +8,7 @@ import ClientNotesEditor from './ClientNotesEditor';
  */
 export default function FinancialBlueprintCard({ vm }: { vm: MyPageModel }) {
   const {
-    activeResult, formatCurrency, formatResultMonthly, formatResultTotal, isEditingBlueprint, profile,
-    setIsEditingBlueprint, totalDebtValue,
+    formatCurrency, isEditingBlueprint, profile, setIsEditingBlueprint, totalDebtValue,
   } = vm;
   return (
     <>
@@ -22,14 +21,14 @@ export default function FinancialBlueprintCard({ vm }: { vm: MyPageModel }) {
                 <Scale className="w-5 h-5" />
               </span>
               <h3 className="font-black text-lg md:text-xl text-slate-900 dark:text-white">
-                나의 가계 재정 & 채무 진단서 원안
+                내가 입력한 재정·채무 정보
               </h3>
               <span className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
-                자가진단 원본
+                입력 원본
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              자가진단 시 입력한 재정·채무 데이터 원본입니다. 변호사가 사건을 검토하는 기준이 되며 언제든지 수정할 수 있습니다.
+              '내 상황 체크하기'에서 입력한 재정·채무 정보입니다. 상담을 요청한 변호사가 검토하는 자료이며 언제든지 고칠 수 있습니다.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -54,46 +53,28 @@ export default function FinancialBlueprintCard({ vm }: { vm: MyPageModel }) {
           </div>
         </div>
 
-        {/* 4대 주요 지표 카드 */}
+        {/* 내가 입력한 사실만 (계산 결과 — 감면액·월 변제금·생계비 — 는 변호사가 판단해 제안서로 알려 줌) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">총 채무액 (원금)</span>
-            <p className="text-base md:text-xl font-black text-slate-900 dark:text-white mt-1">
-              {formatCurrency(totalDebtValue)}
-            </p>
-            <span className="text-xs text-slate-400 block mt-0.5">금융권 원금 합산</span>
+            <p className="text-base md:text-xl font-black text-slate-900 dark:text-white mt-1">{formatCurrency(totalDebtValue)}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40">
-            <div className="flex flex-wrap items-center justify-between gap-1">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 block whitespace-nowrap">예상 감면액</span>
-              {activeResult && activeResult.debtReductionRate > 0 && (
-                <span className="text-xs font-extrabold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
-                  {activeResult.debtReductionRate}% 감면
-                </span>
-              )}
-            </div>
-            <p className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-              {activeResult ? formatResultTotal(activeResult.totalDebtReduction) : '-'}
-            </p>
-            <span className="text-xs text-emerald-700 dark:text-emerald-400/70 block mt-0.5">면책 시 갚지 않아도 되는 원금(예상)</span>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">월 평균 소득</span>
+            <p className="text-base md:text-xl font-black text-slate-900 dark:text-white mt-1">{(profile?.monthlyIncome || profile?.income || 0).toLocaleString()}만원</p>
           </div>
-          <div className="p-4 rounded-2xl bg-brand/5 dark:bg-brand/10 border border-brand/20">
-            <span className="text-xs font-bold text-brand dark:text-brand-light block">예상 월 변제금</span>
-            <p className="text-base md:text-xl font-black text-brand dark:text-brand-light mt-1">
-              {activeResult ? formatResultMonthly(activeResult.monthlyPayment) : '-'}
-            </p>
-            <span className="text-xs text-brand/70 block mt-0.5">36개월 기준 산정</span>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">가구원</span>
+            <p className="text-base md:text-xl font-black text-slate-900 dark:text-white mt-1">{(profile?.dependents || 0) + 1}인 가구</p>
           </div>
-          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
-            <span className="text-xs font-bold text-blue-700 dark:text-blue-400 block">법정 인정 생계비</span>
-            <p className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400 mt-1">
-              {activeResult ? formatResultMonthly(activeResult.recognizedLivingCost) : '-'}
-            </p>
-            <span className="text-xs text-blue-600/70 dark:text-blue-400/70 block mt-0.5">
-              {(profile?.dependents || 0) + 1}인 가구 기준
-            </span>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">내 재산 (입력값)</span>
+            <p className="text-base md:text-xl font-black text-slate-900 dark:text-white mt-1">{(profile?.myAssets || profile?.assetsTotal || 0).toLocaleString()}만원</p>
           </div>
         </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          월 변제금·기간은 상담을 요청한 변호사가 자료를 확인한 뒤 제안서로 알려 드립니다.
+        </p>
 
         {/* 가계 재정 & 채무 세부 명세 요약표 */}
         <div className="bg-slate-50/60 dark:bg-slate-800/40 rounded-2xl p-4 md:p-5 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
@@ -134,12 +115,12 @@ export default function FinancialBlueprintCard({ vm }: { vm: MyPageModel }) {
               </span>
             </div>
             <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80">
-              <span className="text-xs text-slate-400 block">재산 총액 (청산가치)</span>
+              <span className="text-xs text-slate-400 block">세금 체납 (입력값)</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-0.5 block">
-                {activeResult ? formatResultTotal(activeResult.liquidationValue) : `${(profile?.myAssets || 0).toLocaleString()}만원`}
+                {(profile?.priorityDebt || 0).toLocaleString()}만원
               </span>
               <span className="text-xs text-slate-400 block mt-0.5">
-                최우선 변제 공제 반영
+                국세·지방세·건강보험료 등
               </span>
             </div>
           </div>

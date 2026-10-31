@@ -6,7 +6,7 @@ export type QuickToolId =
   | 'extraExpense'     // 추가생계비 실무준칙
   | 'virtualAccount'   // 변제금 납입계좌 뷰어
   | 'alimtok'          // 모바일 알림톡 전송
-  | 'rehabPayCalc'     // 탕감률 & 총변제액 계산기
+  | 'rehabPayCalc'     // 변제계획 점검기 (총변제액·현재가치·최저변제액)
   | 'liquidationCalc'  // 청산가치 보장 점검기
   | 'courtGuidelines'  // 전국 법원별 실무성향
   | 'seizureLimits'    // 압류금지 채권 & 최우선변제금

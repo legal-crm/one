@@ -370,7 +370,7 @@ export default function Stage1ConsultationView({
           {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-xs">예상 채무 탕감률</span>
+              <span className="text-slate-400 block text-xs">감면 비율(참고)</span>
               <span className="text-base font-black text-emerald-400 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
@@ -452,7 +452,7 @@ export default function Stage1ConsultationView({
           {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-700/60">
             <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs">
-              <span className="text-slate-400 block text-xs">예상 채무 탕감률</span>
+              <span className="text-slate-400 block text-xs">감면 비율(참고)</span>
               <span className="text-base font-black text-emerald-400 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
@@ -532,7 +532,7 @@ export default function Stage1ConsultationView({
               </span>
             </div>
             <div className="p-3 bg-white/90 rounded-xl border border-emerald-100/80 shadow-2xs">
-              <span className="text-xs font-bold text-slate-500 block">제안 탕감률</span>
+              <span className="text-xs font-bold text-slate-500 block">감면 비율(참고)</span>
               <span className="text-xs sm:text-sm font-black text-emerald-600 mt-0.5 block">
                 최대 {myProposal?.reductionRate || 0}%
               </span>
@@ -690,7 +690,7 @@ export default function Stage1ConsultationView({
                       <td className="py-1 text-right font-mono font-bold text-blue-600">{assetsTotal.toLocaleString()}만원</td>
                     </tr>
                     <tr className="text-xs">
-                      <td className="py-1 text-slate-700 font-bold whitespace-nowrap">탕감 대상 순채무</td>
+                      <td className="py-1 text-slate-700 font-bold whitespace-nowrap">감면 대상 순채무</td>
                       <td className="py-1 text-right font-mono font-black text-emerald-600">{(debtTotal - assetsTotal).toLocaleString()}만원</td>
                     </tr>
                   </tbody>

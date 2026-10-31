@@ -3612,14 +3612,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             // [PART 3-2] 관리자 KPI '진단 완료' 집계용 서버 기록 (금액·개인정보 없이 완료 사실만)
             auditDiagnosisSubmit('chatbot-v2');
 
-            const statusEmoji = calculationResult.status === 'POSSIBLE' ? '🟢' :
-                calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';
-
-            // 무직자 안내 메시지
-            let resultMessage = `${statusEmoji} 계산을 마쳤습니다.\n\n입력하신 정보 기준 ${input.name || '의뢰인'}님의 예상 감면율은 약 **${calculationResult.debtReductionRate}%**입니다.\n(참고용 추정치이며, 실제 결과는 법원 심사에 따라 달라질 수 있어요.)`;
+            // 의뢰인에게는 감면율·월 변제금·가능성 판정을 보여 주지 않는다 (제109조, CK-Q2·I-1).
+            // 계산 결과는 변호사가 검토할 참고 자료로만 넘어간다.
+            let resultMessage = `✅ 정리를 마쳤습니다.\n\n입력하신 내용은 상담을 요청하는 변호사가 볼 수 있도록 정리됐어요. 어떤 절차가 맞는지, 월 변제금이 얼마인지는 변호사가 자료를 확인한 뒤 알려 드립니다.`;
 
             if (input.employmentType === 'none' || input.employmentType === 'basic_recipient') {
-                resultMessage += '\n\n💡 현재 확인된 정기 소득이 없어 **월 200만원 소득을 가정한 참고용 계산**입니다.\n\n개인회생은 계속적·반복적인 수입이 있어야 신청할 수 있어요. 소득이 없거나 매우 적다면 개인파산 절차도 함께 검토해 보시길 권합니다.';
+                resultMessage += '\n\n💡 개인회생은 계속적·반복적인 수입이 있어야 신청할 수 있어요. 지금 정기 소득이 없다면 개인파산 절차가 맞는지도 변호사와 함께 확인해 보세요.';
             }
 
             // V2.1: 압류 경험자 특별 메시지
@@ -3629,7 +3627,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             addBotMessage(
                 resultMessage,
-                [{ label: '📊 진단 결과 보기', value: 'show_result' }],
+                [{ label: '변호사 찾기로 이동', value: 'show_result' }],
                 'buttons'
             );
 

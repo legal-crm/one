@@ -1,6 +1,6 @@
 // ============================================================
 // 퀵독 도구 간 공유 입력값 (상담 1건 단위 및 사건 워크스페이스 연동)
-// - 중위소득 → 추가생계비 → 변제율 → 청산가치 순으로 같은 숫자를 도구마다 다시 입력하던 문제를 없앤다.
+// - 중위소득 → 추가생계비 → 변제계획 → 청산가치 순으로 같은 숫자를 도구마다 다시 입력하던 문제를 없앤다.
 // - 금액·인원수만 담고 성명·연락처·생년월일은 담지 않는다.
 // - 사건 워크스페이스에서 열면 사건 데이터(채무·소득·가구원·재산)를 자동 프리필하고, 사건 전환 시 초기화한다.
 // - 메모리 전용: 새로고침·탭 닫기·로그아웃(clearDockSensitiveData) 시 사라진다.
@@ -218,10 +218,12 @@ export function syncDockFromCase(
     creditorCount?: number;
   } | null,
   crmExt?: {
+    /** 저장된 변제계획안 (repaymentCalculationEngine RepaymentPlanData의 실제 칸 이름) */
     repaymentPlan?: {
-      monthlyRepayment?: number;
-      repaymentMonths?: number;
+      monthlyRepaymentTotal?: number;
+      months?: number;
       totalDebt?: number;
+      totalLiquidationValue?: number;
     };
     courtCase?: {
       courtName?: string;
@@ -251,8 +253,9 @@ export function syncDockFromCase(
     additional: ((fp?.speculativeLoss || 0) + (fp?.gamblingLoss || 0)) * 10000,
   };
 
-  const monthlyPay = crmExt?.repaymentPlan?.monthlyRepayment || 0;
-  const periodMonths = crmExt?.repaymentPlan?.repaymentMonths || 36;
+  // 이전: 없는 칸(monthlyRepayment·repaymentMonths)을 읽어 저장된 변제계획안이 있어도 늘 0원·36개월로 채워졌다
+  const monthlyPay = crmExt?.repaymentPlan?.monthlyRepaymentTotal || 0;
+  const periodMonths = crmExt?.repaymentPlan?.months || 36;
 
   state = {
     ...state,

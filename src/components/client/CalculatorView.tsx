@@ -120,8 +120,6 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
               );
               const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
               const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
-              const totalReduction = Math.max(0, calcDebt - totalRepayment);
-              const reductionRate = calcDebt > 0 ? Math.round((totalReduction / calcDebt) * 100) : 0;
               const isBankruptcyApplicable = monthlyRepayment <= 0;
 
               return (
@@ -154,17 +152,6 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                     </div>
                   </div>
 
-                  {!isBankruptcyApplicable && (
-                    <div className="bg-gradient-to-r from-brand/10 to-blue-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
-                      <span className="text-xs text-slate-300 uppercase tracking-widest font-bold">입력값 기준 예상 감면 비율</span>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-teal-300 tracking-tight">
-                        약 {reductionRate}% 조정 가능성
-                      </div>
-                      <p className="text-sm text-slate-400 font-medium">
-                        (총 채무 중 약 <strong className="text-white font-bold">{Math.round(totalReduction).toLocaleString()}만 원</strong> 감면)
-                      </p>
-                    </div>
-                  )}
 
                   <div className="pt-2 relative z-10">
                     <button

@@ -168,7 +168,7 @@ export const ClientProposalTracker: React.FC<ClientProposalTrackerProps> = ({
                     <span className={`text-xs px-1.5 py-0.2 rounded-full font-extrabold ${
                       selectedProposalIdx === idx ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-300'
                     }`}>
-                      감면 {item.proposal.reductionRate}%
+                      {item.proposal.monthlyPayment ? `월 ${item.proposal.monthlyPayment}만원` : '제안서'}
                     </span>
                   </button>
                 ))}

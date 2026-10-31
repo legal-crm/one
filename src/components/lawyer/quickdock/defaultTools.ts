@@ -20,12 +20,12 @@ export const ALL_QUICK_TOOLS: QuickToolMeta[] = [
   },
   {
     id: 'rehabPayCalc',
-    title: '변제율·탕감률 계산기',
-    shortTitle: '변제율',
+    title: '변제계획 점검기',
+    shortTitle: '변제계획',
     subtitle: '총변제액·현재가치·최저변제액 점검',
     category: 'calculator',
     badge: '추천',
-    keywords: ['탕감', '변제금', '라이프니츠', '현재가치', '최저변제액', '24개월', '36개월', '60개월'],
+    keywords: ['변제율', '변제금', '라이프니츠', '현재가치', '최저변제액', '변제기간', '36개월', '60개월'],
     iconName: 'Percent',
     colorClass: {
       bg: 'bg-indigo-500/20',

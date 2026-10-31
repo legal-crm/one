@@ -196,7 +196,7 @@ export default function DeviceSessionManager({
             </span>
           </div>
           <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
-            {userName} ({userRole === 'ADMIN' ? '통합 관리자' : `${firmName || '법률사무소'} 변호사`}) 계정으로 로그인된 기기 목록을 확인하고 원격으로 로그아웃할 수 있습니다. (서버 세션 기록 기준, 이 브라우저 기록 포함)
+            {userName} ({userRole === 'ADMIN' ? '통합 관리자' : `${firmName || '법률사무소'} ${userRole === 'STAFF' ? '직원' : '변호사'}`}) 계정으로 로그인된 기기 목록을 확인하고 원격으로 로그아웃할 수 있습니다. (서버 세션 기록 기준, 이 브라우저 기록 포함)
           </p>
         </div>
 

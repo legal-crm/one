@@ -1705,16 +1705,16 @@ export default function ClientRole({
 
     return {
       clientName: input.name || '익명 의뢰인',
-      phoneNumber: input.phone || '010-0000-0000',
+      phoneNumber: input.phone || '', // 가짜 번호로 채우지 않음 (I-4)
       birthDate,
       gender,
       consultDate: new Date().toISOString().split('T')[0],
-      applyYear: 2026,
-      dbVendor: '온라인광고',
+      applyYear: new Date().getFullYear(),
+      dbVendor: '마이김변',
       caseType: 'individual_rehab',
       residence: input.address || '',
       workplace: input.workLocation || '',
-      selectedCourt: result.courtName || '서울회생법원',
+      selectedCourt: result.courtName || '', // 관할을 모르면 비워 둠 (변호사가 확인)
       prevHistory,
       maritalStatus,
       spouseIncome: input.spouseIncome || 0,

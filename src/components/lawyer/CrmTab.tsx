@@ -65,7 +65,7 @@ import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
 import ClientIntakeDetailModal from './ClientIntakeDetailModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
-import { buildRepaymentPlan, rebuildPlanWithAssets } from '../../services/repayment/repaymentCalculationEngine';
+import { buildRepaymentPlan, rebuildPlanWithAssets, rebuildPlanWithOverride } from '../../services/repayment/repaymentCalculationEngine';
 import { checkShortPlanReason, shortPlanInputFromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
@@ -919,24 +919,29 @@ export default function CrmTab({
 
       // 2. 퀵툴 액션 핸들러 등록
       const unregister = registerDockCaseHandlers({
+        // QT-Q3: 퀵툴 값은 변제계획안의 '수동 조정(월 변제금·기간)'으로만 넣고 엔진으로 다시 계산한다.
+        // (이전: 월 변제금·기간·변제율 칸만 덮어써 채권자별 안분·현재가치·청산가치 충족 여부가 옛 값으로 남았다)
+        // 총 채무·청산가치는 채권자목록·재산목록에서 나오므로 퀵툴 값으로 바꾸지 않는다.
         onApplyToCase: async (data: DockApplyData) => {
+          if (!data.monthlyPay || !data.periodMonths) {
+            toast.error('월 변제금과 변제 기간을 먼저 입력해 주세요.');
+            return false;
+          }
           const currentExt = getCrmExt(selectedClient.id);
-          const prevPlan = currentExt.repaymentPlan;
-          const updatedPlan: any = {
-            ...prevPlan,
-            monthlyRepaymentTotal: data.monthlyPay ?? prevPlan?.monthlyRepaymentTotal ?? 0,
-            months: data.periodMonths ?? prevPlan?.months ?? 36,
-            totalDebt: data.totalDebt ?? prevPlan?.totalDebt ?? (selectedClient.financialProfile?.debtTotal || 0) * 10000,
-            totalLiquidationValue: data.liquidationValue ?? prevPlan?.totalLiquidationValue ?? 0,
-            totalRepaymentRate: data.repaymentRate ?? prevPlan?.totalRepaymentRate ?? 0,
-            totalForgivenAmount: (data.totalDebt && data.monthlyPay && data.periodMonths)
-              ? Math.max(0, data.totalDebt - (data.monthlyPay * data.periodMonths))
-              : prevPlan?.totalForgivenAmount,
-          };
-          updateCrmExt(selectedClient.id, {
-            ...currentExt,
-            repaymentPlan: updatedPlan,
+          const basePlan = currentExt.repaymentPlan || activeRepaymentPlan;
+          if (!basePlan.creditors || basePlan.creditors.length === 0) {
+            toast.error('이 사건의 채권자목록이 비어 있어 변제계획안에 반영할 수 없습니다. 서식 작성기에서 채권자를 먼저 입력해 주세요.');
+            return false;
+          }
+          const rebuilt = rebuildPlanWithOverride(basePlan, {
+            months: data.periodMonths,
+            monthlyRepayment: data.monthlyPay,
+            memo: `퀵툴(${data.sourceTool || '계산 도구'})에서 월 ${data.monthlyPay.toLocaleString('ko-KR')}원 × ${data.periodMonths}개월로 조정`,
           });
+          await saveOrThrow(selectedClient.id, { repaymentPlan: rebuilt });
+          if (data.totalDebt && Math.abs(data.totalDebt - rebuilt.totalDebt) >= 10000) {
+            toast.info(`총 채무는 채권자목록 합계(${rebuilt.totalDebt.toLocaleString('ko-KR')}원) 기준으로 계산했습니다.`);
+          }
           return true;
         },
         onAddTaskTicket: async (task) => {
@@ -985,25 +990,13 @@ export default function CrmTab({
             });
             return;
           }
-          if (selectedExt.feeSchedule && selectedExt.feeSchedule.length > 0) {
-            const firstPending = selectedExt.feeSchedule.find(f => f.status !== 'paid') || selectedExt.feeSchedule[0];
-            setFeeAlimtokModalConfig({
-              isOpen: true,
-              installment: firstPending,
-            });
-          } else {
-            setFeeAlimtokModalConfig({
-              isOpen: true,
-              installment: {
-                id: 'inst-initial',
-                round: 1,
-                amount: 500000,
-                dueDate: localYmd(),
-                status: 'pending',
-                memo: '착수금 안내',
-              },
-            });
+          // 서버 사무소가 없는 개발 환경: 사본 일정의 남은 회차만 (가짜 50만 원 회차 삭제)
+          const firstPending = selectedExt.feeSchedule?.find(f => f.status !== 'paid');
+          if (!firstPending) {
+            toast.info('안내할 남은 수납 회차가 없습니다.');
+            return;
           }
+          setFeeAlimtokModalConfig({ isOpen: true, installment: firstPending });
         },
       });
 
@@ -1013,7 +1006,7 @@ export default function CrmTab({
     } else {
       clearDockCaseContext();
     }
-  }, [selectedId, selectedClient, selectedExt, firmTenantId, activeLawyer.id, activeLawyer.name, getDisplayClientName]);
+  }, [selectedId, selectedClient, selectedExt, activeRepaymentPlan, saveOrThrow, firmTenantId, activeLawyer.id, activeLawyer.name, getDisplayClientName]);
 
   // CRM 탭 언마운트 시 퀵툴 컨텍스트 해제
   useEffect(() => {

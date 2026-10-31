@@ -126,9 +126,10 @@ export default function MatchPanel({
                       <dt className="text-xs font-bold text-slate-600">월 변제금</dt>
                       <dd className="text-sm font-extrabold text-slate-900 tabular-nums">{p.monthlyPayment}만원</dd>
                     </div>
+                    {/* 감면율(%)은 보여 주지 않는다 (RP-Q1) */}
                     <div className="rounded-xl bg-slate-50 px-2.5 py-2">
-                      <dt className="text-xs font-bold text-slate-600">감면율</dt>
-                      <dd className="text-sm font-extrabold text-slate-900 tabular-nums">{p.reductionRate}%</dd>
+                      <dt className="text-xs font-bold text-slate-600">변제 기간</dt>
+                      <dd className="text-sm font-extrabold text-slate-900 tabular-nums">{p.duration ? `${p.duration}개월` : '제안서 참고'}</dd>
                     </div>
                     <div className="rounded-xl bg-slate-50 px-2.5 py-2">
                       <dt className="text-xs font-bold text-slate-600">수임료</dt>

@@ -13,6 +13,7 @@ const LABEL = {
   notice_fallback_failed: '알림톡 자동 대체를 못 한 카톡 안내',
   consult_request_due_soon: '응답 기한이 다가온 상담 요청',
   consult_request_expired: '응답 기한이 지난 상담 요청',
+  calendar_reminder: '다가온 일정',
   test: '팀 알림 연결 테스트',
 };
 

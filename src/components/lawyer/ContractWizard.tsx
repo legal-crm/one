@@ -2704,7 +2704,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   <span>약정 금액: 일금 {(c.successFee.amount || 500000).toLocaleString()}원정 (고정 성공보수)</span>
                 )}
                 {c.successFee.type === 'reduction_rate' && (
-                  <span>약정 요율: {c.successFee.targetType === 'total_debt' ? '총 채무(원금+이자) 감면액' : '원금 탕감액'}의 {c.successFee.ratePercent || 5}% 상당액</span>
+                  <span>약정 요율: {c.successFee.targetType === 'total_debt' ? '총 채무(원금+이자) 감면액' : '원금 감면액'}의 {c.successFee.ratePercent || 5}% 상당액</span>
                 )}
                 {c.successFee.type === 'custom' && (
                   <span>약정 조건: {c.successFee.description || '별도 합의 조건에 따름'}</span>

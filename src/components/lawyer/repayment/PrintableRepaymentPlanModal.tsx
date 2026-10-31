@@ -205,7 +205,7 @@ export default function PrintableRepaymentPlanModal({
                     </p>
                   )}
                   <p className="text-xs text-slate-600">
-                    * 원금 기준 총 변제율: <strong className="font-bold text-blue-900">{plan.totalRepaymentRate}%</strong> (원금 탕감률: {plan.forgivenessRate}%)
+                    * 원금 기준 총 변제율: <strong className="font-bold text-blue-900">{plan.totalRepaymentRate}%</strong> (원금 감면 비율: {plan.forgivenessRate}%)
                   </p>
 
                   {plan.totalUnconfirmedReserve && plan.totalUnconfirmedReserve > 0 && (

@@ -26,7 +26,7 @@ export default function MedianIncomeTool() {
 
   const handleApply = () => {
     setDockShared({ monthlyPay: d.disposable });
-    toast.success(`월 변제금을 ${won(d.disposable)}으로 반영했습니다. (변제율·청산가치 도구)`);
+    toast.success(`월 변제금을 ${won(d.disposable)}으로 반영했습니다. (변제계획·청산가치 도구)`);
   };
 
   const briefingText = `[2026 가용소득 산정 (참고)]

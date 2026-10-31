@@ -141,7 +141,7 @@ const fmtNum = (n: number) => n.toLocaleString('ko-KR');
 // 5대 핵심 실무 전략 태그 칩
 const STRATEGY_CHIPS = [
   {
-    tag: '#주식코인손실탕감',
+    tag: '#주식코인손실소명',
     text: '\n• [주식/코인 투자손실 소명]: 투자 손실금이 청산가치에 과다 반영되지 않도록 거래내역을 바탕으로 소명하겠습니다.'
   },
   {

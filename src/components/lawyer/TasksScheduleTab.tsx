@@ -2689,11 +2689,11 @@ export default function TasksScheduleTab({
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                {!REMINDER_DELIVERY_SUPPORTED && (
-                  <p id="reminder-unsupported-note" className="text-xs text-slate-500 mt-1">
-                    알림 발송 기능은 준비 중입니다. 지금은 알림이 가지 않습니다.
-                  </p>
-                )}
+                <p id="reminder-unsupported-note" className="text-xs text-slate-500 mt-1">
+                  {REMINDER_DELIVERY_SUPPORTED
+                    ? '일정을 만든 사람에게 마이김변 알림(종)으로 갑니다. 이메일은 설정 › 내 알림 받기에서 켤 수 있어요. 시간이 없는 일정은 오전 9시 기준입니다.'
+                    : '서버가 연결되지 않은 개발 환경이라 알림이 가지 않습니다.'}
+                </p>
               </div>
             </div>
 

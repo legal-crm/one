@@ -119,7 +119,7 @@ export default function DecisionSummaryCard({
       </div>
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-        {/* 좌측: 대형 원형 도넛 게이지 차트 (탕감률 & 변제율) */}
+        {/* 좌측: 대형 원형 도넛 게이지 차트 (감면 비율 & 변제율) */}
         <div className="lg:col-span-4 flex flex-col items-center justify-center bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
           <div className="relative w-36 h-36 flex items-center justify-center">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -132,7 +132,7 @@ export default function DecisionSummaryCard({
                 strokeWidth="10"
                 fill="transparent"
               />
-              {/* 탕감률 원 */}
+              {/* 감면 비율 원 */}
               <circle
                 cx="50"
                 cy="50"
@@ -146,7 +146,7 @@ export default function DecisionSummaryCard({
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">탕감률</span>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">감면 비율</span>
               <span className="text-3xl font-black text-emerald-400 tracking-tight tabular-nums">
                 {form.dischargeRate}%
               </span>
@@ -157,7 +157,7 @@ export default function DecisionSummaryCard({
           <div className="flex items-center gap-4 mt-3 text-xs font-medium text-slate-300">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              면책 탕감: {(form.totalDischarged / 10000 >= 1 ? `${(form.totalDischarged / 10000).toFixed(1)}억` : `${form.totalDischarged.toLocaleString()}만`)}
+              면책 예상액: {(form.totalDischarged / 10000 >= 1 ? `${(form.totalDischarged / 10000).toFixed(1)}억` : `${form.totalDischarged.toLocaleString()}만`)}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />

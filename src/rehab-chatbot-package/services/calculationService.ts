@@ -582,12 +582,7 @@ export function calculateRepayment(
         aiAdvice.push('이 법원 실무 기준에 따라 배우자 재산을 반영하지 않고 계산했습니다.');
     }
 
-    // 감면율 관련
-    if (debtReductionRate >= 80) {
-        aiAdvice.push(`입력하신 정보 기준 예상 감면율은 약 ${debtReductionRate}%입니다. 실제 결과는 법원 심사에 따라 달라질 수 있습니다.`);
-    } else if (debtReductionRate >= 50) {
-        aiAdvice.push(`입력하신 정보 기준 예상 감면율은 약 ${debtReductionRate}%입니다.`);
-    }
+    // 감면율 문장은 넣지 않는다 (이 조언은 의뢰인 화면에도 쓰일 수 있음, B-4·I-1)
 
     // 리스크 경고
     if (input.riskFactor === 'gambling') {

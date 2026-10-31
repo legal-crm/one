@@ -1124,6 +1124,30 @@ export function rebuildPlanWithAssets(
   };
 }
 
+/**
+ * 저장된 변제계획안에 월 변제금·기간을 수동 조정값으로 넣고 엔진으로 다시 계산한다 (퀵툴 '사건에 반영', QT-Q3).
+ * 채권자별 안분·현재가치·청산가치 충족 여부·변제율이 새 값에 맞춰 함께 바뀐다.
+ */
+export function rebuildPlanWithOverride(
+  plan: RepaymentPlanData,
+  override: { months: number; monthlyRepayment: number; memo?: string },
+): RepaymentPlanData {
+  const months = Math.min(60, Math.max(1, Math.round(override.months)));
+  const monthly = Math.max(0, Math.round(override.monthlyRepayment));
+  return rebuildPlanWithAssets(
+    {
+      ...plan,
+      isManuallyOverridden: true,
+      months,
+      overrideMonthlyRepayment: monthly,
+      adjusterMemo: override.memo ?? plan.adjusterMemo,
+      // 채권자별 수동 월 변제금은 새 총액으로 다시 안분한다
+      creditors: (plan.creditors || []).map(c => ({ ...c, isManuallyAdjusted: false })),
+    },
+    plan.assets || [],
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 통합 추정 (B-3): 의뢰인 저장(rehabEngine)·챗봇/변호사 제안서(calculationService)·퀵툴이 같이 쓰는 한 경로
 //  생계비 = calculateLivingExpenseAndDisposableIncome

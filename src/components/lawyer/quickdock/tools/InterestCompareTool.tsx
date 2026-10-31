@@ -8,7 +8,7 @@ import { formatWonKorean, won } from '../ui/money';
 
 /**
  * 대출이자 vs 회생 변제금 비교
- * - 원금·월 변제금은 퀵독 공유값 (변제율 도구와 같은 값)
+ * - 원금·월 변제금은 퀵독 공유값 (변제계획 점검기와 같은 값)
  * - 현재 실제 월 상환액을 알면 그 값으로, 모르면 '이자만' 추정값으로 비교한다.
  */
 export default function InterestCompareTool() {
@@ -42,7 +42,7 @@ ${rate > 0 ? `• 현재 월 이자 부담: 약 ${won(monthlyInterestOnly)} (원
     <div className="space-y-3.5 p-4 text-slate-800 text-xs">
       <div className="space-y-2">
         <div>
-          <label htmlFor="interest-principal" className="text-xs text-slate-600 font-semibold block mb-0.5">기존 총 대출 원금 (변제율 도구와 공유)</label>
+          <label htmlFor="interest-principal" className="text-xs text-slate-600 font-semibold block mb-0.5">기존 총 대출 원금 (변제계획 점검기와 공유)</label>
           <MoneyInput id="interest-principal" value={principal} onChange={v => setDockShared({ totalDebt: v })} placeholder="예: 6000만" />
         </div>
 

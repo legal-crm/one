@@ -7,10 +7,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
-  ConsultRequest, ConsultProposal, FinancialProfile, User as UserType, StaffMember 
+  ConsultRequest, FinancialProfile, User as UserType, StaffMember 
 } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
-import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 import { CONSULT_DECLINE_REASONS, lawyerDeclineConsultRequest, type ConsultDeclineReason } from '../../../services/consultService';
 import CaseReviewPanel from '../case/CaseReviewPanel';
 
@@ -95,15 +94,6 @@ export default function ConsultRequestManagementView({
     });
     toast.success('상담 요청이 복원되었습니다.');
   };
-
-  // 제안서 편집 폼 상태
-  const [proposalFee, setProposalFee] = useState(200); // 수임료 (만원)
-  const [proposalInstallment, setProposalInstallment] = useState('3회 분납');
-  const [proposalDuration, setProposalDuration] = useState(36); // 변제기간 (개월)
-  const [proposalReductionRate, setProposalReductionRate] = useState(65); // 탕감률 (%)
-  const [proposalMonthlyPayment, setProposalMonthlyPayment] = useState(40); // 월 변제금 (만원)
-  const [proposalMessage, setProposalMessage] = useState('');
-  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
 
   // 경과 시간 포맷터
   const formatElapsedTime = (createdAt: string) => {
@@ -227,38 +217,8 @@ export default function ConsultRequestManagementView({
     return requests.find(r => r.id === selectedRequestId) || (filteredRequests.length > 0 ? filteredRequests[0] : null);
   }, [requests, selectedRequestId, filteredRequests]);
 
-  // 선택된 요청 변경 시 제안서 폼 초기화 & AI 검토 자동 프리필 연동
+  // 내가 이미 보낸 제안서 (작성·발송은 제안서 작성 화면 하나에서, CV-6)
   const currentMyProposal = activeRequest ? getMyProposal(activeRequest) : null;
-
-  React.useEffect(() => {
-    if (activeRequest) {
-      const fp: Partial<FinancialProfile> = activeRequest.financialProfile || {};
-      const debt = fp.debtTotal || 5000;
-      const income = fp.income || 250;
-      const dependents = fp.dependents || 1;
-      const livingCost = getLivingExpense(dependents);
-      const available = Math.max(0, income - livingCost);
-      const calculatedReduction = debt > 0 ? Math.min(85, Math.max(20, Math.round((1 - (available * 36) / Math.max(1, debt)) * 100))) : 65;
-
-      if (currentMyProposal) {
-        setProposalFee(currentMyProposal.fee || 200);
-        setProposalInstallment(currentMyProposal.installment || '3회 분납');
-        setProposalDuration(currentMyProposal.duration || 36);
-        setProposalReductionRate(currentMyProposal.reductionRate || calculatedReduction);
-        setProposalMonthlyPayment(currentMyProposal.monthlyPayment || available);
-        setProposalMessage(currentMyProposal.remark || '');
-      } else {
-        setProposalFee(200);
-        setProposalInstallment('3회 분납');
-        setProposalDuration(36);
-        setProposalReductionRate(calculatedReduction);
-        setProposalMonthlyPayment(available);
-        setProposalMessage(
-          `신청인의 소득(${income.toLocaleString()}만원)과 ${dependents}인 가구 법정생계비를 고려할 때, 월 변제금 약 ${available.toLocaleString()}만원 선에서 총 채무의 약 ${calculatedReduction}% 수준 탕감이 기대됩니다. 신속하고 안전하게 사건을 수임해 드리겠습니다.`
-        );
-      }
-    }
-  }, [activeRequest?.id, currentMyProposal]);
 
   // 응답 기한 표시 (기한은 그날 밤 12시라 1분 앞 시각으로 보여 준다)
   const formatRespondBy = (iso: string) => {
@@ -300,78 +260,6 @@ export default function ConsultRequestManagementView({
     toast.success(`[${getClientDisplay(req).displayName}] 사건 검토를 시작했습니다.`);
   };
 
-  // AI 분석 결과 제안서 자동 반영
-  const handleApplyAiToProposal = () => {
-    if (!activeRequest) return;
-    const fp: Partial<FinancialProfile> = activeRequest.financialProfile || {};
-    const debt = fp.debtTotal || 5000;
-    const income = fp.income || 250;
-    const dependents = fp.dependents || 1;
-    const livingCost = getLivingExpense(dependents);
-    const available = Math.max(0, income - livingCost);
-    const calculatedReduction = debt > 0 ? Math.min(85, Math.max(20, Math.round((1 - (available * 36) / Math.max(1, debt)) * 100))) : 68;
-
-    setProposalReductionRate(calculatedReduction);
-    setProposalMonthlyPayment(available);
-    setProposalMessage(
-      `[AI 사건 정밀진단 반영]\n신청인님의 총 채무 ${debt.toLocaleString()}만원 대비 청산가치 및 가용소득을 분석한 결과, 월 약 ${available.toLocaleString()}만원씩 36개월간 변제 시 원금의 약 ${calculatedReduction}% 감면이 가능할 것으로 진단되었습니다. 변호사가 직접 보정권고 및 개시결정까지 1:1 전담 대응합니다.`
-    );
-    setPreviewTab('proposal');
-    toast.success('AI 사건 분석 결과가 제안서 작성기에 자동 반영되었습니다.');
-  };
-
-  // 제안서 발송 (변호사) 또는 컨펌 요청 (직원)
-  const handleSubmitProposal = async (isConfirmRequest: boolean = false) => {
-    if (!activeRequest) return;
-    if (proposalFee <= 0) {
-      toast.warning('제안 수임료를 입력해 주세요.');
-      return;
-    }
-
-    setIsSubmittingProposal(true);
-    try {
-      const proposalDebtTotal = activeRequest.financialProfile?.debtTotal || 0;
-      const newProposal: ConsultProposal = {
-        id: `prop-${Date.now()}`,
-        lawyerId: activeLawyer.id,
-        lawyerName: activeLawyer.name,
-        lawyerAvatar: activeLawyer.avatar || '',
-        firmName: activeLawyer.firmName || activeLawyer.firm || '',
-        feasibility: '',
-        fee: proposalFee,
-        installment: proposalInstallment,
-        duration: proposalDuration,
-        reductionRate: proposalReductionRate,
-        totalReduction: Math.round(proposalDebtTotal * (proposalReductionRate / 100)),
-        monthlyPayment: proposalMonthlyPayment,
-        remark: proposalMessage,
-        createdAt: new Date().toISOString(),
-        // 대표 변호사 컨펌 요청이면 승인 대기 (이전: ConsultProposal에 없는 status/message/updatedAt 필드 사용)
-        approvalStatus: isConfirmRequest ? 'pending' : 'approved',
-      };
-
-      setRequests(prev => prev.map(r => {
-        if (r.id === activeRequest.id) {
-          const others = (r.proposals || []).filter(p => p.lawyerId !== activeLawyer.id);
-          return {
-            ...r,
-            proposals: [...others, newProposal],
-            status: isConfirmRequest ? r.status : 'comparing',
-          };
-        }
-        return r;
-      }));
-
-      if (isConfirmRequest) {
-        toast.success('대표 변호사님께 제안서 승인(컨펌) 요청이 전송되었습니다.');
-      } else {
-        toast.success(`의뢰인(${getClientDisplay(activeRequest).displayName})에게 맞춤 제안서가 성공적으로 발송되었습니다!`);
-      }
-    } finally {
-      setIsSubmittingProposal(false);
-    }
-  };
-
   const isStaff = Boolean(activeStaff && activeStaff.role !== 'OWNER');
 
   return (
@@ -390,7 +278,7 @@ export default function ConsultRequestManagementView({
               </span>
             </h1>
             <p className="text-xs text-slate-500">
-              플랫폼에 접수된 고객의 무료 상담 신청 및 자가진단 내역을 검토하고 제안서를 발송하세요.
+              의뢰인이 보낸 상담 요청과 '내 상황 체크하기' 정리 내용을 검토하고 제안서를 보내세요.
             </p>
           </div>
         </div>
