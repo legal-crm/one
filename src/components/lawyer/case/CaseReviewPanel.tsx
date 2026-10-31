@@ -3,7 +3,8 @@
 // 이전: 별도 'AI 사건 분석' 메뉴, 고정 문장 총평("회생 신청에 적합한 조건"·"우량 적격 사례"), 기본 탕감률 65%
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Calculator, History, Save } from 'lucide-react';
+import { Calculator, ClipboardCheck, History, Save } from 'lucide-react';
+import { applyCaseReviewRules, EMPTY_CASE_REVIEW_RULES, loadCaseReviewRules, type CaseReviewRules } from '../../../services/cases/caseReviewRules';
 import {
   REVIEW_REGION_LABEL, STATUS_LABEL, emptyReviewInput, inputFromProfile, loadLatestReview, runCaseReview, saveReview,
   type CaseReviewInput, type ReviewRegion,
@@ -37,6 +38,15 @@ export default function CaseReviewPanel({ officeId, caseKey, financialProfile, c
   const [loading, setLoading] = useState(!!officeId);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // 사무소 '사건 검토 기준' (CV-5) — 설정 › 사무소 설정 › 사건 검토 기준
+  const [rules, setRules] = useState<CaseReviewRules>(EMPTY_CASE_REVIEW_RULES);
+  const [checked, setChecked] = useState<string[]>([]);
+  useEffect(() => {
+    let stop = false;
+    if (!officeId) return;
+    void loadCaseReviewRules(officeId).then(r => { if (!stop && r.ok) setRules(r.rules); });
+    return () => { stop = true; };
+  }, [officeId]);
 
   useEffect(() => {
     let stop = false;
@@ -45,20 +55,21 @@ export default function CaseReviewPanel({ officeId, caseKey, financialProfile, c
     void loadLatestReview(officeId, caseKey).then(r => {
       if (stop) return;
       setLoading(false);
-      if (r.ok && r.data) { setInput({ ...emptyReviewInput(), ...r.data.input }); setSavedAt(r.data.createdAt); setNote(r.data.note || ''); }
+      if (r.ok && r.data) { setInput({ ...emptyReviewInput(), ...r.data.input }); setSavedAt(r.data.createdAt); setNote(r.data.note || ''); setChecked(r.data.result?.checklistDone || []); }
       else setInput(seeded.input);
     });
     return () => { stop = true; };
   }, [officeId, caseKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const result = useMemo(() => runCaseReview(input), [input]);
+  const ruleNotes = useMemo(() => applyCaseReviewRules(input, result, rules), [input, result, rules]);
   const set = <K extends keyof CaseReviewInput>(k: K) => (v: CaseReviewInput[K]) => setInput(p => ({ ...p, [k]: v }));
   const missing = [!input.monthlyIncome && '월 소득', !input.generalDebt && '총 채무'].filter(Boolean) as string[];
 
   const save = async () => {
     if (!officeId) { toast.error('사무소 정보를 확인하지 못해 저장하지 않았어요.'); return; }
     setBusy(true);
-    const r = await saveReview(officeId, caseKey, input, result, note);
+    const r = await saveReview(officeId, caseKey, input, { ...result, ruleNotes, checklistDone: checked.filter(c => rules.checklist.includes(c)) }, note);
     setBusy(false);
     if (r.ok === false) { toast.error(`저장하지 못했어요: ${r.message}`); return; }
     setSavedAt(r.data.createdAt);
@@ -137,6 +148,26 @@ export default function CaseReviewPanel({ officeId, caseKey, financialProfile, c
           {result.why && <p className="text-xs text-slate-600">판단 근거: {result.why}</p>}
           {result.warnings.length > 0 && <ul className="text-xs text-amber-800 list-disc pl-4">{result.warnings.map(w => <li key={w}>{w}</li>)}</ul>}
         </div>
+      )}
+
+      {missing.length === 0 && ruleNotes.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-xs font-bold text-amber-900">사무소 검토 기준에서 확인할 점</p>
+          <ul className="mt-1 text-xs text-amber-900 list-disc pl-4 space-y-0.5">{ruleNotes.map(n => <li key={n}>{n}</li>)}</ul>
+        </div>
+      )}
+      {rules.checklist.length > 0 && (
+        <fieldset disabled={!canWrite} className="rounded-xl border border-slate-200 px-4 py-3">
+          <legend className="px-1 text-xs font-bold text-slate-700 flex items-center gap-1"><ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" /> 사무소 확인 목록</legend>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {rules.checklist.map(item => (
+              <label key={item} className="flex items-start gap-2 text-xs text-slate-700 min-h-[32px]">
+                <input type="checkbox" className="w-4 h-4 mt-0.5" checked={checked.includes(item)} onChange={e => setChecked(p => e.target.checked ? [...p, item] : p.filter(x => x !== item))} />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       )}
 
       <label className="block text-xs font-semibold text-slate-700">검토 메모 (사무소 안에서만)

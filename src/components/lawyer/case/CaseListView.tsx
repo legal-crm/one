@@ -1,3 +1,4 @@
+import { INTAKE_CHANNEL_CONFIG, type IntakeChannel } from '../../../types';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Search, Filter, Plus, List, LayoutGrid, Download, Upload, 
@@ -62,6 +63,12 @@ function formatWonShort(amount?: number): string {
   return `${amount.toLocaleString()}원`;
 }
 
+/** 서류 미제출: 아직 안 낸 서류 요청, 또는 필수 서류 중 확인·제출 안 된 것 */
+function caseHasMissingDocs(ext: CrmClientExtension): boolean {
+  if ((ext.documentRequests || []).some(d => !d.fulfilled)) return true;
+  return (ext.documents || []).some(d => d.isRequired && !d.checked && d.reviewStatus !== 'submitted' && d.reviewStatus !== 'approved');
+}
+
 function timeAgo(dateStr?: string): string {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
@@ -118,6 +125,11 @@ export function CaseListView({
   const [filterUnassigned, setFilterUnassigned] = useState(false);
   const [filterUrgent, setFilterUrgent] = useState(false);
   const [filterStar, setFilterStar] = useState(false);
+  // CM-6: 서류 미제출 · 수임료 기한 지남 · 법원 (이전: 담당자·사건 구분·기한 임박만)
+  const [filterDocsMissing, setFilterDocsMissing] = useState(false);
+  const [filterFeeOverdue, setFilterFeeOverdue] = useState(false);
+  const [courtFilter, setCourtFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
 
   // 1줄 검색 필터 상태
   const [search, setSearch] = useState('');
@@ -245,6 +257,24 @@ export function CaseListView({
         }
       }
 
+      // 7-1. 법원
+      if (courtFilter !== 'all') {
+        const court = (ext.courtCase?.courtName || r.court || '').trim();
+        if (courtFilter === 'none' ? court !== '' : court !== courtFilter) return false;
+      }
+
+      // 7-1b. 유입 경로
+      if (channelFilter !== 'all' && (ext.intakeChannel || 'mykim') !== channelFilter) return false;
+
+      // 7-2. 서류 미제출: 아직 안 낸 서류 요청이 있거나, 필수 서류 중 확인 안 된 것이 있음
+      if (filterDocsMissing && !caseHasMissingDocs(ext)) return false;
+
+      // 7-3. 수임료 기한 지남: 서버 수납 기록 우선 (서버 사무소가 없을 때만 사본)
+      if (filterFeeOverdue) {
+        const overdue = serverFeeNext ? !!serverFeeNext[r.id]?.overdue : (ext.feeSchedule || []).some(i => i.status === 'overdue');
+        if (!overdue) return false;
+      }
+
       // 8. 검색어 필터 (의뢰인명, 전화번호, 사건번호, 메모)
       if (search.trim()) {
         const q = search.trim().toLowerCase();
@@ -269,8 +299,19 @@ export function CaseListView({
     });
   }, [
     requests, getCrmExt, savedViewTab, filterMyCase, filterUnassigned, 
-    filterStar, filterUrgent, assigneeFilter, caseTypeFilter, search, currentStaffId
+    filterStar, filterUrgent, assigneeFilter, caseTypeFilter, search, currentStaffId,
+    courtFilter, filterDocsMissing, filterFeeOverdue, serverFeeNext, channelFilter
   ]);
+  // 법원 목록 (지금 범위 사건에 적힌 법원만)
+  const courtOptions = useMemo(() => {
+    const set = new Set<string>();
+    let hasNone = false;
+    requests.forEach(r => {
+      const c = (getCrmExt(r.id).courtCase?.courtName || r.court || '').trim();
+      if (c) set.add(c); else hasNone = true;
+    });
+    return { courts: [...set].sort((a, b) => a.localeCompare(b, 'ko')), hasNone };
+  }, [requests, getCrmExt]);
 
   // 정렬 적용
   const sortedRequests = useMemo(() => {
@@ -854,7 +895,7 @@ export function CaseListView({
           ))}
         </div>
 
-        {/* 우측 빠른 필터 칩 4종 (내 담당 · 미배정 · 기한 임박 · 중요) */}
+        {/* 우측 빠른 필터 칩 (내 담당 · 미배정 · 기한 임박 · 중요 · 서류 미제출 · 수임료 기한 지남) */}
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap w-full md:w-auto justify-end text-xs">
           <button
             type="button"
@@ -904,6 +945,30 @@ export function CaseListView({
           >
             <Star className={`w-3.5 h-3.5 inline mr-1 ${filterStar ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
             <span>중요</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFilterDocsMissing(v => !v); setPage(1); }}
+            aria-pressed={filterDocsMissing}
+            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer border press-scale ${
+              filterDocsMissing
+                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <span>서류 미제출</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFilterFeeOverdue(v => !v); setPage(1); }}
+            aria-pressed={filterFeeOverdue}
+            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer border press-scale ${
+              filterFeeOverdue
+                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <span>수임료 기한 지남</span>
           </button>
         </div>
       </div>
@@ -955,6 +1020,31 @@ export function CaseListView({
             <option value="rehab">개인회생</option>
             <option value="bankruptcy">개인파산</option>
             <option value="unspecified">미지정</option>
+          </select>
+
+          {/* 법원 필터 */}
+          <select
+            value={courtFilter}
+            onChange={e => { setCourtFilter(e.target.value); setPage(1); }}
+            aria-label="법원"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 font-medium cursor-pointer"
+          >
+            <option value="all">법원: 전체</option>
+            {courtOptions.courts.map(c => <option key={c} value={c}>{c}</option>)}
+            {courtOptions.hasNone && <option value="none">법원 미정</option>}
+          </select>
+
+          {/* 유입 경로 필터 */}
+          <select
+            value={channelFilter}
+            onChange={e => { setChannelFilter(e.target.value); setPage(1); }}
+            aria-label="유입 경로"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 font-medium cursor-pointer"
+          >
+            <option value="all">유입 경로: 전체</option>
+            {(Object.keys(INTAKE_CHANNEL_CONFIG) as IntakeChannel[]).map(k => (
+              <option key={k} value={k}>{INTAKE_CHANNEL_CONFIG[k].label}</option>
+            ))}
           </select>
 
           {/* 페이지당 건수 */}
@@ -1062,6 +1152,10 @@ export function CaseListView({
                             setFilterUnassigned(false);
                             setFilterUrgent(false);
                             setFilterStar(false);
+                            setFilterDocsMissing(false);
+                            setFilterFeeOverdue(false);
+                            setCourtFilter('all');
+                            setChannelFilter('all');
                             setAssigneeFilter('all');
                             setCaseTypeFilter('all');
                           }}

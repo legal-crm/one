@@ -46,6 +46,10 @@ export interface CaseReviewResult {
   why: string;
   warnings: string[];
   satisfiesLiquidation: boolean;
+  /** 사무소 '사건 검토 기준'에 걸린 확인할 점 (CV-5, 저장 때 같이 기록) */
+  ruleNotes?: string[];
+  /** 사무소 확인 목록 중 체크한 항목 */
+  checklistDone?: string[];
 }
 
 export const STATUS_LABEL: Record<string, string> = {

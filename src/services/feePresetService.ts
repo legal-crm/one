@@ -66,6 +66,9 @@ export async function refreshFeePresets(): Promise<FeePreset[]> {
 
 async function writeOfficePresets(next: FeePreset[]): Promise<void> {
   if (!presetOfficeId) throw new Error('사무소 정보가 없어 저장하지 못했어요.');
+  // 같은 구역의 다른 칸(사건 검토 기준 등)을 지우지 않게 저장 직전에 다시 읽는다
+  const cur = await loadOfficeSettings<Record<string, unknown>>(presetOfficeId, 'work_defaults');
+  if (cur.ok) { workDefaults = cur.data?.data || {}; workDefaultsVersion = cur.data?.version; }
   const payload = { ...workDefaults, feePresets: next };
   const r = await saveOfficeSettings(presetOfficeId, 'work_defaults', payload, workDefaultsVersion);
   if (r.ok === false) {
@@ -180,6 +183,7 @@ export async function saveFeePreset(presetData: Omit<FeePreset, 'id' | 'createdA
   const id = presetData.id || `preset-custom-${Date.now()}`;
   const newPreset: FeePreset = { ...presetData, id, isSystemDefault: false, createdAt: now };
   if (presetOfficeId) {
+    await refreshFeePresets();
     const list = officePresets.filter(p => p.id !== id);
     if (list.length >= MAX_OFFICE_PRESETS) throw new Error(`프리셋은 사무소당 ${MAX_OFFICE_PRESETS}개까지 저장할 수 있어요. 안 쓰는 것을 지워 주세요.`);
     await writeOfficePresets([newPreset, ...list]);
@@ -199,6 +203,7 @@ export async function saveFeePreset(presetData: Omit<FeePreset, 'id' | 'createdA
  */
 export async function deleteFeePreset(id: string): Promise<void> {
   if (presetOfficeId) {
+    await refreshFeePresets();
     await writeOfficePresets(officePresets.filter(p => p.id !== id));
     return;
   }
