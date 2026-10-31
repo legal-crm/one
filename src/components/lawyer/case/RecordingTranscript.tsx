@@ -40,7 +40,7 @@ export default function RecordingTranscript({ recordingId, transcript, onCreated
         <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} className="inline-flex items-center gap-1 min-h-9 text-xs font-bold text-indigo-800">
           {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}대화록·요약 (버전 {transcript.version})
         </button>
-        <span className="text-[11px] text-slate-500">AI가 받아 적은 참고 자료예요. 정확한 내용은 원본 녹음으로 확인해 주세요.</span>
+        <span className="text-xs text-slate-500">AI가 받아 적은 참고 자료예요. 정확한 내용은 원본 녹음으로 확인해 주세요.</span>
         <button type="button" disabled={busy} onClick={() => void make()} title="다시 만들기 (새 버전)"
           className="ml-auto inline-flex items-center gap-1 min-h-9 px-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60 active:scale-[0.98] whitespace-nowrap">
           <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />다시 만들기

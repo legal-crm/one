@@ -709,7 +709,7 @@ export default function Stage3DocumentsHubView({
                     />
                   </div>
                   {stats.submittedCount > 0 && (
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold whitespace-nowrap">
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold whitespace-nowrap">
                       확인 필요 {stats.submittedCount}건
                     </span>
                   )}
@@ -793,12 +793,12 @@ export default function Stage3DocumentsHubView({
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900 text-sm">{doc.name}</span>
                           {doc.isRequired && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold">
                               필수
                             </span>
                           )}
                           {doc.phase === 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
                               실물 등기
                             </span>
                           )}
@@ -896,10 +896,10 @@ export default function Stage3DocumentsHubView({
                                 </button>
                                 {doc.isThirdPartyMaskingRequired && (
                                   <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-100">
-                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold shrink-0">
+                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-xs font-bold shrink-0">
                                       마스킹 필수
                                     </span>
-                                    <span className="text-slate-600 text-[11px]">제3자 주민등록번호 뒷자리 마스킹 처리 요망</span>
+                                    <span className="text-slate-600 text-xs">제3자 주민등록번호 뒷자리 마스킹 처리 요망</span>
                                   </div>
                                 )}
                               </div>

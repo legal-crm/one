@@ -17,7 +17,7 @@ function MoneyInput({ label, value, onChange, hint }: { label: string; value: nu
   return (
     <label className="text-xs font-semibold text-slate-700">{label}
       <input inputMode="numeric" value={value ? value.toLocaleString('ko-KR') : ''} placeholder="0" onChange={e => onChange(Number(e.target.value.replace(/\D/g, '')) || 0)} className={field} />
-      {hint && <span className="block mt-0.5 text-[11px] font-normal text-slate-500">{hint}</span>}
+      {hint && <span className="block mt-0.5 text-xs font-normal text-slate-500">{hint}</span>}
     </label>
   );
 }

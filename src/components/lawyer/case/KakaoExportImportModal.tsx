@@ -179,7 +179,7 @@ export default function KakaoExportImportModal({ officeId, target, onClose, onIm
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-[11px] text-slate-500">원본을 내려받으면 열람 기록이 남아요. 단체 대화방은 다른 사람의 대화가 섞이니 올리지 마세요.</p>
+              <p className="mt-2 text-xs text-slate-500">원본을 내려받으면 열람 기록이 남아요. 단체 대화방은 다른 사람의 대화가 섞이니 올리지 마세요.</p>
             </div>
           </div>
         </div>

@@ -110,7 +110,7 @@ export default function WorkflowPipelineStepper({
       const lockReason = pipelineLockReason(targetStage, gates);
 
       await dialog.alert({
-        title: `🔒 Stage 0${targetStage} 잠김 안내`,
+        title: `Stage 0${targetStage} 잠김 안내`,
         message: lockReason,
         variant: 'warning'
       });

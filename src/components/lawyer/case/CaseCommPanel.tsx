@@ -44,10 +44,10 @@ function LogIcon({ log }: { log: CommLog }) {
 }
 
 function RecordingBadge({ rec }: { rec: CallRecording }) {
-  if (rec.status === 'verified') return <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold"><ShieldCheck className="w-3 h-3" aria-hidden="true" />지문 일치</span>;
-  if (rec.status === 'mismatch') return <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 text-[11px] font-bold"><ShieldAlert className="w-3 h-3" aria-hidden="true" />지문 불일치</span>;
-  if (rec.status === 'failed') return <span className="rounded-lg bg-slate-100 text-slate-700 px-2 py-0.5 text-[11px] font-bold">올리지 못함</span>;
-  return <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 text-[11px] font-bold">확인 중</span>;
+  if (rec.status === 'verified') return <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-xs font-bold"><ShieldCheck className="w-3 h-3" aria-hidden="true" />지문 일치</span>;
+  if (rec.status === 'mismatch') return <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 text-xs font-bold"><ShieldAlert className="w-3 h-3" aria-hidden="true" />지문 불일치</span>;
+  if (rec.status === 'failed') return <span className="rounded-lg bg-slate-100 text-slate-700 px-2 py-0.5 text-xs font-bold">올리지 못함</span>;
+  return <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 text-xs font-bold">확인 중</span>;
 }
 
 export default function CaseCommPanel({ officeId, target, permissions, caseOptions, defaultOpen = false }: Props) {
@@ -275,7 +275,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
           </span>
         )}
       </div>
-      {rec.serverSha256 && <p className="mt-1 text-[11px] text-slate-500 break-all">서버 지문 {rec.serverSha256.slice(0, 16)}… · 확인 {fmtTime(rec.verifiedAt)}</p>}
+      {rec.serverSha256 && <p className="mt-1 text-xs text-slate-500 break-all">서버 지문 {rec.serverSha256.slice(0, 16)}… · 확인 {fmtTime(rec.verifiedAt)}</p>}
       {playing?.id === rec.id && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio className="mt-2 w-full" controls autoPlay src={playing.url} onError={() => toast.error('재생 주소가 만료됐어요. 듣기를 다시 눌러 주세요.')} />
@@ -294,8 +294,8 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left active:scale-[0.99]" aria-expanded={open}>
         <span className="flex items-center gap-2 font-extrabold text-sm text-slate-900">
           <Phone className="w-4 h-4 text-brand" aria-hidden="true" />소통 기록
-          {open && logs.length > 0 && <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">{logs.length}건</span>}
-          {pendingNotices > 0 && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">보낼 카톡 {pendingNotices}</span>}
+          {open && logs.length > 0 && <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">{logs.length}건</span>}
+          {pendingNotices > 0 && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">보낼 카톡 {pendingNotices}</span>}
         </span>
         <span className="flex items-center gap-2 text-xs text-slate-500">
           통화·문자·카톡·방문·녹음
@@ -328,7 +328,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
               {contacts.map(c => (
                 <div key={c.id} className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-1 py-1 text-xs">
                   <span className="font-bold text-slate-800">{formatPhone(c.phone)}</span>
-                  <span className="rounded-lg bg-white border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-600">{RELATION_LABEL[c.relation]}{c.label ? ` · ${c.label}` : ''}</span>
+                  <span className="rounded-lg bg-white border border-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{RELATION_LABEL[c.relation]}{c.label ? ` · ${c.label}` : ''}</span>
                   {myDevice && (
                     <button type="button" onClick={() => void dial(c)} title="업무폰으로 걸기" className="min-h-8 px-2 rounded-lg text-brand font-bold hover:bg-white active:scale-[0.98] whitespace-nowrap">걸기</button>
                   )}
@@ -460,8 +460,8 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
                     <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${l.result === 'missed' || l.result === 'rejected' || l.result === 'failed' ? 'bg-amber-50 text-amber-700' : 'bg-brand/10 text-brand'}`}><LogIcon log={l} /></span>
                     <span className="font-bold text-slate-800">{describeLog(l)}</span>
                     <span className="text-slate-500">{fmtTime(l.occurredAt)}</span>
-                    {l.lineLabel && <span className="rounded-lg bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{l.lineLabel}</span>}
-                    {l.linkStatus === 'needs_review' && <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-[11px] font-bold">확인 필요</span>}
+                    {l.lineLabel && <span className="rounded-lg bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{l.lineLabel}</span>}
+                    {l.linkStatus === 'needs_review' && <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-xs font-bold">확인 필요</span>}
                     <span className="ml-auto flex gap-1">
                       <button type="button" onClick={() => void editNote(l)} className="min-h-8 px-2 rounded-lg text-slate-600 hover:bg-slate-100 font-bold whitespace-nowrap active:scale-[0.98]">메모</button>
                       {caseOptions && caseOptions.length > 1 && (
@@ -474,7 +474,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
                   </div>
                   {l.body && <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap break-words line-clamp-4">{l.body}</p>}
                   {l.note && <p className="mt-1.5 text-xs text-slate-600 bg-slate-50 rounded-lg px-2 py-1 whitespace-pre-wrap">메모: {l.note}</p>}
-                  {l.linkHistory.length > 0 && <p className="mt-1 text-[11px] text-slate-500">연결 변경 {l.linkHistory.length}회 · 마지막 사유: {String(l.linkHistory[l.linkHistory.length - 1]?.reason || '')}</p>}
+                  {l.linkHistory.length > 0 && <p className="mt-1 text-xs text-slate-500">연결 변경 {l.linkHistory.length}회 · 마지막 사유: {String(l.linkHistory[l.linkHistory.length - 1]?.reason || '')}</p>}
                   {(recByLog.get(l.id) || []).map(recordingRow)}
                 </li>
               ))}
@@ -493,7 +493,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
                 <ol className="border-t border-slate-100 max-h-[420px] overflow-y-auto divide-y divide-slate-50">
                   {exportLines.map(l => (
                     <li key={l.id} className={`px-3 py-2 text-sm ${l.direction === 'in' ? '' : 'bg-slate-50/60'}`}>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         <span className={`font-bold ${l.direction === 'in' ? 'text-amber-800' : 'text-brand'}`}>{l.senderName || (l.direction === 'in' ? '의뢰인' : '사무소')}</span>
                         <span>{fmtTime(l.occurredAt)}</span>
                       </div>
@@ -504,7 +504,7 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
               )}
             </div>
           )}
-          <p className="text-[11px] text-slate-500">기록 내용은 고칠 수 없어요(메모·연결만 바뀌고 이력이 남아요). 녹음을 듣거나 대화 원본을 내려받으면 열람 기록이 남아요.</p>
+          <p className="text-xs text-slate-500">기록 내용은 고칠 수 없어요(메모·연결만 바뀌고 이력이 남아요). 녹음을 듣거나 대화 원본을 내려받으면 열람 기록이 남아요.</p>
         </div>
       )}
       {showExportModal && (

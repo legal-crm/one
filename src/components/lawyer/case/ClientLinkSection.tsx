@@ -63,7 +63,7 @@ export default function ClientLinkSection({ officeId, officeClientId, canEdit }:
             <input readOnly value={invite.url} aria-label="연결 링크" onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 p-2 rounded-xl border border-slate-200 bg-white text-xs font-mono" />
             <button type="button" onClick={copy} aria-label="연결 링크 복사" className="p-2 min-h-[40px] rounded-xl border border-slate-300 bg-white"><Copy className="w-4 h-4" aria-hidden="true" /></button>
           </div>
-          <p className="text-[11px] text-slate-500">한 번만 쓸 수 있고 {new Date(invite.expiresAt).toLocaleString('ko-KR')}까지 유효해요. 새로 만들면 이전 링크는 쓸 수 없어요. 링크를 받은 사람이 연결되니 의뢰인 본인에게만 보내 주세요.</p>
+          <p className="text-xs text-slate-500">한 번만 쓸 수 있고 {new Date(invite.expiresAt).toLocaleString('ko-KR')}까지 유효해요. 새로 만들면 이전 링크는 쓸 수 없어요. 링크를 받은 사람이 연결되니 의뢰인 본인에게만 보내 주세요.</p>
         </div>
       )}
     </div>

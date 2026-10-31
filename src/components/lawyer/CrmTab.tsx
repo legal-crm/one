@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
-  Plus, Trash2, Search, LayoutGrid, List, GripVertical,
-  CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
-  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
-  Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
-  Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound, Cloud, SlidersHorizontal,
-  Printer
+import {
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { loadFeeOverviewByRequest, type FeeOverviewRow, type FeeInstallmentStatus } from '../../services/fees/feeService';
@@ -34,23 +27,13 @@ import type { ImportedCase } from './ImportCasesModal';
 import ExportCasesModal from './ExportCasesModal';
 import DropOffReasonModal from './DropOffReasonModal';
 import AssignmentDirectiveModal from './AssignmentDirectiveModal';
-import MobileScanner from './MobileScanner';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
 import BulkMessageSendModal from './BulkMessageSendModal';
-import CaseBriefingBanner from './CaseBriefingBanner';
-import { ClientCaseSummarySubTab } from './ClientCaseSummarySubTab';
-import ClientContractSubTab from './ClientContractSubTab';
-import TaskTicketTab from './TaskTicketTab';
-import InternalThreadTab from './InternalThreadTab';
-import CourtCaseTab from './CourtCaseTab';
-import RepaymentPlanEditor from './repayment/RepaymentPlanEditor';
-import ComprehensiveCorrectionCenter from './correction/ComprehensiveCorrectionCenter';
 import BatchFilingPackagingModal from './filing/BatchFilingPackagingModal';
 import BankruptcyManagementTab from './bankruptcy/BankruptcyManagementTab';
 import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
-import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
 import CourtDocSuiteViewerModal, { type DocTabId, formCodeToDocTabId } from './courtDocs/CourtDocSuiteViewerModal';
 import CourtFormLibraryModal from './courtDocs/CourtFormLibraryModal';
@@ -66,7 +49,7 @@ import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorne
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan, rebuildPlanWithAssets, rebuildPlanWithOverride } from '../../services/repayment/repaymentCalculationEngine';
 import { checkShortPlanReason, shortPlanInputFromCondition } from '../../services/repayment/rehabLegalCore';
-import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
+import { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import { computePipelineGates, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
 import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
@@ -76,7 +59,6 @@ import CaseCommPanel from './case/CaseCommPanel';
 import { listCases, loadStageDefinitions, stageDef, workspaceKeyForCase } from '../../services/cases/caseCoreService';
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
-import CertificateVaultCard from './vault/CertificateVaultCard';
 import ServerStageStepper from './case/ServerStageStepper';
 import { thirteenStageAfterStatusChange } from './pipeline/journeyStage';
 import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
@@ -141,7 +123,6 @@ import { setServerCaseType, type BankruptcyDeadline } from '../../services/cases
 import { unansweredCount } from '../../services/court/bankruptcyStatement';
 import BankruptcyProgressPanel from './case/BankruptcyProgressPanel';
 import { findCaseByWorkspaceKey } from '../../services/cases/caseCoreService';
-import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
 import OfficeDischargePanel from './case/OfficeDischargePanel';
 import ClientIntakeCard from './requests/ClientIntakeCard';
@@ -151,8 +132,6 @@ import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
 import Stage5CorrectionCenterView from './pipeline/Stage5CorrectionCenterView';
 import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView';
 import { localYmd } from '../../utils/localDate';
-import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
-import PdfPreprocessorModal from '../common/PdfPreprocessorModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog, CrmActivityType,
@@ -160,20 +139,27 @@ import type {
   DirectivePriority, AssignmentDirective,
   DocumentReviewStatus, DocumentRequest
 } from '../../types';
-import { 
-  CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
-  DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG,
-  DIRECTIVE_PRIORITY_CONFIG, DOC_REVIEW_STATUS_CONFIG,
-  LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES
+import {
+  CRM_STATUS_CONFIG,
+  STAFF_ROLE_CONFIG,
+  DEFAULT_REHAB_DOCUMENTS,
+  DEFAULT_BANKRUPTCY_DOCUMENTS,
+  DEFAULT_PERMISSIONS,
 } from '../../types';
-import { 
-  loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
-  deleteStaffMember, createActivityLog, createCrmNote, createDefaultCrmExtension,
-  softDeleteCrmClient, restoreCrmClient, cleanupRecycleBin, RECYCLE_BIN_RETENTION_DAYS,
-  formatPhone, checkDuplicatePhone,
-  approveDocument, rejectDocument, requestDocument,
-  mergeServerCrmExt, subscribeCrmClientChanges,
-  type CrmDataStore 
+import {
+  loadCrmData,
+  saveCrmClient,
+  loadStaffMembers,
+  createActivityLog,
+  createCrmNote,
+  createDefaultCrmExtension,
+  softDeleteCrmClient,
+  restoreCrmClient,
+  cleanupRecycleBin,
+  RECYCLE_BIN_RETENTION_DAYS,
+  mergeServerCrmExt,
+  subscribeCrmClientChanges,
+  type CrmDataStore,
 } from '../../services/crmService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
 import type { FeeInstallment, AlimtokMilestone } from '../../types';
@@ -1532,7 +1518,7 @@ export default function CrmTab({
     const gates = clientReq ? computePipelineGates(clientReq, ext) : null;
     if (gates && gates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
       await dialog.alert({
-        title: '🔒 선행 단계(제안서 발송) 미완료',
+        title: '선행 단계(제안서 발송) 미완료',
         message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
         variant: 'warning'
       });
@@ -1589,6 +1575,7 @@ export default function CrmTab({
             />
           ) : (
         <CaseListView
+          onOpenSalesLeads={setActiveTab ? () => setActiveTab('sales-leads') : undefined}
           requests={listScopeRequests}
           serverStageLabels={serverStageLabels}
           serverFeeNext={officeId ? (serverFeeNext || {}) : undefined}
@@ -1737,8 +1724,18 @@ export default function CrmTab({
               onClick: () => advancePipelineStage(6),
             };
           }
+          // 6단계: 곧바로 '면책' 상태로 바꾸던 버튼 → 서버 사건 기록의 '종결 기록'(사유·결정일)로 안내 (CM-13)
+          if (officeId) {
+            return {
+              label: '종결 기록',
+              onClick: () => {
+                document.getElementById('server-case-record')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                toast.info('사건 기록에서 면책·종결 결과를 고르고 결정일과 사유를 남겨 주세요.');
+              },
+            };
+          }
           return {
-            label: '사건 완료 및 종결',
+            label: '종결 기록',
             onClick: () => handleStatusChangeWithDropOff(selectedId, 'discharged'),
           };
         })();
@@ -1790,7 +1787,7 @@ export default function CrmTab({
               ];
             case 5:
               return [
-                { id: 'c1', label: '금지·중지명령 인용 확인', isMet: Boolean(selectedExt.courtCase?.caseNumber) },
+                { id: 'c1', label: '사건번호 등록', isMet: Boolean(selectedExt.courtCase?.caseNumber) },
                 { id: 'c2', label: '법원 보정권고/명령 보정서 제출', isMet: !hasOpenCorrection(selectedId, selectedExt) },
                 { id: 'c3', label: '개시결정 등록 및 가상계좌 확인', isMet: gates.isCommenced },
               ];
@@ -1912,7 +1909,8 @@ export default function CrmTab({
             {/* ── 3-1. 서버 사건 기록 (CM-1·CM-3): 단계·기일·타임라인의 원본 ── */}
             {officeId && (
               <div className="px-4 pt-4">
-                <ServerCaseRecordPanel
+                <div id="server-case-record" className="scroll-mt-24" />
+              <ServerCaseRecordPanel
                   key={selectedId}
                   officeId={officeId}
                   consultRequestId={selectedId}
@@ -2303,15 +2301,15 @@ export default function CrmTab({
       {showBulkMessage && (
         <div className="bg-white border-t border-slate-200 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-800">📢 타겟 메시지 대량 발송</h3>
+            <h3 className="font-bold text-sm text-slate-800">타겟 메시지 대량 발송</h3>
             <button onClick={() => setShowBulkMessage(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex gap-2 flex-wrap">
             {[
-              { key: 'doc_overdue', label: '서류 3일+ 미제출', emoji: '📋' },
-              { key: 'fee_overdue', label: '분납 2회+ 연체', emoji: '💸' },
-              { key: 'hearing_month', label: '이달 집회 참석 대상', emoji: '🏛️' },
-              { key: 'correction_urgent', label: '보정 기한 임박 (3일 내)', emoji: '⚠️' },
+              { key: 'doc_overdue', label: '서류 3일+ 미제출', emoji: '' },
+              { key: 'fee_overdue', label: '분납 2회+ 연체', emoji: '' },
+              { key: 'hearing_month', label: '이달 집회 참석 대상', emoji: '' },
+              { key: 'correction_urgent', label: '보정 기한 임박 (3일 내)', emoji: '' },
             ].map(f => (
               <button key={f.key} onClick={() => setBulkFilter(f.key)}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors press-scale cursor-pointer ${bulkFilter === f.key ? 'bg-brand/10 border-brand/30 text-brand' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
@@ -2356,7 +2354,7 @@ export default function CrmTab({
                     }} 
                     className="flex-1 py-2.5 text-xs font-bold text-[#391B1B] bg-[#FAE100] hover:bg-[#F4D700] rounded-xl transition-colors press-scale whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                   >
-                    💬 카카오 알림톡 발송 ({bulkFilteredClients.length}명)
+                    카카오 알림톡 발송 ({bulkFilteredClients.length}명)
                   </button>
                   <button 
                     onClick={() => {
@@ -2368,7 +2366,7 @@ export default function CrmTab({
                     }} 
                     className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors press-scale whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    📱 SMS 발송 ({bulkFilteredClients.length}명)
+                    SMS 발송 ({bulkFilteredClients.length}명)
                   </button>
                 </div>
               </>

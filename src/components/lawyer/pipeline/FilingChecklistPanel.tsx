@@ -209,7 +209,7 @@ export default function FilingChecklistPanel({
                       <span className="font-bold text-slate-900 truncate">
                         {doc.title}
                       </span>
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                         doc.category === '본안서식'
                           ? 'bg-blue-50 text-blue-700 border border-blue-200'
                           : doc.category === '부수신청'
@@ -219,11 +219,11 @@ export default function FilingChecklistPanel({
                         {doc.category}
                       </span>
                       {doc.required && (
-                        <span className="text-[11px] text-rose-600 font-semibold">필수</span>
+                        <span className="text-xs text-rose-600 font-semibold">필수</span>
                       )}
                     </div>
                     {doc.courtSpecificNote && (
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         • {doc.courtSpecificNote}
                       </p>
                     )}

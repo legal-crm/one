@@ -43,6 +43,8 @@ export interface CaseListViewProps {
   onOpenImport?: () => void;
   onOpenTrash?: () => void;
   onOpenSettings?: () => void;
+  /** 사건이 하나도 없을 때 '영업 DB에서 이관' 버튼 (CM-14) */
+  onOpenSalesLeads?: () => void;
 }
 
 const STAGE_CONFIG: Record<number, { label: string; color: string; dotColor: string }> = {
@@ -102,6 +104,7 @@ export function CaseListView({
   onOpenImport,
   onOpenTrash,
   onOpenSettings,
+  onOpenSalesLeads,
   serverStageLabels,
   serverFeeNext,
   serverNextDue,
@@ -1169,9 +1172,26 @@ export function CaseListView({
                     <td colSpan={7} className="p-12 text-center text-slate-500">
                       <div className="max-w-xs mx-auto space-y-3">
                         <Users className="w-8 h-8 text-slate-300 mx-auto" />
-                        <div className="font-bold text-slate-800">조회된 사건이 없습니다.</div>
+                        {requests.length === 0 ? (
+                          <>
+                            <div className="font-bold text-slate-800">아직 사건이 없어요</div>
+                            <p className="text-xs text-slate-500">
+                              상담 요청에서 계약하면 사건이 저절로 생겨요. 사무소에 직접 온 의뢰인은 사건을 직접 등록하고, 영업 DB에서 상담이 된 리드는 사건으로 옮길 수 있어요.
+                            </p>
+                            <div className="flex justify-center gap-2 flex-wrap">
+                              <button type="button" onClick={onNewCase}
+                                className="min-h-[44px] px-4 rounded-xl bg-[#1E3A5F] hover:bg-[#162A45] text-white text-xs font-bold whitespace-nowrap cursor-pointer press-scale">사건 등록</button>
+                              {onOpenSalesLeads && (
+                                <button type="button" onClick={onOpenSalesLeads}
+                                  className="min-h-[44px] px-4 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 whitespace-nowrap cursor-pointer press-scale">영업 DB에서 이관</button>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                        <>
+                        <div className="font-bold text-slate-800">조건에 맞는 사건이 없어요</div>
                         <p className="text-xs text-slate-500">
-                          검색어나 필터 조건을 변경해 보거나 신규 사건을 등록하세요.
+                          검색어나 필터 조건을 바꾸거나 필터를 초기화해 보세요.
                         </p>
                         <button
                           type="button"
@@ -1189,10 +1209,12 @@ export function CaseListView({
                             setAssigneeFilter('all');
                             setCaseTypeFilter('all');
                           }}
-                          className="px-3.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer press-scale"
+                          className="min-h-[44px] px-3.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer press-scale"
                         >
                           필터 초기화
                         </button>
+                        </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1611,23 +1633,23 @@ export function CaseListView({
 
               {/* 범례 (Legend) */}
               <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                   접수·유입
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                   수임 계약
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   보정 기한
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                   리마인더
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   수임료 분납
                 </span>
@@ -1680,7 +1702,7 @@ export function CaseListView({
 
                         {cDay.holidayName && (
                           <span
-                            className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-1 py-0.2 rounded truncate max-w-[80px]"
+                            className="text-xs font-semibold text-rose-600 bg-rose-50 px-1 py-0.2 rounded truncate max-w-[80px]"
                             title={cDay.holidayName}
                           >
                             {cDay.holidayName}
@@ -1711,7 +1733,7 @@ export function CaseListView({
                               }}
                               onMouseEnter={(e) => handleChipMouseEnter(ev, e.currentTarget)}
                               onMouseLeave={handleChipMouseLeave}
-                              className={`px-1.5 py-0.5 rounded text-[11px] font-medium border truncate transition-all cursor-pointer press-scale flex items-center gap-1 ${chipStyle} ${
+                              className={`px-1.5 py-0.5 rounded text-xs font-medium border truncate transition-all cursor-pointer press-scale flex items-center gap-1 ${chipStyle} ${
                                 ev.isUrgent ? 'ring-1 ring-rose-400 font-bold' : ''
                               }`}
                             >
@@ -1728,7 +1750,7 @@ export function CaseListView({
                               e.stopPropagation();
                               setSelectedCalDate(cDay.dateStr);
                             }}
-                            className="text-[10px] font-bold text-slate-500 hover:text-slate-800 hover:underline px-1 cursor-pointer"
+                            className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:underline px-1 cursor-pointer"
                           >
                             +{cDay.events.length - 3}건 더보기
                           </div>
@@ -1738,7 +1760,7 @@ export function CaseListView({
 
                     {/* 오늘 표시 텍스트 */}
                     {cDay.isToday && (
-                      <span className="text-[10px] text-[#1E3A5F] font-bold mt-1 block text-right">
+                      <span className="text-xs text-[#1E3A5F] font-bold mt-1 block text-right">
                         오늘
                       </span>
                     )}
@@ -1841,7 +1863,7 @@ export function CaseListView({
                             )}
                           </div>
                           <p className="text-slate-900 font-bold text-xs">{ev.title}</p>
-                          <div className="text-slate-500 text-[11px] pt-1 border-t border-slate-100">
+                          <div className="text-slate-500 text-xs pt-1 border-t border-slate-100">
                             다음 할 일: <strong className="text-slate-700">{nextAct.text}</strong>
                           </div>
                         </div>
@@ -1904,28 +1926,28 @@ export function CaseListView({
                     <div className="flex items-start justify-between gap-1.5">
                       <div>
                         <div className="flex items-center gap-1 mb-0.5">
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                          <span className={`text-xs px-1.5 py-0.2 rounded font-medium ${
                             ev.caseTypeLabel.includes('파산')
                               ? 'bg-purple-100 text-purple-700 font-bold'
                               : 'bg-blue-100 text-blue-700 font-bold'
                           }`}>
                             {ev.caseTypeLabel.includes('파산') ? '개인파산' : '개인회생'}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${stageInfo.color}`}>
+                          <span className={`text-xs px-1.5 py-0.2 rounded font-medium border ${stageInfo.color}`}>
                             {ev.stageNum}단계 {stageInfo.label}
                           </span>
                         </div>
                         <div className="font-bold text-sm text-slate-900 tracking-tight flex items-center gap-1">
                           <span>{ev.clientName}</span>
                           {ev.request.stealthNickname && ev.request.stealthNickname !== ev.clientName && (
-                            <span className="text-[11px] text-slate-400 font-normal">
+                            <span className="text-xs text-slate-400 font-normal">
                               ({ev.request.stealthNickname})
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 ${
+                      <span className={`text-xs px-2 py-0.5 rounded-md font-bold shrink-0 ${
                         ev.type === 'correction'
                           ? 'bg-rose-100 text-rose-800'
                           : ev.type === 'reminder'
@@ -1941,14 +1963,14 @@ export function CaseListView({
                     </div>
 
                     {/* 일정 배너 */}
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-0.5">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-0.5">
                       <div className="flex items-center justify-between text-slate-500 font-medium">
                         <span className="flex items-center gap-1 font-mono">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           {ev.dateStr}
                         </span>
                         {ev.isUrgent && (
-                          <span className="text-rose-600 font-bold flex items-center gap-0.5 text-[10px]">
+                          <span className="text-rose-600 font-bold flex items-center gap-0.5 text-xs">
                             <AlertTriangle className="w-3 h-3" /> 기한 임박
                           </span>
                         )}
@@ -1959,32 +1981,32 @@ export function CaseListView({
                     </div>
 
                     {/* 주요 재무/진행 스펙 */}
-                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
                       <div className="p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
-                        <span className="text-slate-400 block text-[10px]">총 채무액</span>
+                        <span className="text-slate-400 block text-xs">총 채무액</span>
                         <span className="font-bold text-slate-800 font-mono">{debtStr}</span>
                       </div>
                       <div className="p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
-                        <span className="text-slate-400 block text-[10px]">월 소득</span>
+                        <span className="text-slate-400 block text-xs">월 소득</span>
                         <span className="font-bold text-slate-800 font-mono">{incomeStr}</span>
                       </div>
                     </div>
 
                     {/* 다음 할 일 & 담당자 */}
-                    <div className="pt-1.5 border-t border-slate-100 text-[11px] space-y-1">
+                    <div className="pt-1.5 border-t border-slate-100 text-xs space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-[10px]">담당자</span>
+                        <span className="text-slate-400 text-xs">담당자</span>
                         <span className="font-medium text-slate-700">{assignee}</span>
                       </div>
                       <div className="text-slate-500">
-                        <span className="text-slate-400 text-[10px] block">다음 할 일</span>
+                        <span className="text-slate-400 text-xs block">다음 할 일</span>
                         <span className="font-medium text-slate-800 line-clamp-1">{nextAct.text}</span>
                       </div>
                     </div>
 
                     {/* 푸터 클릭 안내 */}
-                    <div className="pt-1 border-t border-slate-100 text-[10px] text-blue-600 font-medium text-center flex items-center justify-center gap-1">
-                      <span>👉 클릭하여 사건 상세 열기</span>
+                    <div className="pt-1 border-t border-slate-100 text-xs text-blue-600 font-medium text-center flex items-center justify-center gap-1">
+                      <span>클릭하여 사건 상세 열기</span>
                     </div>
                   </div>
                 );

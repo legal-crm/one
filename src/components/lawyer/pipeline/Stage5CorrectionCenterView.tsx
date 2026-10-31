@@ -380,7 +380,7 @@ export default function Stage5CorrectionCenterView({
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-amber-50 text-amber-700 border-amber-200'
               }`}>
-                {isCommenced ? '개시결정 인가 완료' : '보정 심리 진행 중'}
+                {isCommenced ? '개시결정 완료' : '보정 심리 진행 중'}
               </span>
             </div>
 
@@ -558,7 +558,7 @@ export default function Stage5CorrectionCenterView({
               </div>
               <div className="space-y-1">
                 <div className="text-base font-bold text-slate-900">
-                  {isCommenced ? '🏛️ 개시결정 인가 완료' : '보정권고 심리 및 개시 대기'}
+                  {isCommenced ? '개시결정 완료' : '보정권고 심리 및 개시 대기'}
                 </div>
                 <div className="text-xs text-slate-500">
                   {isCommenced
@@ -945,7 +945,7 @@ export default function Stage5CorrectionCenterView({
           ) : isCommenced && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800">🏛️ 인가된 법원 개시결정 핵심 요약</span>
+                <span className="text-xs font-bold text-slate-800">법원 개시결정 핵심 요약</span>
                 <button
                   type="button"
                   onClick={() => setShowRegisterForm(true)}

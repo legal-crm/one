@@ -311,7 +311,7 @@ export default function PaperContractModal({
                   <PackageCheck className="w-4 h-4 text-indigo-600" />
                   우체국 등기우편 배송 및 회수 정보
                 </span>
-                <span className="text-[11px] text-slate-500">배송추적 연동</span>
+                <span className="text-xs text-slate-500">배송추적 연동</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -403,7 +403,7 @@ export default function PaperContractModal({
                 <UploadCloud className="w-4 h-4 text-indigo-600" />
                 날인된 실물 계약서 스캔본 / 사진 파일 첨부
               </label>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-xs text-slate-500">
                 PDF, JPG, PNG 파일 (문서함 자동 보관)
               </span>
             </div>
@@ -422,7 +422,7 @@ export default function PaperContractModal({
               <span className="text-xs font-semibold text-slate-700 group-hover:text-indigo-700">
                 {isUploading ? '파일을 읽는 중...' : '클릭하거나 파일을 여기로 드래그하세요'}
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5">
+              <span className="text-xs text-slate-400 mt-0.5">
                 의뢰인 자필 서명 또는 인감이 날인된 계약서 스캔본이나 스마트폰 촬영본
               </span>
             </label>
@@ -447,7 +447,7 @@ export default function PaperContractModal({
                           <p className="text-xs font-semibold text-slate-800 truncate" title={file.name}>
                             {file.name}
                           </p>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-xs text-slate-400">
                             {file.size ? `${(file.size / 1024).toFixed(0)} KB` : '증빙'}
                           </span>
                         </div>
@@ -505,7 +505,7 @@ export default function PaperContractModal({
               <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
               서면 계약 체결 실무 안내
             </p>
-            <p className="text-[11px] text-amber-700 leading-relaxed">
+            <p className="text-xs text-amber-700 leading-relaxed">
               서면 체결 완료 확정 시 사건 상태가 <span className="font-bold">계약 체결(contracted)</span>로 변경되며, 등록된 계약서 사본은 사건 관리 문서함(Stage 03)에 자동 보관됩니다.
             </p>
           </div>

@@ -292,7 +292,7 @@ export default function ServerCaseRecordPanel({ officeId, consultRequestId, case
                   : <CalendarClock className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" aria-hidden="true" />}
                 <span className="text-slate-500 whitespace-nowrap">{fmtDateTime(ev.createdAt)}</span>
                 <span className="text-slate-800">{ev.summary}</span>
-                {ev.clientVisible && <span className="rounded-lg bg-emerald-50 px-1.5 text-[11px] font-semibold text-emerald-700 whitespace-nowrap">의뢰인 공개</span>}
+                {ev.clientVisible && <span className="rounded-lg bg-emerald-50 px-1.5 text-xs font-semibold text-emerald-700 whitespace-nowrap">의뢰인 공개</span>}
               </li>
             ))}
           </ol>

@@ -141,7 +141,7 @@ export default function Stage1ConsultationView({
       return;
     }
     const confirmed = await dialog.confirm({
-      title: '⚖️ 신청 적격 요건 확정',
+      title: '신청 적격 요건 확정',
       message: `채무 한도, 소득 요건 및 제595조 결격사유 점검을 완료하고 의뢰인을 [수임 계약 준비] 상태로 전환하시겠습니까?`,
       confirmText: '적격 확정',
       cancelText: '취소',
@@ -324,7 +324,7 @@ export default function Stage1ConsultationView({
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">
-                    ⏳ 제안서 발송 완료 (고객 검토 & 전화상담 대기 중)
+                    제안서 발송 완료 (고객 검토 & 전화상담 대기 중)
                   </span>
                   <span className="text-xs text-amber-200/80 font-mono">
                     {myProposal?.createdAt ? new Date(myProposal.createdAt).toLocaleString('ko-KR') : '발송 완료'}
@@ -361,7 +361,7 @@ export default function Stage1ConsultationView({
                   className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 rounded-lg text-xs font-bold transition-all cursor-pointer"
                   title="[개발 전용] 의뢰인이 제안서를 확인하고 전화 상담을 요청한 상태를 시뮬레이션합니다."
                 >
-                  <span>🧪 DEV 연락처 공개 테스트</span>
+                  <span>DEV 연락처 공개 테스트</span>
                 </button>
               )}
             </div>
@@ -400,7 +400,7 @@ export default function Stage1ConsultationView({
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 shadow-xs">
-                    🎉 고객 제안서 확인 & 전화 상담 요청 완료!
+                    고객 제안서 확인 & 전화 상담 요청 완료!
                   </span>
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-500/40">
                     연락처 공개 완료: {clientRequest.phone || '미등록'}

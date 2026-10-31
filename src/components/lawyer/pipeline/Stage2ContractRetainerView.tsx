@@ -599,7 +599,7 @@ export default function Stage2ContractRetainerView({
   const handleDeletePreset = async (presetId: string, presetName: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const confirmed = await dialog.confirm({
-      title: '🗑️ 프리셋 삭제',
+      title: '프리셋 삭제',
       message: `'${presetName}' 프리셋을 영구 삭제하시겠습니까?`,
       confirmText: '삭제',
       cancelText: '취소',
@@ -625,7 +625,7 @@ export default function Stage2ContractRetainerView({
   const handleSendElectronicContract = async () => {
     if (!hasProposalSent || !isContactShared) {
       await dialog.alert({
-        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        title: '선행 단계 미완료 (제안서 미발송)',
         message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
         variant: 'warning'
       });
@@ -709,7 +709,7 @@ ${d.content}
   const handleConfirmPaperContract = async (data: PaperContractSubmitData) => {
     if (!hasProposalSent || !isContactShared) {
       await dialog.alert({
-        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        title: '선행 단계 미완료 (제안서 미발송)',
         message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
         variant: 'warning'
       });
@@ -807,7 +807,7 @@ ${d.content}
   const handleConfirmInPersonContract = async () => {
     if (!hasProposalSent || !isContactShared) {
       await dialog.alert({
-        title: '🔒 선행 단계 미완료 (제안서 미발송)',
+        title: '선행 단계 미완료 (제안서 미발송)',
         message: '의뢰인에게 맞춤 제안서가 발송되지 않았거나 의뢰인이 확인하지 않았습니다.\n\n[Stage 01 맞춤 제안서 발송]을 먼저 완료해 주세요.',
         variant: 'warning'
       });
@@ -815,7 +815,7 @@ ${d.content}
     }
 
     const confirmed = await dialog.confirm({
-      title: '📝 수임계약 체결 완료 처리',
+      title: '수임계약 체결 완료 처리',
       message: '의뢰인과의 사건 위임계약 및 착수금 약정을 완료 처리하시겠습니까?\n\n※ 체결 완료 시 사건 계약 상태가 확정되며 서류 준비(Stage 03)로 진행할 수 있습니다.',
       confirmText: '계약 체결 완료',
       cancelText: '취소',
@@ -1099,7 +1099,7 @@ ${d.content}
                 <span className="font-extrabold text-sm text-slate-900">
                   의뢰인이 [{contract?.contractMethod === 'postal' || contract?.paperContractInfo?.method === 'postal' ? '우편(등기) 계약' : '법률사무소 방문 체결'}]을 요청했습니다
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-200/80 text-amber-900 rounded-md">
+                <span className="px-2 py-0.5 text-xs font-bold bg-amber-200/80 text-amber-900 rounded-md">
                   서면 전환 요청 접수
                 </span>
               </div>

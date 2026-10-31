@@ -108,7 +108,7 @@ export default function KakaoNoticeSection({ officeId, workspaceKey, onChanged }
       </div>
 
       <div>
-        <h4 className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800"><MessageCircle className="w-4 h-4 text-amber-600" aria-hidden="true" />담당자 카톡으로 보낼 안내 {open.length > 0 && <span className="rounded-lg bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-900">{open.length}건</span>}</h4>
+        <h4 className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800"><MessageCircle className="w-4 h-4 text-amber-600" aria-hidden="true" />담당자 카톡으로 보낼 안내 {open.length > 0 && <span className="rounded-lg bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">{open.length}건</span>}</h4>
         {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
         {open.length === 0 && !error && (
           <p className="mt-1 text-xs text-slate-500">보낼 안내가 없어요. 사무소 설정 › 의뢰인 안내 방법에서 '담당자 카톡'으로 정한 안내가 생기면 여기에 쌓여요.</p>

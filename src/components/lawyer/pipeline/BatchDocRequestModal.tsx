@@ -174,7 +174,7 @@ export default function BatchDocRequestModal({
                     : 'bg-amber-50/60 text-amber-900 border-amber-200 hover:bg-amber-100'
                 }`}
               >
-                📮 1차 서류 ({unsubmittedDocs.filter(d => (d.phase || 1) === 1).length}건)
+                1차 서류 ({unsubmittedDocs.filter(d => (d.phase || 1) === 1).length}건)
               </button>
               <button
                 type="button"
@@ -326,7 +326,7 @@ ${clientName}님, 개인회생 신속 착수를 위한 [1차 기본서류] 빠�
 4. 인감증명서 ${creditorCount > 0 ? `${creditorCount + 5}부 (채권사 ${creditorCount}곳 + 5부)` : '[채권사 수 + 5]부 (채권사 수 확인 후 안내)'}
 5. 지방세 세목별 과세증명서 (최근 5년)
 
-📮 등기 주소: ${officeAddress}
+등기 주소: ${officeAddress}
 수신: ${officeName} 앞
 제출 기한: ${deadlineStr}까지
 
