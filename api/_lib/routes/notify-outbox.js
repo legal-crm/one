@@ -14,6 +14,9 @@ const LABEL = {
   consult_request_due_soon: '응답 기한이 다가온 상담 요청',
   consult_request_expired: '응답 기한이 지난 상담 요청',
   calendar_reminder: '다가온 일정',
+  client_intake_changed: '의뢰인이 고친 정리 자료',
+  discharge_request: '의뢰인 면책신청 접수 요청',
+  discharge_self_download: '의뢰인이 직접 내려받은 면책신청서',
   test: '팀 알림 연결 테스트',
 };
 

@@ -144,6 +144,7 @@ import { findCaseByWorkspaceKey } from '../../services/cases/caseCoreService';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
 import OfficeDischargePanel from './case/OfficeDischargePanel';
+import ClientIntakeCard from './requests/ClientIntakeCard';
 import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
 import Stage3DocumentsHubView from './pipeline/Stage3DocumentsHubView';
 import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
@@ -2408,6 +2409,9 @@ export default function CrmTab({
             <div className="flex flex-col xl:flex-row min-h-[650px] bg-slate-50/40 relative">
               {/* 중앙 6단계 실무 캔버스 */}
               <div className="flex-1 min-w-0">
+                    {pipelineStage === 1 && selectedClient.intake && (
+                      <div className="mb-4"><ClientIntakeCard intake={selectedClient.intake} updatedAt={selectedClient.intakeUpdatedAt} /></div>
+                    )}
                     {pipelineStage === 1 && (
                       <Stage1ConsultationView
                         clientRequest={selectedClient}

@@ -67,6 +67,8 @@ async function requestToRow(request: ConsultRequest) {
     updated_at: new Date().toISOString(),
   };
   if (keepLegacyProfile) delete row.financial_profile;
+  // 정리 자료 v2는 있을 때만 보낸다 (없는 요청을 저장할 때 서버 값을 지우지 않게)
+  if (request.intake) (row as any).intake = request.intake;
   return row;
 }
 
@@ -162,12 +164,18 @@ async function syncRequestsToDb(requests: ConsultRequest[]): Promise<void> {
       const own = changed.filter(r => r.clientId === uid);
       if (own.length === 0) return;
       // 일괄 upsert는 모든 행의 컬럼이 같아야 하므로, financial_profile을 보존할 레거시 행은 따로 보낸다
-      const legacyRows = own.filter(r => legacyEncryptedProfileIds.has(r.id));
-      const normalRows = own.filter(r => !legacyEncryptedProfileIds.has(r.id));
+      // 정리 자료(intake)가 있는 행·없는 행도 따로 (없는 행을 함께 보내면 서버 intake가 NULL로 덮일 수 있음)
+      const legacyRows = own.filter(r => legacyEncryptedProfileIds.has(r.id) || !r.intake);
+      const normalRows = own.filter(r => !legacyEncryptedProfileIds.has(r.id) && !!r.intake);
       let ok = true;
-      for (const group of [normalRows, legacyRows]) {
-        if (group.length === 0) continue;
-        const payload = await Promise.all(group.map(requestToRow));
+      // 보내는 칸 구성이 같은 행끼리 묶어 보낸다
+      const rows = await Promise.all([...normalRows, ...legacyRows].map(requestToRow));
+      const bySignature = new Map<string, any[]>();
+      for (const row of rows) {
+        const sig = Object.keys(row).sort().join(',');
+        bySignature.set(sig, [...(bySignature.get(sig) || []), row]);
+      }
+      for (const payload of bySignature.values()) {
         const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
         if (error) { ok = false; logSupabaseError('syncRequestsToDb(client)', error); }
       }
@@ -237,6 +245,8 @@ async function rowToRequest(row: any): Promise<ConsultRequest> {
     title: row.title,
     content: row.content,
     financialProfile: decryptedProfile || {},
+    ...(row.intake ? { intake: row.intake } : {}),
+    ...(row.intake_updated_at ? { intakeUpdatedAt: row.intake_updated_at } : {}),
     phoneConsultationRequested: row.phone_consultation_requested,
     safeNumber: row.safe_number,
     safeNumberAssignedAt: row.safe_number_assigned_at,

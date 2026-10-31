@@ -1148,6 +1148,10 @@ export interface ConsultRequest {
   title: string;
   content: string;
   financialProfile: FinancialProfile;
+  /** 의뢰인 정리 자료 v2 (답한 그대로, 원 단위, I-4) */
+  intake?: import('./services/intake/clientIntakeV2').ClientIntakeV2 | null;
+  /** 의뢰인이 정리 자료를 마지막으로 고친 때 (처음 저장 뒤) */
+  intakeUpdatedAt?: string;
   /** 관리자 스팸 숨김 (023, 원문은 보존) */
   adminHidden?: boolean;
   adminHiddenReason?: string;

@@ -12,6 +12,7 @@ import type {
 import { useDialog } from '../../common/DialogProvider';
 import { CONSULT_DECLINE_REASONS, lawyerDeclineConsultRequest, type ConsultDeclineReason } from '../../../services/consultService';
 import CaseReviewPanel from '../case/CaseReviewPanel';
+import ClientIntakeCard from './ClientIntakeCard';
 
 interface ConsultRequestManagementViewProps {
   requests: ConsultRequest[];
@@ -585,6 +586,9 @@ export default function ConsultRequestManagementView({
                       </p>
                     </div>
                   </div>
+
+                  {/* 의뢰인 정리 자료 v2 (답한 그대로, I-4) */}
+                  <ClientIntakeCard intake={activeRequest.intake} updatedAt={activeRequest.intakeUpdatedAt} />
 
                   {/* 재무 상태 4대 요건 카드 */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">

@@ -43,6 +43,7 @@ const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
 import type { PublicCalcInput } from '../services/repayment/publicCalculator';
 import IntakeReviewModal, { extraFactsText } from './client/intake/IntakeReviewModal';
+import { buildIntakeV2, intakeInputFromProfile, type ClientIntakeV2 } from '../services/intake/clientIntakeV2';
 const QnAView = React.lazy(() => import('./client/QnAView'));
 const ChatView = React.lazy(() => import('./client/ChatView'));
 const NewsView = React.lazy(() => import('./client/NewsView'));
@@ -640,9 +641,12 @@ export default function ClientRole({
 
     setRequests(prev => prev.map(req => {
       if (req.id === activeRequest.id) {
+        // 정리 자료 v2도 같은 요청에서 갱신 → 이미 요청받은 변호사에게 '바뀌었어요' 알림(서버 트리거, I-5)
+        const intake = buildIntakeV2(intakeInputFromProfile(updatedProfile), req.intake?.extra, req.intake || null);
         return {
           ...req,
           content: updatedContent,
+          intake,
           financialProfile: {
             ...updatedProfile,
             riskFlags
@@ -1758,7 +1762,7 @@ export default function ClientRole({
     };
   };
 
-  const handleIntakeSubmit = (intakeData: IntakeData, navigateToLawyers: boolean = true) => {
+  const handleIntakeSubmit = (intakeData: IntakeData, navigateToLawyers: boolean = true, intakeV2?: ClientIntakeV2) => {
     if (!checkCooldown()) return;
     trackEvent('check_completed');
     const result = calculateRehabPlan(intakeData, effectiveSettings);
@@ -1958,6 +1962,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
     
+    // 의뢰인 정리 자료 v2 (답한 그대로, 원 단위) — 변호사에게는 동의 뒤 공개 (I-4)
+    if (intakeV2) (newRequest as any).intake = intakeV2;
     // 진단 완료 즉시 requests에 저장 (본인 전용 — 변호사 공개 전)
     setRequests(prev => [newRequest, ...prev]);
     setPendingNewRequest(newRequest);
@@ -2451,7 +2457,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setPendingChatbotData({ res, input });
                     // 정리가 끝나면 한 번만 저장한다 (본인만 보는 상담 요청 — 변호사에게는 동의 뒤 공개)
                     const mappedData = mapChatbotDataToIntakeData(res, input);
-                    handleIntakeSubmit(mappedData, false);
+                    handleIntakeSubmit(mappedData, false, buildIntakeV2(input as any));
                   }}
                   templateId="gradient"
                   themeMode="light"
@@ -2489,9 +2495,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         creditorCountBand: extra.creditorCountBand || undefined, overdueSince: extra.overdueSince || undefined,
                         arrearsKinds: extra.arrears, seizureTargets: extra.seizure,
                       };
-                      const updated = { ...pendingNewRequest, financialProfile: fp, content: `${pendingNewRequest.content || ''}${extraFactsText(extra)}` };
+                      const prevIntake = pendingNewRequest.intake || null;
+                      const intake = pendingChatbotData ? buildIntakeV2(pendingChatbotData.input as any, extra, null) : (prevIntake ? { ...prevIntake, extra } : undefined);
+                      const updated = { ...pendingNewRequest, financialProfile: fp, intake, content: `${pendingNewRequest.content || ''}${extraFactsText(extra)}` };
                       setPendingNewRequest(updated);
-                      setRequests(prev => prev.map(r => (r.id === updated.id ? { ...r, financialProfile: fp, content: updated.content } : r)));
+                      setRequests(prev => prev.map(r => (r.id === updated.id ? { ...r, financialProfile: fp, intake, content: updated.content } : r)));
                       setIntakeReviewOpen(false);
                       goToLawyerSelectionAfterCheck(updated);
                     }}
