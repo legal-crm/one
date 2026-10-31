@@ -39,7 +39,6 @@ import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
 import BulkMessageSendModal from './BulkMessageSendModal';
 import CaseBriefingBanner from './CaseBriefingBanner';
-import { extractBriefingFromClient } from '../../services/leadService';
 import { ClientCaseSummarySubTab } from './ClientCaseSummarySubTab';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
@@ -68,7 +67,7 @@ import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { buildRepaymentPlan, rebuildPlanWithAssets, rebuildPlanWithOverride } from '../../services/repayment/repaymentCalculationEngine';
 import { checkShortPlanReason, shortPlanInputFromCondition } from '../../services/repayment/rehabLegalCore';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
-import { computePipelineGates, pipelineLockReason, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
+import { computePipelineGates, stageForStatus, getJourneyState } from './pipeline/pipelineGates';
 import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimelineModal, StageTransitionModal, StageLockSheet, CaseListView } from './case';
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
 import ServerFeePanel from './case/ServerFeePanel';
@@ -78,12 +77,13 @@ import { listCases, loadStageDefinitions, stageDef, workspaceKeyForCase } from '
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
-import { formatVaultDday } from '../../services/vault/certificateVaultService';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
-import { defaultThirteenStageFor, crmStatusForThirteenStage, thirteenStageAfterStatusChange } from './pipeline/journeyStage';
+import { thirteenStageAfterStatusChange } from './pipeline/journeyStage';
 import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
 import { createTask, createTaskBatch } from '../../services/taskTicketService';
 import { templateForMilestone, tasksFromTemplate } from '../../services/cases/stageTaskTemplates';
+import TrashCaseList from './case/TrashCaseList';
+import { loadWorkQueue, formatDue, WORK_GROUP_LABEL, type WorkItem } from '../../services/office/workQueueService';
 import ClosedCasesArchive from './case/ClosedCasesArchive';
 import { STAGE_TEST_REQUEST_IDS } from '../../data';
 
@@ -135,7 +135,6 @@ function mapSubtabToPipeline(tab: string): {
   }
 }
 
-import { isNewRequestForLawyer, requestTypeLabel } from './requestScope';
 import { isBankruptcyCaseType } from '../../services/cases/caseTypeOf';
 import { setServerCaseType, type BankruptcyDeadline } from '../../services/cases/bankruptcyCaseService';
 import { unansweredCount } from '../../services/court/bankruptcyStatement';
@@ -150,13 +149,7 @@ import Stage3DocumentsHubView from './pipeline/Stage3DocumentsHubView';
 import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
 import Stage5CorrectionCenterView from './pipeline/Stage5CorrectionCenterView';
 import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView';
-import { getContractsByClientId } from '../../services/contractService';
-import { validateUploadFile } from '../../utils/fileSecurity';
 import { localYmd } from '../../utils/localDate';
-import { inspectPdfFile } from '../../services/pdfQualityService';
-import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
-import { syncCompanionWithCrmCase } from '../../services/companionService';
-import { detectClientIncomeType } from '../../utils/incomeTypeHelper';
 import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
 import PdfPreprocessorModal from '../common/PdfPreprocessorModal';
 import type { 
@@ -182,11 +175,10 @@ import {
   type CrmDataStore 
 } from '../../services/crmService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
-import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, AlimtokLog, AlimtokMilestone } from '../../types';
-import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
-import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon, renderTemplate } from '../../services/alimtokService';
+import type { FeeInstallment, AlimtokMilestone } from '../../types';
+import { ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
+import { sendAlimtok, feeAmountWon, feeTotalWon, renderTemplate } from '../../services/alimtokService';
 import { NOTICE_METHOD_LABEL, deliverClientNotice, describeDelivery, loadClientMessaging, noticeMethodFor } from '../../services/comm/clientNoticeService';
-import { loadNotificationSettings } from '../../services/notificationService';
 import { canUse as canUseOfficePermission } from '../../services/office/officePermissions';
 import CorrectionPanel from './case/CorrectionPanel';
 import { CORRECTIONS_CHANGED_EVENT, loadCorrectionOverview, type CorrectionOverviewRow } from '../../services/corrections/correctionService';
@@ -324,7 +316,6 @@ export default function CrmTab({
   
   // ── 선택 ──
   const [selectedId, setSelectedId] = useState(initialClientId || '');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // ── 상세 패널 편집 ──
   const [editName, setEditName] = useState('');
@@ -335,31 +326,14 @@ export default function CrmTab({
   const [editConsultantId, setEditConsultantId] = useState(''); // legacy
   const [editStaffId, setEditStaffId] = useState('');           // legacy
   const [editAssigneeId, setEditAssigneeId] = useState('');     // 통합 담당자
-  const [newNoteContent, setNewNoteContent] = useState('');
-  const [newNoteCategory, setNewNoteCategory] = useState<CrmNoteCategory>('consult');
-  const [newNoteOutcome, setNewNoteOutcome] = useState<import('../../types').ConsultOutcome | ''>('');
-  const [showReminder, setShowReminder] = useState(false);
-  const [reminderDate, setReminderDate] = useState('');
-  const [reminderAction, setReminderAction] = useState('');
-  const [reminderTime, setReminderTime] = useState('');
-  const [reminderMemo, setReminderMemo] = useState('');
   
   // ── 이관 모달 ──
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferTargetId, setTransferTargetId] = useState('');
-  const [transferReason, setTransferReason] = useState('');
   
   // ── 직원 관리 패널 ──
-  const [showStaffPanel, setShowStaffPanel] = useState(false);
-  const [newStaffName, setNewStaffName] = useState('');
-  const [newStaffRole, setNewStaffRole] = useState<StaffRole>('CONSULTANT');
 
   // ── 초민감 서류 보안 뷰어 ──
-  const [viewingDoc, setViewingDoc] = useState<DocumentFile | null>(null);
   
   // ── 일괄 작업 ──
-  const [bulkStatus, setBulkStatus] = useState<CrmStatus>('consulting');
-  const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
   const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
@@ -389,16 +363,8 @@ export default function CrmTab({
   const [showCourtFormPreviewModal, setShowCourtFormPreviewModal] = useState(false);
   const [courtFormPreviewCode, setCourtFormPreviewCode] = useState('R01');
   const [showContractDocLibraryModal, setShowContractDocLibraryModal] = useState(false);
-  const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   // ── 서류 작업 집중 모드 (Wide Workbench): 팩트시트와 소통창 기본 닫힘 ──
-  const [isFactSheetOpen, setIsFactSheetOpen] = useState(false);
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(true);
-  const [showCommPanel, setShowCommPanel] = useState(false);
-  const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
-  const [showFeeAccordion, setShowFeeAccordion] = useState(false);
-  const [showStatusAccordion, setShowStatusAccordion] = useState(false);
-  const [showMetaAccordion, setShowMetaAccordion] = useState(false);
-  const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
 
   // 외부(채팅 '고객관리에서 열기'·메모 링크·계약 체결 뒤 이동 등)에서 지정한 고객 ID 및 탭 동기화
   // 16개 서브탭 매핑 규칙에 따라 6단계 파이프라인의 해당 Stage 및 세부 섹션으로 자동 라우팅
@@ -428,7 +394,6 @@ export default function CrmTab({
   // '분납 2회+ 기한 지남' 대상은 서버 수납 기록으로 고른다 (이전: 사건 관리 사본의 회차 상태)
   const [bulkFeeByReq, setBulkFeeByReq] = useState<Record<string, FeeOverviewRow> | null>(null);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
-  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
   useEffect(() => {
     if (bulkFilter !== 'fee_overdue' || !officeId) return;
     let cancelled = false;
@@ -439,7 +404,6 @@ export default function CrmTab({
     });
     return () => { cancelled = true; };
   }, [bulkFilter, officeId]);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [bulkSendModalConfig, setBulkSendModalConfig] = useState<{
     isOpen: boolean;
     channel: 'alimtok' | 'sms';
@@ -467,14 +431,7 @@ export default function CrmTab({
   const [starFilter, setStarFilter] = useState(false);
 
   // ── 서류 관리 기능 ──
-  const [rejectingDocId, setRejectingDocId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [showDocRequest, setShowDocRequest] = useState(false);
-  const [newDocRequestLabel, setNewDocRequestLabel] = useState('');
-  const [newDocRequestDesc, setNewDocRequestDesc] = useState('');
   const [showDocScanner, setShowDocScanner] = useState(false);
-  const [showPdfPreprocessor, setShowPdfPreprocessor] = useState(false);
-  const [preprocessorTargetDoc, setPreprocessorTargetDoc] = useState<{ name: string; dataUrl: string } | undefined>(undefined);
   // ── 고객 자가진단 전수 상세 팝업 ──
   const [showIntakeDetailModal, setShowIntakeDetailModal] = useState(false);
   // ── 배정 지시 모달 ──
@@ -489,9 +446,6 @@ export default function CrmTab({
 
   // ── 업그레이드: 스마트 툴바 & 퀵 액션 상태 ──
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
-  const [isDetailFilterOpen, setIsDetailFilterOpen] = useState(false);
-  const [periodFilter, setPeriodFilter] = useState<string>('all');
-  const [quickStatusMenuId, setQuickStatusMenuId] = useState<string | null>(null);
   const toolsMenuRef = React.useRef<HTMLDivElement>(null);
 
   // 도구 드롭다운 외부 클릭 감지
@@ -505,33 +459,6 @@ export default function CrmTab({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handlePeriodChange = (val: string) => {
-    setPeriodFilter(val);
-    const now = new Date();
-    if (val === 'today') {
-      const t = localYmd(now);
-      setDateFrom(t);
-      setDateTo(t);
-    } else if (val === 'week') {
-      const d = now.getDay();
-      const mon = new Date(now);
-      mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
-      setDateFrom(localYmd(mon));
-      setDateTo(localYmd(now));
-    } else if (val === 'month') {
-      setDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
-      setDateTo(localYmd(now));
-    } else if (val === '3month') {
-      const ago = new Date(now);
-      ago.setMonth(ago.getMonth() - 3);
-      setDateFrom(localYmd(ago));
-      setDateTo(localYmd(now));
-    } else {
-      setDateFrom('');
-      setDateTo('');
-    }
-    setPage(1);
-  };
 
   // ── 다른 사람이 고친 사건 데이터 실시간 반영 (CM-10) ──
   useEffect(() => {
@@ -636,12 +563,6 @@ export default function CrmTab({
   }, [crmData]);
 
   // ── 신규 리드: 이 변호사가 아직 제안서를 보내지 않았고 보낼 수 있는 요청 (대시보드·사이드바 배지와 같은 기준) ──
-  // (이전: 상태가 requested/responding일 때만 포함해 비교 상담 중 추가로 요청받은 건이 빠졌고,
-  //  공개 요청은 제안서 자리가 찼거나 다른 변호사와 상담을 이어가기로 한 뒤에도 계속 보였다)
-  const newLeadRequests = useMemo(
-    () => requests.filter(r => isNewRequestForLawyer(r, activeLawyer, lawyers)),
-    [requests, activeLawyer, lawyers]
-  );
 
   /** @returns 서버 저장 성공 여부 (실패 시 이 기기에만 저장된 상태) */
   const updateCrmExt = useCallback(async (clientId: string, updates: Partial<CrmClientExtension>): Promise<boolean> => {
@@ -709,11 +630,28 @@ export default function CrmTab({
   // 서버 사건 기록 단계 (CM-1): 목록에서 어떤 사건이 서버에 기록돼 있는지 보이게 한다
   const [serverStageLabels, setServerStageLabels] = useState<Record<string, string> | undefined>(undefined);
   const [serverFeeNext, setServerFeeNext] = useState<Record<string, { dueOn: string; amountWon: number; overdue: boolean }> | undefined>(undefined);
+  // 사건별 가장 가까운 기한 있는 할 일 (CM-6) — 서버 업무함(office_work_queue)이 원본 데이터에서 계산한 값
+  const [serverNextDue, setServerNextDue] = useState<Record<string, { title: string; dueLabel: string; urgent: boolean }> | undefined>(undefined);
   useEffect(() => {
     if (!officeId || selectedId) return;
     let cancelled = false;
     (async () => {
-      const [defs, cs, fees] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 }), loadFeeOverviewByRequest(officeId)]);
+      const [defs, cs, fees, wq] = await Promise.all([loadStageDefinitions(), listCases({ officeId, view: 'all', limit: 1000 }), loadFeeOverviewByRequest(officeId), loadWorkQueue(officeId)]);
+      if (!cancelled && wq.ok) {
+        const best: Record<string, { item: WorkItem; t: number }> = {};
+        wq.data.forEach(it => {
+          if (!it.caseKey) return;
+          const t = it.dueAt ? new Date(it.dueAt).getTime() : Number.POSITIVE_INFINITY;
+          const cur = best[it.caseKey];
+          // 기한 있는 것 먼저, 같으면 우선순위
+          if (!cur || t < cur.t || (t === cur.t && it.priority < cur.item.priority)) best[it.caseKey] = { item: it, t };
+        });
+        const out: Record<string, { title: string; dueLabel: string; urgent: boolean }> = {};
+        Object.entries(best).forEach(([k, { item }]) => {
+          out[k] = { title: item.title, dueLabel: item.dueAt ? formatDue(item.dueAt) : (WORK_GROUP_LABEL[item.group] || ''), urgent: item.group === 'overdue' || item.group === 'today' };
+        });
+        setServerNextDue(out);
+      }
       if (!cancelled && fees) {
         const next: Record<string, { dueOn: string; amountWon: number; overdue: boolean }> = {};
         Object.entries(fees).forEach(([k, f]) => {
@@ -1090,28 +1028,9 @@ export default function CrmTab({
   };
 
   // ── 핸들러 ──
-  const handleSort = (field: SortField) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
-  };
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === pagedRequests.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(pagedRequests.map(r => r.id)));
-  };
 
-  const handleSaveClientInfo = () => {
-    if (!selectedId || !editName.trim()) return;
-    setRequests(prev => prev.map(r => r.id === selectedId ? { ...r, clientName: editName.trim(), phone: editPhone.trim() } : r));
-  };
 
   /** 사건 담당 변호사/직원 전용 사건 유형 전환 (개인회생 <-> 개인파산·면책) */
   const handleSwitchCaseType = async (newType: 'individual_rehab' | 'bankruptcy') => {
@@ -1206,54 +1125,6 @@ export default function CrmTab({
     }
   };
 
-  const handleSaveAssignment = async () => {
-    if (!selectedId) return;
-    const ext = getCrmExt(selectedId);
-    const currentAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || '';
-
-    // 상태 변경 시 2단계 확인 및 선행 조건 검증
-    if (editStatus !== ext.crmStatus) {
-      const clientReq = requests.find(r => r.id === selectedId);
-      const editGates = clientReq ? computePipelineGates(clientReq, ext) : null;
-
-      if (editGates && editGates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(editStatus)) {
-        await dialog.alert({
-          title: '🔒 선행 단계(제안서 발송) 미완료',
-          message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
-          variant: 'warning'
-        });
-        return;
-      }
-
-      const clientName = clientReq?.clientName || '고객';
-      const confirmed = await dialog.confirm({
-        title: '사건 진행 상태 변경 확인',
-        message: `[${clientName}] 의뢰인의 사건 상태를\n"${CRM_STATUS_CONFIG[ext.crmStatus].label}" ➔ "${CRM_STATUS_CONFIG[editStatus].label}"\n(으)로 변경하시겠습니까?\n\n※ 상태 변경 시 파이프라인 단계 및 업무 관리가 즉시 갱신됩니다.`,
-        confirmText: '상태 변경 실행',
-        cancelText: '취소',
-        variant: 'primary'
-      });
-      if (!confirmed) return;
-    }
-    
-    // 담당자가 변경되었는지 확인
-    const assigneeChanged = editAssigneeId !== currentAssignee;
-    
-    if (assigneeChanged && editAssigneeId) {
-      // 담당자 변경 → 배정 지시 모달 팝업
-      setPendingAssignment({
-        clientId: selectedId,
-        lawyerId: editAssigneeId,
-        consultantId: '',
-        staffId: '',
-        status: editStatus,
-      });
-      setShowDirectiveModal(true);
-    } else {
-      // 담당자 변경 없음 또는 미배정으로 변경 → 즉시 저장
-      await executeAssignment(selectedId, editStatus, editAssigneeId);
-    }
-  };
 
   /** 실제 배정 저장 실행 (모달 결과와 무관하게 호출) */
   const executeAssignment = async (
@@ -1326,264 +1197,18 @@ export default function CrmTab({
     setPendingAssignment(null);
   };
 
-  /** 배정 지시 확인 완료 핸들러 */
-  const handleAcknowledgeDirective = async (directiveId: string) => {
-    if (!selectedId) return;
-    const ext = getCrmExt(selectedId);
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const directives = (ext.assignmentDirectives || []).map(d =>
-      d.id === directiveId ? { ...d, acknowledgedAt: new Date().toISOString(), acknowledgedById: actor.id } : d
-    );
-    await updateCrmExt(selectedId, { assignmentDirectives: directives });
-    toast.success('배정 지시를 확인했습니다.');
-  };
 
-  const handleTransfer = async () => {
-    if (!selectedId || !transferTargetId) return;
-    const ext = getCrmExt(selectedId);
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const target = [...lawyers, ...staffMembers].find(l => l.id === transferTargetId);
-    
-    const activities = [...ext.activities, createActivityLog(
-      selectedId, actor.id, actor.name, actor.role, 'transferred',
-      `사건 이관: ${target?.name || '알 수 없음'} (사유: ${transferReason || '없음'})`
-    )];
 
-    await updateCrmExt(selectedId, {
-      assigneeId: transferTargetId,
-      assignedLawyerId: transferTargetId,  // 하위 호환
-      activities,
-    });
-    setEditAssigneeId(transferTargetId);
-    setEditLawyerId(transferTargetId);
-    setShowTransferModal(false);
-    setTransferTargetId('');
-    setTransferReason('');
-    toast.success('사건이 이관되었습니다.');
-  };
 
-  const handleAddNote = async () => {
-    if (!selectedId) return;
 
-    const hasNoteContent = Boolean(newNoteContent.trim());
-    const hasReminder = Boolean(showReminder && reminderDate && reminderAction.trim());
 
-    if (!hasNoteContent && !hasReminder) {
-      if (showReminder && (!reminderDate || !reminderAction.trim())) {
-        toast.error('리마인더 날짜와 액션을 입력해주세요.');
-      } else {
-        toast.error('메모 내용 또는 리마인더 일정을 입력해주세요.');
-      }
-      return;
-    }
 
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const ext = getCrmExt(selectedId);
-    const selectedReq = requests.find(r => r.id === selectedId);
-    const clientName = selectedReq?.clientName || '';
 
-    // Build reminder
-    let reminder: NoteReminder | undefined;
-    if (hasReminder) {
-      const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
-      let calEvtId: string | undefined;
-      try {
-        const calEvt = await createCalendarEvent(tenantId, {
-          title: `[🔔] ${clientName} - ${reminderAction.trim()}`,
-          date: reminderDate,
-          startTime: reminderTime || undefined,
-          type: 'deadline',
-          visibility: 'personal',
-          recurrence: 'none',
-          reminder: 'none',
-          createdBy: actor.id,
-          createdByName: actor.name,
-          createdByRole: actor.role as string,
-          description: reminderMemo.trim() || undefined,
-        });
-        calEvtId = calEvt.id;
-      } catch (e: any) {
-        toast.error(e?.message || '리마인더를 캘린더에 저장하지 못했습니다.');
-        return;
-      }
-      reminder = { 
-        date: reminderDate, 
-        time: reminderTime || undefined, 
-        action: reminderAction.trim(), 
-        memo: reminderMemo.trim() || undefined, 
-        completed: false, 
-        calendarEventId: calEvtId 
-      };
-    }
-
-    // 메모 내용이 없을 경우 리마인더 액션으로 메모 자동 생성
-    const finalContent = hasNoteContent 
-      ? newNoteContent.trim() 
-      : `[일정/리마인더] ${reminderAction.trim()} (${reminderDate}${reminderTime ? ' ' + reminderTime : ''})${reminderMemo.trim() ? ' - ' + reminderMemo.trim() : ''}`;
-
-    const note = createCrmNote(
-      newNoteCategory, finalContent, actor.id, actor.name,
-      newNoteOutcome || undefined, reminder
-    );
-    const activities = [...ext.activities, createActivityLog(
-      selectedId, actor.id, actor.name, actor.role, 'note_added',
-      `메모 추가 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${finalContent.slice(0, 30)}...`
-    )];
-    const ok = await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
-    notifySaved(ok, hasReminder && hasNoteContent
-      ? '상담 메모 및 리마인더 일정이 저장되었습니다.'
-      : hasReminder ? '리마인더 일정이 캘린더에 저장되었습니다.' : '상담 메모가 추가되었습니다.');
-
-    setNewNoteContent('');
-    setNewNoteOutcome('');
-    setShowReminder(false);
-    setReminderDate('');
-    setReminderAction('');
-    setReminderTime('');
-    setReminderMemo('');
-  };
-
-  /** 소통 패널 등에서 전달된 텍스트를 바로 메모로 저장 (이전: 인자를 무시하고 입력창 상태를 읽어 항상 실패) */
-  const handleAddQuickNote = async (text: string, category: CrmNoteCategory = 'consult') => {
-    if (!selectedId || !text.trim()) return;
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const ext = getCrmExt(selectedId);
-    const note = createCrmNote(category, text.trim(), actor.id, actor.name);
-    const activities = [...ext.activities, createActivityLog(
-      selectedId, actor.id, actor.name, actor.role, 'note_added',
-      `메모 추가 [${CRM_NOTE_CATEGORIES[category]?.label || '일반'}]: ${text.trim().slice(0, 30)}...`
-    )];
-    const ok = await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
-    notifySaved(ok, '메모가 추가되었습니다.');
-  };
-
-  const handleDeleteNote = async (noteId: string) => {
-    if (!selectedId) return;
-    const ext = getCrmExt(selectedId);
-    const targetNote = ext.notes.find(n => n.id === noteId);
-    const hasReminder = Boolean(targetNote?.reminder);
-
-    const confirmed = await dialog.confirm({
-      title: hasReminder ? '상담 메모 및 리마인더 삭제' : '상담 메모 삭제',
-      message: hasReminder
-        ? '해당 상담 메모와 함께 설정된 리마인더 일정을 모두 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.'
-        : '해당 상담 메모를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
-      confirmText: '삭제',
-      variant: 'danger'
-    });
-    if (!confirmed) return;
-
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const activities = [...ext.activities, createActivityLog(
-      selectedId, actor.id, actor.name, actor.role, 'note_added',
-      `메모 삭제: ${targetNote?.content?.slice(0, 20) || '메모'}`
-    )];
-    await updateCrmExt(selectedId, { notes: ext.notes.filter(n => n.id !== noteId), activities });
-    toast.success('상담 메모가 삭제되었습니다.');
-  };
-
-  const handleCompleteReminder = async (noteId: string) => {
-    if (!selectedId) return;
-    const confirmed = await dialog.confirm({
-      title: '리마인더 완료 처리',
-      message: '이 리마인더 일정을 완료 처리하시겠습니까?',
-      confirmText: '완료 처리',
-      variant: 'success'
-    });
-    if (!confirmed) return;
-
-    const ext = getCrmExt(selectedId);
-    const updatedNotes = ext.notes.map(n => n.id === noteId ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
-    await updateCrmExt(selectedId, { notes: updatedNotes });
-    toast.success('리마인더가 완료 처리되었습니다.');
-  };
-
-  const handleDeleteReminderOnly = async (noteId: string) => {
-    if (!selectedId) return;
-    const confirmed = await dialog.confirm({
-      title: '리마인더 일정 삭제',
-      message: '이 메모에 설정된 리마인더 일정만 삭제하시겠습니까?\n(상담 메모 내용은 보존됩니다)',
-      confirmText: '일정 삭제',
-      variant: 'warning'
-    });
-    if (!confirmed) return;
-
-    const ext = getCrmExt(selectedId);
-    const updatedNotes = ext.notes.map(n => n.id === noteId ? { ...n, reminder: undefined } : n);
-    await updateCrmExt(selectedId, { notes: updatedNotes });
-    toast.success('리마인더 일정이 삭제되었습니다.');
-  };
-
-  const handleToggleDocument = async (docId: string) => {
-    if (!selectedId) return;
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const ext = getCrmExt(selectedId);
-    const docs = ext.documents.map(d => {
-      if (d.id === docId) {
-        const checked = !d.checked;
-        return { 
-          ...d, 
-          checked, 
-          reviewStatus: (checked ? 'approved' : 'not_submitted') as DocumentReviewStatus,
-          checkedBy: checked ? actor.name : undefined, 
-          checkedAt: checked ? new Date().toISOString() : undefined 
-        };
-      }
-      return d;
-    });
-    const toggled = docs.find(d => d.id === docId);
-    const activities = [...ext.activities, createActivityLog(
-      selectedId, actor.id, actor.name, actor.role, 'document_checked',
-      `서류 ${toggled?.checked ? '확인(승인)' : '해제(미제출)'}: ${toggled?.label}`
-    )];
-    await updateCrmExt(selectedId, { documents: docs, activities });
-  };
 
   // (직원 추가·삭제는 '사용자 관리' 탭에서만 — 이전 CRM 내 미사용 직원 추가/삭제 핸들러 제거)
 
   // ── 일괄 작업 핸들러 ──
-  const handleBulkStatusChange = async () => {
-    if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
 
-    const confirmed = await dialog.confirm({
-      title: '일괄 상태 변경 확인',
-      message: `선택하신 ${count}건의 사건 상태를\n"${CRM_STATUS_CONFIG[bulkStatus].label}"(으)로 일괄 변경하시겠습니까?`,
-      confirmText: '일괄 변경 실행',
-      cancelText: '취소',
-      variant: 'primary'
-    });
-    if (!confirmed) return;
-
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    for (const id of selectedIds) {
-      const ext = getCrmExt(id);
-      const activities = [...ext.activities, createActivityLog(
-        id, actor.id, actor.name, actor.role, 'status_change',
-        `일괄 상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[bulkStatus].label}`
-      )];
-      await updateCrmExt(id, { crmStatus: bulkStatus, activities });
-    }
-    setSelectedIds(new Set());
-    toast.success(`${count}건 상태 변경 완료`);
-  };
-
-  const handleBulkAssign = async () => {
-    if (selectedIds.size === 0 || !bulkAssignee) return;
-    const count = selectedIds.size;
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const target = [...lawyers, ...staffMembers].find(l => l.id === bulkAssignee);
-    for (const id of selectedIds) {
-      const ext = getCrmExt(id);
-      const activities = [...ext.activities, createActivityLog(
-        id, actor.id, actor.name, actor.role, 'assigned',
-        `일괄 배정: ${target?.name || '알 수 없음'}`
-      )];
-      await updateCrmExt(id, { assigneeId: bulkAssignee, assignedLawyerId: bulkAssignee, activities });
-    }
-    setSelectedIds(new Set());
-    toast.success(`${count}건 배정 완료`);
-  };
 
   /**
    * 상태가 바뀐 뒤 의뢰인 진행 안내를 보낼지 묻는다 (서버 사무소, KT-2).
@@ -1636,126 +1261,12 @@ export default function CrmTab({
   };
 
   // ── 칸반 드래그 ──
-  const handleKanbanDrop = async (clientId: string, newStatus: CrmStatus) => {
-    const ext = getCrmExt(clientId);
-    if (ext.crmStatus === newStatus) return;
-
-    const clientReq = requests.find(r => r.id === clientId);
-    const dragGates = clientReq ? computePipelineGates(clientReq, ext) : null;
-
-    if (dragGates && dragGates.locked[2] && !['requested', 'consulting', 'cancelled'].includes(newStatus)) {
-      await dialog.alert({
-        title: '🔒 선행 단계(제안서 발송) 미완료',
-        message: '의뢰인에게 맞춤 제안서를 발송하고 의뢰인이 확인(상담 요청)하기 전에는 사건 상태를 계약/접수 등으로 임의 변경할 수 없습니다.',
-        variant: 'warning'
-      });
-      return;
-    }
-
-    const clientName = clientReq?.clientName || '고객';
-    const confirmed = await dialog.confirm({
-      title: '칸반 상태 변경 확인',
-      message: `[${clientName}] 의뢰인의 사건 상태를\n"${CRM_STATUS_CONFIG[ext.crmStatus].label}" ➔ "${CRM_STATUS_CONFIG[newStatus].label}"\n(으)로 이동하시겠습니까?`,
-      confirmText: '이동 실행',
-      cancelText: '취소',
-      variant: 'primary'
-    });
-    if (!confirmed) return;
-
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-    const activities = [...ext.activities, createActivityLog(
-      clientId, actor.id, actor.name, actor.role, 'status_change',
-      `파이프라인 이동: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[newStatus].label}`
-    )];
-    await updateCrmExt(clientId, { crmStatus: newStatus, activities });
-    
-    // 알림톡 자동 트리거
-    // 서버 사무소: 사무소 설정 '의뢰인 안내 방법'대로 묻고 보낸다 (KT-2)
-    if (officeId) { await offerStatusNotice(clientId, ext.crmStatus, newStatus); return; }
-
-    try {
-      const notiSettings = loadNotificationSettings();
-      if (notiSettings.kakao.autoTrigger) {
-        const clientReq = requests.find(r => r.id === clientId);
-        if (clientReq) {
-          const caseLabel = (clientReq.caseType === 'bankruptcy' || (ext as any).caseType === 'bankruptcy') ? '개인파산' : '개인회생';
-          const extraVars: Record<string, string> = { caseType: caseLabel };
-          if (ext.courtCase?.caseNumber) extraVars.caseNumber = ext.courtCase.caseNumber;
-          const months = (ext as any).repaymentPlan?.months;
-          const monthly = (ext as any).repaymentPlan?.monthlyRepaymentTotal;
-          if (months) extraVars.duration = String(months);
-          if (monthly) extraVars.monthlyPayment = Number(monthly).toLocaleString();
-          // 결과를 기다려 사실대로 안내 (이전: 결과 무시·오류 삼킴 → 발송 여부를 알 수 없었음)
-          const outcome = await triggerAlimtokOnStatusChange(ext.crmStatus, newStatus, {
-            clientId,
-            clientName: clientReq.clientName, phone: clientReq.phone,
-            firmName: notiSettings.kakao.firmName || getOfficeProfile(activeLawyer.name).firmName || '',
-            lawyerName: notiSettings.kakao.lawyerName || activeLawyer.name || '',
-            extraVars,
-          }, notiSettings.kakao);
-          if (outcome.attempted) {
-            if (outcome.ok) toast.success(`[${ALIMTOK_MILESTONE_CONFIG[outcome.milestone]?.label}] 자동 알림톡이 접수되었습니다.`);
-            else toast.error(`자동 알림톡 미발송: ${outcome.error || '발송 실패'}`);
-          } else if ((outcome as any).reason === 'missing_vars') {
-            toast.info(`자동 알림톡 미발송: 필요한 정보(${((outcome as any).missing || []).join(', ')})가 사건에 없습니다.`);
-          } else if ((outcome as any).reason === 'no_phone') {
-            toast.info('자동 알림톡 미발송: 의뢰인 연락처가 없습니다.');
-          }
-        }
-      }
-    } catch (e: any) {
-      console.error('[자동 알림톡] 오류', e);
-      toast.error('자동 알림톡 처리 중 오류가 발생했습니다 (발송되지 않았을 수 있음).');
-    }
-  };
 
   // ── 통계 ──
-  const stats = useMemo(() => {
-    const total = requests.length;
-    const byStatus: Record<string, number> = {};
-    CRM_STATUSES.forEach(s => byStatus[s] = 0);
-    requests.forEach(r => {
-      const ext = getCrmExt(r.id);
-      byStatus[ext.crmStatus] = (byStatus[ext.crmStatus] || 0) + 1;
-    });
-    const consulting = (byStatus['consulting'] || 0) + (byStatus['contracted'] || 0);
-    const active = (byStatus['document'] || 0) + (byStatus['filed'] || 0) + (byStatus['commenced'] || 0) + (byStatus['repaying'] || 0);
-    const thisMonth = requests.filter(r => {
-      const d = new Date(r.createdAt);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
-    return { total, consulting, active, thisMonth, byStatus };
-  }, [requests, getCrmExt]);
 
   // ── 담당자 이름 조회 헬퍼 ──
-  const getStaffName = (id?: string) => {
-    if (!id) return '미배정';
-    const found = [...lawyers, ...staffMembers].find(l => l.id === id);
-    return found?.name || '알 수 없음';
-  };
 
-  const getStaffRoleBadge = (id?: string) => {
-    if (!id) return null;
-    const staff = staffMembers.find(s => s.id === id);
-    if (staff) {
-      const cfg = STAFF_ROLE_CONFIG[staff.role];
-      return <span className={`text-xs px-1 py-0.5 rounded ${cfg.bgColor} ${cfg.color} font-bold`}>{cfg.label}</span>;
-    }
-    const lawyer = lawyers.find(l => l.id === id);
-    if (lawyer) return <span className="text-xs px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">변호사</span>;
-    return null;
-  };
 
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}분 전`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}시간 전`;
-    const days = Math.floor(hrs / 24);
-    return `${days}일 전`;
-  };
 
   // ── 케이스 관리 핸들러 ──
 
@@ -1907,24 +1418,32 @@ export default function CrmTab({
     if (!confirmed) return false;
 
     const { serverOk } = await softDeleteCrmClient(clientId);
+    // 서버에 저장되지 않으면 화면도 바꾸지 않는다 (이전: '이 브라우저에서만' 휴지통으로 옮긴 채 남았다)
+    if (!serverOk) {
+      toast.error('서버에 저장하지 못해 휴지통으로 옮기지 않았어요. 사건 정보를 한 번 저장한 뒤 다시 시도해 주세요.');
+      return false;
+    }
     setCrmData(prev => prev[clientId]
       ? { ...prev, [clientId]: { ...prev[clientId], deletedAt: new Date().toISOString() } }
       : prev);
-    if (serverOk) toast.success('휴지통으로 이동했습니다.');
-    else toast.warning('이 브라우저에서만 휴지통으로 이동했습니다. 서버에는 반영되지 않았습니다.');
+    toast.success('휴지통으로 이동했습니다.');
     return true;
   }, [dialog]);
 
   /** 휴지통 복원 (삭제 전 진행 단계 유지) */
-  const handleRestore = useCallback(async (clientId: string) => {
+  const handleRestore = useCallback(async (clientId: string): Promise<boolean> => {
     const { serverOk } = await restoreCrmClient(clientId);
+    if (!serverOk) {
+      toast.error('서버에 저장하지 못해 되돌리지 않았어요. 잠시 뒤 다시 시도해 주세요.');
+      return false;
+    }
     setCrmData(prev => {
       if (!prev[clientId]) return prev;
       const { deletedAt: _d, ...rest } = prev[clientId];
       return { ...prev, [clientId]: rest as CrmClientExtension };
     });
-    if (serverOk) toast.success('복원했습니다.');
-    else toast.warning('이 브라우저에서만 복원했습니다. 서버에는 반영되지 않았습니다.');
+    toast.success('사건을 되돌렸어요.');
+    return true;
   }, []);
 
   /** 상태 변경 시 cancelled이면 이탈 사유 모달 표시 */
@@ -1990,10 +1509,20 @@ export default function CrmTab({
             </div>
           )}
           {officeId && !showTrash && <ClosedCasesArchive officeId={officeId} onOpen={(key) => setSelectedId(key)} />}
+          {showTrash ? (
+            <TrashCaseList
+              items={listScopeRequests.map(r => ({ id: r.id, name: getDisplayClientName(r) || '의뢰인', deletedAt: getCrmExt(r.id).deletedAt || '' }))
+                .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))}
+              retentionDays={RECYCLE_BIN_RETENTION_DAYS}
+              onRestore={handleRestore}
+              onOpen={(id) => setSelectedId(id)}
+            />
+          ) : (
         <CaseListView
           requests={listScopeRequests}
           serverStageLabels={serverStageLabels}
           serverFeeNext={officeId ? (serverFeeNext || {}) : undefined}
+          serverNextDue={officeId ? serverNextDue : undefined}
           getCrmExt={getCrmExt}
           selectedId={selectedId}
           onSelectCase={(id) => setSelectedId(id)}
@@ -2011,6 +1540,7 @@ export default function CrmTab({
           onOpenImport={() => setIsImportModalOpen(true)}
           onOpenTrash={() => setShowTrash(true)}
         />
+          )}
           </>
       )}
 
@@ -2021,19 +1551,8 @@ export default function CrmTab({
         const income = fp.income || 0;
         const debtTotal = fp.debtTotal || 0;
         const assetsTotal = fp.assetsTotal || 0;
-        const dtiRatio = income > 0 ? (debtTotal / income).toFixed(1) : '-';
-        const dtiNum = income > 0 ? debtTotal / income : 0;
         
-        // 2026 기준 최저생계비 (중위소득 60%)
-        const depCount = fp.dependents || 0;
-        const minLivingCost = depCount === 0 ? 133 : depCount === 1 ? 220 : depCount === 2 ? 282 : 343;
-        const monthlyDisposable = Math.max(0, income - minLivingCost);
-        const termMonths = fp.specialCondition && fp.specialCondition !== 'none' || (fp.age && fp.age < 30) ? 24 : 36;
-        const estimatedTotalRepay = monthlyDisposable * termMonths;
-        const estimatedDischargeRate = debtTotal > 0 ? Math.max(0, Math.min(95, Math.round(((debtTotal - estimatedTotalRepay) / debtTotal) * 100))) : 0;
         
-        // 소득 유형 및 법원 필수 서류 가이드 정보 판별
-        const incomeTypeInfo = detectClientIncomeType(fp, selectedExt?.incomeExpenseD5103, selectedClient);
 
         // 수임료 납부 및 분납 현황 지표 계산
         const feeSchedule = selectedExt?.feeSchedule || [];
@@ -2064,7 +1583,6 @@ export default function CrmTab({
 
         const paidSchedule = feeSchedule.filter(f => f.status === 'paid');
         const overdueSchedule = feeSchedule.filter(f => f.status === 'overdue');
-        const pendingSchedule = feeSchedule.filter(f => f.status === 'pending');
 
         const totalPaidWon = feeSchedule.length > 0
           ? paidSchedule.reduce((sum, f) => sum + feeAmountWon(f), 0)
@@ -2074,7 +1592,6 @@ export default function CrmTab({
         const paymentRate = totalFeeWon > 0 ? Math.min(100, Math.round((totalPaidWon / totalFeeWon) * 100)) : 0;
         const isFullyPaid = totalFeeWon > 0 && unpaidWon === 0;
         const isOverdue = overdueSchedule.length > 0;
-        const nextInst = overdueSchedule[0] || pendingSchedule[0] || null;
 
         let feeBadgeLabel = '미약정';
         let feeBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
@@ -2703,131 +2220,6 @@ export default function CrmTab({
             );
           })()}
 
-      {/* ══════════ 신규 리드 뷰 ══════════ */}
-      {viewMode === 'leads' && handleOpenProposalDraft && (
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
-            <div>
-              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                📋 신규 상담 요청
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">채무 구조와 소득 진단을 검토한 후 제안서를 작성하세요.</p>
-            </div>
-            <span className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold whitespace-nowrap">
-              회생파산 전담팀
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {newLeadRequests
-              .map((r, idx) => {
-                // 자가진단 전에 요청한 의뢰인도 있어 재무 정보가 비어 있을 수 있다
-                const fp = r.financialProfile || ({} as ConsultRequest['financialProfile']);
-                const assets = fp.assetsTotal ?? fp.myAssets ?? 0;
-                return (
-                  <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col">
-                    {/* 카드 헤더 */}
-                    <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                          r.requestType === 'direct' ? 'bg-[#1E3A5F] text-white' :
-                          r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
-                          'bg-slate-200 text-slate-700'
-                        }`}>
-                          {/* 대시보드·AI 사건 분석과 같은 이름 */}
-                          {requestTypeLabel(r.requestType)}
-                        </span>
-                        <span className="text-sm font-bold text-slate-900">{getDisplayClientName(r)}</span>
-                        {isNewCase(r.createdAt) && <NewBadge />}
-                      </div>
-                      <span className="bg-rose-50 text-rose-600 font-bold text-xs px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
-                    </div>
-
-                    {/* 카드 본문 */}
-                    <div className="p-4 space-y-3 flex-1 flex flex-col">
-                      <div>
-                        <h3 className="font-extrabold text-sm text-slate-900 line-clamp-1">{r.title}</h3>
-                        <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mt-0.5">{r.content}</p>
-                      </div>
-
-                      {/* 핵심 재무 요약 (총채무 / 월소득 / 자산) */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-xs text-slate-500">총채무</div>
-                          <div className="text-sm font-black text-slate-900">{(fp.debtTotal || 0).toLocaleString()}<span className="text-xs font-medium">만</span></div>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-xs text-slate-500">월소득</div>
-                          <div className="text-sm font-black text-slate-900">{(fp.income || 0).toLocaleString()}<span className="text-xs font-medium">만</span></div>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-xs text-slate-500">자산</div>
-                          <div className="text-sm font-black text-slate-900">{assets.toLocaleString()}<span className="text-xs font-medium">만</span></div>
-                        </div>
-                      </div>
-
-                      {/* 의뢰인 메모 */}
-                      {((fp.clientNotes && fp.clientNotes.length > 0) || fp.clientNote) && (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs">
-                          <span className="text-xs font-bold text-slate-500 block mb-0.5">📝 의뢰인 메모</span>
-                          {fp.clientNotes && fp.clientNotes.length > 0 ? (
-                            <div className="text-xs text-slate-700 line-clamp-2">{fp.clientNotes.join(' / ')}</div>
-                          ) : (
-                            <div className="text-xs text-slate-700 line-clamp-2">{fp.clientNote}</div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* 위험 플래그 */}
-                      <div className="flex flex-wrap gap-1 mt-auto pt-1">
-                        {fp.specialCondition && fp.specialCondition !== 'none' && (
-                          <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-md font-bold border border-slate-200">
-                            ⚡ 특례: {fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'single_parent' ? '한부모' : fp.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
-                          </span>
-                        )}
-                        {(fp.riskFlags || []).map(rf => (
-                          <span key={rf} className="bg-rose-50 text-rose-600 text-xs px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 카드 푸터: 액션 버튼 */}
-                    <div className="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
-                        className="text-slate-500 hover:text-slate-700 font-bold py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer hover:bg-slate-100 press-scale"
-                      >
-                        상세 보기
-                      </button>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleOpenProposalDraft(r.id)}
-                          className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2 px-4 rounded-xl text-xs tracking-wide transition-all shadow-xs flex items-center gap-1 whitespace-nowrap press-scale cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          제안서 작성
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-            {/* 빈 상태 */}
-            {newLeadRequests.length === 0 && (
-              <div className="col-span-full bg-white p-10 text-center rounded-2xl border border-slate-200 space-y-2">
-                <Users className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="text-sm text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
-                <p className="text-xs text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
-                <button onClick={() => setViewMode('list')} className="text-xs text-brand font-bold hover:underline cursor-pointer mt-2">
-                  전체 고객 목록 보기 →
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {showBulkMessage && (
         <div className="bg-white border-t border-slate-200 p-5 space-y-4">

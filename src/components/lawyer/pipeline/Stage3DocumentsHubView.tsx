@@ -754,7 +754,7 @@ export default function Stage3DocumentsHubView({
                   type="button"
                   onClick={() => setShowPublicDocGuide(true)}
                   className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 press-scale min-h-[44px]"
-                  title="8대 공공기관별 필수 발급 옵션 및 의뢰인 전송용 문자 템플릿 확인"
+                  title="발급처별 발급 옵션과 의뢰인 안내 문구 확인"
                 >
                   <Landmark className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">공공기관 발급 가이드</span>

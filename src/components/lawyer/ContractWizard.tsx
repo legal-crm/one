@@ -1672,8 +1672,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // ─── Step 3: 계약 문서 관리 ───
   const handleRestoreStandard7Docs = async () => {
     const confirmed = await dialog.confirm({
-      title: '7대 표준서식 일괄 복원',
-      message: '현재 편집된 문서 목록을 대한변호사협회 표준 7대 계약문서(위임계약서, 동의서, 위임장, 분납약정서 등)로 초기화하시겠습니까? (현재 입력된 의뢰인/변호사 정보가 자동 반영됩니다)',
+      title: '기본 문서 세트로 되돌리기',
+      message: '현재 편집한 문서 목록을 기본 계약 문서 세트(위임계약서·동의서·위임장·분납약정서 등)로 되돌릴까요? (현재 입력된 의뢰인/변호사 정보가 자동 반영됩니다)',
       confirmText: '복원하기',
       variant: 'warning',
     });
@@ -1698,7 +1698,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     });
 
     update({ documents: newDocs });
-    toast.success('7대 법률 표준문서 세트로 복원되었습니다.');
+    toast.success('기본 계약 문서 세트로 되돌렸어요.');
   };
 
   const handleDeleteDoc = async (doc: ContractDocument) => {
@@ -1777,7 +1777,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               type="button"
               onClick={handleRestoreStandard7Docs}
               className="flex items-center gap-1 px-3 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
-              title="대한변호사협회 7대 표준 문서로 초기화 복원합니다"
+              title="기본 계약 문서 세트로 되돌립니다"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>표준양식 복원</span>
@@ -1796,7 +1796,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                 onClick={handleRestoreStandard7Docs}
                 className="px-4 py-2 bg-[#1E3A5F] text-white font-bold text-xs rounded-xl shadow-xs"
               >
-                7대 표준 문서 일괄 추가
+                기본 문서 세트 추가
               </button>
             </div>
           ) : (
@@ -2082,7 +2082,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
               <span className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span>모든 필수 약관 및 법적 효력 안내에 전체 동의합니다</span>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                  4대 조항 필수
+                  필수 조항
                 </span>
               </span>
               <p className="text-xs text-slate-500 mt-0.5">

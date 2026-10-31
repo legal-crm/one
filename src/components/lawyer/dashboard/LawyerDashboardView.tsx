@@ -515,7 +515,7 @@ export const LawyerDashboardView: React.FC<LawyerDashboardViewProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                대법원 전자소송 13종 서식 실시간 양방향 매핑, 법원 규격 A4 PDF 직접 다운로드, 통장 6대 스마트 프리셋, 8대 공공기관 서류 발급 가이드가 모두 적용되었습니다.
+                서식 작성기·글자 PDF 저장·발급처별 서류 안내를 사건 화면에서 쓸 수 있어요.
               </p>
             </div>
 

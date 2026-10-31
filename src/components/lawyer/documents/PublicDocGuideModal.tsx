@@ -264,7 +264,7 @@ export default function PublicDocGuideModal({
                     공공기관 서류 발급 가이드 & 안내 센터
                   </h2>
                   <span className="px-2 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40 text-[10px] font-black text-blue-300">
-                    8대 발급처 완벽 정리
+                    발급처별 정리
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-0.5">

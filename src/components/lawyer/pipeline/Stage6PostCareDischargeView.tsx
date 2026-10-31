@@ -690,7 +690,7 @@ export default function Stage6PostCareDischargeView({
                 <div className="flex items-center gap-2">
                   <strong className="text-sm font-bold">
                     {overdueCount >= 3
-                      ? `⚠️ 법 제624조 폐지 위험 경보 (${overdueCount}회 미납)`
+                      ? `변제금 ${overdueCount}회 미납: 폐지 사유(법 제624조) 확인 필요`
                       : overdueCount > 0
                       ? `변제금 미납 주의 (${overdueCount}회 미납)`
                       : '정상 변제 적립 중 (미납 내역 없음)'}

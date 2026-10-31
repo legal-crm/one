@@ -110,7 +110,7 @@ export default function DebtAgencyApplicationModal({
       ...prev,
       creditors: convertedRows,
     }));
-    toast.success(`의뢰인 모바일 7대 실무 입력값(${convertedRows.length}건)이 신청서 표에 성공적으로 동기화되었습니다!`);
+    toast.success(`의뢰인이 입력한 채권자 정보 ${convertedRows.length}건을 신청서 표에 넣었어요.`);
   };
 
   if (!isOpen) return null;
@@ -279,10 +279,10 @@ export default function DebtAgencyApplicationModal({
                 type="button"
                 onClick={handleSyncClientIntake}
                 className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer press-scale whitespace-nowrap"
-                title="의뢰인이 모바일에서 입력한 7대 실무 정보(지점명, 카드분리, 담보 리스크 등)를 표에 동기화합니다."
+                title="의뢰인이 입력한 채권자 정보(지점명·카드 분리·담보 등)를 표에 넣습니다."
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>고객 모바일 7대 실무 동기화 ({clientIntake.entries.length}곳)</span>
+                <span>의뢰인 입력 불러오기 ({clientIntake.entries.length}곳)</span>
               </button>
             )}
 

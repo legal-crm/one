@@ -364,11 +364,11 @@ function BatchFilingPackagingModalInner({
     }
   };
 
-  // 4. 전자소송 7대 묶음 ZIP
+  // 4. 전자소송 묶음 ZIP
   const handleDownload7BundleZip = async () => {
     if (!(await confirmEstimated())) return;
     setIsProcessing(true);
-    setProcessLabel('매뉴얼 7-1 규격 전자소송 7대 묶음 PDF 결합 및 압축 중...');
+    setProcessLabel('전자소송 묶음 PDF를 합치고 압축하는 중...');
     try {
       const zipBlob = await CourtBatchFilingService.exportCourt7BundleZip(
         await hydrateSlots(slots),
@@ -380,7 +380,7 @@ function BatchFilingPackagingModalInner({
       toast.success('7묶음 ZIP을 내려받았어요. 자료가 없는 묶음은 넣지 않았어요.');
     } catch (err: any) {
       console.error(err);
-      toast.error('7대 묶음 ZIP 생성 중 오류가 발생했습니다: ' + (err?.message || ''));
+      toast.error('묶음 ZIP을 만들지 못했어요: ' + (err?.message || ''));
     } finally {
       setIsProcessing(false);
       setProcessLabel('');
@@ -529,7 +529,7 @@ function BatchFilingPackagingModalInner({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                전자소송 7대 묶음
+                전자소송 묶음
               </button>
             </div>
           </div>
@@ -569,7 +569,7 @@ function BatchFilingPackagingModalInner({
                 className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer press-scale whitespace-nowrap disabled:opacity-50"
               >
                 <Layers className="w-3.5 h-3.5 text-purple-600" />
-                <span>7대 묶음 ZIP</span>
+                <span>묶음 ZIP</span>
               </button>
             )}
 
@@ -878,7 +878,7 @@ function BatchFilingPackagingModalInner({
           </div>
         )}
 
-        {/* ═══ 3. 전자소송 7대 묶음 뷰 ═══ */}
+        {/* ═══ 3. 전자소송 묶음 뷰 ═══ */}
         {viewMode === 'BUNDLES_7' && (
           <div className="p-6 overflow-y-auto space-y-3 flex-1 bg-slate-50/50">
             {REHAB_7_BUNDLE_SPEC.map((bundle) => {

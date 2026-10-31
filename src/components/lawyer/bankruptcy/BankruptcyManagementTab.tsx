@@ -507,9 +507,9 @@ export default function BankruptcyManagementTab({
           { key: 'petition', label: '1. 신청서 & 진술서 감수', icon: '📝' },
           { key: 'statement', label: '2. 진술서 & 면책불허가 점검', icon: '🛡️' },
           { key: 'creditors', label: '3. 채권자 & 소송/압류 이력', icon: '📋' },
-          { key: 'assets', label: '4. 재산목록 & 관재인 5대 조사', icon: '🏦' },
+          { key: 'assets', label: '4. 재산목록 & 관재인 조사 재산', icon: '🏦' },
           { key: 'living', label: '5. 주거 6분류 & 조세 체납표', icon: '📊' },
-          { key: 'docs', label: '6. 15대 필수서류 & 미제출 사유', icon: '📁' },
+          { key: 'docs', label: '6. 필수 서류 & 미제출 사유', icon: '📁' },
         ].map(st => (
           <button
             key={st.key}
@@ -1238,7 +1238,7 @@ export default function BankruptcyManagementTab({
           <div className="space-y-5 pt-4 border-t border-slate-200">
             <h5 className="font-bold text-xs text-purple-900 flex items-center gap-1.5">
               <ShieldAlert className="w-4 h-4 text-purple-600" />
-              <span>파산관재인 5대 필수 조사재산 (편파변제 및 부인권 대상 점검)</span>
+              <span>파산관재인 조사 재산 (편파변제·부인권 대상 점검)</span>
             </h5>
 
             {/* (1) 최근 1년 내 처분재산 */}

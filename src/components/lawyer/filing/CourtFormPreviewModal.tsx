@@ -59,7 +59,7 @@ const FORM_TABS: FormTabMeta[] = [
   { code: 'R10', name: '진술서 (채무 증대 경위서)', shortName: 'R10 진술서', badge: '사유서술' },
   { code: 'R04', name: '변제계획안 및 변제예정표 (D5110)', shortName: 'R04 변제계획안', badge: 'D5110' },
   { code: 'R03', name: '소송위임장 및 경유확인서', shortName: 'R03 소송위임장', badge: '대리권' },
-  { code: 'R07', name: '첨부서류 일체 (4대 발급처 증빙)', shortName: 'R07 첨부서류', badge: '체크리스트' },
+  { code: 'R07', name: '첨부서류 일체 (발급처 증빙)', shortName: 'R07 첨부서류', badge: '체크리스트' },
 ];
 
 function CourtFormPreviewModalInner({

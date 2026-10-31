@@ -223,7 +223,7 @@ export default function SpeedDocReviewModal({
                   <span>사무장 적격 검증 체크리스트</span>
                 </span>
                 <p className="text-xs text-slate-500 mt-1">
-                  법원 보정명령 방지를 위해 4대 항목을 체크하세요.
+                  보정을 줄이려면 아래 항목을 확인하세요.
                 </p>
               </div>
 

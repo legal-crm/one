@@ -20,6 +20,8 @@ export interface CaseListViewProps {
   serverStageLabels?: Record<string, string>;
   /** 서버 수납 다음 납부 (사건 키 → 날짜·남은 금액). 있으면 캘린더 '분납'은 이것만 쓴다 */
   serverFeeNext?: Record<string, { dueOn: string; amountWon: number; overdue: boolean }>;
+  /** 서버 업무함(office_work_queue) 기준 사건별 가장 가까운 할 일 (CM-6 '다음 기일/기한') */
+  serverNextDue?: Record<string, { title: string; dueLabel: string; urgent: boolean }>;
   requests: ConsultRequest[];
   getCrmExt: (id: string) => CrmClientExtension;
   selectedId: string;
@@ -91,6 +93,7 @@ export function CaseListView({
   onOpenSettings,
   serverStageLabels,
   serverFeeNext,
+  serverNextDue,
 }: CaseListViewProps) {
   // 보기 모드 (리스트 vs 칸반 vs 캘린더)
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'calendar'>('list');
@@ -320,6 +323,9 @@ export function CaseListView({
 
   // '다음 할 일' 문구 산출 헬퍼
   const getNextActionText = (r: ConsultRequest, ext: CrmClientExtension) => {
+    // 0. 서버 업무함의 기한 있는 할 일 (보정 기한·수임료·일정·서류 확인 등) — 원본 데이터에서 계산된 값
+    const srv = serverNextDue?.[r.id];
+    if (srv) return { text: srv.title, due: srv.dueLabel, isUrgent: srv.urgent, type: 'server' };
     // 1. 미완료 리마인더 우선
     const reminder = ext.notes?.find(n => n.reminder && !n.reminder.completed);
     if (reminder?.reminder) {
@@ -350,13 +356,13 @@ export function CaseListView({
       };
     }
     if (stage === 4) {
-      return { text: '8대 서식 검토 및 전자소송 접수', due: '접수 준비', isUrgent: false, type: 'stage' };
+      return { text: '신청 서식 검토·전자소송 접수', due: '접수 준비', isUrgent: false, type: 'stage' };
     }
     if (stage === 5) {
       const cd = (ext.correctionOrders?.[0] as any)?.deadline;
       const left = cd ? daysUntil(cd) : null;
       return { 
-        text: '보정 답변서 및 7대 표 작성', 
+        text: '보정 항목 대응', 
         due: left !== null ? (left >= 0 ? `D-${left}` : `D+${Math.abs(left)}`) : '보정 심리', 
         isUrgent: left !== null && left <= 3, 
         type: 'stage' 

@@ -612,7 +612,7 @@ export default function Stage1ConsultationView({
                   passedConditionsCount === 4 ? 'bg-emerald-500' : 'bg-amber-500'
                 }`} />
               </span>
-              <span>4대 요건 중 {passedConditionsCount}개 충족 ({passedConditionsCount === 4 ? '신청 적격 판정' : '보완 검토'})</span>
+              <span>기본 요건 확인 {passedConditionsCount}/4 (판단은 변호사 검토)</span>
             </span>
             <span className="text-xs font-bold text-slate-400 hidden lg:inline-block">
               신청 적격 검토 현황판
@@ -939,7 +939,7 @@ export default function Stage1ConsultationView({
                 hasUrgentSeizure ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${hasUrgentSeizure ? 'bg-amber-500 animate-ping' : 'bg-blue-500'}`} />
-                {hasUrgentSeizure ? '⚡ 금지명령 시급' : '🟢 일반 절차 진행'}
+                {hasUrgentSeizure ? '금지명령 검토 필요' : '일반 절차'}
               </span>
             </div>
 
@@ -972,7 +972,7 @@ export default function Stage1ConsultationView({
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className={`font-mono font-black text-xs leading-none ${hasUrgentSeizure ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {hasUrgentSeizure ? '⚡' : 'OK'}
+                    {hasUrgentSeizure ? '!' : 'OK'}
                   </span>
                   <span className="text-xs font-bold text-slate-400 mt-0.5 leading-none">
                     {hasUrgentSeizure ? '긴급대응' : '추심안정'}
@@ -1008,7 +1008,7 @@ export default function Stage1ConsultationView({
                       <td className="py-1 text-slate-700 font-bold whitespace-nowrap">독촉·압류 진행도</td>
                       <td className="py-1 text-right font-bold">
                         {hasUrgentSeizure ? (
-                          <span className="text-amber-600 font-black">⚡ 금지명령 필요</span>
+                          <span className="text-amber-700 font-black">금지명령 검토</span>
                         ) : (
                           <span className="text-emerald-600 font-bold">정상 (독촉 없음)</span>
                         )}

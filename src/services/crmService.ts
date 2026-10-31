@@ -1511,9 +1511,18 @@ export async function softDeleteCrmClient(clientId: string): Promise<{ serverOk:
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   const ext = store[clientId];
   if (!ext) return { serverOk: false };
+  const prevDeletedAt = ext.deletedAt;
   ext.deletedAt = new Date().toISOString();
   store[clientId] = ext;
   setLocalData(CRM_STORAGE_KEY, store);
+  // 서버에 못 넣으면 이 브라우저 사본도 되돌린다 (이전: 브라우저에서만 휴지통으로 옮긴 채 남았다)
+  const revert = () => {
+    const st = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+    if (st[clientId]) {
+      if (prevDeletedAt) st[clientId].deletedAt = prevDeletedAt; else delete st[clientId].deletedAt;
+      setLocalData(CRM_STORAGE_KEY, st);
+    }
+  };
 
   if (!isSupabaseConfigured) return { serverOk: true };
   try {
@@ -1522,10 +1531,13 @@ export async function softDeleteCrmClient(clientId: string): Promise<{ serverOk:
       updated_at: new Date().toISOString(),
     }).eq('client_id', clientId).select('client_id');
     // 이전: 반환 오류를 확인하지 않아 서버 실패가 조용히 묻혔음
-    if (error) { console.warn('[CRM] 서버 휴지통 이동 실패:', error.message); return { serverOk: false }; }
-    return { serverOk: (data || []).length > 0 };
+    if (error) { console.warn('[CRM] 서버 휴지통 이동 실패:', error.message); revert(); return { serverOk: false }; }
+    const ok = (data || []).length > 0;
+    if (!ok) revert();
+    return { serverOk: ok };
   } catch (e) {
     console.warn('[CRM] Supabase soft delete failed', e);
+    revert();
     return { serverOk: false };
   }
 }
@@ -1535,9 +1547,14 @@ export async function restoreCrmClient(clientId: string): Promise<{ serverOk: bo
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
   const ext = store[clientId];
   if (!ext) return { serverOk: false };
+  const prevDeletedAt = ext.deletedAt;
   delete ext.deletedAt;
   store[clientId] = ext;
   setLocalData(CRM_STORAGE_KEY, store);
+  const revert = () => {
+    const st = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+    if (st[clientId] && prevDeletedAt) { st[clientId].deletedAt = prevDeletedAt; setLocalData(CRM_STORAGE_KEY, st); }
+  };
 
   if (!isSupabaseConfigured) return { serverOk: true };
   try {
@@ -1545,10 +1562,13 @@ export async function restoreCrmClient(clientId: string): Promise<{ serverOk: bo
       deleted_at: null,
       updated_at: new Date().toISOString(),
     }).eq('client_id', clientId).select('client_id');
-    if (error) { console.warn('[CRM] 서버 복원 실패:', error.message); return { serverOk: false }; }
-    return { serverOk: (data || []).length > 0 };
+    if (error) { console.warn('[CRM] 서버 복원 실패:', error.message); revert(); return { serverOk: false }; }
+    const ok = (data || []).length > 0;
+    if (!ok) revert();
+    return { serverOk: ok };
   } catch (e) {
     console.warn('[CRM] Supabase restore failed', e);
+    revert();
     return { serverOk: false };
   }
 }

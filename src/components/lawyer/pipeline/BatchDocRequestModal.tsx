@@ -185,7 +185,7 @@ export default function BatchDocRequestModal({
                     : 'bg-blue-50/60 text-blue-900 border-blue-200 hover:bg-blue-100'
                 }`}
               >
-                📋 2차 서류 ({unsubmittedDocs.filter(d => phaseOf(d) === 2).length}건)
+                2차 서류 ({unsubmittedDocs.filter(d => phaseOf(d) === 2).length}건)
               </button>
             </div>
           </div>

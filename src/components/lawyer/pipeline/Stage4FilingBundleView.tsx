@@ -265,7 +265,7 @@ export default function Stage4FilingBundleView({
     },
     { 
       code: 'R07', 
-      name: '첨부서류 일체 (4대 발급처 증빙)', 
+      name: '첨부서류 일체 (발급처 증빙)', 
       isReady: (crmExt?.uploadedFiles || []).length > 0, 
       badge: '첨부',
       note: `업로드된 첨부서류 ${(crmExt?.uploadedFiles || []).length}건`
@@ -303,7 +303,7 @@ export default function Stage4FilingBundleView({
   const handleApproveAll = async () => {
     const confirmed = await dialog.confirm({
       title: '전산 서식 일괄 승인',
-      message: `${caseType === 'bankruptcy' ? '7대' : '8대'} 필수 전산서식의 초안 내용을 모두 확인하셨습니까?\n\n변호사 검토 완료 승인으로 일괄 처리합니다.`,
+      message: `필수 신청 서식 초안을 모두 확인하셨습니까?\n\n변호사 검토 완료 승인으로 일괄 처리합니다.`,
       confirmText: '전체 검토완료 승인',
       cancelText: '취소',
       variant: 'primary',
@@ -674,7 +674,7 @@ export default function Stage4FilingBundleView({
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#1E3A5F] border border-blue-200 text-xs font-semibold flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                {caseType === 'bankruptcy' ? '개인파산 7대 서식' : '개인회생 8대 서식'}
+                {caseType === 'bankruptcy' ? '개인파산 필수 서식' : '개인회생 필수 서식'}
               </span>
               {crmExt?.courtCase?.caseNumber && (
                 <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-mono font-bold">
@@ -743,7 +743,7 @@ export default function Stage4FilingBundleView({
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>신청 서식 ({caseType === 'bankruptcy' ? '7대' : '8대'} 서식 준비도)</span>
+            <span>신청 서식 준비</span>
             <span className={`px-1.5 py-0.5 rounded-full text-xs font-mono ${
               currentSection === 'petition' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
             }`}>
@@ -811,7 +811,7 @@ export default function Stage4FilingBundleView({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">
-                    {caseType === 'bankruptcy' ? '파산 7대' : '회생 8대'} 필수 전산서식 검증 및 준비 상태
+                    {caseType === 'bankruptcy' ? '파산' : '회생'} 필수 서식 준비 상태
                   </h3>
                   <p className="text-xs text-slate-500">
                     원천 증빙과 대조 검토 후 승인하면 전자소송 일괄 패키징에 포함됩니다.
@@ -1343,7 +1343,7 @@ export default function Stage4FilingBundleView({
                 <span>대법원 전자소송 제출용 일괄 패키징</span>
               </h4>
               <p className="text-xs text-slate-600">
-                8대 필수 서식과 부수신청, 4대 발급처 첨부서류를 하나의 ZIP 압축 번들 또는 결합 PDF로 생성하여 대법원 전자소송에 원클릭으로 제출할 수 있습니다.
+                필수 서식·부수 신청·첨부서류를 ZIP 묶음이나 결합 PDF로 만들어 전자소송 제출을 준비합니다.
               </p>
             </div>
             {onOpenBatchFilingModal && (
@@ -1397,7 +1397,7 @@ export default function Stage4FilingBundleView({
               {isFilingSubmitted
                 ? (crmExt?.courtCase?.caseNumber ? `사건번호 ${crmExt.courtCase.caseNumber} · Stage 5에서 보정명령을 관리합니다.` : '접수 완료되었습니다. 사건번호를 등록해 주세요.')
                 : !draftSuite.allReviewed
-                ? `8대 서식 중 ${draftSuite.totalCount - draftSuite.approvedCount}건의 검토가 남아있습니다.`
+                ? `필수 서식 중 ${draftSuite.totalCount - draftSuite.approvedCount}건의 검토가 남아 있습니다.`
                 : !isClientConsented
                 ? '의뢰인에게 최종 신청서 초안 확인 및 동의를 요청해 주세요.'
                 : '검토 및 동의가 완료되었습니다. 전자소송에 접수하고 접수 완료를 기록하세요.'}

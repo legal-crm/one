@@ -466,7 +466,7 @@ export default function Stage5CorrectionCenterView({
             }`}
           >
             <FileEdit className="w-4 h-4" />
-            <span>{serverCorrectionSlot ? '보정 대응' : `보정 센터 (${caseType === 'bankruptcy' ? '5대' : '7대'} 소명서 작성)`}</span>
+            <span>{serverCorrectionSlot ? '보정 대응' : '보정 센터'}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
               currentSection === 'corrections'
                 ? 'bg-amber-400 text-slate-900'
@@ -673,7 +673,7 @@ export default function Stage5CorrectionCenterView({
                   <Table className="w-4 h-4" />
                 </span>
                 <span className="font-bold text-xs text-slate-900">
-                  {caseType === 'bankruptcy' ? '파산관재인 5대 표준 소명서' : '회생위원 7대 법원 표준 소명서'}
+                  {caseType === 'bankruptcy' ? '파산 소명 표 목록' : '회생 소명 표 목록'}
                 </span>
                 <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                   {hasDraft ? '보정 답변 초안 있음' : '작성 대기'}
@@ -731,10 +731,10 @@ export default function Stage5CorrectionCenterView({
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-slate-900">
-                      {activeCorrectionRound}차 보정 답변서 및 7대 소명표 통합 편집기
+                      {activeCorrectionRound}차 보정 답변서·소명표 편집
                     </h4>
                     <p className="text-xs text-slate-500">
-                      법원 보정권고 사항에 대한 답변과 7대 소명표 데이터를 실시간 편집하고 법원용 보정서를 생성합니다.
+                      보정권고 항목별 답변과 소명표를 작성하고 보정서를 만듭니다.
                     </p>
                   </div>
                 </div>
@@ -995,7 +995,7 @@ export default function Stage5CorrectionCenterView({
             <p className="text-xs text-slate-500 mt-0.5">
               {isCommenced
                 ? '가상계좌와 1회차 납입일이 등록되었습니다. Stage 6에서 변제금 납부 및 채권자집회를 관리합니다.'
-                : '보정기한 내에 7대 소명표를 작성하고 법원에 제출하거나, 개시결정 통지 수령 시 결정정보를 등록하세요.'}
+                : '보정기한 안에 소명표를 작성해 제출하고, 개시결정 통지를 받으면 결정 정보를 등록하세요.'}
             </p>
           </div>
         </div>

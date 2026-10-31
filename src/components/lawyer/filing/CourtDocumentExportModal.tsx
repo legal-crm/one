@@ -131,7 +131,7 @@ function CourtDocumentExportModalInner({
     {
       order: 6,
       title: '6. 소송위임장 및 담당변호사 지정서',
-      desc: `대리인: ${activeLawyerName} 변호사 (8대 법정 수권사항 완비)`,
+      desc: `대리인: ${activeLawyerName} 변호사`,
       badge: '소송대리 필수',
       hasCsv: false,
       action: () => {
@@ -180,7 +180,7 @@ function CourtDocumentExportModalInner({
                 </span>
               </h3>
               <p className="text-xs text-slate-300">
-                {courtName} 접수용 표준 8대 신청서류를 일괄 인쇄하거나 전자소송 규격으로 다운로드합니다.
+                {courtName} 접수용 신청 서류를 한 번에 인쇄하거나 전자소송용으로 내려받습니다.
               </p>
             </div>
           </div>

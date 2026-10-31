@@ -423,7 +423,7 @@ function PrintableBankruptcyPetitionModalInner({
 
               {/* 파산관재인 5대 특수조사재산 소명표 */}
               <div className="space-y-4 pt-2">
-                <h4 className="font-bold text-sm text-slate-900">2. 파산관재인 5대 필수 조사재산 소명 내역</h4>
+                <h4 className="font-bold text-sm text-slate-900">2. 파산관재인 조사 재산 소명 내역</h4>
 
                 {/* (1) 1년 내 처분재산 */}
                 <div className="space-y-1">

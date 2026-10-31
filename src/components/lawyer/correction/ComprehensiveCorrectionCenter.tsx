@@ -492,7 +492,7 @@ ${new Date().getFullYear()}.  .  .
                   ? 'bg-violet-100 text-violet-400 border-violet-200 cursor-wait'
                   : 'bg-violet-50 hover:bg-violet-100 text-violet-900 border-violet-200'
               }`}
-              title="법원 보정권고서/보정명령서 스캔본 또는 사진을 업로드하면 AI가 질문 항목을 자동 분할하고 7대 표준 템플릿에 매핑합니다"
+              title="보정권고서·보정명령서 스캔본이나 사진을 올리면 항목을 나눈 초안을 만듭니다(변호사 확인 필요)"
             >
               {isOcrParsing ? (
                 <>
@@ -607,7 +607,7 @@ ${new Date().getFullYear()}.  .  .
       {/* ── 2. 보정 4대 실무 탭 네비게이션 ── */}
       <div className="flex border-b border-slate-200 bg-white rounded-2xl px-2 shadow-xs">
         {[
-          { key: 'write', label: '1. 작성하기 (7대 소명표)', icon: '✍️' },
+          { key: 'write', label: '1. 작성하기 (소명표)', icon: '✍️' },
           { key: 'docs', label: '2. 보정서류 (의뢰인 소명자료)', icon: '📁' },
           { key: 'plan_sync', label: '3. 신청서수정 (변제계획 재계산)', icon: '⚖️' },
           { key: 'print', label: '4. 보정서출력 (소갑 채번/미리보기)', icon: '📄' },
@@ -632,7 +632,7 @@ ${new Date().getFullYear()}.  .  .
       {/* ══════════ [1탭] 작성하기 (7대 소명표) ══════════ */}
       {briefTab === 'write' && (
         <div className="space-y-4">
-          {/* ── 회생위원 7대 표준 보정명령 템플릿 라이브러리 ── */}
+          {/* ── 자주 쓰는 보정 항목 문안 ── */}
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 text-white shadow-md border border-indigo-900/50 space-y-3.5">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
@@ -641,7 +641,7 @@ ${new Date().getFullYear()}.  .  .
                     7
                   </span>
                   <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
-                    회생위원 7대 표준 보정명령 템플릿 라이브러리
+                    자주 쓰는 보정 항목 문안
                   </h4>
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
                     기본 문안 · 빈칸 직접 작성
@@ -781,7 +781,7 @@ ${new Date().getFullYear()}.  .  .
           <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-xs">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <span>📊 법원 실무 7대 표준 소명표 에디터</span>
+                <span>소명표 편집</span>
               </h4>
               <span className="text-xs text-slate-500">
                 작성된 데이터는 법원 보정서 본문 및 별지에 자동 반영됩니다.

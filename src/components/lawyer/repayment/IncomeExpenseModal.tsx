@@ -701,7 +701,7 @@ function IncomeExpenseModalInner({
                     {formData.monthlyLedger?.dynamicExpenses && formData.monthlyLedger.dynamicExpenses.length > 0 && (
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
                         <span className="font-bold text-slate-700 block">
-                          💡 고객 등록 세부 경비 ({formData.monthlyLedger.dynamicExpenses.length}개 항목 ➔ 법원 4대 표준 경비로 자동 롤업):
+                          의뢰인 등록 세부 경비 ({formData.monthlyLedger.dynamicExpenses.length}개 항목 → 법원 경비 분류로 합산):
                         </span>
                         <div className="flex flex-wrap gap-2 pt-1">
                           {formData.monthlyLedger.dynamicExpenses.map(item => (
